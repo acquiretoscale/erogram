@@ -60,8 +60,8 @@ const nextConfig: NextConfig = {
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' " +
               "https://telegram.org " +
               "https://cdn.jsdelivr.net " +
-              "https://plausible.io " +
-              "https://plausible.eroverse.space " +
+              "https://www.googletagmanager.com " +
+              "https://www.google-analytics.com " +
               "https://analytics.ahrefs.com " +
               "https://static.ahrefs.com " +
               "https://static.cloudflareinsights.com " +
@@ -84,8 +84,9 @@ const nextConfig: NextConfig = {
               // Network connections
               "connect-src 'self' " +
               "https://api.telegram.org " +
-              "https://plausible.io " +
-              "https://plausible.eroverse.space " +
+              "https://www.googletagmanager.com " +
+              "https://www.google-analytics.com " +
+              "https://analytics.google.com " +
               "https://analytics.ahrefs.com " +
               "https://static.ahrefs.com " +
               "https://static.cloudflareinsights.com " +

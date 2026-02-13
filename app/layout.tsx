@@ -70,17 +70,17 @@ export default function RootLayout({
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://plausible.eroverse.space" />
-        <link rel="dns-prefetch" href="https://plausible.eroverse.space" />
+        {/* Google Analytics 4 */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-1LS0T31C7J" />
         <script
           dangerouslySetInnerHTML={{
-            __html: `window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) }`,
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-1LS0T31C7J');
+            `,
           }}
-        />
-        <script
-          defer
-          data-domain="erogram.pro"
-          src="https://plausible.eroverse.space/js/script.file-downloads.outbound-links.js"
         />
 
         <script
