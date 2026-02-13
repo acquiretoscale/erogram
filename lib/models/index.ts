@@ -367,6 +367,16 @@ export const systemConfigSchema = new Schema(
   { timestamps: true }
 );
 
+// Image Schema (stores uploaded images as binary in MongoDB)
+export const imageSchema = new Schema(
+  {
+    data: { type: Buffer, required: true },
+    contentType: { type: String, required: true },
+    filename: { type: String, required: true },
+  },
+  { timestamps: true }
+);
+
 // Export models
 export const User = models.User || model('User', userSchema);
 export const Group = models.Group || model('Group', groupSchema);
@@ -383,3 +393,4 @@ export const SystemConfig = models.SystemConfig || model('SystemConfig', systemC
 export const TrackingEvent =
   (models.TrackingEvent as mongoose.Model<TrackingEvent>) ||
   model<TrackingEvent>('TrackingEvent', trackingEventSchema);
+export const Image = models.Image || model('Image', imageSchema);

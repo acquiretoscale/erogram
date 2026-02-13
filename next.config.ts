@@ -121,6 +121,16 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // Cache optimization for MongoDB-served images
+      {
+        source: "/api/images/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
       // Cache optimization for fonts
       {
         source: "/fonts/:path*",

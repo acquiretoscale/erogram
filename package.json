@@ -30,6 +30,7 @@
     "react-server-dom-webpack": "^19.2.1",
     "react-window": "^2.2.3",
     "remark-gfm": "^4.0.1",
+    "sharp": "^0.34.5",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
