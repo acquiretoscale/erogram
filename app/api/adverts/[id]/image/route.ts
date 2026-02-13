@@ -23,23 +23,12 @@ export async function GET(
       );
     }
     
-    // If it's already a URL (not base64), return it
-    if (!advert.image.startsWith('data:image/')) {
-      return NextResponse.json(
-        { image: advert.image },
-        {
-          headers: {
-            'Cache-Control': IMAGE_CACHE_CONTROL,
-            'CDN-Cache-Control': IMAGE_CACHE_CONTROL,
-            'Vercel-CDN-Cache-Control': IMAGE_CACHE_CONTROL,
-          },
-        }
-      );
-    }
-    
-    // Return base64 image (only one at a time, so it's safe)
+    // Dead paths from old VPS – files don't exist on Vercel
+    const deadPath = advert.image.startsWith('/uploads/') || advert.image.startsWith('uploads/');
+    const imageUrl = deadPath ? '/assets/image.jpg' : advert.image;
+
     return NextResponse.json(
-      { image: advert.image },
+      { image: imageUrl },
       {
         headers: {
           'Cache-Control': IMAGE_CACHE_CONTROL,

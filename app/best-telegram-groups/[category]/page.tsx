@@ -93,6 +93,7 @@ export default async function BestGroupsPage({ params }: PageProps) {
     const groups = rawGroups.map((group: any) => ({
         ...group,
         _id: group._id.toString(),
+        image: (group.image && !group.image.startsWith('/uploads/')) ? group.image : '/assets/image.jpg',
     }));
 
     // If fewer than 10 groups, fetch random groups from other categories
@@ -112,6 +113,7 @@ export default async function BestGroupsPage({ params }: PageProps) {
         otherGroups = rawOtherGroups.map((group: any) => ({
             ...group,
             _id: group._id.toString(),
+            image: (group.image && !group.image.startsWith('/uploads/')) ? group.image : '/assets/image.jpg',
         }));
     }
 

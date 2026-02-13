@@ -115,7 +115,7 @@ async function getGroups(limit: number, isMobile: boolean = false) {
       category: (group.category || '').slice(0, 50), // Limit category length
       country: (group.country || '').slice(0, 50), // Limit country length
       description: (group.description || '').slice(0, 150) || '', // Further limit description
-      image: group.image || '/assets/image.jpg',
+      image: (group.image && !group.image.startsWith('/uploads/')) ? group.image : '/assets/image.jpg',
       telegramLink: (group.telegramLink || '').slice(0, 150), // Limit URL length
       isAdvertisement: group.isAdvertisement || false,
       advertisementUrl: group.advertisementUrl ? (group.advertisementUrl || '').slice(0, 150) : null,
@@ -159,7 +159,7 @@ async function getAdverts() {
       country: (advert.country || '').slice(0, 50), // Limit country
       url: (advert.url || '').slice(0, 300), // Limit URL
       description: (advert.description || '').slice(0, 150) || '', // Further limit description
-      image: advert.image || '/assets/image.jpg',
+      image: (advert.image && !advert.image.startsWith('/uploads/')) ? advert.image : '/assets/image.jpg',
       status: advert.status || 'active',
       pinned: advert.pinned || false,
       clickCount: 0, // Required by type but set to 0 to reduce size

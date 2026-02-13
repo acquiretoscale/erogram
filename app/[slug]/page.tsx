@@ -78,7 +78,7 @@ async function getGroup(slug: string) {
       country: (group as any).country,
       telegramLink: (group as any).telegramLink,
       description: (group as any).description,
-      image: (group as any).image || '/assets/image.jpg',
+      image: ((group as any).image && !(group as any).image.startsWith('/uploads/')) ? (group as any).image : '/assets/image.jpg',
       views: (group as any).views || 0,
       memberCount: (group as any).memberCount || 0,
       createdAt: (group as any).createdAt,
@@ -153,7 +153,7 @@ async function getBot(slug: string) {
       country: (bot as any).country,
       telegramLink: (bot as any).telegramLink,
       description: (bot as any).description,
-      image: (bot as any).image || '/assets/image.jpg',
+      image: ((bot as any).image && !(bot as any).image.startsWith('/uploads/')) ? (bot as any).image : '/assets/image.jpg',
       views: (bot as any).views || 0,
       clickCount: (bot as any).clickCount || 0,
       memberCount: (bot as any).memberCount || 0,
@@ -248,7 +248,7 @@ async function getRandomSimilarGroups(currentGroupId: string, category?: string)
       category: String(g.category || '').slice(0, 50),
       country: String(g.country || '').slice(0, 50),
       description: String(g.description || '').slice(0, 220),
-      image: g.image || '/assets/image.jpg',
+      image: (g.image && !g.image.startsWith('/uploads/')) ? g.image : '/assets/image.jpg',
     }));
   } catch (error: any) {
     console.error('Error fetching similar groups:', error);
@@ -291,7 +291,7 @@ async function getRandomSimilarBots(currentBotId: string): Promise<SimilarGroup[
       category: String(b.category || '').slice(0, 50),
       country: String(b.country || '').slice(0, 50),
       description: String(b.description || '').slice(0, 220),
-      image: b.image || '/assets/image.jpg',
+      image: (b.image && !b.image.startsWith('/uploads/')) ? b.image : '/assets/image.jpg',
     }));
   } catch (error: any) {
     console.error('Error fetching similar bots:', error);
