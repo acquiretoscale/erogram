@@ -62,6 +62,7 @@ const nextConfig: NextConfig = {
               "https://cdn.jsdelivr.net " +
               "https://www.googletagmanager.com " +
               "https://www.google-analytics.com " +
+              "https://*.google-analytics.com " +
               "https://analytics.ahrefs.com " +
               "https://static.ahrefs.com " +
               "https://static.cloudflareinsights.com " +
@@ -86,7 +87,9 @@ const nextConfig: NextConfig = {
               "https://api.telegram.org " +
               "https://www.googletagmanager.com " +
               "https://www.google-analytics.com " +
+              "https://*.google-analytics.com " +
               "https://analytics.google.com " +
+              "https://stats.g.doubleclick.net " +
               "https://analytics.ahrefs.com " +
               "https://static.ahrefs.com " +
               "https://static.cloudflareinsights.com " +
