@@ -94,7 +94,6 @@ export default async function BestCountryGroupsPage({ params }: PageProps) {
     const groups = rawGroups.map((group: any) => ({
         ...group,
         _id: group._id.toString(),
-        image: (group.image && !group.image.startsWith('/uploads/')) ? group.image : '/assets/image.jpg',
     }));
 
     // If fewer than 10 groups, fetch random groups from "All" or other countries to fill the list
@@ -115,7 +114,6 @@ export default async function BestCountryGroupsPage({ params }: PageProps) {
         otherGroups = rawOtherGroups.map((group: any) => ({
             ...group,
             _id: group._id.toString(),
-            image: (group.image && !group.image.startsWith('/uploads/')) ? group.image : '/assets/image.jpg',
         }));
     }
 

@@ -23,12 +23,8 @@ export async function GET(
       );
     }
     
-    // Dead paths from old VPS – files don't exist on Vercel
-    const deadPath = advert.image.startsWith('/uploads/') || advert.image.startsWith('uploads/');
-    const imageUrl = deadPath ? '/assets/image.jpg' : advert.image;
-
     return NextResponse.json(
-      { image: imageUrl },
+      { image: advert.image },
       {
         headers: {
           'Cache-Control': IMAGE_CACHE_CONTROL,
