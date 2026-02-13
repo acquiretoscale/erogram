@@ -7,8 +7,8 @@ import mongoose from 'mongoose';
  */
 declare global {
   var mongoose: {
-    conn: typeof mongoose | null;
-    promise: Promise<typeof mongoose> | null;
+    conn: typeof import('mongoose') | null;
+    promise: Promise<typeof import('mongoose')> | null;
   } | undefined;
 }
 
@@ -35,9 +35,7 @@ async function connectDB() {
       socketTimeoutMS: 10000,
     };
 
-    cached!.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      return mongoose;
-    });
+    cached!.promise = mongoose.connect(MONGODB_URI, opts) as Promise<typeof import('mongoose')>;
   }
 
   try {
