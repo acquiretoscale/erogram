@@ -13,17 +13,27 @@ const nextConfig: NextConfig = {
     formats: ['image/webp', 'image/avif'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    minimumCacheTTL: 31536000, // 1 year
-    domains: ['images.pexels.com'], // Fallback for some environments
+    minimumCacheTTL: 31536000, // 1 year - SEO: long cache for stable image URLs
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'images.pexels.com',
-        pathname: '/**', // Allow all paths
+        pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: '*.erogram.pro',
+        pathname: '/**',
+      },
+      // Cloudflare R2 public bucket (current + any future buckets)
+      {
+        protocol: 'https',
+        hostname: 'pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.r2.dev',
         pathname: '/**',
       },
     ],
