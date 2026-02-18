@@ -11,7 +11,9 @@
     "clean": "rm -rf .next node_modules/.cache",
     "dev:clean": "npm run clean && npm run dev",
     "fetch-missing-images": "node --env-file=.env.local scripts/fetch-missing-images.mjs",
-    "fetch-missing-images:dry": "node --env-file=.env.local scripts/fetch-missing-images.mjs --dry-run"
+    "fetch-missing-images:dry": "node --env-file=.env.local scripts/fetch-missing-images.mjs --dry-run",
+    "restore-articles": "node --env-file=.env.local scripts/restore-articles-from-dump.mjs",
+    "restore-articles:dry": "node --env-file=.env.local scripts/restore-articles-from-dump.mjs --dry-run"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.990.0",

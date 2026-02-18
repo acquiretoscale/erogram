@@ -23,8 +23,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .select('slug updatedAt')
       .lean();
 
-    // Get all published articles
-    const articles = await Article.find({ status: 'published' })
+    // Get all articles (same as listing/admin)
+    const articles = await Article.find({})
       .select('slug updatedAt publishedAt')
       .lean();
 

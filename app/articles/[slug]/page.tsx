@@ -24,67 +24,47 @@ interface PageProps {
 async function getArticle(slug: string) {
   try {
     await connectDB();
+    const articleRaw = await Article.findOne({ slug }).lean();
+    if (!articleRaw) return null;
 
-    // Use native MongoDB to get article
-    const mongoose = require('mongoose');
-    const db = mongoose.connection.db;
-    if (!db) {
-      throw new Error('MongoDB connection not available');
-    }
-    const articlesCollection = db.collection('articles');
-
-    // Find article using native MongoDB
-    const articleRaw = await articlesCollection.findOne({ slug, status: 'published' });
-
-    if (!articleRaw) {
-      return null;
-    }
-
-    // Manually fetch author information
-    let author = null;
-    if (articleRaw.author) {
+    const ar = articleRaw as any;
+    let author: { _id: string; username: string } | null = null;
+    if (ar.author) {
       try {
-        const authorDoc = await User.findById(articleRaw.author.toString()).select('username').lean() as any;
+        const authorDoc = await User.findById(ar.author.toString()).select('username').lean() as any;
         author = authorDoc ? { _id: authorDoc._id.toString(), username: authorDoc.username } : null;
       } catch (err) {
         console.error('Error fetching author:', err);
-        author = null;
       }
     }
 
-    // Build result object with all fields explicitly
     const result = {
-      _id: articleRaw._id.toString(),
-      title: articleRaw.title,
-      slug: articleRaw.slug,
-      content: articleRaw.content || '',
-      excerpt: articleRaw.excerpt || '',
-      featuredImage: articleRaw.featuredImage || '',
-      status: articleRaw.status || 'published',
-      tags: articleRaw.tags || [],
-      publishedAt: articleRaw.publishedAt || null,
-      views: articleRaw.views || 0,
-      createdAt: articleRaw.createdAt,
-      updatedAt: articleRaw.updatedAt,
+      _id: ar._id.toString(),
+      title: ar.title,
+      slug: ar.slug,
+      content: ar.content || '',
+      excerpt: ar.excerpt || '',
+      featuredImage: ar.featuredImage || '',
+      status: ar.status || 'published',
+      tags: ar.tags || [],
+      publishedAt: ar.publishedAt || null,
+      views: ar.views || 0,
+      createdAt: ar.createdAt,
+      updatedAt: ar.updatedAt,
       author: author || { _id: '', username: 'erogram' },
-      // SEO Metadata
-      metaTitle: articleRaw.metaTitle || '',
-      metaDescription: articleRaw.metaDescription || '',
-      metaKeywords: articleRaw.metaKeywords || '',
-      ogImage: articleRaw.ogImage || '',
-      ogTitle: articleRaw.ogTitle || '',
-      ogDescription: articleRaw.ogDescription || '',
-      twitterCard: articleRaw.twitterCard || 'summary_large_image',
-      twitterImage: articleRaw.twitterImage || '',
-      twitterTitle: articleRaw.twitterTitle || '',
-      twitterDescription: articleRaw.twitterDescription || '',
+      metaTitle: ar.metaTitle || '',
+      metaDescription: ar.metaDescription || '',
+      metaKeywords: ar.metaKeywords || '',
+      ogImage: ar.ogImage || '',
+      ogTitle: ar.ogTitle || '',
+      ogDescription: ar.ogDescription || '',
+      twitterCard: ar.twitterCard || 'summary_large_image',
+      twitterImage: ar.twitterImage || '',
+      twitterTitle: ar.twitterTitle || '',
+      twitterDescription: ar.twitterDescription || '',
     };
 
-    // Increment view count (fire and forget)
-    Article.findByIdAndUpdate(articleRaw._id, {
-      $inc: { views: 1 }
-    }).catch(err => console.error('Error updating article views:', err));
-
+    Article.findByIdAndUpdate(ar._id, { $inc: { views: 1 } }).catch(err => console.error('Error updating article views:', err));
     return result;
   } catch (error: any) {
     console.error('Error fetching article:', error);
@@ -143,58 +123,33 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 async function getRelatedArticles(excludeArticleId: string, limit: number = 4) {
   try {
     await connectDB();
-
-    // Use native MongoDB to get random articles
     const mongoose = require('mongoose');
-    const db = mongoose.connection.db;
-    if (!db) {
-      throw new Error('MongoDB connection not available');
+    const oid = new mongoose.Types.ObjectId(excludeArticleId);
+    const relatedArticlesRaw = await Article.aggregate([
+      { $match: { _id: { $ne: oid } } },
+      { $sample: { size: limit } },
+      { $project: { content: 0 } },
+    ]);
+
+    const authorIds = new Set<string>();
+    relatedArticlesRaw.forEach((a: any) => { if (a.author) authorIds.add(a.author.toString()); });
+    const authorsMap = new Map<string, { _id: string; username: string }>();
+    if (authorIds.size > 0) {
+      const authors = await User.find({ _id: { $in: Array.from(authorIds) } }).select('username _id').lean();
+      (authors as any[]).forEach((a: any) => authorsMap.set(a._id.toString(), { _id: a._id.toString(), username: a.username || 'erogram' }));
     }
-    const articlesCollection = db.collection('articles');
 
-    // Get random published articles excluding the current one
-    const relatedArticlesRaw = await articlesCollection
-      .aggregate([
-        {
-          $match: {
-            status: 'published',
-            _id: { $ne: new mongoose.Types.ObjectId(excludeArticleId) }
-          }
-        },
-        { $sample: { size: limit } },
-        { $project: { content: 0 } } // Exclude content for performance
-      ])
-      .toArray();
-
-    // Manually fetch author information for each article
-    const relatedArticlesWithAuthors = await Promise.all(
-      relatedArticlesRaw.map(async (articleRaw: any) => {
-        let author = null;
-        if (articleRaw.author) {
-          try {
-            const authorDoc = await User.findById(articleRaw.author.toString()).select('username').lean() as any;
-            author = authorDoc ? { _id: authorDoc._id.toString(), username: authorDoc.username } : null;
-          } catch (err) {
-            console.error('Error fetching author:', err);
-            author = null;
-          }
-        }
-
-        return {
-          _id: articleRaw._id.toString(),
-          title: articleRaw.title,
-          slug: articleRaw.slug,
-          excerpt: articleRaw.excerpt || '',
-          featuredImage: articleRaw.featuredImage || '',
-          tags: articleRaw.tags || [],
-          publishedAt: articleRaw.publishedAt || null,
-          views: articleRaw.views || 0,
-          author: author || { _id: '', username: 'erogram' }
-        };
-      })
-    );
-
-    return relatedArticlesWithAuthors;
+    return relatedArticlesRaw.map((articleRaw: any) => ({
+      _id: articleRaw._id.toString(),
+      title: articleRaw.title,
+      slug: articleRaw.slug,
+      excerpt: articleRaw.excerpt || '',
+      featuredImage: articleRaw.featuredImage || '',
+      tags: articleRaw.tags || [],
+      publishedAt: articleRaw.publishedAt || null,
+      views: articleRaw.views || 0,
+      author: articleRaw.author ? (authorsMap.get(articleRaw.author.toString()) || { _id: '', username: 'erogram' }) : { _id: '', username: 'erogram' },
+    }));
   } catch (error) {
     console.error('Error fetching related articles:', error);
     return [];

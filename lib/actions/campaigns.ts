@@ -211,14 +211,14 @@ export async function updateCampaign(
   if (!admin) throw new Error('Unauthorized');
 
   await connectDB();
-  const updateData: any = { ...data };
+  const updateData: Record<string, unknown> = { ...data };
   if (data.startDate) updateData.startDate = new Date(data.startDate);
   if (data.endDate) updateData.endDate = new Date(data.endDate);
 
-  const doc = await Campaign.findByIdAndUpdate(id, updateData, { new: true }).lean();
+  const doc = await Campaign.findByIdAndUpdate(id, { $set: updateData }, { new: true }).lean();
   if (!doc) throw new Error('Campaign not found');
 
-  return { _id: (doc as any)._id.toString() };
+  return doc as any;
 }
 
 export async function deleteCampaign(token: string, id: string) {

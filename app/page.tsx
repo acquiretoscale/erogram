@@ -3,102 +3,46 @@ import HomeClient from './HomeClient';
 import connectDB from '@/lib/db/mongodb';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { getActiveCampaigns } from '@/lib/actions/campaigns';
+import { Article, User } from '@/lib/models';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
 
 async function getFeaturedArticles(limit: number = 6) {
   try {
     await connectDB();
-
-    // Use native MongoDB for performance
-    const mongoose = require('mongoose');
-    const db = mongoose.connection.db;
-    if (!db) {
-      throw new Error('MongoDB connection not available');
-    }
-    const articlesCollection = db.collection('articles');
-    const usersCollection = db.collection('users');
-
-    // Get featured articles (published, sorted by publishedAt desc)
-    const articlesRaw = await articlesCollection
-      .find({ status: 'published' })
+    // Use same Mongoose Article model as admin and articles listing
+    const articlesRaw = await Article.find({})
+      .select('title slug excerpt featuredImage tags publishedAt views author createdAt')
       .sort({ publishedAt: -1, createdAt: -1 })
-      .project({
-        content: 0, // Exclude content for performance
-        metaTitle: 0,
-        metaDescription: 0,
-        metaKeywords: 0,
-        ogImage: 0,
-        ogTitle: 0,
-        ogDescription: 0,
-        twitterCard: 0,
-        twitterImage: 0,
-        twitterTitle: 0,
-        twitterDescription: 0
-      })
       .limit(limit)
-      .toArray();
+      .lean();
 
-    // Get author IDs
     const authorIds = new Set<string>();
-    articlesRaw.forEach((article: any) => {
-      if (article.author) {
-        const authorId = article.author instanceof mongoose.Types.ObjectId
-          ? article.author.toString()
-          : String(article.author);
-        authorIds.add(authorId);
-      }
+    (articlesRaw as any[]).forEach((article: any) => {
+      if (article.author) authorIds.add(article.author.toString());
     });
 
-    // Batch fetch authors
     const authorsMap = new Map<string, { _id: string; username: string }>();
     if (authorIds.size > 0) {
-      const ObjectId = mongoose.Types.ObjectId;
-      const authorObjectIds = Array.from(authorIds)
-        .filter(id => ObjectId.isValid(id))
-        .map(id => new ObjectId(id));
-
-      if (authorObjectIds.length > 0) {
-        const authorDocs = await usersCollection
-          .find({ _id: { $in: authorObjectIds } })
-          .project({ username: 1, _id: 1 })
-          .toArray();
-
-        authorDocs.forEach((author: any) => {
-          const authorId = author._id.toString();
-          authorsMap.set(authorId, {
-            _id: authorId,
-            username: author.username || 'erogram'
-          });
-        });
-      }
+      const authors = await User.find({ _id: { $in: Array.from(authorIds) } })
+        .select('username _id')
+        .lean();
+      (authors as any[]).forEach((a: any) => {
+        authorsMap.set(a._id.toString(), { _id: a._id.toString(), username: a.username || 'erogram' });
+      });
     }
 
-    // Build result objects
-    const articles = articlesRaw.map((article: any) => {
-      const result: any = {
-        _id: article._id.toString(),
-        title: article.title || '',
-        slug: article.slug || '',
-        excerpt: article.excerpt || '',
-        featuredImage: article.featuredImage || '',
-        tags: article.tags || [],
-        publishedAt: article.publishedAt || null,
-        views: article.views || 0,
-        author: { _id: '', username: 'erogram' },
-      };
-
-      // Get author from map
-      if (article.author) {
-        const authorId = article.author instanceof mongoose.Types.ObjectId
-          ? article.author.toString()
-          : String(article.author);
-        const author = authorsMap.get(authorId);
-        result.author = author || { _id: '', username: 'erogram' };
-      }
-
-      return result;
-    });
+    const articles = (articlesRaw as any[]).map((article: any) => ({
+      _id: article._id.toString(),
+      title: article.title || '',
+      slug: article.slug || '',
+      excerpt: article.excerpt || '',
+      featuredImage: article.featuredImage || '',
+      tags: article.tags || [],
+      publishedAt: article.publishedAt || null,
+      views: article.views || 0,
+      author: article.author ? (authorsMap.get(article.author.toString()) || { _id: '', username: 'erogram' }) : { _id: '', username: 'erogram' },
+    }));
 
     return articles;
   } catch (error) {

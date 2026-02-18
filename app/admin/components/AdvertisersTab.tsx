@@ -357,7 +357,10 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
         buttonText: isFeed || isCta ? descriptionVal : 'Visit Site',
       };
       if (editingCampaign) {
-        await axios.put(`/api/admin/campaigns/${editingCampaign._id}`, payload, authHeaders());
+        const { data: updated } = await axios.put(`/api/admin/campaigns/${editingCampaign._id}`, payload, authHeaders());
+        if (updated && updated._id) {
+          setCampaigns((prev) => prev.map((c) => (c._id === updated._id ? { ...c, ...updated } : c)));
+        }
       } else {
         const advertiserId = String(campForm.advertiserId ?? '').trim();
         if (!advertiserId) {
@@ -369,7 +372,6 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
         const postPayload = { ...payload, advertiserId };
         await axios.post('/api/admin/campaigns', postPayload, authHeaders());
       }
-      // Refresh list data without full-page loading, then switch view and reset form so we stay on list
       await fetchAll(true);
       setEditingCampaign(null);
       setCampaignType('image');

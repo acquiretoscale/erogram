@@ -16,8 +16,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (body.slot && TEXT_ONLY_SLOTS.includes(body.slot)) {
       body.creative = '';
     }
-    await updateCampaign(token, id, body);
-    return NextResponse.json({ _id: id });
+    const updated = await updateCampaign(token, id, body);
+    return NextResponse.json(updated);
   } catch (err: any) {
     return NextResponse.json({ message: err.message || 'Failed' }, { status: err.message === 'Unauthorized' ? 401 : 400 });
   }
