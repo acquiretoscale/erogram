@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
 import { Group } from '@/lib/models';
-import { R2_PUBLIC_URL } from '@/lib/r2';
+import { getR2PublicUrl } from '@/lib/r2';
 
 const IMAGE_CACHE_CONTROL =
   // Safer TTL: images may change for the same DB id.
@@ -12,7 +12,8 @@ function resolveImageUrl(stored: string, origin: string): string {
   if (!stored || typeof stored !== 'string') return '';
   if (stored.startsWith('https://')) return stored;
   if (stored.startsWith('/')) return stored;
-  if (R2_PUBLIC_URL) return `${R2_PUBLIC_URL.replace(/\/$/, '')}/${stored}`;
+  const r2Url = getR2PublicUrl();
+  if (r2Url) return `${r2Url.replace(/\/$/, '')}/${stored}`;
   return `${origin}/uploads/groups/${stored}`;
 }
 

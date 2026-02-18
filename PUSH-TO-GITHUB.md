@@ -1,72 +1,58 @@
-# Push this project to GitHub (acquiretoscale/Erogram)
+# Push to the CORRECT repo: acquiretoscale/erogram
 
-Do these steps **in order** in the Terminal inside Cursor.
+**Correct repo (no hyphen, lowercase):** https://github.com/acquiretoscale/erogram
 
----
-
-## Step 1: Open the Terminal
-
-- Press **Ctrl + `** (backtick) or go to **Terminal → New Terminal**.
-- Make sure the terminal is in the project folder (you should see something like `erogram-v2` in the path).
+If Cursor keeps pushing to the wrong repo (-erogram or Erogram), use **Terminal** and the exact URL below.
 
 ---
 
-## Step 2: Run these commands one by one
+## Option A: One command (recommended)
 
-Copy and run each line, then the next. Wait for each to finish before running the next.
+1. In Cursor: **Terminal → New Terminal** (or **Ctrl + `**).
+2. Paste and press Enter:
 
 ```bash
-git init
+cd "/Users/themaf/Desktop/@ACQUISITION/EROGRAM PROJECT /@EROGRAM/erogram-v2" && git push https://github.com/acquiretoscale/erogram.git main
+```
+
+This pushes **directly** to `erogram` (no hyphen, lowercase). It does not use Cursor’s repo link.
+
+---
+
+## Option B: Fix remote then push
+
+1. Open Terminal in Cursor (Terminal → New Terminal).
+2. Run these **one by one**:
+
+```bash
+cd "/Users/themaf/Desktop/@ACQUISITION/EROGRAM PROJECT /@EROGRAM/erogram-v2"
 ```
 
 ```bash
-git add .
+git remote set-url origin https://github.com/acquiretoscale/erogram.git
 ```
 
 ```bash
-git commit -m "Initial commit"
+git remote -v
 ```
 
-```bash
-git branch -M main
-```
+Check the output: both lines must show **erogram.git** (not -erogram, not Erogram).
 
 ```bash
-git remote add origin https://github.com/acquiretoscale/Erogram.git
-```
-
-```bash
-git push -u origin main
+git push origin main
 ```
 
 ---
 
-## Step 3: When it asks you to sign in
+## If it asks for login
 
-When you run **`git push -u origin main`**, one of these will happen:
-
-**A) A browser window opens**  
-- Sign in to GitHub with your **acquiretoscale** account.  
-- Approve access if it asks.  
-- After that, the push should finish and your code will be on GitHub.
-
-**B) It asks for username and password in the terminal**  
-- **Username:** your GitHub username: `acquiretoscale`  
-- **Password:** do **not** use your normal GitHub password. Use a **Personal Access Token**:
-
-### How to create a Personal Access Token (if you need it)
-
-1. On GitHub.com, make sure you’re logged in as **acquiretoscale**.
-2. Click your profile picture (top right) → **Settings**.
-3. Left sidebar, bottom: **Developer settings**.
-4. **Personal access tokens** → **Tokens (classic)**.
-5. **Generate new token (classic)**.
-6. Name it e.g. `Cursor push`, choose an expiry (e.g. 90 days), tick **repo** (full control of private repos).
-7. **Generate token** → **copy the token** (you won’t see it again).
-8. When the terminal asks for a password, **paste this token** (not your GitHub password).
+- **Username:** your GitHub username (e.g. the one that owns acquiretoscale).
+- **Password:** use a **Personal Access Token**, not your GitHub password.
+  - GitHub → Settings → Developer settings → Personal access tokens → Generate new token (classic).
+  - Tick **repo**, copy the token, paste it when the terminal asks for a password.
 
 ---
 
 ## Done
 
-After `git push -u origin main` succeeds, refresh **https://github.com/acquiretoscale/Erogram** and you should see your project there.
+Open https://github.com/acquiretoscale/erogram and refresh. Your latest commit should be there.

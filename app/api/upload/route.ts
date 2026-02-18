@@ -5,6 +5,8 @@ import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { uploadToR2, isR2Configured } from '@/lib/r2';
 
+const isVercel = process.env.VERCEL === '1';
+
 export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData();
@@ -60,10 +62,18 @@ export async function POST(req: NextRequest) {
 
         let url: string;
 
-        if (isR2Configured) {
+        if (isR2Configured()) {
             url = await uploadToR2(finalBuffer, key, mime);
+        } else if (isVercel) {
+            return NextResponse.json(
+                {
+                    message:
+                        'Image upload is not configured. In Vercel, add R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_PUBLIC_URL to Environment Variables, then redeploy.',
+                },
+                { status: 503 }
+            );
         } else {
-            // Fallback: write to public/uploads so images work without R2 (e.g. local dev)
+            // Local dev only: write to public/uploads (never used on Vercel)
             const publicDir = path.join(process.cwd(), 'public');
             const uploadsDir = path.join(publicDir, 'uploads');
             await mkdir(uploadsDir, { recursive: true });

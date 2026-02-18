@@ -3,14 +3,15 @@ import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import { Group, User, Post, SystemConfig } from '@/lib/models';
 import { slugify } from '@/lib/utils/slugify';
-import { uploadToR2, R2_PUBLIC_URL } from '@/lib/r2';
+import { uploadToR2, getR2PublicUrl } from '@/lib/r2';
 
 function resolveImageUrl(stored: string | undefined, origin: string): string {
   const placeholder = '/assets/image.jpg'; // relative so next/image works locally (no hostname check)
   if (!stored || typeof stored !== 'string') return placeholder;
   if (stored.startsWith('https://')) return stored;
   if (stored.startsWith('/')) return stored; // keep relative for same-origin
-  if (R2_PUBLIC_URL) return `${R2_PUBLIC_URL.replace(/\/$/, '')}/${stored}`;
+  const r2Url = getR2PublicUrl();
+  if (r2Url) return `${r2Url.replace(/\/$/, '')}/${stored}`;
   return `${origin}/uploads/groups/${stored}`;
 }
 
