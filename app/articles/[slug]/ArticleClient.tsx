@@ -6,6 +6,7 @@ import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Navbar from '@/components/Navbar';
+import HeaderBanner from '@/components/HeaderBanner';
 
 interface Article {
   _id: string;
@@ -50,10 +51,18 @@ interface TopGroup {
   description: string;
 }
 
+interface TopBannerCampaign {
+  _id: string;
+  creative: string;
+  destinationUrl: string;
+  slot: string;
+}
+
 interface ArticleClientProps {
   article: Article;
   relatedArticles?: RelatedArticle[];
   topGroups?: TopGroup[];
+  topBannerCampaigns?: TopBannerCampaign[];
 }
 
 // Reading Progress Bar Component
@@ -73,7 +82,7 @@ function ReadingProgress() {
   );
 }
 
-// Top Groups Widget
+// Top Groups Widget (sidebar - SEO + internal links to groups)
 function TopGroupsWidget({ groups }: { groups: TopGroup[] }) {
   if (!groups || groups.length === 0) return null;
 
@@ -96,9 +105,10 @@ function TopGroupsWidget({ groups }: { groups: TopGroup[] }) {
           >
             <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-[#1a1a1a]">
               <img
-                src={group.image || '/assets/image.jpg'}
+                src={(group.image && typeof group.image === 'string' && group.image.startsWith('https://')) ? group.image : '/assets/image.jpg'}
                 alt={group.name}
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                onError={(e) => { (e.target as HTMLImageElement).src = '/assets/image.jpg'; }}
               />
               <div className="absolute top-0 left-0 bg-[#b31b1b] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-br-lg">
                 #{idx + 1}
@@ -197,7 +207,7 @@ function MidArticleAd() {
   );
 }
 
-export default function ArticleClient({ article, relatedArticles = [], topGroups = [] }: ArticleClientProps) {
+export default function ArticleClient({ article, relatedArticles = [], topGroups = [], topBannerCampaigns = [] }: ArticleClientProps) {
   const [username, setUsername] = useState<string | null>(null);
   const [tableOfContents, setTableOfContents] = useState<Array<{ id: string; text: string; level: number }>>([]);
   const [activeHeading, setActiveHeading] = useState<string>('');
@@ -354,6 +364,10 @@ export default function ArticleClient({ article, relatedArticles = [], topGroups
       </div>
 
       <main className="max-w-7xl mx-auto px-6 py-12">
+        {/* Top banner: same size as Groups/Bots, minimal spacing */}
+        <div className="w-full mb-3">
+          <HeaderBanner campaigns={topBannerCampaigns} />
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
 
           {/* Main Content */}
@@ -443,7 +457,7 @@ export default function ArticleClient({ article, relatedArticles = [], topGroups
                 </div>
               )}
 
-              {/* Top Groups Widget */}
+              {/* Top Groups Widget (sidebar - SEO + internal links) */}
               <TopGroupsWidget groups={topGroups} />
 
               {/* Newsletter / Join Community Widget */}

@@ -110,7 +110,6 @@ export async function GET(req: NextRequest) {
         buttonText: 'Visit Site',
       };
     }
-
     return NextResponse.json(config);
   } catch (error: any) {
     console.error('Site config fetch error:', error);

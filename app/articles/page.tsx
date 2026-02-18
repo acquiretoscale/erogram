@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import connectDB from '@/lib/db/mongodb';
 import { Article, User } from '@/lib/models';
 import ArticlesClient from './ArticlesClient';
+import { getActiveCampaigns } from '@/lib/actions/campaigns';
 
 const baseUrl = 'https://erogram.pro';
 
@@ -134,7 +135,13 @@ async function getArticles() {
 }
 
 export default async function ArticlesPage() {
-  const articles = await getArticles();
+  const [articles, topBannerCampaigns] = await Promise.all([
+    getArticles(),
+    getActiveCampaigns('top-banner'),
+  ]);
 
-  return <ArticlesClient initialArticles={articles} />;
+  const topBannerForPage =
+    topBannerCampaigns.length > 0 && topBannerCampaigns[0].creative ? topBannerCampaigns : [];
+
+  return <ArticlesClient initialArticles={articles} topBannerCampaigns={topBannerForPage} />;
 }

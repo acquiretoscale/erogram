@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
+import HeaderBanner from '@/components/HeaderBanner';
 
 interface Article {
   _id: string;
@@ -23,11 +24,19 @@ interface Article {
   createdAt: string;
 }
 
-interface ArticlesClientProps {
-  initialArticles: Article[];
+interface TopBannerCampaign {
+  _id: string;
+  creative: string;
+  destinationUrl: string;
+  slot: string;
 }
 
-export default function ArticlesClient({ initialArticles }: ArticlesClientProps) {
+interface ArticlesClientProps {
+  initialArticles: Article[];
+  topBannerCampaigns?: TopBannerCampaign[];
+}
+
+export default function ArticlesClient({ initialArticles, topBannerCampaigns = [] }: ArticlesClientProps) {
   const [username, setUsername] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -115,6 +124,10 @@ export default function ArticlesClient({ initialArticles }: ArticlesClientProps)
         animate="animate"
         className="relative z-10 max-w-7xl mx-auto px-6 pt-20 pb-20"
       >
+        {/* Top banner: same size as Groups/Bots, minimal spacing */}
+        <div className="w-full mb-3">
+          <HeaderBanner campaigns={topBannerCampaigns} />
+        </div>
         {/* Header */}
         <motion.div
           variants={fadeInUp}

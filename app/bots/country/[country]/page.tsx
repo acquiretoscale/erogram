@@ -4,6 +4,8 @@ import connectDB from '@/lib/db/mongodb';
 import { Bot, Advert } from '@/lib/models';
 import BotsClient from '../../BotsClient';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
+import { getActiveCampaigns } from '@/lib/actions/campaigns';
+import { getFilterButton } from '@/lib/actions/siteConfig';
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
 
@@ -345,8 +347,23 @@ export default async function CountryBotsPage({ params }: PageProps) {
   const { country: rawCountry } = await params;
   const country = normalizeCountryParam(rawCountry);
 
-  const bots = await getBotsByCountry(country);
-  const adverts = await getAdverts();
+  const [bots, adverts, topBannerCampaigns, filterCtaCampaigns, filterButton] = await Promise.all([
+    getBotsByCountry(country),
+    getAdverts(),
+    getActiveCampaigns('top-banner'),
+    getActiveCampaigns('filter-cta'),
+    getFilterButton(),
+  ]);
+
+  const topBannerForPage =
+    topBannerCampaigns.length > 0 && topBannerCampaigns[0].creative ? topBannerCampaigns : [];
+
+  const filterFromCampaign =
+    filterCtaCampaigns.length > 0
+      ? { text: filterCtaCampaigns[0].buttonText?.trim() || 'Visit', url: filterCtaCampaigns[0].destinationUrl || '' }
+      : null;
+  const filterButtonText = (filterFromCampaign?.text ?? filterButton?.text ?? '').trim();
+  const filterButtonUrl = filterFromCampaign?.url ?? filterButton?.url ?? '';
 
   return (
     <BotsClient
@@ -355,6 +372,9 @@ export default async function CountryBotsPage({ params }: PageProps) {
       initialIsMobile={isMobile}
       initialIsTelegram={isTelegram}
       initialCountry={country}
+      topBannerCampaigns={topBannerForPage}
+      filterButtonText={filterButtonText}
+      filterButtonUrl={filterButtonUrl}
     />
   );
 }

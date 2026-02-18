@@ -229,10 +229,15 @@ export default function GroupsTab() {
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-4">
                                                     <div className="w-10 h-10 rounded-lg bg-[#1a1a1a] overflow-hidden flex-shrink-0">
-                                                        {group.image ? (
-                                                            <img src={group.image} alt={group.name} className="w-full h-full object-cover" />
+                                                        {(group.image && typeof group.image === 'string' && group.image.startsWith('https://')) ? (
+                                                            <img
+                                                                src={group.image}
+                                                                alt={group.name}
+                                                                className="w-full h-full object-cover"
+                                                                onError={(e) => { (e.target as HTMLImageElement).src = '/assets/image.jpg'; }}
+                                                            />
                                                         ) : (
-                                                            <div className="w-full h-full flex items-center justify-center text-xs text-[#666]">No Img</div>
+                                                            <img src="/assets/image.jpg" alt={group.name} className="w-full h-full object-cover" />
                                                         )}
                                                     </div>
                                                     <div>

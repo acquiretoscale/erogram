@@ -50,19 +50,11 @@ export async function GET(req: NextRequest) {
       };
     }
     
-    // Exclude image field to prevent maxSize errors - admin can load images separately if needed
     const groups = await Group.find(query)
-      .select('-image') // Exclude image field to prevent loading huge base64 strings
       .sort({ createdAt: -1 })
       .lean();
     
-    // Map groups and set placeholder images
-    const groupsWithPlaceholders = groups.map((group: any) => ({
-      ...group,
-      image: '/assets/image.jpg', // Always use placeholder to prevent maxSize errors
-    }));
-    
-    return NextResponse.json(groupsWithPlaceholders);
+    return NextResponse.json(groups);
   } catch (error: any) {
     console.error('Groups fetch error:', error);
     return NextResponse.json(

@@ -1,22 +1,49 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import axios from 'axios';
-import { Advert } from './types';
+import { Advert, FeedCampaign } from './types';
+import { trackClick } from '@/lib/actions/campaigns';
 import { useIsTelegramBrowser } from '../hooks/useIsTelegramBrowser';
 
 interface AdvertCardProps {
-    advert: Advert;
+    advert?: Advert;
+    campaign?: FeedCampaign;
     isIndex: number;
     shouldPreload?: boolean;
     onVisible?: () => void;
     forceVisible?: boolean;
 }
 
-export default function AdvertCard({ advert, isIndex = 0, shouldPreload = false, onVisible, forceVisible = false }: AdvertCardProps) {
+export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreload = false, onVisible, forceVisible = false }: AdvertCardProps) {
     const isTelegram = useIsTelegramBrowser();
+
+    // Normalize: support both legacy Advert and new FeedCampaign
+    const ad = campaign
+      ? {
+          _id: campaign._id,
+          name: campaign.name,
+          image: campaign.creative,
+          url: campaign.destinationUrl,
+          description: campaign.description,
+          category: campaign.category,
+          country: campaign.country,
+          buttonText: campaign.buttonText || 'Visit Site',
+          isCampaign: true,
+        }
+      : {
+            _id: advert?._id || '',
+            name: advert?.name || '',
+            image: advert?.image || '/assets/image.jpg',
+            url: advert?.url || '',
+            description: advert?.description || '',
+            category: advert?.category || '',
+            country: advert?.country || '',
+            buttonText: advert?.buttonText || 'Visit Site',
+            isCampaign: false,
+          };
+
     const [isHovered, setIsHovered] = useState(false);
-    const [imageSrc, setImageSrc] = useState(advert.image || '/assets/image.jpg');
+    const [imageSrc, setImageSrc] = useState(ad.image || '/assets/image.jpg');
     const [isInView, setIsInView] = useState(forceVisible);
     const hasFetchedRef = useRef(false);
     const imgRef = useRef<HTMLDivElement>(null);
@@ -79,11 +106,11 @@ export default function AdvertCard({ advert, isIndex = 0, shouldPreload = false,
         return Math.abs(hash) / 2147483647; // Normalize to 0-1
     };
 
-    // Use advert ID + index as seed for consistent random selection (same on server and client)
-    const seed = `${advert._id}-${isIndex}`;
+    // Use ad ID + index as seed for consistent random selection (same on server and client)
+    const seed = `${ad._id}-${isIndex}`;
 
     // Use configured button text if available, otherwise random
-    const buttonText = advert.buttonText || buttonTexts[Math.floor(seededRandom(seed) * buttonTexts.length)];
+    const buttonText = ad.buttonText || buttonTexts[Math.floor(seededRandom(seed) * buttonTexts.length)];
     const colorScheme = colorSchemes[Math.floor(seededRandom(seed + 'color') * colorSchemes.length)];
 
     // Determine if this should be a "Native" ad (looks like a group card)
@@ -122,52 +149,53 @@ export default function AdvertCard({ advert, isIndex = 0, shouldPreload = false,
         };
     }, [onVisible, forceVisible]);
 
-    // Preload image if shouldPreload is true (for next 6 items)
+    // Preload image if shouldPreload is true (for next 6 items) -- legacy adverts only
     useEffect(() => {
-        if (shouldPreload && imageSrc === '/assets/image.jpg' && advert._id && !hasFetchedRef.current) {
+        if (!ad.isCampaign && shouldPreload && imageSrc === '/assets/image.jpg' && ad._id && !hasFetchedRef.current) {
             hasFetchedRef.current = true;
-            // Preload image in the background
-            fetch(`/api/adverts/${advert._id}/image`)
+            fetch(`/api/adverts/${ad._id}/image`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.image && data.image !== '/assets/image.jpg') {
                         setImageSrc(data.image);
                     }
                 })
-                .catch(err => {
-                    // Silently fail for preloads
-                });
+                .catch(() => {});
         }
-    }, [shouldPreload, imageSrc, advert._id]);
+    }, [shouldPreload, imageSrc, ad._id, ad.isCampaign]);
 
-    // Fetch actual image when in view and it's the placeholder
+    // Fetch actual image when in view and it's the placeholder -- legacy adverts only
     useEffect(() => {
-        if (isInView && imageSrc === '/assets/image.jpg' && advert._id && !hasFetchedRef.current) {
+        if (!ad.isCampaign && isInView && imageSrc === '/assets/image.jpg' && ad._id && !hasFetchedRef.current) {
             hasFetchedRef.current = true;
-            // Load immediately - browser handles parallel requests efficiently
-            fetch(`/api/adverts/${advert._id}/image`)
+            fetch(`/api/adverts/${ad._id}/image`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.image && data.image !== '/assets/image.jpg') {
                         setImageSrc(data.image);
                     }
                 })
-                .catch(err => {
+                .catch((err) => {
                     console.error('Failed to load advert image:', err);
                 });
         }
-    }, [isInView, imageSrc, advert._id]);
+    }, [isInView, imageSrc, ad._id, ad.isCampaign]);
 
     const handleClick = async () => {
-        // Track the click
         try {
-            await axios.post('/api/adverts/track', { advertId: advert._id });
-        } catch (err) {
+            if (ad.isCampaign) {
+                trackClick(ad._id, 'feed');
+            } else {
+                fetch('/api/adverts/track', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ advertId: ad._id }),
+                }).catch(() => {});
+            }
+        } catch {
             // Silently fail - tracking is not critical
-            console.error('Error tracking advert click:', err);
         }
-        // Open the URL
-        window.open(advert.url, '_blank', 'noopener,noreferrer');
+        window.open(ad.url, '_blank', 'noopener,noreferrer');
     };
 
     // Badge Logic
@@ -255,7 +283,7 @@ export default function AdvertCard({ advert, isIndex = 0, shouldPreload = false,
                     <div ref={imgRef} className="relative w-full h-52 overflow-hidden bg-[#1a1a1a]">
                         <Image
                             src={imageSrc}
-                            alt={advert.name}
+                            alt={ad.name}
                             fill
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                             className="object-cover transition-transform duration-700 group-hover:scale-110"
@@ -292,7 +320,7 @@ export default function AdvertCard({ advert, isIndex = 0, shouldPreload = false,
                     <div className="p-5 flex-grow flex flex-col relative">
                         {/* Title */}
                         <h3 className="text-xl font-black text-white mb-3 line-clamp-2 leading-tight group-hover:text-blue-400 transition-colors flex items-center gap-2">
-                            {advert.name}
+                            {ad.name}
                             {showVerified && (
                                 <span className="shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-500 text-white text-[8px] shadow-sm" title="Verified">
                                     ✓
@@ -303,17 +331,17 @@ export default function AdvertCard({ advert, isIndex = 0, shouldPreload = false,
                         {/* Tags */}
                         <div className="flex flex-wrap gap-2 mb-4">
                             <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-gray-300 text-xs font-medium hover:bg-white/10 transition-colors">
-                                {advert.category}
+                                {ad.category}
                             </span>
                             <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-gray-300 text-xs font-medium hover:bg-white/10 transition-colors">
-                                {advert.country}
+                                {ad.country}
                             </span>
                         </div>
 
                         {/* Description */}
                         <div className="mb-6 flex-grow">
                             <p className="text-gray-400 text-sm line-clamp-3 leading-relaxed">
-                                {advert.description}
+                                {ad.description}
                             </p>
                         </div>
 
@@ -371,7 +399,7 @@ export default function AdvertCard({ advert, isIndex = 0, shouldPreload = false,
                 <div ref={imgRef} className="relative w-full h-48 overflow-hidden bg-gray-800">
                     <Image
                         src={imageSrc}
-                        alt={advert.name}
+                        alt={ad.name}
                         fill
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         className="object-cover transition-transform duration-700"
@@ -397,7 +425,7 @@ export default function AdvertCard({ advert, isIndex = 0, shouldPreload = false,
                 <div className="p-5 flex-grow flex flex-col relative">
                     <h3 className="text-xl md:text-2xl font-black text-white mb-3 text-center drop-shadow-md flex items-center justify-center gap-2">
                         <span className="line-clamp-2">
-                            {advert.name}
+                            {ad.name}
                         </span>
                         {showVerified && (
                             <span className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] shadow-sm" title="Verified">
@@ -409,17 +437,17 @@ export default function AdvertCard({ advert, isIndex = 0, shouldPreload = false,
                     {/* Tags */}
                     <div className="flex flex-wrap gap-2 mb-4 justify-center">
                         <span className="px-2 py-0.5 rounded-md bg-white/10 border border-white/10 text-gray-300 text-[10px] font-bold uppercase tracking-wide">
-                            {advert.category}
+                            {ad.category}
                         </span>
                         <span className="px-2 py-0.5 rounded-md bg-white/10 border border-white/5 text-gray-300 text-[10px] font-bold uppercase tracking-wide">
-                            {advert.country}
+                            {ad.country}
                         </span>
                     </div>
 
                     {/* Description */}
                     <div className="mb-6 flex-grow">
                         <p className="text-gray-300 text-center text-sm line-clamp-3 leading-relaxed font-medium">
-                            {advert.description}
+                            {ad.description}
                         </p>
                     </div>
 

@@ -1,9 +1,11 @@
 import { Metadata } from 'next';
 import { headers } from 'next/headers';
 import connectDB from '@/lib/db/mongodb';
-import { Group, Advert } from '@/lib/models';
+import { Group } from '@/lib/models';
 import GroupsClient from '../../GroupsClient';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
+import { getActiveCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
+import { getFilterButton } from '@/lib/actions/siteConfig';
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
 
@@ -296,69 +298,6 @@ async function getGroupsByCountry(country: string) {
   }
 }
 
-async function getAdverts() {
-  try {
-    await connectDB();
-
-    const adverts = await Advert.find({
-      status: 'active',
-      isPopupAdvert: { $ne: true }
-    })
-      .select('_id name slug category country url description status pinned')
-      .limit(50)
-      .lean();
-
-    const mappedAdverts = adverts.map((advert: any) => ({
-      _id: advert._id.toString(),
-      name: (advert.name || '').slice(0, 100),
-      slug: (advert.slug || '').slice(0, 100),
-      category: (advert.category || '').slice(0, 50),
-      country: (advert.country || '').slice(0, 50),
-      url: (advert.url || '').slice(0, 300),
-      description: (advert.description || '').slice(0, 150) || '',
-      image: '/assets/image.jpg',
-      status: advert.status || 'active',
-      pinned: advert.pinned || false,
-      clickCount: 0,
-    }));
-
-    const pinnedAdverts = mappedAdverts.filter((a: any) => a.pinned);
-    const regularAdverts = mappedAdverts.filter((a: any) => !a.pinned);
-
-    const shuffledRegular = [...regularAdverts];
-    for (let i = shuffledRegular.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffledRegular[i], shuffledRegular[j]] = [shuffledRegular[j], shuffledRegular[i]];
-    }
-
-    return [...pinnedAdverts, ...shuffledRegular];
-  } catch (error) {
-    console.error('Error fetching adverts:', error);
-    return [];
-  }
-}
-
-function generateAdvertPlacements(regularAdverts: any[]) {
-  if (regularAdverts.length === 0) return [];
-
-  const placements: Array<{ position: number; advert: any }> = [];
-  let currentPos = 0;
-
-  while (currentPos < 200) {
-    const interval = 1 + Math.floor(Math.random() * 4);
-    currentPos += interval;
-    if (currentPos <= 200) {
-      const randomAdvertIndex = Math.floor(Math.random() * regularAdverts.length);
-      placements.push({
-        position: currentPos,
-        advert: regularAdverts[randomAdvertIndex]
-      });
-    }
-  }
-
-  return placements;
-}
-
 export default async function CountryGroupsPage({ params }: PageProps) {
   const ua = (await headers()).get('user-agent');
   const { isMobile, isTelegram } = detectDeviceFromUserAgent(ua);
@@ -366,21 +305,34 @@ export default async function CountryGroupsPage({ params }: PageProps) {
   const { country: rawCountry } = await params;
   const country = normalizeCountryParam(rawCountry);
 
-  const groups = await getGroupsByCountry(country);
-  const adverts = await getAdverts();
+  const [groups, feedCampaigns, topBannerCampaigns, filterCtaCampaigns, filterButton] = await Promise.all([
+    getGroupsByCountry(country),
+    getActiveFeedCampaigns(),
+    getActiveCampaigns('top-banner'),
+    getActiveCampaigns('filter-cta'),
+    getFilterButton(),
+  ]);
 
-  const regularAdverts = adverts.filter((a: any) => !a.pinned);
+  const topBannerForPage =
+    topBannerCampaigns.length > 0 && topBannerCampaigns[0].creative ? topBannerCampaigns : [];
 
-  const advertPlacements = generateAdvertPlacements(regularAdverts);
+  const filterFromCampaign =
+    filterCtaCampaigns.length > 0
+      ? { text: filterCtaCampaigns[0].buttonText?.trim() || 'Visit', url: filterCtaCampaigns[0].destinationUrl || '' }
+      : null;
+  const filterButtonText = (filterFromCampaign?.text ?? filterButton?.text ?? '').trim();
+  const filterButtonUrl = filterFromCampaign?.url ?? filterButton?.url ?? '';
 
   return (
     <GroupsClient
       initialGroups={groups}
-      initialAdverts={adverts}
-      advertPlacements={advertPlacements}
+      feedCampaigns={feedCampaigns}
       initialCountry={country}
       initialIsMobile={isMobile}
       initialIsTelegram={isTelegram}
+      topBannerCampaigns={topBannerForPage}
+      filterButtonText={filterButtonText}
+      filterButtonUrl={filterButtonUrl}
     />
   );
 }

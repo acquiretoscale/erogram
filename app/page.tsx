@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import HomeClient from './HomeClient';
 import connectDB from '@/lib/db/mongodb';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { getActiveCampaigns } from '@/lib/actions/campaigns';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
 
@@ -138,6 +139,7 @@ export const metadata: Metadata = {
 
 export default async function Home() {
   const featuredArticles = await getFeaturedArticles(6);
+  const heroCampaigns = await getActiveCampaigns('homepage-hero');
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -227,7 +229,7 @@ export default async function Home() {
         }}
       />
       <ErrorBoundary>
-        <HomeClient featuredArticles={featuredArticles} />
+        <HomeClient featuredArticles={featuredArticles} heroCampaigns={heroCampaigns} />
       </ErrorBoundary>
     </>
   );

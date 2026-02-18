@@ -79,9 +79,9 @@ export default function AddGroupModal({ categories, countries, onClose, onSucces
         return;
       }
 
-      // Validation
-      if (!groupData.name || !groupData.category || !groupData.country || !groupData.telegramLink || !groupData.description) {
-        setError('All fields are required');
+      // Validation (country optional)
+      if (!groupData.name || !groupData.category || !groupData.telegramLink || !groupData.description) {
+        setError('Name, category, Telegram link and description are required');
         setIsSubmitting(false);
         return;
       }
@@ -225,7 +225,7 @@ export default function AddGroupModal({ categories, countries, onClose, onSucces
               <div className="glass rounded-2xl p-6 border border-white/10">
                 <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
                   <span className="mr-2">🌍</span>
-                  Country/Language *
+                  Country/Language (optional)
                 </label>
                 <select
                   value={groupData.country}

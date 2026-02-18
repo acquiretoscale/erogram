@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import connectDB from '@/lib/db/mongodb';
 import { Article, User, Group } from '@/lib/models';
 import ArticleClient from './ArticleClient';
+import { getActiveCampaigns } from '@/lib/actions/campaigns';
 
 // ISR for public article pages (keeps SSR output crawlable while avoiding per-request rendering)
 export const revalidate = 300;
@@ -203,7 +204,6 @@ async function getRelatedArticles(excludeArticleId: string, limit: number = 4) {
 async function getTopGroups(limit: number = 5) {
   try {
     await connectDB();
-    // Fetch top groups by views
     const groups = await Group.find({ status: 'approved', isAdvertisement: false })
       .sort({ views: -1 })
       .limit(limit)
@@ -236,8 +236,14 @@ export default async function ArticlePage({ params }: PageProps) {
   // Get 4 random related articles
   const relatedArticles = await getRelatedArticles(article._id, 4);
 
-  // Get top 5 groups for sidebar
-  const topGroups = await getTopGroups(5);
+  // Top groups for sidebar widget (SEO + internal links)
+  const [topGroups, topBannerCampaigns] = await Promise.all([
+    getTopGroups(5),
+    getActiveCampaigns('top-banner'),
+  ]);
+
+  const topBannerForPage =
+    topBannerCampaigns.length > 0 && topBannerCampaigns[0].creative ? topBannerCampaigns : [];
 
   const articleUrl = `${BASE_URL}/articles/${article.slug}`;
   const imageUrl = toAbsoluteUrl(article.ogImage || article.featuredImage);
@@ -305,7 +311,7 @@ export default async function ArticlePage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
-      <ArticleClient article={article} relatedArticles={relatedArticles} topGroups={topGroups} />
+      <ArticleClient article={article} relatedArticles={relatedArticles} topGroups={topGroups} topBannerCampaigns={topBannerForPage} />
     </>
   );
 }

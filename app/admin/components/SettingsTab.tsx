@@ -12,6 +12,10 @@ export default function SettingsTab() {
         twitterLink: '',
         metaTitleSuffix: ' | Erogram',
         metaDescription: 'The best Telegram groups and bots directory.',
+        filterButtonText: '',
+        filterButtonUrl: '',
+        topBannerImageUrl: '',
+        topBannerUrl: '',
     });
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -33,6 +37,20 @@ export default function SettingsTab() {
                 setConfig((prev: any) => ({
                     ...prev,
                     ...res.data.generalSettings
+                }));
+            }
+            if (res.data?.filterButton) {
+                setConfig((prev: any) => ({
+                    ...prev,
+                    filterButtonText: res.data.filterButton.text || '',
+                    filterButtonUrl: res.data.filterButton.url || '',
+                }));
+            }
+            if (res.data?.topBanner) {
+                setConfig((prev: any) => ({
+                    ...prev,
+                    topBannerImageUrl: res.data.topBanner.imageUrl || '',
+                    topBannerUrl: res.data.topBanner.url || '',
                 }));
             }
             setError('');
@@ -57,7 +75,15 @@ export default function SettingsTab() {
 
             const newConfig = {
                 ...currentConfigRes.data,
-                generalSettings: config
+                generalSettings: config,
+                filterButton: {
+                    text: config.filterButtonText ?? '',
+                    url: config.filterButtonUrl ?? '',
+                },
+                topBanner: {
+                    imageUrl: config.topBannerImageUrl ?? '',
+                    url: config.topBannerUrl ?? '',
+                },
             };
 
             await axios.put('/api/admin/site-config', newConfig, {
@@ -149,6 +175,60 @@ export default function SettingsTab() {
                                 className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none"
                                 placeholder="Optional"
                             />
+                        </div>
+                    </div>
+
+                    <div className="border-t border-white/5 pt-6">
+                        <h3 className="text-sm font-bold text-white mb-1">Sidebar button (Groups & Bots)</h3>
+                        <p className="text-xs text-[#999] mb-4">Shows under &quot;Browse by Country&quot; on Groups and Bots. Used when you don’t have an active <strong>Filter CTA</strong> campaign in Advertisers → CTA Buttons. Button text + Link URL, then <strong>Save Changes</strong> below.</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-xs font-semibold text-[#999] mb-2">Button text</label>
+                                <input
+                                    type="text"
+                                    value={config.filterButtonText ?? ''}
+                                    onChange={(e) => setConfig({ ...config, filterButtonText: e.target.value })}
+                                    placeholder="e.g. Visit"
+                                    className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-[#999] mb-2">Link URL</label>
+                                <input
+                                    type="url"
+                                    value={config.filterButtonUrl ?? ''}
+                                    onChange={(e) => setConfig({ ...config, filterButtonUrl: e.target.value })}
+                                    placeholder="https://..."
+                                    className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="border-t border-white/5 pt-6">
+                        <h3 className="text-sm font-bold text-white mb-4">Top banner (optional backup)</h3>
+                        <p className="text-xs text-[#999] mb-4">Image URL + link. The site currently shows only active Top Banner campaigns from Advertisers; this is for future use.</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-xs font-semibold text-[#999] mb-2">Banner image URL</label>
+                                <input
+                                    type="url"
+                                    value={config.topBannerImageUrl ?? ''}
+                                    onChange={(e) => setConfig({ ...config, topBannerImageUrl: e.target.value })}
+                                    placeholder="https://... or R2 URL"
+                                    className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-[#999] mb-2">Banner link URL</label>
+                                <input
+                                    type="url"
+                                    value={config.topBannerUrl ?? ''}
+                                    onChange={(e) => setConfig({ ...config, topBannerUrl: e.target.value })}
+                                    placeholder="https://..."
+                                    className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none"
+                                />
+                            </div>
                         </div>
                     </div>
 

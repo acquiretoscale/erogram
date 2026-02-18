@@ -6,13 +6,12 @@ import Link from 'next/link';
 import axios from 'axios';
 import dynamic from 'next/dynamic';
 import Navbar from '@/components/Navbar';
+import HeaderBanner from '@/components/HeaderBanner';
 import { categories, countries } from './constants';
-import { Group, Advert } from './types';
+import { Group, FeedCampaign } from './types';
 import GroupCard from './GroupCard';
-import AdvertCard from './AdvertCard';
 import VirtualizedGroupGrid from './VirtualizedGroupGrid';
 import GroupCardSkeleton from './GroupCardSkeleton';
-
 // Lazy load modals to reduce initial bundle size
 const ReviewModal = dynamic(() => import('./ReviewModal'), {
   loading: () => <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50"><div className="text-white">Loading...</div></div>
@@ -28,14 +27,18 @@ const AddGroupModal = dynamic(() => import('./AddGroupModal'), {
 
 interface GroupsClientProps {
   initialGroups: Group[];
-  initialAdverts: Advert[];
-  advertPlacements: Array<{ position: number; advert: Advert }>;
+  feedCampaigns?: FeedCampaign[];
   initialCountry?: string;
   initialIsMobile?: boolean;
   initialIsTelegram?: boolean;
+  topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string }>;
+  /** Passed as separate strings to avoid hydration mismatch (stable serialization). */
+  filterButtonText?: string;
+  filterButtonUrl?: string;
 }
 
-export default function GroupsClient({ initialGroups, initialAdverts, advertPlacements, initialCountry, initialIsMobile = false, initialIsTelegram = false }: GroupsClientProps) {
+export default function GroupsClient({ initialGroups, feedCampaigns = [], initialCountry, initialIsMobile = false, initialIsTelegram = false, topBannerCampaigns = [], filterButtonText = '', filterButtonUrl = '' }: GroupsClientProps) {
+  const hasFilterButton = Boolean(filterButtonText?.trim() || filterButtonUrl?.trim());
   const [username, setUsername] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedCountry, setSelectedCountry] = useState(initialCountry || 'All');
@@ -43,6 +46,7 @@ export default function GroupsClient({ initialGroups, initialAdverts, advertPlac
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [showAddGroupModal, setShowAddGroupModal] = useState(false);
+
   // Split real groups vs DB-backed advert-groups (isAdvertisement=true)
   const initialAdvertGroups = initialGroups.filter(g => g.isAdvertisement);
   const initialRealGroups = initialGroups.filter(g => !g.isAdvertisement);
@@ -62,6 +66,7 @@ export default function GroupsClient({ initialGroups, initialAdverts, advertPlac
   const [skip, setSkip] = useState(initialGroups.filter(g => !g.pinned).length);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [groupsLoadError, setGroupsLoadError] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedGroupForReview, setSelectedGroupForReview] = useState<Group | null>(null);
   const [groupReviews, setGroupReviews] = useState<any[]>([]);
@@ -173,52 +178,18 @@ export default function GroupsClient({ initialGroups, initialAdverts, advertPlac
 
   // FULL randomization: ignore server order entirely
 
-  const [sidebarAdvert, setSidebarAdvert] = useState<Advert | null>(null);
-
-  useEffect(() => {
-    if (initialAdverts && initialAdverts.length > 0) {
-      setSidebarAdvert(initialAdverts[Math.floor(Math.random() * initialAdverts.length)]);
-    }
-  }, [initialAdverts]);
-
-  // Separate pinned and regular adverts AFTER shuffle
-  // Do NOT force pinned adverts first on client
-  const pinnedAdverts: Advert[] = [];
-
-  // Get top 3 groups by views (fetch separately to ensure proper sorting)
-  const [topGroups, setTopGroups] = useState<Group[]>([]);
-  const [topGroupsLoading, setTopGroupsLoading] = useState(true);
-
-  useEffect(() => {
-    // Fetch top groups by views
-    setTopGroupsLoading(true);
-    fetch('/api/groups?sortBy=views&limit=3')
-      .then(res => res.json())
-      .then(data => {
-        if (data.groups) {
-          setTopGroups(data.groups);
+  // Build placements map from campaign positions (exact positions from DB)
+  const feedPlacementsMap = useMemo(() => {
+    const map = new Map<number, FeedCampaign>();
+    if (feedCampaigns) {
+      feedCampaigns.forEach(c => {
+        if (c.position != null) {
+          map.set(c.position, c);
         }
-      })
-      .catch(err => console.error('Failed to fetch top groups:', err))
-      .finally(() => setTopGroupsLoading(false));
-  }, []);
-
-  // CLIENT-SIDE advert randomization (fast, no extra network calls)
-  // We ignore server ordering entirely to guarantee different ads per refresh
-  // Use server-provided placements to prevent hydration mismatches
-  const advertPlacementsMap = useMemo(() => {
-    const map = new Map<number, Advert>();
-    if (advertPlacements) {
-      advertPlacements.forEach(p => {
-        map.set(p.position, p.advert);
       });
     }
     return map;
-  }, [advertPlacements]);
-
-  const advertPositions = useMemo(() => {
-    return new Set(advertPlacementsMap.keys());
-  }, [advertPlacementsMap]);
+  }, [feedCampaigns]);
 
   // Debounce search input
   function useDebounce(value: string, delay: number) {
@@ -353,17 +324,25 @@ export default function GroupsClient({ initialGroups, initialAdverts, advertPlac
       isFirstLoad.current = false;
 
       setLoading(true);
+      setGroupsLoadError(false);
       try {
         const searchParam = debouncedSearchQuery ? `&search=${encodeURIComponent(debouncedSearchQuery)}` : '';
         const categoryParam = selectedCategory !== 'All' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
         const countryParam = selectedCountry !== 'All' ? `&country=${encodeURIComponent(selectedCountry)}` : '';
         const response = await fetch(`/api/groups?skip=0&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${countryParam}`, { cache: 'no-store' });
         const data = await response.json();
+        if (!response.ok || !Array.isArray(data.groups)) {
+          setGroupsLoadError(true);
+          setRegularGroups([]);
+          setSkip(0);
+          setHasMore(false);
+          return;
+        }
         const regular = data.groups.filter((g: Group) => !g.pinned);
         if (regular && regular.length > 0) {
           setRegularGroups(regular);
           setSkip(regular.length);
-          setHasMore(data.hasMore);
+          setHasMore(data.hasMore ?? false);
         } else {
           setRegularGroups([]);
           setSkip(0);
@@ -371,6 +350,10 @@ export default function GroupsClient({ initialGroups, initialAdverts, advertPlac
         }
       } catch (error) {
         console.error('Error fetching groups:', error);
+        setGroupsLoadError(true);
+        setRegularGroups([]);
+        setSkip(0);
+        setHasMore(false);
       } finally {
         setLoading(false);
       }
@@ -466,8 +449,12 @@ export default function GroupsClient({ initialGroups, initialAdverts, advertPlac
 
       {/* Main Content */}
       <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-8 min-h-screen">
+        {/* Global top banner (single campaign) */}
+        <div className="w-full mb-4">
+          <HeaderBanner campaigns={topBannerCampaigns} />
+        </div>
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
-          {/* Mobile Filter Toggle */}
+          {/* Mobile: Filter toggle */}
           <div className="lg:hidden">
             <button
               onClick={() => setShowFilters(!showFilters)}
@@ -479,7 +466,7 @@ export default function GroupsClient({ initialGroups, initialAdverts, advertPlac
           </div>
 
           {/* Sidebar Filters */}
-          <aside className={`${showFilters ? 'block' : 'hidden'} lg:block lg:w-1/4`}>
+          <aside className={`${showFilters ? 'block' : 'hidden'} lg:block lg:w-1/4 min-w-0 shrink-0`} suppressHydrationWarning>
             <div className="glass rounded-2xl p-6 backdrop-blur-lg border border-white/10">
               {/* Header */}
               <div className="text-center mb-8">
@@ -490,7 +477,7 @@ export default function GroupsClient({ initialGroups, initialAdverts, advertPlac
               {/* Category Filter */}
               <div className="mb-6">
                 <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
-                  <span className="mr-2">📂</span>
+                  <span className="mr-2" suppressHydrationWarning>📂</span>
                   Category
                 </label>
                 <select
@@ -509,7 +496,7 @@ export default function GroupsClient({ initialGroups, initialAdverts, advertPlac
               {/* Country Filter */}
               <div className="mb-6">
                 <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
-                  <span className="mr-2">🌍</span>
+                  <span className="mr-2" suppressHydrationWarning>🌍</span>
                   Country
                 </label>
                 <select
@@ -525,28 +512,10 @@ export default function GroupsClient({ initialGroups, initialAdverts, advertPlac
                 </select>
               </div>
 
-              {/* Sort By */}
-              <div className="mb-6">
-                <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
-                  <span className="mr-2">📊</span>
-                  Sort By
-                </label>
-                <select
-                  value={selectedSort}
-                  onChange={(e) => setSelectedSort(e.target.value)}
-                  className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none transition-all"
-                >
-                  <option value="newest" className="bg-[#222]">🆕 Newest First</option>
-                  <option value="random" className="bg-[#222]">🎲 Random Discovery</option>
-                  <option value="popular" className="bg-[#222]">🔥 Most Popular</option>
-                  <option value="oldest" className="bg-[#222]">📅 Oldest First</option>
-                </select>
-              </div>
-
               {/* Search */}
               <div className="mb-6">
                 <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
-                  <span className="mr-2">🔍</span>
+                  <span className="mr-2" suppressHydrationWarning>🔍</span>
                   Search Groups
                 </label>
                 <input
@@ -558,125 +527,75 @@ export default function GroupsClient({ initialGroups, initialAdverts, advertPlac
                 />
               </div>
 
-              {/* Country Links */}
-              <div className="mb-6">
-                <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
-                  <span className="mr-2">🌍</span>
-                  Browse by Country
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {['USA', 'UK', 'Germany', 'France', 'Brazil', 'Thailand', 'Russia', 'Japan'].map((country) => (
-                    <Link
-                      key={country}
-                      href={`/groups/country/${country}`}
-                      className="px-3 py-2 text-center text-sm bg-white/5 hover:bg-white/10 rounded-lg text-[#f5f5f5] transition-all hover:scale-105"
-                    >
-                      {country}
-                    </Link>
-                  ))}
-                </div>
+              {/* Filter button – Advertiser Filter CTA or Settings fallback. Always same DOM (single <a>) to avoid hydration mismatch. */}
+              <div className="mt-6">
+                <a
+                  href={hasFilterButton ? (filterButtonUrl?.trim() || '#') : '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 shadow-lg transition-all hover:scale-[1.02] ${hasFilterButton ? '' : 'pointer-events-none invisible'}`}
+                  aria-hidden={!hasFilterButton}
+                >
+                  <span className="text-lg" aria-hidden>💋</span>
+                  {hasFilterButton ? (filterButtonText?.trim() || 'Visit') : 'Visit'}
+                </a>
               </div>
             </div>
-
-            {/* Sidebar Advert */}
-            {sidebarAdvert && (
-              <div className="mt-6 hidden lg:block sticky top-24">
-                <div className="text-center mb-2">
-                  <span className="text-[10px] font-bold text-[#666] uppercase tracking-widest">Sponsored</span>
-                </div>
-                <AdvertCard advert={sidebarAdvert} isIndex={999} forceVisible={true} />
-              </div>
-            )}
           </aside>
 
-          {/* Groups Grid */}
-          <div className="lg:w-3/4">
-
-
-
-
-
-
-
-            {/* Top Groups Section */}
-            {(topGroups.length > 0 || topGroupsLoading) && (
-              <div className="mb-6 relative">
-                {/* Animated Background Gradient */}
-                <div className="absolute inset-0 bg-gradient-to-r from-yellow-600/10 via-orange-600/10 to-red-600/10 rounded-3xl"></div>
-
-                {/* Section Header */}
-                <div className="relative text-center mb-6 sm:mb-8">
-                  <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6 }}
-                    className="inline-block"
-                  >
-                    <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#f5f5f5] mb-2 sm:mb-3 drop-shadow-2xl">
-                      🏆 Top Groups
-                    </h2>
-                    <div className="h-1 w-20 sm:w-24 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 mx-auto rounded-full animate-pulse"></div>
-                  </motion.div>
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.6, delay: 0.2 }}
-                    className="text-[#999] mt-2 sm:mt-3 text-sm sm:text-base px-4"
-                  >
-                    Most popular groups (resets every 3 days)
-                  </motion.p>
-                </div>
-
-                {/* Top Groups Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 px-1 relative z-10">
-                  {topGroupsLoading ? (
-                    Array.from({ length: 3 }, (_, i) => (
-                      <GroupCardSkeleton key={`top-skeleton-${i}`} />
-                    ))
-                  ) : (
-                    topGroups.map((group, idx) => (
-                      <motion.div
-                        key={`top-${group._id}`}
-                        initial={{ opacity: 0, y: 50 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6, delay: idx * 0.1 }}
-                        className="relative h-full"
-                      >
-                        <div className="h-full">
-                          <GroupCard group={group} isIndex={idx} onOpenReviewModal={openReviewModal} onOpenReportModal={openReportModal} />
-                        </div>
-                        {/* Rank Badge - Responsive sizing */}
-                        <div className="absolute -top-1 sm:-top-2 -left-1 sm:-left-2 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg z-20 border-2 border-white">
-                          <span className="text-black font-bold text-xs sm:text-sm">#{idx + 1}</span>
-                        </div>
-                        {/* Views Badge - Responsive positioning */}
-
-                      </motion.div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-
-
-
+          {/* Groups Grid - NO "Top Groups" section here; only All Groups + pinned + grid */}
+          <div className="lg:w-3/4 min-w-0 shrink-0">
             {/* All Groups */}
             <div className="relative">
-              <div className="text-center mb-12">
-                <h2 className="text-3xl md:text-4xl font-black text-[#f5f5f5] mb-4">
+              {/* Popular categories – compact, SEO-friendly real links */}
+              <section className="mb-6 rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-950/40 to-orange-950/20 px-4 py-3 shadow-md" aria-labelledby="popular-categories-heading">
+                <h3 id="popular-categories-heading" className="text-sm font-bold text-amber-200/95 mb-2.5 flex items-center gap-1.5">
+                  <span aria-hidden>🔥</span>
+                  Popular categories
+                </h3>
+                <nav aria-label="Popular Telegram group categories">
+                  <ul className="flex flex-wrap gap-2 list-none m-0 p-0">
+                    {[
+                      { label: 'Lesbian', href: '/best-telegram-groups/lesbian' },
+                      { label: 'Threesome', href: '/best-telegram-groups/threesome' },
+                      { label: 'Big Ass', href: '/best-telegram-groups/big%20ass' },
+                      { label: 'Amateur', href: '/best-telegram-groups/amateur' },
+                      { label: 'Onlyfans', href: '/best-telegram-groups/onlyfans' },
+                      { label: 'Hentai', href: '/best-telegram-groups/hentai' },
+                      { label: 'Thailand', href: '/groups/country/Thailand' },
+                      { label: 'Russia', href: '/groups/country/Russia' },
+                      { label: 'UK', href: '/groups/country/UK' },
+                      { label: 'Germany', href: '/groups/country/Germany' },
+                      { label: 'France', href: '/groups/country/France' },
+                    ].map(({ label, href }) => (
+                      <li key={href}>
+                        <Link
+                          href={href}
+                          className="inline-block px-3 py-1.5 text-xs font-medium text-amber-50 bg-white/10 hover:bg-amber-500/30 border border-amber-400/30 rounded-lg text-[#f5f5f5] transition-colors hover:border-amber-400/50"
+                        >
+                          {label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </nav>
+              </section>
+
+              <div className="text-center mb-6">
+                <h2 className="text-2xl md:text-3xl font-black text-[#f5f5f5]">
                   🔥 All Groups
                 </h2>
-                <p className="text-[#999] text-lg">
-                  Discover amazing communities
-                </p>
               </div>
-
 
               <div className="relative">
                 {displayGroups.length === 0 && (
                   <div className="text-center py-20">
                     <div className="text-6xl mb-4">😔</div>
-                    <p className="text-[#999] text-xl">No groups found</p>
+                    <p className="text-[#999] text-xl">
+                      {groupsLoadError
+                        ? 'Couldn’t load groups. The app needs a working database connection — if you’re running locally, set MONGODB_URI in .env.local and ensure MongoDB is reachable.'
+                        : 'No groups found'}
+                    </p>
                   </div>
                 )}
                 {pinnedGroups.length > 0 && (
@@ -688,7 +607,7 @@ export default function GroupsClient({ initialGroups, initialAdverts, advertPlac
                 )}
                 <VirtualizedGroupGrid
                   groups={regularGroups}
-                  advertPlacementsMap={advertPlacementsMap}
+                  feedPlacementsMap={feedPlacementsMap}
                   isTelegram={isTelegram}
                   onOpenReviewModal={openReviewModal}
                   onOpenReportModal={openReportModal}

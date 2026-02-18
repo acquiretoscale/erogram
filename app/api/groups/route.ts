@@ -3,8 +3,16 @@ import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import { Group, User, Post, SystemConfig } from '@/lib/models';
 import { slugify } from '@/lib/utils/slugify';
-import fs from 'fs';
-import path from 'path';
+import { uploadToR2, R2_PUBLIC_URL } from '@/lib/r2';
+
+function resolveImageUrl(stored: string | undefined, origin: string): string {
+  const placeholder = '/assets/image.jpg'; // relative so next/image works locally (no hostname check)
+  if (!stored || typeof stored !== 'string') return placeholder;
+  if (stored.startsWith('https://')) return stored;
+  if (stored.startsWith('/')) return stored; // keep relative for same-origin
+  if (R2_PUBLIC_URL) return `${R2_PUBLIC_URL.replace(/\/$/, '')}/${stored}`;
+  return `${origin}/uploads/groups/${stored}`;
+}
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -138,13 +146,13 @@ export async function GET(req: NextRequest) {
         },
         {
           $project: {
-            // Include only the fields we need (inclusion projection)
             _id: 1,
             name: 1,
             slug: 1,
             category: 1,
             country: 1,
             description: 1,
+            image: 1,
             telegramLink: 1,
             isAdvertisement: 1,
             advertisementUrl: 1,
@@ -209,7 +217,6 @@ export async function GET(req: NextRequest) {
       });
     } else {
       groups = await Group.find(query)
-        .select('-image') // Exclude image field to prevent loading huge base64 strings
         .populate('createdBy', 'username showNicknameUnderGroups')
         .sort(sortCriteria)
         .skip(skip)
@@ -251,8 +258,10 @@ export async function GET(req: NextRequest) {
       });
     });
 
+    const origin = req.nextUrl?.origin || (req.headers.get('host') ? `https://${req.headers.get('host')}` : '') || process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') || '';
     const sanitized = groups.map((g: any) => {
       const stats = reviewStatsMap.get(g._id.toString()) || { reviewCount: 0, averageRating: 0 };
+      const imageUrl = resolveImageUrl(g.image, origin || '');
       return {
         _id: g._id.toString(),
         name: g.name,
@@ -260,7 +269,7 @@ export async function GET(req: NextRequest) {
         category: g.category,
         country: g.country,
         description: g.description?.slice(0, 300) || '',
-        image: '/assets/image.jpg', // Always use placeholder to prevent maxSize errors
+        image: imageUrl,
         telegramLink: g.telegramLink,
         isAdvertisement: g.isAdvertisement || false,
         advertisementUrl: g.advertisementUrl || null,
@@ -299,12 +308,7 @@ export async function POST(req: NextRequest) {
     await connectDB();
 
     const user = await authenticate(req);
-    if (!user) {
-      return NextResponse.json(
-        { message: 'Unauthorized - Please login first' },
-        { status: 401 }
-      );
-    }
+    // Allow unauthenticated submissions for moderation (status: pending)
 
     const body = await req.json();
     const { name, category, country, telegramLink, description, image } = body;
@@ -313,13 +317,14 @@ export async function POST(req: NextRequest) {
     const imagePreview = image ? (image.substring(0, 100) + (image.length > 100 ? '...' : '')) : 'null';
     console.log(`[Group Create] Received image data: ${imagePreview} (length: ${image?.length || 0}, isBase64: ${image?.startsWith('data:image/') || false})`);
 
-    // Validation
-    if (!name || !category || !country || !telegramLink || !description) {
+    // Validation (country is optional, default to 'All')
+    if (!name || !category || !telegramLink || !description) {
       return NextResponse.json(
-        { message: 'All fields are required' },
+        { message: 'Name, category, Telegram link and description are required' },
         { status: 400 }
       );
     }
+    const countryValue = country || 'All';
 
     if (description.length < 30) {
       return NextResponse.json(
@@ -343,38 +348,27 @@ export async function POST(req: NextRequest) {
       slug = `${baseSlug}-${counter++}`;
     }
 
-    // Validate and prepare image
+    // Validate and prepare image - upload to Cloudflare R2
     let finalImage = '/assets/image.jpg';
     if (image) {
-      // Check if it's a valid base64 data URI
       if (image.startsWith('data:image/')) {
-        // Validate base64 data URI format
         const base64Match = image.match(/^data:image\/(\w+);base64,(.+)$/);
         if (base64Match && base64Match[2]) {
           const ext = base64Match[1].replace('jpeg', 'jpg');
-          const base64Data = base64Match[2];
-          const buffer = Buffer.from(base64Data, 'base64');
+          const buffer = Buffer.from(base64Match[2], 'base64');
+          const contentType = `image/${base64Match[1]}`;
+          const key = `groups/${slug}.${ext}`;
 
-          // Generate filename
-          const filename = `${slug}.${ext}`;
-          const relativePath = `/uploads/groups/${filename}`;
-          const absolutePath = path.join(process.cwd(), 'public/uploads/groups', filename);
-
-          // Ensure directory exists
-          const dir = path.dirname(absolutePath);
-          if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
+          try {
+            finalImage = await uploadToR2(buffer, key, contentType);
+            console.log(`[Group Create] Uploaded image to R2: ${key}`);
+          } catch (uploadErr: any) {
+            console.error('[Group Create] R2 upload failed:', uploadErr.message);
           }
-
-          // Write file
-          fs.writeFileSync(absolutePath, buffer);
-          finalImage = relativePath;
-          console.log(`[Group Create] Saved image to ${relativePath}`);
         } else {
           console.warn('[Group Create] Invalid base64 image format, using default');
         }
-      } else if (image !== '/assets/image.jpg') {
-        // Allow other image formats (URLs, etc.)
+      } else if (image.startsWith('https://')) {
         finalImage = image;
         console.log('[Group Create] Using image URL:', image);
       }
@@ -382,17 +376,17 @@ export async function POST(req: NextRequest) {
       console.warn('[Group Create] No image provided, using default');
     }
 
-    // Create group with pending status
+    // Create group with pending status (createdBy optional for no-login submit)
     try {
       const group = await Group.create({
         name,
         slug,
         category,
-        country,
+        country: countryValue,
         telegramLink,
         description,
         image: finalImage,
-        createdBy: user._id,
+        createdBy: user?._id ?? undefined,
         status: 'pending'
       });
 

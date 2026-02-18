@@ -16,12 +16,14 @@ import ReviewsTab from './components/ReviewsTab';
 import ReportsTab from './components/ReportsTab';
 import ArticlesTab from './components/ArticlesTab';
 import AdvertsTab from './components/AdvertsTab';
+import AdvertisersTab from './components/AdvertisersTab';
+import ButtonsManagementTab from './components/ButtonsManagementTab';
 import UsersTab from './components/UsersTab';
 import SettingsTab from './components/SettingsTab';
 
 export default function AdminPage() {
   const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('buttons');
   const [isLoading, setIsLoading] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
   const [loginData, setLoginData] = useState({ email: '', password: '' });
@@ -187,6 +189,7 @@ export default function AdminPage() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
+              {activeTab === 'buttons' && <ButtonsManagementTab />}
               {activeTab === 'overview' && <OverviewTab metrics={metrics} setActiveTab={setActiveTab} />}
               {activeTab === 'groups' && <GroupsTab />}
               {activeTab === 'bots' && <BotsTab />}
@@ -196,6 +199,7 @@ export default function AdminPage() {
               {activeTab === 'reports' && <ReportsTab />}
               {activeTab === 'articles' && <ArticlesTab />}
               {activeTab === 'adverts' && <AdvertsTab />}
+              {activeTab === 'advertisers' && <AdvertisersTab setActiveTab={setActiveTab} />}
               {activeTab === 'users' && <UsersTab />}
               {activeTab === 'settings' && <SettingsTab />}
             </motion.div>

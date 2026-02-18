@@ -7,11 +7,16 @@ import { Group, Bot, Post } from '@/lib/models';
 import JoinClient from './JoinClient';
 import { getTelegramMemberCount } from '@/lib/utils/telegram';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
+import { getActiveCampaigns } from '@/lib/actions/campaigns';
 
 // ISR for public join pages (keeps SSR output crawlable while avoiding per-request rendering)
 export const revalidate = 300;
 
 const BASE_URL = 'https://erogram.pro';
+
+function safeImageUrl(img: unknown, fallback: string): string {
+  return (typeof img === 'string' && img.startsWith('https://')) ? img : fallback;
+}
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -78,7 +83,7 @@ async function getGroup(slug: string) {
       country: (group as any).country,
       telegramLink: (group as any).telegramLink,
       description: (group as any).description,
-      image: (group as any).image || '/assets/image.jpg',
+      image: safeImageUrl((group as any).image, '/assets/image.jpg'),
       views: (group as any).views || 0,
       memberCount: (group as any).memberCount || 0,
       createdAt: (group as any).createdAt,
@@ -153,7 +158,7 @@ async function getBot(slug: string) {
       country: (bot as any).country,
       telegramLink: (bot as any).telegramLink,
       description: (bot as any).description,
-      image: (bot as any).image || '/assets/image.jpg',
+      image: safeImageUrl((bot as any).image, '/assets/image.jpg'),
       views: (bot as any).views || 0,
       clickCount: (bot as any).clickCount || 0,
       memberCount: (bot as any).memberCount || 0,
@@ -248,7 +253,7 @@ async function getRandomSimilarGroups(currentGroupId: string, category?: string)
       category: String(g.category || '').slice(0, 50),
       country: String(g.country || '').slice(0, 50),
       description: String(g.description || '').slice(0, 220),
-      image: g.image || '/assets/image.jpg',
+      image: safeImageUrl(g.image, '/assets/image.jpg'),
     }));
   } catch (error: any) {
     console.error('Error fetching similar groups:', error);
@@ -291,7 +296,7 @@ async function getRandomSimilarBots(currentBotId: string): Promise<SimilarGroup[
       category: String(b.category || '').slice(0, 50),
       country: String(b.country || '').slice(0, 50),
       description: String(b.description || '').slice(0, 220),
-      image: b.image || '/assets/image.jpg',
+      image: safeImageUrl(b.image, '/assets/image.jpg'),
     }));
   } catch (error: any) {
     console.error('Error fetching similar bots:', error);
@@ -361,7 +366,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         siteName: 'Erogram',
         images: [
           {
-            url: group.image || `${BASE_URL}/assets/image.jpg`,
+            url: safeImageUrl(group.image, `${BASE_URL}/assets/image.jpg`),
             width: 1200,
             height: 630,
             alt: `${group.name} - NSFW Telegram Group`,
@@ -373,7 +378,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         card: 'summary_large_image',
         title: `${group.name} - Join NSFW Telegram Group`,
         description: finalDescription,
-        images: [group.image || `${BASE_URL}/assets/image.jpg`],
+        images: [safeImageUrl(group.image, `${BASE_URL}/assets/image.jpg`)],
       },
     };
   }
@@ -406,7 +411,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         siteName: 'Erogram',
         images: [
           {
-            url: bot.image || `${BASE_URL}/assets/image.jpg`,
+            url: safeImageUrl(bot.image, `${BASE_URL}/assets/image.jpg`),
             width: 1200,
             height: 630,
             alt: `${bot.name} - NSFW Telegram Bot`,
@@ -418,7 +423,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         card: 'summary_large_image',
         title: `${bot.name} - Use NSFW Telegram Bot`,
         description: finalDescription,
-        images: [bot.image || `${BASE_URL}/assets/image.jpg`],
+        images: [safeImageUrl(bot.image, `${BASE_URL}/assets/image.jpg`)],
       },
     };
   }
@@ -487,7 +492,7 @@ export default async function JoinPage({ params }: PageProps) {
       description: group.description,
       url: pageUrl,
       sameAs: group.telegramLink,
-      image: group.image || `${BASE_URL}/assets/image.jpg`,
+      image: safeImageUrl(group.image, `${BASE_URL}/assets/image.jpg`),
       foundingDate: group.createdAt ? new Date(group.createdAt).getFullYear().toString() : undefined,
       memberOf: {
         '@type': 'WebSite',
@@ -507,6 +512,14 @@ export default async function JoinPage({ params }: PageProps) {
       };
     }
 
+    const [joinCtaCampaigns, topBannerCampaigns] = await Promise.all([
+      getActiveCampaigns('join-cta'),
+      getActiveCampaigns('top-banner'),
+    ]);
+    const joinCtaCampaign = joinCtaCampaigns[0] ?? null;
+    const topBannerForPage =
+      topBannerCampaigns.length > 0 && topBannerCampaigns[0].creative ? topBannerCampaigns : [];
+
     return (
       <>
         <script
@@ -521,7 +534,7 @@ export default async function JoinPage({ params }: PageProps) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
-        <JoinClient entity={group} type="group" similarGroups={similarGroups} initialIsMobile={isMobile} initialIsTelegram={isTelegram} />
+        <JoinClient entity={group} type="group" similarGroups={similarGroups} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} />
       </>
     );
   }
@@ -586,7 +599,7 @@ export default async function JoinPage({ params }: PageProps) {
         name: 'Erogram',
         url: BASE_URL,
       },
-      image: bot.image || `${BASE_URL}/assets/image.jpg`,
+      image: safeImageUrl(bot.image, `${BASE_URL}/assets/image.jpg`),
       datePublished: bot.createdAt ? new Date(bot.createdAt).toISOString().split('T')[0] : undefined,
       aggregateRating: bot.clickCount ? {
         '@type': 'AggregateRating',
@@ -595,6 +608,14 @@ export default async function JoinPage({ params }: PageProps) {
         worstRating: 1,
       } : undefined,
     };
+
+    const [joinCtaCampaigns, topBannerCampaigns] = await Promise.all([
+      getActiveCampaigns('join-cta'),
+      getActiveCampaigns('top-banner'),
+    ]);
+    const joinCtaCampaign = joinCtaCampaigns[0] ?? null;
+    const topBannerForPage =
+      topBannerCampaigns.length > 0 && topBannerCampaigns[0].creative ? topBannerCampaigns : [];
 
     return (
       <>
@@ -610,7 +631,7 @@ export default async function JoinPage({ params }: PageProps) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplicationJsonLd) }}
         />
-        <JoinClient entity={bot} type="bot" similarGroups={[]} initialIsMobile={isMobile} initialIsTelegram={isTelegram} />
+        <JoinClient entity={bot} type="bot" similarGroups={[]} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} />
       </>
     );
   }

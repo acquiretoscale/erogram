@@ -15,7 +15,10 @@ interface GroupCardProps {
 
 export default function GroupCard({ group, isFeatured = false, isIndex = 0, shouldPreload = false, onVisible, onOpenReviewModal, onOpenReportModal }: GroupCardProps) {
     const [isHovered, setIsHovered] = useState(false);
-    const [imageSrc, setImageSrc] = useState(group.image || '/assets/image.jpg');
+    const placeholder = '/assets/image.jpg';
+    const isAbsoluteUrl = (s: string) => typeof s === 'string' && (s.startsWith('https://') || s.startsWith('http://'));
+    const initialImage = (group.image && isAbsoluteUrl(group.image)) ? group.image : (group.image && typeof group.image === 'string' && group.image.startsWith('/') ? group.image : placeholder);
+    const [imageSrc, setImageSrc] = useState(initialImage);
     const [isInView, setIsInView] = useState(false);
     const hasFetchedRef = useRef(false);
     const imgRef = useRef<HTMLDivElement>(null);
@@ -48,41 +51,37 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
         };
     }, [onVisible]);
 
-    // Preload image if shouldPreload is true (for next 6 items)
-    useEffect(() => {
-        if (shouldPreload && imageSrc === '/assets/image.jpg' && group._id && !hasFetchedRef.current) {
-            hasFetchedRef.current = true;
-            // Preload image in the background
-            fetch(`/api/groups/${group._id}/image`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.image && data.image !== '/assets/image.jpg') {
-                        setImageSrc(data.image);
-                    }
-                })
-                .catch(err => {
-                    // Silently fail for preloads
-                });
-        }
-    }, [shouldPreload, imageSrc, group._id]);
+    const needsFetch = imageSrc === placeholder;
 
-    // Fetch actual image when in view and it's the placeholder
     useEffect(() => {
-        if (isInView && imageSrc === '/assets/image.jpg' && group._id && !hasFetchedRef.current) {
+        if (shouldPreload && needsFetch && group._id && !hasFetchedRef.current) {
             hasFetchedRef.current = true;
-            // Load immediately - browser handles parallel requests efficiently
             fetch(`/api/groups/${group._id}/image`)
                 .then(res => res.json())
                 .then(data => {
-                    if (data.image && data.image !== '/assets/image.jpg') {
-                        setImageSrc(data.image);
+                    const url = data?.image;
+                    if (url && typeof url === 'string' && (url.startsWith('https://') || url.startsWith('http://') || url.startsWith('/'))) {
+                        setImageSrc(url);
                     }
                 })
-                .catch(err => {
-                    console.error('Failed to load group image:', err);
-                });
+                .catch(() => {});
         }
-    }, [isInView, imageSrc, group._id]);
+    }, [shouldPreload, needsFetch, group._id]);
+
+    useEffect(() => {
+        if (isInView && needsFetch && group._id && !hasFetchedRef.current) {
+            hasFetchedRef.current = true;
+            fetch(`/api/groups/${group._id}/image`)
+                .then(res => res.json())
+                .then(data => {
+                    const url = data?.image;
+                    if (url && typeof url === 'string' && (url.startsWith('https://') || url.startsWith('http://') || url.startsWith('/'))) {
+                        setImageSrc(url);
+                    }
+                })
+                .catch(() => {});
+        }
+    }, [isInView, needsFetch, group._id]);
 
     return (
         <motion.div
@@ -97,17 +96,28 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                 ? 'border-yellow-500/30 shadow-[0_0_30px_rgba(234,179,8,0.1)] hover:border-yellow-500/60 hover:shadow-[0_0_50px_rgba(234,179,8,0.2)]'
                 : 'border-white/5 hover:border-white/20 hover:shadow-2xl hover:shadow-black/50'
                 }`}>
-                {/* Group Image */}
+                {/* Group Image - use Next/Image for absolute URLs, plain img for same-origin relative paths or placeholder */}
                 <div ref={imgRef} className="relative w-full h-52 overflow-hidden bg-[#1a1a1a]">
-                    <Image
-                        src={imageSrc}
-                        alt={group.name}
-                        fill
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        className="object-cover transition-transform duration-700 group-hover:scale-110"
-                        priority={isIndex < 12}
-                        onError={() => setImageSrc('/assets/image.jpg')}
-                    />
+                    {isAbsoluteUrl(imageSrc) ? (
+                        <Image
+                            key={imageSrc}
+                            src={imageSrc}
+                            alt={group.name}
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            className="object-cover transition-transform duration-700 group-hover:scale-110"
+                            priority={isIndex < 12}
+                            onError={() => setImageSrc(placeholder)}
+                        />
+                    ) : (
+                        <img
+                            src={imageSrc.startsWith('/') ? imageSrc : placeholder}
+                            alt={group.name}
+                            className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-110"
+                            loading={isIndex < 12 ? 'eager' : 'lazy'}
+                            onError={() => setImageSrc(placeholder)}
+                        />
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent opacity-80" />
 
                     {/* Badges */}

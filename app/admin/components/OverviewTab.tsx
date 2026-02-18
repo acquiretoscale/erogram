@@ -80,6 +80,14 @@ export default function OverviewTab({ metrics, setActiveTab }: OverviewTabProps)
                             <span className="text-xs text-[#666]">Manage listings</span>
                         </button>
                         <button
+                            onClick={() => setActiveTab('buttons')}
+                            className="p-4 bg-pink-500/15 hover:bg-pink-500/25 rounded-xl border border-pink-500/30 text-left transition-all group"
+                        >
+                            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">🔘</span>
+                            <span className="font-semibold text-white block">CTA Buttons</span>
+                            <span className="text-xs text-pink-200/80">Navbar & Join page links</span>
+                        </button>
+                        <button
                             onClick={() => setActiveTab('adverts')}
                             className="p-4 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 text-left transition-all group"
                         >

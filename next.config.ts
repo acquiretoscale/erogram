@@ -15,6 +15,11 @@ const nextConfig: NextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 31536000, // 1 year - SEO: long cache for stable image URLs
     remotePatterns: [
+      // Local development
+      { protocol: 'http', hostname: 'localhost', pathname: '/**' },
+      { protocol: 'https', hostname: 'localhost', pathname: '/**' },
+      { protocol: 'http', hostname: '127.0.0.1', pathname: '/**' },
+      { protocol: 'https', hostname: '127.0.0.1', pathname: '/**' },
       {
         protocol: 'https',
         hostname: 'images.pexels.com',
@@ -153,6 +158,21 @@ const nextConfig: NextConfig = {
             key: "Cache-Control",
             value: "public, max-age=31536000, immutable",
           },
+        ],
+      },
+      // Admin: never cache — always fresh so changes show immediately
+      {
+        source: "/admin",
+        headers: [
+          { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, max-age=0" },
+          { key: "Pragma", value: "no-cache" },
+        ],
+      },
+      {
+        source: "/admin/:path*",
+        headers: [
+          { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, max-age=0" },
+          { key: "Pragma", value: "no-cache" },
         ],
       },
     ];

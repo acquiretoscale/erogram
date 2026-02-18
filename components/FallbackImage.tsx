@@ -26,7 +26,8 @@ export default function FallbackImage({
     sizes,
     priority,
 }: FallbackImageProps) {
-    const [imageSrc, setImageSrc] = useState(src || PLACEHOLDER);
+    const validSrc = (src && typeof src === 'string' && src.startsWith('https://')) ? src : PLACEHOLDER;
+    const [imageSrc, setImageSrc] = useState(validSrc);
 
     return (
         <Image

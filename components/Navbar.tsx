@@ -4,6 +4,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
+import { trackClick } from '@/lib/actions/campaigns';
+
+const DEFAULT_NAVBAR_CTA = {
+  destinationUrl: 'https://lovescape.com/create-ai-sex-girlfriend/style?userId=5ebe4f139af9bcff39155f3e9f06fbce233415fd82fd4da2a9c51ea0921d4c0e&sourceId=Erogram&creativeId=6step_hent&p1=test',
+  description: '🫦 Meet Your AI slut',
+};
 
 interface NavbarProps {
   username?: string | null;
@@ -12,14 +18,28 @@ interface NavbarProps {
   onAddGroupClick?: () => void;
 }
 
+// Telegram brand blue – prominent Add CTA
+const TELEGRAM_ADD_BG = '#0088cc';
+const TELEGRAM_ADD_HOVER = '#0077b5';
+
 export default function Navbar({ username, setUsername, showAddGroup, onAddGroupClick }: NavbarProps) {
   const [mounted, setMounted] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const [navbarCta, setNavbarCta] = useState<{ _id: string; destinationUrl: string; description: string; buttonText: string } | null>(null);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/campaigns/placement?slot=navbar-cta', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.campaign?.destinationUrl) setNavbarCta(data.campaign);
+      })
+      .catch(() => {});
   }, []);
 
 
@@ -58,11 +78,9 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
   }, [isUserMenuOpen, mounted]);
 
 
-  if (!mounted) {
-    return null;
-  }
-
-  const currentUsername = username || (mounted ? localStorage.getItem('username') : null);
+  // Render navbar on server and client so Add + Advertisers are always in the DOM (no flash).
+  // Username may differ after mount (localStorage); we avoid hydration mismatch by not reading it until mounted.
+  const currentUsername = username ?? (mounted ? localStorage.getItem('username') : null);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -78,11 +96,6 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
   };
 
   const handleAddGroup = () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      window.location.href = '/login';
-      return;
-    }
     if (onAddGroupClick) {
       onAddGroupClick();
     }
@@ -131,29 +144,46 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
             </Link>
           ))}
 
+          {/* Add Group/Bot – prominent Telegram-style, right after main nav so it’s easy to find */}
           <a
-            href="https://lovescape.com/create-ai-sex-girlfriend/style?userId=5ebe4f139af9bcff39155f3e9f06fbce233415fd82fd4da2a9c51ea0921d4c0e&sourceId=Erogram&creativeId=6step_hent&p1=test"
+            href={navbarCta?.destinationUrl ?? DEFAULT_NAVBAR_CTA.destinationUrl}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => navbarCta?._id && trackClick(navbarCta._id)}
             className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-1.5 rounded-lg font-bold transition-all whitespace-nowrap shadow-lg bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white hover-glow hover:scale-105"
           >
-            🫦 Meet Your AI slut
+            {(navbarCta?.description || navbarCta?.buttonText) || DEFAULT_NAVBAR_CTA.description}
           </a>
 
+          <Link
+            href="/add"
+            title="Add group or bot"
+            className="inline-flex items-center gap-1.5 text-sm md:text-base px-4 md:px-5 py-2 md:py-2.5 rounded-full font-bold text-white shadow-lg hover:shadow-xl transition-all hover:scale-105 whitespace-nowrap"
+            style={{ backgroundColor: TELEGRAM_ADD_BG }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = TELEGRAM_ADD_HOVER;
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = TELEGRAM_ADD_BG;
+            }}
+          >
+            <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z" />
+            </svg>
+            Add
+          </Link>
 
-          {/* Add Group Button */}
-          {showAddGroup && (
-            <button
-              onClick={handleAddGroup}
-              className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg transition-colors font-bold hover-glow whitespace-nowrap"
-            >
-              ➕ Add
-            </button>
-          )}
+          {/* Advertisers */}
+          <Link
+            href="/advertise"
+            className="text-xs md:text-sm font-semibold text-black bg-white hover:bg-gray-100 px-3 py-2 rounded-lg transition-all whitespace-nowrap"
+          >
+            Advertisers
+          </Link>
 
-          {/* User Menu */}
+          {/* User Menu – suppressHydrationWarning: username may come from localStorage after mount */}
           {currentUsername ? (
-            <div className="relative" ref={userMenuRef}>
+            <div className="relative" ref={userMenuRef} suppressHydrationWarning>
               <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                 className="flex items-center gap-2 text-xs md:text-sm text-[#f5f5f5] hover:text-[#b31b1b] transition-colors whitespace-nowrap"
@@ -199,12 +229,14 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
               </AnimatePresence>
             </div>
           ) : (
-            <Link
-              href="/login"
-              className="text-xs md:text-sm px-3 py-1.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition-all font-bold hover-glow hover:scale-105 whitespace-nowrap"
-            >
-              Login
-            </Link>
+            <span suppressHydrationWarning>
+              <Link
+                href="/login"
+                className="text-xs md:text-sm px-3 py-1.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition-all font-bold hover-glow hover:scale-105 whitespace-nowrap"
+              >
+                Login
+              </Link>
+            </span>
           )}
         </div>
 
@@ -267,24 +299,38 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
             </Link>
           ))}
           <a
-            href="https://lovescape.com/create-ai-sex-girlfriend/style?userId=5ebe4f139af9bcff39155f3e9f06fbce233415fd82fd4da2a9c51ea0921d4c0e&sourceId=Erogram&creativeId=6step_hent&p1=test"
+            href={navbarCta?.destinationUrl ?? DEFAULT_NAVBAR_CTA.destinationUrl}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => setIsMenuOpen(false)}
+            onClick={() => {
+              if (navbarCta?._id) trackClick(navbarCta._id);
+              setIsMenuOpen(false);
+            }}
             className="block px-4 py-2 rounded-lg font-bold text-center transition-all shadow-lg bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white"
           >
-            🫦 Meet Your AI slut
+            {(navbarCta?.description || navbarCta?.buttonText) || DEFAULT_NAVBAR_CTA.description}
           </a>
-          {showAddGroup && (
-            <button
-              onClick={handleAddGroup}
-              className="w-full px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg transition-colors font-bold text-center"
-            >
-              ➕ Add Group
-            </button>
-          )}
+          <Link
+            href="/add"
+            onClick={() => setIsMenuOpen(false)}
+            title="Add group or bot"
+            className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-full font-bold text-white shadow-lg text-center transition-all"
+            style={{ backgroundColor: TELEGRAM_ADD_BG }}
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z" />
+            </svg>
+            Add Group or Bot
+          </Link>
+          <Link
+            href="/advertise"
+            onClick={() => setIsMenuOpen(false)}
+            className="block px-4 py-2.5 rounded-lg font-semibold text-center text-black bg-white hover:bg-gray-100 transition-all"
+          >
+            Advertisers
+          </Link>
           {currentUsername ? (
-            <div className="space-y-2 pt-2 border-t border-[#333]">
+            <div className="space-y-2 pt-2 border-t border-[#333]" suppressHydrationWarning>
               <div className="text-[#f5f5f5] py-2">👤 {currentUsername}</div>
               <Link
                 href="/profile"

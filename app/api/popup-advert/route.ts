@@ -7,29 +7,14 @@ export async function GET(req: NextRequest) {
   try {
     await connectDB();
 
-    // Find the first active popup advert (prioritize pinned ones)
-    // Exclude image field initially, we'll fetch it separately if needed
     const popupAdvert = await Advert.findOne({
       status: 'active',
       isPopupAdvert: true,
     })
-      .select('-image') // Exclude image field to prevent maxSize errors
       .sort({ pinned: -1, createdAt: -1 })
       .lean();
     
-    // If popup advert found, fetch image separately
-    let imageUrl = '/assets/image.jpg';
-    if (popupAdvert) {
-      const advertWithImage = await Advert.findById((popupAdvert as any)._id).select('image').lean() as any;
-      if (advertWithImage?.image) {
-        // Return the image whether it's base64 or URL
-        imageUrl = advertWithImage.image;
-        // Debug log to verify image is being fetched
-        console.log(`[Popup Advert] Image fetched for ${(popupAdvert as any).name}: ${imageUrl.substring(0, 50)}${imageUrl.length > 50 ? '...' : ''} (length: ${imageUrl.length})`);
-      } else {
-        console.log(`[Popup Advert] No image found for ${(popupAdvert as any).name}`);
-      }
-    }
+    const imageUrl = (popupAdvert as any)?.image || '/assets/image.jpg';
 
     if (!popupAdvert) {
       // Debug: Check if there are any adverts with isPopupAdvert field

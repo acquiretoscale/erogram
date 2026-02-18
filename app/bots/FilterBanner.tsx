@@ -48,7 +48,7 @@ const FilterBanner: React.FC = () => {
     fetchBanner();
   }, []);
 
-  // Always reserve space so the sidebar doesn't jump when the banner appears.
+  // Reserve space so the filter column doesn't jump when the banner appears.
   const hasBanner = Boolean(mounted && banner);
 
   return (

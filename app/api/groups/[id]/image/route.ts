@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
 import { Group } from '@/lib/models';
+import { R2_PUBLIC_URL } from '@/lib/r2';
 
 const IMAGE_CACHE_CONTROL =
   // Safer TTL: images may change for the same DB id.
   'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400';
+
+/** Resolve stored image value to a URL the client can use. Use relative path for same-origin so next/image works locally. */
+function resolveImageUrl(stored: string, origin: string): string {
+  if (!stored || typeof stored !== 'string') return '';
+  if (stored.startsWith('https://')) return stored;
+  if (stored.startsWith('/')) return stored;
+  if (R2_PUBLIC_URL) return `${R2_PUBLIC_URL.replace(/\/$/, '')}/${stored}`;
+  return `${origin}/uploads/groups/${stored}`;
+}
 
 export async function GET(
   req: NextRequest,
@@ -22,9 +32,12 @@ export async function GET(
         { status: 404 }
       );
     }
+
+    const origin = req.nextUrl?.origin || (req.headers.get('host') ? `${req.headers.get('x-forwarded-proto') || 'https'}://${req.headers.get('host')}` : '') || 'https://erogram.pro';
+    const resolved = resolveImageUrl(group.image, origin) || '/assets/image.jpg';
     
     return NextResponse.json(
-      { image: group.image },
+      { image: resolved },
       {
         headers: {
           'Cache-Control': IMAGE_CACHE_CONTROL,

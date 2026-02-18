@@ -332,6 +332,14 @@ export const siteConfigSchema = new Schema(
       url: { type: String, default: '' },
       buttonText: { type: String, default: 'Visit Site' },
     },
+    filterButton: {
+      text: { type: String, default: '' },
+      url: { type: String, default: '' },
+    },
+    topBanner: {
+      imageUrl: { type: String, default: '' },
+      url: { type: String, default: '' },
+    },
   },
   { timestamps: true }
 );
@@ -377,6 +385,74 @@ export const imageSchema = new Schema(
   { timestamps: true }
 );
 
+// Advertiser Schema
+export const advertiserSchema = new Schema(
+  {
+    name: { type: String, required: true },
+    email: { type: String, required: true },
+    company: { type: String, default: '' },
+    logo: { type: String, default: '' },
+    notes: { type: String, default: '' },
+    status: { type: String, enum: ['active', 'inactive'], default: 'active' },
+  },
+  { timestamps: true }
+);
+
+// Campaign Schema
+export const campaignSchema = new Schema(
+  {
+    advertiserId: { type: Schema.Types.ObjectId, ref: 'Advertiser', required: true },
+    name: { type: String, required: true },
+    slot: {
+      type: String,
+      enum: ['top-banner', 'homepage-hero', 'feed', 'navbar-cta', 'join-cta', 'filter-cta'],
+      required: true,
+    },
+    creative: { type: String, required: false, default: '' },
+    destinationUrl: {
+      type: String,
+      required: true,
+      validate: {
+        validator: function (v: string) {
+          return /^https?:\/\//.test(v);
+        },
+        message: 'URL must start with http:// or https://',
+      },
+    },
+    startDate: { type: Date, required: true },
+    endDate: { type: Date, required: true },
+    status: { type: String, enum: ['active', 'paused', 'ended'], default: 'active' },
+    isVisible: { type: Boolean, default: true },
+    impressions: { type: Number, default: 0 },
+    clicks: { type: Number, default: 0 },
+    // Feed-specific fields
+    position: { type: Number, default: null },
+    feedTier: { type: Number, default: null }, // 1=top, 2=middle, 3=bottom (only for slot=feed)
+    tierSlot: { type: Number, default: null }, // 1-4 within tier
+    description: { type: String, default: '' },
+    category: { type: String, default: 'All' },
+    country: { type: String, default: 'All' },
+    buttonText: { type: String, default: 'Visit Site' },
+  },
+  { timestamps: true }
+);
+
+campaignSchema.index({ slot: 1, status: 1, isVisible: 1, startDate: 1, endDate: 1 });
+campaignSchema.index(
+  { slot: 1, feedTier: 1, tierSlot: 1 },
+  { unique: true, partialFilterExpression: { slot: 'feed', feedTier: { $gte: 1 }, tierSlot: { $gte: 1 } } }
+);
+
+// CampaignClick Schema (for per-day click stats; Campaign.clicks is the all-time total)
+export const campaignClickSchema = new Schema(
+  {
+    campaignId: { type: Schema.Types.ObjectId, ref: 'Campaign', required: true },
+    clickedAt: { type: Date, required: true, default: Date.now },
+  },
+  { timestamps: true }
+);
+campaignClickSchema.index({ clickedAt: 1 });
+
 // Export models
 export const User = models.User || model('User', userSchema);
 export const Group = models.Group || model('Group', groupSchema);
@@ -394,3 +470,6 @@ export const TrackingEvent =
   (models.TrackingEvent as mongoose.Model<TrackingEvent>) ||
   model<TrackingEvent>('TrackingEvent', trackingEventSchema);
 export const Image = models.Image || model('Image', imageSchema);
+export const Advertiser = models.Advertiser || model('Advertiser', advertiserSchema);
+export const Campaign = models.Campaign || model('Campaign', campaignSchema);
+export const CampaignClick = models.CampaignClick || model('CampaignClick', campaignClickSchema);

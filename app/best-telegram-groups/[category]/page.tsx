@@ -152,7 +152,7 @@ export default async function BestGroupsPage({ params }: PageProps) {
                                     <div className="w-full md:w-1/3 flex-shrink-0">
                                         <div className="relative aspect-square rounded-2xl overflow-hidden bg-gray-800 shadow-2xl">
                                             <FallbackImage
-                                                src={group.image || '/assets/image.jpg'}
+                                                src={(group.image && typeof group.image === 'string' && group.image.startsWith('https://')) ? group.image : '/assets/image.jpg'}
                                                 alt={group.name}
                                                 className="object-cover hover:scale-110 transition-transform duration-500"
                                             />
@@ -219,7 +219,7 @@ export default async function BestGroupsPage({ params }: PageProps) {
                                     <div className="flex items-center gap-6">
                                         <div className="relative w-24 h-24 rounded-xl overflow-hidden flex-shrink-0">
                                             <FallbackImage
-                                                src={group.image || '/assets/image.jpg'}
+                                                src={(group.image && typeof group.image === 'string' && group.image.startsWith('https://')) ? group.image : '/assets/image.jpg'}
                                                 alt={group.name}
                                                 className="object-cover"
                                             />

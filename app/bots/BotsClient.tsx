@@ -6,6 +6,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
 import Navbar from '@/components/Navbar';
+import HeaderBanner from '@/components/HeaderBanner';
 import BotCardSkeleton from './BotCardSkeleton';
 // Removed react-window import as virtualization is no longer used
 
@@ -96,12 +97,15 @@ interface BotsClientProps {
   initialIsMobile: boolean;
   initialIsTelegram: boolean;
   initialCountry?: string;
+  topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string }>;
+  filterButtonText?: string;
+  filterButtonUrl?: string;
 }
 
-export default function BotsClient({ initialBots, initialAdverts, initialIsMobile, initialIsTelegram, initialCountry }: BotsClientProps) {
+export default function BotsClient({ initialBots, initialAdverts, initialIsMobile, initialIsTelegram, initialCountry, topBannerCampaigns = [], filterButtonText = '', filterButtonUrl = '' }: BotsClientProps) {
+  const hasFilterButton = Boolean(filterButtonText?.trim() || filterButtonUrl?.trim());
   const [username, setUsername] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [selectedCountry, setSelectedCountry] = useState('All');
   const [selectedSort, setSelectedSort] = useState('random');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -136,7 +140,6 @@ export default function BotsClient({ initialBots, initialAdverts, initialIsMobil
       })
       .catch(err => console.error('Failed to fetch pinned bots:', err));
   }, []);
-
 
   // Separate pinned and regular bots/adverts
   const regularBots = bots;
@@ -180,7 +183,6 @@ export default function BotsClient({ initialBots, initialAdverts, initialIsMobil
         selectedSort === 'random' &&
         !debouncedSearchQuery &&
         selectedCategory === 'All' &&
-        selectedCountry === 'All' &&
         bots.length > 0
       ) {
         isFirstLoad.current = false;
@@ -192,8 +194,7 @@ export default function BotsClient({ initialBots, initialAdverts, initialIsMobil
       try {
         const searchParam = debouncedSearchQuery ? `&search=${encodeURIComponent(debouncedSearchQuery)}` : '';
         const categoryParam = selectedCategory !== 'All' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
-        const countryParam = selectedCountry !== 'All' ? `&country=${encodeURIComponent(selectedCountry)}` : '';
-        const response = await fetch(`/api/bots?skip=0&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${countryParam}`, { cache: 'no-store' });
+        const response = await fetch(`/api/bots?skip=0&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}`, { cache: 'no-store' });
         const data = await response.json();
         const regular = data.bots.filter((b: Bot) => !b.pinned);
         if (regular && regular.length > 0) {
@@ -249,24 +250,18 @@ export default function BotsClient({ initialBots, initialAdverts, initialIsMobil
     return () => window.removeEventListener('scroll', handleScroll);
   }, [skip, loading, hasMore, selectedSort, debouncedSearchQuery]);
 
-  // Memoize filtered bots based on category and country (search is handled server-side)
+  // Memoize filtered bots by category (search is handled server-side)
   const filteredBots = useMemo(() => {
     return regularBots.filter((bot) => {
-      const matchesCategory = selectedCategory === 'All' || bot.category === selectedCategory;
-      const matchesCountry = selectedCountry === 'All' || bot.country === selectedCountry;
-
-      return matchesCategory && matchesCountry;
+      return selectedCategory === 'All' || bot.category === selectedCategory;
     });
-  }, [regularBots, selectedCategory, selectedCountry]);
+  }, [regularBots, selectedCategory]);
 
   const filteredPinnedBots = useMemo(() => {
     return pinnedBots.filter((bot) => {
-      const matchesCategory = selectedCategory === 'All' || bot.category === selectedCategory;
-      const matchesCountry = selectedCountry === 'All' || bot.country === selectedCountry;
-
-      return matchesCategory && matchesCountry;
+      return selectedCategory === 'All' || bot.category === selectedCategory;
     });
-  }, [pinnedBots, selectedCategory, selectedCountry]);
+  }, [pinnedBots, selectedCategory]);
 
   const displayBots = useMemo(() => {
     return [...filteredPinnedBots, ...filteredBots];
@@ -360,8 +355,12 @@ export default function BotsClient({ initialBots, initialAdverts, initialIsMobil
 
       {/* Main Content */}
       <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-8 min-h-screen">
+        {/* Global top banner (single campaign) */}
+        <div className="w-full mb-4">
+          <HeaderBanner campaigns={topBannerCampaigns} />
+        </div>
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
-          {/* Mobile Filter Toggle */}
+          {/* Mobile: Filter toggle */}
           <div className="lg:hidden">
             <button
               onClick={() => setShowFilters(!showFilters)}
@@ -373,7 +372,7 @@ export default function BotsClient({ initialBots, initialAdverts, initialIsMobil
           </div>
 
           {/* Sidebar Filters */}
-          <aside className={`${showFilters ? 'block' : 'hidden'} lg:block lg:w-1/4`}>
+          <aside className={`${showFilters ? 'block' : 'hidden'} lg:block lg:w-1/4`} suppressHydrationWarning>
             <div className="glass rounded-2xl p-6 backdrop-blur-lg border border-white/10">
               {/* Header */}
               <div className="text-center mb-8">
@@ -395,25 +394,6 @@ export default function BotsClient({ initialBots, initialAdverts, initialIsMobil
                   {categories.map((cat) => (
                     <option key={cat} value={cat} className="bg-[#222]">
                       {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Country Filter */}
-              <div className="mb-6">
-                <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
-                  <span className="mr-2">🌍</span>
-                  Country
-                </label>
-                <select
-                  value={selectedCountry}
-                  onChange={(e) => setSelectedCountry(e.target.value)}
-                  className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none transition-all"
-                >
-                  {countries.map((country) => (
-                    <option key={country} value={country} className="bg-[#222]">
-                      {country}
                     </option>
                   ))}
                 </select>
@@ -452,47 +432,24 @@ export default function BotsClient({ initialBots, initialAdverts, initialIsMobil
                 />
               </div>
 
-              {/* Country Links */}
-              <div className="mb-6">
-                <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
-                  <span className="mr-2">🌍</span>
-                  Browse by Country
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {['USA', 'UK', 'Germany', 'France', 'Brazil', 'Thailand', 'Russia', 'Japan'].map((country) => (
-                    <Link
-                      key={country}
-                      href={`/bots/country/${country}`}
-                      className="px-3 py-2 text-center text-sm bg-white/5 hover:bg-white/10 rounded-lg text-[#f5f5f5] transition-all hover:scale-105"
-                    >
-                      {country}
-                    </Link>
-                  ))}
-                </div>
+              {/* Filter button – Advertiser Filter CTA or Settings fallback. Always same DOM to avoid hydration mismatch. */}
+              <div className="mt-6">
+                <a
+                  href={hasFilterButton ? (filterButtonUrl?.trim() || '#') : '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 shadow-lg transition-all hover:scale-[1.02] ${hasFilterButton ? '' : 'pointer-events-none invisible'}`}
+                  aria-hidden={!hasFilterButton}
+                >
+                  <span className="text-lg" aria-hidden>💋</span>
+                  {hasFilterButton ? (filterButtonText?.trim() || 'Visit') : 'Visit'}
+                </a>
               </div>
             </div>
           </aside>
 
           {/* Bots Grid */}
           <div className="lg:w-3/4">
-
-
-
-            {/* Banner */}
-            <div className="mb-8 flex justify-center">
-              <a
-                href="https://go.cm-trk6.com/aff_f?h=G5GaC8&aff_sub5=banner&source=erogram.pro"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <img
-                  src={isMobile ? "/assets/02_anime_300x100_banner_candy.gif" : "/assets/Create_anime_900x250_banner_candyai.gif"}
-                  alt="Banner"
-                  className="max-w-full h-auto cursor-pointer"
-                />
-              </a>
-            </div>
-
             {/* Top Bots Section */}
             {(topBots.length > 0 || topBotsLoading) && (
               <div className="mb-16 relative">
@@ -956,9 +913,9 @@ function AddBotModal({ categories, countries, onClose, onSuccess }: { categories
         return;
       }
 
-      // Validation
-      if (!botData.name || !botData.category || !botData.country || !botData.telegramLink || !botData.description) {
-        setError('All fields are required');
+      // Validation (country optional)
+      if (!botData.name || !botData.category || !botData.telegramLink || !botData.description) {
+        setError('Name, category, Telegram link and description are required');
         setIsSubmitting(false);
         return;
       }
@@ -1092,7 +1049,7 @@ function AddBotModal({ categories, countries, onClose, onSuccess }: { categories
               <div className="glass rounded-2xl p-6 border border-white/10">
                 <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
                   <span className="mr-2">🌍</span>
-                  Country/Language *
+                  Country/Language (optional)
                 </label>
                 <select
                   value={botData.country}

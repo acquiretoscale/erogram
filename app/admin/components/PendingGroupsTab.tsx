@@ -89,10 +89,21 @@ export default function PendingGroupsTab() {
                     groups.map((group) => (
                         <div key={group._id} className="glass rounded-2xl overflow-hidden border border-white/5 flex flex-col">
                             <div className="relative h-48 bg-[#1a1a1a]">
-                                {group.image ? (
-                                    <img src={group.image} alt={group.name} className="w-full h-full object-cover" />
+                                {(group.image && typeof group.image === 'string' && group.image.startsWith('https://')) ? (
+                                    <img
+                                        src={group.image}
+                                        alt={group.name}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                            (e.target as HTMLImageElement).src = '/assets/image.jpg';
+                                        }}
+                                    />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-[#666]">No Image</div>
+                                    <img
+                                        src="/assets/image.jpg"
+                                        alt={group.name}
+                                        className="w-full h-full object-cover"
+                                    />
                                 )}
                                 <div className="absolute top-3 right-3 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded">
                                     PENDING

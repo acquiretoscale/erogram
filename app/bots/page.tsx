@@ -6,6 +6,8 @@ import { Bot, Advert } from '@/lib/models';
 import BotsClient from './BotsClient';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { getActiveCampaigns } from '@/lib/actions/campaigns';
+import { getFilterButton } from '@/lib/actions/siteConfig';
 
 const baseUrl = 'https://erogram.pro';
 
@@ -104,8 +106,23 @@ export default async function BotsPage() {
   const ua = (await headers()).get('user-agent');
   const { isMobile, isTelegram } = detectDeviceFromUserAgent(ua);
 
-  const bots = await getBots();
-  const adverts = await getAdverts();
+  const [bots, adverts, topBannerCampaigns, filterCtaCampaigns, filterButton] = await Promise.all([
+    getBots(),
+    getAdverts(),
+    getActiveCampaigns('top-banner'),
+    getActiveCampaigns('filter-cta'),
+    getFilterButton(),
+  ]);
+
+  const topBannerForPage =
+    topBannerCampaigns.length > 0 && topBannerCampaigns[0].creative ? topBannerCampaigns : [];
+
+  const filterFromCampaign =
+    filterCtaCampaigns.length > 0
+      ? { text: filterCtaCampaigns[0].buttonText?.trim() || 'Visit', url: filterCtaCampaigns[0].destinationUrl || '' }
+      : null;
+  const filterButtonText = (filterFromCampaign?.text ?? filterButton?.text ?? '').trim();
+  const filterButtonUrl = filterFromCampaign?.url ?? filterButton?.url ?? '';
 
   return (
     <>
@@ -119,7 +136,16 @@ export default async function BotsPage() {
       </nav>
 
       <ErrorBoundary>
-        <BotsClient initialBots={bots} initialAdverts={adverts} initialIsMobile={isMobile} initialIsTelegram={isTelegram} initialCountry="All" />
+        <BotsClient
+          initialBots={bots}
+          initialAdverts={adverts}
+          initialIsMobile={isMobile}
+          initialIsTelegram={isTelegram}
+          initialCountry="All"
+          topBannerCampaigns={topBannerForPage}
+          filterButtonText={filterButtonText}
+          filterButtonUrl={filterButtonUrl}
+        />
       </ErrorBoundary>
     </>
   );

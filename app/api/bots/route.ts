@@ -103,13 +103,13 @@ export async function GET(req: NextRequest) {
         },
         {
           $project: {
-            // Include only the fields we need (inclusion projection)
             _id: 1,
             name: 1,
             slug: 1,
             category: 1,
             country: 1,
             description: 1,
+            image: 1,
             telegramLink: 1,
             isAdvertisement: 1,
             advertisementUrl: 1,
@@ -137,7 +137,6 @@ export async function GET(req: NextRequest) {
       bots = sampledBots.slice(skip, skip + limit);
     } else {
       bots = await Bot.find(query)
-        .select('-image') // Exclude image field to prevent loading huge base64 strings
         .populate('createdBy', 'username showNicknameUnderGroups')
         .sort(sortCriteria)
         .skip(skip)
@@ -152,7 +151,7 @@ export async function GET(req: NextRequest) {
       category: b.category,
       country: b.country,
       description: b.description?.slice(0, 300) || '',
-      image: '/assets/image.jpg', // Always use placeholder to prevent maxSize errors
+      image: b.image || '/assets/image.jpg',
       telegramLink: b.telegramLink,
       isAdvertisement: b.isAdvertisement || false,
       advertisementUrl: b.advertisementUrl || null,
@@ -186,23 +185,19 @@ export async function POST(req: NextRequest) {
     await connectDB();
 
     const user = await authenticate(req);
-    if (!user) {
-      return NextResponse.json(
-        { message: 'Unauthorized - Please login first' },
-        { status: 401 }
-      );
-    }
+    // Allow unauthenticated submissions for moderation (status: pending)
 
     const body = await req.json();
     const { name, category, country, telegramLink, description, image } = body;
 
-    // Validation
-    if (!name || !category || !country || !telegramLink || !description) {
+    // Validation (country is optional, default to 'All')
+    if (!name || !category || !telegramLink || !description) {
       return NextResponse.json(
-        { message: 'All fields are required' },
+        { message: 'Name, category, Telegram link and description are required' },
         { status: 400 }
       );
     }
+    const countryValue = country || 'All';
 
     if (description.length < 30) {
       return NextResponse.json(
@@ -265,16 +260,16 @@ export async function POST(req: NextRequest) {
       console.warn('[Bot Create] No image provided, using default');
     }
 
-    // Create bot with pending status
+    // Create bot with pending status (createdBy optional for no-login submit)
     const bot = await Bot.create({
       name,
       slug,
       category,
-      country,
+      country: countryValue,
       telegramLink,
       description,
       image: finalImage,
-      createdBy: user._id,
+      createdBy: user?._id ?? undefined,
       status: 'pending'
     });
 

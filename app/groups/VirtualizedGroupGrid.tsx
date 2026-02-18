@@ -1,11 +1,11 @@
 import React from 'react';
-import { Group, Advert } from './types';
+import { Group, FeedCampaign } from './types';
 import GroupCard from './GroupCard';
 import AdvertCard from './AdvertCard';
 
 interface VirtualizedGroupGridProps {
     groups: Group[];
-    advertPlacementsMap: Map<number, Advert>;
+    feedPlacementsMap: Map<number, FeedCampaign>;
     isTelegram: boolean;
     onOpenReviewModal?: (group: Group) => void;
     onOpenReportModal?: (group: Group) => void;
@@ -13,22 +13,20 @@ interface VirtualizedGroupGridProps {
 
 const VirtualizedGroupGrid = React.memo(function VirtualizedGroupGrid({
     groups,
-    advertPlacementsMap,
+    feedPlacementsMap,
     isTelegram,
     onOpenReviewModal,
     onOpenReportModal
 }: VirtualizedGroupGridProps) {
-    // Create a combined array of items (groups and adverts)
-    const items: Array<{ type: 'group' | 'advert'; data: Group | Advert; index: number }> = [];
+    const items: Array<{ type: 'group' | 'campaign'; data: Group | FeedCampaign; index: number }> = [];
 
     groups.forEach((group) => {
-        // Check for adverts at this position
         if (!isTelegram) {
             let currentPos = items.length + 1;
-            while (advertPlacementsMap.has(currentPos)) {
-                const advert = advertPlacementsMap.get(currentPos);
-                if (advert) {
-                    items.push({ type: 'advert', data: advert, index: items.length });
+            while (feedPlacementsMap.has(currentPos)) {
+                const campaign = feedPlacementsMap.get(currentPos);
+                if (campaign) {
+                    items.push({ type: 'campaign', data: campaign, index: items.length });
                 }
                 currentPos = items.length + 1;
             }
@@ -54,8 +52,8 @@ const VirtualizedGroupGrid = React.memo(function VirtualizedGroupGrid({
                 } else {
                     return (
                         <AdvertCard
-                            key={`advert-${(item.data as Advert)._id}`}
-                            advert={item.data as Advert}
+                            key={`campaign-${(item.data as FeedCampaign)._id}`}
+                            campaign={item.data as FeedCampaign}
                             isIndex={Math.floor(item.index)}
                             shouldPreload={false}
                             onVisible={undefined}

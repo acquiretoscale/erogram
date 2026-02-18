@@ -39,19 +39,11 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Exclude image field to prevent maxSize errors - admin can load images separately if needed
     const adverts = await Advert.find({})
-      .select('-image') // Exclude image field to prevent loading huge base64 strings
       .sort({ createdAt: -1 })
       .lean();
 
-    // Map adverts and set placeholder images
-    const advertsWithPlaceholders = adverts.map((advert: any) => ({
-      ...advert,
-      image: '/assets/image.jpg', // Always use placeholder to prevent maxSize errors
-    }));
-
-    return NextResponse.json(advertsWithPlaceholders);
+    return NextResponse.json(adverts);
   } catch (error: any) {
     console.error('Error fetching adverts:', error);
     return NextResponse.json(

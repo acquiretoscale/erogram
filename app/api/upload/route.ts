@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sharp from 'sharp';
-import connectDB from '@/lib/db/mongodb';
-import { Image } from '@/lib/models';
-
-const MAX_SIZE_BYTES = 200 * 1024; // 200KB max
+import { randomUUID } from 'crypto';
+import { writeFile, mkdir } from 'fs/promises';
+import path from 'path';
+import { uploadToR2, isR2Configured } from '@/lib/r2';
 
 export async function POST(req: NextRequest) {
     try {
@@ -17,7 +17,6 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Validate file type
         if (!file.type.startsWith('image/')) {
             return NextResponse.json(
                 { message: 'Invalid file type' },
@@ -27,39 +26,52 @@ export async function POST(req: NextRequest) {
 
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
+        const isGif = file.type === 'image/gif';
 
-        // Compress and resize with sharp
-        let compressed = await sharp(buffer)
-            .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
-            .jpeg({ quality: 75 })
-            .toBuffer();
+        let finalBuffer: Buffer;
+        let key: string;
+        let mime: string;
 
-        // If still over 200KB, reduce quality further
-        if (compressed.length > MAX_SIZE_BYTES) {
-            compressed = await sharp(buffer)
+        if (isGif) {
+            finalBuffer = buffer;
+            key = `uploads/${randomUUID()}.gif`;
+            mime = 'image/gif';
+        } else {
+            let compressed = await sharp(buffer)
                 .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
-                .jpeg({ quality: 50 })
+                .webp({ quality: 80 })
                 .toBuffer();
+            if (compressed.length > 200 * 1024) {
+                compressed = await sharp(buffer)
+                    .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
+                    .webp({ quality: 55 })
+                    .toBuffer();
+            }
+            if (compressed.length > 200 * 1024) {
+                compressed = await sharp(buffer)
+                    .resize(600, 600, { fit: 'inside', withoutEnlargement: true })
+                    .webp({ quality: 45 })
+                    .toBuffer();
+            }
+            key = `uploads/${randomUUID()}.webp`;
+            mime = 'image/webp';
+            finalBuffer = compressed;
         }
 
-        // If still over 200KB, resize smaller
-        if (compressed.length > MAX_SIZE_BYTES) {
-            compressed = await sharp(buffer)
-                .resize(600, 600, { fit: 'inside', withoutEnlargement: true })
-                .jpeg({ quality: 40 })
-                .toBuffer();
+        let url: string;
+
+        if (isR2Configured) {
+            url = await uploadToR2(finalBuffer, key, mime);
+        } else {
+            // Fallback: write to public/uploads so images work without R2 (e.g. local dev)
+            const publicDir = path.join(process.cwd(), 'public');
+            const uploadsDir = path.join(publicDir, 'uploads');
+            await mkdir(uploadsDir, { recursive: true });
+            const filePath = path.join(uploadsDir, path.basename(key));
+            await writeFile(filePath, finalBuffer);
+            url = `/${key}`;
         }
 
-        // Save to MongoDB
-        await connectDB();
-        const image = await Image.create({
-            data: compressed,
-            contentType: 'image/jpeg',
-            filename: file.name || 'upload.jpg',
-        });
-
-        // Return the API URL for this image
-        const url = `/api/images/${image._id}`;
         return NextResponse.json({ url });
     } catch (error: any) {
         console.error('Upload error:', error);

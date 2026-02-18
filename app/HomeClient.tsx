@@ -8,6 +8,8 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { shouldUseLightAnimations, animationClasses, getStaggerDelay } from '@/lib/utils/animations';
 import Footer from '@/components/Footer';
+import AdBanner from '@/components/AdBanner';
+import HeaderBanner from '@/components/HeaderBanner';
 
 // Lazy load non-critical components
 const Navbar = dynamic(() => import('@/components/Navbar'), {
@@ -36,11 +38,19 @@ interface Article {
   };
 }
 
-interface HomeClientProps {
-  featuredArticles: Article[];
+interface CampaignData {
+  _id: string;
+  creative: string;
+  destinationUrl: string;
+  slot: string;
 }
 
-export default function HomeClient({ featuredArticles }: HomeClientProps) {
+interface HomeClientProps {
+  featuredArticles: Article[];
+  heroCampaigns?: CampaignData[];
+}
+
+export default function HomeClient({ featuredArticles, heroCampaigns = [] }: HomeClientProps) {
   const router = useRouter();
   const [username, setUsername] = useState<string | null>(null);
   const [useLightAnimations, setUseLightAnimations] = useState(false);
@@ -115,7 +125,14 @@ export default function HomeClient({ featuredArticles }: HomeClientProps) {
       <Navbar username={username} setUsername={setUsername} />
 
       {/* Hero Section */}
-      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-20 sm:pt-36 pb-20">
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-20 sm:pt-28 pb-20">
+        {/* Homepage Hero Banner – same style as header horizontal ads (Groups/Bots/Articles): 900×250, no crop, no label */}
+        {heroCampaigns.length > 0 && (
+          <div className="w-full mb-8">
+            <HeaderBanner campaigns={heroCampaigns} />
+          </div>
+        )}
+
         <div className="text-center max-w-4xl mx-auto">
           {useLightAnimations ? (
             <>
@@ -123,7 +140,7 @@ export default function HomeClient({ featuredArticles }: HomeClientProps) {
                 <span className="w-2 h-2 rounded-full bg-[#ff3366] animate-pulse"></span>
                 <span className="text-sm font-medium text-white/80">The #1 Verified NSFW Directory</span>
               </div>
-              <h1 className={`text-5xl sm:text-7xl md:text-8xl font-black mb-8 leading-tight tracking-tight ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.1s' }}>
+              <h1 className={`text-4xl sm:text-5xl md:text-6xl font-black mb-8 leading-tight tracking-tight ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.1s' }}>
                 Discover Best <span className="gradient-text">NSFW</span>
                 <br />
                 <span className="text-[#f5f5f5]">Telegram Groups</span>
@@ -141,7 +158,7 @@ export default function HomeClient({ featuredArticles }: HomeClientProps) {
                 <span className="text-sm font-medium text-white/80">The #1 Verified NSFW Directory</span>
               </motion.div>
               <motion.h1
-                className="text-5xl sm:text-7xl md:text-8xl font-black mb-8 leading-tight tracking-tight"
+                className="text-4xl sm:text-5xl md:text-6xl font-black mb-8 leading-tight tracking-tight"
                 initial={{ opacity: 0, y: 40 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, ease: [0.2, 0.8, 0.2, 1], delay: 0.1 }}

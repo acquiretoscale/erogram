@@ -6,7 +6,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import axios from 'axios';
 import Navbar from '@/components/Navbar';
-
+import HeaderBanner from '@/components/HeaderBanner';
+import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
 
 interface Entity {
   _id: string;
@@ -39,6 +40,13 @@ interface ButtonConfig {
   button3: { text: string; link: string; color: string };
 }
 
+interface JoinCtaCampaign {
+  _id: string;
+  destinationUrl: string;
+  description: string;
+  buttonText: string;
+}
+
 interface JoinClientProps {
   entity: Entity;
   type: 'group' | 'bot';
@@ -53,6 +61,8 @@ interface JoinClientProps {
   }>;
   initialIsMobile?: boolean;
   initialIsTelegram?: boolean;
+  joinCtaCampaign?: JoinCtaCampaign | null;
+  topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string; slot: string }>;
 }
 
 interface PopupAdvert {
@@ -70,7 +80,12 @@ interface PopupAdvert {
   button3Url?: string;
 }
 
-export default function JoinClient({ entity, type, similarGroups = [], initialIsMobile = false, initialIsTelegram = false }: JoinClientProps) {
+const DEFAULT_JOIN_CTA = {
+  destinationUrl: 'https://lovescape.com/create-ai-sex-girlfriend/style?userId=5ebe4f139af9bcff39155f3e9f06fbce233415fd82fd4da2a9c51ea0921d4c0e&sourceId=Erogram&creativeId=6step_hent&p1=test',
+  description: 'Build your own AI girlfriend 💖',
+};
+
+export default function JoinClient({ entity, type, similarGroups = [], initialIsMobile = false, initialIsTelegram = false, joinCtaCampaign = null, topBannerCampaigns = [] }: JoinClientProps) {
   const [countdown, setCountdown] = useState(0);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [buttonConfig, setButtonConfig] = useState<ButtonConfig | null>(null);
@@ -278,6 +293,10 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
     <div className="min-h-screen bg-[#0a0a0a] text-[#f5f5f5] font-sans selection:bg-[#b31b1b] selection:text-white overflow-x-hidden">
       {/* Navigation */}
       <Navbar />
+      {/* Top banner: same size as Groups/Bots, minimal spacing */}
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-2">
+        <HeaderBanner campaigns={topBannerCampaigns} />
+      </div>
 
       {/* Popup Advert Modal */}
       {showPopup && popupAdvert && (
@@ -537,12 +556,13 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
 
                 <div className="mt-6 border-t border-white/5 pt-6">
                   <a
-                    href="https://lovescape.com/create-ai-sex-girlfriend/style?userId=5ebe4f139af9bcff39155f3e9f06fbce233415fd82fd4da2a9c51ea0921d4c0e&sourceId=Erogram&creativeId=6step_hent&p1=test"
+                    href={joinCtaCampaign?.destinationUrl ?? DEFAULT_JOIN_CTA.destinationUrl}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => joinCtaCampaign?._id && trackCampaignClick(joinCtaCampaign._id)}
                     className="block w-full text-center bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 hover:from-purple-500 hover:via-pink-500 hover:to-rose-500 text-white font-bold py-4 rounded-2xl text-lg shadow-lg shadow-purple-900/20 transition-all transform hover:-translate-y-0.5"
                   >
-                    Build your own AI girlfriend 💖
+                    {(joinCtaCampaign?.description || joinCtaCampaign?.buttonText) || DEFAULT_JOIN_CTA.description}
                   </a>
                 </div>
               </div>

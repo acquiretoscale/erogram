@@ -36,3 +36,16 @@ export interface Advert {
     clickCount: number;
     buttonText?: string;
 }
+
+export interface FeedCampaign {
+    _id: string;
+    name: string;
+    creative: string;
+    destinationUrl: string;
+    slot: string;
+    position: number;
+    description: string;
+    category: string;
+    country: string;
+    buttonText: string;
+}

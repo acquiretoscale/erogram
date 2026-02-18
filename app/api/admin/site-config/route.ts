@@ -78,6 +78,8 @@ export async function GET(req: NextRequest) {
           url: '',
           buttonText: 'Visit Site',
         },
+        filterButton: { text: '', url: '' },
+        topBanner: { imageUrl: '', url: '' },
       });
     }
 
@@ -93,6 +95,12 @@ export async function GET(req: NextRequest) {
       (config as any).filterBanner1 = (config as any).filterBanner;
       delete (config as any).filterBanner;
       await config.save();
+    }
+    if (!(config as any).filterButton) {
+      (config as any).filterButton = { text: '', url: '' };
+    }
+    if (!(config as any).topBanner) {
+      (config as any).topBanner = { imageUrl: '', url: '' };
     }
 
     return NextResponse.json(config);
@@ -161,6 +169,14 @@ export async function PUT(req: NextRequest) {
           image: body.filterBanner3?.image || '',
           url: body.filterBanner3?.url || '',
           buttonText: body.filterBanner3?.buttonText || 'Visit Site',
+        },
+        filterButton: {
+          text: body.filterButton?.text ?? '',
+          url: body.filterButton?.url ?? '',
+        },
+        topBanner: {
+          imageUrl: body.topBanner?.imageUrl ?? '',
+          url: body.topBanner?.url ?? '',
         },
       };
       config = await SiteConfig.create(newConfigData);
@@ -237,6 +253,18 @@ export async function PUT(req: NextRequest) {
           image: body.filterBanner.image !== undefined ? body.filterBanner.image : (config.filterBanner1?.image || ''),
           url: body.filterBanner.url !== undefined ? body.filterBanner.url : (config.filterBanner1?.url || ''),
           buttonText: body.filterBanner.buttonText !== undefined ? body.filterBanner.buttonText : (config.filterBanner1?.buttonText || 'Visit Site'),
+        };
+      }
+      if (body.filterButton) {
+        (config as any).filterButton = {
+          text: body.filterButton.text !== undefined ? String(body.filterButton.text) : ((config as any).filterButton?.text || ''),
+          url: body.filterButton.url !== undefined ? String(body.filterButton.url) : ((config as any).filterButton?.url || ''),
+        };
+      }
+      if (body.topBanner) {
+        (config as any).topBanner = {
+          imageUrl: body.topBanner.imageUrl !== undefined ? String(body.topBanner.imageUrl) : ((config as any).topBanner?.imageUrl || ''),
+          url: body.topBanner.url !== undefined ? String(body.topBanner.url) : ((config as any).topBanner?.url || ''),
         };
       }
       await config.save();

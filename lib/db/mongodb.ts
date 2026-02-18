@@ -1,4 +1,10 @@
 import mongoose from 'mongoose';
+import dns from 'node:dns';
+
+// Use Google DNS for MongoDB SRV resolution (local dev fix)
+if (process.env.NODE_ENV !== 'production') {
+  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+}
 
 /**
  * Global is used here to maintain a cached connection across hot reloads
@@ -31,7 +37,7 @@ async function connectDB() {
   if (!cached!.promise) {
     const opts = {
       bufferCommands: false,
-      serverSelectionTimeoutMS: 5000, // Fail fast after 5 seconds instead of hanging
+      serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 10000,
     };
 

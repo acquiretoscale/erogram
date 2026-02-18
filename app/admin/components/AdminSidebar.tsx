@@ -12,6 +12,7 @@ interface AdminSidebarProps {
 }
 
 const tabs = [
+    { id: 'buttons', name: 'CTA Buttons', icon: '🔘' },
     { id: 'overview', name: 'Overview', icon: '📊' },
     { id: 'groups', name: 'Groups', icon: '👥' },
     { id: 'bots', name: 'Bots', icon: '🤖' },
@@ -21,6 +22,7 @@ const tabs = [
     { id: 'reports', name: 'Reports', icon: '🚨' },
     { id: 'articles', name: 'Articles', icon: '📝' },
     { id: 'adverts', name: 'Adverts', icon: '📢' },
+    { id: 'advertisers', name: 'Advertisers', icon: '💰' },
     { id: 'users', name: 'Users', icon: '👤' },
     { id: 'settings', name: 'Settings', icon: '⚙️' },
 ];
