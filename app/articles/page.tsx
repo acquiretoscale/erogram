@@ -37,8 +37,8 @@ export const metadata: Metadata = {
   },
 };
 
-// ISR for public listing page
-export const revalidate = 300;
+// Always fetch from DB on every request (same as /groups) so live site shows articles
+export const dynamic = 'force-dynamic';
 
 async function getArticles() {
   try {
