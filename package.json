@@ -4,10 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "bash scripts/dev.sh",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "analyze": "ANALYZE=true next build",
+    "analyze": "ANALYZE=true next build --webpack",
     "clean": "rm -rf .next node_modules/.cache",
     "dev:clean": "npm run clean && npm run dev",
     "fetch-missing-images": "node --env-file=.env.local scripts/fetch-missing-images.mjs",
