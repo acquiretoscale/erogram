@@ -12,7 +12,7 @@ async function authenticate(req: NextRequest) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;
   }
-  
+
   const token = authHeader.substring(7);
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
@@ -30,7 +30,7 @@ async function authenticate(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     await connectDB();
-    
+
     const admin = await authenticate(req);
     if (!admin) {
       return NextResponse.json(
@@ -38,11 +38,11 @@ export async function GET(req: NextRequest) {
         { status: 401 }
       );
     }
-    
+
     const articles = await Article.find({})
       .sort({ createdAt: -1 })
       .lean();
-    
+
     // Manually populate author information
     const articlesWithAuthors = await Promise.all(
       articles.map(async (article: any) => {
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
           twitterTitle: article.twitterTitle || '',
           twitterDescription: article.twitterDescription || '',
         };
-        
+
         if (article.author) {
           try {
             const authorId = article.author.toString();
@@ -89,11 +89,11 @@ export async function GET(req: NextRequest) {
         } else {
           result.author = { _id: '', username: 'erogram' };
         }
-        
+
         return result;
       })
     );
-    
+
     return NextResponse.json(articlesWithAuthors);
   } catch (error: any) {
     console.error('Error fetching articles:', error);
@@ -108,7 +108,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
-    
+
     const admin = await authenticate(req);
     if (!admin) {
       return NextResponse.json(
@@ -116,10 +116,10 @@ export async function POST(req: NextRequest) {
         { status: 401 }
       );
     }
-    
+
     const body = await req.json();
     const { title, content, excerpt, featuredImage, status, tags, metaTitle, metaDescription, metaKeywords, ogImage, ogTitle, ogDescription, twitterCard, twitterImage, twitterTitle, twitterDescription } = body;
-    
+
     // Validation
     if (!title || !content) {
       return NextResponse.json(
@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    
+
     // Generate unique slug
     const baseSlug = slugify(title);
     let slug = baseSlug;
@@ -135,10 +135,10 @@ export async function POST(req: NextRequest) {
     while (await Article.findOne({ slug })) {
       slug = `${baseSlug}-${counter++}`;
     }
-    
+
     // Create article
     const articleStatus = (status === 'published' || status === 'draft') ? status : 'draft';
-    
+
     // Create article document
     const article = new Article({
       title,
@@ -162,22 +162,22 @@ export async function POST(req: NextRequest) {
       twitterTitle: twitterTitle || '',
       twitterDescription: twitterDescription || '',
     });
-    
+
     // Explicitly set fields and mark as modified to ensure they're saved
     article.status = articleStatus;
     article.excerpt = excerpt !== undefined && excerpt !== null ? excerpt : '';
     article.featuredImage = featuredImage !== undefined && featuredImage !== null ? featuredImage : '';
     article.tags = tags || [];
-    
+
     // Mark fields as modified to ensure Mongoose saves them
     article.markModified('excerpt');
     article.markModified('featuredImage');
     article.markModified('status');
     article.markModified('tags');
-    
+
     // Save the article
     await article.save();
-    
+
     // Force update with $set using MongoDB native collection to bypass Mongoose completely
     // This ensures fields are saved even if Mongoose tries to strip them
     await connectDB(); // Ensure DB is connected
@@ -187,7 +187,7 @@ export async function POST(req: NextRequest) {
       throw new Error('MongoDB connection not available');
     }
     const articlesCollection = db.collection('articles');
-    
+
     const forceUpdateData: any = {
       status: articleStatus,
       excerpt: excerpt !== undefined && excerpt !== null ? excerpt : '',
@@ -205,38 +205,38 @@ export async function POST(req: NextRequest) {
       twitterTitle: twitterTitle || '',
       twitterDescription: twitterDescription || '',
     };
-    
+
     await articlesCollection.updateOne(
       { _id: article._id },
       { $set: forceUpdateData }
     );
-    
+
     // Wait a bit for write to complete
     await new Promise(resolve => setTimeout(resolve, 200));
-    
+
     // Reload using native MongoDB collection to bypass Mongoose filtering
     const savedArticleRaw = await articlesCollection.findOne({ _id: article._id });
-    
+
     // Convert to format Mongoose expects for response
     const savedArticle = savedArticleRaw ? {
       ...savedArticleRaw,
       _id: savedArticleRaw._id,
     } : null;
-    
+
     if (!savedArticle) {
       return NextResponse.json(
         { message: 'Failed to retrieve created article' },
         { status: 500 }
       );
     }
-    
+
     // Manually fetch author information and build response
     try {
       const authorDoc = await User.findById(admin._id.toString()).select('username').lean() as any;
-      
+
       // Build result object - use DB values if they exist, otherwise use request values
       // This ensures we return what's actually in the DB
-        const result = {
+      const result = {
         _id: savedArticle._id.toString(),
         title: savedArticle.title,
         slug: savedArticle.slug,

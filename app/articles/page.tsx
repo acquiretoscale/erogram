@@ -1,6 +1,8 @@
 import { Metadata } from 'next';
 import ArticlesListing from './ArticlesListing';
 import { getActiveCampaigns } from '@/lib/actions/campaigns';
+import { getArticlesForListing } from '@/lib/getArticlesForListing';
+import Navbar from '@/components/Navbar';
 
 const baseUrl = 'https://erogram.pro';
 
@@ -30,13 +32,32 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function ArticlesPage() {
+  let initialArticles: Awaited<ReturnType<typeof getArticlesForListing>> = [];
+  try {
+    initialArticles = await getArticlesForListing();
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[articles] Loaded', initialArticles.length, 'articles from DB');
+    }
+  } catch (e) {
+    console.error('[articles] getArticlesForListing failed', e);
+  }
+
   let topBannerForPage: { _id: string; creative: string; destinationUrl: string; slot: string }[] = [];
   try {
     const topBannerCampaigns = await getActiveCampaigns('top-banner');
     topBannerForPage =
       topBannerCampaigns.length > 0 && (topBannerCampaigns[0] as any).creative ? topBannerCampaigns : [];
-  } catch (_) {
-    // Non-blocking: list works without banners
-  }
-  return <ArticlesListing topBannerCampaigns={topBannerForPage} />;
+  } catch (_) { }
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0a]">
+      <Navbar />
+      <main className="container mx-auto px-4 py-8 pt-24">
+        <ArticlesListing
+          initialArticles={initialArticles}
+          topBannerCampaigns={topBannerForPage}
+        />
+      </main>
+    </div>
+  );
 }

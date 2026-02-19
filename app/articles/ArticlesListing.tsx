@@ -28,43 +28,13 @@ interface TopBannerCampaign {
 }
 
 interface ArticlesListingProps {
+  initialArticles?: Article[];
   topBannerCampaigns?: TopBannerCampaign[];
 }
 
-export default function ArticlesListing({ topBannerCampaigns = [] }: ArticlesListingProps) {
+export default function ArticlesListing({ initialArticles = [], topBannerCampaigns = [] }: ArticlesListingProps) {
   const [username, setUsername] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-
-  const loadArticles = () => {
-    setFetchError(null);
-    setLoading(true);
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
-    fetch('/api/articles', { signal: controller.signal })
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data) => {
-        if (Array.isArray(data)) setArticles(data);
-      })
-      .catch((err) => {
-        if (err.name === 'AbortError') {
-          setFetchError('Request timed out. Check your connection and retry.');
-        } else {
-          setFetchError('Could not load articles. Retry below.');
-        }
-        setArticles([]);
-      })
-      .finally(() => {
-        clearTimeout(timeoutId);
-        setLoading(false);
-      });
-  };
-
-  useEffect(() => {
-    loadArticles();
-  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -73,17 +43,13 @@ export default function ArticlesListing({ topBannerCampaigns = [] }: ArticlesLis
     }
   }, []);
 
-  const filteredArticles = articles.filter((article) => {
+  const filteredArticles = (initialArticles || []).filter((article) => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     const title = (article.title ?? '').toLowerCase();
     const excerpt = (article.excerpt ?? '').toLowerCase();
     const tags = Array.isArray(article.tags) ? article.tags : [];
-    return (
-      title.includes(q) ||
-      excerpt.includes(q) ||
-      tags.some((tag: string) => String(tag).toLowerCase().includes(q))
-    );
+    return title.includes(q) || excerpt.includes(q) || tags.some((tag: string) => String(tag).toLowerCase().includes(q));
   });
 
   const sortedArticles = [...filteredArticles].sort((a, b) => {
@@ -146,26 +112,14 @@ export default function ArticlesListing({ topBannerCampaigns = [] }: ArticlesLis
         </motion.div>
 
         {sortedArticles.length === 0 ? (
-          <motion.div
-            variants={fadeInUp}
-            className="glass rounded-2xl p-8 sm:p-12 text-center hover-glow mx-4"
-          >
+          <motion.div variants={fadeInUp} className="glass rounded-2xl p-8 sm:p-12 text-center hover-glow mx-4">
             <div className="text-4xl sm:text-6xl mb-4 sm:mb-6">📝</div>
             <h2 className="text-xl sm:text-2xl font-bold mb-4 text-[#f5f5f5]">
-              {loading ? 'Loading articles...' : fetchError ? 'Couldn’t load articles' : searchQuery ? 'No articles found' : 'No articles yet'}
+              {searchQuery ? 'No articles found' : 'No articles yet'}
             </h2>
-            <p className="text-base sm:text-lg text-[#999] max-w-md mx-auto mb-4">
-              {loading ? 'Fetching from the server.' : fetchError ? fetchError : searchQuery ? 'Try adjusting your search query.' : 'Check back soon for insightful articles about NSFW Telegram groups, community insights, and helpful guides.'}
+            <p className="text-base sm:text-lg text-[#999] max-w-md mx-auto">
+              {searchQuery ? 'Try adjusting your search.' : 'Check back soon for articles.'}
             </p>
-            {fetchError && (
-              <button
-                type="button"
-                onClick={loadArticles}
-                className="px-6 py-3 bg-[#b31b1b] hover:bg-[#c42b2b] text-white rounded-xl font-bold transition-colors"
-              >
-                Retry
-              </button>
-            )}
           </motion.div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mb-12 px-4">
@@ -195,9 +149,7 @@ export default function ArticlesListing({ topBannerCampaigns = [] }: ArticlesLis
                     {Array.isArray(article.tags) && article.tags.length > 0 && (
                       <div className="flex flex-wrap gap-2 mb-3">
                         {article.tags.slice(0, 3).map((tag, tagIdx) => (
-                          <span key={tagIdx} className="px-2 py-1 bg-[#b31b1b]/20 text-[#b31b1b] text-xs rounded-lg">
-                            {tag}
-                          </span>
+                          <span key={tagIdx} className="px-2 py-1 bg-[#b31b1b]/20 text-[#b31b1b] text-xs rounded-lg">{tag}</span>
                         ))}
                         {article.tags.length > 3 && (
                           <span className="px-2 py-1 bg-[#333] text-[#999] text-xs rounded-lg">+{article.tags.length - 3}</span>
@@ -256,16 +208,10 @@ export default function ArticlesListing({ topBannerCampaigns = [] }: ArticlesLis
         </motion.section>
       </motion.main>
 
-      <motion.footer
-        variants={fadeInUp}
-        className="relative z-10 border-t border-[#333] mt-32 py-12"
-        role="contentinfo"
-      >
+      <motion.footer variants={fadeInUp} className="relative z-10 border-t border-[#333] mt-32 py-12" role="contentinfo">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="text-[#999] text-sm mb-4 md:mb-0">
-              © {new Date().getFullYear()} erogram. All rights reserved.
-            </div>
+            <div className="text-[#999] text-sm mb-4 md:mb-0">© {new Date().getFullYear()} erogram. All rights reserved.</div>
             <div className="text-sm text-[#999]">
               Site managed by{' '}
               <a href="https://eroverse.space" target="_blank" rel="noopener noreferrer" className="text-[#b31b1b] hover:text-[#c42b2b] underline transition-colors">
