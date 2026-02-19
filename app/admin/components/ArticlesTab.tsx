@@ -80,11 +80,12 @@ export default function ArticlesTab() {
         setShowEditor(true);
     };
 
-    const handleEdit = (article: any) => {
+    const handleEdit = async (article: any) => {
+        setShowEditor(true);
         setEditingArticle(article);
         setArticleData({
             title: article.title || '',
-            content: article.content || '',
+            content: '',
             excerpt: article.excerpt || '',
             featuredImage: article.featuredImage || '',
             status: (article.status === 'published' || article.status === 'draft') ? article.status : 'draft',
@@ -101,7 +102,40 @@ export default function ArticlesTab() {
             twitterDescription: article.twitterDescription || '',
         });
         setTagInput('');
-        setShowEditor(true);
+        if (article.content !== undefined) {
+            setArticleData((prev) => ({ ...prev, content: article.content || '' }));
+            return;
+        }
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`/api/admin/articles/${article._id}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const full = res.data;
+            setArticleData((prev) => ({
+                ...prev,
+                content: full.content || '',
+                title: full.title || prev.title,
+                excerpt: full.excerpt ?? prev.excerpt,
+                featuredImage: full.featuredImage ?? prev.featuredImage,
+                status: (full.status === 'published' || full.status === 'draft') ? full.status : prev.status,
+                tags: full.tags || prev.tags,
+                metaTitle: full.metaTitle ?? prev.metaTitle,
+                metaDescription: full.metaDescription ?? prev.metaDescription,
+                metaKeywords: full.metaKeywords ?? prev.metaKeywords,
+                ogImage: full.ogImage ?? prev.ogImage,
+                ogTitle: full.ogTitle ?? prev.ogTitle,
+                ogDescription: full.ogDescription ?? prev.ogDescription,
+                twitterCard: full.twitterCard ?? prev.twitterCard,
+                twitterImage: full.twitterImage ?? prev.twitterImage,
+                twitterTitle: full.twitterTitle ?? prev.twitterTitle,
+                twitterDescription: full.twitterDescription ?? prev.twitterDescription,
+            }));
+            setEditingArticle(full);
+        } catch (err: any) {
+            console.error('Failed to load article:', err);
+            alert(err.response?.data?.message || 'Failed to load article');
+        }
     };
 
     const handleSave = async () => {

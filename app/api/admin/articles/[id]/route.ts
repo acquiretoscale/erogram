@@ -26,6 +26,66 @@ async function authenticate(req: NextRequest) {
   return null;
 }
 
+// Get one article (full, including content) for editing
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await connectDB();
+    const admin = await authenticate(req);
+    if (!admin) {
+      return NextResponse.json(
+        { message: 'Unauthorized - Admin access required' },
+        { status: 401 }
+      );
+    }
+    const { id } = await params;
+    const article = await Article.findById(id).lean();
+    if (!article) {
+      return NextResponse.json({ message: 'Article not found' }, { status: 404 });
+    }
+    const a = article as any;
+    let author = { _id: '', username: 'erogram' };
+    if (a.author) {
+      const authorDoc = await User.findById(a.author.toString()).select('username _id').lean() as any;
+      if (authorDoc) author = { _id: authorDoc._id.toString(), username: authorDoc.username || 'erogram' };
+    }
+    const result = {
+      _id: a._id.toString(),
+      title: a.title,
+      slug: a.slug,
+      content: a.content || '',
+      excerpt: a.excerpt !== undefined && a.excerpt !== null ? a.excerpt : '',
+      featuredImage: a.featuredImage !== undefined && a.featuredImage !== null ? a.featuredImage : '',
+      status: a.status || 'draft',
+      tags: a.tags || [],
+      publishedAt: a.publishedAt || null,
+      views: a.views || 0,
+      createdAt: a.createdAt,
+      updatedAt: a.updatedAt,
+      author,
+      metaTitle: a.metaTitle || '',
+      metaDescription: a.metaDescription || '',
+      metaKeywords: a.metaKeywords || '',
+      ogImage: a.ogImage || '',
+      ogTitle: a.ogTitle || '',
+      ogDescription: a.ogDescription || '',
+      twitterCard: a.twitterCard || 'summary_large_image',
+      twitterImage: a.twitterImage || '',
+      twitterTitle: a.twitterTitle || '',
+      twitterDescription: a.twitterDescription || '',
+    };
+    return NextResponse.json(result);
+  } catch (error: any) {
+    console.error('Error fetching article:', error);
+    return NextResponse.json(
+      { message: error.message || 'Failed to fetch article' },
+      { status: 500 }
+    );
+  }
+}
+
 // Update article
 export async function PUT(
   req: NextRequest,

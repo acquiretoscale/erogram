@@ -26,7 +26,7 @@ async function authenticate(req: NextRequest) {
   return null;
 }
 
-// Get all articles
+// Get all articles (list only – no content; use GET /api/admin/articles/[id] for full article when editing)
 export async function GET(req: NextRequest) {
   try {
     await connectDB();
@@ -39,60 +39,52 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const articles = await Article.find({})
+    const articlesRaw = await Article.find({})
+      .select('-content')
       .sort({ createdAt: -1 })
+      .limit(500)
       .lean();
 
-    // Manually populate author information
-    const articlesWithAuthors = await Promise.all(
-      articles.map(async (article: any) => {
-        // Build result object explicitly to ensure all fields are included
-        const result: any = {
-          _id: article._id.toString(),
-          title: article.title,
-          slug: article.slug,
-          content: article.content,
-          excerpt: article.excerpt !== undefined && article.excerpt !== null ? article.excerpt : '',
-          featuredImage: article.featuredImage !== undefined && article.featuredImage !== null ? article.featuredImage : '',
-          status: article.status !== undefined && article.status !== null ? article.status : 'draft', // Use actual DB value
-          tags: article.tags || [],
-          publishedAt: article.publishedAt || null,
-          views: article.views || 0,
-          createdAt: article.createdAt,
-          updatedAt: article.updatedAt,
-          // SEO Metadata
-          metaTitle: article.metaTitle || '',
-          metaDescription: article.metaDescription || '',
-          metaKeywords: article.metaKeywords || '',
-          ogImage: article.ogImage || '',
-          ogTitle: article.ogTitle || '',
-          ogDescription: article.ogDescription || '',
-          twitterCard: article.twitterCard || 'summary_large_image',
-          twitterImage: article.twitterImage || '',
-          twitterTitle: article.twitterTitle || '',
-          twitterDescription: article.twitterDescription || '',
-        };
+    const authorIds = new Set<string>();
+    (articlesRaw as any[]).forEach((a: any) => {
+      if (a.author) authorIds.add(a.author.toString());
+    });
+    const authorsMap = new Map<string, { _id: string; username: string }>();
+    if (authorIds.size > 0) {
+      const authors = await User.find({ _id: { $in: Array.from(authorIds) } })
+        .select('username _id')
+        .lean();
+      (authors as any[]).forEach((a: any) =>
+        authorsMap.set(a._id.toString(), { _id: a._id.toString(), username: a.username || 'erogram' })
+      );
+    }
 
-        if (article.author) {
-          try {
-            const authorId = article.author.toString();
-            const authorDoc = await User.findById(authorId).select('username').lean() as any;
-            if (authorDoc && !Array.isArray(authorDoc)) {
-              result.author = { _id: authorDoc._id.toString(), username: authorDoc.username };
-            } else {
-              result.author = { _id: '', username: 'erogram' };
-            }
-          } catch (err) {
-            console.error(`Article ${result._id}: Error fetching author:`, err, 'Author ID:', article.author);
-            result.author = { _id: '', username: 'erogram' };
-          }
-        } else {
-          result.author = { _id: '', username: 'erogram' };
-        }
-
-        return result;
-      })
-    );
+    const articlesWithAuthors = (articlesRaw as any[]).map((article: any) => ({
+      _id: article._id.toString(),
+      title: article.title,
+      slug: article.slug,
+      excerpt: article.excerpt !== undefined && article.excerpt !== null ? article.excerpt : '',
+      featuredImage: article.featuredImage !== undefined && article.featuredImage !== null ? article.featuredImage : '',
+      status: article.status !== undefined && article.status !== null ? article.status : 'draft',
+      tags: article.tags || [],
+      publishedAt: article.publishedAt || null,
+      views: article.views || 0,
+      createdAt: article.createdAt,
+      updatedAt: article.updatedAt,
+      metaTitle: article.metaTitle || '',
+      metaDescription: article.metaDescription || '',
+      metaKeywords: article.metaKeywords || '',
+      ogImage: article.ogImage || '',
+      ogTitle: article.ogTitle || '',
+      ogDescription: article.ogDescription || '',
+      twitterCard: article.twitterCard || 'summary_large_image',
+      twitterImage: article.twitterImage || '',
+      twitterTitle: article.twitterTitle || '',
+      twitterDescription: article.twitterDescription || '',
+      author: article.author
+        ? authorsMap.get(article.author.toString()) || { _id: '', username: 'erogram' }
+        : { _id: '', username: 'erogram' },
+    }));
 
     return NextResponse.json(articlesWithAuthors);
   } catch (error: any) {
