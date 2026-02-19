@@ -43,8 +43,18 @@ async function connectDB() {
     throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
   }
 
-  // If .env.local was changed (different URI), drop cached connection so we reconnect to the right DB
+  // Never use a stale default connection (e.g. to old VPS). Always use only MONGODB_URI.
   if (cached!.conn && connectedUri !== MONGODB_URI) {
+    try {
+      await mongoose.disconnect();
+    } catch (_) {}
+    cached!.conn = null;
+    cached!.promise = null;
+    connectedUri = null;
+  }
+
+  // If there is any existing default connection to a different host, drop it so we don't use VPS
+  if (mongoose.connection.readyState !== 0 && connectedUri !== MONGODB_URI) {
     try {
       await mongoose.disconnect();
     } catch (_) {}
@@ -58,10 +68,17 @@ async function connectDB() {
   }
 
   if (!cached!.promise) {
+    // Ensure no stale default connection (e.g. from old VPS) before connecting
+    if (mongoose.connection.readyState !== 0) {
+      try {
+        await mongoose.disconnect();
+      } catch (_) {}
+    }
+
     const opts = {
       bufferCommands: false,
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 10000,
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 15000,
     };
 
     cached!.promise = (mongoose.connect(MONGODB_URI, opts) as Promise<typeof import('mongoose')>)

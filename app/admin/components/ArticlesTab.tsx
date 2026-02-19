@@ -40,20 +40,17 @@ export default function ArticlesTab() {
     }, []);
 
     const fetchArticles = async () => {
+        setError('');
+        setIsLoading(true);
         try {
             const token = localStorage.getItem('token');
             const res = await axios.get('/api/admin/articles', {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setArticles(res.data);
-            setError('');
+            setArticles(Array.isArray(res.data) ? res.data : []);
         } catch (err: any) {
-            const data = err.response?.data;
-            let msg = data?.message || 'Failed to load articles';
-            if (data?.uriHost && data.uriHost !== 'none' && data.uriHost !== 'hidden') {
-                msg += ` — MongoDB host in use: ${data.uriHost}. If this is the old VPS IP, set MONGODB_URI to your Atlas URI in Vercel → Settings → Environment Variables and redeploy.`;
-            }
-            setError(msg);
+            setError(err.response?.data?.message || 'Failed to load articles');
+            setArticles([]);
         } finally {
             setIsLoading(false);
         }
@@ -207,10 +204,13 @@ export default function ArticlesTab() {
         });
     };
 
-    const filteredArticles = articles.filter((article) =>
-        article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        article.content.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredArticles = articles.filter((article) => {
+        const q = searchQuery.toLowerCase();
+        const title = (article.title || '').toLowerCase();
+        const content = (article.content || '').toLowerCase();
+        const excerpt = (article.excerpt || '').toLowerCase();
+        return title.includes(q) || content.includes(q) || excerpt.includes(q);
+    });
 
     if (showEditor) {
         return (
@@ -428,7 +428,10 @@ export default function ArticlesTab() {
                         <p className="text-[#999]">Loading articles...</p>
                     </div>
                 ) : error ? (
-                    <div className="col-span-full text-center text-red-400 py-12">{error}</div>
+                    <div className="col-span-full text-center py-12">
+                        <p className="text-red-400 mb-4">{error}</p>
+                        <button onClick={() => { setIsLoading(true); fetchArticles(); }} className="px-6 py-2 bg-[#b31b1b] hover:bg-[#c42b2b] text-white rounded-xl font-bold transition-all">Retry</button>
+                    </div>
                 ) : filteredArticles.length === 0 ? (
                     <div className="col-span-full text-center py-12">
                         <div className="text-6xl mb-4">📝</div>
@@ -454,10 +457,10 @@ export default function ArticlesTab() {
                                 <p className="text-sm text-[#999] mb-4 line-clamp-3 flex-grow">{article.excerpt}</p>
 
                                 <div className="flex flex-wrap gap-2 mb-4">
-                                    {article.tags.slice(0, 3).map((tag: string) => (
+                                    {(Array.isArray(article.tags) ? article.tags : []).slice(0, 3).map((tag: string) => (
                                         <span key={tag} className="text-xs bg-white/5 px-2 py-1 rounded text-gray-300">{tag}</span>
                                     ))}
-                                    {article.tags.length > 3 && (
+                                    {Array.isArray(article.tags) && article.tags.length > 3 && (
                                         <span className="text-xs bg-white/5 px-2 py-1 rounded text-gray-300">+{article.tags.length - 3}</span>
                                     )}
                                 </div>
@@ -465,13 +468,13 @@ export default function ArticlesTab() {
                                 <div className="flex gap-2 mt-auto pt-4 border-t border-white/5">
                                     <button
                                         onClick={() => handleEdit(article)}
-                                        className="flex-1 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg text-sm font-bold transition-colors"
+                                        className="flex-1 py-2 rounded-lg text-sm font-bold transition-colors bg-blue-500/10 hover:bg-blue-500/20 text-blue-400"
                                     >
                                         Edit
                                     </button>
                                     <button
                                         onClick={() => handleDelete(article._id)}
-                                        className="flex-1 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-sm font-bold transition-colors"
+                                        className="flex-1 py-2 rounded-lg text-sm font-bold transition-colors bg-red-500/10 hover:bg-red-500/20 text-red-400"
                                     >
                                         Delete
                                     </button>
