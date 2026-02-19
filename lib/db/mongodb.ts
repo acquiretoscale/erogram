@@ -64,19 +64,32 @@ async function connectDB() {
       socketTimeoutMS: 10000,
     };
 
-    cached!.promise = mongoose.connect(MONGODB_URI, opts) as Promise<typeof import('mongoose')>;
+    cached!.promise = (mongoose.connect(MONGODB_URI, opts) as Promise<typeof import('mongoose')>)
+      .then((conn) => {
+        cached!.conn = conn;
+        connectedUri = MONGODB_URI;
+        return conn;
+      })
+      .catch((e) => {
+        cached!.promise = null;
+        cached!.conn = null;
+        connectedUri = null;
+        throw e;
+      });
   }
 
-  try {
-    cached!.conn = await cached!.promise;
-    connectedUri = MONGODB_URI;
-  } catch (e) {
-    cached!.promise = null;
-    connectedUri = null;
-    throw e;
+  const conn = await cached!.promise;
+
+  // Mongoose 8+: ensure client is actually ready (avoids "Client must be connected" in dev/Turbopack)
+  if (mongoose.connection.readyState !== 1) {
+    await new Promise<void>((resolve, reject) => {
+      if (mongoose.connection.readyState === 1) return resolve();
+      mongoose.connection.once('connected', () => resolve());
+      mongoose.connection.once('error', reject);
+    });
   }
 
-  return cached!.conn;
+  return conn;
 }
 
 export default connectDB;
