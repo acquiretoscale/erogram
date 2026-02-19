@@ -80,13 +80,10 @@ async function connectDB() {
 
   const conn = await cached!.promise;
 
-  // Mongoose 8+: ensure client is actually ready (avoids "Client must be connected" in dev/Turbopack)
-  if (mongoose.connection.readyState !== 1) {
-    await new Promise<void>((resolve, reject) => {
-      if (mongoose.connection.readyState === 1) return resolve();
-      mongoose.connection.once('connected', () => resolve());
-      mongoose.connection.once('error', reject);
-    });
+  // Wait until client is ready (fixes "Client must be connected" during Next.js build workers)
+  const deadline = Date.now() + 15000;
+  while (mongoose.connection.readyState !== 1 && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 100));
   }
 
   return conn;
