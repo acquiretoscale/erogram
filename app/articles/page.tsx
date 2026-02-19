@@ -3,7 +3,6 @@ import connectDB from '@/lib/db/mongodb';
 import { Article, User } from '@/lib/models';
 import ArticlesClient from './ArticlesClient';
 import { getActiveCampaigns } from '@/lib/actions/campaigns';
-import { getArticlesFromBackup } from '@/lib/articles-from-backup';
 
 const baseUrl = 'https://erogram.pro';
 
@@ -37,22 +36,17 @@ export const metadata: Metadata = {
   },
 };
 
-// Build-time static: articles baked into HTML. Revalidate every hour so new articles appear.
-export const revalidate = 3600;
+// Always render on request so articles come from DB (no build-time dependency)
+export const dynamic = 'force-dynamic';
 
-async function getArticles() {
+async function getArticles(): Promise<any[]> {
   try {
     await connectDB();
-    // Use same Mongoose Article model as admin so listing and admin see the same data
     const articlesRaw = await Article.find({})
       .select('-content')
       .sort({ publishedAt: -1, createdAt: -1 })
       .limit(500)
       .lean();
-
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[articles] getArticles: found', (articlesRaw as any[]).length, 'articles');
-    }
 
     const authorIds = new Set<string>();
     (articlesRaw as any[]).forEach((article: any) => {
@@ -69,7 +63,7 @@ async function getArticles() {
       });
     }
 
-    const articlesWithAuthors = (articlesRaw as any[]).map((article: any) => ({
+    return (articlesRaw as any[]).map((article: any) => ({
       _id: article._id.toString(),
       title: article.title || '',
       slug: article.slug || '',
@@ -83,12 +77,10 @@ async function getArticles() {
       updatedAt: article.updatedAt,
       author: article.author ? (authorsMap.get(article.author.toString()) || { _id: '', username: 'erogram' }) : { _id: '', username: 'erogram' },
     }));
-
-    if ((articlesWithAuthors as any[]).length > 0) return articlesWithAuthors;
   } catch (error) {
-    console.error('[articles] Error fetching articles:', error);
+    console.error('[articles] getArticles:', error);
+    return [];
   }
-  return getArticlesFromBackup();
 }
 
 export default async function ArticlesPage() {
