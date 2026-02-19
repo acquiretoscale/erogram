@@ -29,7 +29,8 @@ export const metadata: Metadata = {
   },
 };
 
-export const dynamic = 'force-dynamic';
+// Cache the page for 60s so most requests are fast; list still refreshes every minute
+export const revalidate = 60;
 
 export default async function ArticlesPage() {
   let initialArticles: Awaited<ReturnType<typeof getArticlesForListing>> = [];
