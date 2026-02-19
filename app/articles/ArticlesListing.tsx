@@ -14,7 +14,7 @@ interface Article {
   featuredImage: string;
   author: { _id: string; username: string } | null;
   status: string;
-  publishedAt: string;
+  publishedAt: string | null;
   views: number;
   tags: string[];
   createdAt: string;
