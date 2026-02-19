@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   },
 };
 
-// Pre-render at build + revalidate hourly. Client also fetches /api/articles so list always shows even if build had no DB.
+// Build-time static: articles baked into HTML. Revalidate every hour so new articles appear.
 export const revalidate = 3600;
 
 async function getArticles() {
