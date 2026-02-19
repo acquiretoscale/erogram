@@ -7,6 +7,17 @@ import { submitToIndexNow } from '@/lib/utils/indexNow';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
+function getUriHostHint(uri: string | undefined): string {
+  if (!uri) return 'none';
+  try {
+    const match = uri.match(/@([^/]+)/);
+    if (match) return match[1].split(':')[0];
+    const m2 = uri.match(/\/\/([^:/]+)/);
+    if (m2) return m2[1];
+  } catch (_) {}
+  return 'hidden';
+}
+
 async function authenticate(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -97,8 +108,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(articlesWithAuthors);
   } catch (error: any) {
     console.error('Error fetching articles:', error);
+    const uriHost = getUriHostHint(process.env.MONGODB_URI);
     return NextResponse.json(
-      { message: error.message || 'Failed to fetch articles' },
+      {
+        message: error.message || 'Failed to fetch articles',
+        uriHost,
+      },
       { status: 500 }
     );
   }

@@ -37,8 +37,8 @@ export const metadata: Metadata = {
   },
 };
 
-// Always fetch from DB on every request (same as /groups) so live site shows articles
-export const dynamic = 'force-dynamic';
+// Pre-render at build + revalidate hourly. Client also fetches /api/articles so list always shows even if build had no DB.
+export const revalidate = 3600;
 
 async function getArticles() {
   try {

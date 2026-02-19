@@ -39,6 +39,8 @@ interface ArticlesClientProps {
 export default function ArticlesClient({ initialArticles, topBannerCampaigns = [] }: ArticlesClientProps) {
   const [username, setUsername] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [articles, setArticles] = useState<Article[]>(initialArticles);
+  const [articlesLoading, setArticlesLoading] = useState(initialArticles.length === 0);
 
   // Get username from localStorage on mount
   useEffect(() => {
@@ -50,7 +52,22 @@ export default function ArticlesClient({ initialArticles, topBannerCampaigns = [
     }
   }, []);
 
-  const filteredArticles = initialArticles.filter((article) => {
+  // Fetch articles from API so live site always shows list (same API that works for /api/debug/articles-count)
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/articles')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (!cancelled && Array.isArray(data) && data.length > 0) setArticles(data);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setArticlesLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const filteredArticles = articles.filter((article) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -166,10 +183,12 @@ export default function ArticlesClient({ initialArticles, topBannerCampaigns = [
           >
             <div className="text-4xl sm:text-6xl mb-4 sm:mb-6">📝</div>
             <h3 className="text-xl sm:text-2xl font-bold mb-4 text-[#f5f5f5]">
-              {searchQuery ? 'No articles found' : 'No articles yet'}
+              {articlesLoading && !searchQuery ? 'Loading articles...' : searchQuery ? 'No articles found' : 'No articles yet'}
             </h3>
             <p className="text-base sm:text-lg text-[#999] max-w-md mx-auto">
-              {searchQuery
+              {articlesLoading && !searchQuery
+                ? 'Fetching from the server.'
+                : searchQuery
                 ? 'Try adjusting your search query.'
                 : 'Check back soon for insightful articles about NSFW Telegram groups, community insights, and helpful guides.'}
             </p>

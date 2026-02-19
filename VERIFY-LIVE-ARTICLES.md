@@ -53,13 +53,15 @@ You should see JSON like:
   "ok": true,
   "dbName": "erogram",
   "articleCount": 25,
-  "uriSet": true
+  "uriSet": true,
+  "uriHost": "cluster0.dlph1wf.mongodb.net"
 }
 ```
 
 - **`dbName`** = database the live app is connected to (must match the one in your URI and in Atlas).
 - **`articleCount`** = number of documents in the `articles` collection that the live app sees.
 - **`uriSet`** = whether `MONGODB_URI` is set on Vercel.
+- **`uriHost`** = MongoDB host in use (e.g. `cluster0.xxx.mongodb.net` for Atlas). If you see a numeric IP like `89.192.46.214`, the app is using the old VPS URI.
 
 If `articleCount` is **0** or **`ok` is false**, the live app is either:
 - using a different database (check `dbName` vs Atlas),
@@ -96,4 +98,15 @@ So: **same repo, same branch, same env** → same DB and same code on live.
 
 If **all** of the above match, the result will be the same: articles will show on live. If any one is different (especially URI or database name), local and live will see different data.
 
-Use **`/api/debug/articles-count`** on both local and live to confirm they report the same `dbName` and `articleCount`.
+Use **`/api/debug/articles-count`** on both local and live to confirm they report the same `dbName` and `articleCount`. The response also includes **`uriHost`** (the MongoDB host the app is using). If you see `uriHost: "89.192.46.214"` or another VPS IP, the app is still using the old URI — fix `MONGODB_URI` on Vercel and redeploy.
+
+---
+
+## 6. "Connection to 89.192.46.214:27017 timed out" (Admin shows 0 articles)
+
+That message means the **live** app is trying to connect to the **old VPS** IP. The codebase has **no** reference to that IP — the URI comes only from **Vercel’s `MONGODB_URI`**. So either:
+
+1. **`MONGODB_URI` on Vercel is still the VPS URI** for the deployment that serves the admin (or for Production). Fix: set `MONGODB_URI` to your **Atlas** URI (same as .env.local) for **Production** (and Preview if you use it). Save, then redeploy.
+2. **An old deployment is still in use.** Fix: **Deployments** → open the **⋮** menu on the latest deployment → **Redeploy** → enable **Clear cache and redeploy**, then confirm. Ensure the **production domain** is assigned to this new deployment.
+
+After redeploying, open **`https://erogram.pro/api/debug/articles-count`** and check **`uriHost`**. It should be your Atlas host (e.g. `cluster0.dlph1wf.mongodb.net`), not `89.192.46.214`. Then the admin Articles tab and the public articles page will use Atlas and show the 25 articles.

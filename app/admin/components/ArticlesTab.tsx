@@ -48,7 +48,12 @@ export default function ArticlesTab() {
             setArticles(res.data);
             setError('');
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to load articles');
+            const data = err.response?.data;
+            let msg = data?.message || 'Failed to load articles';
+            if (data?.uriHost && data.uriHost !== 'none' && data.uriHost !== 'hidden') {
+                msg += ` — MongoDB host in use: ${data.uriHost}. If this is the old VPS IP, set MONGODB_URI to your Atlas URI in Vercel → Settings → Environment Variables and redeploy.`;
+            }
+            setError(msg);
         } finally {
             setIsLoading(false);
         }
