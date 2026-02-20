@@ -542,13 +542,13 @@ export async function getClicksByAdvertiser(token: string) {
       { $lookup: { from: 'campaigns', localField: 'campaignId', foreignField: '_id', as: 'camp' } },
       { $unwind: '$camp' },
       { $group: { _id: '$camp.advertiserId', clicks: { $sum: 1 } } },
-    ]).then((r: { _id: any; clicks: number }[]) => new Map(r.map((x) => [String(x._id), x.clicks]).filter(([k]) => k))),
+    ]).then((r: { _id: any; clicks: number }[]) => new Map<string, number>(r.filter((x) => x._id).map((x) => [String(x._id), x.clicks] as [string, number]))),
     CampaignClick.aggregate([
       { $match: { campaignId: { $in: campaignIds }, clickedAt: { $gte: last30d } } },
       { $lookup: { from: 'campaigns', localField: 'campaignId', foreignField: '_id', as: 'camp' } },
       { $unwind: '$camp' },
       { $group: { _id: '$camp.advertiserId', clicks: { $sum: 1 } } },
-    ]).then((r: { _id: any; clicks: number }[]) => new Map(r.map((x) => [String(x._id), x.clicks]).filter(([k]) => k))),
+    ]).then((r: { _id: any; clicks: number }[]) => new Map<string, number>(r.filter((x) => x._id).map((x) => [String(x._id), x.clicks] as [string, number]))),
   ]);
   const byAdv = new Map<string, { totalClicks: number; last7Days: number; last30Days: number }>();
   campaigns.forEach((c: any) => {
