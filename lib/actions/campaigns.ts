@@ -714,16 +714,16 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
       if (advertiserIds?.length) {
         fgMatch.advertiserId = { $in: advertiserIds.map((id) => new mongoose.Types.ObjectId(id)) };
       }
-      const fGroups = await Group.find(fgMatch).select('_id name advertiserId clickCount lastClickedAt').lean();
-      featuredGroups = (fGroups as { _id: { toString: () => string }; name: string; advertiserId?: { toString: () => string }; clickCount?: number; lastClickedAt?: Date }[])
+      const fGroups = await Group.find(fgMatch).select('_id name advertiserId clickCount lastClickedAt').lean() as any[];
+      featuredGroups = fGroups
         .filter((g) => g.advertiserId)
         .map((g) => ({
           groupId: g._id.toString(),
-          name: g.name,
-          advertiserId: g.advertiserId!.toString(),
-          advertiserName: names.get(g.advertiserId!.toString()) || 'Unknown',
-          clickCount: g.clickCount || 0,
-          lastClickedAt: g.lastClickedAt?.toISOString(),
+          name: g.name as string,
+          advertiserId: g.advertiserId.toString(),
+          advertiserName: names.get(g.advertiserId.toString()) || 'Unknown',
+          clickCount: (g.clickCount || 0) as number,
+          lastClickedAt: g.lastClickedAt ? new Date(g.lastClickedAt).toISOString() : undefined,
         }));
       const fgTotal = featuredGroups.reduce((s, g) => s + g.clickCount, 0);
       if (fgTotal > 0) bySlot.push({ slot: 'featured-groups', totalClicks: fgTotal, campaignCount: featuredGroups.length });
@@ -910,16 +910,16 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
     if (advertiserIds?.length) {
       fgMatch.advertiserId = { $in: advertiserIds.map((id) => new mongoose.Types.ObjectId(id)) };
     }
-    const fGroups = await Group.find(fgMatch).select('_id name advertiserId clickCount lastClickedAt').lean();
-    featuredGroups = (fGroups as { _id: { toString: () => string }; name: string; advertiserId?: { toString: () => string }; clickCount?: number; lastClickedAt?: Date }[])
+    const fGroups = await Group.find(fgMatch).select('_id name advertiserId clickCount lastClickedAt').lean() as any[];
+    featuredGroups = fGroups
       .filter((g) => g.advertiserId)
       .map((g) => ({
         groupId: g._id.toString(),
-        name: g.name,
-        advertiserId: g.advertiserId!.toString(),
-        advertiserName: names.get(g.advertiserId!.toString()) || 'Unknown',
-        clickCount: g.clickCount || 0,
-        lastClickedAt: g.lastClickedAt?.toISOString(),
+        name: g.name as string,
+        advertiserId: g.advertiserId.toString(),
+        advertiserName: names.get(g.advertiserId.toString()) || 'Unknown',
+        clickCount: (g.clickCount || 0) as number,
+        lastClickedAt: g.lastClickedAt ? new Date(g.lastClickedAt).toISOString() : undefined,
       }));
 
     // Add featured group clicks to the slot breakdown
