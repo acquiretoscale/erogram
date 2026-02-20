@@ -664,8 +664,8 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
   const campaignMatch: Record<string, unknown> = {};
   if (advertiserIds?.length) campaignMatch.advertiserId = { $in: advertiserIds };
   if (campaignSlots?.length) campaignMatch.slot = campaignSlots.length === 1 ? campaignSlots[0] : { $in: campaignSlots };
-  const campaigns = await Campaign.find(campaignMatch).select('_id advertiserId slot clicks').lean();
-  const campaignIds = campaigns.map((c: { _id: unknown }) => (c as { _id: { toString: () => string } })._id);
+  const campaigns = await Campaign.find(campaignMatch).select('_id advertiserId slot clicks').lean() as any[];
+  const campaignIds = campaigns.map((c) => c._id);
 
   let rangeStart: Date;
   let rangeEnd: Date;
@@ -705,8 +705,8 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
       clicksByDay.push({ date: cur.toISOString().slice(0, 10), clicks: 0 });
       cur.setDate(cur.getDate() + 1);
     }
-    const allAdvertisers = await Advertiser.find({}).select('_id name').lean();
-    const names = new Map(allAdvertisers.map((a: { _id: { toString: () => string }; name: string }) => [a._id.toString(), a.name]));
+    const allAdvertisers = await Advertiser.find({}).select('_id name').lean() as any[];
+    const names = new Map<string, string>(allAdvertisers.map((a) => [a._id.toString(), a.name]));
     let featuredGroups: { groupId: string; name: string; advertiserId: string; advertiserName: string; clickCount: number; lastClickedAt?: string }[] | undefined;
     const bySlot: { slot: string; totalClicks: number; campaignCount: number }[] = [];
     if (wantFeatured) {
@@ -779,16 +779,16 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
     ]),
   ]);
 
-  const adv7dMap = new Map(byAdvertiser7d.map((r: { _id: { toString: () => string }; clicks: number }) => [r._id.toString(), r.clicks]));
-  const adv30dMap = new Map(byAdvertiser30d.map((r: { _id: { toString: () => string }; clicks: number }) => [r._id.toString(), r.clicks]));
+  const adv7dMap = new Map<string, number>((byAdvertiser7d as any[]).map((r) => [r._id.toString(), r.clicks]));
+  const adv30dMap = new Map<string, number>((byAdvertiser30d as any[]).map((r) => [r._id.toString(), r.clicks]));
 
   kpis.todayClicks = todayClicks;
   kpis.last24h = last24hCount;
   kpis.last7d = last7dCount;
   kpis.last30d = last30dCount;
-  kpis.totalClicks = campaigns.reduce((sum: number, c: { clicks?: number }) => sum + (c.clicks ?? 0), 0);
+  kpis.totalClicks = campaigns.reduce((sum: number, c: any) => sum + (c.clicks ?? 0), 0);
 
-  const byDateMap = new Map<string, number>(clicksByDayRows.map((r: { _id: string; clicks: number }) => [r._id, r.clicks]));
+  const byDateMap = new Map<string, number>((clicksByDayRows as any[]).map((r) => [r._id, r.clicks]));
   const clicksByDay: { date: string; clicks: number }[] = [];
   const cur = new Date(rangeStart);
   while (cur <= rangeEnd) {
@@ -797,8 +797,8 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
     cur.setDate(cur.getDate() + 1);
   }
 
-  const allAdvertisers = await Advertiser.find({}).select('_id name').lean();
-  const names = new Map(allAdvertisers.map((a: { _id: { toString: () => string }; name: string }) => [a._id.toString(), a.name]));
+  const allAdvertisers = await Advertiser.find({}).select('_id name').lean() as any[];
+  const names = new Map<string, string>(allAdvertisers.map((a) => [a._id.toString(), a.name]));
 
   let clicksByDayByAdvertiser: { date: string; advertisers: { advertiserId: string; advertiserName: string; clicks: number }[] }[] | undefined;
   {
@@ -810,8 +810,8 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
       { $sort: { '_id.date': 1 } },
     ]);
     const byDate = new Map<string, { advertiserId: string; clicks: number }[]>();
-    for (const r of byDayByAdv as { _id: { date: string; advertiserId: { toString: () => string } }; clicks: number }[]) {
-      const date = r._id.date;
+    for (const r of byDayByAdv as any[]) {
+      const date = r._id.date as string;
       if (!byDate.has(date)) byDate.set(date, []);
       byDate.get(date)!.push({ advertiserId: r._id.advertiserId.toString(), clicks: r.clicks });
     }
@@ -838,7 +838,7 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
       { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$clickedAt' } }, clicks: { $sum: 1 } } },
       { $sort: { _id: 1 } },
     ]);
-    const prevMap = new Map<string, number>(prevRows.map((r: { _id: string; clicks: number }) => [r._id, r.clicks]));
+    const prevMap = new Map<string, number>((prevRows as any[]).map((r) => [r._id, r.clicks]));
     prevPeriodClicksByDay = [];
     const pc = new Date(prevStart);
     while (pc <= prevEnd) {
@@ -859,7 +859,7 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
       { $group: { _id: { advertiserId: '$camp.advertiserId', slot: '$camp.slot' }, clicks: { $sum: 1 } } },
     ]);
     const map = new Map<string, { slot: string; clicks: number }[]>();
-    for (const r of slotByAdv as { _id: { advertiserId: { toString: () => string }; slot: string }; clicks: number }[]) {
+    for (const r of slotByAdv as any[]) {
       const aid = r._id.advertiserId.toString();
       if (!map.has(aid)) map.set(aid, []);
       map.get(aid)!.push({ slot: r._id.slot, clicks: r.clicks });
@@ -871,21 +871,21 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
     }));
   }
 
-  const unassignedRow = byAdvertiserRows.find((r: { _id: unknown }) => !r._id);
+  const unassignedRow = (byAdvertiserRows as any[]).find((r) => !r._id);
   const byAdvertiser = [
-    ...byAdvertiserRows
-      .filter((r: { _id: unknown }) => r._id)
-      .map((r: { _id: { toString: () => string }; clicks: number }) => {
+    ...(byAdvertiserRows as any[])
+      .filter((r) => r._id)
+      .map((r) => {
         const id = r._id.toString();
         return {
           advertiserId: id,
           advertiserName: names.get(id) || 'Unknown',
-          totalClicks: r.clicks,
+          totalClicks: r.clicks as number,
           last7d: adv7dMap.get(id) ?? 0,
           last30d: adv30dMap.get(id) ?? 0,
         };
       })
-      .sort((a: { totalClicks: number }, b: { totalClicks: number }) => b.totalClicks - a.totalClicks),
+      .sort((a, b) => b.totalClicks - a.totalClicks),
     ...(unassignedRow ? [{
       advertiserId: '__unassigned__',
       advertiserName: 'Unassigned',
@@ -895,10 +895,10 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
     }] : []),
   ];
 
-  const bySlot = bySlotRows.map((r: { _id: string; clicks: number }) => ({
-    slot: r._id,
-    totalClicks: r.clicks,
-    campaignCount: campaigns.filter((c: { slot: string }) => c.slot === r._id).length,
+  const bySlot = (bySlotRows as any[]).map((r) => ({
+    slot: r._id as string,
+    totalClicks: r.clicks as number,
+    campaignCount: campaigns.filter((c: any) => c.slot === r._id).length,
   }));
 
   const articleClicksByAdvertiser = await getArticleClicksByAdvertiser(advertiserIds);
@@ -956,11 +956,11 @@ async function getArticleClicksByAdvertiser(advertiserIds?: string[]) {
     { $match: match },
     { $group: { _id: '$advertiserId', articleClicks: { $sum: '$views' } } },
   ]);
-  const advertisers = await Advertiser.find({}).select('_id name').lean();
-  const names = new Map(advertisers.map((a: { _id: { toString: () => string }; name: string }) => [a._id.toString(), a.name]));
-  return rows.map((r: { _id: { toString: () => string }; articleClicks: number }) => ({
+  const advertisers = await Advertiser.find({}).select('_id name').lean() as any[];
+  const names = new Map<string, string>(advertisers.map((a) => [a._id.toString(), a.name]));
+  return (rows as any[]).map((r) => ({
     advertiserId: r._id.toString(),
     advertiserName: names.get(r._id.toString()) || 'Unknown',
-    articleClicks: r.articleClicks,
+    articleClicks: r.articleClicks as number,
   }));
 }
