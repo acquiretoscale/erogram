@@ -119,6 +119,7 @@ export default function FeedAdsTab() {
       endDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
       status: 'active',
       isVisible: true,
+      feedPlacement: 'both',
     });
   };
 
