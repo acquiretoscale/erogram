@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import { User, Advert } from '@/lib/models';
@@ -120,6 +121,8 @@ export async function PUT(
     console.log('Verified advert from DB - button2Enabled:', (verifyAdvert as any)?.button2Enabled, 'button3Enabled:', (verifyAdvert as any)?.button3Enabled);
     console.log('Full verified advert:', JSON.stringify(verifyAdvert, null, 2));
 
+    revalidatePath('/groups');
+    revalidatePath('/groups/country/[country]', 'page');
     return NextResponse.json(advert);
   } catch (error: any) {
     console.error('Error updating advert:', error);

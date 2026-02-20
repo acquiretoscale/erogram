@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Advert, FeedCampaign } from './types';
-import { trackClick } from '@/lib/actions/campaigns';
 import { useIsTelegramBrowser } from '../hooks/useIsTelegramBrowser';
 
 interface AdvertCardProps {
@@ -109,8 +108,8 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
     // Use ad ID + index as seed for consistent random selection (same on server and client)
     const seed = `${ad._id}-${isIndex}`;
 
-    // Use configured button text if available, otherwise random
-    const buttonText = ad.buttonText || buttonTexts[Math.floor(seededRandom(seed) * buttonTexts.length)];
+    // CTA button: use only buttonText from the ad (never description)
+    const displayButtonText = (ad.buttonText && String(ad.buttonText).trim()) ? String(ad.buttonText).trim() : (buttonTexts[Math.floor(seededRandom(seed) * buttonTexts.length)]);
     const colorScheme = colorSchemes[Math.floor(seededRandom(seed + 'color') * colorSchemes.length)];
 
     // Determine if this should be a "Native" ad (looks like a group card)
@@ -181,21 +180,24 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
         }
     }, [isInView, imageSrc, ad._id, ad.isCampaign]);
 
-    const handleClick = async () => {
-        try {
-            if (ad.isCampaign) {
-                trackClick(ad._id, 'feed');
-            } else {
-                fetch('/api/adverts/track', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ advertId: ad._id }),
-                }).catch(() => {});
-            }
-        } catch {
-            // Silently fail - tracking is not critical
+    const handleClick = () => {
+        if (ad.isCampaign) {
+            fetch('/api/campaigns/track', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ campaignId: ad._id, placement: 'feed' }),
+            }).catch(() => {});
+        } else {
+            fetch('/api/adverts/track', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ advertId: ad._id }),
+            }).catch(() => {});
         }
-        window.open(ad.url, '_blank', 'noopener,noreferrer');
+        const url = (ad.url || '').trim();
+        if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+            window.open(url, '_blank', 'noopener,noreferrer');
+        }
     };
 
     // Badge Logic
@@ -328,17 +330,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                             )}
                         </h3>
 
-                        {/* Tags */}
-                        <div className="flex flex-wrap gap-2 mb-4">
-                            <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-gray-300 text-xs font-medium hover:bg-white/10 transition-colors">
-                                {ad.category}
-                            </span>
-                            <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-gray-300 text-xs font-medium hover:bg-white/10 transition-colors">
-                                {ad.country}
-                            </span>
-                        </div>
-
-                        {/* Description */}
+                        {/* Description (no category/country tags — simple feed) */}
                         <div className="mb-6 flex-grow">
                             <p className="text-gray-400 text-sm line-clamp-3 leading-relaxed">
                                 {ad.description}
@@ -366,7 +358,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                             >
                                 <div className="absolute inset-0 bg-white/20 opacity-0 transition-opacity duration-300 group-hover/btn:opacity-100" />
                                 <span className={`relative flex items-center justify-center gap-2 text-sm uppercase tracking-wider`}>
-                                    <span className="text-lg">🚀</span> {buttonText}
+                                    <span className="text-lg">🚀</span> {displayButtonText}
                                 </span>
                             </button>
                         </div>
@@ -434,17 +426,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                         )}
                     </h3>
 
-                    {/* Tags */}
-                    <div className="flex flex-wrap gap-2 mb-4 justify-center">
-                        <span className="px-2 py-0.5 rounded-md bg-white/10 border border-white/10 text-gray-300 text-[10px] font-bold uppercase tracking-wide">
-                            {ad.category}
-                        </span>
-                        <span className="px-2 py-0.5 rounded-md bg-white/10 border border-white/5 text-gray-300 text-[10px] font-bold uppercase tracking-wide">
-                            {ad.country}
-                        </span>
-                    </div>
-
-                    {/* Description */}
+                    {/* Description (no category/country — simple feed) */}
                     <div className="mb-6 flex-grow">
                         <p className="text-gray-300 text-center text-sm line-clamp-3 leading-relaxed font-medium">
                             {ad.description}
@@ -458,7 +440,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                     >
                         <div className="absolute inset-0 flex items-center justify-center bg-white/20 opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
                         <span className="relative flex items-center justify-center gap-2 text-lg uppercase tracking-wide">
-                            {buttonText}
+                            {displayButtonText}
                             <span className="animate-pulse">🚀</span>
                         </span>
                     </button>

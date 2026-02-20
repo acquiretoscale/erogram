@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
-import { User, Article } from '@/lib/models';
+import { User, Article, Advertiser } from '@/lib/models';
+
+export const dynamic = 'force-dynamic';
 import { slugify } from '@/lib/utils/slugify';
 import { submitToIndexNow } from '@/lib/utils/indexNow';
 
@@ -46,8 +49,10 @@ export async function GET(req: NextRequest) {
       .lean();
 
     const authorIds = new Set<string>();
+    const advertiserIds = new Set<string>();
     (articlesRaw as any[]).forEach((a: any) => {
       if (a.author) authorIds.add(a.author.toString());
+      if (a.advertiserId) advertiserIds.add(a.advertiserId.toString());
     });
     const authorsMap = new Map<string, { _id: string; username: string }>();
     if (authorIds.size > 0) {
@@ -57,6 +62,11 @@ export async function GET(req: NextRequest) {
       (authors as any[]).forEach((a: any) =>
         authorsMap.set(a._id.toString(), { _id: a._id.toString(), username: a.username || 'erogram' })
       );
+    }
+    const advertisersMap = new Map<string, string>();
+    if (advertiserIds.size > 0) {
+      const advertisers = await Advertiser.find({ _id: { $in: Array.from(advertiserIds) } }).select('name _id').lean();
+      (advertisers as any[]).forEach((a: any) => advertisersMap.set(a._id.toString(), a.name || '—'));
     }
 
     const articlesWithAuthors = (articlesRaw as any[]).map((article: any) => ({
@@ -69,6 +79,8 @@ export async function GET(req: NextRequest) {
       tags: article.tags || [],
       publishedAt: article.publishedAt || null,
       views: article.views || 0,
+      advertiserId: article.advertiserId ? article.advertiserId.toString() : '',
+      advertiserName: article.advertiserId ? advertisersMap.get(article.advertiserId.toString()) || '—' : '',
       createdAt: article.createdAt,
       updatedAt: article.updatedAt,
       metaTitle: article.metaTitle || '',
@@ -110,7 +122,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { title, content, excerpt, featuredImage, status, tags, metaTitle, metaDescription, metaKeywords, ogImage, ogTitle, ogDescription, twitterCard, twitterImage, twitterTitle, twitterDescription } = body;
+    const { title, content, excerpt, featuredImage, status, tags, metaTitle, metaDescription, metaKeywords, ogImage, ogTitle, ogDescription, twitterCard, twitterImage, twitterTitle, twitterDescription, advertiserId } = body;
 
     // Validation
     if (!title || !content) {
@@ -139,6 +151,7 @@ export async function POST(req: NextRequest) {
       excerpt: excerpt !== undefined && excerpt !== null ? excerpt : '',
       featuredImage: featuredImage !== undefined && featuredImage !== null ? featuredImage : '',
       author: admin._id,
+      advertiserId: advertiserId && String(advertiserId).trim() ? advertiserId : undefined,
       status: articleStatus,
       publishedAt: articleStatus === 'published' ? new Date() : null,
       tags: tags || [],
@@ -266,7 +279,8 @@ export async function POST(req: NextRequest) {
       if (articleStatus === 'published') {
         submitToIndexNow([`https://erogram.pro/articles/${slug}`]);
       }
-
+      revalidatePath('/articles');
+      revalidatePath(`/articles/${slug}`);
       return NextResponse.json(result);
     } catch (err) {
       console.error('Error fetching author:', err);
@@ -286,6 +300,8 @@ export async function POST(req: NextRequest) {
         updatedAt: savedArticle.updatedAt,
         author: null,
       };
+      revalidatePath('/articles');
+      revalidatePath(`/articles/${slug}`);
       return NextResponse.json(result);
     }
   } catch (error: any) {

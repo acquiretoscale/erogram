@@ -56,8 +56,9 @@ export async function GET(req: NextRequest) {
     const category = searchParams.get('category') || '';
     const country = searchParams.get('country') || '';
 
-    // Exclude image field to prevent maxSize errors - images loaded lazily via API
-    let query: any = { status: 'approved' };
+    // Exclude image field to prevent maxSize errors - images loaded lazily via API.
+    // Exclude Group-based adverts so in-feed ads come only from Campaigns (Advertisers).
+    let query: any = { status: 'approved', isAdvertisement: { $ne: true } };
     let sortCriteria: any = { pinned: -1, createdAt: -1 };
 
     // Add search filter if search query provided
@@ -109,8 +110,8 @@ export async function GET(req: NextRequest) {
         console.error('[API] Error checking/resetting views:', err);
       }
 
-      // For top groups by views, exclude pinned groups and sort by weeklyViews descending
-      query = { status: 'approved', pinned: { $ne: true } };
+      // For top groups by views, exclude pinned and Group-based adverts
+      query = { status: 'approved', pinned: { $ne: true }, isAdvertisement: { $ne: true } };
       sortCriteria = { weeklyViews: -1 };
       console.log('[API] Top groups query:', JSON.stringify(query));
     } else if (sortBy === 'newest') {
@@ -304,36 +305,26 @@ export async function GET(req: NextRequest) {
 
 
 
+// Simple submit: form data → save to DB → pending for moderation. No login required.
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
 
-    const user = await authenticate(req);
-    // Allow unauthenticated submissions for moderation (status: pending)
-
     const body = await req.json();
     const { name, category, country, telegramLink, description, image } = body;
 
-    // Debug: Log image data received
-    const imagePreview = image ? (image.substring(0, 100) + (image.length > 100 ? '...' : '')) : 'null';
-    console.log(`[Group Create] Received image data: ${imagePreview} (length: ${image?.length || 0}, isBase64: ${image?.startsWith('data:image/') || false})`);
-
-    // Validation (country is optional, default to 'All')
     if (!name || !category || !telegramLink || !description) {
       return NextResponse.json(
         { message: 'Name, category, Telegram link and description are required' },
         { status: 400 }
       );
     }
-    const countryValue = country || 'All';
-
     if (description.length < 30) {
       return NextResponse.json(
         { message: 'Description must be at least 30 characters' },
         { status: 400 }
       );
     }
-
     if (!telegramLink.startsWith('https://t.me/')) {
       return NextResponse.json(
         { message: 'Telegram link must start with https://t.me/' },
@@ -341,7 +332,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Generate unique slug
+    const countryValue = country || 'All';
+
     const baseSlug = slugify(name);
     let slug = baseSlug;
     let counter = 1;
@@ -349,53 +341,39 @@ export async function POST(req: NextRequest) {
       slug = `${baseSlug}-${counter++}`;
     }
 
-    // Validate and prepare image - upload to Cloudflare R2
     let finalImage = '/assets/image.jpg';
-    if (image) {
-      if (image.startsWith('data:image/')) {
-        const base64Match = image.match(/^data:image\/(\w+);base64,(.+)$/);
-        if (base64Match && base64Match[2]) {
-          const ext = base64Match[1].replace('jpeg', 'jpg');
-          const buffer = Buffer.from(base64Match[2], 'base64');
-          const contentType = `image/${base64Match[1]}`;
-          const key = `groups/${slug}.${ext}`;
-
-          try {
-            finalImage = await uploadToR2(buffer, key, contentType);
-            console.log(`[Group Create] Uploaded image to R2: ${key}`);
-          } catch (uploadErr: any) {
-            console.error('[Group Create] R2 upload failed:', uploadErr.message);
-          }
-        } else {
-          console.warn('[Group Create] Invalid base64 image format, using default');
+    if (image?.startsWith('data:image/')) {
+      const base64Match = image.match(/^data:image\/(\w+);base64,(.+)$/);
+      if (base64Match?.[2]) {
+        const ext = base64Match[1].replace('jpeg', 'jpg');
+        const buffer = Buffer.from(base64Match[2], 'base64');
+        const contentType = `image/${base64Match[1]}`;
+        const key = `groups/${slug}.${ext}`;
+        try {
+          finalImage = await uploadToR2(buffer, key, contentType);
+        } catch {
+          // keep default
         }
-      } else if (image.startsWith('https://')) {
-        finalImage = image;
-        console.log('[Group Create] Using image URL:', image);
       }
-    } else {
-      console.warn('[Group Create] No image provided, using default');
+    } else if (image?.startsWith('https://')) {
+      finalImage = image;
     }
 
-    // Create group with pending status (createdBy optional for no-login submit)
-    try {
-      const group = await Group.create({
-        name,
-        slug,
-        category,
-        country: countryValue,
-        telegramLink,
-        description,
-        image: finalImage,
-        createdBy: user?._id ?? undefined,
-        status: 'pending'
-      });
+    const user = await authenticate(req);
+    const doc: Record<string, unknown> = {
+      name,
+      slug,
+      category,
+      country: countryValue,
+      telegramLink,
+      description,
+      image: finalImage,
+      status: 'pending',
+    };
+    if (user?._id) doc.createdBy = user._id;
 
-      return NextResponse.json(group);
-    } catch (createError: any) {
-      console.error('[Group Create] Error creating group:', createError);
-      throw createError;
-    }
+    const group = await Group.create(doc);
+    return NextResponse.json(group);
   } catch (error: any) {
     console.error('Error creating group:', error);
     return NextResponse.json(

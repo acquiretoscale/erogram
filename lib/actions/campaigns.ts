@@ -1,9 +1,9 @@
 'use server';
 
 import jwt from 'jsonwebtoken';
-import type { PipelineStage } from 'mongoose';
+import mongoose, { type PipelineStage } from 'mongoose';
 import connectDB from '@/lib/db/mongodb';
-import { User, Campaign, CampaignClick } from '@/lib/models';
+import { User, Campaign, CampaignClick, Advertiser, Article, Group } from '@/lib/models';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -72,6 +72,7 @@ export async function getCampaigns(token: string, advertiserId?: string) {
     category: c.category || 'All',
     country: c.country || 'All',
     buttonText: c.buttonText || 'Visit Site',
+    feedPlacement: c.feedPlacement || 'both',
   }));
 }
 
@@ -94,6 +95,7 @@ export async function createCampaign(
     category?: string;
     country?: string;
     buttonText?: string;
+    feedPlacement?: 'groups' | 'bots' | 'both';
   }
 ) {
   const admin = await authenticateAdmin(token);
@@ -181,6 +183,7 @@ export async function createCampaign(
     category: data.category || 'All',
     country: data.country || 'All',
     buttonText: data.buttonText || 'Visit Site',
+    feedPlacement: data.slot === 'feed' ? (data.feedPlacement || 'both') : undefined,
   });
 
   return { _id: doc._id.toString() };
@@ -205,17 +208,45 @@ export async function updateCampaign(
     category: string;
     country: string;
     buttonText: string;
+    feedPlacement: 'groups' | 'bots' | 'both';
+    advertiserId: string;
   }>
 ) {
   const admin = await authenticateAdmin(token);
   if (!admin) throw new Error('Unauthorized');
 
   await connectDB();
-  const updateData: Record<string, unknown> = { ...data };
-  if (data.startDate) updateData.startDate = new Date(data.startDate);
-  if (data.endDate) updateData.endDate = new Date(data.endDate);
+  const updateData: Record<string, unknown> = {};
+  if (data.name != null) updateData.name = String(data.name).trim();
+  if (data.slot != null) updateData.slot = String(data.slot).trim().toLowerCase();
+  if (data.advertiserId != null) updateData.advertiserId = String(data.advertiserId).trim();
+  if (data.creative != null) updateData.creative = data.creative;
+  if (data.destinationUrl != null) updateData.destinationUrl = String(data.destinationUrl).trim();
+  if (data.startDate != null) updateData.startDate = new Date(data.startDate);
+  if (data.endDate != null) updateData.endDate = new Date(data.endDate);
+  if (data.status != null) updateData.status = data.status;
+  if (data.isVisible !== undefined) updateData.isVisible = Boolean(data.isVisible);
+  if (data.position !== undefined) updateData.position = data.position == null ? null : Number(data.position);
+  if (data.feedTier !== undefined) updateData.feedTier = data.feedTier == null ? null : Number(data.feedTier);
+  if (data.tierSlot !== undefined) updateData.tierSlot = data.tierSlot == null ? null : Number(data.tierSlot);
+  // Always apply text fields when sent (so edits to name/description/buttonText always persist)
+  if ('description' in data) updateData.description = String(data.description ?? '').trim();
+  if ('buttonText' in data) updateData.buttonText = String(data.buttonText ?? 'Visit Site').trim();
+  if (data.category != null) updateData.category = String(data.category || 'All');
+  if (data.country != null) updateData.country = String(data.country || 'All');
+  if (data.feedPlacement != null) updateData.feedPlacement = data.feedPlacement;
 
-  const doc = await Campaign.findByIdAndUpdate(id, { $set: updateData }, { new: true }).lean();
+  if (Object.keys(updateData).length === 0) {
+    const doc = await Campaign.findById(id).lean();
+    if (!doc) throw new Error('Campaign not found');
+    return doc as any;
+  }
+
+  const doc = await Campaign.findByIdAndUpdate(
+    id,
+    { $set: updateData },
+    { new: true, runValidators: true }
+  ).lean();
   if (!doc) throw new Error('Campaign not found');
 
   return doc as any;
@@ -329,45 +360,73 @@ export async function getFeedTierCapacity(token: string) {
   }));
 }
 
+// One ad every 5 entries: positions 5, 10, 15, … 60 (12 slots)
+const FEED_DISPLAY_POSITIONS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60];
+
 /**
- * Get active feed campaigns by tier. Returns campaigns with computed grid position
- * (tier 1: 3,6,9,12; tier 2: 15,18,21,24; tier 3: 27,30,33,36).
+ * Get active feed campaigns for Groups or Bots page. Single source: Campaign slot=feed.
+ * placement: 'groups' | 'bots' — only campaigns with feedPlacement matching (or 'both') are returned.
+ * Sorted by priority/position 1,2,3…; one ad every 5 entries. No cache.
  */
-export async function getActiveFeedCampaigns() {
+export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
+  const { unstable_noStore } = await import('next/cache');
+  unstable_noStore();
+
   await connectDB();
   const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   const campaigns = await Campaign.find({
     slot: 'feed',
     status: 'active',
     isVisible: true,
     startDate: { $lte: now },
-    endDate: { $gte: now },
-    feedTier: { $in: [1, 2, 3] },
-    tierSlot: { $gte: 1, $lte: 4 },
+    endDate: { $gte: startOfToday },
+    $and: [
+      {
+        $or: [
+          { feedTier: { $in: [1, 2, 3] }, tierSlot: { $gte: 1, $lte: 4 } },
+          { position: { $gte: 1 } },
+        ],
+      },
+      {
+        $or: [
+          { feedPlacement: placement },
+          { feedPlacement: 'both' },
+          { feedPlacement: { $exists: false } },
+        ],
+      },
+    ],
   })
-    .select('_id creative destinationUrl slot feedTier tierSlot description category country buttonText name')
-    .sort({ feedTier: 1, tierSlot: 1 })
+    .select('_id creative destinationUrl slot feedTier tierSlot position description category country buttonText name feedPlacement')
     .lean();
 
-  return campaigns.map((c: any) => {
-    const tier = c.feedTier as number;
-    const slot = c.tierSlot as number;
-    const positions = FEED_TIER_POSITIONS[tier];
-    const position = positions && positions[slot - 1] != null ? positions[slot - 1] : 0;
-    return {
-      _id: c._id.toString(),
-      creative: c.creative,
-      destinationUrl: c.destinationUrl,
-      slot: c.slot,
-      position,
-      description: c.description || '',
-      category: c.category || 'All',
-      country: c.country || 'All',
-      buttonText: c.buttonText || 'Visit Site',
-      name: c.name,
-    };
+  const withSortKey = campaigns.map((c: any) => {
+    const tier = c.feedTier as number | null;
+    const slot = c.tierSlot as number | null;
+    const storedPosition = c.position != null ? Number(c.position) : 999;
+    const positions = tier != null ? FEED_TIER_POSITIONS[tier] : null;
+    const sortPosition =
+      positions != null && slot != null && slot >= 1 && slot <= 4 && positions[slot - 1] != null
+        ? positions[slot - 1]
+        : storedPosition;
+    return { c, sortPosition };
   });
+  withSortKey.sort((a, b) => a.sortPosition - b.sortPosition);
+
+  // Only 12 ads. Assign display positions 5, 10, 15, … 60 (one ad every 5 entries).
+  return withSortKey.slice(0, 12).map(({ c }, i) => ({
+    _id: c._id.toString(),
+    creative: c.creative,
+    destinationUrl: c.destinationUrl,
+    slot: c.slot,
+    position: FEED_DISPLAY_POSITIONS[i],
+    description: c.description || '',
+    category: c.category || 'All',
+    country: c.country || 'All',
+    buttonText: c.buttonText || 'Visit Site',
+    name: c.name,
+  }));
 }
 
 /**
@@ -400,7 +459,7 @@ export async function getSlotClickTotals(token: string) {
   }));
 }
 
-/** Admin: global click stats — all-time total and last 7/30 days. */
+/** Admin: global click stats — all-time total, today, last 7/30 days. */
 export async function getGlobalClickStats(token: string) {
   const admin = await authenticateAdmin(token);
   if (!admin) throw new Error('Unauthorized');
@@ -408,27 +467,136 @@ export async function getGlobalClickStats(token: string) {
   const [totalRow] = await Campaign.aggregate([{ $group: { _id: null, total: { $sum: '$clicks' } } }]);
   const totalClicks = totalRow?.total ?? 0;
   const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const last7Days = await CampaignClick.countDocuments({ clickedAt: { $gte: sevenDaysAgo } });
-  const last30Days = await CampaignClick.countDocuments({ clickedAt: { $gte: thirtyDaysAgo } });
+  const [todayClicks, last24h, last7Days, last30Days] = await Promise.all([
+    CampaignClick.countDocuments({ clickedAt: { $gte: startOfToday } }),
+    CampaignClick.countDocuments({ clickedAt: { $gte: twentyFourHoursAgo } }),
+    CampaignClick.countDocuments({ clickedAt: { $gte: sevenDaysAgo } }),
+    CampaignClick.countDocuments({ clickedAt: { $gte: thirtyDaysAgo } }),
+  ]);
   return {
     totalClicks,
+    todayClicks,
+    last24h,
     last7Days,
     last30Days,
   };
 }
 
-/** Admin: clicks per day for chart (last 7 or 30 days). */
-export async function getClickStatsByDay(token: string, days: 7 | 30 = 30) {
+/** Admin: click stats per feed campaign (total, last 24h, 7d, 30d) for Feed Ads dashboard. */
+export async function getFeedCampaignClickStats(token: string) {
   const admin = await authenticateAdmin(token);
   if (!admin) throw new Error('Unauthorized');
   await connectDB();
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  start.setDate(start.getDate() - days);
+  const feedCampaigns = await Campaign.find({ slot: 'feed' }).select('_id clicks').lean();
+  const campaignIds = feedCampaigns.map((c: any) => c._id);
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const last7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const last30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  const [by24h, by7d, by30d] = await Promise.all([
+    CampaignClick.aggregate([
+      { $match: { campaignId: { $in: campaignIds }, clickedAt: { $gte: last24h } } },
+      { $group: { _id: '$campaignId', clicks: { $sum: 1 } } },
+    ]).then((r: { _id: any; clicks: number }[]) => new Map(r.map((x) => [x._id.toString(), x.clicks]))),
+    CampaignClick.aggregate([
+      { $match: { campaignId: { $in: campaignIds }, clickedAt: { $gte: last7d } } },
+      { $group: { _id: '$campaignId', clicks: { $sum: 1 } } },
+    ]).then((r: { _id: any; clicks: number }[]) => new Map(r.map((x) => [x._id.toString(), x.clicks]))),
+    CampaignClick.aggregate([
+      { $match: { campaignId: { $in: campaignIds }, clickedAt: { $gte: last30d } } },
+      { $group: { _id: '$campaignId', clicks: { $sum: 1 } } },
+    ]).then((r: { _id: any; clicks: number }[]) => new Map(r.map((x) => [x._id.toString(), x.clicks]))),
+  ]);
+
+  const result: Record<string, { total: number; last24h: number; last7d: number; last30d: number }> = {};
+  feedCampaigns.forEach((c: any) => {
+    const id = c._id.toString();
+    result[id] = {
+      total: c.clicks ?? 0,
+      last24h: by24h.get(id) ?? 0,
+      last7d: by7d.get(id) ?? 0,
+      last30d: by30d.get(id) ?? 0,
+    };
+  });
+  return result;
+}
+
+/** Admin: total clicks per advertiser (all-time, last 7d, last 30d) for Overview. */
+export async function getClicksByAdvertiser(token: string) {
+  const admin = await authenticateAdmin(token);
+  if (!admin) throw new Error('Unauthorized');
+  await connectDB();
+  const campaigns = await Campaign.find({}).select('advertiserId clicks').lean();
+  const campaignIds = campaigns.map((c: any) => c._id);
+  const last7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const last30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const [by7d, by30d] = await Promise.all([
+    CampaignClick.aggregate([
+      { $match: { campaignId: { $in: campaignIds }, clickedAt: { $gte: last7d } } },
+      { $lookup: { from: 'campaigns', localField: 'campaignId', foreignField: '_id', as: 'camp' } },
+      { $unwind: '$camp' },
+      { $group: { _id: '$camp.advertiserId', clicks: { $sum: 1 } } },
+    ]).then((r: { _id: any; clicks: number }[]) => new Map(r.map((x) => [String(x._id), x.clicks]).filter(([k]) => k))),
+    CampaignClick.aggregate([
+      { $match: { campaignId: { $in: campaignIds }, clickedAt: { $gte: last30d } } },
+      { $lookup: { from: 'campaigns', localField: 'campaignId', foreignField: '_id', as: 'camp' } },
+      { $unwind: '$camp' },
+      { $group: { _id: '$camp.advertiserId', clicks: { $sum: 1 } } },
+    ]).then((r: { _id: any; clicks: number }[]) => new Map(r.map((x) => [String(x._id), x.clicks]).filter(([k]) => k))),
+  ]);
+  const byAdv = new Map<string, { totalClicks: number; last7Days: number; last30Days: number }>();
+  campaigns.forEach((c: any) => {
+    const aid = c.advertiserId?.toString();
+    if (!aid) return;
+    const cur = byAdv.get(aid) || { totalClicks: 0, last7Days: 0, last30Days: 0 };
+    cur.totalClicks += c.clicks ?? 0;
+    byAdv.set(aid, cur);
+  });
+  byAdv.forEach((cur, aid) => {
+    cur.last7Days = by7d.get(aid) ?? 0;
+    cur.last30Days = by30d.get(aid) ?? 0;
+  });
+  const advertisers = await Advertiser.find({}).select('_id name').lean();
+  const names = new Map(advertisers.map((a: any) => [a._id.toString(), a.name]));
+  return Array.from(byAdv.entries()).map(([advertiserId, v]) => ({
+    advertiserId,
+    advertiserName: names.get(advertiserId) || 'Unknown',
+    ...v,
+  })).sort((a, b) => b.totalClicks - a.totalClicks);
+}
+
+/** Admin: clicks per day for chart. days=7|30 or pass fromDate/toDate (YYYY-MM-DD) for custom range. */
+export async function getClickStatsByDay(
+  token: string,
+  days: 7 | 30 = 30,
+  fromDate?: string,
+  toDate?: string
+) {
+  const admin = await authenticateAdmin(token);
+  if (!admin) throw new Error('Unauthorized');
+  await connectDB();
+  let start: Date;
+  let end: Date;
+  const result: { date: string; clicks: number }[] = [];
+  if (fromDate && toDate) {
+    start = new Date(fromDate);
+    start.setHours(0, 0, 0, 0);
+    end = new Date(toDate);
+    end.setHours(23, 59, 59, 999);
+  } else {
+    end = new Date();
+    end.setHours(0, 0, 0, 0);
+    start = new Date(end);
+    start.setDate(start.getDate() - days);
+  }
   const pipeline: PipelineStage[] = [
-    { $match: { clickedAt: { $gte: start } } },
+    { $match: { clickedAt: { $gte: start, $lte: end } } },
     {
       $group: {
         _id: { $dateToString: { format: '%Y-%m-%d', date: '$clickedAt' } },
@@ -439,13 +607,360 @@ export async function getClickStatsByDay(token: string, days: 7 | 30 = 30) {
   ];
   const rows = await CampaignClick.aggregate(pipeline);
   const byDate = new Map<string, number>(rows.map((r: { _id: string; clicks: number }) => [r._id, r.clicks]));
-  const result: { date: string; clicks: number }[] = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    d.setHours(0, 0, 0, 0);
-    const dateStr = d.toISOString().slice(0, 10);
+  const cur = new Date(start);
+  while (cur <= end) {
+    const dateStr = cur.toISOString().slice(0, 10);
     result.push({ date: dateStr, clicks: byDate.get(dateStr) ?? 0 });
+    cur.setDate(cur.getDate() + 1);
   }
   return result;
+}
+
+export type DashboardRange = 'today' | '7d' | '30d' | 'custom' | 'lifetime';
+
+export interface DashboardFilters {
+  advertiserIds?: string[];
+  slots?: string[];
+  range: DashboardRange;
+  from?: string;
+  to?: string;
+}
+
+export interface DashboardStatsResult {
+  kpis: {
+    totalClicks: number;
+    todayClicks: number;
+    last24h: number;
+    last7d: number;
+    last30d: number;
+  };
+  clicksByDay: { date: string; clicks: number }[];
+  clicksByDayByAdvertiser?: { date: string; advertisers: { advertiserId: string; advertiserName: string; clicks: number }[] }[];
+  byAdvertiser: { advertiserId: string; advertiserName: string; totalClicks: number; last7d: number; last30d: number }[];
+  bySlot: { slot: string; totalClicks: number; campaignCount: number }[];
+  articleClicksByAdvertiser: { advertiserId: string; advertiserName: string; articleClicks: number }[];
+  prevPeriodClicksByDay?: { date: string; clicks: number }[];
+  prevPeriodTotal?: number;
+  advertiserSlotBreakdown?: { advertiserId: string; advertiserName: string; slots: { slot: string; clicks: number }[] }[];
+  featuredGroups?: { groupId: string; name: string; advertiserId: string; advertiserName: string; clickCount: number; lastClickedAt?: string }[];
+}
+
+/** Admin: full dashboard stats with filters (advertiser, slot, date range). For Overview charts and KPIs. */
+export async function getDashboardStats(token: string, filters: DashboardFilters): Promise<DashboardStatsResult> {
+  const admin = await authenticateAdmin(token);
+  if (!admin) throw new Error('Unauthorized');
+  await connectDB();
+
+  const { advertiserIds, slots, range, from, to } = filters;
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const last7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const last30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  const wantFeatured = !slots?.length || slots.includes('featured-groups');
+  const campaignSlots = slots?.filter((s) => s !== 'featured-groups');
+
+  const campaignMatch: Record<string, unknown> = {};
+  if (advertiserIds?.length) campaignMatch.advertiserId = { $in: advertiserIds };
+  if (campaignSlots?.length) campaignMatch.slot = campaignSlots.length === 1 ? campaignSlots[0] : { $in: campaignSlots };
+  const campaigns = await Campaign.find(campaignMatch).select('_id advertiserId slot clicks').lean();
+  const campaignIds = campaigns.map((c: { _id: unknown }) => (c as { _id: { toString: () => string } })._id);
+
+  let rangeStart: Date;
+  let rangeEnd: Date;
+  const isLifetime = range === 'lifetime';
+  if (range === 'custom' && from && to) {
+    rangeStart = new Date(from);
+    rangeStart.setHours(0, 0, 0, 0);
+    rangeEnd = new Date(to);
+    rangeEnd.setHours(23, 59, 59, 999);
+  } else if (range === 'today') {
+    rangeStart = startOfToday;
+    rangeEnd = new Date();
+  } else if (range === '7d') {
+    rangeStart = last7d;
+    rangeEnd = new Date();
+  } else if (isLifetime) {
+    rangeEnd = new Date();
+    rangeStart = new Date(rangeEnd.getTime() - 90 * 24 * 60 * 60 * 1000);
+    rangeStart.setHours(0, 0, 0, 0);
+  } else {
+    rangeStart = last30d;
+    rangeEnd = new Date();
+  }
+
+  const kpis = {
+    totalClicks: 0,
+    todayClicks: 0,
+    last24h: 0,
+    last7d: 0,
+    last30d: 0,
+  };
+
+  if (campaignIds.length === 0) {
+    const clicksByDay: { date: string; clicks: number }[] = [];
+    const cur = new Date(rangeStart);
+    while (cur <= rangeEnd) {
+      clicksByDay.push({ date: cur.toISOString().slice(0, 10), clicks: 0 });
+      cur.setDate(cur.getDate() + 1);
+    }
+    const allAdvertisers = await Advertiser.find({}).select('_id name').lean();
+    const names = new Map(allAdvertisers.map((a: { _id: { toString: () => string }; name: string }) => [a._id.toString(), a.name]));
+    let featuredGroups: { groupId: string; name: string; advertiserId: string; advertiserName: string; clickCount: number; lastClickedAt?: string }[] | undefined;
+    const bySlot: { slot: string; totalClicks: number; campaignCount: number }[] = [];
+    if (wantFeatured) {
+      const fgMatch: Record<string, unknown> = { pinned: true, isAdvertisement: true, advertiserId: { $exists: true, $ne: null } };
+      if (advertiserIds?.length) {
+        fgMatch.advertiserId = { $in: advertiserIds.map((id) => new mongoose.Types.ObjectId(id)) };
+      }
+      const fGroups = await Group.find(fgMatch).select('_id name advertiserId clickCount lastClickedAt').lean();
+      featuredGroups = (fGroups as { _id: { toString: () => string }; name: string; advertiserId?: { toString: () => string }; clickCount?: number; lastClickedAt?: Date }[])
+        .filter((g) => g.advertiserId)
+        .map((g) => ({
+          groupId: g._id.toString(),
+          name: g.name,
+          advertiserId: g.advertiserId!.toString(),
+          advertiserName: names.get(g.advertiserId!.toString()) || 'Unknown',
+          clickCount: g.clickCount || 0,
+          lastClickedAt: g.lastClickedAt?.toISOString(),
+        }));
+      const fgTotal = featuredGroups.reduce((s, g) => s + g.clickCount, 0);
+      if (fgTotal > 0) bySlot.push({ slot: 'featured-groups', totalClicks: fgTotal, campaignCount: featuredGroups.length });
+    }
+    return {
+      kpis,
+      clicksByDay,
+      byAdvertiser: [],
+      bySlot,
+      articleClicksByAdvertiser: await getArticleClicksByAdvertiser(advertiserIds),
+      featuredGroups,
+    };
+  }
+
+  const matchInRange = { campaignId: { $in: campaignIds }, clickedAt: { $gte: rangeStart, $lte: rangeEnd } };
+  const matchAllTime = { campaignId: { $in: campaignIds } };
+  const dateMatch = isLifetime ? matchAllTime : matchInRange;
+
+  const [todayClicks, last24hCount, last7dCount, last30dCount, totalInRange, clicksByDayRows, byAdvertiserRows, byAdvertiser7d, byAdvertiser30d, bySlotRows] = await Promise.all([
+    CampaignClick.countDocuments({ campaignId: { $in: campaignIds }, clickedAt: { $gte: startOfToday } }),
+    CampaignClick.countDocuments({ campaignId: { $in: campaignIds }, clickedAt: { $gte: last24h } }),
+    CampaignClick.countDocuments({ campaignId: { $in: campaignIds }, clickedAt: { $gte: last7d } }),
+    CampaignClick.countDocuments({ campaignId: { $in: campaignIds }, clickedAt: { $gte: last30d } }),
+    CampaignClick.countDocuments({ campaignId: { $in: campaignIds }, clickedAt: { $gte: rangeStart, $lte: rangeEnd } }),
+    CampaignClick.aggregate([
+      { $match: matchInRange },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$clickedAt' } }, clicks: { $sum: 1 } } },
+      { $sort: { _id: 1 } },
+    ]),
+    CampaignClick.aggregate([
+      { $match: dateMatch },
+      { $lookup: { from: 'campaigns', localField: 'campaignId', foreignField: '_id', as: 'camp' } },
+      { $unwind: '$camp' },
+      { $group: { _id: '$camp.advertiserId', clicks: { $sum: 1 } } },
+    ]),
+    CampaignClick.aggregate([
+      { $match: { campaignId: { $in: campaignIds }, clickedAt: { $gte: last7d } } },
+      { $lookup: { from: 'campaigns', localField: 'campaignId', foreignField: '_id', as: 'camp' } },
+      { $unwind: '$camp' },
+      { $group: { _id: '$camp.advertiserId', clicks: { $sum: 1 } } },
+    ]),
+    CampaignClick.aggregate([
+      { $match: { campaignId: { $in: campaignIds }, clickedAt: { $gte: last30d } } },
+      { $lookup: { from: 'campaigns', localField: 'campaignId', foreignField: '_id', as: 'camp' } },
+      { $unwind: '$camp' },
+      { $group: { _id: '$camp.advertiserId', clicks: { $sum: 1 } } },
+    ]),
+    CampaignClick.aggregate([
+      { $match: dateMatch },
+      { $lookup: { from: 'campaigns', localField: 'campaignId', foreignField: '_id', as: 'camp' } },
+      { $unwind: '$camp' },
+      { $group: { _id: '$camp.slot', clicks: { $sum: 1 } } },
+    ]),
+  ]);
+
+  const adv7dMap = new Map(byAdvertiser7d.map((r: { _id: { toString: () => string }; clicks: number }) => [r._id.toString(), r.clicks]));
+  const adv30dMap = new Map(byAdvertiser30d.map((r: { _id: { toString: () => string }; clicks: number }) => [r._id.toString(), r.clicks]));
+
+  kpis.todayClicks = todayClicks;
+  kpis.last24h = last24hCount;
+  kpis.last7d = last7dCount;
+  kpis.last30d = last30dCount;
+  kpis.totalClicks = campaigns.reduce((sum: number, c: { clicks?: number }) => sum + (c.clicks ?? 0), 0);
+
+  const byDateMap = new Map<string, number>(clicksByDayRows.map((r: { _id: string; clicks: number }) => [r._id, r.clicks]));
+  const clicksByDay: { date: string; clicks: number }[] = [];
+  const cur = new Date(rangeStart);
+  while (cur <= rangeEnd) {
+    const dateStr = cur.toISOString().slice(0, 10);
+    clicksByDay.push({ date: dateStr, clicks: byDateMap.get(dateStr) ?? 0 });
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  const allAdvertisers = await Advertiser.find({}).select('_id name').lean();
+  const names = new Map(allAdvertisers.map((a: { _id: { toString: () => string }; name: string }) => [a._id.toString(), a.name]));
+
+  let clicksByDayByAdvertiser: { date: string; advertisers: { advertiserId: string; advertiserName: string; clicks: number }[] }[] | undefined;
+  {
+    const byDayByAdv = await CampaignClick.aggregate([
+      { $match: { campaignId: { $in: campaignIds }, clickedAt: { $gte: rangeStart, $lte: rangeEnd } } },
+      { $lookup: { from: 'campaigns', localField: 'campaignId', foreignField: '_id', as: 'camp' } },
+      { $unwind: '$camp' },
+      { $group: { _id: { date: { $dateToString: { format: '%Y-%m-%d', date: '$clickedAt' } }, advertiserId: '$camp.advertiserId' }, clicks: { $sum: 1 } } },
+      { $sort: { '_id.date': 1 } },
+    ]);
+    const byDate = new Map<string, { advertiserId: string; clicks: number }[]>();
+    for (const r of byDayByAdv as { _id: { date: string; advertiserId: { toString: () => string } }; clicks: number }[]) {
+      const date = r._id.date;
+      if (!byDate.has(date)) byDate.set(date, []);
+      byDate.get(date)!.push({ advertiserId: r._id.advertiserId.toString(), clicks: r.clicks });
+    }
+    clicksByDayByAdvertiser = clicksByDay.map((d) => ({
+      date: d.date,
+      advertisers: (byDate.get(d.date) || []).map((a) => ({
+        advertiserId: a.advertiserId,
+        advertiserName: names.get(a.advertiserId) || 'Unknown',
+        clicks: a.clicks,
+      })),
+    }));
+  }
+
+  // Period comparison: previous period of same length
+  let prevPeriodClicksByDay: { date: string; clicks: number }[] | undefined;
+  let prevPeriodTotal: number | undefined;
+  if (!isLifetime && range !== 'custom') {
+    const periodMs = rangeEnd.getTime() - rangeStart.getTime();
+    const prevEnd = new Date(rangeStart.getTime() - 1);
+    const prevStart = new Date(prevEnd.getTime() - periodMs);
+    prevStart.setHours(0, 0, 0, 0);
+    const prevRows = await CampaignClick.aggregate([
+      { $match: { campaignId: { $in: campaignIds }, clickedAt: { $gte: prevStart, $lte: prevEnd } } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$clickedAt' } }, clicks: { $sum: 1 } } },
+      { $sort: { _id: 1 } },
+    ]);
+    const prevMap = new Map<string, number>(prevRows.map((r: { _id: string; clicks: number }) => [r._id, r.clicks]));
+    prevPeriodClicksByDay = [];
+    const pc = new Date(prevStart);
+    while (pc <= prevEnd) {
+      const ds = pc.toISOString().slice(0, 10);
+      prevPeriodClicksByDay.push({ date: ds, clicks: prevMap.get(ds) ?? 0 });
+      pc.setDate(pc.getDate() + 1);
+    }
+    prevPeriodTotal = prevPeriodClicksByDay.reduce((s, d) => s + d.clicks, 0);
+  }
+
+  // Per-advertiser slot breakdown
+  let advertiserSlotBreakdown: { advertiserId: string; advertiserName: string; slots: { slot: string; clicks: number }[] }[] | undefined;
+  {
+    const slotByAdv = await CampaignClick.aggregate([
+      { $match: dateMatch },
+      { $lookup: { from: 'campaigns', localField: 'campaignId', foreignField: '_id', as: 'camp' } },
+      { $unwind: '$camp' },
+      { $group: { _id: { advertiserId: '$camp.advertiserId', slot: '$camp.slot' }, clicks: { $sum: 1 } } },
+    ]);
+    const map = new Map<string, { slot: string; clicks: number }[]>();
+    for (const r of slotByAdv as { _id: { advertiserId: { toString: () => string }; slot: string }; clicks: number }[]) {
+      const aid = r._id.advertiserId.toString();
+      if (!map.has(aid)) map.set(aid, []);
+      map.get(aid)!.push({ slot: r._id.slot, clicks: r.clicks });
+    }
+    advertiserSlotBreakdown = Array.from(map.entries()).map(([aid, slots]) => ({
+      advertiserId: aid,
+      advertiserName: names.get(aid) || 'Unknown',
+      slots: slots.sort((a, b) => b.clicks - a.clicks),
+    }));
+  }
+
+  const unassignedRow = byAdvertiserRows.find((r: { _id: unknown }) => !r._id);
+  const byAdvertiser = [
+    ...byAdvertiserRows
+      .filter((r: { _id: unknown }) => r._id)
+      .map((r: { _id: { toString: () => string }; clicks: number }) => {
+        const id = r._id.toString();
+        return {
+          advertiserId: id,
+          advertiserName: names.get(id) || 'Unknown',
+          totalClicks: r.clicks,
+          last7d: adv7dMap.get(id) ?? 0,
+          last30d: adv30dMap.get(id) ?? 0,
+        };
+      })
+      .sort((a: { totalClicks: number }, b: { totalClicks: number }) => b.totalClicks - a.totalClicks),
+    ...(unassignedRow ? [{
+      advertiserId: '__unassigned__',
+      advertiserName: 'Unassigned',
+      totalClicks: unassignedRow.clicks,
+      last7d: adv7dMap.get('__null__') ?? 0,
+      last30d: adv30dMap.get('__null__') ?? 0,
+    }] : []),
+  ];
+
+  const bySlot = bySlotRows.map((r: { _id: string; clicks: number }) => ({
+    slot: r._id,
+    totalClicks: r.clicks,
+    campaignCount: campaigns.filter((c: { slot: string }) => c.slot === r._id).length,
+  }));
+
+  const articleClicksByAdvertiser = await getArticleClicksByAdvertiser(advertiserIds);
+
+  // Featured groups (pinned ad groups with advertiserId)
+  let featuredGroups: { groupId: string; name: string; advertiserId: string; advertiserName: string; clickCount: number; lastClickedAt?: string }[] | undefined;
+  if (wantFeatured) {
+    const fgMatch: Record<string, unknown> = { pinned: true, isAdvertisement: true, advertiserId: { $exists: true, $ne: null } };
+    if (advertiserIds?.length) {
+      fgMatch.advertiserId = { $in: advertiserIds.map((id) => new mongoose.Types.ObjectId(id)) };
+    }
+    const fGroups = await Group.find(fgMatch).select('_id name advertiserId clickCount lastClickedAt').lean();
+    featuredGroups = (fGroups as { _id: { toString: () => string }; name: string; advertiserId?: { toString: () => string }; clickCount?: number; lastClickedAt?: Date }[])
+      .filter((g) => g.advertiserId)
+      .map((g) => ({
+        groupId: g._id.toString(),
+        name: g.name,
+        advertiserId: g.advertiserId!.toString(),
+        advertiserName: names.get(g.advertiserId!.toString()) || 'Unknown',
+        clickCount: g.clickCount || 0,
+        lastClickedAt: g.lastClickedAt?.toISOString(),
+      }));
+
+    // Add featured group clicks to the slot breakdown
+    const fgTotal = featuredGroups.reduce((s, g) => s + g.clickCount, 0);
+    if (fgTotal > 0) {
+      bySlot.push({ slot: 'featured-groups', totalClicks: fgTotal, campaignCount: featuredGroups.length });
+    }
+
+    // Add featured group clicks to KPIs when only featured-groups slot is selected
+    if (slots?.length === 1 && slots[0] === 'featured-groups') {
+      kpis.totalClicks = fgTotal;
+    }
+  }
+
+  return {
+    kpis,
+    clicksByDay,
+    clicksByDayByAdvertiser,
+    byAdvertiser,
+    bySlot,
+    articleClicksByAdvertiser,
+    prevPeriodClicksByDay,
+    prevPeriodTotal,
+    advertiserSlotBreakdown,
+    featuredGroups,
+  };
+}
+
+async function getArticleClicksByAdvertiser(advertiserIds?: string[]) {
+  await connectDB();
+  const match: Record<string, unknown> = { advertiserId: { $exists: true, $ne: null } };
+  if (advertiserIds?.length) match.advertiserId = { $in: advertiserIds };
+  const rows = await Article.aggregate([
+    { $match: match },
+    { $group: { _id: '$advertiserId', articleClicks: { $sum: '$views' } } },
+  ]);
+  const advertisers = await Advertiser.find({}).select('_id name').lean();
+  const names = new Map(advertisers.map((a: { _id: { toString: () => string }; name: string }) => [a._id.toString(), a.name]));
+  return rows.map((r: { _id: { toString: () => string }; articleClicks: number }) => ({
+    advertiserId: r._id.toString(),
+    advertiserName: names.get(r._id.toString()) || 'Unknown',
+    articleClicks: r.articleClicks,
+  }));
 }

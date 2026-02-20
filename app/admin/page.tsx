@@ -71,8 +71,11 @@ export default function AdminPage() {
       });
       setMetrics(res.data);
       setIsLoading(false);
-    } catch (err) {
-      console.error('Failed to fetch metrics', err);
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        localStorage.removeItem('token');
+        setShowLogin(true);
+      }
       setIsLoading(false);
     }
   };
@@ -84,11 +87,18 @@ export default function AdminPage() {
 
     try {
       const res = await axios.post('/api/auth/login', loginData);
+      if (!res.data.isAdmin) {
+        localStorage.removeItem('token');
+        setError('This account is not an admin. Use an admin account to access the panel.');
+        setIsLoading(false);
+        return;
+      }
       localStorage.setItem('token', res.data.token);
       setShowLogin(false);
       fetchMetrics();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed');
+      const msg = err.response?.data?.message || 'Login failed';
+      setError(msg === 'Invalid credentials' ? 'Invalid email or password. Need an admin user? Run: npx tsx scripts/set-admin-password.ts <email-or-username> <password> true' : msg);
       setIsLoading(false);
     }
   };

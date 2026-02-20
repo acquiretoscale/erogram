@@ -67,11 +67,7 @@ export const groupSchema = new Schema(
       required: [true, 'Group image is required'],
       default: '/assets/image.jpg',
     },
-    createdBy: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
+    createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
     createdByUsername: { type: String, default: '' },
     status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
     reviewedBy: { type: Schema.Types.ObjectId, ref: 'User' },
@@ -82,6 +78,7 @@ export const groupSchema = new Schema(
     weeklyViews: { type: Number, default: 0 },
     isAdvertisement: { type: Boolean, default: false },
     advertisementUrl: { type: String },
+    advertiserId: { type: Schema.Types.ObjectId, ref: 'Advertiser', required: false },
     clickCount: { type: Number, default: 0 },
     lastClickedAt: { type: Date },
     memberCount: { type: Number, default: 0 },
@@ -135,6 +132,7 @@ export const articleSchema = new Schema(
     status: { type: String, enum: ['draft', 'published'], default: 'draft', required: true },
     publishedAt: { type: Date, required: false },
     views: { type: Number, default: 0 },
+    advertiserId: { type: Schema.Types.ObjectId, ref: 'Advertiser', required: false },
     tags: [{ type: String }],
     // SEO Metadata fields
     metaTitle: { type: String, required: false },
@@ -225,11 +223,7 @@ export const botSchema = new Schema(
       required: [true, 'Bot image is required'],
       default: '/assets/image.jpg',
     },
-    createdBy: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
+    createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
     createdByUsername: { type: String, default: '' },
     status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
     reviewedBy: { type: Schema.Types.ObjectId, ref: 'User' },
@@ -340,6 +334,10 @@ export const siteConfigSchema = new Schema(
       imageUrl: { type: String, default: '' },
       url: { type: String, default: '' },
     },
+    generalSettings: {
+      type: Schema.Types.Mixed,
+      default: () => ({}),
+    },
   },
   { timestamps: true }
 );
@@ -433,6 +431,8 @@ export const campaignSchema = new Schema(
     category: { type: String, default: 'All' },
     country: { type: String, default: 'All' },
     buttonText: { type: String, default: 'Visit Site' },
+    // Where to show this feed ad: groups only, bots only, or both
+    feedPlacement: { type: String, enum: ['groups', 'bots', 'both'], default: 'both' },
   },
   { timestamps: true }
 );

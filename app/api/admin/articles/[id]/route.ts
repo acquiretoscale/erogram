@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
-import { User, Article } from '@/lib/models';
+import { User, Article, Advertiser } from '@/lib/models';
+
+export const dynamic = 'force-dynamic';
 import { slugify } from '@/lib/utils/slugify';
 import { submitToIndexNow } from '@/lib/utils/indexNow';
 
@@ -51,6 +54,11 @@ export async function GET(
       const authorDoc = await User.findById(a.author.toString()).select('username _id').lean() as any;
       if (authorDoc) author = { _id: authorDoc._id.toString(), username: authorDoc.username || 'erogram' };
     }
+    let advertiserName = '';
+    if (a.advertiserId) {
+      const adv = await Advertiser.findById(a.advertiserId).select('name').lean() as any;
+      advertiserName = adv?.name || '';
+    }
     const result = {
       _id: a._id.toString(),
       title: a.title,
@@ -62,6 +70,8 @@ export async function GET(
       tags: a.tags || [],
       publishedAt: a.publishedAt || null,
       views: a.views || 0,
+      advertiserId: a.advertiserId ? a.advertiserId.toString() : '',
+      advertiserName,
       createdAt: a.createdAt,
       updatedAt: a.updatedAt,
       author,
@@ -104,7 +114,7 @@ export async function PUT(
     
     const { id } = await params;
     const body = await req.json();
-    const { title, content, excerpt, featuredImage, status, tags, metaTitle, metaDescription, metaKeywords, ogImage, ogTitle, ogDescription, twitterCard, twitterImage, twitterTitle, twitterDescription } = body;
+    const { title, content, excerpt, featuredImage, status, tags, metaTitle, metaDescription, metaKeywords, ogImage, ogTitle, ogDescription, twitterCard, twitterImage, twitterTitle, twitterDescription, advertiserId } = body;
     
     const oldArticle = await Article.findById(id);
     if (!oldArticle) {
@@ -185,6 +195,9 @@ export async function PUT(
     setFields.twitterImage = twitterImage !== undefined && twitterImage !== null ? twitterImage : '';
     setFields.twitterTitle = twitterTitle !== undefined && twitterTitle !== null ? twitterTitle : '';
     setFields.twitterDescription = twitterDescription !== undefined && twitterDescription !== null ? twitterDescription : '';
+    if (advertiserId !== undefined) {
+      setFields.advertiserId = (advertiserId && String(advertiserId).trim()) ? advertiserId : null;
+    }
     
     // Handle status
     if (status !== undefined && status !== null && (status === 'published' || status === 'draft')) {
@@ -220,6 +233,11 @@ export async function PUT(
     // Convert ObjectId string to ObjectId for MongoDB query
     const ObjectId = mongoose.Types.ObjectId;
     const mongoId = new ObjectId(articleId);
+    if (setFields.advertiserId && typeof setFields.advertiserId === 'string') {
+      setFields.advertiserId = new ObjectId(setFields.advertiserId);
+    } else if (setFields.advertiserId === null) {
+      setFields.advertiserId = null;
+    }
     
     const updateResult = await articlesCollection.updateOne(
       { _id: mongoId },
@@ -265,6 +283,11 @@ export async function PUT(
     }
     
     // Build result object explicitly using actual DB values
+    let resultAdvertiserName = '';
+    if (article.advertiserId) {
+      const adv = await Advertiser.findById(article.advertiserId.toString()).select('name').lean() as any;
+      resultAdvertiserName = adv?.name || '';
+    }
     const result = {
       _id: article._id.toString(),
       title: article.title,
@@ -276,6 +299,8 @@ export async function PUT(
       tags: article.tags || [],
       publishedAt: article.publishedAt || null,
       views: article.views || 0,
+      advertiserId: article.advertiserId ? article.advertiserId.toString() : '',
+      advertiserName: resultAdvertiserName,
       createdAt: article.createdAt,
       updatedAt: article.updatedAt,
         author: author || { _id: '', username: 'erogram' },
@@ -297,6 +322,8 @@ export async function PUT(
       submitToIndexNow([`https://erogram.pro/articles/${article.slug}`]);
     }
 
+    revalidatePath('/articles');
+    revalidatePath(`/articles/${article.slug}`);
     return NextResponse.json(result);
   } catch (error: any) {
     console.error('Error updating article:', error);
@@ -332,7 +359,9 @@ export async function DELETE(
         { status: 404 }
       );
     }
-    
+    const slug = (article as any).slug;
+    revalidatePath('/articles');
+    if (slug) revalidatePath(`/articles/${slug}`);
     return NextResponse.json({ message: 'Article deleted successfully' });
   } catch (error: any) {
     console.error('Error deleting article:', error);

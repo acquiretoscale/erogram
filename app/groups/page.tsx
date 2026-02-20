@@ -7,7 +7,6 @@ import GroupsClient from './GroupsClient';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { getActiveCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
-import { getFilterButton } from '@/lib/actions/siteConfig';
 
 const baseUrl = 'https://erogram.pro';
 
@@ -38,9 +37,10 @@ async function getGroups(limit: number, isMobile: boolean = false) {
   try {
     await connectDB();
 
-    // Use random sampling for better discovery experience
+    // Use random sampling for better discovery experience. Exclude Group-based "advert" rows
+    // so in-feed ads come only from Campaigns (Advertisers → By slot → In-Feed).
     const groups = await Group.aggregate([
-      { $match: { status: 'approved' } },
+      { $match: { status: 'approved', isAdvertisement: { $ne: true } } },
       { $sample: { size: limit } }, // Limit initial payload for mobile
       {
         $lookup: {
@@ -145,23 +145,14 @@ export default async function GroupsPage() {
   // Render a small, SEO-safe first page
   const groups = await getGroups(12, isMobile);
 
-  const [topBannerCampaigns, filterCtaCampaigns, feedCampaigns, filterButton] = await Promise.all([
+  // In-feed ads: Advertisers only (Admin → Advertisers → By slot → In-Feed). Input = DB = output.
+  const [topBannerCampaigns, feedCampaigns] = await Promise.all([
     getActiveCampaigns('top-banner'),
-    getActiveCampaigns('filter-cta'),
-    getActiveFeedCampaigns(),
-    getFilterButton(),
+    getActiveFeedCampaigns('groups'),
   ]);
 
   const topBannerForPage =
     topBannerCampaigns.length > 0 && topBannerCampaigns[0].creative ? topBannerCampaigns : [];
-
-  // Sidebar button: Advertiser Filter CTA first, else Settings.
-  const filterFromCampaign =
-    filterCtaCampaigns.length > 0
-      ? { text: filterCtaCampaigns[0].buttonText?.trim() || 'Visit', url: filterCtaCampaigns[0].destinationUrl || '' }
-      : null;
-  const filterButtonText = (filterFromCampaign?.text ?? filterButton?.text ?? '').trim();
-  const filterButtonUrl = filterFromCampaign?.url ?? filterButton?.url ?? '';
 
   return (
     <>
@@ -181,8 +172,6 @@ export default async function GroupsPage() {
           initialIsMobile={isMobile}
           initialIsTelegram={isTelegram}
           topBannerCampaigns={topBannerForPage}
-          filterButtonText={filterButtonText}
-          filterButtonUrl={filterButtonUrl}
         />
       </ErrorBoundary>
     </>

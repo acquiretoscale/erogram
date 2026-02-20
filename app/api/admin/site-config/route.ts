@@ -3,6 +3,8 @@ import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import { User, SiteConfig } from '@/lib/models';
 
+export const dynamic = 'force-dynamic';
+
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
 async function authenticate(req: NextRequest) {
@@ -102,6 +104,9 @@ export async function GET(req: NextRequest) {
     if (!(config as any).topBanner) {
       (config as any).topBanner = { imageUrl: '', url: '' };
     }
+    if (!(config as any).generalSettings || typeof (config as any).generalSettings !== 'object') {
+      (config as any).generalSettings = {};
+    }
 
     return NextResponse.json(config);
   } catch (error: any) {
@@ -178,6 +183,7 @@ export async function PUT(req: NextRequest) {
           imageUrl: body.topBanner?.imageUrl ?? '',
           url: body.topBanner?.url ?? '',
         },
+        generalSettings: body.generalSettings && typeof body.generalSettings === 'object' ? body.generalSettings : {},
       };
       config = await SiteConfig.create(newConfigData);
     } else {
@@ -266,6 +272,10 @@ export async function PUT(req: NextRequest) {
           imageUrl: body.topBanner.imageUrl !== undefined ? String(body.topBanner.imageUrl) : ((config as any).topBanner?.imageUrl || ''),
           url: body.topBanner.url !== undefined ? String(body.topBanner.url) : ((config as any).topBanner?.url || ''),
         };
+      }
+      if (body.generalSettings && typeof body.generalSettings === 'object') {
+        (config as any).generalSettings = { ...((config as any).generalSettings || {}), ...body.generalSettings };
+        config.markModified('generalSettings');
       }
       await config.save();
     }

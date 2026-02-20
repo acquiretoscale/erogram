@@ -33,12 +33,9 @@ interface GroupsClientProps {
   initialIsTelegram?: boolean;
   topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string }>;
   /** Passed as separate strings to avoid hydration mismatch (stable serialization). */
-  filterButtonText?: string;
-  filterButtonUrl?: string;
 }
 
-export default function GroupsClient({ initialGroups, feedCampaigns = [], initialCountry, initialIsMobile = false, initialIsTelegram = false, topBannerCampaigns = [], filterButtonText = '', filterButtonUrl = '' }: GroupsClientProps) {
-  const hasFilterButton = Boolean(filterButtonText?.trim() || filterButtonUrl?.trim());
+export default function GroupsClient({ initialGroups, feedCampaigns = [], initialCountry, initialIsMobile = false, initialIsTelegram = false, topBannerCampaigns = [] }: GroupsClientProps) {
   const [username, setUsername] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedCountry, setSelectedCountry] = useState(initialCountry || 'All');
@@ -399,9 +396,8 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
     return () => window.removeEventListener('scroll', handleScroll);
   }, [skip, loading, hasMore, selectedSort, debouncedSearchQuery, selectedCategory, selectedCountry]);
 
-  // Since filtering is now handled at API level, use groups directly
   const displayGroups = useMemo(() => {
-    return [...pinnedGroups, ...regularGroups];
+    return [...pinnedGroups.slice(0, 2), ...regularGroups];
   }, [pinnedGroups, regularGroups]);
 
   // Custom hook for debouncing
@@ -527,19 +523,6 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                 />
               </div>
 
-              {/* Filter button – Advertiser Filter CTA or Settings fallback. Always same DOM (single <a>) to avoid hydration mismatch. */}
-              <div className="mt-6">
-                <a
-                  href={hasFilterButton ? (filterButtonUrl?.trim() || '#') : '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 shadow-lg transition-all hover:scale-[1.02] ${hasFilterButton ? '' : 'pointer-events-none invisible'}`}
-                  aria-hidden={!hasFilterButton}
-                >
-                  <span className="text-lg" aria-hidden>💋</span>
-                  {hasFilterButton ? (filterButtonText?.trim() || 'Visit') : 'Visit'}
-                </a>
-              </div>
             </div>
           </aside>
 
@@ -598,15 +581,8 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                     </p>
                   </div>
                 )}
-                {pinnedGroups.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                    {pinnedGroups.map((group, idx) => (
-                      <GroupCard key={`pinned-${group._id}`} group={group} isIndex={idx} isFeatured={true} onOpenReviewModal={openReviewModal} onOpenReportModal={openReportModal} />
-                    ))}
-                  </div>
-                )}
                 <VirtualizedGroupGrid
-                  groups={regularGroups}
+                  groups={displayGroups}
                   feedPlacementsMap={feedPlacementsMap}
                   isTelegram={isTelegram}
                   onOpenReviewModal={openReviewModal}

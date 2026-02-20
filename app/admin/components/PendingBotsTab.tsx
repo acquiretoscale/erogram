@@ -15,12 +15,23 @@ export default function PendingBotsTab() {
     const fetchPendingBots = async () => {
         try {
             const token = localStorage.getItem('token');
+            if (!token) {
+                setError('Please log in to view pending bots.');
+                setIsLoading(false);
+                return;
+            }
             const res = await axios.get('/api/admin/bots', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setBots(res.data.filter((b: any) => b.status === 'pending'));
             setError('');
         } catch (err: any) {
+            if (err.response?.status === 401) {
+                localStorage.removeItem('token');
+                setError('Session expired or admin access required. Please log in again.');
+                window.location.href = '/admin';
+                return;
+            }
             setError(err.response?.data?.message || 'Failed to load pending bots');
         } finally {
             setIsLoading(false);

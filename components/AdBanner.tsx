@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { trackClick } from '@/lib/actions/campaigns';
 
 interface CampaignData {
   _id: string;
@@ -35,9 +34,9 @@ export default function AdBanner({ campaigns, slot, className = '' }: AdBannerPr
   }, [slot, campaigns.length]);
 
   const handleClick = useCallback((campaign: CampaignData) => {
-    trackClick(campaign._id);
+    fetch('/api/campaigns/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campaignId: campaign._id, placement: slot }) }).catch(() => {});
     window.open(campaign.destinationUrl, '_blank', 'noopener,noreferrer');
-  }, []);
+  }, [slot]);
 
   if (!campaigns?.length) {
     return null;

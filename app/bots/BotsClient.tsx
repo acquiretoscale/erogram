@@ -8,6 +8,8 @@ import axios from 'axios';
 import Navbar from '@/components/Navbar';
 import HeaderBanner from '@/components/HeaderBanner';
 import BotCardSkeleton from './BotCardSkeleton';
+import AdvertCard from '../groups/AdvertCard';
+import type { FeedCampaign } from '../groups/types';
 // Removed react-window import as virtualization is no longer used
 
 
@@ -94,16 +96,14 @@ interface Advert {
 interface BotsClientProps {
   initialBots: Bot[];
   initialAdverts: Advert[];
+  feedCampaigns?: FeedCampaign[];
   initialIsMobile: boolean;
   initialIsTelegram: boolean;
   initialCountry?: string;
   topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string }>;
-  filterButtonText?: string;
-  filterButtonUrl?: string;
 }
 
-export default function BotsClient({ initialBots, initialAdverts, initialIsMobile, initialIsTelegram, initialCountry, topBannerCampaigns = [], filterButtonText = '', filterButtonUrl = '' }: BotsClientProps) {
-  const hasFilterButton = Boolean(filterButtonText?.trim() || filterButtonUrl?.trim());
+export default function BotsClient({ initialBots, initialAdverts, feedCampaigns = [], initialIsMobile, initialIsTelegram, initialCountry, topBannerCampaigns = [] }: BotsClientProps) {
   const [username, setUsername] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedSort, setSelectedSort] = useState('random');
@@ -311,6 +311,17 @@ export default function BotsClient({ initialBots, initialAdverts, initialIsMobil
     return new Set(advertPlacementsMap.keys());
   }, [advertPlacementsMap]);
 
+  // Feed ads from Admin → Feed Ads (placement = Bots or Both). One ad every 5 entries at 5, 10, 15, ...
+  const feedPlacementsMap = useMemo(() => {
+    const map = new Map<number, FeedCampaign>();
+    if (feedCampaigns?.length) {
+      feedCampaigns.forEach((c) => {
+        if (c.position != null) map.set(c.position, c);
+      });
+    }
+    return map;
+  }, [feedCampaigns]);
+
   return (
     <div className="min-h-screen bg-[#111111]">
       {/* Animated Background */}
@@ -432,19 +443,6 @@ export default function BotsClient({ initialBots, initialAdverts, initialIsMobil
                 />
               </div>
 
-              {/* Filter button – Advertiser Filter CTA or Settings fallback. Always same DOM to avoid hydration mismatch. */}
-              <div className="mt-6">
-                <a
-                  href={hasFilterButton ? (filterButtonUrl?.trim() || '#') : '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 shadow-lg transition-all hover:scale-[1.02] ${hasFilterButton ? '' : 'pointer-events-none invisible'}`}
-                  aria-hidden={!hasFilterButton}
-                >
-                  <span className="text-lg" aria-hidden>💋</span>
-                  {hasFilterButton ? (filterButtonText?.trim() || 'Visit') : 'Visit'}
-                </a>
-              </div>
             </div>
           </aside>
 
@@ -539,6 +537,7 @@ export default function BotsClient({ initialBots, initialAdverts, initialIsMobil
                   <VirtualizedBotGrid
                     bots={displayBots}
                     advertPlacementsMap={advertPlacementsMap}
+                    feedPlacementsMap={feedPlacementsMap}
                     isMobile={isMobile}
                     isTelegram={isTelegram}
                   />
@@ -759,14 +758,19 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
   );
 });
 
-const VirtualizedBotGrid = React.memo(function VirtualizedBotGrid({ bots, advertPlacementsMap, isMobile, isTelegram }: { bots: Bot[]; advertPlacementsMap: Map<number, Advert>; isMobile: boolean; isTelegram: boolean }) {
-  // Create a combined array of items (bots and adverts)
-  const items: Array<{ type: 'bot' | 'advert'; data: Bot | Advert; index: number }> = [];
+const VirtualizedBotGrid = React.memo(function VirtualizedBotGrid({ bots, advertPlacementsMap, feedPlacementsMap, isMobile, isTelegram }: { bots: Bot[]; advertPlacementsMap: Map<number, Advert>; feedPlacementsMap: Map<number, FeedCampaign>; isMobile: boolean; isTelegram: boolean }) {
+  const items: Array<{ type: 'bot' | 'campaign'; data: Bot | FeedCampaign; index: number }> = [];
 
-  bots.forEach((bot, index) => {
-    items.push({ type: 'bot', data: bot, index });
-
-    // Adverts disabled
+  bots.forEach((bot) => {
+    if (!isTelegram && feedPlacementsMap.size > 0) {
+      let currentPos = items.length + 1;
+      while (feedPlacementsMap.has(currentPos)) {
+        const campaign = feedPlacementsMap.get(currentPos);
+        if (campaign) items.push({ type: 'campaign', data: campaign, index: items.length });
+        currentPos = items.length + 1;
+      }
+    }
+    items.push({ type: 'bot', data: bot, index: items.length });
   });
 
   return (
@@ -781,23 +785,21 @@ const VirtualizedBotGrid = React.memo(function VirtualizedBotGrid({ bots, advert
               isFeatured={(item.data as Bot).pinned}
             />
           );
-        } else {
-          return (
-            <AdvertCard
-              key={`advert-${(item.data as Advert)._id}`}
-              advert={item.data as Advert}
-              isIndex={Math.floor(item.index)}
-              isMobile={isMobile}
-              isTelegram={isTelegram}
-            />
-          );
         }
+        return (
+          <AdvertCard
+            key={`campaign-${(item.data as FeedCampaign)._id}`}
+            campaign={item.data as FeedCampaign}
+            isIndex={Math.floor(item.index)}
+            shouldPreload={false}
+          />
+        );
       })}
     </div>
   );
 });
 
-const AdvertCard = React.memo(function AdvertCard({ advert, isIndex = 0, isMobile, isTelegram }: { advert: Advert; isIndex?: number; isMobile: boolean; isTelegram: boolean }) {
+const BotAdvertCard = React.memo(function BotAdvertCard({ advert, isIndex = 0, isMobile, isTelegram }: { advert: Advert; isIndex?: number; isMobile: boolean; isTelegram: boolean }) {
   const [isHovered, setIsHovered] = useState(false);
 
   const handleClick = async () => {

@@ -16,13 +16,23 @@ export default function PendingGroupsTab() {
     const fetchPendingGroups = async () => {
         try {
             const token = localStorage.getItem('token');
-            // Fetch all groups and filter client-side for now
+            if (!token) {
+                setError('Please log in to view pending groups.');
+                setIsLoading(false);
+                return;
+            }
             const res = await axios.get('/api/admin/groups', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setGroups(res.data.filter((g: any) => g.status === 'pending'));
             setError('');
         } catch (err: any) {
+            if (err.response?.status === 401) {
+                localStorage.removeItem('token');
+                setError('Session expired or admin access required. Please log in again.');
+                window.location.href = '/admin';
+                return;
+            }
             setError(err.response?.data?.message || 'Failed to load pending groups');
         } finally {
             setIsLoading(false);

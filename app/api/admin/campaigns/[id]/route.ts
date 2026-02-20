@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { updateCampaign, deleteCampaign } from '@/lib/actions/campaigns';
 
 function getToken(req: NextRequest): string {
@@ -17,6 +18,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       body.creative = '';
     }
     const updated = await updateCampaign(token, id, body);
+    revalidatePath('/groups');
+    revalidatePath('/groups/country/[country]', 'page');
+    revalidatePath('/bots');
     return NextResponse.json(updated);
   } catch (err: any) {
     return NextResponse.json({ message: err.message || 'Failed' }, { status: err.message === 'Unauthorized' ? 401 : 400 });
@@ -28,6 +32,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const token = getToken(req);
     const { id } = await params;
     await deleteCampaign(token, id);
+    revalidatePath('/groups');
+    revalidatePath('/groups/country/[country]', 'page');
+    revalidatePath('/bots');
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ message: err.message || 'Failed' }, { status: err.message === 'Unauthorized' ? 401 : 400 });

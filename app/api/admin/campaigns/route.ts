@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { createCampaign } from '@/lib/actions/campaigns';
 
 function getToken(req: NextRequest): string {
@@ -34,6 +35,9 @@ export async function POST(req: NextRequest) {
       country: body.country ?? 'All',
       buttonText: isCtaSlot ? desc : (body.buttonText != null ? String(body.buttonText).trim() : 'Visit Site'),
     });
+    revalidatePath('/groups');
+    revalidatePath('/groups/country/[country]', 'page');
+    revalidatePath('/bots');
     return NextResponse.json(result);
   } catch (err: any) {
     const message = err?.message || 'Failed';

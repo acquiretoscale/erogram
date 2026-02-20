@@ -8,6 +8,7 @@ import { categories, countries } from '@/app/groups/constants';
 
 export default function GroupsTab() {
     const [groups, setGroups] = useState<any[]>([]);
+    const [advertisers, setAdvertisers] = useState<{ _id: string; name: string }[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
@@ -22,6 +23,7 @@ export default function GroupsTab() {
         image: '',
         status: 'pending' as 'pending' | 'approved' | 'rejected',
         pinned: false,
+        advertiserId: '' as string,
     });
     const [isSaving, setIsSaving] = useState(false);
 
@@ -31,7 +33,16 @@ export default function GroupsTab() {
 
     useEffect(() => {
         fetchGroups();
+        fetchAdvertisers();
     }, []);
+
+    const fetchAdvertisers = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get('/api/admin/advertisers', { headers: { Authorization: `Bearer ${token}` } });
+            setAdvertisers(res.data.map((a: any) => ({ _id: a._id, name: a.name })));
+        } catch {}
+    };
 
     const fetchGroups = async () => {
         try {
@@ -59,6 +70,7 @@ export default function GroupsTab() {
             image: group.image || '',
             status: group.status || 'pending',
             pinned: group.pinned || false,
+            advertiserId: group.advertiserId || '',
         });
         setShowEditor(true);
     };
@@ -243,7 +255,11 @@ export default function GroupsTab() {
                                                     <div>
                                                         <div className="font-medium text-white flex items-center gap-2">
                                                             {group.name}
-                                                            {group.pinned && <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded">PINNED</span>}
+                                                            {group.pinned && <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded">FEATURED</span>}
+                                                            {group.pinned && group.advertiserId && (() => {
+                                                                const adv = advertisers.find((a) => a._id === group.advertiserId);
+                                                                return adv ? <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">{adv.name}</span> : null;
+                                                            })()}
                                                         </div>
                                                         <div className="text-xs text-[#666] truncate max-w-[200px]">{group.telegramLink}</div>
                                                     </div>
@@ -427,9 +443,24 @@ export default function GroupsTab() {
                                                 onChange={(e) => setGroupData({ ...groupData, pinned: e.target.checked })}
                                                 className="w-5 h-5 rounded border-white/10 bg-[#1a1a1a] text-[#b31b1b] focus:ring-[#b31b1b]"
                                             />
-                                            <span className="text-white font-medium">Pin to top</span>
+                                            <span className="text-white font-medium">Pin to top (featured slot)</span>
                                         </label>
+                                        <span className="text-xs text-[#999] ml-3">Max 2 featured slots on groups page</span>
                                     </div>
+
+                                    {groupData.pinned && (
+                                        <div>
+                                            <label className="block text-xs font-bold text-[#666] uppercase mb-2">Assign advertiser (tracked in dashboard)</label>
+                                            <select
+                                                value={groupData.advertiserId}
+                                                onChange={(e) => setGroupData({ ...groupData, advertiserId: e.target.value })}
+                                                className="w-full rounded-lg border border-white/10 bg-[#1a1a1a] text-white px-3 py-2 text-sm focus:ring-2 focus:ring-[#b31b1b]/50"
+                                            >
+                                                <option value="">No advertiser (untracked)</option>
+                                                {advertisers.map((a) => <option key={a._id} value={a._id}>{a.name}</option>)}
+                                            </select>
+                                        </div>
+                                    )}
 
                                     <div className="col-span-2">
                                         <label className="block text-xs font-bold text-[#666] uppercase mb-2">Image</label>

@@ -38,6 +38,7 @@ interface CampaignRow {
   category: string;
   country: string;
   buttonText: string;
+  feedPlacement?: 'groups' | 'bots' | 'both';
 }
 
 interface SlotInfo {
@@ -74,12 +75,13 @@ function toInputDate(iso: string) {
 }
 
 const SLOT_LABELS: Record<string, string> = {
-  'top-banner': 'Top Banner (Bots & Groups page)',
+  'top-banner': 'Top Banner',
   'homepage-hero': 'Homepage Hero',
-  feed: 'In-Feed (Groups page)',
-  'navbar-cta': 'Navbar CTA (Meet your AI… link)',
-  'join-cta': 'Join page CTA (Build your AI girlfriend…)',
-  'filter-cta': 'Filter CTA (Groups & Bots sidebar)',
+  feed: 'In-Feed',
+  'navbar-cta': 'Navbar CTA',
+  'join-cta': 'Join CTA',
+  'filter-cta': 'Filter CTA',
+  'featured-groups': 'Featured Groups',
 };
 
 const FEED_SLOTS = ['feed'];
@@ -100,13 +102,38 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
   const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
   const [slots, setSlots] = useState<SlotInfo[]>([]);
   const [feedTierCapacity, setFeedTierCapacity] = useState<FeedTierInfo[]>([]);
-  const [globalStats, setGlobalStats] = useState<{ totalClicks: number; last7Days: number; last30Days: number } | null>(null);
+  const [globalStats, setGlobalStats] = useState<{ totalClicks: number; todayClicks?: number; last24h?: number; last7Days: number; last30Days: number } | null>(null);
   const [slotTotals, setSlotTotals] = useState<Array<{ slot: string; totalClicks: number; campaignCount: number }>>([]);
-  const [chartData, setChartData] = useState<Array<{ date: string; clicks: number }>>([]);
-  const [chartDays, setChartDays] = useState<7 | 30>(30);
+  const [clicksByAdvertiser, setClicksByAdvertiser] = useState<Array<{ advertiserId: string; advertiserName: string; totalClicks: number; last7Days: number; last30Days: number }>>([]);
+  const [feedClickStats, setFeedClickStats] = useState<Record<string, { total: number; last24h: number; last7d: number; last30d: number }>>({});
+  // Filtered dashboard (Overview KPIs + charts)
+  const [dashboardRange, setDashboardRange] = useState<'today' | '7d' | '30d' | 'custom' | 'lifetime'>('30d');
+  const [dashboardSlots, setDashboardSlots] = useState<string[]>([]);
+  const [dashboardAdvertiserIds, setDashboardAdvertiserIds] = useState<string[]>([]);
+  const [dashboardFrom, setDashboardFrom] = useState('');
+  const [dashboardTo, setDashboardTo] = useState('');
+  const [dashboardStats, setDashboardStats] = useState<{
+    kpis: { totalClicks: number; todayClicks: number; last24h: number; last7d: number; last30d: number };
+    clicksByDay: { date: string; clicks: number }[];
+    clicksByDayByAdvertiser?: { date: string; advertisers: { advertiserId: string; advertiserName: string; clicks: number }[] }[];
+    byAdvertiser: { advertiserId: string; advertiserName: string; totalClicks: number; last7d: number; last30d: number }[];
+    bySlot: { slot: string; totalClicks: number; campaignCount: number }[];
+    articleClicksByAdvertiser: { advertiserId: string; advertiserName: string; articleClicks: number }[];
+    prevPeriodClicksByDay?: { date: string; clicks: number }[];
+    prevPeriodTotal?: number;
+    advertiserSlotBreakdown?: { advertiserId: string; advertiserName: string; slots: { slot: string; clicks: number }[] }[];
+    featuredGroups?: { groupId: string; name: string; advertiserId: string; advertiserName: string; clickCount: number; lastClickedAt?: string }[];
+  } | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [feedAdsFilterAdvertiser, setFeedAdsFilterAdvertiser] = useState<string>('all');
+  const [feedAdsFilterStatus, setFeedAdsFilterStatus] = useState<string>('all');
+  const [feedAdsSortBy, setFeedAdsSortBy] = useState<'position' | 'clicks' | 'status'>('position');
+  const [feedAdsDateRange, setFeedAdsDateRange] = useState<'24h' | '7d' | '30d' | 'all'>('30d');
+  const [feedAdsCustomFrom, setFeedAdsCustomFrom] = useState('');
+  const [feedAdsCustomTo, setFeedAdsCustomTo] = useState('');
   const [allAdsFilterSlot, setAllAdsFilterSlot] = useState<string>('all');
   const [managedSlot, setManagedSlot] = useState<string | null>(null);
-  const [sectionTab, setSectionTab] = useState<'overview' | 'slots' | 'campaigns' | 'advertisers'>('overview');
+  const [sectionTab, setSectionTab] = useState<'overview' | 'slots' | 'buttonsBanners' | 'advertisers' | 'feedAds'>('overview');
   // Slots from API = top-banner, homepage-hero, feed, navbar-cta, join-cta, filter-cta
   const displaySlots = slots;
   const [campaignStatusFilter, setCampaignStatusFilter] = useState<'all' | 'live' | 'ended' | 'paused'>('all');
@@ -143,6 +170,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
     category: 'All',
     country: 'All',
     buttonText: 'Visit Site',
+    feedPlacement: 'both' as 'groups' | 'bots' | 'both',
   });
   const [isUploading, setIsUploading] = useState(false);
   const savingRef = useRef(false);
@@ -158,6 +186,8 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
       setFeedTierCapacity(res.data.feedTierCapacity ?? []);
       setGlobalStats(res.data.globalStats ?? null);
       setSlotTotals(res.data.slotTotals ?? []);
+      setClicksByAdvertiser(res.data.clicksByAdvertiser ?? []);
+      setFeedClickStats(res.data.feedClickStats ?? {});
       setError('');
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Failed to load data');
@@ -166,18 +196,32 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
     }
   };
 
-  const loadChart = async (days: 7 | 30) => {
+  useEffect(() => {
+    fetchAll();
+  }, []);
+
+  const fetchDashboardStats = async () => {
+    if (sectionTab !== 'overview') return;
+    setDashboardLoading(true);
     try {
-      const res = await axios.get(`/api/admin/click-stats-by-day?days=${days}`, authHeaders());
-      setChartData(Array.isArray(res.data) ? res.data : []);
+      const params = new URLSearchParams();
+      params.set('range', dashboardRange);
+      if (dashboardSlots.length) params.set('slots', dashboardSlots.join(','));
+      if (dashboardAdvertiserIds.length) params.set('advertiserIds', dashboardAdvertiserIds.join(','));
+      if (dashboardRange === 'custom' && dashboardFrom) params.set('from', dashboardFrom);
+      if (dashboardRange === 'custom' && dashboardTo) params.set('to', dashboardTo);
+      const res = await axios.get(`/api/admin/advertiser-dashboard-stats?${params.toString()}`, authHeaders());
+      setDashboardStats(res.data);
     } catch {
-      setChartData([]);
+      setDashboardStats(null);
+    } finally {
+      setDashboardLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAll();
-  }, []);
+    if (sectionTab === 'overview') fetchDashboardStats();
+  }, [sectionTab, dashboardRange, dashboardSlots.join(','), dashboardAdvertiserIds.join(','), dashboardFrom, dashboardTo]);
 
   // When creating a new campaign, auto-select first advertiser if none selected (e.g. form opened before advertisers loaded)
   useEffect(() => {
@@ -185,10 +229,6 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
       setCampForm((prev) => ({ ...prev, advertiserId: advertisers[0]._id }));
     }
   }, [view, editingCampaign, advertisers, campForm.advertiserId]);
-
-  useEffect(() => {
-    if (!isLoading) loadChart(chartDays);
-  }, [chartDays, isLoading]);
 
   // Advertiser CRUD
   const openNewAdvertiser = () => {
@@ -270,6 +310,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
       category: 'All',
       country: 'All',
       buttonText: 'Visit Site',
+      feedPlacement: 'both',
     });
     setView('editCampaign');
   };
@@ -290,13 +331,16 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
       endDate: toInputDate(camp.endDate),
       status: camp.status,
       isVisible: camp.isVisible,
-      position: camp.position,
+      position: camp.slot === 'feed'
+        ? (camp.position ?? (camp.feedTier != null && camp.tierSlot != null ? (camp.feedTier - 1) * 4 + camp.tierSlot : 1))
+        : camp.position,
       feedTier: camp.feedTier ?? null,
       tierSlot: camp.tierSlot ?? null,
       description: camp.description || '',
       category: camp.category || 'All',
       country: camp.country || 'All',
       buttonText: camp.buttonText || 'Visit Site',
+      feedPlacement: (camp.feedPlacement || 'both') as 'groups' | 'bots' | 'both',
     });
     setView('editCampaign');
   };
@@ -326,8 +370,13 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
       return;
     }
     const isFeed = FEED_SLOTS.includes(campForm.slot);
-    if (campForm.slot === 'feed' && (campForm.feedTier == null || campForm.tierSlot == null)) {
-      alert('Tier and Slot are required for in-feed campaigns');
+    const feedPosition = campForm.slot === 'feed' ? (campForm.position != null ? Number(campForm.position) : 0) : 0;
+    if (campForm.slot === 'feed' && feedPosition < 1) {
+      alert('Position (1 or higher) is required for feed ads');
+      return;
+    }
+    if (isFeed && !campForm.advertiserId) {
+      alert('Please select an Advertiser (required for feed ads).');
       return;
     }
     if (!campForm.destinationUrl.startsWith('http://') && !campForm.destinationUrl.startsWith('https://')) {
@@ -338,8 +387,10 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
     savingRef.current = true;
     setIsSaving(true);
     try {
-      const descriptionVal = isFeed || isCta ? (campForm.description || campForm.buttonText || 'Visit Site').trim() : '';
-        const payload = {
+      const descriptionVal = isCta ? (campForm.description || campForm.buttonText || 'Visit Site').trim() : (campForm.description ?? '').trim();
+      const buttonTextVal = (campForm.buttonText ?? 'Visit Site').trim();
+      const feedPos = campForm.slot === 'feed' ? Math.max(1, Math.floor(Number(campForm.position) || 1)) : null;
+      const payload: Record<string, unknown> = {
         name: (campForm.name ?? '').trim() || (isCta ? ctaLabel : 'Campaign'),
         slot: String(campForm.slot ?? ''),
         creative: isCta ? '' : String(campForm.creative ?? ''),
@@ -348,14 +399,19 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
         endDate: campForm.endDate,
         status: campForm.status ?? 'active',
         isVisible: campForm.isVisible !== false,
-        position: null,
-        feedTier: campForm.slot === 'feed' ? campForm.feedTier : null,
-        tierSlot: campForm.slot === 'feed' ? campForm.tierSlot : null,
-        description: isFeed || isCta ? descriptionVal : '',
+        position: isFeed ? feedPos : null,
+        description: isFeed ? (campForm.description ?? '').trim() : (isCta ? descriptionVal : ''),
         category: isFeed ? (campForm.category ?? 'All') : 'All',
         country: isFeed ? (campForm.country ?? 'All') : 'All',
-        buttonText: isFeed || isCta ? descriptionVal : 'Visit Site',
+        buttonText: isFeed ? buttonTextVal : (isCta ? descriptionVal : 'Visit Site'),
+        feedPlacement: isFeed ? (campForm.feedPlacement || 'both') : undefined,
       };
+      if (isFeed && !editingCampaign) {
+        payload.feedTier = Math.ceil((feedPos ?? 1) / 4);
+        payload.tierSlot = ((feedPos ?? 1) - 1) % 4 + 1;
+      }
+      const assignableSlots = FEED_SLOTS.includes(campForm.slot) || CTA_SLOTS.includes(campForm.slot) || ['homepage-hero', 'top-banner'].includes(campForm.slot);
+      if (assignableSlots && campForm.advertiserId) payload.advertiserId = String(campForm.advertiserId).trim();
       if (editingCampaign) {
         const { data: updated } = await axios.put(`/api/admin/campaigns/${editingCampaign._id}`, payload, authHeaders());
         if (updated && updated._id) {
@@ -392,6 +448,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
         category: 'All',
         country: 'All',
         buttonText: 'Visit Site',
+        feedPlacement: 'both',
       });
       setView('list');
       alert('Campaign saved successfully.');
@@ -608,10 +665,24 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
         </div>
 
         <div className="glass rounded-2xl p-6 border border-white/5 space-y-6">
-          {!editingCampaign && (
+          {/* Assign to advertiser: feed, navbar/join/filter CTAs, homepage hero, top banner */}
+          {(FEED_SLOTS.includes(campForm.slot) || CTA_SLOTS.includes(campForm.slot) || ['homepage-hero', 'top-banner'].includes(campForm.slot)) && (
+            <div className="pb-4 border-b border-white/10">
+              <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider mb-2">Assign to advertiser</h3>
+              <select value={campForm.advertiserId || ''} onChange={(e) => setCampForm({ ...campForm, advertiserId: e.target.value })} className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] outline-none">
+                <option value="">Select advertiser</option>
+                {advertisers.map((a) => (
+                  <option key={a._id} value={a._id}>{a.name}</option>
+                ))}
+              </select>
+              {advertisers.length === 0 && <p className="text-amber-400/80 text-xs mt-1">No advertisers yet. Add one in the Advertisers tab first.</p>}
+            </div>
+          )}
+          {/* Advertiser for other slots (e.g. from By slot): only on create */}
+          {!FEED_SLOTS.includes(campForm.slot) && !CTA_SLOTS.includes(campForm.slot) && !['homepage-hero', 'top-banner'].includes(campForm.slot) && !editingCampaign && (
             <div>
               <label className="block text-sm font-semibold text-[#999] mb-2">Advertiser *</label>
-              <select value={campForm.advertiserId} onChange={(e) => setCampForm({ ...campForm, advertiserId: e.target.value })} className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] outline-none">
+              <select value={campForm.advertiserId || ''} onChange={(e) => setCampForm({ ...campForm, advertiserId: e.target.value })} className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] outline-none">
                 <option value="">Select advertiser</option>
                 {advertisers.map((a) => (
                   <option key={a._id} value={a._id}>{a.name}</option>
@@ -659,33 +730,41 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
               <label className="block text-sm font-semibold text-[#999] mb-2">Campaign Name *</label>
               <input type="text" value={campForm.name} onChange={(e) => setCampForm({ ...campForm, name: e.target.value })} className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-[#b31b1b] outline-none" placeholder="e.g. February Top Banner" />
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-[#999] mb-2">Slot *</label>
-              <select
-                value={campForm.slot}
-                onChange={(e) => {
-                  const newSlot = e.target.value;
-                  setCampForm({
-                    ...campForm,
-                    slot: newSlot,
-                    creative: isTextOnlySlot(newSlot) ? '' : campForm.creative,
-                  });
-                }}
-                className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] outline-none"
-              >
-                {campaignType === 'text'
-                  ? CTA_SLOTS.map((slot) => (
-                      <option key={slot} value={slot}>
-                        {SLOT_LABELS[slot] || slot}
-                      </option>
-                    ))
-                  : (['top-banner', 'homepage-hero', 'feed'] as const).map((slot) => (
-                      <option key={slot} value={slot}>
-                        {SLOT_LABELS[slot] || slot} {slots.length > 0 ? `(${(slots.find((s) => s.slot === slot)?.remaining ?? 0)}/${slots.find((s) => s.slot === slot)?.max ?? 0} available)` : ''}
-                      </option>
-                    ))}
-              </select>
-            </div>
+            {/* Slot: hidden for feed ads (fixed In-Feed); show for other campaign types */}
+            {!FEED_SLOTS.includes(campForm.slot) ? (
+              <div>
+                <label className="block text-sm font-semibold text-[#999] mb-2">Slot *</label>
+                <select
+                  value={campForm.slot}
+                  onChange={(e) => {
+                    const newSlot = e.target.value;
+                    setCampForm({
+                      ...campForm,
+                      slot: newSlot,
+                      creative: isTextOnlySlot(newSlot) ? '' : campForm.creative,
+                    });
+                  }}
+                  className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] outline-none"
+                >
+                  {campaignType === 'text'
+                    ? CTA_SLOTS.map((slot) => (
+                        <option key={slot} value={slot}>
+                          {SLOT_LABELS[slot] || slot}
+                        </option>
+                      ))
+                    : (['top-banner', 'homepage-hero', 'feed'] as const).map((slot) => (
+                        <option key={slot} value={slot}>
+                          {SLOT_LABELS[slot] || slot} {slots.length > 0 ? `(${(slots.find((s) => s.slot === slot)?.remaining ?? 0)}/${slots.find((s) => s.slot === slot)?.max ?? 0} available)` : ''}
+                        </option>
+                      ))}
+                </select>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-semibold text-[#999] mb-2">Placement</label>
+                <div className="w-full p-3 bg-[#1a1a1a]/50 border border-white/10 rounded-xl text-[#999]">In-Feed</div>
+              </div>
+            )}
           </div>
 
           <div>
@@ -724,74 +803,20 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
           {/* Feed-specific fields (only when slot is feed) */}
           {FEED_SLOTS.includes(campForm.slot) && (
             <>
-              <div className="border-t border-white/10 pt-4 mt-2">
-                <h3 className="text-sm font-bold text-white/70 uppercase tracking-wider mb-4">
-                  {campForm.slot === 'feed' ? 'In-Feed: Tier + Slot (12 max: 4 top, 4 middle, 4 bottom)' : 'Sidebar: 4 slots, rotating'}
-                </h3>
-              </div>
-
               {campForm.slot === 'feed' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-semibold text-[#999] mb-2">Tier *</label>
-                    <select
-                      value={campForm.feedTier ?? ''}
-                      onChange={(e) => setCampForm({ ...campForm, feedTier: e.target.value ? Number(e.target.value) : null })}
-                      className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] outline-none"
-                    >
-                      <option value="">Select tier</option>
-                      {feedTierCapacity.map((t) => (
-                        <option key={t.tier} value={t.tier}>
-                          Tier {t.tier} – {t.label} ({t.remaining}/{t.max} free)
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-[#999] mb-2">Slot within tier * (1–4)</label>
-                    <select
-                      value={campForm.tierSlot ?? ''}
-                      onChange={(e) => setCampForm({ ...campForm, tierSlot: e.target.value ? Number(e.target.value) : null })}
-                      className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] outline-none"
-                    >
-                      <option value="">Select slot</option>
-                      {[1, 2, 3, 4].map((s) => {
-                        const taken = campaigns.some(
-                          (c) => c.slot === 'feed' && c.feedTier === campForm.feedTier && c.tierSlot === s && c._id !== editingCampaign?._id
-                        );
-                        return (
-                          <option key={s} value={s} disabled={taken}>
-                            Slot {s} {taken ? '(taken)' : ''}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
+                <div className="border-t border-white/10 pt-4 mt-2">
+                  <label className="block text-sm font-semibold text-[#999] mb-2">Position *</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={campForm.position ?? ''}
+                    onChange={(e) => setCampForm({ ...campForm, position: e.target.value ? Math.max(1, Math.floor(Number(e.target.value))) : null })}
+                    className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] outline-none"
+                    placeholder="1"
+                  />
+                  <p className="text-xs text-[#666] mt-1">Order in feed: 1 = first, higher numbers = later. One ad every 5 entries on Groups/Bots.</p>
                 </div>
               )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-semibold text-[#999] mb-2">Category Tag</label>
-                  <input
-                    type="text"
-                    value={campForm.category}
-                    onChange={(e) => setCampForm({ ...campForm, category: e.target.value })}
-                    className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-[#b31b1b] outline-none"
-                    placeholder="e.g. Trans, Dating, All"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-[#999] mb-2">Country Tag</label>
-                  <input
-                    type="text"
-                    value={campForm.country}
-                    onChange={(e) => setCampForm({ ...campForm, country: e.target.value })}
-                    className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-[#b31b1b] outline-none"
-                    placeholder="e.g. All, USA"
-                  />
-                </div>
-              </div>
 
               <div>
                 <label className="block text-sm font-semibold text-[#999] mb-2">Ad Description</label>
@@ -813,6 +838,18 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                   className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-[#b31b1b] outline-none"
                   placeholder="e.g. Visit Site, Join Now"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-[#999] mb-2">Show on</label>
+                <select
+                  value={campForm.feedPlacement || 'both'}
+                  onChange={(e) => setCampForm({ ...campForm, feedPlacement: e.target.value as 'groups' | 'bots' | 'both' })}
+                  className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] outline-none"
+                >
+                  <option value="both">Groups + Bots</option>
+                  <option value="groups">Groups only</option>
+                  <option value="bots">Bots only</option>
+                </select>
               </div>
             </>
           )}
@@ -852,22 +889,28 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
           </div>
 
           {editingCampaign && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-semibold text-[#999] mb-2">Status</label>
-                <select value={campForm.status} onChange={(e) => setCampForm({ ...campForm, status: e.target.value })} className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] outline-none">
-                  <option value="active">Active</option>
-                  <option value="paused">Paused</option>
-                  <option value="ended">Ended</option>
-                </select>
+            <>
+              <div className="text-sm text-[#999]">
+                <span className="font-semibold">Total clicks:</span>{' '}
+                <span className="text-white font-bold">{(editingCampaign.clicks ?? 0).toLocaleString()}</span>
               </div>
-              <div className="flex items-end pb-1">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={campForm.isVisible} onChange={(e) => setCampForm({ ...campForm, isVisible: e.target.checked })} className="w-5 h-5 text-[#b31b1b] rounded focus:ring-[#b31b1b]" />
-                  <span className="text-white">Visible</span>
-                </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-[#999] mb-2">Status</label>
+                  <select value={campForm.status} onChange={(e) => setCampForm({ ...campForm, status: e.target.value })} className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] outline-none">
+                    <option value="active">Active</option>
+                    <option value="paused">Paused</option>
+                    <option value="ended">Ended</option>
+                  </select>
+                </div>
+                <div className="flex items-end pb-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={campForm.isVisible} onChange={(e) => setCampForm({ ...campForm, isVisible: e.target.checked })} className="w-5 h-5 text-[#b31b1b] rounded focus:ring-[#b31b1b]" />
+                    <span className="text-white">Visible</span>
+                  </label>
+                </div>
               </div>
-            </div>
+            </>
           )}
         </div>
       </div>
@@ -880,21 +923,6 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
 
   return (
     <div className="space-y-6">
-      {/* CTA Buttons: direct link so users always find the Buttons tab */}
-      {setActiveTab && (
-        <div className="rounded-xl bg-pink-500/15 border border-pink-500/40 p-4 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-pink-200 text-sm font-medium">
-            Navbar &amp; Join page <strong>text buttons</strong> (no image) → manage in the <strong>CTA Buttons</strong> tab.
-          </p>
-          <button
-            type="button"
-            onClick={() => setActiveTab('buttons')}
-            className="shrink-0 px-4 py-2 bg-pink-600 hover:bg-pink-500 text-white rounded-xl font-semibold text-sm"
-          >
-            Open CTA Buttons →
-          </button>
-        </div>
-      )}
       {/* Header + Section tabs */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap justify-between items-center gap-3">
@@ -911,106 +939,428 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
         <div className="flex flex-wrap items-center gap-2 border-b border-white/10 pb-2">
           <button type="button" onClick={() => setSectionTab('overview')} className={tabClass('overview')}>Overview</button>
           <button type="button" onClick={() => setSectionTab('slots')} className={tabClass('slots')}>By slot</button>
-          <button type="button" onClick={() => setSectionTab('campaigns')} className={tabClass('campaigns')}>All campaigns</button>
+          <button type="button" onClick={() => setSectionTab('buttonsBanners')} className={tabClass('buttonsBanners')}>Buttons & Banners</button>
           <button type="button" onClick={() => setSectionTab('advertisers')} className={tabClass('advertisers')}>Advertisers</button>
+          <button type="button" onClick={() => setSectionTab('feedAds')} className={tabClass('feedAds')}>Feed Ads</button>
         </div>
       </div>
 
-      {/* ─── Overview tab ─────────────────────────────────────── */}
+      {/* ─── Overview tab: comprehensive KPI dashboard ─────────────────────────────────────── */}
       {sectionTab === 'overview' && (
-        <>
-      {/* Global click stats */}
-      {globalStats && (
-        <div className="glass rounded-xl p-4 border border-white/5 mb-6">
-          <div className="text-xs font-bold text-[#666] uppercase tracking-wider mb-3">Click stats</div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div>
-              <div className="text-2xl font-black text-white">{globalStats.totalClicks.toLocaleString()}</div>
-              <div className="text-xs text-[#999]">Total (all time)</div>
-            </div>
-            <div>
-              <div className="text-2xl font-black text-white">{globalStats.last7Days.toLocaleString()}</div>
-              <div className="text-xs text-[#999]">Last 7 days</div>
-            </div>
-            <div>
-              <div className="text-2xl font-black text-white">{globalStats.last30Days.toLocaleString()}</div>
-              <div className="text-xs text-[#999]">Last 30 days</div>
-            </div>
-          </div>
-        </div>
-      )}
+        <div className="rounded-2xl bg-white p-5 sm:p-6 space-y-5" style={{ color: '#1e293b' }}>
 
-      {/* Top performing slots */}
-      {slotTotals.length > 0 && (
-        <div className="glass rounded-xl p-4 border border-white/5 mb-6">
-          <div className="text-xs font-bold text-[#666] uppercase tracking-wider mb-3">Top slots by clicks (price accordingly)</div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-[#666]">
-                <tr>
-                  <th className="text-left py-1 font-bold">Slot</th>
-                  <th className="text-right py-1 font-bold">Total clicks</th>
-                  <th className="text-right py-1 font-bold"># Ads</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {slotTotals.map((row) => (
-                  <tr key={row.slot}>
-                    <td className="py-2 text-white">{SLOT_LABELS[row.slot] || row.slot}</td>
-                    <td className="py-2 text-right font-semibold text-white">{row.totalClicks.toLocaleString()}</td>
-                    <td className="py-2 text-right text-[#999]">{row.campaignCount}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Clicks over time chart */}
-      {chartData.length > 0 && (
-        <div className="glass rounded-xl p-4 border border-white/5 mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-xs font-bold text-[#666] uppercase tracking-wider">Clicks over time</div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setChartDays(7)}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${chartDays === 7 ? 'bg-[#b31b1b] text-white' : 'bg-white/10 text-[#999] hover:bg-white/15'}`}
-              >
-                7 days
+          {/* ── ROW 1: Filters ── */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider shrink-0">Advertiser</span>
+              <button type="button" onClick={() => setDashboardAdvertiserIds([])} className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${dashboardAdvertiserIds.length === 0 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'}`}>
+                All
               </button>
-              <button
-                type="button"
-                onClick={() => setChartDays(30)}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${chartDays === 30 ? 'bg-[#b31b1b] text-white' : 'bg-white/10 text-[#999] hover:bg-white/15'}`}
-              >
-                30 days
-              </button>
+              {advertisers.map((a) => {
+                const sel = dashboardAdvertiserIds.includes(a._id);
+                return (
+                  <button key={a._id} type="button" onClick={() => {
+                    setDashboardAdvertiserIds((prev) => sel ? prev.filter((id) => id !== a._id) : [...prev, a._id]);
+                  }} className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${sel ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'}`}>
+                    {a.name}
+                  </button>
+                );
+              })}
+              {advertisers.length > 2 && dashboardAdvertiserIds.length !== advertisers.length && (
+                <button type="button" onClick={() => setDashboardAdvertiserIds(advertisers.map((a) => a._id))} className="text-[11px] text-gray-400 hover:text-blue-500 underline">Select all</button>
+              )}
+              {dashboardAdvertiserIds.length > 0 && (
+                <button type="button" onClick={() => setDashboardAdvertiserIds([])} className="text-[11px] text-gray-400 hover:text-blue-500 underline">Clear</button>
+              )}
+              <span className="text-[10px] text-gray-300 ml-1">{dashboardAdvertiserIds.length === 0 ? 'Showing all campaigns incl. unassigned' : `${dashboardAdvertiserIds.length} selected`}</span>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider shrink-0">Ad space</span>
+              <button type="button" onClick={() => setDashboardSlots([])} className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${dashboardSlots.length === 0 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'}`}>All</button>
+              {[...displaySlots.map((s) => s.slot), 'featured-groups'].map((sl) => {
+                const sel = dashboardSlots.includes(sl);
+                return (
+                  <button key={sl} type="button" onClick={() => setDashboardSlots((prev) => sel ? prev.filter((x) => x !== sl) : [...prev, sl])} className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${sel ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'}`}>
+                    {SLOT_LABELS[sl] || sl}
+                  </button>
+                );
+              })}
+              {dashboardSlots.length > 0 && (
+                <button type="button" onClick={() => setDashboardSlots([])} className="text-[11px] text-gray-400 hover:text-blue-500 underline">Clear</button>
+              )}
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider shrink-0">Period</span>
+              {(['today', '7d', '30d', 'lifetime'] as const).map((r) => {
+                const labels: Record<string, string> = { today: 'Today', '7d': '7 days', '30d': '30 days', lifetime: 'Lifetime' };
+                return (
+                  <button key={r} type="button" onClick={() => setDashboardRange(r)} className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${dashboardRange === r ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'}`}>
+                    {labels[r]}
+                  </button>
+                );
+              })}
+              <button type="button" onClick={() => setDashboardRange('custom')} className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${dashboardRange === 'custom' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'}`}>Custom</button>
+              {dashboardRange === 'custom' && (
+                <>
+                  <input type="date" value={dashboardFrom} onChange={(e) => setDashboardFrom(e.target.value)} className="rounded-lg border border-gray-200 bg-gray-50 text-gray-700 px-2 py-1 text-xs" />
+                  <span className="text-gray-300">-</span>
+                  <input type="date" value={dashboardTo} onChange={(e) => setDashboardTo(e.target.value)} className="rounded-lg border border-gray-200 bg-gray-50 text-gray-700 px-2 py-1 text-xs" />
+                </>
+              )}
             </div>
           </div>
-          <div className="flex items-end gap-0.5 sm:gap-1 h-32">
-            {chartData.map((d) => {
-              const max = Math.max(1, ...chartData.map((x) => x.clicks));
-              const h = max ? (d.clicks / max) * 100 : 0;
-              return (
-                <div key={d.date} className="flex-1 flex flex-col items-center gap-1 group" title={`${d.date}: ${d.clicks} clicks`}>
-                  <span className="text-[10px] text-[#666] opacity-0 group-hover:opacity-100 transition-opacity">{d.clicks}</span>
-                  <div
-                    className="w-full min-w-[4px] bg-[#b31b1b]/80 hover:bg-[#b31b1b] rounded-t transition-all"
-                    style={{ height: `${Math.max(h, 2)}%` }}
-                  />
+
+          {dashboardLoading && <div className="py-16 text-center text-gray-400 text-sm">Loading dashboard...</div>}
+
+          {!dashboardLoading && dashboardStats && (() => {
+            const kpi = dashboardStats.kpis;
+            const prevTotal = dashboardStats.prevPeriodTotal ?? 0;
+            const currentTotal = dashboardStats.clicksByDay.reduce((s, d) => s + d.clicks, 0);
+            const periodDelta = prevTotal > 0 ? ((currentTotal - prevTotal) / prevTotal) * 100 : 0;
+            const selectedNames = dashboardAdvertiserIds.map((id) => advertisers.find((a) => a._id === id)?.name).filter(Boolean);
+            const isSingle = dashboardAdvertiserIds.length === 1;
+            const isCompare = dashboardAdvertiserIds.length >= 2 || (dashboardAdvertiserIds.length === 0 && (dashboardStats.byAdvertiser?.length ?? 0) >= 2);
+            const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16', '#e11d48'];
+
+            return (
+            <>
+              {/* ── Advertiser focus header (when one is selected) ── */}
+              {isSingle && (
+                <div className="rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 p-5 text-white">
+                  <div className="text-blue-100 text-xs font-medium uppercase tracking-wider mb-1">Client report</div>
+                  <div className="text-2xl font-bold mb-3">{selectedNames[0]}</div>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                    {[
+                      { label: 'All time', value: kpi.totalClicks },
+                      { label: 'Today', value: kpi.todayClicks },
+                      { label: 'Last 24h', value: kpi.last24h },
+                      { label: 'Last 7d', value: kpi.last7d },
+                      { label: 'Last 30d', value: kpi.last30d },
+                    ].map((k) => (
+                      <div key={k.label} className="bg-white/15 rounded-lg p-3">
+                        <div className="text-xl font-bold tabular-nums">{k.value.toLocaleString()}</div>
+                        <div className="text-[11px] text-blue-100">{k.label}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              );
-            })}
-          </div>
-          <div className="flex justify-between mt-1 text-[10px] text-[#666]">
-            <span>{chartData[0]?.date}</span>
-            <span>{chartData[chartData.length - 1]?.date}</span>
-          </div>
+              )}
+
+              {/* ── KPI cards (global or multi-select) ── */}
+              {!isSingle && (
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  {[
+                    { label: 'All time', value: kpi.totalClicks, icon: '=', color: 'bg-gray-50' },
+                    { label: 'Today', value: kpi.todayClicks, icon: '+', color: 'bg-blue-600 text-white' },
+                    { label: 'Last 24h', value: kpi.last24h, icon: '', color: 'bg-gray-50' },
+                    { label: 'Last 7 days', value: kpi.last7d, icon: '', color: 'bg-gray-50' },
+                    { label: 'Last 30 days', value: kpi.last30d, icon: '', color: 'bg-gray-50' },
+                  ].map((k) => (
+                    <div key={k.label} className={`rounded-xl p-4 ${k.color}`}>
+                      <div className={`text-2xl font-bold tabular-nums ${k.color.includes('blue-600') ? 'text-white' : 'text-gray-900'}`}>{k.value.toLocaleString()}</div>
+                      <div className={`text-[11px] mt-0.5 ${k.color.includes('blue-600') ? 'text-blue-100' : 'text-gray-500'}`}>{k.label}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Period comparison badge ── */}
+              {dashboardStats.prevPeriodTotal !== undefined && dashboardRange !== 'lifetime' && dashboardRange !== 'custom' && (
+                <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-gray-50 border border-gray-100 text-sm">
+                  <span className="text-gray-500">This period</span>
+                  <span className="font-bold text-gray-900 tabular-nums">{currentTotal.toLocaleString()}</span>
+                  <span className="text-gray-300">vs</span>
+                  <span className="text-gray-500">Previous period</span>
+                  <span className="font-bold text-gray-900 tabular-nums">{prevTotal.toLocaleString()}</span>
+                  {prevTotal > 0 && (
+                    <span className={`ml-auto px-2 py-0.5 rounded-full text-xs font-semibold ${periodDelta >= 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                      {periodDelta >= 0 ? '+' : ''}{periodDelta.toFixed(1)}%
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* ── Clicks over time (area chart + prev period overlay) ── */}
+              <div className="rounded-xl border border-gray-100 p-5">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="text-sm font-semibold text-gray-700">
+                    {isSingle ? `${selectedNames[0]} — Clicks over time` : 'Clicks over time'}
+                  </h3>
+                  {dashboardRange === 'lifetime' && <span className="text-[11px] text-gray-400">Trend: last 90 days</span>}
+                </div>
+                {dashboardStats.prevPeriodClicksByDay && (
+                  <div className="flex gap-4 mb-2 text-[11px] text-gray-400">
+                    <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-blue-500 inline-block rounded" /> Current</span>
+                    <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-gray-300 inline-block rounded" /> Previous</span>
+                  </div>
+                )}
+                {dashboardStats.clicksByDay.length === 0 ? (
+                  <div className="h-44 flex items-center justify-center text-gray-400 text-sm">No click data for this period</div>
+                ) : (() => {
+                  const data = dashboardStats.clicksByDay;
+                  const prev = dashboardStats.prevPeriodClicksByDay;
+                  const allVals = [...data.map((x) => x.clicks), ...(prev?.map((x) => x.clicks) ?? [])];
+                  const maxVal = Math.max(1, ...allVals);
+                  const ch = 180;
+                  const w = data.length * 24;
+                  const yTicks = maxVal <= 4 ? Array.from({ length: maxVal + 1 }, (_, i) => i) : [0, Math.round(maxVal / 4), Math.round(maxVal / 2), Math.round(maxVal * 3 / 4), maxVal];
+                  const showEveryN = data.length > 14 ? Math.ceil(data.length / 10) : 1;
+                  const toY = (v: number) => ch - (maxVal ? (v / maxVal) * (ch - 8) : 0) - 4;
+                  return (
+                    <div className="relative" style={{ height: ch + 28 }}>
+                      {yTicks.map((t) => (
+                        <div key={t} className="absolute left-0 right-0 flex items-center" style={{ bottom: (maxVal ? (t / maxVal) * ch : 0) + 24 }}>
+                          <span className="text-[10px] text-gray-400 tabular-nums w-8 text-right pr-2 shrink-0">{t}</span>
+                          <div className="flex-1 border-t border-dashed border-gray-100" />
+                        </div>
+                      ))}
+                      <svg viewBox={`0 0 ${w} ${ch}`} className="w-full" style={{ height: ch, marginLeft: 32 }} preserveAspectRatio="none">
+                        <defs>
+                          <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.2" />
+                            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.01" />
+                          </linearGradient>
+                        </defs>
+                        {prev && prev.length === data.length && (
+                          <polyline points={prev.map((d, i) => `${i * 24 + 12},${toY(d.clicks)}`).join(' ')} fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeDasharray="4 3" strokeLinejoin="round" />
+                        )}
+                        <path d={`M0,${ch} ` + data.map((d, i) => `L${i * 24 + 12},${toY(d.clicks)}`).join(' ') + ` L${(data.length - 1) * 24 + 12},${ch} Z`} fill="url(#areaGrad)" />
+                        <polyline points={data.map((d, i) => `${i * 24 + 12},${toY(d.clicks)}`).join(' ')} fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+                        {data.map((d, i) => (
+                          <circle key={d.date} cx={i * 24 + 12} cy={toY(d.clicks)} r="3" fill="white" stroke="#3b82f6" strokeWidth="2">
+                            <title>{d.date}: {d.clicks} clicks</title>
+                          </circle>
+                        ))}
+                      </svg>
+                      <div className="flex" style={{ marginLeft: 32 }}>
+                        {data.map((d, i) => <div key={d.date} className="text-center text-[10px] text-gray-400" style={{ width: 24 }}>{i % showEveryN === 0 ? d.date.slice(5) : ''}</div>)}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* ── Advertiser comparison chart (2+ selected) ── */}
+              {isCompare && dashboardStats.clicksByDayByAdvertiser && dashboardStats.clicksByDayByAdvertiser.length > 0 && (() => {
+                const allAdvs = dashboardStats.byAdvertiser;
+                const data = dashboardStats.clicksByDayByAdvertiser;
+                const globalMax = Math.max(1, ...data.flatMap((d) => d.advertisers.map((a) => a.clicks)));
+                const ch = 160;
+                const showEveryN = data.length > 14 ? Math.ceil(data.length / 10) : 1;
+                const toY = (v: number) => ch - (globalMax ? (v / globalMax) * (ch - 8) : 0) - 4;
+                return (
+                  <div className="rounded-xl border border-gray-100 p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold text-gray-700">Advertiser comparison</h3>
+                      <div className="flex flex-wrap gap-3">
+                        {allAdvs.map((a, i) => (
+                          <span key={a.advertiserId} className="flex items-center gap-1.5 text-[11px] text-gray-500">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />{a.advertiserName}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="relative" style={{ height: ch + 24 }}>
+                      <svg viewBox={`0 0 ${data.length * 24} ${ch}`} className="w-full" style={{ height: ch }} preserveAspectRatio="none">
+                        {allAdvs.map((adv, ai) => (
+                          <polyline key={adv.advertiserId} points={data.map((d, i) => {
+                            const m = d.advertisers.find((a) => a.advertiserId === adv.advertiserId);
+                            return `${i * 24 + 12},${toY(m?.clicks ?? 0)}`;
+                          }).join(' ')} fill="none" stroke={CHART_COLORS[ai % CHART_COLORS.length]} strokeWidth="2" strokeLinejoin="round" />
+                        ))}
+                      </svg>
+                      <div className="flex">
+                        {data.map((d, i) => <div key={d.date} className="text-center text-[10px] text-gray-400" style={{ width: 24 }}>{i % showEveryN === 0 ? d.date.slice(5) : ''}</div>)}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* ── Two columns row ── */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+                {/* Clicks by ad space — donut + list */}
+                {dashboardStats.bySlot.length > 0 && (() => {
+                  const slotColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4'];
+                  const totalSlotClicks = dashboardStats.bySlot.reduce((s, r) => s + r.totalClicks, 0);
+                  let cumAngle = 0;
+                  const arcs = dashboardStats.bySlot.map((row, i) => {
+                    const pct = totalSlotClicks ? row.totalClicks / totalSlotClicks : 0;
+                    const start = cumAngle;
+                    cumAngle += pct * 360;
+                    return { ...row, pct, start, end: cumAngle, color: slotColors[i % slotColors.length] };
+                  });
+                  const r = 60;
+                  const ir = 38;
+                  const cx = 70;
+                  const cy = 70;
+                  const toPath = (startAngle: number, endAngle: number, outerR: number, innerR: number) => {
+                    const s1 = ((startAngle - 90) * Math.PI) / 180;
+                    const e1 = ((endAngle - 90) * Math.PI) / 180;
+                    const x1 = cx + outerR * Math.cos(s1);
+                    const y1 = cy + outerR * Math.sin(s1);
+                    const x2 = cx + outerR * Math.cos(e1);
+                    const y2 = cy + outerR * Math.sin(e1);
+                    const x3 = cx + innerR * Math.cos(e1);
+                    const y3 = cy + innerR * Math.sin(e1);
+                    const x4 = cx + innerR * Math.cos(s1);
+                    const y4 = cy + innerR * Math.sin(s1);
+                    const large = endAngle - startAngle > 180 ? 1 : 0;
+                    return `M${x1},${y1} A${outerR},${outerR} 0 ${large} 1 ${x2},${y2} L${x3},${y3} A${innerR},${innerR} 0 ${large} 0 ${x4},${y4} Z`;
+                  };
+                  return (
+                    <div className="rounded-xl border border-gray-100 p-4">
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3">Click distribution by ad space</h3>
+                      <div className="flex items-center gap-4">
+                        <svg width={140} height={140} viewBox="0 0 140 140">
+                          {arcs.map((a) => a.pct > 0 && (
+                            <path key={a.slot} d={toPath(a.start, Math.min(a.end, a.start + 359.99), r, ir)} fill={a.color}>
+                              <title>{SLOT_LABELS[a.slot] || a.slot}: {a.totalClicks} ({(a.pct * 100).toFixed(1)}%)</title>
+                            </path>
+                          ))}
+                          <text x={cx} y={cy - 6} textAnchor="middle" className="text-lg font-bold fill-gray-900" style={{ fontSize: 18 }}>{totalSlotClicks.toLocaleString()}</text>
+                          <text x={cx} y={cy + 10} textAnchor="middle" className="text-xs fill-gray-400" style={{ fontSize: 10 }}>total</text>
+                        </svg>
+                        <div className="flex-1 space-y-1.5">
+                          {arcs.map((a) => (
+                            <div key={a.slot} className="flex items-center gap-2 text-xs">
+                              <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: a.color }} />
+                              <span className="text-gray-600 truncate flex-1">{SLOT_LABELS[a.slot] || a.slot}</span>
+                              <span className="font-semibold text-gray-900 tabular-nums">{a.totalClicks.toLocaleString()}</span>
+                              <span className="text-gray-400 tabular-nums w-10 text-right">{(a.pct * 100).toFixed(0)}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Clicks by advertiser — table */}
+                {dashboardStats.byAdvertiser.length > 0 && (
+                  <div className="rounded-xl border border-gray-100 p-4">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Performance by advertiser</h3>
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-[10px] text-gray-400 uppercase border-b border-gray-100">
+                          <th className="text-left py-1.5 font-medium">Advertiser</th>
+                          <th className="text-right py-1.5 font-medium">Period</th>
+                          <th className="text-right py-1.5 font-medium">7d</th>
+                          <th className="text-right py-1.5 font-medium">30d</th>
+                          <th className="text-right py-1.5 font-medium">Share</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          const total = Math.max(1, dashboardStats.byAdvertiser.reduce((s, r) => s + r.totalClicks, 0));
+                          return dashboardStats.byAdvertiser.map((row, i) => (
+                            <tr key={row.advertiserId} className={`${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${row.advertiserId === '__unassigned__' ? 'border-t border-gray-200' : ''}`}>
+                              <td className="py-1.5 text-gray-800 font-medium flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: row.advertiserId === '__unassigned__' ? '#9ca3af' : CHART_COLORS[i % CHART_COLORS.length] }} />
+                                <span className={row.advertiserId === '__unassigned__' ? 'text-gray-400 italic' : ''}>
+                                  {row.advertiserName}
+                                  {row.advertiserName === 'Unknown' && <span className="ml-1 text-[9px] px-1 py-0.5 rounded bg-amber-50 text-amber-600 font-normal">orphaned</span>}
+                                </span>
+                              </td>
+                              <td className="py-1.5 text-right font-semibold text-gray-900 tabular-nums">{row.totalClicks.toLocaleString()}</td>
+                              <td className="py-1.5 text-right text-gray-500 tabular-nums">{row.last7d.toLocaleString()}</td>
+                              <td className="py-1.5 text-right text-gray-500 tabular-nums">{row.last30d.toLocaleString()}</td>
+                              <td className="py-1.5 text-right tabular-nums">
+                                <span className="inline-block px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-semibold">{((row.totalClicks / total) * 100).toFixed(1)}%</span>
+                              </td>
+                            </tr>
+                          ));
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Per-advertiser slot breakdown (when advertiser(s) selected) ── */}
+              {dashboardStats.advertiserSlotBreakdown && dashboardStats.advertiserSlotBreakdown.length > 0 && (
+                <div className="rounded-xl border border-gray-100 p-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Click breakdown by slot per advertiser</h3>
+                  <div className={`grid gap-4 ${dashboardStats.advertiserSlotBreakdown.length === 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
+                    {dashboardStats.advertiserSlotBreakdown.map((adv) => {
+                      const total = Math.max(1, adv.slots.reduce((s, sl) => s + sl.clicks, 0));
+                      return (
+                        <div key={adv.advertiserId} className="bg-gray-50 rounded-lg p-3">
+                          <div className="text-xs font-semibold text-gray-700 mb-2">{adv.advertiserName}</div>
+                          <div className="space-y-1.5">
+                            {adv.slots.map((sl) => (
+                              <div key={sl.slot} className="flex items-center gap-2 text-xs">
+                                <span className="text-gray-600 truncate flex-1">{SLOT_LABELS[sl.slot] || sl.slot}</span>
+                                <span className="font-semibold text-gray-900 tabular-nums">{sl.clicks.toLocaleString()}</span>
+                                <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden shrink-0">
+                                  <div className="h-full bg-blue-500 rounded-full" style={{ width: `${(sl.clicks / total) * 100}%` }} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Featured Groups (ad placements) ── */}
+              {dashboardStats.featuredGroups && dashboardStats.featuredGroups.length > 0 && (
+                <div className="rounded-xl border border-gray-100 p-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-0.5">Featured Groups (ad placements)</h3>
+                  <p className="text-[11px] text-gray-400 mb-3">Top 2 pinned slots on the Groups page. Clicks tracked via redirect page.</p>
+                  <div className="space-y-2.5">
+                    {dashboardStats.featuredGroups.map((fg, i) => (
+                      <div key={fg.groupId} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg">
+                        <span className="w-6 h-6 flex items-center justify-center rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold shrink-0">#{i + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium text-gray-800 truncate">{fg.name}</div>
+                          <div className="text-[10px] text-gray-400">{fg.advertiserName}</div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-sm font-bold text-gray-900 tabular-nums">{fg.clickCount.toLocaleString()}</div>
+                          <div className="text-[10px] text-gray-400">clicks</div>
+                        </div>
+                        {fg.lastClickedAt && (
+                          <div className="text-[10px] text-gray-300 shrink-0">Last: {new Date(fg.lastClickedAt).toLocaleDateString()}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Article views ── */}
+              <div className="rounded-xl border border-gray-100 p-4">
+                <h3 className="text-sm font-semibold text-gray-700 mb-0.5">Article views by advertiser</h3>
+                <p className="text-[11px] text-gray-400 mb-3">Views counted each time a user opens an article. Assign advertisers to articles in the Articles tab.</p>
+                {dashboardStats.articleClicksByAdvertiser.length > 0 ? (
+                  <div className="space-y-2">
+                    {dashboardStats.articleClicksByAdvertiser.map((row) => {
+                      const max = Math.max(1, ...dashboardStats.articleClicksByAdvertiser.map((r) => r.articleClicks));
+                      return (
+                        <div key={row.advertiserId}>
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="text-gray-700 font-medium">{row.advertiserName}</span>
+                            <span className="font-semibold text-gray-900 tabular-nums">{row.articleClicks.toLocaleString()}</span>
+                          </div>
+                          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full bg-indigo-400 transition-all" style={{ width: `${(row.articleClicks / max) * 100}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 py-1">No articles assigned to advertisers yet.</p>
+                )}
+              </div>
+            </>
+            );
+          })()}
         </div>
-      )}
-        </>
       )}
 
       {/* ─── By slot tab ───────────────────────────────────────── */}
@@ -1045,14 +1395,14 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                   onClick={(e) => {
                     e.stopPropagation();
                     if (isTextOnlySlot(s.slot) && setActiveTab) {
-                      setActiveTab('buttons');
+                      setSectionTab('buttonsBanners');
                     } else {
                       openNewCampaignForSlot(s.slot);
                     }
                   }}
                   className="w-full py-2 text-xs font-bold bg-[#b31b1b]/80 hover:bg-[#b31b1b] text-white rounded-lg transition-colors"
                 >
-                  {isTextOnlySlot(s.slot) ? 'Open CTA Buttons →' : '+ Add ad'}
+                  {isTextOnlySlot(s.slot) ? 'Buttons & Banners' : '+ Add ad'}
                 </button>
               )}
             </div>
@@ -1063,12 +1413,6 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
       {/* Focused "Manage ads" for one slot (when user clicks Manage ads on a slot card) */}
       {managedSlot !== null && (
         <div className="glass rounded-xl border border-white/10 overflow-hidden mb-6">
-          {setActiveTab && isTextOnlySlot(managedSlot) && (
-            <div className="rounded-xl bg-pink-500/15 border border-pink-500/40 p-3 flex flex-wrap items-center justify-between gap-3 mx-4 mt-4">
-              <p className="text-pink-200 text-sm">Edit button label and URL in <strong>CTA Buttons</strong> or use Edit below (no image required).</p>
-              <button type="button" onClick={() => setActiveTab('buttons')} className="shrink-0 px-4 py-2 bg-pink-600 hover:bg-pink-500 text-white rounded-xl font-semibold text-sm">Open CTA Buttons →</button>
-            </div>
-          )}
           <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-white/10 bg-white/[0.02]">
             <div className="flex items-center gap-3">
               <button
@@ -1122,14 +1466,14 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                 type="button"
                 onClick={() => {
                   if (isTextOnlySlot(managedSlot) && setActiveTab) {
-                    setActiveTab('buttons');
+                    setSectionTab('buttonsBanners');
                   } else {
                     openNewCampaignForSlot(managedSlot);
                   }
                 }}
                 className="px-4 py-2 text-sm font-bold bg-[#b31b1b] hover:bg-[#c42b2b] text-white rounded-lg transition-colors"
               >
-                {isTextOnlySlot(managedSlot) ? 'Open CTA Buttons →' : '+ Add ad to this slot'}
+                {isTextOnlySlot(managedSlot) ? 'Buttons & Banners' : '+ Add ad to this slot'}
               </button>
             )}
             </div>
@@ -1192,112 +1536,136 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
         </>
       )}
 
-      {/* ─── All campaigns tab (with filters) ─────────────────── */}
-      {sectionTab === 'campaigns' && (
-        <div className="glass rounded-xl border border-white/5 overflow-hidden mb-6">
-          <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-white/5">
-            <h2 className="text-lg font-bold text-white">All campaigns</h2>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-[#666]">Status:</span>
-                <select
-                  value={campaignStatusFilter}
-                  onChange={(e) => setCampaignStatusFilter(e.target.value as typeof campaignStatusFilter)}
-                  className="bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:ring-2 focus:ring-[#b31b1b] outline-none"
-                >
-                  <option value="all">All</option>
-                  <option value="live">Live</option>
-                  <option value="ended">Ended</option>
-                  <option value="paused">Paused</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-[#666]">Slot:</span>
-                <select
-                  value={allAdsFilterSlot}
-                  onChange={(e) => setAllAdsFilterSlot(e.target.value)}
-                  className="bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:ring-2 focus:ring-[#b31b1b] outline-none"
-                >
-                  <option value="all">All slots</option>
-                  {displaySlots.map((s) => (
-                    <option key={s.slot} value={s.slot}>{SLOT_LABELS[s.slot] || s.slot}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-[#666]">Sort by:</span>
-                <select
-                  value={campaignSortBy}
-                  onChange={(e) => setCampaignSortBy(e.target.value as typeof campaignSortBy)}
-                  className="bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:ring-2 focus:ring-[#b31b1b] outline-none"
-                >
-                  <option value="startDate">Date started</option>
-                  <option value="endDate">End date</option>
-                  <option value="clicks">Clicks</option>
-                  <option value="impressions">Impressions</option>
-                </select>
-                <select
-                  value={campaignSortOrder}
-                  onChange={(e) => setCampaignSortOrder(e.target.value as 'desc' | 'asc')}
-                  className="bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:ring-2 focus:ring-[#b31b1b] outline-none"
-                >
-                  <option value="desc">Newest / Highest first</option>
-                  <option value="asc">Oldest / Lowest first</option>
-                </select>
-              </div>
+      {/* ─── Buttons & Banners tab ───────────────────────────────── */}
+      {sectionTab === 'buttonsBanners' && !isLoading && !error && (
+        <div className="space-y-8">
+          {/* Buttons: Navbar CTA + Filter CTA (text only) */}
+          <div className="glass rounded-xl border border-white/5 overflow-hidden">
+            <h2 className="text-lg font-bold text-white p-4 border-b border-white/5">Buttons (text only)</h2>
+            <p className="text-[#999] text-sm px-4 pb-3">Navbar and sidebar CTAs. Edit label and link; clicks are tracked.</p>
+            <div className="divide-y divide-white/5">
+              {(['navbar-cta', 'filter-cta'] as const).map((slot) => {
+                const camp = campaigns.filter((c) => c.slot === slot)[0];
+                const slotLabel = SLOT_LABELS[slot] || slot;
+                return (
+                  <div key={slot} className="p-4 flex flex-wrap items-center justify-between gap-4 hover:bg-white/[0.02]">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-white">{slotLabel}</div>
+                      {camp ? (
+                        <>
+                          <div className="text-sm text-[#999] mt-0.5">Label: {(camp.description || camp.buttonText || '—').trim() || '—'}</div>
+                          <div className="text-sm text-[#999] truncate max-w-md" title={camp.destinationUrl}>URL: {camp.destinationUrl || '—'}</div>
+                          <div className="flex items-center gap-3 mt-2">
+                            <span className="text-xs text-[#666]">Clicks: <span className="font-semibold text-white">{(camp.clicks ?? 0).toLocaleString()}</span></span>
+                            <span className={`px-2 py-0.5 rounded text-xs ${camp.status === 'active' ? 'bg-green-500/20 text-green-400' : 'text-[#666]'}`}>{camp.status}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-sm text-[#666] mt-0.5">No button set. Add one to show this CTA.</div>
+                      )}
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      {camp ? (
+                        <>
+                          <button type="button" onClick={() => openEditCampaign(camp)} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold">Edit</button>
+                          <button type="button" onClick={() => toggleCampaignStatus(camp)} className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm">{camp.status === 'active' ? 'Pause' : 'Start'}</button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCampaignType('text');
+                            setCampForm({
+                              ...campForm,
+                              slot,
+                              advertiserId: advertisers[0]?._id ?? '',
+                              name: slotLabel,
+                              creative: '',
+                              destinationUrl: '',
+                              description: '',
+                              buttonText: 'Visit',
+                              startDate: toInputDate(new Date().toISOString()),
+                              endDate: toInputDate(new Date(Date.now() + 90 * 86400000).toISOString()),
+                              status: 'active',
+                              isVisible: true,
+                              position: null,
+                              feedTier: null,
+                              tierSlot: null,
+                              feedPlacement: 'both',
+                            });
+                            setEditingCampaign(null);
+                            setView('editCampaign');
+                          }}
+                          className="px-4 py-2 bg-[#b31b1b] hover:bg-[#c42b2b] text-white rounded-lg text-sm font-semibold"
+                        >
+                          Add button
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-white/5 text-[#666]">
-                <tr>
-                  <th className="px-4 py-2 text-left font-bold text-xs uppercase">Slot</th>
-                  <th className="px-4 py-2 text-left font-bold text-xs uppercase">Advertiser</th>
-                  <th className="px-4 py-2 text-left font-bold text-xs uppercase">Name</th>
-                  <th className="px-4 py-2 text-left font-bold text-xs uppercase">Link / CTA</th>
-                  <th className="px-4 py-2 text-left font-bold text-xs uppercase">Dates</th>
-                  <th className="px-4 py-2 text-left font-bold text-xs uppercase">Status</th>
-                  <th className="px-4 py-2 text-right font-bold text-xs uppercase">Clicks</th>
-                  <th className="px-4 py-2 text-left font-bold text-xs uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {allCampaignsFiltered.map((camp) => (
-                  <tr key={camp._id} className="hover:bg-white/5 transition-colors">
-                    <td className="px-4 py-3 text-[#999] whitespace-nowrap">{SLOT_LABELS[camp.slot] || camp.slot}</td>
-                    <td className="px-4 py-3 text-white">{advertisers.find((a) => a._id === camp.advertiserId)?.name || '—'}</td>
-                    <td className="px-4 py-3 text-white font-medium">{camp.name}</td>
-                    <td className="px-4 py-3 text-[#999] max-w-[180px] truncate" title={CTA_SLOTS.includes(camp.slot) ? (camp.description || camp.buttonText || '') : camp.destinationUrl}>
-                      {CTA_SLOTS.includes(camp.slot) ? (camp.description || camp.buttonText || 'CTA') : camp.destinationUrl}
-                    </td>
-                    <td className="px-4 py-3 text-[#999] whitespace-nowrap">{formatDate(camp.startDate)} – {formatDate(camp.endDate)}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${
-                        camp.status === 'active' ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                          : camp.status === 'paused' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
-                            : 'bg-gray-500/10 text-gray-400 border-gray-500/20'
-                      }`}>
-                        {camp.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold text-white">{camp.clicks.toLocaleString()}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1">
-                        <button onClick={() => toggleCampaignStatus(camp)} className="p-1.5 hover:bg-white/10 text-[#999] rounded-lg transition-colors text-xs" title={camp.status === 'active' ? 'Pause' : 'Start'}>
-                          {camp.status === 'active' ? '⏸ Pause' : '▶ Start'}
+
+          {/* Banners: Homepage Hero + Top Banner */}
+          <div className="glass rounded-xl border border-white/5 overflow-hidden">
+            <h2 className="text-lg font-bold text-white p-4 border-b border-white/5">Banners</h2>
+            <p className="text-[#999] text-sm px-4 pb-3">Homepage Hero and Top Banner (Bots & Groups). Edit image and link; clicks are tracked.</p>
+            <div className="divide-y divide-white/5">
+              {(['homepage-hero', 'top-banner'] as const).map((slot) => {
+                const slotCamps = campaigns.filter((c) => c.slot === slot);
+                const slotLabel = SLOT_LABELS[slot] || slot;
+                return (
+                  <div key={slot} className="p-4">
+                    <div className="font-semibold text-white mb-3">{slotLabel}</div>
+                    {slotCamps.length === 0 ? (
+                      <div className="flex flex-wrap items-center justify-between gap-4 py-2">
+                        <div className="text-sm text-[#666]">No banner set. Add one to show in this slot.</div>
+                        <button
+                          type="button"
+                          onClick={() => openNewCampaignForSlot(slot, advertisers[0]?._id)}
+                          className="px-4 py-2 bg-[#b31b1b] hover:bg-[#c42b2b] text-white rounded-lg text-sm font-semibold"
+                        >
+                          Add banner
                         </button>
-                        <button onClick={() => openEditCampaign(camp)} className="p-1.5 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-colors text-xs" title="Edit">&#9998;</button>
-                        <button onClick={() => handleDeleteCampaign(camp._id)} className="p-1.5 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors text-xs" title="Delete">&#128465;</button>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    ) : (
+                      <div className="space-y-3">
+                        {slotCamps.map((camp) => (
+                          <div key={camp._id} className="flex flex-wrap items-center gap-4 p-3 rounded-xl bg-white/5 border border-white/10">
+                            {camp.creative && (
+                              <img src={camp.creative} alt="" className="h-14 w-24 object-cover rounded-lg shrink-0" />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm text-[#999] truncate max-w-md" title={camp.destinationUrl}>URL: {camp.destinationUrl || '—'}</div>
+                              <div className="flex items-center gap-3 mt-1">
+                                <span className="text-xs text-[#666]">Clicks: <span className="font-semibold text-white">{(camp.clicks ?? 0).toLocaleString()}</span></span>
+                                <span className={`px-2 py-0.5 rounded text-xs ${camp.status === 'active' ? 'bg-green-500/20 text-green-400' : 'text-[#666]'}`}>{camp.status}</span>
+                              </div>
+                            </div>
+                            <div className="flex gap-2 shrink-0">
+                              <button type="button" onClick={() => openEditCampaign(camp)} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold">Edit</button>
+                              <button type="button" onClick={() => toggleCampaignStatus(camp)} className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm">{camp.status === 'active' ? 'Pause' : 'Start'}</button>
+                            </div>
+                          </div>
+                        ))}
+                        {slots.find((s) => s.slot === slot) && (slots.find((s) => s.slot === slot)?.remaining ?? 0) > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => openNewCampaignForSlot(slot, advertisers[0]?._id)}
+                            className="text-sm text-blue-400 hover:underline"
+                          >
+                            + Add another banner for this slot
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          {allCampaignsFiltered.length === 0 && (
-            <div className="p-6 text-center text-[#666] text-sm">No campaigns match the filters.</div>
-          )}
         </div>
       )}
 
@@ -1410,8 +1778,11 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                             <td className="px-5 py-3 text-white font-medium">{camp.name}</td>
                             <td className="px-5 py-3 text-[#999]">{SLOT_LABELS[camp.slot] || camp.slot}</td>
                             <td className="px-5 py-3 text-[#999]">
-                              {camp.slot === 'feed' && camp.feedTier != null && camp.tierSlot != null
-                                ? `T${camp.feedTier}/${camp.tierSlot}`
+                              {camp.slot === 'feed'
+                                ? (() => {
+                                    const p = camp.position ?? (camp.feedTier != null && camp.tierSlot != null ? (camp.feedTier - 1) * 4 + camp.tierSlot : null);
+                                    return p != null ? `#${p}` : '—';
+                                  })()
                                 : camp.slot === 'sidebar-feed'
                                   ? '—'
                                   : camp.position != null
@@ -1457,6 +1828,149 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
       )}
         </>
       )}
+
+      {/* ─── Feed Ads tab ─────────────────────────────────────── */}
+      {sectionTab === 'feedAds' && !isLoading && !error && (
+        <>
+          {(() => {
+            const feedCampaigns = campaigns.filter((c) => c.slot === 'feed');
+            const filteredByAdvertiser = feedAdsFilterAdvertiser === 'all' ? feedCampaigns : feedCampaigns.filter((c) => c.advertiserId === feedAdsFilterAdvertiser);
+            const filteredByStatus = feedAdsFilterStatus === 'all' ? filteredByAdvertiser : filteredByAdvertiser.filter((c) => c.status === feedAdsFilterStatus);
+            const sorted = [...filteredByStatus].sort((a, b) => {
+              if (feedAdsSortBy === 'position') return (a.position ?? 99) - (b.position ?? 99);
+              if (feedAdsSortBy === 'clicks') return (b.clicks ?? 0) - (a.clicks ?? 0);
+              return String(a.status).localeCompare(String(b.status));
+            });
+            const feedTotals = Object.values(feedClickStats).reduce(
+              (acc, s) => ({ total: acc.total + s.total, last24h: acc.last24h + s.last24h, last7d: acc.last7d + s.last7d, last30d: acc.last30d + s.last30d }),
+              { total: 0, last24h: 0, last7d: 0, last30d: 0 }
+            );
+            return (
+              <>
+                <div className="mb-6">
+                  <h2 className="text-xl font-bold text-white mb-2">Feed Ads</h2>
+                  <p className="text-[#999] text-sm">One ad every 5 entries on Groups/Bots. Assign to advertiser and monitor performance.</p>
+                </div>
+
+                {/* KPI row */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+                  <div className="glass rounded-lg p-4 border border-white/5">
+                    <div className="text-lg font-black text-white">{feedTotals.total.toLocaleString()}</div>
+                    <div className="text-[10px] text-[#999] uppercase">Total clicks</div>
+                  </div>
+                  <div className="glass rounded-lg p-4 border border-white/5">
+                    <div className="text-lg font-black text-green-400">{feedTotals.last24h.toLocaleString()}</div>
+                    <div className="text-[10px] text-[#999] uppercase">Last 24h</div>
+                  </div>
+                  <div className="glass rounded-lg p-4 border border-white/5">
+                    <div className="text-lg font-black text-white">{feedTotals.last7d.toLocaleString()}</div>
+                    <div className="text-[10px] text-[#999] uppercase">Last 7 days</div>
+                  </div>
+                  <div className="glass rounded-lg p-4 border border-white/5">
+                    <div className="text-lg font-black text-white">{feedTotals.last30d.toLocaleString()}</div>
+                    <div className="text-[10px] text-[#999] uppercase">Last 30 days</div>
+                  </div>
+                </div>
+
+                {/* Filters + New button */}
+                <div className="flex flex-wrap items-center gap-4 mb-4">
+                  <select
+                    value={feedAdsFilterAdvertiser}
+                    onChange={(e) => setFeedAdsFilterAdvertiser(e.target.value)}
+                    className="bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+                  >
+                    <option value="all">All advertisers</option>
+                    {advertisers.map((a) => (
+                      <option key={a._id} value={a._id}>{a.name}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={feedAdsFilterStatus}
+                    onChange={(e) => setFeedAdsFilterStatus(e.target.value)}
+                    className="bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+                  >
+                    <option value="all">All statuses</option>
+                    <option value="active">Active</option>
+                    <option value="paused">Paused</option>
+                    <option value="ended">Ended</option>
+                  </select>
+                  <span className="text-[#666] text-sm">Sort by:</span>
+                  <select
+                    value={feedAdsSortBy}
+                    onChange={(e) => setFeedAdsSortBy(e.target.value as 'position' | 'clicks' | 'status')}
+                    className="bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+                  >
+                    <option value="position">Position (default)</option>
+                    <option value="clicks">Clicks</option>
+                    <option value="status">Status</option>
+                  </select>
+                  <button
+                    onClick={() => {
+                      setCampForm({ ...campForm, slot: 'feed', advertiserId: advertisers[0]?._id || '', name: '', creative: '', destinationUrl: '', description: '', category: 'All', country: 'All', buttonText: 'Visit Site', feedTier: 1, tierSlot: 1, position: 1, feedPlacement: 'both' });
+                      setEditingCampaign(null);
+                      setView('editCampaign');
+                    }}
+                    className="ml-auto px-4 py-2 bg-[#b31b1b] hover:bg-[#c42b2b] text-white rounded-lg font-semibold text-sm"
+                  >
+                    + New feed ad
+                  </button>
+                </div>
+
+                <div className="rounded-xl border border-white/10 overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-white/5">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">#</th>
+                        <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Advertiser</th>
+                        <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Image</th>
+                        <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Name</th>
+                        <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Show on</th>
+                        <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">24h</th>
+                        <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">7d</th>
+                        <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">30d</th>
+                        <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">Total</th>
+                        <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Status</th>
+                        <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {sorted.map((c) => {
+                        const stats = feedClickStats[c._id] || { total: c.clicks ?? 0, last24h: 0, last7d: 0, last30d: 0 };
+                        return (
+                          <tr key={c._id} className="hover:bg-white/5">
+                            <td className="px-3 py-2 font-bold text-white">{c.position ?? (c.feedTier != null && c.tierSlot != null ? (c.feedTier - 1) * 4 + c.tierSlot : '—')}</td>
+                            <td className="px-3 py-2 text-white">{c.advertiserName || advertisers.find((a) => a._id === c.advertiserId)?.name || '—'}</td>
+                            <td className="px-3 py-2">
+                              {c.creative ? <img src={c.creative} alt="" className="h-10 w-14 object-cover rounded" /> : <span className="text-[#666]">—</span>}
+                            </td>
+                            <td className="px-3 py-2 text-white font-medium">{c.name}</td>
+                            <td className="px-3 py-2 text-[#999]">{c.feedPlacement === 'both' ? 'Groups + Bots' : c.feedPlacement === 'groups' ? 'Groups' : c.feedPlacement === 'bots' ? 'Bots' : 'Both'}</td>
+                            <td className="px-3 py-2 text-right text-green-400">{stats.last24h.toLocaleString()}</td>
+                            <td className="px-3 py-2 text-right text-[#999]">{stats.last7d.toLocaleString()}</td>
+                            <td className="px-3 py-2 text-right text-[#999]">{stats.last30d.toLocaleString()}</td>
+                            <td className="px-3 py-2 text-right font-semibold text-white">{stats.total.toLocaleString()}</td>
+                            <td className="px-3 py-2">
+                              <span className={`px-2 py-0.5 rounded text-xs ${c.status === 'active' ? 'bg-green-500/20 text-green-400' : 'text-[#666]'}`}>{c.status}</span>
+                            </td>
+                            <td className="px-3 py-2">
+                              <button onClick={() => openEditCampaign(c)} className="text-blue-400 hover:underline mr-2">Edit</button>
+                              <button onClick={() => handleDeleteCampaign(c._id)} className="text-red-400 hover:underline">Delete</button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {sorted.length === 0 && (
+                  <div className="p-8 text-center text-[#666]">No feed ads. Create one with &quot;+ New feed ad&quot; or add a campaign with slot In-Feed in By slot.</div>
+                )}
+              </>
+            );
+          })()}
+        </>
+      )}
+
     </div>
   );
 }

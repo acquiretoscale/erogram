@@ -180,32 +180,26 @@ export async function GET(req: NextRequest) {
   }
 }
 
+// Simple submit: form data → save to DB → pending for moderation. No login required.
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
 
-    const user = await authenticate(req);
-    // Allow unauthenticated submissions for moderation (status: pending)
-
     const body = await req.json();
     const { name, category, country, telegramLink, description, image } = body;
 
-    // Validation (country is optional, default to 'All')
     if (!name || !category || !telegramLink || !description) {
       return NextResponse.json(
         { message: 'Name, category, Telegram link and description are required' },
         { status: 400 }
       );
     }
-    const countryValue = country || 'All';
-
     if (description.length < 30) {
       return NextResponse.json(
         { message: 'Description must be at least 30 characters' },
         { status: 400 }
       );
     }
-
     if (!telegramLink.startsWith('https://t.me/')) {
       return NextResponse.json(
         { message: 'Telegram link must start with https://t.me/' },
@@ -213,7 +207,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Generate unique slug
+    const countryValue = country || 'All';
+
     const baseSlug = slugify(name);
     let slug = baseSlug;
     let counter = 1;
@@ -221,47 +216,26 @@ export async function POST(req: NextRequest) {
       slug = `${baseSlug}-${counter++}`;
     }
 
-    // Validate and prepare image
     let finalImage = '/assets/image.jpg';
-    if (image) {
-      // Check if it's a valid base64 data URI
-      if (image.startsWith('data:image/')) {
-        // Validate base64 data URI format
-        const base64Match = image.match(/^data:image\/(\w+);base64,(.+)$/);
-        if (base64Match && base64Match[2]) {
-          const ext = base64Match[1].replace('jpeg', 'jpg');
-          const base64Data = base64Match[2];
-          const buffer = Buffer.from(base64Data, 'base64');
-
-          // Generate filename
-          const filename = `${slug}.${ext}`;
-          const relativePath = `/uploads/bots/${filename}`;
-          const absolutePath = path.join(process.cwd(), 'public/uploads/bots', filename);
-
-          // Ensure directory exists
-          const dir = path.dirname(absolutePath);
-          if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-          }
-
-          // Write file
-          fs.writeFileSync(absolutePath, buffer);
-          finalImage = relativePath;
-          console.log(`[Bot Create] Saved image to ${relativePath}`);
-        } else {
-          console.warn('[Bot Create] Invalid base64 image format, using default');
-        }
-      } else if (image !== '/assets/image.jpg') {
-        // Allow other image formats (URLs, etc.)
-        finalImage = image;
-        console.log('[Bot Create] Using image URL:', image);
+    if (image?.startsWith('data:image/')) {
+      const base64Match = image.match(/^data:image\/(\w+);base64,(.+)$/);
+      if (base64Match?.[2]) {
+        const ext = base64Match[1].replace('jpeg', 'jpg');
+        const buffer = Buffer.from(base64Match[2], 'base64');
+        const filename = `${slug}.${ext}`;
+        const relativePath = `/uploads/bots/${filename}`;
+        const absolutePath = path.join(process.cwd(), 'public/uploads/bots', filename);
+        const dir = path.dirname(absolutePath);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(absolutePath, buffer);
+        finalImage = relativePath;
       }
-    } else {
-      console.warn('[Bot Create] No image provided, using default');
+    } else if (image && image !== '/assets/image.jpg') {
+      finalImage = image;
     }
 
-    // Create bot with pending status (createdBy optional for no-login submit)
-    const bot = await Bot.create({
+    const user = await authenticate(req);
+    const doc: Record<string, unknown> = {
       name,
       slug,
       category,
@@ -269,10 +243,11 @@ export async function POST(req: NextRequest) {
       telegramLink,
       description,
       image: finalImage,
-      createdBy: user?._id ?? undefined,
-      status: 'pending'
-    });
+      status: 'pending',
+    };
+    if (user?._id) doc.createdBy = user._id;
 
+    const bot = await Bot.create(doc);
     return NextResponse.json(bot);
   } catch (error: any) {
     console.error('Error creating bot:', error);

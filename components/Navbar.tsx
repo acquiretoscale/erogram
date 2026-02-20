@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
-import { trackClick } from '@/lib/actions/campaigns';
 
 const DEFAULT_NAVBAR_CTA = {
   destinationUrl: 'https://lovescape.com/create-ai-sex-girlfriend/style?userId=5ebe4f139af9bcff39155f3e9f06fbce233415fd82fd4da2a9c51ea0921d4c0e&sourceId=Erogram&creativeId=6step_hent&p1=test',
@@ -149,7 +148,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
             href={navbarCta?.destinationUrl ?? DEFAULT_NAVBAR_CTA.destinationUrl}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => navbarCta?._id && trackClick(navbarCta._id)}
+            onClick={() => { if (navbarCta?._id) fetch('/api/campaigns/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campaignId: navbarCta._id, placement: 'navbar-cta' }) }).catch(() => {}); }}
             className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-1.5 rounded-lg font-bold transition-all whitespace-nowrap shadow-lg bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white hover-glow hover:scale-105"
           >
             {(navbarCta?.description || navbarCta?.buttonText) || DEFAULT_NAVBAR_CTA.description}
@@ -303,7 +302,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => {
-              if (navbarCta?._id) trackClick(navbarCta._id);
+              if (navbarCta?._id) fetch('/api/campaigns/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campaignId: navbarCta._id, placement: 'navbar-cta' }) }).catch(() => {});
               setIsMenuOpen(false);
             }}
             className="block px-4 py-2 rounded-lg font-bold text-center transition-all shadow-lg bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white"

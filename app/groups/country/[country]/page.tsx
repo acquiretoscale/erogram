@@ -5,7 +5,6 @@ import { Group } from '@/lib/models';
 import GroupsClient from '../../GroupsClient';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import { getActiveCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
-import { getFilterButton } from '@/lib/actions/siteConfig';
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
 
@@ -227,7 +226,7 @@ async function getGroupsByCountry(country: string) {
     await connectDB();
 
     const normalizedCountry = normalizeCountryParam(country);
-    const match: Record<string, any> = { status: 'approved' };
+    const match: Record<string, any> = { status: 'approved', isAdvertisement: { $ne: true } };
 
     // Special case: "All" means no country filter.
     if (normalizedCountry && normalizedCountry !== 'All') {
@@ -305,23 +304,14 @@ export default async function CountryGroupsPage({ params }: PageProps) {
   const { country: rawCountry } = await params;
   const country = normalizeCountryParam(rawCountry);
 
-  const [groups, feedCampaigns, topBannerCampaigns, filterCtaCampaigns, filterButton] = await Promise.all([
+  const [groups, feedCampaigns, topBannerCampaigns] = await Promise.all([
     getGroupsByCountry(country),
-    getActiveFeedCampaigns(),
+    getActiveFeedCampaigns('groups'),
     getActiveCampaigns('top-banner'),
-    getActiveCampaigns('filter-cta'),
-    getFilterButton(),
   ]);
 
   const topBannerForPage =
     topBannerCampaigns.length > 0 && topBannerCampaigns[0].creative ? topBannerCampaigns : [];
-
-  const filterFromCampaign =
-    filterCtaCampaigns.length > 0
-      ? { text: filterCtaCampaigns[0].buttonText?.trim() || 'Visit', url: filterCtaCampaigns[0].destinationUrl || '' }
-      : null;
-  const filterButtonText = (filterFromCampaign?.text ?? filterButton?.text ?? '').trim();
-  const filterButtonUrl = filterFromCampaign?.url ?? filterButton?.url ?? '';
 
   return (
     <GroupsClient
@@ -331,8 +321,6 @@ export default async function CountryGroupsPage({ params }: PageProps) {
       initialIsMobile={isMobile}
       initialIsTelegram={isTelegram}
       topBannerCampaigns={topBannerForPage}
-      filterButtonText={filterButtonText}
-      filterButtonUrl={filterButtonUrl}
     />
   );
 }
