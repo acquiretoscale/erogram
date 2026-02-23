@@ -101,6 +101,7 @@ export async function createCampaign(
     feedPlacement?: 'groups' | 'bots' | 'both';
     videoUrl?: string;
     badgeText?: string;
+    verified?: boolean;
   }
 ) {
   const admin = await authenticateAdmin(token);

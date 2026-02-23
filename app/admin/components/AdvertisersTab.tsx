@@ -557,6 +557,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
         feedPlacement: 'both',
         videoUrl: '',
         badgeText: '',
+        verified: false,
       });
       setView('list');
       alert('Campaign saved successfully.');
