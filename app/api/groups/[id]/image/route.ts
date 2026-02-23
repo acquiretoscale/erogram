@@ -35,7 +35,7 @@ export async function GET(
     }
 
     const origin = req.nextUrl?.origin || (req.headers.get('host') ? `${req.headers.get('x-forwarded-proto') || 'https'}://${req.headers.get('host')}` : '') || 'https://erogram.pro';
-    const resolved = resolveImageUrl(group.image, origin) || '/assets/image.jpg';
+    const resolved = resolveImageUrl(group.image, origin) || (process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png');
     
     return NextResponse.json(
       { image: resolved },

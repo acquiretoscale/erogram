@@ -19,6 +19,7 @@ export interface Group {
     averageRating?: number;
     reviewCount?: number;
     memberCount?: number;
+    showVerified?: boolean;
 }
 
 
@@ -52,4 +53,6 @@ export interface FeedCampaign {
     videoUrl?: string;
     /** Configurable badge label (e.g. "Trending", "Hot", "New") */
     badgeText?: string;
+    /** Show verified checkmark next to campaign name */
+    showVerified?: boolean;
 }

@@ -62,8 +62,9 @@ export async function PUT(
       );
     }
     
+    const PLACEHOLDER_PATH = process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png';
     // If image is not provided or is placeholder, preserve existing image
-    if (!updateData.image || updateData.image === '/assets/image.jpg' || updateData.image === '') {
+    if (!updateData.image || updateData.image === '/assets/image.jpg' || updateData.image === PLACEHOLDER_PATH || updateData.image === '') {
       // Don't update image - preserve the existing one
       delete updateData.image;
       console.log('[Group Update] Image not provided in update, preserving existing image from database');
@@ -107,15 +108,15 @@ export async function PUT(
         
         // Debug: Log the image value from database
         const imagePreview = groupWithImage.image ? (groupWithImage.image.substring(0, 50) + (groupWithImage.image.length > 50 ? '...' : '')) : 'null';
-        console.log(`[Group Update] Fetched image for notification: ${imagePreview} (length: ${groupWithImage.image?.length || 0}, isPlaceholder: ${groupWithImage.image === '/assets/image.jpg'}, isBase64: ${groupWithImage.image?.startsWith('data:image/') || false})`);
+        console.log(`[Group Update] Fetched image for notification: ${imagePreview} (length: ${groupWithImage.image?.length || 0}, isPlaceholder: ${groupWithImage.image === '/assets/image.jpg' || groupWithImage.image === PLACEHOLDER_PATH}, isBase64: ${groupWithImage.image?.startsWith('data:image/') || false})`);
         
         // Use the image from the database - it should be the actual uploaded image
         let actualImage = groupWithImage.image;
         
         // If it's the placeholder, check if we have a valid image in the update body
-        if (!actualImage || actualImage === '/assets/image.jpg') {
+        if (!actualImage || actualImage === '/assets/image.jpg' || actualImage === PLACEHOLDER_PATH) {
           // Check if image was in the update body and is valid
-          if (body.image && body.image !== '/assets/image.jpg') {
+          if (body.image && body.image !== '/assets/image.jpg' && body.image !== PLACEHOLDER_PATH) {
             if (body.image.startsWith('data:image/')) {
               actualImage = body.image;
               console.log('[Group Update] Using valid base64 image from update body');
@@ -125,7 +126,7 @@ export async function PUT(
             }
           } else {
             console.log(`[Group Update] Warning: Image is placeholder in database for group ${groupWithImage.name}`);
-            actualImage = '/assets/image.jpg';
+            actualImage = PLACEHOLDER_PATH;
           }
         } else {
           console.log(`[Group Update] Using image from database (isBase64: ${actualImage.startsWith('data:image/')})`);

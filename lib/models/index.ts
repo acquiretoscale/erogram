@@ -65,7 +65,7 @@ export const groupSchema = new Schema(
     image: {
       type: String,
       required: [true, 'Group image is required'],
-      default: '/assets/image.jpg',
+      default: '/assets/placeholder-no-image.png',
     },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
     createdByUsername: { type: String, default: '' },
@@ -88,6 +88,7 @@ export const groupSchema = new Schema(
     lastClickedAt: { type: Date },
     memberCount: { type: Number, default: 0 },
     memberCountUpdatedAt: { type: Date },
+    showVerified: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
@@ -180,7 +181,7 @@ export const advertSchema = new Schema(
       }
     },
     description: { type: String, required: true },
-    image: { type: String, required: true, default: '/assets/image.jpg' },
+    image: { type: String, required: true, default: '/assets/placeholder-no-image.png' },
     status: { type: String, enum: ['active', 'inactive'], default: 'active' },
     pinned: { type: Boolean, default: false },
     clickCount: { type: Number, default: 0 },
@@ -227,7 +228,7 @@ export const botSchema = new Schema(
     image: {
       type: String,
       required: [true, 'Bot image is required'],
-      default: '/assets/image.jpg',
+      default: '/assets/placeholder-no-image.png',
     },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
     createdByUsername: { type: String, default: '' },
@@ -243,6 +244,7 @@ export const botSchema = new Schema(
     lastClickedAt: { type: Date },
     memberCount: { type: Number, default: 0 },
     memberCountUpdatedAt: { type: Date },
+    showVerified: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
@@ -443,6 +445,8 @@ export const campaignSchema = new Schema(
     videoUrl: { type: String, default: '' },
     // Configurable badge label (e.g. "Trending", "Hot", "New") — shown on the card
     badgeText: { type: String, default: '' },
+    // Show verified checkmark next to campaign name (feed ads)
+    showVerified: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

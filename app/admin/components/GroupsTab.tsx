@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { compressImage } from '@/lib/utils/compressImage';
 import { categories, countries } from '@/app/groups/constants';
+import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 
 export default function GroupsTab() {
     const [groups, setGroups] = useState<any[]>([]);
@@ -24,6 +25,7 @@ export default function GroupsTab() {
         status: 'pending' as 'pending' | 'approved' | 'rejected',
         pinned: false,
         advertiserId: '' as string,
+        showVerified: false,
     });
     const [isSaving, setIsSaving] = useState(false);
 
@@ -82,6 +84,7 @@ export default function GroupsTab() {
             status: group.status || 'pending',
             pinned: group.pinned || false,
             advertiserId: group.advertiserId || '',
+            showVerified: group.showVerified ?? false,
         });
         setShowEditor(true);
     };
@@ -449,10 +452,10 @@ export default function GroupsTab() {
                                                                 src={group.image}
                                                                 alt={group.name}
                                                                 className="w-full h-full object-cover"
-                                                                onError={(e) => { (e.target as HTMLImageElement).src = '/assets/image.jpg'; }}
+                                                                onError={(e) => { (e.target as HTMLImageElement).src = PLACEHOLDER_IMAGE_URL; }}
                                                             />
                                                         ) : (
-                                                            <img src="/assets/image.jpg" alt={group.name} className="w-full h-full object-cover" />
+                                                            <img src={group.image || PLACEHOLDER_IMAGE_URL} alt={group.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = PLACEHOLDER_IMAGE_URL; }} />
                                                         )}
                                                     </div>
                                                     <div>
@@ -658,6 +661,17 @@ export default function GroupsTab() {
                                             <span className="text-white font-medium">Pin to top (featured slot)</span>
                                         </label>
                                         <span className="text-xs text-[#999] ml-3">Max 2 featured slots on groups page</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <label className="flex items-center gap-3 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={groupData.showVerified ?? false}
+                                                onChange={(e) => setGroupData({ ...groupData, showVerified: e.target.checked })}
+                                                className="w-5 h-5 rounded border-white/10 bg-[#1a1a1a] text-[#b31b1b] focus:ring-[#b31b1b]"
+                                            />
+                                            <span className="text-white font-medium">Show verified checkmark</span>
+                                        </label>
                                     </div>
 
                                     {groupData.pinned && (

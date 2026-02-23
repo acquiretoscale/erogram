@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Advert, FeedCampaign } from './types';
 import { useIsTelegramBrowser } from '../hooks/useIsTelegramBrowser';
+import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 
 interface AdvertCardProps {
     advert?: Advert;
@@ -110,11 +111,11 @@ function VideoAdCard({ campaign, handleClick }: { campaign: FeedCampaign; handle
             initial={{ opacity: 0, y: 60 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="h-full"
+            className="h-full min-h-[420px]"
         >
             <div
                 ref={cardRef}
-                className="rounded-3xl overflow-hidden h-full relative cursor-pointer group border border-white/5 hover:border-white/20 transition-all duration-500 hover:shadow-2xl hover:shadow-black/50 bg-[#0a0a0a]"
+                className="rounded-3xl overflow-hidden h-full min-h-[420px] relative cursor-pointer group border border-white/5 hover:border-white/20 transition-all duration-500 hover:shadow-2xl hover:shadow-black/50 bg-[#0a0a0a]"
                 onClick={handleClick}
                 role="link"
                 tabIndex={0}
@@ -153,8 +154,15 @@ function VideoAdCard({ campaign, handleClick }: { campaign: FeedCampaign; handle
                             <span className="text-xs font-bold text-white">{visitingCount} visiting now</span>
                         </div>
                     </div>
-                    <h3 className="text-xl font-black text-white line-clamp-2 leading-tight drop-shadow-lg">
-                        {campaign.name}
+                    <h3 className="text-xl font-black text-white leading-tight drop-shadow-lg flex items-center gap-2 min-w-0">
+                        <span className="truncate">{campaign.name}</span>
+                        {campaign.showVerified && (
+                            <span className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 border border-white/30 shadow-lg" title="Verified">
+                                <svg viewBox="0 0 24 24" className="w-3 h-3 text-white" fill="currentColor" aria-hidden="true">
+                                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
+                                </svg>
+                            </span>
+                        )}
                     </h3>
 
                     {campaign.description && (
@@ -204,7 +212,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
       : {
             _id: advert?._id || '',
             name: advert?.name || '',
-            image: advert?.image || '/assets/image.jpg',
+            image: advert?.image || PLACEHOLDER_IMAGE_URL,
             url: advert?.url || '',
             description: advert?.description || '',
             category: advert?.category || '',
@@ -214,7 +222,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
           };
 
     const [isHovered, setIsHovered] = useState(false);
-    const [imageSrc, setImageSrc] = useState(ad.image || '/assets/image.jpg');
+    const [imageSrc, setImageSrc] = useState(ad.image || PLACEHOLDER_IMAGE_URL);
     const [isInView, setIsInView] = useState(forceVisible);
     const hasFetchedRef = useRef(false);
     const imgRef = useRef<HTMLDivElement>(null);
@@ -322,12 +330,12 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
     // Preload image if shouldPreload is true (for next 6 items) -- legacy adverts only
     useEffect(() => {
-        if (!ad.isCampaign && shouldPreload && imageSrc === '/assets/image.jpg' && ad._id && !hasFetchedRef.current) {
+        if (!ad.isCampaign && shouldPreload && imageSrc === PLACEHOLDER_IMAGE_URL && ad._id && !hasFetchedRef.current) {
             hasFetchedRef.current = true;
             fetch(`/api/adverts/${ad._id}/image`)
                 .then(res => res.json())
                 .then(data => {
-                    if (data.image && data.image !== '/assets/image.jpg') {
+                    if (data.image && data.image !== PLACEHOLDER_IMAGE_URL) {
                         setImageSrc(data.image);
                     }
                 })
@@ -337,12 +345,12 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
     // Fetch actual image when in view and it's the placeholder -- legacy adverts only
     useEffect(() => {
-        if (!ad.isCampaign && isInView && imageSrc === '/assets/image.jpg' && ad._id && !hasFetchedRef.current) {
+        if (!ad.isCampaign && isInView && imageSrc === PLACEHOLDER_IMAGE_URL && ad._id && !hasFetchedRef.current) {
             hasFetchedRef.current = true;
             fetch(`/api/adverts/${ad._id}/image`)
                 .then(res => res.json())
                 .then(data => {
-                    if (data.image && data.image !== '/assets/image.jpg') {
+                    if (data.image && data.image !== PLACEHOLDER_IMAGE_URL) {
                         setImageSrc(data.image);
                     }
                 })
@@ -431,14 +439,18 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
         fakeCount = `${liveCount} visiting now`;
     }
 
-    // Verified Logic - Make rarer (20% chance, was 50%)
-    const showVerified = seededRandom(seed + 'verified') > 0.8;
+    // Verified badge: use campaign flag when set (admin can toggle); otherwise no badge for image ads
+    const showVerifiedBadge = campaign?.showVerified === true;
 
     // Sponsored Badge Logic for Native Ads (10% chance)
     const showSponsored = seededRandom(seed + 'sponsored') < 0.1;
 
+    // In Telegram in-app browser: render a same-size placeholder so grid layout is preserved
+    // and we don't leave a hole. On mobile Safari/Chrome (non-Telegram) we render the real ad.
     if (isTelegram) {
-        return null;
+        return (
+            <div className="h-full min-h-[420px] rounded-3xl overflow-hidden bg-white/5 border border-white/10" aria-hidden="true" />
+        );
     }
 
     // VIDEO AD CARD — only when campaign has a videoUrl
@@ -467,7 +479,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                             className="object-cover transition-transform duration-700 group-hover:scale-110"
                             priority={forceVisible || isIndex < 12}
-                            onError={() => setImageSrc('/assets/image.jpg')}
+                            onError={() => setImageSrc(PLACEHOLDER_IMAGE_URL)}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent opacity-80" />
 
@@ -500,7 +512,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                         {/* Title */}
                         <h3 className="text-xl font-black text-white mb-3 line-clamp-2 leading-tight group-hover:text-blue-400 transition-colors flex items-center gap-2">
                             {ad.name}
-                            {showVerified && (
+                            {showVerifiedBadge && (
                                 <span className="shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-500 text-white text-[8px] shadow-sm" title="Verified">
                                     ✓
                                 </span>
@@ -574,7 +586,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                         className="object-cover transition-transform duration-700"
                         style={{ transform: isHovered ? 'scale(1.1)' : 'scale(1)' }}
                         priority={forceVisible || isIndex < 12}
-                        onError={() => setImageSrc('/assets/image.jpg')}
+                        onError={() => setImageSrc(PLACEHOLDER_IMAGE_URL)}
                     />
                     {/* Gradient Overlay for text readability */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-80"></div>
@@ -596,7 +608,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                         <span className="line-clamp-2">
                             {ad.name}
                         </span>
-                        {showVerified && (
+                        {showVerifiedBadge && (
                             <span className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] shadow-sm" title="Verified">
                                 ✓
                             </span>

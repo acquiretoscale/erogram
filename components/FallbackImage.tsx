@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 
-const PLACEHOLDER = '/assets/image.jpg';
+import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 
 interface FallbackImageProps {
     src: string | null | undefined;
@@ -26,7 +26,7 @@ export default function FallbackImage({
     sizes,
     priority,
 }: FallbackImageProps) {
-    const validSrc = (src && typeof src === 'string' && src.startsWith('https://')) ? src : PLACEHOLDER;
+    const validSrc = (src && typeof src === 'string' && src.startsWith('https://')) ? src : PLACEHOLDER_IMAGE_URL;
     const [imageSrc, setImageSrc] = useState(validSrc);
 
     return (
@@ -37,7 +37,7 @@ export default function FallbackImage({
             className={className}
             sizes={sizes}
             priority={priority}
-            onError={() => setImageSrc(PLACEHOLDER)}
+            onError={() => setImageSrc(PLACEHOLDER_IMAGE_URL)}
         />
     );
 }

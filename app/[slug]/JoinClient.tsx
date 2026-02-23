@@ -8,6 +8,7 @@ import axios from 'axios';
 import Navbar from '@/components/Navbar';
 import HeaderBanner from '@/components/HeaderBanner';
 import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
+import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 
 interface Entity {
   _id: string;
@@ -92,7 +93,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
   const [popupAdvert, setPopupAdvert] = useState<PopupAdvert | null>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [countdownStarted, setCountdownStarted] = useState(false);
-  const [groupImage, setGroupImage] = useState(entity.image || '/assets/image.jpg');
+  const [groupImage, setGroupImage] = useState(entity.image || PLACEHOLDER_IMAGE_URL);
   const [failedSimilarImages, setFailedSimilarImages] = useState<Record<string, boolean>>({});
   const [userInteracted, setUserInteracted] = useState(false);
   const [adsReady, setAdsReady] = useState(false);
@@ -108,11 +109,11 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
 
   const fetchGroupImage = async () => {
     // Fetch the actual entity image if it's the placeholder
-    if (entity._id && (entity.image === '/assets/image.jpg' || !entity.image)) {
+    if (entity._id && (entity.image === '/assets/image.jpg' || entity.image === PLACEHOLDER_IMAGE_URL || !entity.image)) {
       try {
         const apiPath = type === 'group' ? 'groups' : 'bots';
         const res = await axios.get(`/api/${apiPath}/${entity._id}/image`);
-        if (res.data?.image && res.data.image !== '/assets/image.jpg') {
+        if (res.data?.image && res.data.image && res.data.image !== PLACEHOLDER_IMAGE_URL) {
           setGroupImage(res.data.image);
         }
       } catch (err) {
@@ -204,10 +205,10 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
           if (res.data.popupAdvert) {
             let popupData = res.data.popupAdvert;
 
-            if (popupData.image === '/assets/image.jpg' && popupData._id) {
+            if ((popupData.image === PLACEHOLDER_IMAGE_URL || popupData.image === '/assets/image.jpg') && popupData._id) {
               try {
                 const imageRes = await axios.get(`/api/adverts/${popupData._id}/image`);
-                if (imageRes.data?.image && imageRes.data.image !== '/assets/image.jpg') {
+                if (imageRes.data?.image && imageRes.data.image !== PLACEHOLDER_IMAGE_URL) {
                   popupData = { ...popupData, image: imageRes.data.image };
                 }
               } catch (imgErr) {
@@ -379,7 +380,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
           fill
           className="object-cover opacity-20 blur-3xl scale-110"
           priority
-          onError={() => setGroupImage('/assets/image.jpg')}
+          onError={() => setGroupImage(PLACEHOLDER_IMAGE_URL)}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0a]/80 via-[#0a0a0a]/90 to-[#0a0a0a]"></div>
       </div>
@@ -421,7 +422,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                   fill
                   className="object-cover transition-transform duration-700 group-hover:scale-105"
                   priority
-                  onError={() => setGroupImage('/assets/image.jpg')}
+                  onError={() => setGroupImage(PLACEHOLDER_IMAGE_URL)}
                 />
                 {/* Verified Badge Overlay */}
                 <div className="absolute top-3 right-3 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-md shadow-lg flex items-center gap-1">
@@ -709,7 +710,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                     <div className="flex items-start gap-4">
                       <div className="w-16 h-16 rounded-xl bg-[#222] overflow-hidden border border-white/5 group-hover:scale-105 transition-transform flex-shrink-0 relative">
                         <Image
-                          src={failedSimilarImages[g._id] ? '/assets/image.jpg' : (g.image || '/assets/image.jpg')}
+                          src={failedSimilarImages[g._id] ? PLACEHOLDER_IMAGE_URL : (g.image || PLACEHOLDER_IMAGE_URL)}
                           alt={g.name}
                           fill
                           className="object-cover"

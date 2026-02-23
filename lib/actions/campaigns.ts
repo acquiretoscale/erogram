@@ -75,6 +75,7 @@ export async function getCampaigns(token: string, advertiserId?: string) {
     feedPlacement: c.feedPlacement || 'both',
     videoUrl: c.videoUrl || '',
     badgeText: c.badgeText || '',
+    showVerified: c.showVerified ?? false,
   }));
 }
 
@@ -100,6 +101,7 @@ export async function createCampaign(
     feedPlacement?: 'groups' | 'bots' | 'both';
     videoUrl?: string;
     badgeText?: string;
+    showVerified?: boolean;
   }
 ) {
   const admin = await authenticateAdmin(token);
@@ -190,6 +192,7 @@ export async function createCampaign(
     feedPlacement: data.slot === 'feed' ? (data.feedPlacement || 'both') : undefined,
     videoUrl: data.slot === 'feed' ? (data.videoUrl || '') : '',
     badgeText: data.slot === 'feed' ? (data.badgeText || '') : '',
+    showVerified: data.slot === 'feed' ? (data.showVerified ?? false) : false,
   });
 
   // Keep feed positions gap-free after a new ad is created
@@ -223,6 +226,7 @@ export async function updateCampaign(
     advertiserId: string;
     videoUrl: string;
     badgeText: string;
+    showVerified?: boolean;
   }>
 ) {
   const admin = await authenticateAdmin(token);
@@ -250,6 +254,7 @@ export async function updateCampaign(
   if (data.feedPlacement != null) updateData.feedPlacement = data.feedPlacement;
   if ('videoUrl' in data) updateData.videoUrl = String(data.videoUrl ?? '').trim();
   if ('badgeText' in data) updateData.badgeText = String(data.badgeText ?? '').trim();
+  if (data.showVerified !== undefined) updateData.showVerified = Boolean(data.showVerified);
 
   if (Object.keys(updateData).length === 0) {
     const doc = await Campaign.findById(id).lean();
@@ -464,7 +469,7 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
       },
     ],
   })
-    .select('_id creative destinationUrl slot feedTier tierSlot position description category country buttonText name feedPlacement videoUrl badgeText')
+    .select('_id creative destinationUrl slot feedTier tierSlot position description category country buttonText name feedPlacement videoUrl badgeText showVerified')
     .lean();
 
   const withSortKey = campaigns.map((c: any) => {
@@ -494,6 +499,7 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
     name: c.name,
     videoUrl: c.videoUrl || '',
     badgeText: c.badgeText || '',
+    showVerified: c.showVerified ?? false,
   }));
 }
 

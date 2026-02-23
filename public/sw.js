@@ -6,7 +6,7 @@ const API_CACHE = 'erogram-api-v1';
 const STATIC_ASSETS = [
   '/',
   '/favicon.ico',
-  '/assets/image.jpg',
+  '/assets/placeholder-no-image.png',
   '/manifest.json'
 ];
 

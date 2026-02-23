@@ -92,16 +92,20 @@ function FeedAdsBulkBar({
   onClear,
   onBulkStatus,
   onBulkShowOn,
+  onBulkLink,
   saving,
 }: {
   selectedCount: number;
   onClear: () => void;
   onBulkStatus: (status: string) => Promise<void>;
   onBulkShowOn: (feedPlacement: 'groups' | 'bots' | 'both') => Promise<void>;
+  onBulkLink: (destinationUrl: string) => Promise<void>;
   saving: boolean;
 }) {
   const [bulkStatus, setBulkStatus] = useState<string>('');
   const [bulkShowOn, setBulkShowOn] = useState<'groups' | 'bots' | 'both' | ''>('');
+  const [bulkLinkUrl, setBulkLinkUrl] = useState<string>('');
+  const isValidUrl = bulkLinkUrl.trim().startsWith('http://') || bulkLinkUrl.trim().startsWith('https://');
   return (
     <div className="flex flex-wrap items-center gap-4 p-4 mb-4 rounded-xl border border-[#b31b1b]/40 bg-[#b31b1b]/10">
       <span className="font-semibold text-white">{selectedCount} selected</span>
@@ -141,6 +145,26 @@ function FeedAdsBulkBar({
       >
         {saving ? 'Saving…' : 'Apply Show on'}
       </button>
+      <div className="flex items-center gap-2">
+        <input
+          type="url"
+          value={bulkLinkUrl}
+          onChange={(e) => setBulkLinkUrl(e.target.value)}
+          placeholder="New link (https://…)"
+          className="bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white min-w-[200px] placeholder:text-[#666] focus:ring-2 focus:ring-[#b31b1b] focus:border-[#b31b1b] outline-none"
+        />
+        <button
+          type="button"
+          disabled={saving || !isValidUrl}
+          onClick={() => {
+            const url = bulkLinkUrl.trim();
+            if (url && isValidUrl) onBulkLink(url);
+          }}
+          className="px-3 py-2 bg-[#b31b1b] hover:bg-[#c42b2b] disabled:opacity-50 text-white rounded-lg text-sm font-medium"
+        >
+          {saving ? 'Saving…' : 'Apply link'}
+        </button>
+      </div>
       <button type="button" onClick={onClear} className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm">
         Clear selection
       </button>
@@ -242,6 +266,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
     feedPlacement: 'both' as 'groups' | 'bots' | 'both',
     videoUrl: '',
     badgeText: '',
+    showVerified: false,
   });
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
@@ -385,6 +410,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
       feedPlacement: 'both',
       videoUrl: '',
       badgeText: '',
+      showVerified: false,
     });
     setView('editCampaign');
   };
@@ -417,6 +443,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
       feedPlacement: (camp.feedPlacement || 'both') as 'groups' | 'bots' | 'both',
       videoUrl: (camp as any).videoUrl || '',
       badgeText: (camp as any).badgeText || '',
+      showVerified: (camp as any).showVerified ?? false,
     });
     setView('editCampaign');
   };
@@ -483,6 +510,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
         feedPlacement: isFeed ? (campForm.feedPlacement || 'both') : undefined,
         videoUrl: isFeed ? ((campForm as any).videoUrl || '') : '',
         badgeText: isFeed ? ((campForm as any).badgeText || '') : '',
+        showVerified: isFeed ? ((campForm as any).showVerified ?? false) : false,
       };
       if (isFeed && !editingCampaign) {
         payload.feedTier = Math.ceil((feedPos ?? 1) / 4);
@@ -529,6 +557,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
         feedPlacement: 'both',
         videoUrl: '',
         badgeText: '',
+        showVerified: false,
       });
       setView('list');
       alert('Campaign saved successfully.');
@@ -1001,6 +1030,20 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                   <p className="text-xs text-[#666] mt-1">
                     Replaces "Sponsored" with a custom badge. Presets: Trending, Hot, New, Premium, Verified, Best Value, Editor&apos;s Pick, Featured, Popular, Exclusive, Limited. Leave empty for default "Sponsored" label.
                   </p>
+                </div>
+              )}
+
+              {campForm.slot === 'feed' && (
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={(campForm as any).showVerified ?? false}
+                      onChange={(e) => setCampForm({ ...campForm, showVerified: e.target.checked } as any)}
+                      className="w-5 h-5 rounded border-white/10 bg-[#1a1a1a] text-[#b31b1b] focus:ring-[#b31b1b]"
+                    />
+                    <span className="text-sm font-medium text-white">Show verified checkmark next to name</span>
+                  </label>
                 </div>
               )}
             </>
@@ -1964,6 +2007,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                               feedPlacement: 'both',
                               videoUrl: '',
                               badgeText: '',
+                              showVerified: false,
                             } as any);
                             setEditingCampaign(null);
                             setView('editCampaign');
@@ -2326,7 +2370,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                   </div>
                   <button
                     onClick={() => {
-                      setCampForm({ ...campForm, slot: 'feed', advertiserId: advertisers[0]?._id || '', name: '', creative: '', destinationUrl: '', description: '', category: 'All', country: 'All', buttonText: 'Visit Site', feedTier: 1, tierSlot: 1, position: 1, feedPlacement: 'both', videoUrl: '', badgeText: '' } as any);
+                      setCampForm({ ...campForm, slot: 'feed', advertiserId: advertisers[0]?._id || '', name: '', creative: '', destinationUrl: '', description: '', category: 'All', country: 'All', buttonText: 'Visit Site', feedTier: 1, tierSlot: 1, position: 1, feedPlacement: 'both', videoUrl: '', badgeText: '', showVerified: false } as any);
                       setEditingCampaign(null);
                       setView('editCampaign');
                     }}
@@ -2365,6 +2409,20 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                         clearFeedAdsSelection();
                       } catch (err: any) {
                         alert(err.response?.data?.message || err.message || 'Bulk update failed');
+                      } finally {
+                        setFeedAdsBulkSaving(false);
+                      }
+                    }}
+                    onBulkLink={async (destinationUrl: string) => {
+                      setFeedAdsBulkSaving(true);
+                      try {
+                        for (const id of feedAdsSelectedIds) {
+                          await axios.put(`/api/admin/campaigns/${id}`, { destinationUrl }, authHeaders());
+                        }
+                        await fetchAll();
+                        clearFeedAdsSelection();
+                      } catch (err: any) {
+                        alert(err.response?.data?.message || err.message || 'Bulk link update failed');
                       } finally {
                         setFeedAdsBulkSaving(false);
                       }

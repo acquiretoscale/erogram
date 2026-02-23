@@ -66,7 +66,7 @@ export const metadata: Metadata = {
     url: siteUrl,
     images: [
       {
-        url: `${siteUrl}/assets/image.jpg`,
+        url: (process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${siteUrl}/assets/placeholder-no-image.png`),
         width: 1200,
         height: 630,
         alt: 'Erogram - NSFW Telegram Groups, Channels & Bots Directory',
@@ -77,7 +77,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'erogram.pro – Telegram Groups & Channels Directory',
     description: 'Explore thousands of NSFW Telegram groups, channels, and AI companion bots. Connect with like-minded adults in curated communities.',
-    images: [`${siteUrl}/assets/image.jpg`],
+    images: [(process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${siteUrl}/assets/placeholder-no-image.png`)],
   },
 };
 

@@ -39,7 +39,7 @@ export async function getActiveFeedFromAdverts(): Promise<Array<{
   return adverts.map((a: any, i: number) => ({
     _id: a._id.toString(),
     name: a.name || '',
-    creative: a.image || '/assets/image.jpg',
+    creative: a.image || (process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png'),
     destinationUrl: a.url || '',
     slot: 'feed',
     position: FEED_POSITIONS[i] ?? i + 1,

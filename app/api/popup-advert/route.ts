@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
       .sort({ pinned: -1, createdAt: -1 })
       .lean();
     
-    const imageUrl = (popupAdvert as any)?.image || '/assets/image.jpg';
+    const imageUrl = (popupAdvert as any)?.image || (process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png');
 
     if (!popupAdvert) {
       // Debug: Check if there are any adverts with isPopupAdvert field

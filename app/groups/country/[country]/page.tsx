@@ -159,7 +159,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         url: `${baseUrl}/groups`,
         images: [
           {
-            url: `${baseUrl}/assets/image.jpg`,
+            url: (process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${baseUrl}/assets/placeholder-no-image.png`),
             width: 1200,
             height: 630,
             alt: 'Erogram Groups',
@@ -170,7 +170,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         card: 'summary_large_image',
         title: 'Discover NSFW Telegram Groups - Browse Thousands of Communities',
         description: 'Browse and discover thousands of NSFW Telegram groups. Find communities by category, country, and interests.',
-        images: [`${baseUrl}/assets/image.jpg`],
+        images: [(process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${baseUrl}/assets/placeholder-no-image.png`)],
       },
     };
   }
@@ -205,7 +205,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       url,
       images: [
         {
-          url: `${baseUrl}/assets/image.jpg`,
+          url: (process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${baseUrl}/assets/placeholder-no-image.png`),
           width: 1200,
           height: 630,
           alt: `${countryInfo.seoTitle}`,
@@ -216,7 +216,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       card: 'summary_large_image',
       title: countryInfo.seoTitle,
       description: countryInfo.seoDescription,
-      images: [`${baseUrl}/assets/image.jpg`],
+      images: [(process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${baseUrl}/assets/placeholder-no-image.png`)],
     },
   };
 }
@@ -280,7 +280,7 @@ async function getGroupsByCountry(country: string) {
       category: (group.category || '').slice(0, 50),
       country: (group.country || '').slice(0, 50),
       description: (group.description || '').slice(0, 150) || '',
-      image: '/assets/image.jpg',
+      image: process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png',
       telegramLink: (group.telegramLink || '').slice(0, 150),
       isAdvertisement: group.isAdvertisement || false,
       advertisementUrl: group.advertisementUrl ? (group.advertisementUrl || '').slice(0, 150) : null,

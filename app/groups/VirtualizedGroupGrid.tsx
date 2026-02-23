@@ -72,13 +72,15 @@ const VirtualizedGroupGrid = React.memo(function VirtualizedGroupGrid({
     // After mount, useEffect inserts ads with random placement client-side.
     const [items, setItems] = useState<Item[]>(() => groupsOnly(groups));
 
+    // Always insert feed ad slots when we have campaigns (mobile + desktop). isTelegram only
+    // affects whether AdvertCard renders content or a placeholder, so the grid layout stays correct.
     useEffect(() => {
-        if (!isTelegram && feedCampaigns.length > 0) {
+        if (feedCampaigns.length > 0) {
             setItems(buildFeedItems(groups, feedCampaigns));
         } else {
             setItems(groupsOnly(groups));
         }
-    }, [groups, feedCampaigns, isTelegram]);
+    }, [groups, feedCampaigns]);
 
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

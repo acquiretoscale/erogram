@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Group } from './types';
+import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 
 interface GroupCardProps {
     group: Group;
@@ -15,7 +16,7 @@ interface GroupCardProps {
 
 export default function GroupCard({ group, isFeatured = false, isIndex = 0, shouldPreload = false, onVisible, onOpenReviewModal, onOpenReportModal }: GroupCardProps) {
     const [isHovered, setIsHovered] = useState(false);
-    const placeholder = '/assets/image.jpg';
+    const placeholder = PLACEHOLDER_IMAGE_URL;
     const isAbsoluteUrl = (s: string) => typeof s === 'string' && (s.startsWith('https://') || s.startsWith('http://'));
     const initialImage = (group.image && isAbsoluteUrl(group.image)) ? group.image : (group.image && typeof group.image === 'string' && group.image.startsWith('/') ? group.image : placeholder);
     const [imageSrc, setImageSrc] = useState(initialImage);
@@ -154,8 +155,15 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                 {/* Card Content */}
                 <div className="p-5 flex-grow flex flex-col relative">
                     {/* Title */}
-                    <h3 className="text-xl font-black text-white mb-3 line-clamp-2 leading-tight group-hover:text-blue-400 transition-colors flex items-center gap-2">
-                        {group.name}
+                    <h3 className="text-xl font-black text-white mb-3 line-clamp-2 leading-tight group-hover:text-blue-400 transition-colors flex items-center gap-2 min-w-0">
+                        <span className="truncate">{group.name}</span>
+                        {group.showVerified && (
+                            <span className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 border border-white/30 shadow" title="Verified">
+                                <svg viewBox="0 0 24 24" className="w-3 h-3 text-white" fill="currentColor" aria-hidden="true">
+                                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
+                                </svg>
+                            </span>
+                        )}
                     </h3>
 
                     {/* Tags */}

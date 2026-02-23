@@ -73,7 +73,7 @@ async function migrate() {
       advertiserId,
       name: a.name,
       slot: 'feed',
-      creative: a.image || '/assets/image.jpg',
+      creative: a.image || '/assets/placeholder-no-image.png',
       destinationUrl: a.url,
       startDate: a.createdAt ? new Date(a.createdAt) : now,
       endDate: endDefault,

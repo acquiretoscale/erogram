@@ -159,7 +159,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         url: `${baseUrl}/bots`,
         images: [
           {
-            url: `${baseUrl}/assets/image.jpg`,
+            url: (process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${baseUrl}/assets/placeholder-no-image.png`),
             width: 1200,
             height: 630,
             alt: 'Erogram Bots',
@@ -170,7 +170,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         card: 'summary_large_image',
         title: 'Discover NSFW Telegram Bots - Browse AI Chatbots & Roleplay Bots',
         description: 'Browse and discover NSFW Telegram bots. Find AI chatbots, roleplay bots, and adult conversation bots.',
-        images: [`${baseUrl}/assets/image.jpg`],
+        images: [(process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${baseUrl}/assets/placeholder-no-image.png`)],
       },
     };
   }
@@ -205,7 +205,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       url,
       images: [
         {
-          url: `${baseUrl}/assets/image.jpg`,
+          url: (process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${baseUrl}/assets/placeholder-no-image.png`),
           width: 1200,
           height: 630,
           alt: `${countryInfo.seoTitle}`,
@@ -216,7 +216,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       card: 'summary_large_image',
       title: countryInfo.seoTitle,
       description: countryInfo.seoDescription,
-      images: [`${baseUrl}/assets/image.jpg`],
+      images: [(process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${baseUrl}/assets/placeholder-no-image.png`)],
     },
   };
 }
@@ -280,7 +280,7 @@ async function getBotsByCountry(country: string) {
       category: (bot.category || '').slice(0, 50),
       country: (bot.country || '').slice(0, 50),
       description: (bot.description || '').slice(0, 150) || '',
-      image: '/assets/image.jpg',
+      image: process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png',
       telegramLink: (bot.telegramLink || '').slice(0, 150),
       isAdvertisement: bot.isAdvertisement || false,
       advertisementUrl: bot.advertisementUrl ? (bot.advertisementUrl || '').slice(0, 150) : null,
@@ -317,7 +317,7 @@ async function getAdverts() {
       country: (advert.country || '').slice(0, 50),
       url: (advert.url || '').slice(0, 300),
       description: (advert.description || '').slice(0, 150) || '',
-      image: '/assets/image.jpg',
+      image: process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png',
       status: advert.status || 'active',
       pinned: advert.pinned || false,
       clickCount: 0,

@@ -12,7 +12,9 @@ import { getActiveCampaigns } from '@/lib/actions/campaigns';
 // ISR for public join pages (keeps SSR output crawlable while avoiding per-request rendering)
 export const revalidate = 300;
 
-const BASE_URL = 'https://erogram.pro';
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
+const PLACEHOLDER_REL = process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png';
+const PLACEHOLDER_ABS = PLACEHOLDER_REL.startsWith('http') ? PLACEHOLDER_REL : `${BASE_URL}/assets/placeholder-no-image.png`;
 
 function safeImageUrl(img: unknown, fallback: string): string {
   return (typeof img === 'string' && img.startsWith('https://')) ? img : fallback;
@@ -88,7 +90,7 @@ async function getGroup(slug: string) {
       country: (group as any).country,
       telegramLink: (group as any).telegramLink,
       description: (group as any).description,
-      image: safeImageUrl((group as any).image, '/assets/image.jpg'),
+      image: safeImageUrl((group as any).image, PLACEHOLDER_REL),
       views: (group as any).views || 0,
       memberCount: (group as any).memberCount || 0,
       createdAt: (group as any).createdAt,
@@ -163,7 +165,7 @@ async function getBot(slug: string) {
       country: (bot as any).country,
       telegramLink: (bot as any).telegramLink,
       description: (bot as any).description,
-      image: safeImageUrl((bot as any).image, '/assets/image.jpg'),
+      image: safeImageUrl((bot as any).image, PLACEHOLDER_REL),
       views: (bot as any).views || 0,
       clickCount: (bot as any).clickCount || 0,
       memberCount: (bot as any).memberCount || 0,
@@ -258,7 +260,7 @@ async function getRandomSimilarGroups(currentGroupId: string, category?: string)
       category: String(g.category || '').slice(0, 50),
       country: String(g.country || '').slice(0, 50),
       description: String(g.description || '').slice(0, 220),
-      image: safeImageUrl(g.image, '/assets/image.jpg'),
+      image: safeImageUrl(g.image, PLACEHOLDER_REL),
     }));
   } catch (error: any) {
     console.error('Error fetching similar groups:', error);
@@ -301,7 +303,7 @@ async function getRandomSimilarBots(currentBotId: string): Promise<SimilarGroup[
       category: String(b.category || '').slice(0, 50),
       country: String(b.country || '').slice(0, 50),
       description: String(b.description || '').slice(0, 220),
-      image: safeImageUrl(b.image, '/assets/image.jpg'),
+      image: safeImageUrl(b.image, PLACEHOLDER_REL),
     }));
   } catch (error: any) {
     console.error('Error fetching similar bots:', error);
@@ -371,7 +373,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         siteName: 'Erogram',
         images: [
           {
-            url: safeImageUrl(group.image, `${BASE_URL}/assets/image.jpg`),
+            url: safeImageUrl(group.image, PLACEHOLDER_ABS),
             width: 1200,
             height: 630,
             alt: `${group.name} - NSFW Telegram Group`,
@@ -383,7 +385,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         card: 'summary_large_image',
         title: `${group.name} - Join NSFW Telegram Group`,
         description: finalDescription,
-        images: [safeImageUrl(group.image, `${BASE_URL}/assets/image.jpg`)],
+        images: [safeImageUrl(group.image, PLACEHOLDER_ABS)],
       },
     };
   }
@@ -416,7 +418,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         siteName: 'Erogram',
         images: [
           {
-            url: safeImageUrl(bot.image, `${BASE_URL}/assets/image.jpg`),
+            url: safeImageUrl(bot.image, PLACEHOLDER_ABS),
             width: 1200,
             height: 630,
             alt: `${bot.name} - NSFW Telegram Bot`,
@@ -428,7 +430,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         card: 'summary_large_image',
         title: `${bot.name} - Use NSFW Telegram Bot`,
         description: finalDescription,
-        images: [safeImageUrl(bot.image, `${BASE_URL}/assets/image.jpg`)],
+        images: [safeImageUrl(bot.image, PLACEHOLDER_ABS)],
       },
     };
   }
@@ -497,7 +499,7 @@ export default async function JoinPage({ params }: PageProps) {
       description: group.description,
       url: pageUrl,
       sameAs: group.telegramLink,
-      image: safeImageUrl(group.image, `${BASE_URL}/assets/image.jpg`),
+      image: safeImageUrl(group.image, PLACEHOLDER_ABS),
       foundingDate: group.createdAt ? new Date(group.createdAt).getFullYear().toString() : undefined,
       memberOf: {
         '@type': 'WebSite',
@@ -604,7 +606,7 @@ export default async function JoinPage({ params }: PageProps) {
         name: 'Erogram',
         url: BASE_URL,
       },
-      image: safeImageUrl(bot.image, `${BASE_URL}/assets/image.jpg`),
+      image: safeImageUrl(bot.image, PLACEHOLDER_ABS),
       datePublished: bot.createdAt ? new Date(bot.createdAt).toISOString().split('T')[0] : undefined,
       aggregateRating: bot.clickCount ? {
         '@type': 'AggregateRating',
