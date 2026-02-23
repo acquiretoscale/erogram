@@ -53,8 +53,26 @@ export async function GET(req: NextRequest) {
     const bots = await Bot.find(query)
       .sort({ createdAt: -1 })
       .lean();
-    
-    return NextResponse.json(bots);
+
+    const now = new Date();
+    const todayKey = now.toISOString().slice(0, 10);
+    const last7dKeys: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      last7dKeys.push(d.toISOString().slice(0, 10));
+    }
+
+    const enriched = (bots as any[]).map((b) => {
+      const dayMap: Record<string, number> = b.clickCountByDay instanceof Map
+        ? Object.fromEntries(b.clickCountByDay)
+        : (b.clickCountByDay || {});
+      const clicks24h = dayMap[todayKey] || 0;
+      const clicks7d = last7dKeys.reduce((s, k) => s + (dayMap[k] || 0), 0);
+      return { ...b, clicks24h, clicks7d };
+    });
+
+    return NextResponse.json(enriched);
   } catch (error: any) {
     console.error('Bots fetch error:', error);
     return NextResponse.json(

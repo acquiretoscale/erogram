@@ -65,8 +65,11 @@ export async function GET(req: NextRequest) {
       query.country = country;
     }
 
-    if (sortBy === 'clickCount') {
-      // For top bots by clicks, exclude pinned bots
+    const topBotParam = searchParams.get('topBot');
+    if (topBotParam === 'true') {
+      query.topBot = true;
+      sortCriteria = { createdAt: -1 };
+    } else if (sortBy === 'clickCount') {
       query = { status: 'approved', pinned: { $ne: true } };
       sortCriteria = { clickCount: -1 };
     } else if (sortBy === 'newest') {
@@ -114,6 +117,7 @@ export async function GET(req: NextRequest) {
             isAdvertisement: 1,
             advertisementUrl: 1,
             pinned: 1,
+            topBot: 1,
             clickCount: 1,
             views: 1,
             memberCount: 1,
@@ -156,6 +160,7 @@ export async function GET(req: NextRequest) {
       isAdvertisement: b.isAdvertisement || false,
       advertisementUrl: b.advertisementUrl || null,
       pinned: b.pinned || false,
+      topBot: b.topBot || false,
       clickCount: b.clickCount || 0,
       views: b.views || 0,
       memberCount: b.memberCount || 0,

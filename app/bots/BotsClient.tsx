@@ -72,6 +72,7 @@ interface Bot {
   isAdvertisement?: boolean;
   advertisementUrl?: string;
   pinned?: boolean;
+  topBot?: boolean;
   showVerified?: boolean;
   clickCount?: number;
   memberCount?: number;
@@ -155,14 +156,12 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
   console.log('BotsClient render - pinned bots:', pinnedBots.length, 'regular bots:', regularBots.length);
   console.log('Pinned bot IDs:', pinnedBots.map(b => ({ id: b._id, name: b.name, pinned: b.pinned })));
 
-  // Get top 3 bots by clicks (fetch separately to ensure proper sorting)
   const [topBots, setTopBots] = useState<Bot[]>([]);
   const [topBotsLoading, setTopBotsLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch top bots by clickCount
     setTopBotsLoading(true);
-    fetch('/api/bots?sortBy=clickCount&limit=3')
+    fetch('/api/bots?topBot=true&limit=10')
       .then(res => res.json())
       .then(data => {
         if (data.bots) {
@@ -481,38 +480,49 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
                   </motion.p>
                 </div>
 
-                {/* Top Bots Grid */}
+                {/* Top Bots Grid: 2 bots + 1 feed ad */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 px-2 relative z-10">
                   {topBotsLoading ? (
                     Array.from({ length: 3 }, (_, i) => (
                       <BotCardSkeleton key={`top-skeleton-${i}`} />
                     ))
                   ) : (
-                    topBots.map((bot, idx) => (
-                      <motion.div
-                        key={`top-${bot._id}`}
-                        initial={{ opacity: 0, y: 50 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6, delay: idx * 0.1 }}
-                        className="relative h-full"
-                        style={{ willChange: 'transform, opacity' }}
-                      >
-                        <div className="h-full">
-                          <BotCard bot={bot} isIndex={idx} />
-                        </div>
-                        {/* Rank Badge - Responsive sizing */}
-                        <div className="absolute -top-1 sm:-top-2 -left-1 sm:-left-2 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg z-20 border-2 border-white">
-                          <span className="text-black font-bold text-xs sm:text-sm">#{idx + 1}</span>
-                        </div>
-                        {/* Clicks Badge - Responsive positioning */}
-                        {(bot.clickCount || 0) > 0 && (
-                          <div className="absolute -top-1 sm:-top-2 -right-1 sm:-right-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full shadow-lg z-20 border border-white/20 max-w-[60px] sm:max-w-none truncate">
-                            <span className="hidden sm:inline">{bot.clickCount} Uses</span>
-                            <span className="sm:hidden">{bot.clickCount}</span>
+                    <>
+                      {topBots.slice(0, 2).map((bot, idx) => (
+                        <motion.div
+                          key={`top-${bot._id}`}
+                          initial={{ opacity: 0, y: 50 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.6, delay: idx * 0.1 }}
+                          className="relative h-full"
+                          style={{ willChange: 'transform, opacity' }}
+                        >
+                          <div className="h-full">
+                            <BotCard bot={bot} isIndex={idx} />
                           </div>
-                        )}
-                      </motion.div>
-                    ))
+                          <div className="absolute -top-1 sm:-top-2 -left-1 sm:-left-2 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg z-20 border-2 border-white">
+                            <span className="text-black font-bold text-xs sm:text-sm">#{idx + 1}</span>
+                          </div>
+                          {(bot.clickCount || 0) > 0 && (
+                            <div className="absolute -top-1 sm:-top-2 -right-1 sm:-right-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full shadow-lg z-20 border border-white/20 max-w-[60px] sm:max-w-none truncate">
+                              <span className="hidden sm:inline">{bot.clickCount} Uses</span>
+                              <span className="sm:hidden">{bot.clickCount}</span>
+                            </div>
+                          )}
+                        </motion.div>
+                      ))}
+                      {feedCampaigns.length > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 50 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.6, delay: 0.2 }}
+                          className="h-full"
+                          style={{ willChange: 'transform, opacity' }}
+                        >
+                          <AdvertCard campaign={feedCampaigns[0]} isIndex={2} />
+                        </motion.div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -730,15 +740,16 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
                 : `/${bot.slug}`}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={async (e) => {
-                // Track the click
+              onClick={() => {
                 if (!bot.isAdvertisement) {
                   try {
-                    await axios.post('/api/bots/track', { botId: bot._id });
-                  } catch (err) {
-                    // Silently fail - tracking is not critical
-                    console.error('Error tracking bot click:', err);
-                  }
+                    const payload = JSON.stringify({ botId: bot._id });
+                    if (navigator.sendBeacon) {
+                      navigator.sendBeacon('/api/bots/track', new Blob([payload], { type: 'application/json' }));
+                    } else {
+                      axios.post('/api/bots/track', { botId: bot._id }).catch(() => {});
+                    }
+                  } catch {}
                 }
               }}
               className={`group/btn relative flex items-center justify-center w-full overflow-hidden rounded-xl py-3.5 px-4 font-black text-white shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${isFeatured

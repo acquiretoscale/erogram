@@ -69,34 +69,53 @@ export async function GET(req: NextRequest) {
       (advertisers as any[]).forEach((a: any) => advertisersMap.set(a._id.toString(), a.name || '—'));
     }
 
-    const articlesWithAuthors = (articlesRaw as any[]).map((article: any) => ({
-      _id: article._id.toString(),
-      title: article.title,
-      slug: article.slug,
-      excerpt: article.excerpt !== undefined && article.excerpt !== null ? article.excerpt : '',
-      featuredImage: article.featuredImage !== undefined && article.featuredImage !== null ? article.featuredImage : '',
-      status: article.status !== undefined && article.status !== null ? article.status : 'draft',
-      tags: article.tags || [],
-      publishedAt: article.publishedAt || null,
-      views: article.views || 0,
-      advertiserId: article.advertiserId ? article.advertiserId.toString() : '',
-      advertiserName: article.advertiserId ? advertisersMap.get(article.advertiserId.toString()) || '—' : '',
-      createdAt: article.createdAt,
-      updatedAt: article.updatedAt,
-      metaTitle: article.metaTitle || '',
-      metaDescription: article.metaDescription || '',
-      metaKeywords: article.metaKeywords || '',
-      ogImage: article.ogImage || '',
-      ogTitle: article.ogTitle || '',
-      ogDescription: article.ogDescription || '',
-      twitterCard: article.twitterCard || 'summary_large_image',
-      twitterImage: article.twitterImage || '',
-      twitterTitle: article.twitterTitle || '',
-      twitterDescription: article.twitterDescription || '',
-      author: article.author
-        ? authorsMap.get(article.author.toString()) || { _id: '', username: 'erogram' }
-        : { _id: '', username: 'erogram' },
-    }));
+    const now = new Date();
+    const todayKey = now.toISOString().slice(0, 10);
+    const last7dKeys: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      last7dKeys.push(d.toISOString().slice(0, 10));
+    }
+
+    const articlesWithAuthors = (articlesRaw as any[]).map((article: any) => {
+      const dayMap: Record<string, number> = article.viewsByDay instanceof Map
+        ? Object.fromEntries(article.viewsByDay)
+        : (article.viewsByDay || {});
+      const views24h = dayMap[todayKey] || 0;
+      const views7d = last7dKeys.reduce((s, k) => s + (dayMap[k] || 0), 0);
+
+      return {
+        _id: article._id.toString(),
+        title: article.title,
+        slug: article.slug,
+        excerpt: article.excerpt !== undefined && article.excerpt !== null ? article.excerpt : '',
+        featuredImage: article.featuredImage !== undefined && article.featuredImage !== null ? article.featuredImage : '',
+        status: article.status !== undefined && article.status !== null ? article.status : 'draft',
+        tags: article.tags || [],
+        publishedAt: article.publishedAt || null,
+        views: article.views || 0,
+        views24h,
+        views7d,
+        advertiserId: article.advertiserId ? article.advertiserId.toString() : '',
+        advertiserName: article.advertiserId ? advertisersMap.get(article.advertiserId.toString()) || '—' : '',
+        createdAt: article.createdAt,
+        updatedAt: article.updatedAt,
+        metaTitle: article.metaTitle || '',
+        metaDescription: article.metaDescription || '',
+        metaKeywords: article.metaKeywords || '',
+        ogImage: article.ogImage || '',
+        ogTitle: article.ogTitle || '',
+        ogDescription: article.ogDescription || '',
+        twitterCard: article.twitterCard || 'summary_large_image',
+        twitterImage: article.twitterImage || '',
+        twitterTitle: article.twitterTitle || '',
+        twitterDescription: article.twitterDescription || '',
+        author: article.author
+          ? authorsMap.get(article.author.toString()) || { _id: '', username: 'erogram' }
+          : { _id: '', username: 'erogram' },
+      };
+    });
 
     return NextResponse.json(articlesWithAuthors);
   } catch (error: any) {

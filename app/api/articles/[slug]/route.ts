@@ -56,7 +56,8 @@ export async function GET(
       twitterDescription: ar.twitterDescription || '',
     };
 
-    Article.findByIdAndUpdate(ar._id, { $inc: { views: 1, weeklyViews: 1 } }).catch(err => console.error('Error updating article views:', err));
+    const todayKey = new Date().toISOString().slice(0, 10);
+    Article.findByIdAndUpdate(ar._id, { $inc: { views: 1, [`viewsByDay.${todayKey}`]: 1 } }).catch(err => console.error('Error updating article views:', err));
     
     return NextResponse.json(result);
   } catch (error: any) {

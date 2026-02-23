@@ -15,9 +15,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Update bot click count
+    const todayKey = new Date().toISOString().slice(0, 10);
     await Bot.findByIdAndUpdate(botId, {
-      $inc: { clickCount: 1 },
+      $inc: { clickCount: 1, [`clickCountByDay.${todayKey}`]: 1 },
       $set: { lastClickedAt: new Date() }
     });
 
