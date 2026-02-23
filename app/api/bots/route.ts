@@ -151,7 +151,7 @@ export async function GET(req: NextRequest) {
       category: b.category,
       country: b.country,
       description: b.description?.slice(0, 300) || '',
-      image: b.image || '/assets/image.jpg',
+      image: b.image || (process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png'),
       telegramLink: b.telegramLink,
       isAdvertisement: b.isAdvertisement || false,
       advertisementUrl: b.advertisementUrl || null,
@@ -216,7 +216,8 @@ export async function POST(req: NextRequest) {
       slug = `${baseSlug}-${counter++}`;
     }
 
-    let finalImage = '/assets/image.jpg';
+    const defaultImage = process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png';
+    let finalImage = defaultImage;
     if (image?.startsWith('data:image/')) {
       const base64Match = image.match(/^data:image\/(\w+);base64,(.+)$/);
       if (base64Match?.[2]) {
@@ -230,7 +231,7 @@ export async function POST(req: NextRequest) {
         fs.writeFileSync(absolutePath, buffer);
         finalImage = relativePath;
       }
-    } else if (image && image !== '/assets/image.jpg') {
+    } else if (image && image !== defaultImage && image !== '/assets/image.jpg') {
       finalImage = image;
     }
 

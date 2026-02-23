@@ -19,13 +19,13 @@ export const metadata: Metadata = {
     type: 'website',
     siteName: 'Erogram',
     url: `${baseUrl}/articles`,
-    images: [{ url: `${baseUrl}/assets/image.jpg`, width: 1200, height: 630, alt: 'NSFW Telegram Articles and Guides - Erogram.pro' }],
+    images: [{ url: (process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${baseUrl}/assets/placeholder-no-image.png`), width: 1200, height: 630, alt: 'NSFW Telegram Articles and Guides - Erogram.pro' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'NSFW Telegram Articles, Guides & Community Stories | Erogram.pro',
     description: 'Read expert guides, community stories, and insights about NSFW Telegram groups. Learn how to find safe adult communities.',
-    images: [`${baseUrl}/assets/image.jpg`],
+    images: [(process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${baseUrl}/assets/placeholder-no-image.png`)],
   },
 };
 

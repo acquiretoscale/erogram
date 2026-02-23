@@ -6,7 +6,7 @@ import { slugify } from '@/lib/utils/slugify';
 import { uploadToR2, getR2PublicUrl } from '@/lib/r2';
 
 function resolveImageUrl(stored: string | undefined, origin: string): string {
-  const placeholder = '/assets/image.jpg'; // relative so next/image works locally (no hostname check)
+  const placeholder = process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png'; // relative so next/image works locally (no hostname check)
   if (!stored || typeof stored !== 'string') return placeholder;
   if (stored.startsWith('https://')) return stored;
   if (stored.startsWith('/')) return stored; // keep relative for same-origin
@@ -343,7 +343,8 @@ export async function POST(req: NextRequest) {
       slug = `${baseSlug}-${counter++}`;
     }
 
-    let finalImage = '/assets/image.jpg';
+    const defaultImage = process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png';
+    let finalImage = defaultImage;
     if (image?.startsWith('data:image/')) {
       const base64Match = image.match(/^data:image\/(\w+);base64,(.+)$/);
       if (base64Match?.[2]) {

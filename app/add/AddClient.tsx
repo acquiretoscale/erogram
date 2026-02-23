@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
 import { motion } from 'framer-motion';
+import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 
 const TELEGRAM_BLUE = '#0088cc';
 
@@ -114,7 +115,7 @@ export default function AddClient({ categories, countries }: AddClientProps) {
         country: groupData.country,
         telegramLink: groupData.telegramLink,
         description: groupData.description,
-        image: imageUrl || '/assets/image.jpg',
+        image: imageUrl || PLACEHOLDER_IMAGE_URL,
       });
       setSuccess('group');
       setGroupData({ name: '', category: 'All', country: 'All', telegramLink: '', description: '', imageFile: null });
@@ -157,7 +158,7 @@ export default function AddClient({ categories, countries }: AddClientProps) {
         country: botData.country,
         telegramLink: botData.telegramLink,
         description: botData.description,
-        image: imageUrl || '/assets/image.jpg',
+        image: imageUrl || PLACEHOLDER_IMAGE_URL,
       });
       setSuccess('bot');
       setBotData({ name: '', category: 'All', country: 'All', telegramLink: '', description: '', imageFile: null });

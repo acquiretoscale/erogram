@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { categories, countries } from '@/app/groups/constants';
+import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 
 export default function PendingGroupsTab() {
     const [groups, setGroups] = useState<any[]>([]);
@@ -105,12 +106,12 @@ export default function PendingGroupsTab() {
                                         alt={group.name}
                                         className="w-full h-full object-cover"
                                         onError={(e) => {
-                                            (e.target as HTMLImageElement).src = '/assets/image.jpg';
+                                            (e.target as HTMLImageElement).src = PLACEHOLDER_IMAGE_URL;
                                         }}
                                     />
                                 ) : (
                                     <img
-                                        src="/assets/image.jpg"
+                                        src={PLACEHOLDER_IMAGE_URL}
                                         alt={group.name}
                                         className="w-full h-full object-cover"
                                     />

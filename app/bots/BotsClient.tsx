@@ -10,6 +10,7 @@ import HeaderBanner from '@/components/HeaderBanner';
 import BotCardSkeleton from './BotCardSkeleton';
 import AdvertCard from '../groups/AdvertCard';
 import type { FeedCampaign } from '../groups/types';
+import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 // Removed react-window import as virtualization is no longer used
 
 
@@ -71,6 +72,7 @@ interface Bot {
   isAdvertisement?: boolean;
   advertisementUrl?: string;
   pinned?: boolean;
+  showVerified?: boolean;
   clickCount?: number;
   memberCount?: number;
   createdBy?: {
@@ -573,7 +575,7 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
 
 const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex = 0 }: { bot: Bot; isFeatured?: boolean; isIndex: number }) {
   const [isHovered, setIsHovered] = useState(false);
-  const [imageSrc, setImageSrc] = useState(bot.image || '/assets/image.jpg');
+  const [imageSrc, setImageSrc] = useState(bot.image || 'PLACEHOLDER_IMAGE_URL');
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isInView, setIsInView] = useState(false);
   const hasFetchedRef = useRef(false);
@@ -607,7 +609,7 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
 
   // Fetch actual image when in view and it's the placeholder
   useEffect(() => {
-    if (isInView && imageSrc === '/assets/image.jpg' && bot._id && !hasFetchedRef.current) {
+    if (isInView && imageSrc === 'PLACEHOLDER_IMAGE_URL' && bot._id && !hasFetchedRef.current) {
       hasFetchedRef.current = true;
       // Small delay to prevent too many simultaneous requests
       const delay = isIndex * 50;
@@ -615,7 +617,7 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
         fetch(`/api/bots/${bot._id}/image`)
           .then(res => res.json())
           .then(data => {
-            if (data.image && data.image !== '/assets/image.jpg') {
+            if (data.image && data.image !== 'PLACEHOLDER_IMAGE_URL') {
               setImageSrc(data.image);
             }
           })
@@ -624,7 +626,7 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
           });
       }, delay);
       return () => clearTimeout(timer);
-    } else if (imageSrc && imageSrc !== '/assets/image.jpg') {
+    } else if (imageSrc && imageSrc !== 'PLACEHOLDER_IMAGE_URL') {
       setImageLoaded(true);
     }
   }, [isInView, imageSrc, bot._id, isIndex]);
@@ -652,7 +654,7 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
             style={{ transform: isHovered ? 'scale(1.1)' : 'scale(1)' }}
             onLoad={() => setImageLoaded(true)}
-            onError={() => setImageSrc('/assets/image.jpg')}
+            onError={() => setImageSrc('PLACEHOLDER_IMAGE_URL')}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent opacity-80" />
 
@@ -692,8 +694,15 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
         {/* Card Content */}
         <div className="p-5 flex-grow flex flex-col relative">
           {/* Title */}
-          <h3 className="text-xl font-black text-white mb-3 line-clamp-2 leading-tight group-hover:text-blue-400 transition-colors">
-            {bot.name}
+          <h3 className="text-xl font-black text-white mb-3 line-clamp-2 leading-tight group-hover:text-blue-400 transition-colors flex items-center gap-2 min-w-0">
+            <span className="truncate">{bot.name}</span>
+            {bot.showVerified && (
+              <span className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 border border-white/30 shadow" title="Verified">
+                <svg viewBox="0 0 24 24" className="w-3 h-3 text-white" fill="currentColor" aria-hidden="true">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
+                </svg>
+              </span>
+            )}
           </h3>
 
           {/* Tags */}
@@ -880,7 +889,7 @@ const BotAdvertCard = React.memo(function BotAdvertCard({ advert, isIndex = 0, i
         {/* Advert Image */}
         <div className="relative w-full h-48 overflow-hidden">
           <img
-            src={advert.image || '/assets/image.jpg'}
+            src={advert.image || 'PLACEHOLDER_IMAGE_URL'}
             alt={advert.name}
             className="w-full h-full object-cover transition-transform duration-700"
             style={{ transform: isHovered ? 'scale(1.1)' : 'scale(1)' }}
@@ -993,7 +1002,7 @@ function AddBotModal({ categories, countries, onClose, onSuccess }: { categories
       // Submit bot
       const res = await axios.post('/api/bots', {
         ...botData,
-        image: imageUrl || '/assets/image.jpg'
+        image: imageUrl || 'PLACEHOLDER_IMAGE_URL'
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });

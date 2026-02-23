@@ -7,6 +7,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Navbar from '@/components/Navbar';
 import HeaderBanner from '@/components/HeaderBanner';
+import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 
 interface Article {
   _id: string;
@@ -105,10 +106,10 @@ function TopGroupsWidget({ groups }: { groups: TopGroup[] }) {
           >
             <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-[#1a1a1a]">
               <img
-                src={(group.image && typeof group.image === 'string' && group.image.startsWith('https://')) ? group.image : '/assets/image.jpg'}
+                src={(group.image && typeof group.image === 'string' && group.image.startsWith('https://')) ? group.image : PLACEHOLDER_IMAGE_URL}
                 alt={group.name}
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                onError={(e) => { (e.target as HTMLImageElement).src = '/assets/image.jpg'; }}
+                onError={(e) => { (e.target as HTMLImageElement).src = PLACEHOLDER_IMAGE_URL; }}
               />
               <div className="absolute top-0 left-0 bg-[#b31b1b] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-br-lg">
                 #{idx + 1}
@@ -414,7 +415,7 @@ export default function ArticleClient({ article, relatedArticles = [], topGroups
                     <Link key={item._id} href={`/articles/${item.slug}`} className="group">
                       <div className="aspect-video rounded-2xl overflow-hidden bg-[#1a1a1a] mb-4 relative">
                         <img
-                          src={item.featuredImage || '/assets/image.jpg'}
+                          src={item.featuredImage || PLACEHOLDER_IMAGE_URL}
                           alt={item.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />

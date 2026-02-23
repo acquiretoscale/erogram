@@ -120,7 +120,7 @@ async function getGroups(limit: number, isMobile: boolean = false) {
       category: (group.category || '').slice(0, 50), // Limit category length
       country: (group.country || '').slice(0, 50), // Limit country length
       description: (group.description || '').slice(0, 150) || '', // Further limit description
-      image: (group.image && typeof group.image === 'string' && group.image.startsWith('https://')) ? group.image : '/assets/image.jpg',
+      image: (group.image && typeof group.image === 'string' && group.image.startsWith('https://')) ? group.image : (process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png'),
       telegramLink: (group.telegramLink || '').slice(0, 150), // Limit URL length
       isAdvertisement: group.isAdvertisement || false,
       advertisementUrl: group.advertisementUrl ? (group.advertisementUrl || '').slice(0, 150) : null,

@@ -54,7 +54,7 @@ async function getBots() {
       category: bot.category,
       country: bot.country,
       description: bot.description,
-      image: '/assets/image.jpg', // Always use placeholder since image field is excluded
+      image: process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png',
       telegramLink: bot.telegramLink,
       isAdvertisement: bot.isAdvertisement || false,
       advertisementUrl: bot.advertisementUrl || null,
@@ -92,7 +92,7 @@ async function getAdverts() {
       country: advert.country,
       url: advert.url,
       description: advert.description,
-      image: advert.image || '/assets/image.jpg',
+      image: advert.image || (process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png'),
       status: advert.status,
       pinned: advert.pinned || false,
       clickCount: advert.clickCount || 0,

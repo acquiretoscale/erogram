@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import axios from 'axios';
+import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 
 interface AddGroupModalProps {
   categories: string[];
@@ -121,7 +122,7 @@ export default function AddGroupModal({ categories, countries, onClose, onSucces
       const { imageFile, ...groupPayload } = groupData;
       const res = await axios.post('/api/groups', {
         ...groupPayload,
-        image: imageUrl || '/assets/image.jpg'
+        image: imageUrl || PLACEHOLDER_IMAGE_URL
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });

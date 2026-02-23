@@ -4,10 +4,11 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { compressImage } from '@/lib/utils/compressImage';
 import { categories, countries } from '@/app/groups/constants';
+import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 
 // Component for rendering advert row with lazy-loaded image
 function AdvertRow({ advert, onEdit, onDelete }: { advert: any; onEdit: (advert: any) => void; onDelete: (id: string) => void }) {
-    const [imageSrc, setImageSrc] = useState('/assets/image.jpg');
+    const [imageSrc, setImageSrc] = useState(PLACEHOLDER_IMAGE_URL);
     const [imageLoaded, setImageLoaded] = useState(false);
     const hasFetchedRef = useRef(false);
 
@@ -17,7 +18,7 @@ function AdvertRow({ advert, onEdit, onDelete }: { advert: any; onEdit: (advert:
             hasFetchedRef.current = true;
             axios.get(`/api/adverts/${advert._id}/image`)
                 .then(res => {
-                    if (res.data?.image && res.data.image !== '/assets/image.jpg') {
+                    if (res.data?.image && res.data.image !== PLACEHOLDER_IMAGE_URL) {
                         setImageSrc(res.data.image);
                         setImageLoaded(true);
                     }
@@ -36,7 +37,7 @@ function AdvertRow({ advert, onEdit, onDelete }: { advert: any; onEdit: (advert:
                         src={imageSrc}
                         alt={advert.name}
                         className="w-full h-full object-cover"
-                        onError={() => setImageSrc('/assets/image.jpg')}
+                        onError={() => setImageSrc(PLACEHOLDER_IMAGE_URL)}
                     />
                 </div>
             </td>
@@ -253,19 +254,19 @@ export default function AdvertsTab() {
         setEditingAdvert(advert);
 
         let actualImage = advert.image || '';
-        if (advert._id && (advert.image === '/assets/image.jpg' || !advert.image || advert.image === '')) {
+        if (advert._id && (advert.image === PLACEHOLDER_IMAGE_URL || !advert.image || advert.image === '')) {
             try {
                 const imageRes = await axios.get(`/api/adverts/${advert._id}/image`);
-                if (imageRes.data?.image && imageRes.data.image !== '/assets/image.jpg') {
+                if (imageRes.data?.image && imageRes.data.image !== PLACEHOLDER_IMAGE_URL) {
                     actualImage = imageRes.data.image;
                 } else {
-                    actualImage = '/assets/image.jpg';
+                    actualImage = PLACEHOLDER_IMAGE_URL;
                 }
             } catch (err) {
                 console.error('Failed to load advert image:', err);
-                actualImage = '/assets/image.jpg';
+                actualImage = PLACEHOLDER_IMAGE_URL;
             }
-        } else if (advert.image && advert.image !== '/assets/image.jpg') {
+        } else if (advert.image && advert.image !== PLACEHOLDER_IMAGE_URL) {
             actualImage = advert.image;
         }
 

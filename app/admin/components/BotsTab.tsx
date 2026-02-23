@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { compressImage } from '@/lib/utils/compressImage';
 import { categories, countries } from '@/app/bots/constants';
+import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 
 export default function BotsTab() {
     const [bots, setBots] = useState<any[]>([]);
@@ -22,6 +23,7 @@ export default function BotsTab() {
         image: '',
         status: 'pending' as 'pending' | 'approved' | 'rejected',
         pinned: false,
+        showVerified: false,
     });
     const [isSaving, setIsSaving] = useState(false);
 
@@ -59,6 +61,7 @@ export default function BotsTab() {
             image: bot.image || '',
             status: bot.status || 'pending',
             pinned: bot.pinned || false,
+            showVerified: bot.showVerified ?? false,
         });
         setShowEditor(true);
     };
@@ -217,11 +220,7 @@ export default function BotsTab() {
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-4">
                                                     <div className="w-10 h-10 rounded-lg bg-[#1a1a1a] overflow-hidden flex-shrink-0">
-                                                        {bot.image ? (
-                                                            <img src={bot.image} alt={bot.name} className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center text-xs text-[#666]">No Img</div>
-                                                        )}
+                                                        <img src={bot.image || PLACEHOLDER_IMAGE_URL} alt={bot.name || 'Bot'} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = PLACEHOLDER_IMAGE_URL; }} />
                                                     </div>
                                                     <div>
                                                         <div className="font-medium text-white flex items-center gap-2">
@@ -404,6 +403,17 @@ export default function BotsTab() {
                                                 className="w-5 h-5 rounded border-white/10 bg-[#1a1a1a] text-[#b31b1b] focus:ring-[#b31b1b]"
                                             />
                                             <span className="text-white font-medium">Pin to top</span>
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <label className="flex items-center gap-3 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={botData.showVerified ?? false}
+                                                onChange={(e) => setBotData({ ...botData, showVerified: e.target.checked })}
+                                                className="w-5 h-5 rounded border-white/10 bg-[#1a1a1a] text-[#b31b1b] focus:ring-[#b31b1b]"
+                                            />
+                                            <span className="text-white font-medium">Show verified checkmark</span>
                                         </label>
                                     </div>
 
