@@ -215,12 +215,14 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
   const [trendHoverIdx, setTrendHoverIdx] = useState<number | null>(null);
   const [compareHoverInfo, setCompareHoverInfo] = useState<{ dayIdx: number; advIdx: number } | null>(null);
   const [feedAdsFilterAdvertiser, setFeedAdsFilterAdvertiser] = useState<string>('all');
-  const [feedAdsFilterStatus, setFeedAdsFilterStatus] = useState<string>('all');
+  const [feedAdsFilterStatus, setFeedAdsFilterStatus] = useState<string>('active');
   const [feedAdsFilterShowOn, setFeedAdsFilterShowOn] = useState<string>('all');
   const [feedAdsSortBy, setFeedAdsSortBy] = useState<'position' | 'clicks' | 'status' | 'feedPlacement' | 'last24h' | 'last7d' | 'last30d' | 'total'>('position');
   const [feedAdsSortOrder, setFeedAdsSortOrder] = useState<'asc' | 'desc'>('asc');
   const [feedAdsSelectedIds, setFeedAdsSelectedIds] = useState<Set<string>>(new Set());
   const [feedAdsBulkSaving, setFeedAdsBulkSaving] = useState(false);
+  const [feedAdsDragIdx, setFeedAdsDragIdx] = useState<number | null>(null);
+  const [feedAdsDragOverIdx, setFeedAdsDragOverIdx] = useState<number | null>(null);
   const [feedAdsDateRange, setFeedAdsDateRange] = useState<'24h' | '7d' | '30d' | 'all'>('30d');
   const [feedAdsCustomFrom, setFeedAdsCustomFrom] = useState('');
   const [feedAdsCustomTo, setFeedAdsCustomTo] = useState('');
@@ -2309,11 +2311,49 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
               else setFeedAdsSelectedIds(new Set(sorted.map((c) => c._id)));
             };
             const clearFeedAdsSelection = () => setFeedAdsSelectedIds(new Set());
+            const isDragEnabled = feedAdsSortBy === 'position' && feedAdsSortOrder === 'asc';
+            const handleDragStart = (idx: number) => (e: React.DragEvent) => {
+              setFeedAdsDragIdx(idx);
+              e.dataTransfer.effectAllowed = 'move';
+              e.dataTransfer.setData('text/plain', String(idx));
+            };
+            const handleDragOver = (idx: number) => (e: React.DragEvent) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+              if (feedAdsDragOverIdx !== idx) setFeedAdsDragOverIdx(idx);
+            };
+            const handleDrop = (dropIdx: number) => {
+              const dragIdx = feedAdsDragIdx;
+              setFeedAdsDragIdx(null);
+              setFeedAdsDragOverIdx(null);
+              if (dragIdx == null || dragIdx === dropIdx) return;
+              const reordered = [...sorted];
+              const [moved] = reordered.splice(dragIdx, 1);
+              reordered.splice(dropIdx, 0, moved);
+              const positionMap = new Map(reordered.map((c, i) => [c._id, i + 1]));
+              setCampaigns((prev) =>
+                prev.map((c) => {
+                  const newPos = positionMap.get(c._id);
+                  return newPos != null ? { ...c, position: newPos } : c;
+                })
+              );
+              Promise.all(
+                reordered.map((c, i) =>
+                  axios.put(`/api/admin/campaigns/${c._id}`, { position: i + 1 }, authHeaders())
+                )
+              ).catch(() => {
+                fetchAll();
+              });
+            };
+            const handleDragEnd = () => {
+              setFeedAdsDragIdx(null);
+              setFeedAdsDragOverIdx(null);
+            };
             return (
               <>
                 <div className="mb-6">
                   <h2 className="text-xl font-bold text-white mb-2">Feed Ads</h2>
-                  <p className="text-[#999] text-sm">One ad every 5 entries on Groups/Bots. Assign to advertiser and monitor performance. Click column headers to sort; select rows for bulk edit.</p>
+                  <p className="text-[#999] text-sm">Drag rows to reorder priority. Assign to advertiser and monitor performance. Click column headers to sort; select rows for bulk edit.</p>
                 </div>
 
                 {/* KPI row */}
@@ -2438,6 +2478,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                   <table className="w-full text-sm">
                     <thead className="bg-white/5">
                       <tr>
+                        {isDragEnabled && <th className="w-8" />}
                         <th className="px-3 py-2 w-10">
                           <input
                             type="checkbox"
@@ -2446,8 +2487,8 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                             className="rounded border-white/30 text-[#b31b1b] focus:ring-[#b31b1b]"
                           />
                         </th>
-                        <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase cursor-pointer hover:text-white select-none" title="Every 5th entry. Active ads fill slots 5, 10, 15… in order." onClick={() => handleFeedAdsSort('position')}>
-                          Slot {feedAdsSortBy === 'position' && (feedAdsSortOrder === 'asc' ? '↑' : '↓')}
+                        <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase cursor-pointer hover:text-white select-none" title="Display order of feed ads" onClick={() => handleFeedAdsSort('position')}>
+                          # {feedAdsSortBy === 'position' && (feedAdsSortOrder === 'asc' ? '↑' : '↓')}
                         </th>
                         <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Advertiser</th>
                         <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Image</th>
@@ -2474,10 +2515,25 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                      {sorted.map((c) => {
+                      {sorted.map((c, rowIdx) => {
                         const stats = getStats(c._id, c);
+                        const isDragging = feedAdsDragIdx === rowIdx;
+                        const isDragOver = feedAdsDragOverIdx === rowIdx && feedAdsDragIdx !== rowIdx;
                         return (
-                          <tr key={c._id} className="hover:bg-white/5">
+                          <tr
+                            key={c._id}
+                            draggable={isDragEnabled}
+                            onDragStart={isDragEnabled ? handleDragStart(rowIdx) : undefined}
+                            onDragOver={isDragEnabled ? handleDragOver(rowIdx) : undefined}
+                            onDrop={isDragEnabled ? () => handleDrop(rowIdx) : undefined}
+                            onDragEnd={isDragEnabled ? handleDragEnd : undefined}
+                            className={`hover:bg-white/5 transition-colors ${isDragging ? 'opacity-40' : ''} ${isDragOver ? 'border-t-2 !border-t-[#b31b1b]' : ''}`}
+                          >
+                            {isDragEnabled && (
+                              <td className="px-1 py-2 cursor-grab active:cursor-grabbing text-[#666] hover:text-white text-center select-none" title="Drag to reorder">
+                                <svg className="w-4 h-4 mx-auto" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+                              </td>
+                            )}
                             <td className="px-3 py-2">
                               <input
                                 type="checkbox"
@@ -2491,19 +2547,25 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                                 const rank = c.position ?? (c.feedTier != null && c.tierSlot != null ? (c.feedTier - 1) * 4 + c.tierSlot : null);
                                 if (rank == null) return <span className="text-[#666]">—</span>;
                                 if (c.status === 'active') {
-                                  // compute display slot within the active-only sorted list
-                                  const activeRank = sorted.filter((x) => x.status === 'active').findIndex((x) => x._id === c._id);
-                                  const displaySlot = activeRank >= 0 ? (activeRank + 1) * 5 : rank * 5;
-                                  return <span className="text-white" title={`Priority ${rank} → shows at every ${displaySlot}th entry`}>{displaySlot}th</span>;
+                                  const activeIndex = sorted.filter((x) => x.status === 'active').findIndex((x) => x._id === c._id);
+                                  const displayNum = activeIndex >= 0 ? activeIndex + 1 : rank;
+                                  return <span className="text-white">{displayNum}</span>;
                                 }
-                                return <span className="text-[#666]" title={`Priority ${rank} (inactive)`}>#{rank}</span>;
+                                return <span className="text-[#666]">#{rank}</span>;
                               })()}
                             </td>
                             <td className="px-3 py-2 text-white">{c.advertiserName || advertisers.find((a) => a._id === c.advertiserId)?.name || '—'}</td>
                             <td className="px-3 py-2">
                               {c.creative ? <img src={c.creative} alt="" className="h-10 w-14 object-cover rounded" /> : <span className="text-[#666]">—</span>}
                             </td>
-                            <td className="px-3 py-2 text-white font-medium">{c.name}</td>
+                            <td className="px-3 py-2 text-white font-medium">
+                              <span className="inline-flex items-center gap-1.5">
+                                {c.name}
+                                {(c as any).videoUrl && (
+                                  <svg className="w-4 h-4 text-purple-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
+                                )}
+                              </span>
+                            </td>
                             <td className="px-3 py-2 text-[#999]">{c.feedPlacement === 'both' ? 'Groups + Bots' : c.feedPlacement === 'groups' ? 'Groups' : c.feedPlacement === 'bots' ? 'Bots' : 'Both'}</td>
                             <td className="px-3 py-2 text-right text-green-400 tabular-nums">{stats.last24h.toLocaleString()}</td>
                             <td className="px-3 py-2 text-right text-[#999] tabular-nums">{stats.last7d.toLocaleString()}</td>

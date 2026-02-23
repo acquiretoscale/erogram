@@ -102,8 +102,8 @@ function VideoAdCard({ campaign, handleClick }: { campaign: FeedCampaign; handle
 
     const badge = campaign.badgeText ? videoBadge(campaign.badgeText) : null;
 
-    const rating = (seededRandomVideo(seed + 'rating') * 1.5 + 3.5).toFixed(1);
-    const reviewCount = Math.floor(seededRandomVideo(seed + 'reviews') * 50 + 10);
+    const rating = (seededRandomVideo(seed + 'rating') * 0.7 + 4.2).toFixed(1);
+    const reviewCount = Math.floor(seededRandomVideo(seed + 'reviews') * 38 + 5);
 
     return (
         <motion.div
@@ -521,8 +521,8 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                             <div className="flex items-center justify-between px-1">
                                 <div className="flex items-center gap-1">
                                     <span className="text-yellow-500 text-sm">⭐</span>
-                                    <span className="text-white font-bold text-sm">{(seededRandom(seed + 'rating') * 1.5 + 3.5).toFixed(1)}</span>
-                                    <span className="text-gray-500 text-xs">({Math.floor(seededRandom(seed + 'reviews') * 50 + 10)})</span>
+                                    <span className="text-white font-bold text-sm">{(seededRandom(seed + 'rating') * 0.7 + 4.2).toFixed(1)}</span>
+                                    <span className="text-gray-500 text-xs">({Math.floor(seededRandom(seed + 'reviews') * 38 + 5)})</span>
                                 </div>
                                 <div className="text-xs text-gray-500 font-medium">
                                     Promoted
