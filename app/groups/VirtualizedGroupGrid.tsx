@@ -33,6 +33,23 @@ function buildFeedItems(groups: Group[], campaigns: FeedCampaign[]): Item[] {
     let groupIdx = 0;
     let campaignIdx = 0;
 
+    // Count how many pinned/featured groups lead the list
+    let featuredCount = 0;
+    while (featuredCount < groups.length && groups[featuredCount].pinned) {
+        featuredCount++;
+    }
+
+    // Place featured groups first, then immediately insert the first ad
+    while (groupIdx < featuredCount) {
+        items.push({ type: 'group', data: groups[groupIdx], index: items.length });
+        groupIdx++;
+    }
+    if (campaigns.length > 0) {
+        items.push({ type: 'campaign', data: campaigns[campaignIdx % campaigns.length], index: items.length });
+        campaignIdx++;
+    }
+
+    // Continue with remaining groups in blocks of 6 (4 groups + 2 ads)
     while (groupIdx < groups.length) {
         const groupsLeft = groups.length - groupIdx;
 

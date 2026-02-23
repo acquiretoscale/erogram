@@ -162,6 +162,7 @@ export async function GET(req: NextRequest) {
             clickCount: 1,
             views: { $ifNull: ['$views', 0] },
             memberCount: { $ifNull: ['$memberCount', 0] },
+            verified: { $ifNull: ['$verified', false] },
             createdBy: {
               username: 1,
               showNicknameUnderGroups: 1
@@ -279,6 +280,7 @@ export async function GET(req: NextRequest) {
         clickCount: g.clickCount || 0,
         views: g.views || 0,
         memberCount: g.memberCount || 0,
+        verified: g.verified || false,
         reviewCount: stats.reviewCount,
         averageRating: stats.averageRating,
         createdBy: g.createdBy

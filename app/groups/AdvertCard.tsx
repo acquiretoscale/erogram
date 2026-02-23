@@ -114,7 +114,7 @@ function VideoAdCard({ campaign, handleClick }: { campaign: FeedCampaign; handle
         >
             <div
                 ref={cardRef}
-                className="rounded-3xl overflow-hidden h-full relative cursor-pointer group border border-white/5 hover:border-white/20 transition-all duration-500 hover:shadow-2xl hover:shadow-black/50 bg-[#0a0a0a]"
+                className="rounded-3xl overflow-hidden h-full min-h-[420px] sm:min-h-[480px] relative cursor-pointer group border border-white/5 hover:border-white/20 transition-all duration-500 hover:shadow-2xl hover:shadow-black/50 bg-[#0a0a0a]"
                 onClick={handleClick}
                 role="link"
                 tabIndex={0}
@@ -153,8 +153,11 @@ function VideoAdCard({ campaign, handleClick }: { campaign: FeedCampaign; handle
                             <span className="text-xs font-bold text-white">{visitingCount} visiting now</span>
                         </div>
                     </div>
-                    <h3 className="text-xl font-black text-white line-clamp-2 leading-tight drop-shadow-lg">
-                        {campaign.name}
+                    <h3 className="text-xl font-black text-white leading-tight drop-shadow-lg flex items-center gap-1.5">
+                        <span className="truncate min-w-0">{campaign.name}</span>
+                        {campaign.verified && (
+                            <svg className="w-[16px] h-[16px] text-blue-500 shrink-0 drop-shadow-lg" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
+                        )}
                     </h3>
 
                     {campaign.description && (
@@ -431,8 +434,8 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
         fakeCount = `${liveCount} visiting now`;
     }
 
-    // Verified Logic - Make rarer (20% chance, was 50%)
-    const showVerified = seededRandom(seed + 'verified') > 0.8;
+    // Verified checkmark: controlled from admin panel (campaign.verified field)
+    const showVerified = campaign?.verified === true;
 
     // Sponsored Badge Logic for Native Ads (10% chance)
     const showSponsored = seededRandom(seed + 'sponsored') < 0.1;
@@ -498,12 +501,10 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                     {/* Card Content */}
                     <div className="p-5 flex-grow flex flex-col relative">
                         {/* Title */}
-                        <h3 className="text-xl font-black text-white mb-3 line-clamp-2 leading-tight group-hover:text-blue-400 transition-colors flex items-center gap-2">
-                            {ad.name}
+                        <h3 className="text-xl font-black text-white mb-3 leading-tight group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
+                            <span className="truncate min-w-0">{ad.name}</span>
                             {showVerified && (
-                                <span className="shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-500 text-white text-[8px] shadow-sm" title="Verified">
-                                    ✓
-                                </span>
+                                <svg className="w-[16px] h-[16px] text-blue-500 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
                             )}
                         </h3>
 
@@ -592,14 +593,10 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
                 {/* Card Content */}
                 <div className="p-5 flex-grow flex flex-col relative">
-                    <h3 className="text-xl md:text-2xl font-black text-white mb-3 text-center drop-shadow-md flex items-center justify-center gap-2">
-                        <span className="line-clamp-2">
-                            {ad.name}
-                        </span>
+                    <h3 className="text-xl md:text-2xl font-black text-white mb-3 text-center drop-shadow-md flex items-center justify-center gap-1.5">
+                        <span className="truncate min-w-0">{ad.name}</span>
                         {showVerified && (
-                            <span className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] shadow-sm" title="Verified">
-                                ✓
-                            </span>
+                            <svg className="w-[16px] h-[16px] text-blue-500 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
                         )}
                     </h3>
 

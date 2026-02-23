@@ -266,6 +266,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
     feedPlacement: 'both' as 'groups' | 'bots' | 'both',
     videoUrl: '',
     badgeText: '',
+    verified: false,
   });
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
@@ -409,6 +410,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
       feedPlacement: 'both',
       videoUrl: '',
       badgeText: '',
+      verified: false,
     });
     setView('editCampaign');
   };
@@ -441,6 +443,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
       feedPlacement: (camp.feedPlacement || 'both') as 'groups' | 'bots' | 'both',
       videoUrl: (camp as any).videoUrl || '',
       badgeText: (camp as any).badgeText || '',
+      verified: Boolean((camp as any).verified),
     });
     setView('editCampaign');
   };
@@ -507,6 +510,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
         feedPlacement: isFeed ? (campForm.feedPlacement || 'both') : undefined,
         videoUrl: isFeed ? ((campForm as any).videoUrl || '') : '',
         badgeText: isFeed ? ((campForm as any).badgeText || '') : '',
+        verified: isFeed ? Boolean(campForm.verified) : false,
       };
       if (isFeed && !editingCampaign) {
         payload.feedTier = Math.ceil((feedPos ?? 1) / 4);
@@ -1025,6 +1029,24 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                   <p className="text-xs text-[#666] mt-1">
                     Replaces "Sponsored" with a custom badge. Presets: Trending, Hot, New, Premium, Verified, Best Value, Editor&apos;s Pick, Featured, Popular, Exclusive, Limited. Leave empty for default "Sponsored" label.
                   </p>
+                </div>
+              )}
+
+              {campForm.slot === 'feed' && (
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={campForm.verified}
+                      onChange={(e) => setCampForm({ ...campForm, verified: e.target.checked })}
+                      className="w-5 h-5 rounded border-white/10 bg-[#1a1a1a] text-blue-500 focus:ring-blue-500"
+                    />
+                    <span className="text-white font-medium flex items-center gap-2">
+                      <svg className="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
+                      Verified checkmark
+                    </span>
+                  </label>
+                  <span className="text-xs text-[#666]">Shows a blue verified badge next to the ad title</span>
                 </div>
               )}
             </>

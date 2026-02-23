@@ -1,24 +1,25 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
 import Script from 'next/script';
-import Navbar from '@/components/Navbar';
+import dynamic from 'next/dynamic';
+
+const Navbar = dynamic(() => import('@/components/Navbar'), {
+  ssr: false,
+  loading: () => (
+    <div className="fixed top-0 left-0 right-0 z-50 h-[72px] border-b border-[#333] bg-[#111111]/95 backdrop-blur-md" />
+  ),
+});
 
 export default function LoginPage() {
-  const [mounted, setMounted] = useState(false);
   const [error, setError] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Handle username/password login
   const handleLogin = async (e: React.FormEvent) => {
@@ -76,40 +77,12 @@ export default function LoginPage() {
     };
   }, [router]);
 
-  if (!mounted) {
-    return null;
-  }
-
   return (
     <div className="min-h-screen bg-[#111111] flex items-center justify-center px-6">
-      {/* Animated Background */}
+      {/* Animated Background (CSS only — no framer-motion) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#b31b1b] rounded-full blur-3xl opacity-10"
-          animate={{
-            scale: [1, 1.2, 1],
-            x: [0, 100, 0],
-            y: [0, -100, 0],
-          }}
-          transition={{
-            duration: 20,
-            repeat: Infinity,
-            ease: 'easeInOut',
-          }}
-        />
-        <motion.div
-          className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#b31b1b] rounded-full blur-3xl opacity-10"
-          animate={{
-            scale: [1.2, 1, 1.2],
-            x: [0, -100, 0],
-            y: [0, 100, 0],
-          }}
-          transition={{
-            duration: 15,
-            repeat: Infinity,
-            ease: 'easeInOut',
-          }}
-        />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#b31b1b] rounded-full blur-3xl opacity-10 animate-[pulse_20s_ease-in-out_infinite]" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#b31b1b] rounded-full blur-3xl opacity-10 animate-[pulse_15s_ease-in-out_infinite]" />
       </div>
 
       {/* Navigation */}
@@ -118,12 +91,7 @@ export default function LoginPage() {
       </div>
 
       {/* Login Form */}
-      <motion.div
-        initial={{ opacity: 0, y: 60 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="relative z-10 w-full max-w-md"
-      >
+      <div className="relative z-10 w-full max-w-md animate-[fadeInUp_0.6s_ease-out]">
         <div className="glass rounded-2xl p-8 sm:p-12 backdrop-blur-lg border border-white/10">
           <div className="text-center mb-8">
             <h2 className="text-3xl sm:text-4xl font-black mb-2 gradient-text">
@@ -204,11 +172,10 @@ export default function LoginPage() {
             </Link>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Telegram Widget Script */}
-      {mounted && (
-        <Script
+      <Script
           id="telegram-login"
           strategy="lazyOnload"
           dangerouslySetInnerHTML={{
@@ -232,7 +199,6 @@ export default function LoginPage() {
             `,
           }}
         />
-      )}
     </div>
   );
 }

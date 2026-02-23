@@ -154,8 +154,11 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                 {/* Card Content */}
                 <div className="p-5 flex-grow flex flex-col relative">
                     {/* Title */}
-                    <h3 className="text-xl font-black text-white mb-3 line-clamp-2 leading-tight group-hover:text-blue-400 transition-colors flex items-center gap-2">
-                        {group.name}
+                    <h3 className="text-xl font-black text-white mb-3 leading-tight group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
+                        <span className="truncate min-w-0">{group.name}</span>
+                        {group.verified && (
+                            <svg className="w-[16px] h-[16px] text-blue-500 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
+                        )}
                     </h3>
 
                     {/* Tags */}

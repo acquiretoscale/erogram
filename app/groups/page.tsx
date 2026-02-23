@@ -22,11 +22,13 @@ export const metadata: Metadata = {
     description: 'Browse and discover thousands of NSFW Telegram groups. Find communities by category, country, and interests.',
     type: 'website',
     url: `${baseUrl}/groups`,
+    images: [{ url: `${baseUrl}/assets/og-default.png`, width: 512, height: 512, alt: 'Erogram - Telegram Groups' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Discover NSFW Telegram Groups - Browse Thousands of Communities',
     description: 'Browse and discover thousands of NSFW Telegram groups. Find communities by category, country, and interests.',
+    images: [`${baseUrl}/assets/og-default.png`],
   },
 };
 
@@ -104,6 +106,7 @@ async function getGroups(limit: number, isMobile: boolean = false) {
           reviewCount: { $ifNull: ['$reviewStats.reviewCount', 0] },
           views: { $ifNull: ['$views', 0] },
           memberCount: { $ifNull: ['$memberCount', 0] },
+          verified: { $ifNull: ['$verified', false] },
           image: 1
         }
       }
@@ -131,6 +134,7 @@ async function getGroups(limit: number, isMobile: boolean = false) {
       reviewCount: group.reviewCount || 0,
       views: group.views || 0,
       memberCount: group.memberCount || 0,
+      verified: group.verified || false,
     }));
   } catch (error) {
     console.error('Error fetching groups:', error);

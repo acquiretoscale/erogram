@@ -26,11 +26,13 @@ export const metadata: Metadata = {
     type: 'website',
     siteName: 'Erogram',
     url: `${baseUrl}/bots`,
+    images: [{ url: `${baseUrl}/assets/og-default.png`, width: 512, height: 512, alt: 'Erogram - Telegram Bots' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Discover NSFW Telegram Bots - Browse Amazing Adult Bots | Erogram.pro',
     description: 'Browse and discover amazing NSFW Telegram bots. Find AI companions, chat bots, and adult entertainment bots by category, country, and interests.',
+    images: [`${baseUrl}/assets/og-default.png`],
   },
 };
 

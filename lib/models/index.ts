@@ -88,6 +88,8 @@ export const groupSchema = new Schema(
     lastClickedAt: { type: Date },
     memberCount: { type: Number, default: 0 },
     memberCountUpdatedAt: { type: Date },
+    // Show a verified checkmark next to the group title (like Instagram verified)
+    verified: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
@@ -443,6 +445,8 @@ export const campaignSchema = new Schema(
     videoUrl: { type: String, default: '' },
     // Configurable badge label (e.g. "Trending", "Hot", "New") — shown on the card
     badgeText: { type: String, default: '' },
+    // Show a verified checkmark next to the ad title (like Instagram verified)
+    verified: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
