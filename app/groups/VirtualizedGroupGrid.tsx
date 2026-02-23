@@ -1,39 +1,84 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Group, FeedCampaign } from './types';
 import GroupCard from './GroupCard';
 import AdvertCard from './AdvertCard';
 
 interface VirtualizedGroupGridProps {
     groups: Group[];
-    feedPlacementsMap: Map<number, FeedCampaign>;
+    feedCampaigns: FeedCampaign[];
     isTelegram: boolean;
     onOpenReviewModal?: (group: Group) => void;
     onOpenReportModal?: (group: Group) => void;
 }
 
+type Item = { type: 'group' | 'campaign'; data: Group | FeedCampaign; index: number };
+
+const BLOCK = 6;
+const ADS_PER_BLOCK = 2;
+const GROUPS_PER_BLOCK = BLOCK - ADS_PER_BLOCK; // 4
+
+function randomNonAdjacentPair(): Set<number> {
+    const pairs: [number, number][] = [];
+    for (let i = 0; i < BLOCK - 2; i++) {
+        for (let j = i + 2; j < BLOCK; j++) {
+            pairs.push([i, j]);
+        }
+    }
+    const [p1, p2] = pairs[Math.floor(Math.random() * pairs.length)];
+    return new Set([p1, p2]);
+}
+
+function buildFeedItems(groups: Group[], campaigns: FeedCampaign[]): Item[] {
+    const items: Item[] = [];
+    let groupIdx = 0;
+    let campaignIdx = 0;
+
+    while (groupIdx < groups.length) {
+        const groupsLeft = groups.length - groupIdx;
+
+        if (groupsLeft >= GROUPS_PER_BLOCK && campaigns.length > 0) {
+            const adSlots = randomNonAdjacentPair();
+            let adsPlaced = 0;
+            for (let slot = 0; slot < BLOCK; slot++) {
+                if (adSlots.has(slot) && adsPlaced < ADS_PER_BLOCK) {
+                    items.push({ type: 'campaign', data: campaigns[campaignIdx % campaigns.length], index: items.length });
+                    campaignIdx++;
+                    adsPlaced++;
+                } else if (groupIdx < groups.length) {
+                    items.push({ type: 'group', data: groups[groupIdx], index: items.length });
+                    groupIdx++;
+                }
+            }
+        } else {
+            items.push({ type: 'group', data: groups[groupIdx], index: items.length });
+            groupIdx++;
+        }
+    }
+    return items;
+}
+
+function groupsOnly(groups: Group[]): Item[] {
+    return groups.map((g, i) => ({ type: 'group' as const, data: g, index: i }));
+}
+
 const VirtualizedGroupGrid = React.memo(function VirtualizedGroupGrid({
     groups,
-    feedPlacementsMap,
+    feedCampaigns,
     isTelegram,
     onOpenReviewModal,
-    onOpenReportModal
+    onOpenReportModal,
 }: VirtualizedGroupGridProps) {
-    const items: Array<{ type: 'group' | 'campaign'; data: Group | FeedCampaign; index: number }> = [];
+    // Server renders groups only (no Math.random) → no hydration mismatch.
+    // After mount, useEffect inserts ads with random placement client-side.
+    const [items, setItems] = useState<Item[]>(() => groupsOnly(groups));
 
-    groups.forEach((group) => {
-        if (!isTelegram) {
-            let currentPos = items.length + 1;
-            while (feedPlacementsMap.has(currentPos)) {
-                const campaign = feedPlacementsMap.get(currentPos);
-                if (campaign) {
-                    items.push({ type: 'campaign', data: campaign, index: items.length });
-                }
-                currentPos = items.length + 1;
-            }
+    useEffect(() => {
+        if (!isTelegram && feedCampaigns.length > 0) {
+            setItems(buildFeedItems(groups, feedCampaigns));
+        } else {
+            setItems(groupsOnly(groups));
         }
-
-        items.push({ type: 'group', data: group, index: items.length });
-    });
+    }, [groups, feedCampaigns, isTelegram]);
 
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -49,17 +94,16 @@ const VirtualizedGroupGrid = React.memo(function VirtualizedGroupGrid({
                             onOpenReportModal={onOpenReportModal}
                         />
                     );
-                } else {
-                    return (
-                        <AdvertCard
-                            key={`campaign-${(item.data as FeedCampaign)._id}`}
-                            campaign={item.data as FeedCampaign}
-                            isIndex={Math.floor(item.index)}
-                            shouldPreload={false}
-                            onVisible={undefined}
-                        />
-                    );
                 }
+                return (
+                    <AdvertCard
+                        key={`campaign-${(item.data as FeedCampaign)._id}-${item.index}`}
+                        campaign={item.data as FeedCampaign}
+                        isIndex={Math.floor(item.index)}
+                        shouldPreload={false}
+                        onVisible={undefined}
+                    />
+                );
             })}
         </div>
     );

@@ -176,17 +176,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   // FULL randomization: ignore server order entirely
 
   // Build placements map from campaign positions (exact positions from DB)
-  const feedPlacementsMap = useMemo(() => {
-    const map = new Map<number, FeedCampaign>();
-    if (feedCampaigns) {
-      feedCampaigns.forEach(c => {
-        if (c.position != null) {
-          map.set(c.position, c);
-        }
-      });
-    }
-    return map;
-  }, [feedCampaigns]);
+  // feedCampaigns array is passed directly to VirtualizedGroupGrid (random placement is client-side)
 
   // Debounce search input
   function useDebounce(value: string, delay: number) {
@@ -583,7 +573,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                 )}
                 <VirtualizedGroupGrid
                   groups={displayGroups}
-                  feedPlacementsMap={feedPlacementsMap}
+                  feedCampaigns={feedCampaigns ?? []}
                   isTelegram={isTelegram}
                   onOpenReviewModal={openReviewModal}
                   onOpenReportModal={openReportModal}

@@ -537,7 +537,7 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
                   <VirtualizedBotGrid
                     bots={displayBots}
                     advertPlacementsMap={advertPlacementsMap}
-                    feedPlacementsMap={feedPlacementsMap}
+                    feedCampaigns={feedCampaigns ?? []}
                     isMobile={isMobile}
                     isTelegram={isTelegram}
                   />
@@ -758,20 +758,65 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
   );
 });
 
-const VirtualizedBotGrid = React.memo(function VirtualizedBotGrid({ bots, advertPlacementsMap, feedPlacementsMap, isMobile, isTelegram }: { bots: Bot[]; advertPlacementsMap: Map<number, Advert>; feedPlacementsMap: Map<number, FeedCampaign>; isMobile: boolean; isTelegram: boolean }) {
-  const items: Array<{ type: 'bot' | 'campaign'; data: Bot | FeedCampaign; index: number }> = [];
+const BOT_FEED_BLOCK = 6;
+const BOT_FEED_ADS = 2;
+const BOT_FEED_ENTRIES = BOT_FEED_BLOCK - BOT_FEED_ADS; // 4
 
-  bots.forEach((bot) => {
-    if (!isTelegram && feedPlacementsMap.size > 0) {
-      let currentPos = items.length + 1;
-      while (feedPlacementsMap.has(currentPos)) {
-        const campaign = feedPlacementsMap.get(currentPos);
-        if (campaign) items.push({ type: 'campaign', data: campaign, index: items.length });
-        currentPos = items.length + 1;
-      }
+function botFeedNonAdjacentPair(): Set<number> {
+  const pairs: [number, number][] = [];
+  for (let i = 0; i < BOT_FEED_BLOCK - 2; i++) {
+    for (let j = i + 2; j < BOT_FEED_BLOCK; j++) {
+      pairs.push([i, j]);
     }
-    items.push({ type: 'bot', data: bot, index: items.length });
-  });
+  }
+  const [p1, p2] = pairs[Math.floor(Math.random() * pairs.length)];
+  return new Set([p1, p2]);
+}
+
+function buildBotFeedItems(bots: Bot[], campaigns: FeedCampaign[]): Array<{ type: 'bot' | 'campaign'; data: Bot | FeedCampaign; index: number }> {
+  const items: Array<{ type: 'bot' | 'campaign'; data: Bot | FeedCampaign; index: number }> = [];
+  if (!campaigns.length) {
+    bots.forEach((bot) => items.push({ type: 'bot', data: bot, index: items.length }));
+    return items;
+  }
+  let botIdx = 0;
+  let campaignIdx = 0;
+  while (botIdx < bots.length) {
+    const botsLeft = bots.length - botIdx;
+    if (botsLeft >= BOT_FEED_ENTRIES) {
+      const adSlots = botFeedNonAdjacentPair();
+      let adsPlaced = 0;
+      for (let slot = 0; slot < BOT_FEED_BLOCK; slot++) {
+        if (adSlots.has(slot) && adsPlaced < BOT_FEED_ADS) {
+          items.push({ type: 'campaign', data: campaigns[campaignIdx % campaigns.length], index: items.length });
+          campaignIdx++;
+          adsPlaced++;
+        } else if (botIdx < bots.length) {
+          items.push({ type: 'bot', data: bots[botIdx], index: items.length });
+          botIdx++;
+        }
+      }
+    } else {
+      items.push({ type: 'bot', data: bots[botIdx], index: items.length });
+      botIdx++;
+    }
+  }
+  return items;
+}
+
+const VirtualizedBotGrid = React.memo(function VirtualizedBotGrid({ bots, advertPlacementsMap, feedCampaigns, isMobile, isTelegram }: { bots: Bot[]; advertPlacementsMap: Map<number, Advert>; feedCampaigns: FeedCampaign[]; isMobile: boolean; isTelegram: boolean }) {
+  // SSR renders bots-only; useEffect inserts ads client-side to avoid hydration mismatch with Math.random()
+  const [items, setItems] = React.useState<Array<{ type: 'bot' | 'campaign'; data: Bot | FeedCampaign; index: number }>>(() =>
+    bots.map((bot, i) => ({ type: 'bot' as const, data: bot, index: i }))
+  );
+
+  React.useEffect(() => {
+    if (!isTelegram && feedCampaigns.length > 0) {
+      setItems(buildBotFeedItems(bots, feedCampaigns));
+    } else {
+      setItems(bots.map((bot, i) => ({ type: 'bot' as const, data: bot, index: i })));
+    }
+  }, [bots, feedCampaigns, isTelegram]);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -788,7 +833,7 @@ const VirtualizedBotGrid = React.memo(function VirtualizedBotGrid({ bots, advert
         }
         return (
           <AdvertCard
-            key={`campaign-${(item.data as FeedCampaign)._id}`}
+            key={`campaign-${(item.data as FeedCampaign)._id}-${item.index}`}
             campaign={item.data as FeedCampaign}
             isIndex={Math.floor(item.index)}
             shouldPreload={false}
