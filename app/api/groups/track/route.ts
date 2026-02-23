@@ -13,8 +13,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Group ID is required' }, { status: 400 });
     }
 
+    const todayUtc = new Date().toISOString().slice(0, 10); // YYYY-MM-DD for last-48h
     await Group.findByIdAndUpdate(groupId, {
-      $inc: { clickCount: 1 },
+      $inc: { clickCount: 1, weeklyClicks: 1, [`clickCountByDay.${todayUtc}`]: 1 },
       $set: { lastClickedAt: new Date() },
     });
 

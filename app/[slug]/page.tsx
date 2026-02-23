@@ -46,8 +46,13 @@ async function getGroup(slug: string) {
 
     // Increment view count (fire and forget)
     const groupId = (group as any)._id;
+    const todayUtc = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
     Group.findByIdAndUpdate(groupId, {
-      $inc: { views: 1, weeklyViews: 1 }
+      $inc: {
+        views: 1,
+        weeklyViews: 1,
+        [`viewsByDay.${todayUtc}`]: 1,
+      },
     }).catch(err => console.error('Error updating views:', err));
 
     // Background update of member count if stale (older than 24h)

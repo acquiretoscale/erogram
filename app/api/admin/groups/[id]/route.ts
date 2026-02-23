@@ -47,6 +47,11 @@ export async function PUT(
     
     // Remove fields that shouldn't be updated directly
     const { _id, __v, createdAt, ...updateData } = body;
+
+    // Convert empty advertiserId to null (empty string is not a valid ObjectId)
+    if (updateData.advertiserId !== undefined && !updateData.advertiserId) {
+      updateData.advertiserId = null;
+    }
     
     // Fetch existing group to preserve image if not provided
     const oldGroup = await Group.findById(id);

@@ -186,6 +186,11 @@ export async function createCampaign(
     feedPlacement: data.slot === 'feed' ? (data.feedPlacement || 'both') : undefined,
   });
 
+  // Keep feed positions gap-free after a new ad is created
+  if (data.slot === 'feed') {
+    await normalizeFeedPositions();
+  }
+
   return { _id: doc._id.toString() };
 }
 
@@ -249,6 +254,11 @@ export async function updateCampaign(
   ).lean();
   if (!doc) throw new Error('Campaign not found');
 
+  // Keep feed positions gap-free so the admin always shows the correct order
+  if ((doc as any).slot === 'feed' || data.slot === 'feed') {
+    await normalizeFeedPositions();
+  }
+
   return doc as any;
 }
 
@@ -257,7 +267,12 @@ export async function deleteCampaign(token: string, id: string) {
   if (!admin) throw new Error('Unauthorized');
 
   await connectDB();
-  await Campaign.findByIdAndDelete(id);
+  const deleted = await Campaign.findByIdAndDelete(id).lean();
+
+  // Compact feed positions after deletion
+  if (deleted && (deleted as any).slot === 'feed') {
+    await normalizeFeedPositions();
+  }
 
   return { success: true };
 }
@@ -362,6 +377,47 @@ export async function getFeedTierCapacity(token: string) {
 
 // One ad every 5 entries: positions 5, 10, 15, … 60 (12 slots)
 const FEED_DISPLAY_POSITIONS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60];
+
+/**
+ * Renumber position fields for ALL feed campaigns so there are no gaps.
+ * Active campaigns come first (sorted by their current sort key), then inactive.
+ * After this call: active ads are 1, 2, 3… and inactive are n+1, n+2…
+ * Call after any feed campaign create / update / delete.
+ */
+async function normalizeFeedPositions(): Promise<void> {
+  const allFeed = await Campaign.find({ slot: 'feed' })
+    .select('_id status position feedTier tierSlot')
+    .lean();
+
+  if (allFeed.length === 0) return;
+
+  const withKey = allFeed.map((c: any) => {
+    const tier = c.feedTier as number | null;
+    const slot = c.tierSlot as number | null;
+    const stored = c.position != null ? Number(c.position) : 999;
+    const tierPos = tier != null ? FEED_TIER_POSITIONS[tier] : null;
+    const sortKey =
+      tierPos != null && slot != null && slot >= 1 && slot <= 4 && tierPos[slot - 1] != null
+        ? tierPos[slot - 1]
+        : stored;
+    const isActive = c.status === 'active';
+    return { c, sortKey, isActive };
+  });
+
+  // Active first (by current sort key), then inactive (by current sort key)
+  withKey.sort((a, b) => {
+    if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+    return a.sortKey - b.sortKey;
+  });
+
+  const bulkOps = withKey.map((item, i) => ({
+    updateOne: {
+      filter: { _id: item.c._id },
+      update: { $set: { position: i + 1 } },
+    },
+  }));
+  await Campaign.bulkWrite(bulkOps);
+}
 
 /**
  * Get active feed campaigns for Groups or Bots page. Single source: Campaign slot=feed.

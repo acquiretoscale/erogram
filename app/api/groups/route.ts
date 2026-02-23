@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
-import { Group, User, Post, SystemConfig } from '@/lib/models';
+import { Group, User, Post, SystemConfig, Article } from '@/lib/models';
 import { slugify } from '@/lib/utils/slugify';
 import { uploadToR2, getR2PublicUrl } from '@/lib/r2';
 
@@ -88,10 +88,10 @@ export async function GET(req: NextRequest) {
         const resetInterval = 3 * 24 * 60 * 60 * 1000;
 
         if (!resetConfig || (now.getTime() - new Date(resetConfig.lastUpdated).getTime() > resetInterval)) {
-          console.log('[API] Resetting group views (3-day interval)...');
+          console.log('[API] Resetting group + article views (3-day interval)...');
 
-          // Reset all group weeklyViews to 0
-          await Group.updateMany({}, { $set: { weeklyViews: 0 } });
+          await Group.updateMany({}, { $set: { weeklyViews: 0, weeklyClicks: 0 } });
+          await Article.updateMany({}, { $set: { weeklyViews: 0 } });
 
           // Update or create config
           if (resetConfig) {
@@ -104,7 +104,7 @@ export async function GET(req: NextRequest) {
               lastUpdated: now
             });
           }
-          console.log('[API] Group weeklyViews reset complete');
+          console.log('[API] Group + Article weeklyViews reset complete');
         }
       } catch (err) {
         console.error('[API] Error checking/resetting views:', err);

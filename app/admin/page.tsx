@@ -17,16 +17,15 @@ import ReportsTab from './components/ReportsTab';
 import ArticlesTab from './components/ArticlesTab';
 import AdvertsTab from './components/AdvertsTab';
 import AdvertisersTab from './components/AdvertisersTab';
-import ButtonsManagementTab from './components/ButtonsManagementTab';
 import UsersTab from './components/UsersTab';
 import SettingsTab from './components/SettingsTab';
 
 export default function AdminPage() {
   const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState('buttons');
+  const [activeTab, setActiveTab] = useState('overview');
   const [isLoading, setIsLoading] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
-  const [loginData, setLoginData] = useState({ email: '', password: '' });
+  const [loginData, setLoginData] = useState({ identifier: '', password: '' });
   const [error, setError] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [metrics, setMetrics] = useState({
@@ -86,7 +85,12 @@ export default function AdminPage() {
     setIsLoading(true);
 
     try {
-      const res = await axios.post('/api/auth/login', loginData);
+      const isEmail = loginData.identifier.includes('@');
+      const res = await axios.post('/api/auth/login', {
+        email: isEmail ? loginData.identifier : undefined,
+        username: !isEmail ? loginData.identifier : undefined,
+        password: loginData.password,
+      });
       if (!res.data.isAdmin) {
         localStorage.removeItem('token');
         setError('This account is not an admin. Use an admin account to access the panel.');
@@ -129,13 +133,13 @@ export default function AdminPage() {
               )}
 
               <div>
-                <label className="block text-sm font-bold text-[#999] mb-2">Email</label>
+                <label className="block text-sm font-bold text-[#999] mb-2">Email or Username</label>
                 <input
-                  type="email"
-                  value={loginData.email}
-                  onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+                  type="text"
+                  value={loginData.identifier}
+                  onChange={(e) => setLoginData({ ...loginData, identifier: e.target.value })}
                   className="w-full p-4 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none transition-all"
-                  placeholder="admin@example.com"
+                  placeholder="admin@example.com or username"
                   required
                 />
               </div>
@@ -199,7 +203,6 @@ export default function AdminPage() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              {activeTab === 'buttons' && <ButtonsManagementTab />}
               {activeTab === 'overview' && <OverviewTab metrics={metrics} setActiveTab={setActiveTab} />}
               {activeTab === 'groups' && <GroupsTab />}
               {activeTab === 'bots' && <BotsTab />}

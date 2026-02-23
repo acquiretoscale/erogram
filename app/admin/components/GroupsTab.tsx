@@ -31,6 +31,17 @@ export default function GroupsTab() {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
 
+    // Sort: column key and direction
+    type SortKey = 'name' | 'category' | 'status' | 'views' | 'recent' | 'clicks' | 'recentClicks' | 'country';
+    const [sortBy, setSortBy] = useState<SortKey>('name');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+    // Bulk selection and actions
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [bulkActionLoading, setBulkActionLoading] = useState(false);
+    // Info tooltip: which column's details are visible
+    const [infoTooltip, setInfoTooltip] = useState<'views' | 'clicks' | null>(null);
+
     useEffect(() => {
         fetchGroups();
         fetchAdvertisers();
@@ -162,18 +173,113 @@ export default function GroupsTab() {
         }
     };
 
-    // Filter and Pagination Logic
+    const getRecentViews = (g: any) => g.weeklyViews ?? 0;
+    const getRecentClicks = (g: any) => g.weeklyClicks ?? 0;
+
+    // Filter, Sort, and Pagination
     const filteredGroups = groups.filter((group) =>
         group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         group.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
         group.country.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const totalPages = Math.ceil(filteredGroups.length / itemsPerPage);
-    const paginatedGroups = filteredGroups.slice(
+    const sortedGroups = [...filteredGroups].sort((a, b) => {
+        let aVal: string | number = '';
+        let bVal: string | number = '';
+        if (sortBy === 'name') {
+            aVal = (a.name || '').toLowerCase();
+            bVal = (b.name || '').toLowerCase();
+        } else if (sortBy === 'category') {
+            aVal = (a.category || '').toLowerCase();
+            bVal = (b.category || '').toLowerCase();
+        } else if (sortBy === 'status') {
+            aVal = (a.status || '');
+            bVal = (b.status || '');
+        } else if (sortBy === 'views') {
+            aVal = a.views ?? 0;
+            bVal = b.views ?? 0;
+        } else if (sortBy === 'recent') {
+            aVal = getRecentViews(a);
+            bVal = getRecentViews(b);
+        } else if (sortBy === 'clicks') {
+            aVal = a.clickCount ?? 0;
+            bVal = b.clickCount ?? 0;
+        } else if (sortBy === 'recentClicks') {
+            aVal = getRecentClicks(a);
+            bVal = getRecentClicks(b);
+        } else if (sortBy === 'country') {
+            aVal = (a.country || '').toLowerCase();
+            bVal = (b.country || '').toLowerCase();
+        }
+        if (typeof aVal === 'number' && typeof bVal === 'number') {
+            return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
+        }
+        const cmp = String(aVal).localeCompare(String(bVal));
+        return sortOrder === 'asc' ? cmp : -cmp;
+    });
+
+    const totalPages = Math.ceil(sortedGroups.length / itemsPerPage);
+    const paginatedGroups = sortedGroups.slice(
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     );
+
+    const handleSort = (key: SortKey) => {
+        if (sortBy === key) {
+            setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'));
+        } else {
+            setSortBy(key);
+            setSortOrder('asc');
+        }
+        setCurrentPage(1);
+    };
+
+    const toggleSelect = (id: string) => {
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const toggleSelectAllPage = () => {
+        const pageIds = paginatedGroups.map((g) => g._id);
+        const allSelected = pageIds.every((id) => selectedIds.has(id));
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (allSelected) pageIds.forEach((id) => next.delete(id));
+            else pageIds.forEach((id) => next.add(id));
+            return next;
+        });
+    };
+
+    const clearSelection = () => setSelectedIds(new Set());
+
+    const handleBulkStatus = async (newStatus: 'approved' | 'rejected') => {
+        if (selectedIds.size === 0) return;
+        if (!confirm(`Set ${selectedIds.size} group(s) to ${newStatus}?`)) return;
+        setBulkActionLoading(true);
+        const token = localStorage.getItem('token');
+        let done = 0;
+        let failed = 0;
+        for (const id of selectedIds) {
+            try {
+                await axios.put(
+                    `/api/admin/groups/${id}`,
+                    { status: newStatus },
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                done++;
+            } catch {
+                failed++;
+            }
+        }
+        setBulkActionLoading(false);
+        setSelectedIds(new Set());
+        fetchGroups();
+        alert(failed ? `Updated ${done} group(s). ${failed} failed.` : `Updated ${done} group(s) to ${newStatus}.`);
+    };
 
     const handleSendPremiumNotification = async (id: string) => {
         try {
@@ -220,24 +326,121 @@ export default function GroupsTab() {
                     </div>
                 ) : error ? (
                     <div className="p-12 text-center text-red-400">{error}</div>
-                ) : filteredGroups.length === 0 ? (
+                ) : sortedGroups.length === 0 ? (
                     <div className="p-12 text-center text-[#999]">No groups found</div>
                 ) : (
                     <>
+                        {/* Bulk action bar */}
+                        {selectedIds.size > 0 && (
+                            <div className="px-6 py-3 bg-white/5 border-b border-white/10 flex flex-wrap items-center gap-3">
+                                <span className="text-sm text-white font-medium">{selectedIds.size} selected</span>
+                                <button
+                                    onClick={() => handleBulkStatus('approved')}
+                                    disabled={bulkActionLoading}
+                                    className="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-sm font-medium hover:bg-green-500/30 disabled:opacity-50 transition-colors"
+                                >
+                                    Approve
+                                </button>
+                                <button
+                                    onClick={() => handleBulkStatus('rejected')}
+                                    disabled={bulkActionLoading}
+                                    className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-sm font-medium hover:bg-red-500/30 disabled:opacity-50 transition-colors"
+                                >
+                                    Reject
+                                </button>
+                                <button
+                                    onClick={clearSelection}
+                                    className="px-3 py-1.5 bg-white/10 text-gray-400 rounded-lg text-sm hover:bg-white/15 transition-colors"
+                                >
+                                    Clear selection
+                                </button>
+                            </div>
+                        )}
+
                         <div className="overflow-x-auto">
                             <table className="w-full">
                                 <thead className="bg-white/5 border-b border-white/5">
                                     <tr>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">Group Info</th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">Category</th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">Status</th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">Stats</th>
+                                        <th className="px-4 py-4 w-10">
+                                            <input
+                                                type="checkbox"
+                                                checked={paginatedGroups.length > 0 && paginatedGroups.every((g) => selectedIds.has(g._id))}
+                                                onChange={toggleSelectAllPage}
+                                                className="rounded border-white/20 bg-[#1a1a1a] text-[#b31b1b] focus:ring-[#b31b1b]"
+                                            />
+                                        </th>
+                                        <th
+                                            className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none"
+                                            onClick={() => handleSort('name')}
+                                        >
+                                            Group Info {sortBy === 'name' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
+                                        </th>
+                                        <th
+                                            className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none"
+                                            onClick={() => handleSort('category')}
+                                        >
+                                            Category {sortBy === 'category' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
+                                        </th>
+                                        <th
+                                            className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none"
+                                            onClick={() => handleSort('status')}
+                                        >
+                                            Status {sortBy === 'status' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
+                                        </th>
+                                        <th
+                                            className="px-4 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none relative"
+                                            onClick={() => handleSort('views')}
+                                        >
+                                            <div className="flex items-center gap-1">
+                                                Views {sortBy === 'views' && (sortOrder === 'asc' ? '↑' : '↓')}
+                                                <button type="button" onClick={(e) => { e.stopPropagation(); setInfoTooltip(infoTooltip === 'views' ? null : 'views'); }} className="w-3.5 h-3.5 rounded-full bg-white/10 hover:bg-white/20 text-[9px] flex items-center justify-center text-gray-400 hover:text-white">i</button>
+                                            </div>
+                                            {infoTooltip === 'views' && (
+                                                <div className="absolute mt-1 left-0 z-20 w-56 p-2 bg-[#1a1a1a] border border-white/20 rounded-lg text-[11px] text-gray-300 shadow-xl font-normal normal-case tracking-normal">
+                                                    <strong className="text-white">Views</strong>: Each time someone opens this group&apos;s detail page. Lifetime total.
+                                                </div>
+                                            )}
+                                        </th>
+                                        <th
+                                            className="px-4 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none"
+                                            onClick={() => handleSort('recent')}
+                                        >
+                                            Last 72h {sortBy === 'recent' && (sortOrder === 'asc' ? '↑' : '↓')}
+                                        </th>
+                                        <th
+                                            className="px-4 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none relative"
+                                            onClick={() => handleSort('clicks')}
+                                        >
+                                            <div className="flex items-center gap-1">
+                                                Clicks {sortBy === 'clicks' && (sortOrder === 'asc' ? '↑' : '↓')}
+                                                <button type="button" onClick={(e) => { e.stopPropagation(); setInfoTooltip(infoTooltip === 'clicks' ? null : 'clicks'); }} className="w-3.5 h-3.5 rounded-full bg-white/10 hover:bg-white/20 text-[9px] flex items-center justify-center text-gray-400 hover:text-white">i</button>
+                                            </div>
+                                            {infoTooltip === 'clicks' && (
+                                                <div className="absolute mt-1 left-0 z-20 w-56 p-2 bg-[#1a1a1a] border border-white/20 rounded-lg text-[11px] text-gray-300 shadow-xl font-normal normal-case tracking-normal">
+                                                    <strong className="text-white">Clicks</strong>: Each time someone clicks the join/visit button to open the group on Telegram. Lifetime total.
+                                                </div>
+                                            )}
+                                        </th>
+                                        <th
+                                            className="px-4 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none"
+                                            onClick={() => handleSort('recentClicks')}
+                                        >
+                                            Last 72h {sortBy === 'recentClicks' && (sortOrder === 'asc' ? '↑' : '↓')}
+                                        </th>
                                         <th className="px-6 py-4 text-right text-xs font-bold text-[#666] uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/5">
                                     {paginatedGroups.map((group) => (
                                         <tr key={group._id} className="hover:bg-white/5 transition-colors group">
+                                            <td className="px-4 py-4">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedIds.has(group._id)}
+                                                    onChange={() => toggleSelect(group._id)}
+                                                    className="rounded border-white/20 bg-[#1a1a1a] text-[#b31b1b] focus:ring-[#b31b1b]"
+                                                />
+                                            </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-4">
                                                     <div className="w-10 h-10 rounded-lg bg-[#1a1a1a] overflow-hidden flex-shrink-0">
@@ -279,8 +482,17 @@ export default function GroupsTab() {
                                                     {group.status.charAt(0).toUpperCase() + group.status.slice(1)}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <div className="text-sm text-gray-300">{group.views?.toLocaleString() || 0} views</div>
+                                            <td className="px-4 py-4">
+                                                <span className="text-sm text-gray-300 tabular-nums">{(group.views ?? 0).toLocaleString()}</span>
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <span className={`text-sm tabular-nums ${getRecentViews(group) > 0 ? 'text-green-400' : 'text-gray-500'}`}>{getRecentViews(group).toLocaleString()}</span>
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <span className="text-sm text-gray-300 tabular-nums">{(group.clickCount ?? 0).toLocaleString()}</span>
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <span className={`text-sm tabular-nums ${getRecentClicks(group) > 0 ? 'text-green-400' : 'text-gray-500'}`}>{getRecentClicks(group).toLocaleString()}</span>
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -316,7 +528,7 @@ export default function GroupsTab() {
                         {/* Pagination */}
                         <div className="px-6 py-4 border-t border-white/5 flex items-center justify-between">
                             <div className="text-sm text-[#666]">
-                                Showing <span className="text-white font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="text-white font-medium">{Math.min(currentPage * itemsPerPage, filteredGroups.length)}</span> of <span className="text-white font-medium">{filteredGroups.length}</span> results
+                                Showing <span className="text-white font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="text-white font-medium">{Math.min(currentPage * itemsPerPage, sortedGroups.length)}</span> of <span className="text-white font-medium">{sortedGroups.length}</span> results
                             </div>
                             <div className="flex gap-2">
                                 <button

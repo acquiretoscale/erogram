@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
       config = {
         navbarButton1: {
           text: 'Casual dating',
-          url: 'https://go.cm-trk3.com/aff_f?h=meFeSO',
+          url: 'https://go.cm-trk6.com/aff_c?offer_id=11167&aff_id=93961&url_id=19191&source=erogram.pro&aff_sub=feed',
           enabled: true,
         },
         navbarButton2: {
@@ -117,7 +117,7 @@ export async function GET(req: NextRequest) {
       {
         navbarButton1: {
           text: 'Casual dating',
-          url: 'https://go.cm-trk3.com/aff_f?h=meFeSO',
+          url: 'https://go.cm-trk6.com/aff_c?offer_id=11167&aff_id=93961&url_id=19191&source=erogram.pro&aff_sub=feed',
           enabled: true,
         },
         navbarButton2: {

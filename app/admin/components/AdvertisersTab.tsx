@@ -87,6 +87,67 @@ const SLOT_LABELS: Record<string, string> = {
 const FEED_SLOTS = ['feed'];
 const CTA_SLOTS = ['navbar-cta', 'join-cta', 'filter-cta'];
 
+function FeedAdsBulkBar({
+  selectedCount,
+  onClear,
+  onBulkStatus,
+  onBulkShowOn,
+  saving,
+}: {
+  selectedCount: number;
+  onClear: () => void;
+  onBulkStatus: (status: string) => Promise<void>;
+  onBulkShowOn: (feedPlacement: 'groups' | 'bots' | 'both') => Promise<void>;
+  saving: boolean;
+}) {
+  const [bulkStatus, setBulkStatus] = useState<string>('');
+  const [bulkShowOn, setBulkShowOn] = useState<'groups' | 'bots' | 'both' | ''>('');
+  return (
+    <div className="flex flex-wrap items-center gap-4 p-4 mb-4 rounded-xl border border-[#b31b1b]/40 bg-[#b31b1b]/10">
+      <span className="font-semibold text-white">{selectedCount} selected</span>
+      <select
+        value={bulkStatus}
+        onChange={(e) => setBulkStatus(e.target.value)}
+        className="bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+      >
+        <option value="">Set status…</option>
+        <option value="active">Active</option>
+        <option value="paused">Paused</option>
+        <option value="ended">Ended</option>
+      </select>
+      <button
+        type="button"
+        disabled={saving || !bulkStatus}
+        onClick={() => bulkStatus && onBulkStatus(bulkStatus)}
+        className="px-3 py-2 bg-[#b31b1b] hover:bg-[#c42b2b] disabled:opacity-50 text-white rounded-lg text-sm font-medium"
+      >
+        {saving ? 'Saving…' : 'Apply status'}
+      </button>
+      <select
+        value={bulkShowOn}
+        onChange={(e) => setBulkShowOn(e.target.value as 'groups' | 'bots' | 'both' | '')}
+        className="bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+      >
+        <option value="">Set Show on…</option>
+        <option value="groups">Groups</option>
+        <option value="bots">Bots</option>
+        <option value="both">Both</option>
+      </select>
+      <button
+        type="button"
+        disabled={saving || !bulkShowOn}
+        onClick={() => bulkShowOn && onBulkShowOn(bulkShowOn)}
+        className="px-3 py-2 bg-[#b31b1b] hover:bg-[#c42b2b] disabled:opacity-50 text-white rounded-lg text-sm font-medium"
+      >
+        {saving ? 'Saving…' : 'Apply Show on'}
+      </button>
+      <button type="button" onClick={onClear} className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm">
+        Clear selection
+      </button>
+    </div>
+  );
+}
+
 /** Only these slots are text-only (no image). Case-insensitive so DB/casing never shows image by mistake. */
 function isTextOnlySlot(slot: string): boolean {
   const s = String(slot || '').trim().toLowerCase();
@@ -125,9 +186,17 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
     featuredGroups?: { groupId: string; name: string; advertiserId: string; advertiserName: string; clickCount: number; lastClickedAt?: string }[];
   } | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [overviewAdvSortBy, setOverviewAdvSortBy] = useState<'period' | '7d' | '30d' | 'share'>('period');
+  const [overviewAdvSortOrder, setOverviewAdvSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [trendHoverIdx, setTrendHoverIdx] = useState<number | null>(null);
+  const [compareHoverInfo, setCompareHoverInfo] = useState<{ dayIdx: number; advIdx: number } | null>(null);
   const [feedAdsFilterAdvertiser, setFeedAdsFilterAdvertiser] = useState<string>('all');
   const [feedAdsFilterStatus, setFeedAdsFilterStatus] = useState<string>('all');
-  const [feedAdsSortBy, setFeedAdsSortBy] = useState<'position' | 'clicks' | 'status'>('position');
+  const [feedAdsFilterShowOn, setFeedAdsFilterShowOn] = useState<string>('all');
+  const [feedAdsSortBy, setFeedAdsSortBy] = useState<'position' | 'clicks' | 'status' | 'feedPlacement' | 'last24h' | 'last7d' | 'last30d' | 'total'>('position');
+  const [feedAdsSortOrder, setFeedAdsSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [feedAdsSelectedIds, setFeedAdsSelectedIds] = useState<Set<string>>(new Set());
+  const [feedAdsBulkSaving, setFeedAdsBulkSaving] = useState(false);
   const [feedAdsDateRange, setFeedAdsDateRange] = useState<'24h' | '7d' | '30d' | 'all'>('30d');
   const [feedAdsCustomFrom, setFeedAdsCustomFrom] = useState('');
   const [feedAdsCustomTo, setFeedAdsCustomTo] = useState('');
@@ -945,69 +1014,120 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
         </div>
       </div>
 
-      {/* ─── Overview tab: comprehensive KPI dashboard ─────────────────────────────────────── */}
+      {/* ─── Overview tab: marketer-first dashboard ─────────────────────────────────────── */}
       {sectionTab === 'overview' && (
         <div className="rounded-2xl bg-white p-5 sm:p-6 space-y-5" style={{ color: '#1e293b' }}>
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Advertiser Performance Overview</h2>
+              <p className="text-sm text-slate-500">Top-line results first, then trend and breakdowns.</p>
+            </div>
+          </div>
 
-          {/* ── ROW 1: Filters ── */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider shrink-0">Advertiser</span>
-              <button type="button" onClick={() => setDashboardAdvertiserIds([])} className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${dashboardAdvertiserIds.length === 0 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'}`}>
-                All
-              </button>
-              {advertisers.map((a) => {
-                const sel = dashboardAdvertiserIds.includes(a._id);
-                return (
-                  <button key={a._id} type="button" onClick={() => {
-                    setDashboardAdvertiserIds((prev) => sel ? prev.filter((id) => id !== a._id) : [...prev, a._id]);
-                  }} className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${sel ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'}`}>
-                    {a.name}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 space-y-2">
+              <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Advertisers</div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setDashboardAdvertiserIds([])}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${dashboardAdvertiserIds.length === 0 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'}`}
+                >
+                  All
+                </button>
+                {advertisers.map((a) => {
+                  const sel = dashboardAdvertiserIds.includes(a._id);
+                  return (
+                    <button
+                      key={a._id}
+                      type="button"
+                      onClick={() => setDashboardAdvertiserIds((prev) => (sel ? prev.filter((id) => id !== a._id) : [...prev, a._id]))}
+                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${sel ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'}`}
+                    >
+                      {a.name}
+                    </button>
+                  );
+                })}
+                {advertisers.length > 2 && dashboardAdvertiserIds.length !== advertisers.length && (
+                  <button type="button" onClick={() => setDashboardAdvertiserIds(advertisers.map((a) => a._id))} className="text-[11px] text-gray-400 hover:text-blue-500 underline">
+                    Select all
                   </button>
-                );
-              })}
-              {advertisers.length > 2 && dashboardAdvertiserIds.length !== advertisers.length && (
-                <button type="button" onClick={() => setDashboardAdvertiserIds(advertisers.map((a) => a._id))} className="text-[11px] text-gray-400 hover:text-blue-500 underline">Select all</button>
-              )}
-              {dashboardAdvertiserIds.length > 0 && (
-                <button type="button" onClick={() => setDashboardAdvertiserIds([])} className="text-[11px] text-gray-400 hover:text-blue-500 underline">Clear</button>
-              )}
-              <span className="text-[10px] text-gray-300 ml-1">{dashboardAdvertiserIds.length === 0 ? 'Showing all campaigns incl. unassigned' : `${dashboardAdvertiserIds.length} selected`}</span>
-            </div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider shrink-0">Ad space</span>
-              <button type="button" onClick={() => setDashboardSlots([])} className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${dashboardSlots.length === 0 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'}`}>All</button>
-              {[...displaySlots.map((s) => s.slot), 'featured-groups'].map((sl) => {
-                const sel = dashboardSlots.includes(sl);
-                return (
-                  <button key={sl} type="button" onClick={() => setDashboardSlots((prev) => sel ? prev.filter((x) => x !== sl) : [...prev, sl])} className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${sel ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'}`}>
-                    {SLOT_LABELS[sl] || sl}
+                )}
+                {dashboardAdvertiserIds.length > 0 && (
+                  <button type="button" onClick={() => setDashboardAdvertiserIds([])} className="text-[11px] text-gray-400 hover:text-blue-500 underline">
+                    Clear
                   </button>
-                );
-              })}
-              {dashboardSlots.length > 0 && (
-                <button type="button" onClick={() => setDashboardSlots([])} className="text-[11px] text-gray-400 hover:text-blue-500 underline">Clear</button>
-              )}
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider shrink-0">Period</span>
-              {(['today', '7d', '30d', 'lifetime'] as const).map((r) => {
-                const labels: Record<string, string> = { today: 'Today', '7d': '7 days', '30d': '30 days', lifetime: 'Lifetime' };
-                return (
-                  <button key={r} type="button" onClick={() => setDashboardRange(r)} className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${dashboardRange === r ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'}`}>
-                    {labels[r]}
+
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 space-y-2">
+              <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Ad spaces</div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setDashboardSlots([])}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${dashboardSlots.length === 0 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'}`}
+                >
+                  All
+                </button>
+                {[...displaySlots.map((s) => s.slot).filter((sl) => sl !== 'filter-cta'), 'featured-groups'].map((sl) => {
+                  const sel = dashboardSlots.includes(sl);
+                  return (
+                    <button
+                      key={sl}
+                      type="button"
+                      onClick={() => setDashboardSlots((prev) => (sel ? prev.filter((x) => x !== sl) : [...prev, sl]))}
+                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${sel ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'}`}
+                    >
+                      {SLOT_LABELS[sl] || sl}
+                    </button>
+                  );
+                })}
+                {dashboardSlots.length > 0 && (
+                  <button type="button" onClick={() => setDashboardSlots([])} className="text-[11px] text-gray-400 hover:text-blue-500 underline">
+                    Clear
                   </button>
-                );
-              })}
-              <button type="button" onClick={() => setDashboardRange('custom')} className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${dashboardRange === 'custom' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'}`}>Custom</button>
-              {dashboardRange === 'custom' && (
-                <>
-                  <input type="date" value={dashboardFrom} onChange={(e) => setDashboardFrom(e.target.value)} className="rounded-lg border border-gray-200 bg-gray-50 text-gray-700 px-2 py-1 text-xs" />
-                  <span className="text-gray-300">-</span>
-                  <input type="date" value={dashboardTo} onChange={(e) => setDashboardTo(e.target.value)} className="rounded-lg border border-gray-200 bg-gray-50 text-gray-700 px-2 py-1 text-xs" />
-                </>
-              )}
+                )}
+              </div>
             </div>
+
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 space-y-2">
+              <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Period</div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {(['today', '7d', '30d', 'lifetime'] as const).map((r) => {
+                  const labels: Record<string, string> = { today: 'Today', '7d': '7 days', '30d': '30 days', lifetime: 'Lifetime' };
+                  return (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setDashboardRange(r)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${dashboardRange === r ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'}`}
+                    >
+                      {labels[r]}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => setDashboardRange('custom')}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${dashboardRange === 'custom' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'}`}
+                >
+                  Custom
+                </button>
+                {dashboardRange === 'custom' && (
+                  <>
+                    <input type="date" value={dashboardFrom} onChange={(e) => setDashboardFrom(e.target.value)} className="rounded-lg border border-gray-200 bg-white text-gray-700 px-2 py-1 text-xs" />
+                    <span className="text-gray-300">-</span>
+                    <input type="date" value={dashboardTo} onChange={(e) => setDashboardTo(e.target.value)} className="rounded-lg border border-gray-200 bg-white text-gray-700 px-2 py-1 text-xs" />
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+            {`Active filters: ${dashboardAdvertiserIds.length === 0 ? 'All advertisers (including unassigned)' : `${dashboardAdvertiserIds.length} advertiser${dashboardAdvertiserIds.length > 1 ? 's' : ''}`} · ${dashboardSlots.length === 0 ? 'All ad spaces' : dashboardSlots.map((s) => SLOT_LABELS[s] || s).join(', ')} · ${dashboardRange === 'custom' ? (dashboardFrom && dashboardTo ? `${dashboardFrom} to ${dashboardTo}` : 'Custom range') : ({ today: 'Today', '7d': 'Last 7 days', '30d': 'Last 30 days', lifetime: 'Lifetime' } as Record<string, string>)[dashboardRange]}`}
           </div>
 
           {dashboardLoading && <div className="py-16 text-center text-gray-400 text-sm">Loading dashboard...</div>}
@@ -1021,240 +1141,267 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
             const isSingle = dashboardAdvertiserIds.length === 1;
             const isCompare = dashboardAdvertiserIds.length >= 2 || (dashboardAdvertiserIds.length === 0 && (dashboardStats.byAdvertiser?.length ?? 0) >= 2);
             const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16', '#e11d48'];
+            const totalByAdvertiser = Math.max(1, dashboardStats.byAdvertiser.reduce((s, r) => s + r.totalClicks, 0));
+            const sortedAdvertisers = [...dashboardStats.byAdvertiser].sort((a, b) => {
+              const aShare = (a.totalClicks / totalByAdvertiser) * 100;
+              const bShare = (b.totalClicks / totalByAdvertiser) * 100;
+              const factor = overviewAdvSortOrder === 'asc' ? 1 : -1;
+              if (overviewAdvSortBy === 'period') return (a.totalClicks - b.totalClicks) * factor;
+              if (overviewAdvSortBy === '7d') return (a.last7d - b.last7d) * factor;
+              if (overviewAdvSortBy === '30d') return (a.last30d - b.last30d) * factor;
+              return (aShare - bShare) * factor;
+            });
+            const toggleAdvSort = (col: 'period' | '7d' | '30d' | 'share') => {
+              if (overviewAdvSortBy === col) {
+                setOverviewAdvSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+              } else {
+                setOverviewAdvSortBy(col);
+                setOverviewAdvSortOrder('desc');
+              }
+            };
 
             return (
-            <>
-              {/* ── Advertiser focus header (when one is selected) ── */}
-              {isSingle && (
-                <div className="rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 p-5 text-white">
-                  <div className="text-blue-100 text-xs font-medium uppercase tracking-wider mb-1">Client report</div>
-                  <div className="text-2xl font-bold mb-3">{selectedNames[0]}</div>
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                    {[
-                      { label: 'All time', value: kpi.totalClicks },
-                      { label: 'Today', value: kpi.todayClicks },
-                      { label: 'Last 24h', value: kpi.last24h },
-                      { label: 'Last 7d', value: kpi.last7d },
-                      { label: 'Last 30d', value: kpi.last30d },
-                    ].map((k) => (
-                      <div key={k.label} className="bg-white/15 rounded-lg p-3">
-                        <div className="text-xl font-bold tabular-nums">{k.value.toLocaleString()}</div>
-                        <div className="text-[11px] text-blue-100">{k.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* ── KPI cards (global or multi-select) ── */}
-              {!isSingle && (
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
                   {[
-                    { label: 'All time', value: kpi.totalClicks, icon: '=', color: 'bg-gray-50' },
-                    { label: 'Today', value: kpi.todayClicks, icon: '+', color: 'bg-blue-600 text-white' },
-                    { label: 'Last 24h', value: kpi.last24h, icon: '', color: 'bg-gray-50' },
-                    { label: 'Last 7 days', value: kpi.last7d, icon: '', color: 'bg-gray-50' },
-                    { label: 'Last 30 days', value: kpi.last30d, icon: '', color: 'bg-gray-50' },
-                  ].map((k) => (
-                    <div key={k.label} className={`rounded-xl p-4 ${k.color}`}>
-                      <div className={`text-2xl font-bold tabular-nums ${k.color.includes('blue-600') ? 'text-white' : 'text-gray-900'}`}>{k.value.toLocaleString()}</div>
-                      <div className={`text-[11px] mt-0.5 ${k.color.includes('blue-600') ? 'text-blue-100' : 'text-gray-500'}`}>{k.label}</div>
+                    { title: 'Selected period clicks', value: currentTotal, helper: 'Primary KPI for selected filters', tone: 'bg-blue-600 text-white border-blue-600' },
+                    { title: 'Period vs previous', value: `${prevTotal > 0 ? (periodDelta >= 0 ? '+' : '') + periodDelta.toFixed(1) : '0.0'}%`, helper: `Prev: ${prevTotal.toLocaleString()} clicks`, tone: periodDelta >= 0 ? 'bg-green-50 text-green-800 border-green-200' : 'bg-red-50 text-red-800 border-red-200' },
+                    { title: 'Today clicks', value: kpi.todayClicks, helper: 'Since today 00:00', tone: 'bg-white text-gray-900 border-gray-200' },
+                    { title: 'Last 7 days', value: kpi.last7d, helper: 'Rolling 7-day click volume', tone: 'bg-white text-gray-900 border-gray-200' },
+                    { title: 'Last 30 days', value: kpi.last30d, helper: 'Rolling 30-day click volume', tone: 'bg-white text-gray-900 border-gray-200' },
+                    { title: 'Lifetime clicks', value: kpi.totalClicks, helper: 'All-time clicks on selected scope', tone: 'bg-gray-50 text-gray-900 border-gray-200' },
+                  ].map((card) => (
+                    <div key={card.title} className={`rounded-xl border p-3 ${card.tone}`}>
+                      <div className={`text-[11px] font-medium ${card.tone.includes('text-white') ? 'text-blue-100' : 'text-gray-500'}`}>{card.title}</div>
+                      <div className="text-2xl font-bold tabular-nums mt-1">{typeof card.value === 'number' ? card.value.toLocaleString() : card.value}</div>
+                      <div className={`text-[10px] mt-1 ${card.tone.includes('text-white') ? 'text-blue-100' : 'text-gray-400'}`}>{card.helper}</div>
                     </div>
                   ))}
                 </div>
-              )}
 
-              {/* ── Period comparison badge ── */}
-              {dashboardStats.prevPeriodTotal !== undefined && dashboardRange !== 'lifetime' && dashboardRange !== 'custom' && (
-                <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-gray-50 border border-gray-100 text-sm">
-                  <span className="text-gray-500">This period</span>
-                  <span className="font-bold text-gray-900 tabular-nums">{currentTotal.toLocaleString()}</span>
-                  <span className="text-gray-300">vs</span>
-                  <span className="text-gray-500">Previous period</span>
-                  <span className="font-bold text-gray-900 tabular-nums">{prevTotal.toLocaleString()}</span>
-                  {prevTotal > 0 && (
-                    <span className={`ml-auto px-2 py-0.5 rounded-full text-xs font-semibold ${periodDelta >= 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                      {periodDelta >= 0 ? '+' : ''}{periodDelta.toFixed(1)}%
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* ── Clicks over time (area chart + prev period overlay) ── */}
-              <div className="rounded-xl border border-gray-100 p-5">
-                <div className="flex items-center justify-between mb-1">
-                  <h3 className="text-sm font-semibold text-gray-700">
-                    {isSingle ? `${selectedNames[0]} — Clicks over time` : 'Clicks over time'}
-                  </h3>
-                  {dashboardRange === 'lifetime' && <span className="text-[11px] text-gray-400">Trend: last 90 days</span>}
-                </div>
-                {dashboardStats.prevPeriodClicksByDay && (
-                  <div className="flex gap-4 mb-2 text-[11px] text-gray-400">
-                    <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-blue-500 inline-block rounded" /> Current</span>
-                    <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-gray-300 inline-block rounded" /> Previous</span>
+                {isSingle && (
+                  <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
+                    <div className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider mb-1">Single advertiser focus</div>
+                    <div className="text-lg font-bold text-blue-900">{selectedNames[0]}</div>
+                    <p className="text-xs text-blue-700 mt-1">Focused view for client reporting, with all summary metrics above already filtered to this advertiser.</p>
                   </div>
                 )}
-                {dashboardStats.clicksByDay.length === 0 ? (
-                  <div className="h-44 flex items-center justify-center text-gray-400 text-sm">No click data for this period</div>
-                ) : (() => {
-                  const data = dashboardStats.clicksByDay;
-                  const prev = dashboardStats.prevPeriodClicksByDay;
-                  const allVals = [...data.map((x) => x.clicks), ...(prev?.map((x) => x.clicks) ?? [])];
-                  const maxVal = Math.max(1, ...allVals);
-                  const ch = 180;
-                  const w = data.length * 24;
-                  const yTicks = maxVal <= 4 ? Array.from({ length: maxVal + 1 }, (_, i) => i) : [0, Math.round(maxVal / 4), Math.round(maxVal / 2), Math.round(maxVal * 3 / 4), maxVal];
-                  const showEveryN = data.length > 14 ? Math.ceil(data.length / 10) : 1;
-                  const toY = (v: number) => ch - (maxVal ? (v / maxVal) * (ch - 8) : 0) - 4;
-                  return (
-                    <div className="relative" style={{ height: ch + 28 }}>
-                      {yTicks.map((t) => (
-                        <div key={t} className="absolute left-0 right-0 flex items-center" style={{ bottom: (maxVal ? (t / maxVal) * ch : 0) + 24 }}>
-                          <span className="text-[10px] text-gray-400 tabular-nums w-8 text-right pr-2 shrink-0">{t}</span>
-                          <div className="flex-1 border-t border-dashed border-gray-100" />
-                        </div>
-                      ))}
-                      <svg viewBox={`0 0 ${w} ${ch}`} className="w-full" style={{ height: ch, marginLeft: 32 }} preserveAspectRatio="none">
-                        <defs>
-                          <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.2" />
-                            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.01" />
-                          </linearGradient>
-                        </defs>
-                        {prev && prev.length === data.length && (
-                          <polyline points={prev.map((d, i) => `${i * 24 + 12},${toY(d.clicks)}`).join(' ')} fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeDasharray="4 3" strokeLinejoin="round" />
-                        )}
-                        <path d={`M0,${ch} ` + data.map((d, i) => `L${i * 24 + 12},${toY(d.clicks)}`).join(' ') + ` L${(data.length - 1) * 24 + 12},${ch} Z`} fill="url(#areaGrad)" />
-                        <polyline points={data.map((d, i) => `${i * 24 + 12},${toY(d.clicks)}`).join(' ')} fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-                        {data.map((d, i) => (
-                          <circle key={d.date} cx={i * 24 + 12} cy={toY(d.clicks)} r="3" fill="white" stroke="#3b82f6" strokeWidth="2">
-                            <title>{d.date}: {d.clicks} clicks</title>
-                          </circle>
-                        ))}
-                      </svg>
-                      <div className="flex" style={{ marginLeft: 32 }}>
-                        {data.map((d, i) => <div key={d.date} className="text-center text-[10px] text-gray-400" style={{ width: 24 }}>{i % showEveryN === 0 ? d.date.slice(5) : ''}</div>)}
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
 
-              {/* ── Advertiser comparison chart (2+ selected) ── */}
-              {isCompare && dashboardStats.clicksByDayByAdvertiser && dashboardStats.clicksByDayByAdvertiser.length > 0 && (() => {
-                const allAdvs = dashboardStats.byAdvertiser;
-                const data = dashboardStats.clicksByDayByAdvertiser;
-                const globalMax = Math.max(1, ...data.flatMap((d) => d.advertisers.map((a) => a.clicks)));
-                const ch = 160;
-                const showEveryN = data.length > 14 ? Math.ceil(data.length / 10) : 1;
-                const toY = (v: number) => ch - (globalMax ? (v / globalMax) * (ch - 8) : 0) - 4;
-                return (
-                  <div className="rounded-xl border border-gray-100 p-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-semibold text-gray-700">Advertiser comparison</h3>
-                      <div className="flex flex-wrap gap-3">
-                        {allAdvs.map((a, i) => (
-                          <span key={a.advertiserId} className="flex items-center gap-1.5 text-[11px] text-gray-500">
-                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />{a.advertiserName}
-                          </span>
-                        ))}
-                      </div>
+                <div className="rounded-xl border border-gray-100 p-5">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-700">{isSingle ? `${selectedNames[0]} — Clicks trend` : 'Clicks trend'}</h3>
+                      <p className="text-[11px] text-gray-400">Current period vs previous period for quick momentum checks.</p>
                     </div>
-                    <div className="relative" style={{ height: ch + 24 }}>
-                      <svg viewBox={`0 0 ${data.length * 24} ${ch}`} className="w-full" style={{ height: ch }} preserveAspectRatio="none">
-                        {allAdvs.map((adv, ai) => (
-                          <polyline key={adv.advertiserId} points={data.map((d, i) => {
-                            const m = d.advertisers.find((a) => a.advertiserId === adv.advertiserId);
-                            return `${i * 24 + 12},${toY(m?.clicks ?? 0)}`;
-                          }).join(' ')} fill="none" stroke={CHART_COLORS[ai % CHART_COLORS.length]} strokeWidth="2" strokeLinejoin="round" />
-                        ))}
-                      </svg>
-                      <div className="flex">
-                        {data.map((d, i) => <div key={d.date} className="text-center text-[10px] text-gray-400" style={{ width: 24 }}>{i % showEveryN === 0 ? d.date.slice(5) : ''}</div>)}
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const rows = [['Date', 'Clicks'], ...dashboardStats.clicksByDay.map((d) => [d.date, String(d.clicks)])];
+                          const csv = rows.map((r) => r.join(',')).join('\n');
+                          const blob = new Blob([csv], { type: 'text/csv' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `clicks-trend-${dashboardRange}.csv`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 text-xs font-medium text-gray-600 transition-colors"
+                        title="Export chart data as CSV"
+                      >
+                        ↓ CSV
+                      </button>
+                      <div className="text-right">
+                        {dashboardRange === 'lifetime' && <div className="text-[11px] text-gray-400">Trend uses full lifetime range</div>}
+                        {dashboardStats.prevPeriodTotal !== undefined && dashboardRange !== 'lifetime' && dashboardRange !== 'custom' && (
+                          <div className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold ${periodDelta >= 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                            {periodDelta >= 0 ? '+' : ''}{periodDelta.toFixed(1)}% vs previous
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
-                );
-              })()}
-
-              {/* ── Two columns row ── */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-                {/* Clicks by ad space — donut + list */}
-                {dashboardStats.bySlot.length > 0 && (() => {
-                  const slotColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4'];
-                  const totalSlotClicks = dashboardStats.bySlot.reduce((s, r) => s + r.totalClicks, 0);
-                  let cumAngle = 0;
-                  const arcs = dashboardStats.bySlot.map((row, i) => {
-                    const pct = totalSlotClicks ? row.totalClicks / totalSlotClicks : 0;
-                    const start = cumAngle;
-                    cumAngle += pct * 360;
-                    return { ...row, pct, start, end: cumAngle, color: slotColors[i % slotColors.length] };
-                  });
-                  const r = 60;
-                  const ir = 38;
-                  const cx = 70;
-                  const cy = 70;
-                  const toPath = (startAngle: number, endAngle: number, outerR: number, innerR: number) => {
-                    const s1 = ((startAngle - 90) * Math.PI) / 180;
-                    const e1 = ((endAngle - 90) * Math.PI) / 180;
-                    const x1 = cx + outerR * Math.cos(s1);
-                    const y1 = cy + outerR * Math.sin(s1);
-                    const x2 = cx + outerR * Math.cos(e1);
-                    const y2 = cy + outerR * Math.sin(e1);
-                    const x3 = cx + innerR * Math.cos(e1);
-                    const y3 = cy + innerR * Math.sin(e1);
-                    const x4 = cx + innerR * Math.cos(s1);
-                    const y4 = cy + innerR * Math.sin(s1);
-                    const large = endAngle - startAngle > 180 ? 1 : 0;
-                    return `M${x1},${y1} A${outerR},${outerR} 0 ${large} 1 ${x2},${y2} L${x3},${y3} A${innerR},${innerR} 0 ${large} 0 ${x4},${y4} Z`;
-                  };
-                  return (
-                    <div className="rounded-xl border border-gray-100 p-4">
-                      <h3 className="text-sm font-semibold text-gray-700 mb-3">Click distribution by ad space</h3>
-                      <div className="flex items-center gap-4">
-                        <svg width={140} height={140} viewBox="0 0 140 140">
-                          {arcs.map((a) => a.pct > 0 && (
-                            <path key={a.slot} d={toPath(a.start, Math.min(a.end, a.start + 359.99), r, ir)} fill={a.color}>
-                              <title>{SLOT_LABELS[a.slot] || a.slot}: {a.totalClicks} ({(a.pct * 100).toFixed(1)}%)</title>
-                            </path>
-                          ))}
-                          <text x={cx} y={cy - 6} textAnchor="middle" className="text-lg font-bold fill-gray-900" style={{ fontSize: 18 }}>{totalSlotClicks.toLocaleString()}</text>
-                          <text x={cx} y={cy + 10} textAnchor="middle" className="text-xs fill-gray-400" style={{ fontSize: 10 }}>total</text>
+                  {dashboardStats.prevPeriodClicksByDay && (
+                    <div className="flex gap-4 mb-2 text-[11px] text-gray-400">
+                      <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-blue-500 inline-block rounded" /> Current</span>
+                      <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-gray-300 inline-block rounded" /> Previous</span>
+                    </div>
+                  )}
+                  {dashboardStats.clicksByDay.length === 0 ? (
+                    <div className="h-44 flex items-center justify-center text-gray-400 text-sm">No click data for this period</div>
+                  ) : (() => {
+                    const data = dashboardStats.clicksByDay;
+                    const prev = dashboardStats.prevPeriodClicksByDay;
+                    const allVals = [...data.map((x) => x.clicks), ...(prev?.map((x) => x.clicks) ?? [])];
+                    const maxVal = Math.max(1, ...allVals);
+                    const ch = 190;
+                    const w = data.length * 26;
+                    const yTicks = maxVal <= 4 ? Array.from({ length: maxVal + 1 }, (_, i) => i) : [0, Math.round(maxVal / 4), Math.round(maxVal / 2), Math.round((maxVal * 3) / 4), maxVal];
+                    const showEveryN = data.length > 16 ? Math.ceil(data.length / 10) : 1;
+                    const toY = (v: number) => ch - (maxVal ? (v / maxVal) * (ch - 8) : 0) - 4;
+                    const hovered = trendHoverIdx !== null ? data[trendHoverIdx] : null;
+                    return (
+                      <div className="relative" style={{ height: ch + 30 }}>
+                        {yTicks.map((t) => (
+                          <div key={t} className="absolute left-0 right-0 flex items-center" style={{ bottom: (maxVal ? (t / maxVal) * ch : 0) + 24 }}>
+                            <span className="text-[10px] text-gray-400 tabular-nums w-8 text-right pr-2 shrink-0">{t}</span>
+                            <div className="flex-1 border-t border-dashed border-gray-100" />
+                          </div>
+                        ))}
+                        {/* Hover tooltip */}
+                        {hovered && trendHoverIdx !== null && (() => {
+                          const xPct = ((trendHoverIdx * 26 + 12) / w) * 100;
+                          const flip = xPct > 70;
+                          return (
+                            <div
+                              className="absolute z-20 pointer-events-none"
+                              style={{ left: `calc(32px + ${xPct}%)`, top: 0, transform: flip ? 'translateX(calc(-100% - 8px))' : 'translateX(8px)' }}
+                            >
+                              <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.13)', padding: '10px 14px', minWidth: 120, fontSize: 12 }}>
+                                <div style={{ fontWeight: 600, color: '#6b7280', marginBottom: 6, fontSize: 11 }}>{hovered.date}</div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6', flexShrink: 0 }} />
+                                  <span style={{ fontWeight: 700, fontSize: 16, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>{hovered.clicks.toLocaleString()}</span>
+                                  <span style={{ color: '#9ca3af', fontSize: 11 }}>clicks</span>
+                                </div>
+                                {prev && prev[trendHoverIdx] != null && (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 6, paddingTop: 6, borderTop: '1px solid #f3f4f6' }}>
+                                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#d1d5db', flexShrink: 0 }} />
+                                    <span style={{ fontWeight: 600, color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>{prev[trendHoverIdx].clicks.toLocaleString()}</span>
+                                    <span style={{ color: '#9ca3af', fontSize: 11 }}>prev</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
+                        <svg
+                          viewBox={`0 0 ${w} ${ch}`}
+                          className="w-full cursor-crosshair"
+                          style={{ height: ch, marginLeft: 32 }}
+                          preserveAspectRatio="none"
+                          onMouseLeave={() => setTrendHoverIdx(null)}
+                          onMouseMove={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const x = ((e.clientX - rect.left) / rect.width) * w;
+                            const idx = Math.round((x - 12) / 26);
+                            setTrendHoverIdx(idx >= 0 && idx < data.length ? idx : null);
+                          }}
+                        >
+                          <defs>
+                            <linearGradient id="overviewAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.18" />
+                              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.02" />
+                            </linearGradient>
+                          </defs>
+                          {prev && prev.length === data.length && (
+                            <polyline points={prev.map((d, i) => `${i * 26 + 12},${toY(d.clicks)}`).join(' ')} fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeDasharray="4 3" strokeLinejoin="round" />
+                          )}
+                          <path d={`M0,${ch} ` + data.map((d, i) => `L${i * 26 + 12},${toY(d.clicks)}`).join(' ') + ` L${(data.length - 1) * 26 + 12},${ch} Z`} fill="url(#overviewAreaGrad)" />
+                          <polyline points={data.map((d, i) => `${i * 26 + 12},${toY(d.clicks)}`).join(' ')} fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+                          {/* Hover vertical line + dot */}
+                          {trendHoverIdx !== null && data[trendHoverIdx] && (
+                            <>
+                              <line
+                                x1={trendHoverIdx * 26 + 12} y1={0}
+                                x2={trendHoverIdx * 26 + 12} y2={ch}
+                                stroke="#3b82f6" strokeWidth="1" strokeDasharray="3 2" opacity="0.5"
+                              />
+                              <circle cx={trendHoverIdx * 26 + 12} cy={toY(data[trendHoverIdx].clicks)} r={4} fill="#3b82f6" stroke="white" strokeWidth="2" />
+                            </>
+                          )}
                         </svg>
-                        <div className="flex-1 space-y-1.5">
-                          {arcs.map((a) => (
-                            <div key={a.slot} className="flex items-center gap-2 text-xs">
-                              <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: a.color }} />
-                              <span className="text-gray-600 truncate flex-1">{SLOT_LABELS[a.slot] || a.slot}</span>
-                              <span className="font-semibold text-gray-900 tabular-nums">{a.totalClicks.toLocaleString()}</span>
-                              <span className="text-gray-400 tabular-nums w-10 text-right">{(a.pct * 100).toFixed(0)}%</span>
+                        <div className="flex" style={{ marginLeft: 32 }}>
+                          {data.map((d, i) => (
+                            <div
+                              key={d.date}
+                              className={`text-center text-[10px] transition-colors ${trendHoverIdx === i ? 'text-blue-500 font-semibold' : 'text-gray-400'}`}
+                              style={{ width: 26 }}
+                            >
+                              {i % showEveryN === 0 ? d.date.slice(5) : ''}
                             </div>
                           ))}
                         </div>
                       </div>
-                    </div>
-                  );
-                })()}
+                    );
+                  })()}
+                </div>
 
-                {/* Clicks by advertiser — table */}
-                {dashboardStats.byAdvertiser.length > 0 && (
-                  <div className="rounded-xl border border-gray-100 p-4">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Performance by advertiser</h3>
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="text-[10px] text-gray-400 uppercase border-b border-gray-100">
-                          <th className="text-left py-1.5 font-medium">Advertiser</th>
-                          <th className="text-right py-1.5 font-medium">Period</th>
-                          <th className="text-right py-1.5 font-medium">7d</th>
-                          <th className="text-right py-1.5 font-medium">30d</th>
-                          <th className="text-right py-1.5 font-medium">Share</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(() => {
-                          const total = Math.max(1, dashboardStats.byAdvertiser.reduce((s, r) => s + r.totalClicks, 0));
-                          return dashboardStats.byAdvertiser.map((row, i) => (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {dashboardStats.bySlot.length > 0 && (() => {
+                    const slotColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4'];
+                    const totalSlotClicks = dashboardStats.bySlot.reduce((s, r) => s + r.totalClicks, 0);
+                    let cumAngle = 0;
+                    const arcs = dashboardStats.bySlot.map((row, i) => {
+                      const pct = totalSlotClicks ? row.totalClicks / totalSlotClicks : 0;
+                      const start = cumAngle;
+                      cumAngle += pct * 360;
+                      return { ...row, pct, start, end: cumAngle, color: slotColors[i % slotColors.length] };
+                    });
+                    const r = 60;
+                    const ir = 38;
+                    const cx = 70;
+                    const cy = 70;
+                    const toPath = (startAngle: number, endAngle: number, outerR: number, innerR: number) => {
+                      const s1 = ((startAngle - 90) * Math.PI) / 180;
+                      const e1 = ((endAngle - 90) * Math.PI) / 180;
+                      const x1 = cx + outerR * Math.cos(s1);
+                      const y1 = cy + outerR * Math.sin(s1);
+                      const x2 = cx + outerR * Math.cos(e1);
+                      const y2 = cy + outerR * Math.sin(e1);
+                      const x3 = cx + innerR * Math.cos(e1);
+                      const y3 = cy + innerR * Math.sin(e1);
+                      const x4 = cx + innerR * Math.cos(s1);
+                      const y4 = cy + innerR * Math.sin(s1);
+                      const large = endAngle - startAngle > 180 ? 1 : 0;
+                      return `M${x1},${y1} A${outerR},${outerR} 0 ${large} 1 ${x2},${y2} L${x3},${y3} A${innerR},${innerR} 0 ${large} 0 ${x4},${y4} Z`;
+                    };
+                    return (
+                      <div className="rounded-xl border border-gray-100 p-4">
+                        <h3 className="text-sm font-semibold text-gray-700 mb-1">Clicks by ad space</h3>
+                        <p className="text-[11px] text-gray-400 mb-3">Distribution of clicks across placements for selected filters.</p>
+                        <div className="flex items-center gap-4">
+                          <svg width={140} height={140} viewBox="0 0 140 140">
+                            {arcs.map((a) => a.pct > 0 && (
+                              <path key={a.slot} d={toPath(a.start, Math.min(a.end, a.start + 359.99), r, ir)} fill={a.color}>
+                                <title>{SLOT_LABELS[a.slot] || a.slot}: {a.totalClicks} ({(a.pct * 100).toFixed(1)}%)</title>
+                              </path>
+                            ))}
+                            <text x={cx} y={cy - 6} textAnchor="middle" className="text-lg font-bold fill-gray-900" style={{ fontSize: 18 }}>{totalSlotClicks.toLocaleString()}</text>
+                            <text x={cx} y={cy + 10} textAnchor="middle" className="text-xs fill-gray-400" style={{ fontSize: 10 }}>clicks</text>
+                          </svg>
+                          <div className="flex-1 space-y-1.5">
+                            {arcs.map((a) => (
+                              <div key={a.slot} className="flex items-center gap-2 text-xs">
+                                <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: a.color }} />
+                                <span className="text-gray-600 truncate flex-1">{SLOT_LABELS[a.slot] || a.slot}</span>
+                                <span className="font-semibold text-gray-900 tabular-nums">{a.totalClicks.toLocaleString()}</span>
+                                <span className="text-gray-400 tabular-nums w-10 text-right">{(a.pct * 100).toFixed(0)}%</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {dashboardStats.byAdvertiser.length > 0 && (
+                    <div className="rounded-xl border border-gray-100 p-4">
+                      <h3 className="text-sm font-semibold text-gray-700 mb-1">Top advertisers</h3>
+                      <p className="text-[11px] text-gray-400 mb-3">Click ranking with sortable period columns.</p>
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="text-[10px] text-gray-400 uppercase border-b border-gray-100">
+                            <th className="text-left py-1.5 font-medium">Advertiser</th>
+                            <th className="text-right py-1.5 font-medium cursor-pointer hover:text-gray-600" onClick={() => toggleAdvSort('period')}>Period {overviewAdvSortBy === 'period' && (overviewAdvSortOrder === 'asc' ? '↑' : '↓')}</th>
+                            <th className="text-right py-1.5 font-medium cursor-pointer hover:text-gray-600" onClick={() => toggleAdvSort('7d')}>7d {overviewAdvSortBy === '7d' && (overviewAdvSortOrder === 'asc' ? '↑' : '↓')}</th>
+                            <th className="text-right py-1.5 font-medium cursor-pointer hover:text-gray-600" onClick={() => toggleAdvSort('30d')}>30d {overviewAdvSortBy === '30d' && (overviewAdvSortOrder === 'asc' ? '↑' : '↓')}</th>
+                            <th className="text-right py-1.5 font-medium cursor-pointer hover:text-gray-600" onClick={() => toggleAdvSort('share')}>Share {overviewAdvSortBy === 'share' && (overviewAdvSortOrder === 'asc' ? '↑' : '↓')}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sortedAdvertisers.map((row, i) => (
                             <tr key={row.advertiserId} className={`${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${row.advertiserId === '__unassigned__' ? 'border-t border-gray-200' : ''}`}>
                               <td className="py-1.5 text-gray-800 font-medium flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: row.advertiserId === '__unassigned__' ? '#9ca3af' : CHART_COLORS[i % CHART_COLORS.length] }} />
@@ -1267,97 +1414,237 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                               <td className="py-1.5 text-right text-gray-500 tabular-nums">{row.last7d.toLocaleString()}</td>
                               <td className="py-1.5 text-right text-gray-500 tabular-nums">{row.last30d.toLocaleString()}</td>
                               <td className="py-1.5 text-right tabular-nums">
-                                <span className="inline-block px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-semibold">{((row.totalClicks / total) * 100).toFixed(1)}%</span>
+                                <span className="inline-block px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-semibold">{((row.totalClicks / totalByAdvertiser) * 100).toFixed(1)}%</span>
                               </td>
                             </tr>
-                          ));
-                        })()}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
 
-              {/* ── Per-advertiser slot breakdown (when advertiser(s) selected) ── */}
-              {dashboardStats.advertiserSlotBreakdown && dashboardStats.advertiserSlotBreakdown.length > 0 && (
-                <div className="rounded-xl border border-gray-100 p-4">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Click breakdown by slot per advertiser</h3>
-                  <div className={`grid gap-4 ${dashboardStats.advertiserSlotBreakdown.length === 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
-                    {dashboardStats.advertiserSlotBreakdown.map((adv) => {
-                      const total = Math.max(1, adv.slots.reduce((s, sl) => s + sl.clicks, 0));
-                      return (
-                        <div key={adv.advertiserId} className="bg-gray-50 rounded-lg p-3">
-                          <div className="text-xs font-semibold text-gray-700 mb-2">{adv.advertiserName}</div>
-                          <div className="space-y-1.5">
-                            {adv.slots.map((sl) => (
-                              <div key={sl.slot} className="flex items-center gap-2 text-xs">
-                                <span className="text-gray-600 truncate flex-1">{SLOT_LABELS[sl.slot] || sl.slot}</span>
-                                <span className="font-semibold text-gray-900 tabular-nums">{sl.clicks.toLocaleString()}</span>
-                                <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden shrink-0">
-                                  <div className="h-full bg-blue-500 rounded-full" style={{ width: `${(sl.clicks / total) * 100}%` }} />
-                                </div>
-                              </div>
+                {isCompare && dashboardStats.clicksByDayByAdvertiser && dashboardStats.clicksByDayByAdvertiser.length > 0 && (() => {
+                  const allAdvs = dashboardStats.byAdvertiser;
+                  const data = dashboardStats.clicksByDayByAdvertiser;
+                  const globalMax = Math.max(1, ...data.flatMap((d) => d.advertisers.map((a) => a.clicks)));
+                  const ch = 160;
+                  const cw = 24;
+                  const showEveryN = data.length > 14 ? Math.ceil(data.length / 10) : 1;
+                  const toY = (v: number) => ch - (globalMax ? (v / globalMax) * (ch - 8) : 0) - 4;
+                  const hoveredDay = compareHoverInfo !== null ? data[compareHoverInfo.dayIdx] : null;
+                  return (
+                    <div className="rounded-xl border border-gray-100 p-5">
+                      <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+                        <div>
+                          <h3 className="text-sm font-semibold text-gray-700">Advertiser comparison over time</h3>
+                          <p className="text-[11px] text-gray-400">Use this to compare selected advertisers directly.</p>
+                        </div>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const headers = ['Date', ...allAdvs.map((a) => a.advertiserName)];
+                              const rows = data.map((d) => [d.date, ...allAdvs.map((a) => { const m = d.advertisers.find((x) => x.advertiserId === a.advertiserId); return String(m?.clicks ?? 0); })]);
+                              const csv = [headers, ...rows].map((r) => r.join(',')).join('\n');
+                              const blob = new Blob([csv], { type: 'text/csv' });
+                              const url = URL.createObjectURL(blob);
+                              const a2 = document.createElement('a');
+                              a2.href = url;
+                              a2.download = `advertiser-comparison-${dashboardRange}.csv`;
+                              a2.click();
+                              URL.revokeObjectURL(url);
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 text-xs font-medium text-gray-600 transition-colors"
+                          >
+                            ↓ CSV
+                          </button>
+                          <div className="flex flex-wrap gap-3">
+                            {allAdvs.map((a, i) => (
+                              <span key={a.advertiserId} className="flex items-center gap-1.5 text-[11px] text-gray-500">
+                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />{a.advertiserName}
+                              </span>
                             ))}
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* ── Featured Groups (ad placements) ── */}
-              {dashboardStats.featuredGroups && dashboardStats.featuredGroups.length > 0 && (
-                <div className="rounded-xl border border-gray-100 p-4">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-0.5">Featured Groups (ad placements)</h3>
-                  <p className="text-[11px] text-gray-400 mb-3">Top 2 pinned slots on the Groups page. Clicks tracked via redirect page.</p>
-                  <div className="space-y-2.5">
-                    {dashboardStats.featuredGroups.map((fg, i) => (
-                      <div key={fg.groupId} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg">
-                        <span className="w-6 h-6 flex items-center justify-center rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold shrink-0">#{i + 1}</span>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-medium text-gray-800 truncate">{fg.name}</div>
-                          <div className="text-[10px] text-gray-400">{fg.advertiserName}</div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <div className="text-sm font-bold text-gray-900 tabular-nums">{fg.clickCount.toLocaleString()}</div>
-                          <div className="text-[10px] text-gray-400">clicks</div>
-                        </div>
-                        {fg.lastClickedAt && (
-                          <div className="text-[10px] text-gray-300 shrink-0">Last: {new Date(fg.lastClickedAt).toLocaleDateString()}</div>
-                        )}
                       </div>
-                    ))}
+                      <div className="relative" style={{ height: ch + 24 }}>
+                        {/* Hover tooltip */}
+                        {hoveredDay && compareHoverInfo !== null && (() => {
+                          const xPct = ((compareHoverInfo.dayIdx * cw + 12) / (data.length * cw)) * 100;
+                          const flip = xPct > 65;
+                          const advEntries = allAdvs.map((a, i) => {
+                            const m = hoveredDay.advertisers.find((x) => x.advertiserId === a.advertiserId);
+                            return { name: a.advertiserName, clicks: m?.clicks ?? 0, color: CHART_COLORS[i % CHART_COLORS.length] };
+                          }).sort((a, b) => b.clicks - a.clicks);
+                          return (
+                            <div
+                              className="absolute z-20 pointer-events-none"
+                              style={{ left: `${xPct}%`, top: 0, transform: flip ? 'translateX(calc(-100% - 6px))' : 'translateX(6px)' }}
+                            >
+                              <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.13)', padding: '10px 14px', minWidth: 160, fontSize: 12 }}>
+                                <div style={{ fontWeight: 600, color: '#6b7280', marginBottom: 8, paddingBottom: 7, borderBottom: '1px solid #f3f4f6', fontSize: 11 }}>{hoveredDay.date}</div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                  {advEntries.map((e) => (
+                                    <div key={e.name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: e.color, flexShrink: 0 }} />
+                                      <span style={{ flex: 1, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100 }}>{e.name}</span>
+                                      <span style={{ fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>{e.clicks.toLocaleString()}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 7, paddingTop: 7, borderTop: '1px solid #f3f4f6', fontSize: 11, color: '#6b7280' }}>
+                                  <span>Total</span>
+                                  <span style={{ fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>{advEntries.reduce((s, e) => s + e.clicks, 0).toLocaleString()}</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                        <svg
+                          viewBox={`0 0 ${data.length * cw} ${ch}`}
+                          className="w-full cursor-crosshair"
+                          style={{ height: ch }}
+                          preserveAspectRatio="none"
+                          onMouseLeave={() => setCompareHoverInfo(null)}
+                          onMouseMove={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const x = ((e.clientX - rect.left) / rect.width) * (data.length * cw);
+                            const dayIdx = Math.round((x - 12) / cw);
+                            if (dayIdx >= 0 && dayIdx < data.length) {
+                              setCompareHoverInfo({ dayIdx, advIdx: 0 });
+                            } else {
+                              setCompareHoverInfo(null);
+                            }
+                          }}
+                        >
+                          {allAdvs.map((adv, ai) => (
+                            <polyline key={adv.advertiserId} points={data.map((d, i) => {
+                              const m = d.advertisers.find((a) => a.advertiserId === adv.advertiserId);
+                              return `${i * cw + 12},${toY(m?.clicks ?? 0)}`;
+                            }).join(' ')} fill="none" stroke={CHART_COLORS[ai % CHART_COLORS.length]} strokeWidth="2" strokeLinejoin="round" />
+                          ))}
+                          {/* Hover vertical rule + dots */}
+                          {compareHoverInfo !== null && hoveredDay && (
+                            <>
+                              <line
+                                x1={compareHoverInfo.dayIdx * cw + 12} y1={0}
+                                x2={compareHoverInfo.dayIdx * cw + 12} y2={ch}
+                                stroke="#6b7280" strokeWidth="1" strokeDasharray="3 2" opacity="0.5"
+                              />
+                              {allAdvs.map((adv, ai) => {
+                                const m = hoveredDay.advertisers.find((a) => a.advertiserId === adv.advertiserId);
+                                return (
+                                  <circle
+                                    key={adv.advertiserId}
+                                    cx={compareHoverInfo.dayIdx * cw + 12}
+                                    cy={toY(m?.clicks ?? 0)}
+                                    r={3.5}
+                                    fill={CHART_COLORS[ai % CHART_COLORS.length]}
+                                    stroke="white"
+                                    strokeWidth="1.5"
+                                  />
+                                );
+                              })}
+                            </>
+                          )}
+                        </svg>
+                        <div className="flex">
+                          {data.map((d, i) => (
+                            <div
+                              key={d.date}
+                              className={`text-center text-[10px] transition-colors ${compareHoverInfo?.dayIdx === i ? 'text-gray-700 font-semibold' : 'text-gray-400'}`}
+                              style={{ width: cw }}
+                            >
+                              {i % showEveryN === 0 ? d.date.slice(5) : ''}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <div className="rounded-xl border border-gray-100 p-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-1">Secondary insights</h3>
+                  <p className="text-[11px] text-gray-400 mb-4">Support metrics for placement optimization and content performance.</p>
+
+                  {dashboardStats.advertiserSlotBreakdown && dashboardStats.advertiserSlotBreakdown.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-xs font-semibold text-gray-600 mb-2">Slot mix by advertiser</h4>
+                      <div className={`grid gap-4 ${dashboardStats.advertiserSlotBreakdown.length === 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
+                        {dashboardStats.advertiserSlotBreakdown.map((adv) => {
+                          const total = Math.max(1, adv.slots.reduce((s, sl) => s + sl.clicks, 0));
+                          return (
+                            <div key={adv.advertiserId} className="bg-gray-50 rounded-lg p-3">
+                              <div className="text-xs font-semibold text-gray-700 mb-2">{adv.advertiserName}</div>
+                              <div className="space-y-1.5">
+                                {adv.slots.map((sl) => (
+                                  <div key={sl.slot} className="flex items-center gap-2 text-xs">
+                                    <span className="text-gray-600 truncate flex-1">{SLOT_LABELS[sl.slot] || sl.slot}</span>
+                                    <span className="font-semibold text-gray-900 tabular-nums">{sl.clicks.toLocaleString()}</span>
+                                    <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden shrink-0">
+                                      <div className="h-full bg-blue-500 rounded-full" style={{ width: `${(sl.clicks / total) * 100}%` }} />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {dashboardStats.featuredGroups && dashboardStats.featuredGroups.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-xs font-semibold text-gray-600 mb-2">Featured groups placements</h4>
+                      <div className="space-y-2.5">
+                        {dashboardStats.featuredGroups.map((fg, i) => (
+                          <div key={fg.groupId} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg">
+                            <span className="w-6 h-6 flex items-center justify-center rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold shrink-0">#{i + 1}</span>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-medium text-gray-800 truncate">{fg.name}</div>
+                              <div className="text-[10px] text-gray-400">{fg.advertiserName}</div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <div className="text-sm font-bold text-gray-900 tabular-nums">{fg.clickCount.toLocaleString()}</div>
+                              <div className="text-[10px] text-gray-400">clicks</div>
+                            </div>
+                            {fg.lastClickedAt && (
+                              <div className="text-[10px] text-gray-300 shrink-0">Last: {new Date(fg.lastClickedAt).toLocaleDateString()}</div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <h4 className="text-xs font-semibold text-gray-600 mb-2">Article views by advertiser</h4>
+                    {dashboardStats.articleClicksByAdvertiser.length > 0 ? (
+                      <div className="space-y-2">
+                        {dashboardStats.articleClicksByAdvertiser.map((row) => {
+                          const max = Math.max(1, ...dashboardStats.articleClicksByAdvertiser.map((r) => r.articleClicks));
+                          return (
+                            <div key={row.advertiserId}>
+                              <div className="flex items-center justify-between text-xs mb-1">
+                                <span className="text-gray-700 font-medium">{row.advertiserName}</span>
+                                <span className="font-semibold text-gray-900 tabular-nums">{row.articleClicks.toLocaleString()}</span>
+                              </div>
+                              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-full rounded-full bg-indigo-400 transition-all" style={{ width: `${(row.articleClicks / max) * 100}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-400 py-1">No articles assigned to advertisers yet.</p>
+                    )}
                   </div>
                 </div>
-              )}
-
-              {/* ── Article views ── */}
-              <div className="rounded-xl border border-gray-100 p-4">
-                <h3 className="text-sm font-semibold text-gray-700 mb-0.5">Article views by advertiser</h3>
-                <p className="text-[11px] text-gray-400 mb-3">Views counted each time a user opens an article. Assign advertisers to articles in the Articles tab.</p>
-                {dashboardStats.articleClicksByAdvertiser.length > 0 ? (
-                  <div className="space-y-2">
-                    {dashboardStats.articleClicksByAdvertiser.map((row) => {
-                      const max = Math.max(1, ...dashboardStats.articleClicksByAdvertiser.map((r) => r.articleClicks));
-                      return (
-                        <div key={row.advertiserId}>
-                          <div className="flex items-center justify-between text-xs mb-1">
-                            <span className="text-gray-700 font-medium">{row.advertiserName}</span>
-                            <span className="font-semibold text-gray-900 tabular-nums">{row.articleClicks.toLocaleString()}</span>
-                          </div>
-                          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                            <div className="h-full rounded-full bg-indigo-400 transition-all" style={{ width: `${(row.articleClicks / max) * 100}%` }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-400 py-1">No articles assigned to advertisers yet.</p>
-                )}
-              </div>
-            </>
+              </>
             );
           })()}
         </div>
@@ -1836,20 +2123,65 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
             const feedCampaigns = campaigns.filter((c) => c.slot === 'feed');
             const filteredByAdvertiser = feedAdsFilterAdvertiser === 'all' ? feedCampaigns : feedCampaigns.filter((c) => c.advertiserId === feedAdsFilterAdvertiser);
             const filteredByStatus = feedAdsFilterStatus === 'all' ? filteredByAdvertiser : filteredByAdvertiser.filter((c) => c.status === feedAdsFilterStatus);
-            const sorted = [...filteredByStatus].sort((a, b) => {
-              if (feedAdsSortBy === 'position') return (a.position ?? 99) - (b.position ?? 99);
-              if (feedAdsSortBy === 'clicks') return (b.clicks ?? 0) - (a.clicks ?? 0);
-              return String(a.status).localeCompare(String(b.status));
+            const filteredByShowOn = feedAdsFilterShowOn === 'all' ? filteredByStatus : filteredByStatus.filter((c) => (c.feedPlacement || 'both') === feedAdsFilterShowOn);
+            const getStats = (cid: string, c: CampaignRow) => {
+              const s = feedClickStats[cid] || { total: c.clicks ?? 0, last24h: 0, last7d: 0, last30d: 0 };
+              return s;
+            };
+            const sorted = [...filteredByShowOn].sort((a, b) => {
+              const order = feedAdsSortOrder === 'asc' ? 1 : -1;
+              let cmp = 0;
+              if (feedAdsSortBy === 'position') cmp = (a.position ?? 99) - (b.position ?? 99);
+              else if (feedAdsSortBy === 'clicks' || feedAdsSortBy === 'total') {
+                const sa = getStats(a._id, a);
+                const sb = getStats(b._id, b);
+                cmp = sa.total - sb.total;
+              } else if (feedAdsSortBy === 'last24h') {
+                const sa = getStats(a._id, a);
+                const sb = getStats(b._id, b);
+                cmp = sa.last24h - sb.last24h;
+              } else if (feedAdsSortBy === 'last7d') {
+                const sa = getStats(a._id, a);
+                const sb = getStats(b._id, b);
+                cmp = sa.last7d - sb.last7d;
+              } else if (feedAdsSortBy === 'last30d') {
+                const sa = getStats(a._id, a);
+                const sb = getStats(b._id, b);
+                cmp = sa.last30d - sb.last30d;
+              } else if (feedAdsSortBy === 'status') cmp = String(a.status).localeCompare(String(b.status));
+              else if (feedAdsSortBy === 'feedPlacement') cmp = String(a.feedPlacement || 'both').localeCompare(String(b.feedPlacement || 'both'));
+              else cmp = 0;
+              return cmp * order;
             });
             const feedTotals = Object.values(feedClickStats).reduce(
               (acc, s) => ({ total: acc.total + s.total, last24h: acc.last24h + s.last24h, last7d: acc.last7d + s.last7d, last30d: acc.last30d + s.last30d }),
               { total: 0, last24h: 0, last7d: 0, last30d: 0 }
             );
+            const handleFeedAdsSort = (key: typeof feedAdsSortBy) => {
+              if (feedAdsSortBy === key) setFeedAdsSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'));
+              else {
+                setFeedAdsSortBy(key);
+                setFeedAdsSortOrder(key === 'position' || key === 'feedPlacement' || key === 'status' ? 'asc' : 'desc');
+              }
+            };
+            const toggleFeedAdsSelect = (id: string) => {
+              setFeedAdsSelectedIds((prev) => {
+                const next = new Set(prev);
+                if (next.has(id)) next.delete(id);
+                else next.add(id);
+                return next;
+              });
+            };
+            const toggleFeedAdsSelectAll = () => {
+              if (feedAdsSelectedIds.size >= sorted.length) setFeedAdsSelectedIds(new Set());
+              else setFeedAdsSelectedIds(new Set(sorted.map((c) => c._id)));
+            };
+            const clearFeedAdsSelection = () => setFeedAdsSelectedIds(new Set());
             return (
               <>
                 <div className="mb-6">
                   <h2 className="text-xl font-bold text-white mb-2">Feed Ads</h2>
-                  <p className="text-[#999] text-sm">One ad every 5 entries on Groups/Bots. Assign to advertiser and monitor performance.</p>
+                  <p className="text-[#999] text-sm">One ad every 5 entries on Groups/Bots. Assign to advertiser and monitor performance. Click column headers to sort; select rows for bulk edit.</p>
                 </div>
 
                 {/* KPI row */}
@@ -1872,7 +2204,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                   </div>
                 </div>
 
-                {/* Filters + New button */}
+                {/* Filters: Advertiser, Status, Show on + New button */}
                 <div className="flex flex-wrap items-center gap-4 mb-4">
                   <select
                     value={feedAdsFilterAdvertiser}
@@ -1894,16 +2226,19 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                     <option value="paused">Paused</option>
                     <option value="ended">Ended</option>
                   </select>
-                  <span className="text-[#666] text-sm">Sort by:</span>
-                  <select
-                    value={feedAdsSortBy}
-                    onChange={(e) => setFeedAdsSortBy(e.target.value as 'position' | 'clicks' | 'status')}
-                    className="bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
-                  >
-                    <option value="position">Position (default)</option>
-                    <option value="clicks">Clicks</option>
-                    <option value="status">Status</option>
-                  </select>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[#666] text-sm">Show on:</span>
+                    {['all', 'both', 'groups', 'bots'].map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setFeedAdsFilterShowOn(v)}
+                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${feedAdsFilterShowOn === v ? 'bg-[#b31b1b] text-white border-[#b31b1b]' : 'bg-white/5 text-[#999] border-white/10 hover:border-white/20'}`}
+                      >
+                        {v === 'all' ? 'All' : v === 'both' ? 'Both' : v === 'groups' ? 'Groups' : 'Bots'}
+                      </button>
+                    ))}
+                  </div>
                   <button
                     onClick={() => {
                       setCampForm({ ...campForm, slot: 'feed', advertiserId: advertisers[0]?._id || '', name: '', creative: '', destinationUrl: '', description: '', category: 'All', country: 'All', buttonText: 'Visit Site', feedTier: 1, tierSlot: 1, position: 1, feedPlacement: 'both' });
@@ -1916,39 +2251,118 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                   </button>
                 </div>
 
+                {/* Bulk action bar */}
+                {feedAdsSelectedIds.size > 0 && (
+                  <FeedAdsBulkBar
+                    selectedCount={feedAdsSelectedIds.size}
+                    onClear={clearFeedAdsSelection}
+                    onBulkStatus={async (status: string) => {
+                      setFeedAdsBulkSaving(true);
+                      try {
+                        for (const id of feedAdsSelectedIds) {
+                          await axios.put(`/api/admin/campaigns/${id}`, { status }, authHeaders());
+                        }
+                        await fetchAll();
+                        clearFeedAdsSelection();
+                      } catch (err: any) {
+                        alert(err.response?.data?.message || err.message || 'Bulk update failed');
+                      } finally {
+                        setFeedAdsBulkSaving(false);
+                      }
+                    }}
+                    onBulkShowOn={async (feedPlacement: 'groups' | 'bots' | 'both') => {
+                      setFeedAdsBulkSaving(true);
+                      try {
+                        for (const id of feedAdsSelectedIds) {
+                          await axios.put(`/api/admin/campaigns/${id}`, { feedPlacement }, authHeaders());
+                        }
+                        await fetchAll();
+                        clearFeedAdsSelection();
+                      } catch (err: any) {
+                        alert(err.response?.data?.message || err.message || 'Bulk update failed');
+                      } finally {
+                        setFeedAdsBulkSaving(false);
+                      }
+                    }}
+                    saving={feedAdsBulkSaving}
+                  />
+                )}
+
                 <div className="rounded-xl border border-white/10 overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-white/5">
                       <tr>
-                        <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">#</th>
+                        <th className="px-3 py-2 w-10">
+                          <input
+                            type="checkbox"
+                            checked={sorted.length > 0 && feedAdsSelectedIds.size === sorted.length}
+                            onChange={toggleFeedAdsSelectAll}
+                            className="rounded border-white/30 text-[#b31b1b] focus:ring-[#b31b1b]"
+                          />
+                        </th>
+                        <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase cursor-pointer hover:text-white select-none" title="Every 5th entry. Active ads fill slots 5, 10, 15… in order." onClick={() => handleFeedAdsSort('position')}>
+                          Slot {feedAdsSortBy === 'position' && (feedAdsSortOrder === 'asc' ? '↑' : '↓')}
+                        </th>
                         <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Advertiser</th>
                         <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Image</th>
                         <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Name</th>
-                        <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Show on</th>
-                        <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">24h</th>
-                        <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">7d</th>
-                        <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">30d</th>
-                        <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">Total</th>
-                        <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Status</th>
+                        <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase cursor-pointer hover:text-white select-none" onClick={() => handleFeedAdsSort('feedPlacement')}>
+                          Show on {feedAdsSortBy === 'feedPlacement' && (feedAdsSortOrder === 'asc' ? '↑' : '↓')}
+                        </th>
+                        <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase cursor-pointer hover:text-white select-none" onClick={() => handleFeedAdsSort('last24h')}>
+                          24h {feedAdsSortBy === 'last24h' && (feedAdsSortOrder === 'asc' ? '↑' : '↓')}
+                        </th>
+                        <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase cursor-pointer hover:text-white select-none" onClick={() => handleFeedAdsSort('last7d')}>
+                          7d {feedAdsSortBy === 'last7d' && (feedAdsSortOrder === 'asc' ? '↑' : '↓')}
+                        </th>
+                        <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase cursor-pointer hover:text-white select-none" onClick={() => handleFeedAdsSort('last30d')}>
+                          30d {feedAdsSortBy === 'last30d' && (feedAdsSortOrder === 'asc' ? '↑' : '↓')}
+                        </th>
+                        <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase cursor-pointer hover:text-white select-none" onClick={() => handleFeedAdsSort('total')}>
+                          Total {feedAdsSortBy === 'total' && (feedAdsSortOrder === 'asc' ? '↑' : '↓')}
+                        </th>
+                        <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase cursor-pointer hover:text-white select-none" onClick={() => handleFeedAdsSort('status')}>
+                          Status {feedAdsSortBy === 'status' && (feedAdsSortOrder === 'asc' ? '↑' : '↓')}
+                        </th>
                         <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {sorted.map((c) => {
-                        const stats = feedClickStats[c._id] || { total: c.clicks ?? 0, last24h: 0, last7d: 0, last30d: 0 };
+                        const stats = getStats(c._id, c);
                         return (
                           <tr key={c._id} className="hover:bg-white/5">
-                            <td className="px-3 py-2 font-bold text-white">{c.position ?? (c.feedTier != null && c.tierSlot != null ? (c.feedTier - 1) * 4 + c.tierSlot : '—')}</td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="checkbox"
+                                checked={feedAdsSelectedIds.has(c._id)}
+                                onChange={() => toggleFeedAdsSelect(c._id)}
+                                className="rounded border-white/30 text-[#b31b1b] focus:ring-[#b31b1b]"
+                              />
+                            </td>
+                            <td className="px-3 py-2 font-bold tabular-nums">
+                              {(() => {
+                                const rank = c.position ?? (c.feedTier != null && c.tierSlot != null ? (c.feedTier - 1) * 4 + c.tierSlot : null);
+                                if (rank == null) return <span className="text-[#666]">—</span>;
+                                if (c.status === 'active') {
+                                  // compute display slot within the active-only sorted list
+                                  const activeRank = sorted.filter((x) => x.status === 'active').findIndex((x) => x._id === c._id);
+                                  const displaySlot = activeRank >= 0 ? (activeRank + 1) * 5 : rank * 5;
+                                  return <span className="text-white" title={`Priority ${rank} → shows at every ${displaySlot}th entry`}>{displaySlot}th</span>;
+                                }
+                                return <span className="text-[#666]" title={`Priority ${rank} (inactive)`}>#{rank}</span>;
+                              })()}
+                            </td>
                             <td className="px-3 py-2 text-white">{c.advertiserName || advertisers.find((a) => a._id === c.advertiserId)?.name || '—'}</td>
                             <td className="px-3 py-2">
                               {c.creative ? <img src={c.creative} alt="" className="h-10 w-14 object-cover rounded" /> : <span className="text-[#666]">—</span>}
                             </td>
                             <td className="px-3 py-2 text-white font-medium">{c.name}</td>
                             <td className="px-3 py-2 text-[#999]">{c.feedPlacement === 'both' ? 'Groups + Bots' : c.feedPlacement === 'groups' ? 'Groups' : c.feedPlacement === 'bots' ? 'Bots' : 'Both'}</td>
-                            <td className="px-3 py-2 text-right text-green-400">{stats.last24h.toLocaleString()}</td>
-                            <td className="px-3 py-2 text-right text-[#999]">{stats.last7d.toLocaleString()}</td>
-                            <td className="px-3 py-2 text-right text-[#999]">{stats.last30d.toLocaleString()}</td>
-                            <td className="px-3 py-2 text-right font-semibold text-white">{stats.total.toLocaleString()}</td>
+                            <td className="px-3 py-2 text-right text-green-400 tabular-nums">{stats.last24h.toLocaleString()}</td>
+                            <td className="px-3 py-2 text-right text-[#999] tabular-nums">{stats.last7d.toLocaleString()}</td>
+                            <td className="px-3 py-2 text-right text-[#999] tabular-nums">{stats.last30d.toLocaleString()}</td>
+                            <td className="px-3 py-2 text-right font-semibold text-white tabular-nums">{stats.total.toLocaleString()}</td>
                             <td className="px-3 py-2">
                               <span className={`px-2 py-0.5 rounded text-xs ${c.status === 'active' ? 'bg-green-500/20 text-green-400' : 'text-[#666]'}`}>{c.status}</span>
                             </td>

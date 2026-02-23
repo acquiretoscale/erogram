@@ -38,6 +38,19 @@ export default function ArticlesTab() {
     const [tagInput, setTagInput] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
+    type SortKey = 'title' | 'advertiser' | 'clicks' | 'last72h' | 'status';
+    const [sortBy, setSortBy] = useState<SortKey>('clicks');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+    const handleSort = (key: SortKey) => {
+        if (sortBy === key) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortBy(key);
+            setSortOrder(key === 'title' || key === 'advertiser' || key === 'status' ? 'asc' : 'desc');
+        }
+    };
+
     useEffect(() => {
         fetchArticles();
     }, []);
@@ -265,6 +278,32 @@ export default function ArticlesTab() {
         const excerpt = (article.excerpt || '').toLowerCase();
         const advertiserName = (article.advertiserName || '').toLowerCase();
         return title.includes(q) || excerpt.includes(q) || advertiserName.includes(q);
+    });
+
+    const sortedArticles = [...filteredArticles].sort((a, b) => {
+        let aVal: string | number = '';
+        let bVal: string | number = '';
+        if (sortBy === 'title') {
+            aVal = (a.title || '').toLowerCase();
+            bVal = (b.title || '').toLowerCase();
+        } else if (sortBy === 'advertiser') {
+            aVal = (a.advertiserName || '').toLowerCase();
+            bVal = (b.advertiserName || '').toLowerCase();
+        } else if (sortBy === 'clicks') {
+            aVal = a.views ?? 0;
+            bVal = b.views ?? 0;
+        } else if (sortBy === 'last72h') {
+            aVal = a.weeklyViews ?? 0;
+            bVal = b.weeklyViews ?? 0;
+        } else if (sortBy === 'status') {
+            aVal = a.status || '';
+            bVal = b.status || '';
+        }
+        if (typeof aVal === 'number' && typeof bVal === 'number') {
+            return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
+        }
+        const cmp = String(aVal).localeCompare(String(bVal));
+        return sortOrder === 'asc' ? cmp : -cmp;
     });
 
     if (showEditor) {
@@ -517,7 +556,7 @@ export default function ArticlesTab() {
                         <p className="text-red-400 mb-4">{error}</p>
                         <button onClick={() => { setIsLoading(true); fetchArticles(); }} className="px-6 py-2 bg-[#b31b1b] hover:bg-[#c42b2b] text-white rounded-xl font-bold">Retry</button>
                     </div>
-                ) : filteredArticles.length === 0 ? (
+                ) : sortedArticles.length === 0 ? (
                     <div className="p-12 text-center text-[#999]">No articles found</div>
                 ) : (
                     <div className="overflow-x-auto">
@@ -525,15 +564,26 @@ export default function ArticlesTab() {
                             <thead className="bg-white/5 text-[#666]">
                                 <tr>
                                     <th className="px-4 py-3 text-left font-bold text-xs uppercase w-12"> </th>
-                                    <th className="px-4 py-3 text-left font-bold text-xs uppercase">Title</th>
-                                    <th className="px-4 py-3 text-left font-bold text-xs uppercase">Advertiser</th>
-                                    <th className="px-4 py-3 text-right font-bold text-xs uppercase">Clicks</th>
-                                    <th className="px-4 py-3 text-left font-bold text-xs uppercase">Status</th>
+                                    <th className="px-4 py-3 text-left font-bold text-xs uppercase cursor-pointer hover:text-white transition-colors select-none" onClick={() => handleSort('title')}>
+                                        Title {sortBy === 'title' && (sortOrder === 'asc' ? '↑' : '↓')}
+                                    </th>
+                                    <th className="px-4 py-3 text-left font-bold text-xs uppercase cursor-pointer hover:text-white transition-colors select-none" onClick={() => handleSort('advertiser')}>
+                                        Advertiser {sortBy === 'advertiser' && (sortOrder === 'asc' ? '↑' : '↓')}
+                                    </th>
+                                    <th className="px-4 py-3 text-right font-bold text-xs uppercase cursor-pointer hover:text-white transition-colors select-none" onClick={() => handleSort('clicks')}>
+                                        Clicks {sortBy === 'clicks' && (sortOrder === 'asc' ? '↑' : '↓')}
+                                    </th>
+                                    <th className="px-4 py-3 text-right font-bold text-xs uppercase cursor-pointer hover:text-white transition-colors select-none" onClick={() => handleSort('last72h')}>
+                                        Last 72h {sortBy === 'last72h' && (sortOrder === 'asc' ? '↑' : '↓')}
+                                    </th>
+                                    <th className="px-4 py-3 text-left font-bold text-xs uppercase cursor-pointer hover:text-white transition-colors select-none" onClick={() => handleSort('status')}>
+                                        Status {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
+                                    </th>
                                     <th className="px-4 py-3 text-left font-bold text-xs uppercase">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
-                                {filteredArticles.map((article) => (
+                                {sortedArticles.map((article) => (
                                     <tr key={article._id} className="hover:bg-white/[0.02] transition-colors">
                                         <td className="px-4 py-3">
                                             {article.featuredImage ? (
@@ -548,6 +598,9 @@ export default function ArticlesTab() {
                                         </td>
                                         <td className="px-4 py-3 text-[#999]">{article.advertiserName || '—'}</td>
                                         <td className="px-4 py-3 text-right font-semibold text-white">{(article.views ?? 0).toLocaleString()}</td>
+                                        <td className="px-4 py-3 text-right">
+                                            <span className={`tabular-nums ${(article.weeklyViews ?? 0) > 0 ? 'text-green-400 font-semibold' : 'text-[#666]'}`}>{(article.weeklyViews ?? 0).toLocaleString()}</span>
+                                        </td>
                                         <td className="px-4 py-3">
                                             <span className={`px-2 py-0.5 rounded text-xs ${article.status === 'published' ? 'bg-green-500/20 text-green-400' : 'text-[#666]'}`}>{article.status}</span>
                                         </td>

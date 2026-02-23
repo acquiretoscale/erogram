@@ -124,82 +124,41 @@ export async function PUT(
       );
     }
     
-    // Prepare update data using $set to ensure all fields are updated
-    const updateData: any = {
-      $set: {
-        content,
-        updatedAt: new Date(),
-      }
+    const articleId = id;
+    
+    const setFields: any = {
+      content,
+      updatedAt: new Date(),
+      excerpt: excerpt !== undefined && excerpt !== null ? excerpt : '',
+      featuredImage: featuredImage !== undefined && featuredImage !== null ? featuredImage : '',
+      tags: tags || [],
+      metaTitle: metaTitle !== undefined && metaTitle !== null ? metaTitle : '',
+      metaDescription: metaDescription !== undefined && metaDescription !== null ? metaDescription : '',
+      metaKeywords: metaKeywords !== undefined && metaKeywords !== null ? metaKeywords : '',
+      ogImage: ogImage !== undefined && ogImage !== null ? ogImage : '',
+      ogTitle: ogTitle !== undefined && ogTitle !== null ? ogTitle : '',
+      ogDescription: ogDescription !== undefined && ogDescription !== null ? ogDescription : '',
+      twitterCard: twitterCard || 'summary_large_image',
+      twitterImage: twitterImage !== undefined && twitterImage !== null ? twitterImage : '',
+      twitterTitle: twitterTitle !== undefined && twitterTitle !== null ? twitterTitle : '',
+      twitterDescription: twitterDescription !== undefined && twitterDescription !== null ? twitterDescription : '',
     };
-    
-    // Always set excerpt and featuredImage (even if empty strings)
-    updateData.$set.excerpt = excerpt !== undefined && excerpt !== null ? excerpt : '';
-    updateData.$set.featuredImage = featuredImage !== undefined && featuredImage !== null ? featuredImage : '';
-    updateData.$set.tags = tags || [];
-    
-    // Handle status - explicitly set it
-    if (status !== undefined && status !== null && (status === 'published' || status === 'draft')) {
-      updateData.$set.status = status;
-      // Handle publishedAt based on status
-      if (status === 'published') {
-        // If publishing for the first time or republishing, set publishedAt
-        if (!oldArticle.publishedAt) {
-          updateData.$set.publishedAt = new Date();
-        }
-        // If already published, keep the existing publishedAt (don't update it)
-      } else if (status === 'draft') {
-        // If changing to draft, clear publishedAt
-        updateData.$set.publishedAt = null;
-      }
-    } else {
-      // If status is not provided or invalid, keep the old status
-      updateData.$set.status = oldArticle.status || 'draft';
-    }
-    
-    // Handle title change - regenerate slug if title changed
+
     if (title && title !== oldArticle.title) {
-      updateData.$set.title = title;
+      setFields.title = title;
       const baseSlug = slugify(title);
       let slug = baseSlug;
       let counter = 1;
       while (await Article.findOne({ slug, _id: { $ne: id } })) {
         slug = `${baseSlug}-${counter++}`;
       }
-      updateData.$set.slug = slug;
+      setFields.slug = slug;
     }
-    
-    // Use updateOne with $set to ensure all fields are saved
-    // id is already a string from params
-    const articleId = id;
-    
-    // IMPORTANT: Use unset first, then set to ensure fields are saved even if they were empty/default
-    // This forces MongoDB to store the fields even if they're empty strings
-    const unsetFields: any = {};
-    const setFields: any = {
-      content,
-      updatedAt: new Date(),
-    };
-    
-    // Always set these fields explicitly, even if empty
-    setFields.excerpt = excerpt !== undefined && excerpt !== null ? excerpt : '';
-    setFields.featuredImage = featuredImage !== undefined && featuredImage !== null ? featuredImage : '';
-    setFields.tags = tags || [];
-    // SEO Metadata
-    setFields.metaTitle = metaTitle !== undefined && metaTitle !== null ? metaTitle : '';
-    setFields.metaDescription = metaDescription !== undefined && metaDescription !== null ? metaDescription : '';
-    setFields.metaKeywords = metaKeywords !== undefined && metaKeywords !== null ? metaKeywords : '';
-    setFields.ogImage = ogImage !== undefined && ogImage !== null ? ogImage : '';
-    setFields.ogTitle = ogTitle !== undefined && ogTitle !== null ? ogTitle : '';
-    setFields.ogDescription = ogDescription !== undefined && ogDescription !== null ? ogDescription : '';
-    setFields.twitterCard = twitterCard || 'summary_large_image';
-    setFields.twitterImage = twitterImage !== undefined && twitterImage !== null ? twitterImage : '';
-    setFields.twitterTitle = twitterTitle !== undefined && twitterTitle !== null ? twitterTitle : '';
-    setFields.twitterDescription = twitterDescription !== undefined && twitterDescription !== null ? twitterDescription : '';
+
     if (advertiserId !== undefined) {
       setFields.advertiserId = (advertiserId && String(advertiserId).trim()) ? advertiserId : null;
     }
-    
-    // Handle status
+
     if (status !== undefined && status !== null && (status === 'published' || status === 'draft')) {
       setFields.status = status;
       if (status === 'published') {
@@ -213,15 +172,9 @@ export async function PUT(
       setFields.status = oldArticle.status || 'draft';
     }
     
-    // Build the full update with both $set and potentially $unset
     const finalUpdate: any = { $set: setFields };
-    
-    // Only unset if we need to clear fields that shouldn't exist
-    if (Object.keys(unsetFields).length > 0) {
-      finalUpdate.$unset = unsetFields;
-    }
-    
-    // Try using MongoDB native collection to bypass Mongoose
+
+    // Use MongoDB native collection to bypass Mongoose caching
     await connectDB(); // Ensure DB is connected
     const mongoose = require('mongoose');
     const db = mongoose.connection.db;

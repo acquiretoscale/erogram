@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
       config = await SiteConfig.create({
         navbarButton1: {
           text: 'Casual dating',
-          url: 'https://go.cm-trk3.com/aff_f?h=meFeSO',
+          url: 'https://go.cm-trk6.com/aff_c?offer_id=11167&aff_id=93961&url_id=19191&source=erogram.pro&aff_sub=feed',
           enabled: true,
         },
         navbarButton2: {
@@ -138,7 +138,7 @@ export async function PUT(req: NextRequest) {
       const newConfigData: any = {
         navbarButton1: {
           text: body.navbarButton1?.text || 'Casual dating',
-          url: body.navbarButton1?.url || 'https://go.cm-trk3.com/aff_f?h=meFeSO',
+          url: body.navbarButton1?.url || 'https://go.cm-trk6.com/aff_c?offer_id=11167&aff_id=93961&url_id=19191&source=erogram.pro&aff_sub=feed',
           enabled: body.navbarButton1?.enabled ?? true,
         },
         navbarButton2: {
@@ -191,7 +191,7 @@ export async function PUT(req: NextRequest) {
       if (body.navbarButton1) {
         config.navbarButton1 = {
           text: body.navbarButton1.text !== undefined ? body.navbarButton1.text : (config.navbarButton1?.text || 'Casual dating'),
-          url: body.navbarButton1.url !== undefined ? body.navbarButton1.url : (config.navbarButton1?.url || 'https://go.cm-trk3.com/aff_f?h=meFeSO'),
+          url: body.navbarButton1.url !== undefined ? body.navbarButton1.url : (config.navbarButton1?.url || 'https://go.cm-trk6.com/aff_c?offer_id=11167&aff_id=93961&url_id=19191&source=erogram.pro&aff_sub=feed'),
           enabled: body.navbarButton1.enabled !== undefined ? body.navbarButton1.enabled : (config.navbarButton1?.enabled ?? true),
         };
       }
@@ -213,7 +213,7 @@ export async function PUT(req: NextRequest) {
       if (body.navbarButton) {
         config.navbarButton1 = {
           text: body.navbarButton.text !== undefined ? body.navbarButton.text : (config.navbarButton1?.text || 'Casual dating'),
-          url: body.navbarButton.url !== undefined ? body.navbarButton.url : (config.navbarButton1?.url || 'https://go.cm-trk3.com/aff_f?h=meFeSO'),
+          url: body.navbarButton.url !== undefined ? body.navbarButton.url : (config.navbarButton1?.url || 'https://go.cm-trk6.com/aff_c?offer_id=11167&aff_id=93961&url_id=19191&source=erogram.pro&aff_sub=feed'),
           enabled: body.navbarButton.enabled !== undefined ? body.navbarButton.enabled : (config.navbarButton1?.enabled ?? true),
         };
       }

@@ -76,10 +76,15 @@ export const groupSchema = new Schema(
     pinned: { type: Boolean, default: false },
     views: { type: Number, default: 0 },
     weeklyViews: { type: Number, default: 0 },
+    weeklyClicks: { type: Number, default: 0 },
+    /** Daily view counts for last-48h: key = "YYYY-MM-DD" (UTC), value = count */
+    viewsByDay: { type: Map, of: Number, default: new Map() },
     isAdvertisement: { type: Boolean, default: false },
     advertisementUrl: { type: String },
     advertiserId: { type: Schema.Types.ObjectId, ref: 'Advertiser', required: false },
     clickCount: { type: Number, default: 0 },
+    /** Daily click counts for last-48h: key = "YYYY-MM-DD" (UTC), value = count */
+    clickCountByDay: { type: Map, of: Number, default: new Map() },
     lastClickedAt: { type: Date },
     memberCount: { type: Number, default: 0 },
     memberCountUpdatedAt: { type: Date },
@@ -132,6 +137,7 @@ export const articleSchema = new Schema(
     status: { type: String, enum: ['draft', 'published'], default: 'draft', required: true },
     publishedAt: { type: Date, required: false },
     views: { type: Number, default: 0 },
+    weeklyViews: { type: Number, default: 0 },
     advertiserId: { type: Schema.Types.ObjectId, ref: 'Advertiser', required: false },
     tags: [{ type: String }],
     // SEO Metadata fields
@@ -289,7 +295,7 @@ export const siteConfigSchema = new Schema(
   {
     navbarButton1: {
       text: { type: String, required: true, default: 'Casual dating' },
-      url: { type: String, required: true, default: 'https://go.cm-trk3.com/aff_f?h=meFeSO' },
+      url: { type: String, required: true, default: 'https://go.cm-trk6.com/aff_c?offer_id=11167&aff_id=93961&url_id=19191&source=erogram.pro&aff_sub=feed' },
       enabled: { type: Boolean, default: true },
     },
     navbarButton2: {

@@ -56,7 +56,7 @@ export async function GET(
       twitterDescription: ar.twitterDescription || '',
     };
 
-    Article.findByIdAndUpdate(ar._id, { $inc: { views: 1 } }).catch(err => console.error('Error updating article views:', err));
+    Article.findByIdAndUpdate(ar._id, { $inc: { views: 1, weeklyViews: 1 } }).catch(err => console.error('Error updating article views:', err));
     
     return NextResponse.json(result);
   } catch (error: any) {
