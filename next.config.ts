@@ -1,9 +1,11 @@
 import type { NextConfig } from "next";
 import withBundleAnalyzer from '@next/bundle-analyzer';
 
+const port = process.env.PORT ? String(process.env.PORT) : '';
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true, // Enable gzip compression
+  ...(port && port !== '3000' ? { distDir: `.next-${port}` } : {}),
 
   experimental: {
     optimizePackageImports: ['framer-motion', 'axios', '@types/*'],
