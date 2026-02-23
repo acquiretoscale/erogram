@@ -93,6 +93,7 @@ function FeedAdsBulkBar({
   onBulkStatus,
   onBulkShowOn,
   onBulkLink,
+  onBulkDuplicate,
   saving,
 }: {
   selectedCount: number;
@@ -100,6 +101,7 @@ function FeedAdsBulkBar({
   onBulkStatus: (status: string) => Promise<void>;
   onBulkShowOn: (feedPlacement: 'groups' | 'bots' | 'both') => Promise<void>;
   onBulkLink: (destinationUrl: string) => Promise<void>;
+  onBulkDuplicate: () => Promise<void>;
   saving: boolean;
 }) {
   const [bulkStatus, setBulkStatus] = useState<string>('');
@@ -165,6 +167,14 @@ function FeedAdsBulkBar({
           {saving ? 'Saving…' : 'Apply link'}
         </button>
       </div>
+      <button
+        type="button"
+        disabled={saving}
+        onClick={onBulkDuplicate}
+        className="px-3 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium"
+      >
+        {saving ? 'Duplicating…' : `Duplicate ${selectedCount}`}
+      </button>
       <button type="button" onClick={onClear} className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm">
         Clear selection
       </button>
@@ -223,6 +233,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
   const [feedAdsBulkSaving, setFeedAdsBulkSaving] = useState(false);
   const [feedAdsDragIdx, setFeedAdsDragIdx] = useState<number | null>(null);
   const [feedAdsDragOverIdx, setFeedAdsDragOverIdx] = useState<number | null>(null);
+  const [feedAdsMenuOpen, setFeedAdsMenuOpen] = useState<string | null>(null);
   const [feedAdsDateRange, setFeedAdsDateRange] = useState<'24h' | '7d' | '30d' | 'all'>('30d');
   const [feedAdsCustomFrom, setFeedAdsCustomFrom] = useState('');
   const [feedAdsCustomTo, setFeedAdsCustomTo] = useState('');
@@ -2349,6 +2360,40 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
               setFeedAdsDragIdx(null);
               setFeedAdsDragOverIdx(null);
             };
+            const duplicateCampaigns = async (ids: string[]) => {
+              const token = getToken();
+              if (!token) return;
+              const toDuplicate = feedCampaigns.filter((c) => ids.includes(c._id));
+              if (toDuplicate.length === 0) return;
+              const maxPos = Math.max(0, ...feedCampaigns.map((c) => c.position ?? 0));
+              let nextPos = maxPos + 1;
+              for (const c of toDuplicate) {
+                const payload: Record<string, unknown> = {
+                  name: `${c.name} (copy)`,
+                  slot: 'feed',
+                  creative: c.creative || '',
+                  destinationUrl: c.destinationUrl || '',
+                  startDate: new Date().toISOString().slice(0, 10),
+                  endDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+                  status: 'paused',
+                  isVisible: true,
+                  position: nextPos,
+                  description: c.description || '',
+                  category: c.category || 'All',
+                  country: c.country || 'All',
+                  buttonText: c.buttonText || 'Visit Site',
+                  feedPlacement: c.feedPlacement || 'both',
+                  videoUrl: (c as any).videoUrl || '',
+                  badgeText: (c as any).badgeText || '',
+                  verified: Boolean((c as any).verified),
+                  advertiserId: c.advertiserId,
+                };
+                await axios.post('/api/admin/campaigns', payload, authHeaders());
+                nextPos++;
+              }
+              await fetchAll();
+              clearFeedAdsSelection();
+            };
             return (
               <>
                 <div className="mb-6">
@@ -2428,6 +2473,16 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                   <FeedAdsBulkBar
                     selectedCount={feedAdsSelectedIds.size}
                     onClear={clearFeedAdsSelection}
+                    onBulkDuplicate={async () => {
+                      setFeedAdsBulkSaving(true);
+                      try {
+                        await duplicateCampaigns(Array.from(feedAdsSelectedIds));
+                      } catch (err: any) {
+                        alert(err.response?.data?.message || err.message || 'Duplicate failed');
+                      } finally {
+                        setFeedAdsBulkSaving(false);
+                      }
+                    }}
                     onBulkStatus={async (status: string) => {
                       setFeedAdsBulkSaving(true);
                       try {
@@ -2511,7 +2566,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                         <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase cursor-pointer hover:text-white select-none" onClick={() => handleFeedAdsSort('status')}>
                           Status {feedAdsSortBy === 'status' && (feedAdsSortOrder === 'asc' ? '↑' : '↓')}
                         </th>
-                        <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Actions</th>
+                        <th className="px-3 py-2 text-center font-bold text-[#999] text-xs uppercase w-12"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
@@ -2574,9 +2629,50 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                             <td className="px-3 py-2">
                               <span className={`px-2 py-0.5 rounded text-xs ${c.status === 'active' ? 'bg-green-500/20 text-green-400' : 'text-[#666]'}`}>{c.status}</span>
                             </td>
-                            <td className="px-3 py-2">
-                              <button onClick={() => openEditCampaign(c)} className="text-blue-400 hover:underline mr-2">Edit</button>
-                              <button onClick={() => handleDeleteCampaign(c._id)} className="text-red-400 hover:underline">Delete</button>
+                            <td className="px-3 py-2 text-center">
+                              <div className="relative inline-block">
+                                <button
+                                  onClick={() => setFeedAdsMenuOpen(feedAdsMenuOpen === c._id ? null : c._id)}
+                                  className="p-1.5 rounded-lg hover:bg-white/10 text-[#999] hover:text-white transition-colors"
+                                >
+                                  <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="3" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="13" r="1.5"/></svg>
+                                </button>
+                                {feedAdsMenuOpen === c._id && (
+                                  <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setFeedAdsMenuOpen(null)} />
+                                    <div className="absolute right-0 top-8 z-50 w-36 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-xl overflow-hidden">
+                                      <button
+                                        onClick={() => { setFeedAdsMenuOpen(null); openEditCampaign(c); }}
+                                        className="w-full text-left px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                                      >
+                                        <span className="text-blue-400">✎</span> Edit
+                                      </button>
+                                      <button
+                                        onClick={async () => {
+                                          setFeedAdsMenuOpen(null);
+                                          try { await duplicateCampaigns([c._id]); } catch (err: any) { alert(err.response?.data?.message || 'Duplicate failed'); }
+                                        }}
+                                        className="w-full text-left px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                                      >
+                                        <span className="text-purple-400">⧉</span> Duplicate
+                                      </button>
+                                      <button
+                                        onClick={() => { setFeedAdsMenuOpen(null); toggleCampaignStatus(c); }}
+                                        className="w-full text-left px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                                      >
+                                        <span className="text-yellow-400">{c.status === 'active' ? '⏸' : '▶'}</span> {c.status === 'active' ? 'Pause' : 'Start'}
+                                      </button>
+                                      <div className="border-t border-white/5" />
+                                      <button
+                                        onClick={() => { setFeedAdsMenuOpen(null); handleDeleteCampaign(c._id); }}
+                                        className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2"
+                                      >
+                                        <span>🗑</span> Delete
+                                      </button>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );

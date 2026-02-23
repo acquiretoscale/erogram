@@ -144,20 +144,22 @@ export async function createCampaign(
   if (data.slot === 'feed') {
     const tier = data.feedTier != null ? Number(data.feedTier) : null;
     const slot = data.tierSlot != null ? Number(data.tierSlot) : null;
-    if (tier == null || slot == null || tier < 1 || tier > 3 || slot < 1 || slot > 4) {
-      throw new Error('Feed campaigns require Tier (1–3) and Slot (1–4).');
-    }
-    const existing = await Campaign.findOne({
-      slot: 'feed',
-      feedTier: tier,
-      tierSlot: slot,
-      status: 'active',
-      isVisible: true,
-      startDate: { $lte: now },
-      endDate: { $gte: now },
-    });
-    if (existing) {
-      throw new Error(`Feed Tier ${tier} Slot ${slot} is already taken.`);
+    if (tier != null && slot != null) {
+      if (tier < 1 || slot < 1 || slot > 4) {
+        throw new Error('Feed Tier must be ≥ 1 and Slot must be 1–4.');
+      }
+      const existing = await Campaign.findOne({
+        slot: 'feed',
+        feedTier: tier,
+        tierSlot: slot,
+        status: 'active',
+        isVisible: true,
+        startDate: { $lte: now },
+        endDate: { $gte: now },
+      });
+      if (existing) {
+        throw new Error(`Feed Tier ${tier} Slot ${slot} is already taken.`);
+      }
     }
   } else {
     const activeCount = await Campaign.countDocuments({

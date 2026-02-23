@@ -34,6 +34,10 @@ export async function POST(req: NextRequest) {
       category: body.category ?? 'All',
       country: body.country ?? 'All',
       buttonText: isCtaSlot ? desc : (body.buttonText != null ? String(body.buttonText).trim() : 'Visit Site'),
+      feedPlacement: body.feedPlacement ?? undefined,
+      videoUrl: body.videoUrl ?? undefined,
+      badgeText: body.badgeText ?? undefined,
+      verified: body.verified ?? undefined,
     });
     revalidatePath('/groups');
     revalidatePath('/groups/country/[country]', 'page');
