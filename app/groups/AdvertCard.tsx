@@ -13,6 +13,178 @@ interface AdvertCardProps {
     forceVisible?: boolean;
 }
 
+/**
+ * VideoAdCard — displayed when a FeedCampaign has a videoUrl.
+ * Matches GroupCard dimensions exactly (h-full flex-col, h-52 media, flex-grow content).
+ * SEO/Performance:
+ *  - preload="none"  → zero network cost at page load
+ *  - poster          → static image shown until video plays (no CLS)
+ *  - src set via JS  → only when card enters viewport (IntersectionObserver)
+ *  - muted + playsInline + loop → browser-safe autoplay, no sound
+ *  - pause on leave  → saves CPU/bandwidth when scrolled away
+ */
+const BADGE_PRESETS: Record<string, { icon: string; color: string }> = {
+    'trending':      { icon: '🔥', color: 'bg-red-500' },
+    'hot':           { icon: '🌶️', color: 'bg-orange-500' },
+    'new':           { icon: '✨', color: 'bg-green-500' },
+    'premium':       { icon: '👑', color: 'bg-purple-500' },
+    'verified':      { icon: '✅', color: 'bg-blue-500' },
+    'best value':    { icon: '💎', color: 'bg-pink-500' },
+    "editor's pick": { icon: '🎯', color: 'bg-indigo-500' },
+    'featured':      { icon: '⭐', color: 'bg-yellow-500' },
+    'popular':       { icon: '📈', color: 'bg-cyan-500' },
+    'exclusive':     { icon: '🔒', color: 'bg-violet-500' },
+    'limited':       { icon: '⏳', color: 'bg-amber-500' },
+};
+
+function videoBadge(text: string): { label: string; icon: string; color: string } {
+    const key = text.toLowerCase().trim();
+    const preset = BADGE_PRESETS[key];
+    if (preset) return { label: text.trim(), ...preset };
+    return { label: text.trim(), icon: '⭐', color: 'bg-gradient-to-r from-yellow-400 to-orange-500' };
+}
+
+function seededRandomVideo(seed: string) {
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+        const char = seed.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+    }
+    return Math.abs(hash) / 2147483647;
+}
+
+function VideoAdCard({ campaign, handleClick }: { campaign: FeedCampaign; handleClick: () => void }) {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const cardRef = useRef<HTMLDivElement>(null);
+
+    const seed = campaign._id;
+    const initialVisiting = Math.floor(300 + seededRandomVideo(seed + 'visiting') * 350);
+    const [visitingCount, setVisitingCount] = useState(initialVisiting);
+
+    useEffect(() => {
+        const video = videoRef.current;
+        const card = cardRef.current;
+        if (!video || !card) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        if (!video.src) {
+                            video.src = campaign.videoUrl!;
+                            video.load();
+                        }
+                        video.play().catch(() => {});
+                    } else {
+                        video.pause();
+                    }
+                });
+            },
+            { threshold: 0.3 }
+        );
+
+        observer.observe(card);
+        return () => observer.disconnect();
+    }, [campaign.videoUrl]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setVisitingCount((prev) => {
+                const change = Math.floor(Math.random() * 9) - 3;
+                return Math.max(300, prev + change);
+            });
+        }, 3000 + Math.random() * 2000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const buttonText = (campaign.buttonText && campaign.buttonText.trim()) ? campaign.buttonText.trim() : 'Visit Now';
+
+    const badge = campaign.badgeText ? videoBadge(campaign.badgeText) : null;
+
+    const rating = (seededRandomVideo(seed + 'rating') * 1.5 + 3.5).toFixed(1);
+    const reviewCount = Math.floor(seededRandomVideo(seed + 'reviews') * 50 + 10);
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 60 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="h-full"
+        >
+            <div
+                ref={cardRef}
+                className="rounded-3xl overflow-hidden h-full relative cursor-pointer group border border-white/5 hover:border-white/20 transition-all duration-500 hover:shadow-2xl hover:shadow-black/50 bg-[#0a0a0a]"
+                onClick={handleClick}
+                role="link"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && handleClick()}
+                aria-label={badge ? `${badge.label}: ${campaign.name}` : campaign.name}
+            >
+                {/* Video fills the entire card */}
+                <video
+                    ref={videoRef}
+                    poster={campaign.creative || undefined}
+                    muted
+                    playsInline
+                    loop
+                    preload="none"
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    aria-hidden="true"
+                />
+
+                {/* Gradient for text readability */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/10 pointer-events-none" />
+
+                {/* Badge — top left (only when you set one in admin: Trending, Hot, New, etc.) */}
+                {badge && (
+                    <div className="absolute top-3 left-3 z-10">
+                        <span className={`${badge.color} text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg uppercase tracking-wider flex items-center gap-1`}>
+                            <span>{badge.icon}</span> {badge.label}
+                        </span>
+                    </div>
+                )}
+
+                {/* Bottom content: visiting now + title + description + rating + CTA */}
+                <div className="absolute bottom-0 left-0 right-0 p-5 z-10 flex flex-col gap-2.5">
+                    <div className="flex justify-start">
+                        <div className="bg-black/80 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-lg">
+                            <span className="text-xs text-red-400">⚡</span>
+                            <span className="text-xs font-bold text-white">{visitingCount} visiting now</span>
+                        </div>
+                    </div>
+                    <h3 className="text-xl font-black text-white line-clamp-2 leading-tight drop-shadow-lg">
+                        {campaign.name}
+                    </h3>
+
+                    {campaign.description && (
+                        <p className="text-gray-300 text-sm line-clamp-2 leading-relaxed drop-shadow">
+                            {campaign.description}
+                        </p>
+                    )}
+
+                    {/* Star rating row */}
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                            <span className="text-yellow-500 text-sm">⭐</span>
+                            <span className="text-white font-bold text-sm drop-shadow">{rating}</span>
+                            <span className="text-gray-400 text-xs drop-shadow">({reviewCount})</span>
+                        </div>
+                        <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wide drop-shadow">Promoted</span>
+                    </div>
+
+                    <button
+                        onClick={(e) => { e.stopPropagation(); handleClick(); }}
+                        className="w-full py-3.5 px-4 rounded-xl font-black text-white text-sm uppercase tracking-wide bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                        🚀 {buttonText}
+                    </button>
+                </div>
+            </div>
+        </motion.div>
+    );
+}
+
 export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreload = false, onVisible, forceVisible = false }: AdvertCardProps) {
     const isTelegram = useIsTelegramBrowser();
 
@@ -267,6 +439,11 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
     if (isTelegram) {
         return null;
+    }
+
+    // VIDEO AD CARD — only when campaign has a videoUrl
+    if (campaign?.videoUrl) {
+        return <VideoAdCard campaign={campaign} handleClick={handleClick} />;
     }
 
     // NATIVE AD CARD (Looks like GroupCard)

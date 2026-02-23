@@ -73,6 +73,8 @@ export async function getCampaigns(token: string, advertiserId?: string) {
     country: c.country || 'All',
     buttonText: c.buttonText || 'Visit Site',
     feedPlacement: c.feedPlacement || 'both',
+    videoUrl: c.videoUrl || '',
+    badgeText: c.badgeText || '',
   }));
 }
 
@@ -96,6 +98,8 @@ export async function createCampaign(
     country?: string;
     buttonText?: string;
     feedPlacement?: 'groups' | 'bots' | 'both';
+    videoUrl?: string;
+    badgeText?: string;
   }
 ) {
   const admin = await authenticateAdmin(token);
@@ -184,6 +188,8 @@ export async function createCampaign(
     country: data.country || 'All',
     buttonText: data.buttonText || 'Visit Site',
     feedPlacement: data.slot === 'feed' ? (data.feedPlacement || 'both') : undefined,
+    videoUrl: data.slot === 'feed' ? (data.videoUrl || '') : '',
+    badgeText: data.slot === 'feed' ? (data.badgeText || '') : '',
   });
 
   // Keep feed positions gap-free after a new ad is created
@@ -215,6 +221,8 @@ export async function updateCampaign(
     buttonText: string;
     feedPlacement: 'groups' | 'bots' | 'both';
     advertiserId: string;
+    videoUrl: string;
+    badgeText: string;
   }>
 ) {
   const admin = await authenticateAdmin(token);
@@ -240,6 +248,8 @@ export async function updateCampaign(
   if (data.category != null) updateData.category = String(data.category || 'All');
   if (data.country != null) updateData.country = String(data.country || 'All');
   if (data.feedPlacement != null) updateData.feedPlacement = data.feedPlacement;
+  if ('videoUrl' in data) updateData.videoUrl = String(data.videoUrl ?? '').trim();
+  if ('badgeText' in data) updateData.badgeText = String(data.badgeText ?? '').trim();
 
   if (Object.keys(updateData).length === 0) {
     const doc = await Campaign.findById(id).lean();
@@ -454,7 +464,7 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
       },
     ],
   })
-    .select('_id creative destinationUrl slot feedTier tierSlot position description category country buttonText name feedPlacement')
+    .select('_id creative destinationUrl slot feedTier tierSlot position description category country buttonText name feedPlacement videoUrl badgeText')
     .lean();
 
   const withSortKey = campaigns.map((c: any) => {
@@ -482,6 +492,8 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
     country: c.country || 'All',
     buttonText: c.buttonText || 'Visit Site',
     name: c.name,
+    videoUrl: c.videoUrl || '',
+    badgeText: c.badgeText || '',
   }));
 }
 

@@ -240,8 +240,11 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
     country: 'All',
     buttonText: 'Visit Site',
     feedPlacement: 'both' as 'groups' | 'bots' | 'both',
+    videoUrl: '',
+    badgeText: '',
   });
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const savingRef = useRef(false);
 
   // Data fetching. skipLoading=true = refresh without full-page loading (e.g. after save).
@@ -380,6 +383,8 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
       country: 'All',
       buttonText: 'Visit Site',
       feedPlacement: 'both',
+      videoUrl: '',
+      badgeText: '',
     });
     setView('editCampaign');
   };
@@ -410,6 +415,8 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
       country: camp.country || 'All',
       buttonText: camp.buttonText || 'Visit Site',
       feedPlacement: (camp.feedPlacement || 'both') as 'groups' | 'bots' | 'both',
+      videoUrl: (camp as any).videoUrl || '',
+      badgeText: (camp as any).badgeText || '',
     });
     setView('editCampaign');
   };
@@ -474,6 +481,8 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
         country: isFeed ? (campForm.country ?? 'All') : 'All',
         buttonText: isFeed ? buttonTextVal : (isCta ? descriptionVal : 'Visit Site'),
         feedPlacement: isFeed ? (campForm.feedPlacement || 'both') : undefined,
+        videoUrl: isFeed ? ((campForm as any).videoUrl || '') : '',
+        badgeText: isFeed ? ((campForm as any).badgeText || '') : '',
       };
       if (isFeed && !editingCampaign) {
         payload.feedTier = Math.ceil((feedPos ?? 1) / 4);
@@ -518,6 +527,8 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
         country: 'All',
         buttonText: 'Visit Site',
         feedPlacement: 'both',
+        videoUrl: '',
+        badgeText: '',
       });
       setView('list');
       alert('Campaign saved successfully.');
@@ -633,6 +644,35 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
       alert(err.response?.data?.message || 'Upload failed');
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowed = ['video/mp4', 'video/webm', 'video/quicktime'];
+    if (!allowed.includes(file.type)) {
+      alert('Use MP4, WebM, or MOV.');
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      alert('Max 50 MB.');
+      return;
+    }
+    e.target.value = '';
+    setIsUploadingVideo(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const token = getToken();
+      const res = await axios.post('/api/upload/video', formData, {
+        headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` },
+      });
+      setCampForm({ ...campForm, videoUrl: res.data.url } as any);
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Video upload failed');
+    } finally {
+      setIsUploadingVideo(false);
     }
   };
 
@@ -920,6 +960,49 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                   <option value="bots">Bots only</option>
                 </select>
               </div>
+
+              {campForm.slot === 'feed' && (
+                <div className="border border-orange-500/30 rounded-xl p-4 bg-orange-500/5">
+                  <label className="block text-sm font-semibold text-orange-400 mb-1">
+                    🎬 Video <span className="text-[#666] font-normal">(optional — use link or upload to R2)</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={(campForm as any).videoUrl || ''}
+                    onChange={(e) => setCampForm({ ...campForm, videoUrl: e.target.value } as any)}
+                    className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-orange-500 outline-none mb-2"
+                    placeholder="https://example.com/video.mp4"
+                  />
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-[#666] text-sm">Or upload:</span>
+                    <label className="cursor-pointer px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-white text-sm font-medium hover:bg-white/15 transition-colors">
+                      <input type="file" accept="video/mp4,video/webm,video/quicktime" className="hidden" onChange={handleVideoUpload} disabled={isUploadingVideo} />
+                      {isUploadingVideo ? 'Uploading…' : 'Choose video (MP4/WebM/MOV, max 50 MB)'}
+                    </label>
+                  </div>
+                  <p className="text-xs text-[#666] mt-2">
+                    When set, shows a video card with video as full background. Link or R2 upload — both work. Video loads lazily (no impact on page speed or SEO).
+                  </p>
+                </div>
+              )}
+
+              {campForm.slot === 'feed' && (
+                <div>
+                  <label className="block text-sm font-semibold text-[#999] mb-1">
+                    🏷️ Badge Label <span className="text-[#666] font-normal">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={(campForm as any).badgeText || ''}
+                    onChange={(e) => setCampForm({ ...campForm, badgeText: e.target.value } as any)}
+                    className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-[#b31b1b] outline-none"
+                    placeholder="e.g. Trending, Hot, New, Premium, Verified..."
+                  />
+                  <p className="text-xs text-[#666] mt-1">
+                    Replaces "Sponsored" with a custom badge. Presets: Trending, Hot, New, Premium, Verified, Best Value, Editor&apos;s Pick, Featured, Popular, Exclusive, Limited. Leave empty for default "Sponsored" label.
+                  </p>
+                </div>
+              )}
             </>
           )}
 
@@ -1879,7 +1962,9 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                               feedTier: null,
                               tierSlot: null,
                               feedPlacement: 'both',
-                            });
+                              videoUrl: '',
+                              badgeText: '',
+                            } as any);
                             setEditingCampaign(null);
                             setView('editCampaign');
                           }}
@@ -2241,7 +2326,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                   </div>
                   <button
                     onClick={() => {
-                      setCampForm({ ...campForm, slot: 'feed', advertiserId: advertisers[0]?._id || '', name: '', creative: '', destinationUrl: '', description: '', category: 'All', country: 'All', buttonText: 'Visit Site', feedTier: 1, tierSlot: 1, position: 1, feedPlacement: 'both' });
+                      setCampForm({ ...campForm, slot: 'feed', advertiserId: advertisers[0]?._id || '', name: '', creative: '', destinationUrl: '', description: '', category: 'All', country: 'All', buttonText: 'Visit Site', feedTier: 1, tierSlot: 1, position: 1, feedPlacement: 'both', videoUrl: '', badgeText: '' } as any);
                       setEditingCampaign(null);
                       setView('editCampaign');
                     }}

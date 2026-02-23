@@ -439,6 +439,10 @@ export const campaignSchema = new Schema(
     buttonText: { type: String, default: 'Visit Site' },
     // Where to show this feed ad: groups only, bots only, or both
     feedPlacement: { type: String, enum: ['groups', 'bots', 'both'], default: 'both' },
+    // Optional video URL for video ad variant (feed slot only)
+    videoUrl: { type: String, default: '' },
+    // Configurable badge label (e.g. "Trending", "Hot", "New") — shown on the card
+    badgeText: { type: String, default: '' },
   },
   { timestamps: true }
 );

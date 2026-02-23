@@ -48,4 +48,8 @@ export interface FeedCampaign {
     category: string;
     country: string;
     buttonText: string;
+    /** Optional video URL — when set, renders a video ad card instead of an image card */
+    videoUrl?: string;
+    /** Configurable badge label (e.g. "Trending", "Hot", "New") */
+    badgeText?: string;
 }
