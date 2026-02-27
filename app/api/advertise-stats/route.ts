@@ -77,12 +77,12 @@ export async function GET() {
 
       const countByGroup = new Map(latestSnaps.map((s: any) => [s._id.toString(), s.memberCount]));
 
-      const channelList = tgGroups.map((g: any) => ({
+      const channelList: { name: string; memberCount: number }[] = tgGroups.map((g: any) => ({
         name: g.name,
         memberCount: countByGroup.get(g._id.toString()) ?? 0,
       }));
 
-      const totalSubscribers = channelList.reduce((sum, c) => sum + (c.memberCount || 0), 0);
+      const totalSubscribers = channelList.reduce<number>((sum, c) => sum + (c.memberCount || 0), 0);
 
       telegramEcosystem = {
         groups: channelList,
