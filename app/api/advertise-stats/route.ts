@@ -58,7 +58,11 @@ export async function GET() {
 
     let telegramEcosystem: { groups: { name: string; memberCount: number }[]; totalSubscribers: number; groupCount: number } | null = null;
     try {
-      const tgDb = mongoose.connection.client.db('tg-manager');
+      // Use a loose cast here because `client` / `getClient` are not exposed on the Mongoose `Connection` type.
+      const connAny = mongoose.connection as any;
+      const client = typeof connAny.getClient === 'function' ? connAny.getClient() : connAny.client;
+      const tgDb = client?.db('tg-manager');
+      if (!tgDb) throw new Error('Telegram DB client unavailable');
       const tgGroups = await tgDb.collection('tggroups').find(
         { enabled: true, name: { $not: /erogram\s*plus/i } },
         { projection: { name: 1 } },
