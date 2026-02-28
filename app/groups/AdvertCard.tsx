@@ -57,6 +57,7 @@ function seededRandomVideo(seed: string) {
 function VideoAdCard({ campaign, handleClick }: { campaign: FeedCampaign; handleClick: () => void }) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const cardRef = useRef<HTMLDivElement>(null);
+    const videoImpressionFiredRef = useRef(false);
 
     const seed = campaign._id;
     const initialVisiting = Math.floor(300 + seededRandomVideo(seed + 'visiting') * 350);
@@ -76,6 +77,14 @@ function VideoAdCard({ campaign, handleClick }: { campaign: FeedCampaign; handle
                             video.load();
                         }
                         video.play().catch(() => {});
+                        if (!videoImpressionFiredRef.current) {
+                            videoImpressionFiredRef.current = true;
+                            fetch('/api/campaigns/impression', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ campaignId: campaign._id }),
+                            }).catch(() => {});
+                        }
                     } else {
                         video.pause();
                     }
@@ -86,7 +95,7 @@ function VideoAdCard({ campaign, handleClick }: { campaign: FeedCampaign; handle
 
         observer.observe(card);
         return () => observer.disconnect();
-    }, [campaign.videoUrl]);
+    }, [campaign.videoUrl, campaign._id]);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -220,6 +229,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
     const [imageSrc, setImageSrc] = useState(ad.image || '/assets/image.jpg');
     const [isInView, setIsInView] = useState(forceVisible);
     const hasFetchedRef = useRef(false);
+    const impressionFiredRef = useRef(false);
     const imgRef = useRef<HTMLDivElement>(null);
     const [liveCount, setLiveCount] = useState<number>(0);
 
@@ -322,6 +332,18 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
             observer.disconnect();
         };
     }, [onVisible, forceVisible]);
+
+    // Track impression when a campaign ad enters the viewport (fire once)
+    useEffect(() => {
+        if (isInView && ad.isCampaign && ad._id && !impressionFiredRef.current) {
+            impressionFiredRef.current = true;
+            fetch('/api/campaigns/impression', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ campaignId: ad._id }),
+            }).catch(() => {});
+        }
+    }, [isInView, ad.isCampaign, ad._id]);
 
     // Preload image if shouldPreload is true (for next 6 items) -- legacy adverts only
     useEffect(() => {

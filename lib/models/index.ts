@@ -456,10 +456,7 @@ export const campaignSchema = new Schema(
 );
 
 campaignSchema.index({ slot: 1, status: 1, isVisible: 1, startDate: 1, endDate: 1 });
-campaignSchema.index(
-  { slot: 1, feedTier: 1, tierSlot: 1 },
-  { unique: true, partialFilterExpression: { slot: 'feed', feedTier: { $gte: 1 }, tierSlot: { $gte: 1 } } }
-);
+campaignSchema.index({ slot: 1, feedTier: 1, tierSlot: 1 });
 
 // CampaignClick Schema (for per-day click stats; Campaign.clicks is the all-time total)
 export const campaignClickSchema = new Schema(

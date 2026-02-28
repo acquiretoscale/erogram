@@ -1,99 +1,52 @@
 import { MetadataRoute } from 'next';
 import connectDB from '@/lib/db/mongodb';
 import { Group, Article, Bot } from '@/lib/models';
-import { categories, countries } from '@/app/groups/constants';
-
-// Split sitemap into multiple files if it gets too large
-// Google limit is 50,000 URLs per sitemap
-// We'll generate a single sitemap for now but structure it to be easily split later
+import { categories, countries as constantCountries } from '@/app/groups/constants';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
+  const PER_PAGE = 12;
 
   try {
     await connectDB();
 
-    // Get all approved groups
-    const groups = await Group.find({ status: 'approved' })
-      .select('slug updatedAt')
-      .lean();
+    const [groups, bots, articles, totalGroups, totalBots, dbCountries, categoryCounts, countryCounts] = await Promise.all([
+      Group.find({ status: 'approved' }).select('slug updatedAt').lean(),
+      Bot.find({ status: 'approved' }).select('slug updatedAt').lean(),
+      Article.find({}).select('slug updatedAt publishedAt').lean(),
+      Group.countDocuments({ status: 'approved' }),
+      Bot.countDocuments({ status: 'approved' }),
+      Group.distinct('country', { status: 'approved' }),
+      Group.aggregate([
+        { $match: { status: 'approved' } },
+        { $group: { _id: '$category', count: { $sum: 1 } } },
+      ]),
+      Group.aggregate([
+        { $match: { status: 'approved' } },
+        { $group: { _id: '$country', count: { $sum: 1 } } },
+      ]),
+    ]);
 
-    // Get all approved bots
-    const bots = await Bot.find({ status: 'approved' })
-      .select('slug updatedAt')
-      .lean();
+    const activeCategories = new Set(categoryCounts.map((c: any) => c._id));
+    const activeCountries = new Set(countryCounts.map((c: any) => c._id));
+    const totalGroupPages = Math.ceil(totalGroups / PER_PAGE);
+    const totalBotPages = Math.ceil(totalBots / PER_PAGE);
 
-    // Get all articles (same as listing/admin)
-    const articles = await Article.find({})
-      .select('slug updatedAt publishedAt')
-      .lean();
-
-    // Get total approved groups for pagination
-    const totalGroups = await Group.countDocuments({ status: 'approved' });
-    const PER_PAGE = 12;
-    const totalPages = Math.ceil(totalGroups / PER_PAGE);
-
-    // Get distinct countries for country-specific routes
-    const countries = await Group.distinct('country', { status: 'approved' });
-
-    // Static routes
     const staticRoutes: MetadataRoute.Sitemap = [
-      {
-        url: baseUrl,
-        lastModified: new Date(),
-        changeFrequency: 'daily',
-        priority: 1,
-      },
-      {
-        url: `${baseUrl}/groups`,
-        lastModified: new Date(),
-        changeFrequency: 'daily',
-        priority: 0.9,
-      },
-      {
-        url: `${baseUrl}/bots`,
-        lastModified: new Date(),
-        changeFrequency: 'daily',
-        priority: 0.9,
-      },
-      {
-        url: `${baseUrl}/articles`,
-        lastModified: new Date(),
-        changeFrequency: 'daily',
-        priority: 0.9,
-      },
-      {
-        url: `${baseUrl}/about`,
-        lastModified: new Date(),
-        changeFrequency: 'monthly',
-        priority: 0.5,
-      },
-      {
-        url: `${baseUrl}/login`,
-        lastModified: new Date(),
-        changeFrequency: 'monthly',
-        priority: 0.3,
-      },
+      { url: baseUrl, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
+      { url: `${baseUrl}/groups`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+      { url: `${baseUrl}/bots`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+      { url: `${baseUrl}/articles`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+      { url: `${baseUrl}/best-telegram-groups`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8 },
+      { url: `${baseUrl}/add`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
+      { url: `${baseUrl}/advertise`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
+      { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
+      { url: `${baseUrl}/terms`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3 },
+      { url: `${baseUrl}/privacy`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3 },
     ];
 
-    // Get group counts by category
-    const categoryCounts = await Group.aggregate([
-      { $match: { status: 'approved' } },
-      { $group: { _id: '$category', count: { $sum: 1 } } }
-    ]);
-    const activeCategories = new Set(categoryCounts.map(c => c._id));
-
-    // Get group counts by country
-    const countryCounts = await Group.aggregate([
-      { $match: { status: 'approved' } },
-      { $group: { _id: '$country', count: { $sum: 1 } } }
-    ]);
-    const activeCountries = new Set(countryCounts.map(c => c._id));
-
-    // Dynamic "Best Telegram Groups" routes (Category Listicles)
-    // Only include categories that have at least 1 group
-    const bestGroupsRoutes: MetadataRoute.Sitemap = categories
-      .filter(category => activeCategories.has(category))
+    const bestGroupsCategoryRoutes: MetadataRoute.Sitemap = categories
+      .filter(cat => cat !== 'All' && activeCategories.has(cat))
       .map((category) => ({
         url: `${baseUrl}/best-telegram-groups/${encodeURIComponent(category.toLowerCase())}`,
         lastModified: new Date(),
@@ -101,37 +54,53 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.8,
       }));
 
-    // Dynamic "Best Telegram Groups" routes (Country Listicles)
-    // Only include countries that have at least 1 group
-    const bestCountryGroupsRoutes: MetadataRoute.Sitemap = countries
-      .filter(country => activeCountries.has(country))
-      .map((country) => ({
+    const bestGroupsCountryRoutes: MetadataRoute.Sitemap = (dbCountries as string[])
+      .filter((country: string) => activeCountries.has(country) && country !== 'All')
+      .map((country: string) => ({
         url: `${baseUrl}/best-telegram-groups/country/${encodeURIComponent(country.toLowerCase())}`,
         lastModified: new Date(),
         changeFrequency: 'weekly' as const,
         priority: 0.8,
       }));
 
-    // Dynamic group pagination routes
     const groupPaginationRoutes: MetadataRoute.Sitemap = [];
-    for (let page = 1; page <= totalPages; page++) {
+    for (let page = 1; page <= totalGroupPages; page++) {
       groupPaginationRoutes.push({
         url: `${baseUrl}/groups/page/${page}`,
         lastModified: new Date(),
         changeFrequency: 'daily' as const,
-        priority: 0.8,
+        priority: 0.7,
       });
     }
 
-    // Dynamic country routes
-    const countryRoutes: MetadataRoute.Sitemap = countries.map((country: string) => ({
-      url: `${baseUrl}/groups/country/${country}`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
-      priority: 0.7,
-    }));
+    const botPaginationRoutes: MetadataRoute.Sitemap = [];
+    for (let page = 1; page <= totalBotPages; page++) {
+      botPaginationRoutes.push({
+        url: `${baseUrl}/bots/page/${page}`,
+        lastModified: new Date(),
+        changeFrequency: 'daily' as const,
+        priority: 0.7,
+      });
+    }
 
-    // Dynamic group routes
+    const groupCountryRoutes: MetadataRoute.Sitemap = (dbCountries as string[])
+      .filter((c: string) => c !== 'All')
+      .map((country: string) => ({
+        url: `${baseUrl}/groups/country/${encodeURIComponent(country)}`,
+        lastModified: new Date(),
+        changeFrequency: 'weekly' as const,
+        priority: 0.7,
+      }));
+
+    const botCountryRoutes: MetadataRoute.Sitemap = (dbCountries as string[])
+      .filter((c: string) => c !== 'All')
+      .map((country: string) => ({
+        url: `${baseUrl}/bots/country/${encodeURIComponent(country)}`,
+        lastModified: new Date(),
+        changeFrequency: 'weekly' as const,
+        priority: 0.7,
+      }));
+
     const groupRoutes: MetadataRoute.Sitemap = groups.map((group: any) => ({
       url: `${baseUrl}/${group.slug}`,
       lastModified: group.updatedAt || new Date(),
@@ -139,7 +108,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     }));
 
-    // Dynamic bot routes
     const botRoutes: MetadataRoute.Sitemap = bots.map((bot: any) => ({
       url: `${baseUrl}/${bot.slug}`,
       lastModified: bot.updatedAt || new Date(),
@@ -147,7 +115,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     }));
 
-    // Dynamic article routes
     const articleRoutes: MetadataRoute.Sitemap = articles.map((article: any) => ({
       url: `${baseUrl}/articles/${article.slug}`,
       lastModified: article.updatedAt || article.publishedAt || new Date(),
@@ -157,61 +124,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     return [
       ...staticRoutes,
-      ...bestGroupsRoutes,
-      ...bestCountryGroupsRoutes,
+      ...bestGroupsCategoryRoutes,
+      ...bestGroupsCountryRoutes,
       ...groupPaginationRoutes,
-      ...countryRoutes,
+      ...botPaginationRoutes,
+      ...groupCountryRoutes,
+      ...botCountryRoutes,
       ...groupRoutes,
       ...botRoutes,
-      ...articleRoutes
+      ...articleRoutes,
     ];
   } catch (error) {
     console.error('Error generating sitemap:', error);
 
-    // Fallback pagination routes (assuming at least 5 pages)
-    const fallbackGroupPaginationRoutes: MetadataRoute.Sitemap = [];
-    for (let page = 1; page <= 5; page++) {
-      fallbackGroupPaginationRoutes.push({
-        url: `${baseUrl}/groups/page/${page}`,
-        lastModified: new Date(),
-        changeFrequency: 'daily' as const,
-        priority: 0.8,
-      });
-    }
-
-    // Return at least static routes if DB fails
     return [
-      {
-        url: baseUrl,
-        lastModified: new Date(),
-        changeFrequency: 'daily',
-        priority: 1,
-      },
-      {
-        url: `${baseUrl}/groups`,
-        lastModified: new Date(),
-        changeFrequency: 'daily',
-        priority: 0.9,
-      },
-      {
-        url: `${baseUrl}/bots`,
-        lastModified: new Date(),
-        changeFrequency: 'daily',
-        priority: 0.9,
-      },
-      {
-        url: `${baseUrl}/articles`,
-        lastModified: new Date(),
-        changeFrequency: 'daily',
-        priority: 0.9,
-      },
-      {
-        url: `${baseUrl}/about`,
-        lastModified: new Date(),
-        changeFrequency: 'monthly',
-        priority: 0.5,
-      },
-      ...fallbackGroupPaginationRoutes,
+      { url: baseUrl, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
+      { url: `${baseUrl}/groups`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+      { url: `${baseUrl}/bots`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+      { url: `${baseUrl}/articles`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+      { url: `${baseUrl}/best-telegram-groups`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8 },
+      { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
+      { url: `${baseUrl}/terms`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3 },
+      { url: `${baseUrl}/privacy`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3 },
     ];
   }
 }

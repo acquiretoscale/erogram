@@ -146,13 +146,10 @@ export async function PUT(
 
     if (title && title !== oldArticle.title) {
       setFields.title = title;
-      const baseSlug = slugify(title);
-      let slug = baseSlug;
-      let counter = 1;
-      while (await Article.findOne({ slug, _id: { $ne: id } })) {
-        slug = `${baseSlug}-${counter++}`;
-      }
-      setFields.slug = slug;
+      // IMPORTANT: Do NOT regenerate the slug when only the title changes.
+      // Changing the slug breaks the indexed URL in Google/Bing, causing 404s
+      // and loss of all accumulated SEO equity for that page.
+      // The slug is only generated once at creation time.
     }
 
     if (advertiserId !== undefined) {
@@ -270,13 +267,15 @@ export async function PUT(
         twitterDescription: article.twitterDescription || '',
     };
 
-    // Submit to IndexNow if status changed to published
-    if (setFields.status === 'published' && oldArticle.status !== 'published') {
+    // Submit to IndexNow whenever a published article is updated (content, title, etc.)
+    // so search engines re-crawl the page with the latest changes.
+    if (setFields.status === 'published' || (oldArticle.status === 'published' && setFields.status !== 'draft')) {
       submitToIndexNow([`https://erogram.pro/articles/${article.slug}`]);
     }
 
     revalidatePath('/articles');
     revalidatePath(`/articles/${article.slug}`);
+    revalidatePath('/sitemap.xml');
     return NextResponse.json(result);
   } catch (error: any) {
     console.error('Error updating article:', error);

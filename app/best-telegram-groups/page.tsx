@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     title: 'Best Telegram Groups Lists – Erogram',
     description: 'Browse our curated lists of the best Telegram groups and channels by category. Find the top communities for every interest.',
     alternates: {
-        canonical: '/best-telegram-groups',
+        canonical: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro'}/best-telegram-groups`,
     },
 };
 

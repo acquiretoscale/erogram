@@ -77,6 +77,12 @@ export async function GET(req: NextRequest) {
       d.setDate(d.getDate() - i);
       last7dKeys.push(d.toISOString().slice(0, 10));
     }
+    const last30dKeys: string[] = [];
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      last30dKeys.push(d.toISOString().slice(0, 10));
+    }
 
     const articlesWithAuthors = (articlesRaw as any[]).map((article: any) => {
       const dayMap: Record<string, number> = article.viewsByDay instanceof Map
@@ -84,6 +90,7 @@ export async function GET(req: NextRequest) {
         : (article.viewsByDay || {});
       const views24h = dayMap[todayKey] || 0;
       const views7d = last7dKeys.reduce((s, k) => s + (dayMap[k] || 0), 0);
+      const views30d = last30dKeys.reduce((s, k) => s + (dayMap[k] || 0), 0);
 
       return {
         _id: article._id.toString(),
@@ -97,6 +104,7 @@ export async function GET(req: NextRequest) {
         views: article.views || 0,
         views24h,
         views7d,
+        views30d,
         advertiserId: article.advertiserId ? article.advertiserId.toString() : '',
         advertiserName: article.advertiserId ? advertisersMap.get(article.advertiserId.toString()) || '—' : '',
         createdAt: article.createdAt,
@@ -294,12 +302,12 @@ export async function POST(req: NextRequest) {
         twitterDescription: savedArticle.twitterDescription || '',
       };
 
-      // Submit to IndexNow if published
       if (articleStatus === 'published') {
         submitToIndexNow([`https://erogram.pro/articles/${slug}`]);
       }
       revalidatePath('/articles');
       revalidatePath(`/articles/${slug}`);
+      revalidatePath('/sitemap.xml');
       return NextResponse.json(result);
     } catch (err) {
       console.error('Error fetching author:', err);

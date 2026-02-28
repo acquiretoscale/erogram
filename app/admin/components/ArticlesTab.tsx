@@ -9,7 +9,7 @@ import { compressImage } from '@/lib/utils/compressImage';
 export default function ArticlesTab() {
     const [articles, setArticles] = useState<any[]>([]);
     const [advertisers, setAdvertisers] = useState<{ _id: string; name: string }[]>([]);
-    const [articleStats, setArticleStats] = useState<{ totalClicks: number; totalClicks24h: number; totalClicks7d: number; count: number }>({ totalClicks: 0, totalClicks24h: 0, totalClicks7d: 0, count: 0 });
+    const [articleStats, setArticleStats] = useState<{ totalClicks: number; totalClicks24h: number; totalClicks7d: number; totalClicks30d: number; count: number }>({ totalClicks: 0, totalClicks24h: 0, totalClicks7d: 0, totalClicks30d: 0, count: 0 });
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
@@ -38,8 +38,8 @@ export default function ArticlesTab() {
     const [tagInput, setTagInput] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
-    type SortKey = 'title' | 'advertiser' | 'clicks' | 'views24h' | 'views7d' | 'status';
-    const [sortBy, setSortBy] = useState<SortKey>('views7d');
+    type SortKey = 'title' | 'advertiser' | 'clicks' | 'views24h' | 'views7d' | 'views30d' | 'published' | 'status';
+    const [sortBy, setSortBy] = useState<SortKey>('views30d');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
     const handleSort = (key: SortKey) => {
@@ -62,7 +62,7 @@ export default function ArticlesTab() {
             .then((res) => setAdvertisers(res.data?.advertisers ?? []))
             .catch(() => {});
         axios.get('/api/admin/articles/stats', { headers: { Authorization: `Bearer ${token}` } })
-            .then((res) => setArticleStats({ totalClicks: res.data?.totalClicks ?? 0, totalClicks24h: res.data?.totalClicks24h ?? 0, totalClicks7d: res.data?.totalClicks7d ?? 0, count: res.data?.count ?? 0 }))
+            .then((res) => setArticleStats({ totalClicks: res.data?.totalClicks ?? 0, totalClicks24h: res.data?.totalClicks24h ?? 0, totalClicks7d: res.data?.totalClicks7d ?? 0, totalClicks30d: res.data?.totalClicks30d ?? 0, count: res.data?.count ?? 0 }))
             .catch(() => {});
     }, []);
 
@@ -77,7 +77,7 @@ export default function ArticlesTab() {
             });
             setArticles(Array.isArray(res.data) ? res.data : []);
         const statsRes = await axios.get('/api/admin/articles/stats', { headers: { Authorization: `Bearer ${token}` } });
-        setArticleStats({ totalClicks: statsRes.data?.totalClicks ?? 0, totalClicks24h: statsRes.data?.totalClicks24h ?? 0, totalClicks7d: statsRes.data?.totalClicks7d ?? 0, count: statsRes.data?.count ?? 0 });
+        setArticleStats({ totalClicks: statsRes.data?.totalClicks ?? 0, totalClicks24h: statsRes.data?.totalClicks24h ?? 0, totalClicks7d: statsRes.data?.totalClicks7d ?? 0, totalClicks30d: statsRes.data?.totalClicks30d ?? 0, count: statsRes.data?.count ?? 0 });
         } catch (err: any) {
             setError(err.response?.data?.message || 'Failed to load articles');
             setArticles([]);
@@ -298,6 +298,12 @@ export default function ArticlesTab() {
         } else if (sortBy === 'views7d') {
             aVal = a.views7d ?? 0;
             bVal = b.views7d ?? 0;
+        } else if (sortBy === 'views30d') {
+            aVal = a.views30d ?? 0;
+            bVal = b.views30d ?? 0;
+        } else if (sortBy === 'published') {
+            aVal = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+            bVal = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
         } else if (sortBy === 'status') {
             aVal = a.status || '';
             bVal = b.status || '';
@@ -521,7 +527,7 @@ export default function ArticlesTab() {
             {/* Dashboard: total clicks */}
             <div className="glass rounded-xl p-5 border border-white/5">
                 <div className="text-xs font-bold text-[#666] uppercase tracking-wider mb-3">Article views</div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
                     <div className="bg-white/5 rounded-lg p-4 border border-white/5">
                         <div className="text-2xl font-black text-green-400">{articleStats.totalClicks24h.toLocaleString()}</div>
                         <div className="text-xs text-[#999]">Last 24h</div>
@@ -529,6 +535,10 @@ export default function ArticlesTab() {
                     <div className="bg-white/5 rounded-lg p-4 border border-white/5">
                         <div className="text-2xl font-black text-white">{articleStats.totalClicks7d.toLocaleString()}</div>
                         <div className="text-xs text-[#999]">Last 7 days</div>
+                    </div>
+                    <div className="bg-white/5 rounded-lg p-4 border border-white/5">
+                        <div className="text-2xl font-black text-white">{articleStats.totalClicks30d.toLocaleString()}</div>
+                        <div className="text-xs text-[#999]">Last 30 days</div>
                     </div>
                     <div className="bg-white/5 rounded-lg p-4 border border-white/5">
                         <div className="text-2xl font-black text-[#999]">{articleStats.totalClicks.toLocaleString()}</div>
@@ -587,11 +597,17 @@ export default function ArticlesTab() {
                                     <th className="px-4 py-3 text-right font-bold text-xs uppercase cursor-pointer hover:text-white transition-colors select-none" onClick={() => handleSort('views7d')}>
                                         7d {sortBy === 'views7d' && (sortOrder === 'asc' ? '↑' : '↓')}
                                     </th>
+                                    <th className="px-4 py-3 text-right font-bold text-xs uppercase cursor-pointer hover:text-white transition-colors select-none" onClick={() => handleSort('views30d')}>
+                                        30d {sortBy === 'views30d' && (sortOrder === 'asc' ? '↑' : '↓')}
+                                    </th>
                                     <th className="px-4 py-3 text-right font-bold text-xs uppercase cursor-pointer hover:text-white transition-colors select-none" onClick={() => handleSort('clicks')}>
                                         Lifetime {sortBy === 'clicks' && (sortOrder === 'asc' ? '↑' : '↓')}
                                     </th>
                                     <th className="px-4 py-3 text-left font-bold text-xs uppercase cursor-pointer hover:text-white transition-colors select-none" onClick={() => handleSort('status')}>
                                         Status {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
+                                    </th>
+                                    <th className="px-4 py-3 text-left font-bold text-xs uppercase cursor-pointer hover:text-white transition-colors select-none" onClick={() => handleSort('published')}>
+                                        Published {sortBy === 'published' && (sortOrder === 'asc' ? '↑' : '↓')}
                                     </th>
                                     <th className="px-4 py-3 text-left font-bold text-xs uppercase">Actions</th>
                                 </tr>
@@ -617,9 +633,15 @@ export default function ArticlesTab() {
                                         <td className="px-4 py-3 text-right">
                                             <span className={`tabular-nums ${(article.views7d ?? 0) > 0 ? 'text-white font-semibold' : 'text-[#666]'}`}>{(article.views7d ?? 0).toLocaleString()}</span>
                                         </td>
+                                        <td className="px-4 py-3 text-right">
+                                            <span className={`tabular-nums ${(article.views30d ?? 0) > 0 ? 'text-white font-semibold' : 'text-[#666]'}`}>{(article.views30d ?? 0).toLocaleString()}</span>
+                                        </td>
                                         <td className="px-4 py-3 text-right font-semibold text-[#999] tabular-nums">{(article.views ?? 0).toLocaleString()}</td>
                                         <td className="px-4 py-3">
                                             <span className={`px-2 py-0.5 rounded text-xs ${article.status === 'published' ? 'bg-green-500/20 text-green-400' : 'text-[#666]'}`}>{article.status}</span>
+                                        </td>
+                                        <td className="px-4 py-3 text-[#999] text-xs whitespace-nowrap">
+                                            {article.publishedAt ? new Date(article.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                                         </td>
                                         <td className="px-4 py-3">
                                             <button onClick={() => handleEdit(article)} className="text-blue-400 hover:underline mr-2">Edit</button>

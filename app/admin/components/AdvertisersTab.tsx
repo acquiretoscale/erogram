@@ -200,7 +200,8 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
   const [globalStats, setGlobalStats] = useState<{ totalClicks: number; todayClicks?: number; last24h?: number; last7Days: number; last30Days: number } | null>(null);
   const [slotTotals, setSlotTotals] = useState<Array<{ slot: string; totalClicks: number; campaignCount: number }>>([]);
   const [clicksByAdvertiser, setClicksByAdvertiser] = useState<Array<{ advertiserId: string; advertiserName: string; totalClicks: number; last7Days: number; last30Days: number }>>([]);
-  const [feedClickStats, setFeedClickStats] = useState<Record<string, { total: number; last24h: number; last7d: number; last30d: number }>>({});
+  const [feedClickStats, setFeedClickStats] = useState<Record<string, { total: number; last24h: number; last7d: number; last30d: number; impressions?: number; ctr?: number }>>({});
+  const [feedABStats, setFeedABStats] = useState<Record<string, { feedTier: number; tierSlot: number; variants: { _id: string; name: string; advertiserName: string; impressions: number; clicks: number; ctr: number; status: string; isWinner: boolean }[] }>>({});
   // Filtered dashboard (Overview KPIs + charts)
   const [dashboardRange, setDashboardRange] = useState<'today' | '7d' | '30d' | 'custom' | 'lifetime'>('30d');
   const [dashboardSlots, setDashboardSlots] = useState<string[]>([]);
@@ -234,6 +235,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
   const [feedAdsDragIdx, setFeedAdsDragIdx] = useState<number | null>(null);
   const [feedAdsDragOverIdx, setFeedAdsDragOverIdx] = useState<number | null>(null);
   const [feedAdsMenuOpen, setFeedAdsMenuOpen] = useState<string | null>(null);
+  const [expandedPositions, setExpandedPositions] = useState<Set<string>>(new Set());
   const [feedAdsDateRange, setFeedAdsDateRange] = useState<'24h' | '7d' | '30d' | 'all'>('30d');
   const [feedAdsCustomFrom, setFeedAdsCustomFrom] = useState('');
   const [feedAdsCustomTo, setFeedAdsCustomTo] = useState('');
@@ -298,6 +300,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
       setSlotTotals(res.data.slotTotals ?? []);
       setClicksByAdvertiser(res.data.clicksByAdvertiser ?? []);
       setFeedClickStats(res.data.feedClickStats ?? {});
+      setFeedABStats(res.data.feedABStats ?? {});
       setError('');
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Failed to load data');
@@ -2261,7 +2264,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
         </>
       )}
 
-      {/* ─── Feed Ads tab ─────────────────────────────────────── */}
+      {/* ─── Feed Ads tab (A/B Position-Grouped View) ─────────────────────────────────────── */}
       {sectionTab === 'feedAds' && !isLoading && !error && (
         <>
           {(() => {
@@ -2269,46 +2272,46 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
             const filteredByAdvertiser = feedAdsFilterAdvertiser === 'all' ? feedCampaigns : feedCampaigns.filter((c) => c.advertiserId === feedAdsFilterAdvertiser);
             const filteredByStatus = feedAdsFilterStatus === 'all' ? filteredByAdvertiser : filteredByAdvertiser.filter((c) => c.status === feedAdsFilterStatus);
             const filteredByShowOn = feedAdsFilterShowOn === 'all' ? filteredByStatus : filteredByStatus.filter((c) => (c.feedPlacement || 'both') === feedAdsFilterShowOn);
+
             const getStats = (cid: string, c: CampaignRow) => {
-              const s = feedClickStats[cid] || { total: c.clicks ?? 0, last24h: 0, last7d: 0, last30d: 0 };
+              const s = feedClickStats[cid] || { total: c.clicks ?? 0, last24h: 0, last7d: 0, last30d: 0, impressions: c.impressions ?? 0, ctr: 0 };
               return s;
             };
-            const sorted = [...filteredByShowOn].sort((a, b) => {
-              const order = feedAdsSortOrder === 'asc' ? 1 : -1;
-              let cmp = 0;
-              if (feedAdsSortBy === 'position') cmp = (a.position ?? 99) - (b.position ?? 99);
-              else if (feedAdsSortBy === 'clicks' || feedAdsSortBy === 'total') {
-                const sa = getStats(a._id, a);
-                const sb = getStats(b._id, b);
-                cmp = sa.total - sb.total;
-              } else if (feedAdsSortBy === 'last24h') {
-                const sa = getStats(a._id, a);
-                const sb = getStats(b._id, b);
-                cmp = sa.last24h - sb.last24h;
-              } else if (feedAdsSortBy === 'last7d') {
-                const sa = getStats(a._id, a);
-                const sb = getStats(b._id, b);
-                cmp = sa.last7d - sb.last7d;
-              } else if (feedAdsSortBy === 'last30d') {
-                const sa = getStats(a._id, a);
-                const sb = getStats(b._id, b);
-                cmp = sa.last30d - sb.last30d;
-              } else if (feedAdsSortBy === 'status') cmp = String(a.status).localeCompare(String(b.status));
-              else if (feedAdsSortBy === 'feedPlacement') cmp = String(a.feedPlacement || 'both').localeCompare(String(b.feedPlacement || 'both'));
-              else cmp = 0;
-              return cmp * order;
-            });
+
+            // Build 4 slots (tier 1, tierSlot 1-4), populate from filtered campaigns
+            const posGroups: Record<string, { feedTier: number; tierSlot: number; campaigns: CampaignRow[] }> = {};
+            for (let ts = 1; ts <= 4; ts++) {
+              posGroups[`1-${ts}`] = { feedTier: 1, tierSlot: ts, campaigns: [] };
+            }
+            for (const c of filteredByShowOn) {
+              const tier = c.feedTier;
+              const slot = c.tierSlot;
+              if (tier == null || slot == null) continue;
+              const key = `${tier}-${slot}`;
+              if (posGroups[key]) posGroups[key].campaigns.push(c);
+            }
+
+            const sortedPositions = Object.entries(posGroups).sort(([, a], [, b]) => a.tierSlot - b.tierSlot);
+
             const feedTotals = Object.values(feedClickStats).reduce(
-              (acc, s) => ({ total: acc.total + s.total, last24h: acc.last24h + s.last24h, last7d: acc.last7d + s.last7d, last30d: acc.last30d + s.last30d }),
-              { total: 0, last24h: 0, last7d: 0, last30d: 0 }
+              (acc, s) => ({ total: acc.total + s.total, last24h: acc.last24h + s.last24h, last7d: acc.last7d + s.last7d, last30d: acc.last30d + s.last30d, impressions: (acc.impressions || 0) + (s.impressions || 0) }),
+              { total: 0, last24h: 0, last7d: 0, last30d: 0, impressions: 0 }
             );
-            const handleFeedAdsSort = (key: typeof feedAdsSortBy) => {
-              if (feedAdsSortBy === key) setFeedAdsSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'));
-              else {
-                setFeedAdsSortBy(key);
-                setFeedAdsSortOrder(key === 'position' || key === 'feedPlacement' || key === 'status' ? 'asc' : 'desc');
-              }
+            const overallCtr = feedTotals.impressions > 0 ? ((feedTotals.total / feedTotals.impressions) * 100).toFixed(2) : '0.00';
+            const overallPrev7d = feedTotals.last30d - feedTotals.last7d;
+            const overallTrendPct = overallPrev7d > 0 ? Math.round(((feedTotals.last7d - overallPrev7d) / overallPrev7d) * 100) : (feedTotals.last7d > 0 ? 100 : 0);
+
+            const togglePosition = (key: string) => {
+              setExpandedPositions((prev) => {
+                const next = new Set(prev);
+                if (next.has(key)) next.delete(key);
+                else next.add(key);
+                return next;
+              });
             };
+
+            const clearFeedAdsSelection = () => setFeedAdsSelectedIds(new Set());
+
             const toggleFeedAdsSelect = (id: string) => {
               setFeedAdsSelectedIds((prev) => {
                 const next = new Set(prev);
@@ -2317,49 +2320,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                 return next;
               });
             };
-            const toggleFeedAdsSelectAll = () => {
-              if (feedAdsSelectedIds.size >= sorted.length) setFeedAdsSelectedIds(new Set());
-              else setFeedAdsSelectedIds(new Set(sorted.map((c) => c._id)));
-            };
-            const clearFeedAdsSelection = () => setFeedAdsSelectedIds(new Set());
-            const isDragEnabled = feedAdsSortBy === 'position' && feedAdsSortOrder === 'asc';
-            const handleDragStart = (idx: number) => (e: React.DragEvent) => {
-              setFeedAdsDragIdx(idx);
-              e.dataTransfer.effectAllowed = 'move';
-              e.dataTransfer.setData('text/plain', String(idx));
-            };
-            const handleDragOver = (idx: number) => (e: React.DragEvent) => {
-              e.preventDefault();
-              e.dataTransfer.dropEffect = 'move';
-              if (feedAdsDragOverIdx !== idx) setFeedAdsDragOverIdx(idx);
-            };
-            const handleDrop = (dropIdx: number) => {
-              const dragIdx = feedAdsDragIdx;
-              setFeedAdsDragIdx(null);
-              setFeedAdsDragOverIdx(null);
-              if (dragIdx == null || dragIdx === dropIdx) return;
-              const reordered = [...sorted];
-              const [moved] = reordered.splice(dragIdx, 1);
-              reordered.splice(dropIdx, 0, moved);
-              const positionMap = new Map(reordered.map((c, i) => [c._id, i + 1]));
-              setCampaigns((prev) =>
-                prev.map((c) => {
-                  const newPos = positionMap.get(c._id);
-                  return newPos != null ? { ...c, position: newPos } : c;
-                })
-              );
-              Promise.all(
-                reordered.map((c, i) =>
-                  axios.put(`/api/admin/campaigns/${c._id}`, { position: i + 1 }, authHeaders())
-                )
-              ).catch(() => {
-                fetchAll();
-              });
-            };
-            const handleDragEnd = () => {
-              setFeedAdsDragIdx(null);
-              setFeedAdsDragOverIdx(null);
-            };
+
             const duplicateCampaigns = async (ids: string[]) => {
               const token = getToken();
               if (!token) return;
@@ -2378,6 +2339,8 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                   status: 'paused',
                   isVisible: true,
                   position: nextPos,
+                  feedTier: c.feedTier,
+                  tierSlot: c.tierSlot,
                   description: c.description || '',
                   category: c.category || 'All',
                   country: c.country || 'All',
@@ -2394,11 +2357,12 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
               await fetchAll();
               clearFeedAdsSelection();
             };
+
             return (
               <>
                 <div className="mb-6">
-                  <h2 className="text-xl font-bold text-white mb-2">Feed Ads</h2>
-                  <p className="text-[#999] text-sm">Drag rows to reorder priority. Assign to advertiser and monitor performance. Click column headers to sort; select rows for bulk edit.</p>
+                  <h2 className="text-xl font-bold text-white mb-2">Feed Ads — A/B Testing</h2>
+                  <p className="text-[#999] text-sm">4 slots, each holding up to 4 A/B variants. Slots loop in the feed (1→2→3→4→1→2→...). One random variant shown per impression. Click a slot to manage its ads.</p>
                 </div>
 
                 {/* KPI row */}
@@ -2406,22 +2370,35 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                   <div className="glass rounded-lg p-4 border border-white/5">
                     <div className="text-lg font-black text-white">{feedTotals.total.toLocaleString()}</div>
                     <div className="text-[10px] text-[#999] uppercase">Total clicks</div>
+                    <div className="text-xs text-green-400 mt-1 font-semibold">+{feedTotals.last24h.toLocaleString()} last 24h</div>
                   </div>
                   <div className="glass rounded-lg p-4 border border-white/5">
-                    <div className="text-lg font-black text-green-400">{feedTotals.last24h.toLocaleString()}</div>
-                    <div className="text-[10px] text-[#999] uppercase">Last 24h</div>
-                  </div>
-                  <div className="glass rounded-lg p-4 border border-white/5">
-                    <div className="text-lg font-black text-white">{feedTotals.last7d.toLocaleString()}</div>
-                    <div className="text-[10px] text-[#999] uppercase">Last 7 days</div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-lg font-black text-white">{feedTotals.last7d.toLocaleString()}</span>
+                      {(feedTotals.last7d > 0 || overallPrev7d > 0) && (
+                        <span className={`text-xs font-bold ${overallTrendPct > 0 ? 'text-green-400' : overallTrendPct < 0 ? 'text-red-400' : 'text-[#666]'}`}>
+                          {overallTrendPct > 0 ? '↑' : overallTrendPct < 0 ? '↓' : '→'}{Math.abs(overallTrendPct)}%
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-[#999] uppercase">Clicks 7d</div>
+                    <div className="text-[10px] text-[#666] mt-0.5">vs prev 7d: {overallPrev7d.toLocaleString()}</div>
                   </div>
                   <div className="glass rounded-lg p-4 border border-white/5">
                     <div className="text-lg font-black text-white">{feedTotals.last30d.toLocaleString()}</div>
-                    <div className="text-[10px] text-[#999] uppercase">Last 30 days</div>
+                    <div className="text-[10px] text-[#999] uppercase">Clicks 30d</div>
+                  </div>
+                  <div className="glass rounded-lg p-4 border border-white/5">
+                    <div className="text-lg font-black text-white">{feedTotals.impressions.toLocaleString()}</div>
+                    <div className="text-[10px] text-[#999] uppercase">Impressions</div>
+                  </div>
+                  <div className="glass rounded-lg p-4 border border-white/5">
+                    <div className="text-lg font-black text-blue-400">{overallCtr}%</div>
+                    <div className="text-[10px] text-[#999] uppercase">Avg CTR</div>
                   </div>
                 </div>
 
-                {/* Filters: Advertiser, Status, Show on + New button */}
+                {/* Filters */}
                 <div className="flex flex-wrap items-center gap-4 mb-4">
                   <select
                     value={feedAdsFilterAdvertiser}
@@ -2529,159 +2506,203 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                   />
                 )}
 
-                <div className="rounded-xl border border-white/10 overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-white/5">
-                      <tr>
-                        {isDragEnabled && <th className="w-8" />}
-                        <th className="px-3 py-2 w-10">
-                          <input
-                            type="checkbox"
-                            checked={sorted.length > 0 && feedAdsSelectedIds.size === sorted.length}
-                            onChange={toggleFeedAdsSelectAll}
-                            className="rounded border-white/30 text-[#b31b1b] focus:ring-[#b31b1b]"
-                          />
-                        </th>
-                        <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase cursor-pointer hover:text-white select-none" title="Display order of feed ads" onClick={() => handleFeedAdsSort('position')}>
-                          # {feedAdsSortBy === 'position' && (feedAdsSortOrder === 'asc' ? '↑' : '↓')}
-                        </th>
-                        <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Advertiser</th>
-                        <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Image</th>
-                        <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Name</th>
-                        <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase cursor-pointer hover:text-white select-none" onClick={() => handleFeedAdsSort('feedPlacement')}>
-                          Show on {feedAdsSortBy === 'feedPlacement' && (feedAdsSortOrder === 'asc' ? '↑' : '↓')}
-                        </th>
-                        <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase cursor-pointer hover:text-white select-none" onClick={() => handleFeedAdsSort('last24h')}>
-                          24h {feedAdsSortBy === 'last24h' && (feedAdsSortOrder === 'asc' ? '↑' : '↓')}
-                        </th>
-                        <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase cursor-pointer hover:text-white select-none" onClick={() => handleFeedAdsSort('last7d')}>
-                          7d {feedAdsSortBy === 'last7d' && (feedAdsSortOrder === 'asc' ? '↑' : '↓')}
-                        </th>
-                        <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase cursor-pointer hover:text-white select-none" onClick={() => handleFeedAdsSort('last30d')}>
-                          30d {feedAdsSortBy === 'last30d' && (feedAdsSortOrder === 'asc' ? '↑' : '↓')}
-                        </th>
-                        <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase cursor-pointer hover:text-white select-none" onClick={() => handleFeedAdsSort('total')}>
-                          Total {feedAdsSortBy === 'total' && (feedAdsSortOrder === 'asc' ? '↑' : '↓')}
-                        </th>
-                        <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase cursor-pointer hover:text-white select-none" onClick={() => handleFeedAdsSort('status')}>
-                          Status {feedAdsSortBy === 'status' && (feedAdsSortOrder === 'asc' ? '↑' : '↓')}
-                        </th>
-                        <th className="px-3 py-2 text-center font-bold text-[#999] text-xs uppercase w-12"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {sorted.map((c, rowIdx) => {
-                        const stats = getStats(c._id, c);
-                        const isDragging = feedAdsDragIdx === rowIdx;
-                        const isDragOver = feedAdsDragOverIdx === rowIdx && feedAdsDragIdx !== rowIdx;
-                        return (
-                          <tr
-                            key={c._id}
-                            draggable={isDragEnabled}
-                            onDragStart={isDragEnabled ? handleDragStart(rowIdx) : undefined}
-                            onDragOver={isDragEnabled ? handleDragOver(rowIdx) : undefined}
-                            onDrop={isDragEnabled ? () => handleDrop(rowIdx) : undefined}
-                            onDragEnd={isDragEnabled ? handleDragEnd : undefined}
-                            className={`hover:bg-white/5 transition-colors ${isDragging ? 'opacity-40' : ''} ${isDragOver ? 'border-t-2 !border-t-[#b31b1b]' : ''}`}
-                          >
-                            {isDragEnabled && (
-                              <td className="px-1 py-2 cursor-grab active:cursor-grabbing text-[#666] hover:text-white text-center select-none" title="Drag to reorder">
-                                <svg className="w-4 h-4 mx-auto" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
-                              </td>
+                {/* Slot-grouped view */}
+                <div className="space-y-2">
+                  {sortedPositions.map(([posKey, group]) => {
+                    const isExpanded = expandedPositions.has(posKey);
+                    const variantCount = group.campaigns.length;
+                    const activeVariants = group.campaigns.filter((c) => c.status === 'active').length;
+                    const slotNum = (group.feedTier - 1) * 4 + group.tierSlot;
+
+                    // Unique advertiser names in this slot
+                    const advNames = [...new Set(group.campaigns.map((c) => c.advertiserName || advertisers.find((a) => a._id === c.advertiserId)?.name || '').filter(Boolean))];
+
+                    // Aggregate stats for the slot
+                    const slotClicks = group.campaigns.reduce((sum, c) => sum + (getStats(c._id, c).total || 0), 0);
+                    const slotClicks24h = group.campaigns.reduce((sum, c) => sum + (getStats(c._id, c).last24h || 0), 0);
+                    const slotClicks7d = group.campaigns.reduce((sum, c) => sum + (getStats(c._id, c).last7d || 0), 0);
+                    const slotClicks30d = group.campaigns.reduce((sum, c) => sum + (getStats(c._id, c).last30d || 0), 0);
+                    // Trend: compare last 7d vs previous 7d (approx from 30d minus 7d)
+                    const prev7d = slotClicks30d - slotClicks7d;
+                    const trendPct = prev7d > 0 ? Math.round(((slotClicks7d - prev7d) / prev7d) * 100) : (slotClicks7d > 0 ? 100 : 0);
+
+                    // Determine position-level best CTR for winner badge
+                    const variantStats = group.campaigns.map((c) => {
+                      const s = getStats(c._id, c);
+                      return { _id: c._id, impressions: s.impressions ?? 0, clicks: s.total, ctr: s.ctr ?? 0 };
+                    });
+                    const eligible = variantStats.filter((v) => v.impressions >= 100);
+                    const winnerId = eligible.length > 0 ? eligible.sort((a, b) => b.ctr - a.ctr)[0]._id : null;
+
+                    return (
+                      <div key={posKey} className={`rounded-xl border ${isExpanded ? 'overflow-visible z-20 relative' : 'overflow-hidden'} ${variantCount > 0 ? 'border-white/10' : 'border-white/5 opacity-60'}`}>
+                        {/* Slot header — always visible */}
+                        <button
+                          onClick={() => togglePosition(posKey)}
+                          className="w-full flex items-center gap-3 px-4 py-3 bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-left"
+                        >
+                          <svg className={`w-4 h-4 text-[#999] transition-transform shrink-0 ${isExpanded ? 'rotate-90' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6" /></svg>
+                          <span className="text-white font-bold text-sm min-w-[52px]">Slot {slotNum}</span>
+                          {variantCount > 0 ? (
+                            <span className="text-[#666] text-xs truncate">{advNames.join(', ')}</span>
+                          ) : (
+                            <span className="text-[#555] text-xs italic">Empty</span>
+                          )}
+                          <div className="ml-auto flex items-center gap-3 shrink-0">
+                            {variantCount > 0 && (
+                              <>
+                                <span className="text-white text-xs tabular-nums font-semibold">{slotClicks.toLocaleString()} <span className="text-[#666] font-normal">total</span></span>
+                                <span className="text-green-400 text-xs tabular-nums">+{slotClicks24h} <span className="text-[#666]">24h</span></span>
+                                <span className="text-[#999] text-xs tabular-nums">{slotClicks7d.toLocaleString()} <span className="text-[#666]">7d</span></span>
+                                {(slotClicks7d > 0 || prev7d > 0) && (
+                                  <span className={`text-xs font-semibold tabular-nums ${trendPct > 0 ? 'text-green-400' : trendPct < 0 ? 'text-red-400' : 'text-[#666]'}`}>
+                                    {trendPct > 0 ? '↑' : trendPct < 0 ? '↓' : '→'}{Math.abs(trendPct)}%
+                                  </span>
+                                )}
+                              </>
                             )}
-                            <td className="px-3 py-2">
-                              <input
-                                type="checkbox"
-                                checked={feedAdsSelectedIds.has(c._id)}
-                                onChange={() => toggleFeedAdsSelect(c._id)}
-                                className="rounded border-white/30 text-[#b31b1b] focus:ring-[#b31b1b]"
-                              />
-                            </td>
-                            <td className="px-3 py-2 font-bold tabular-nums">
-                              {(() => {
-                                const rank = c.position ?? (c.feedTier != null && c.tierSlot != null ? (c.feedTier - 1) * 4 + c.tierSlot : null);
-                                if (rank == null) return <span className="text-[#666]">—</span>;
-                                if (c.status === 'active') {
-                                  const activeIndex = sorted.filter((x) => x.status === 'active').findIndex((x) => x._id === c._id);
-                                  const displayNum = activeIndex >= 0 ? activeIndex + 1 : rank;
-                                  return <span className="text-white">{displayNum}</span>;
-                                }
-                                return <span className="text-[#666]">#{rank}</span>;
-                              })()}
-                            </td>
-                            <td className="px-3 py-2 text-white">{c.advertiserName || advertisers.find((a) => a._id === c.advertiserId)?.name || '—'}</td>
-                            <td className="px-3 py-2">
-                              {c.creative ? <img src={c.creative} alt="" className="h-10 w-14 object-cover rounded" /> : <span className="text-[#666]">—</span>}
-                            </td>
-                            <td className="px-3 py-2 text-white font-medium">
-                              <span className="inline-flex items-center gap-1.5">
-                                {c.name}
-                                {(c as any).videoUrl && (
-                                  <svg className="w-4 h-4 text-purple-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
-                                )}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2 text-[#999]">{c.feedPlacement === 'both' ? 'Groups + Bots' : c.feedPlacement === 'groups' ? 'Groups' : c.feedPlacement === 'bots' ? 'Bots' : 'Both'}</td>
-                            <td className="px-3 py-2 text-right text-green-400 tabular-nums">{stats.last24h.toLocaleString()}</td>
-                            <td className="px-3 py-2 text-right text-[#999] tabular-nums">{stats.last7d.toLocaleString()}</td>
-                            <td className="px-3 py-2 text-right text-[#999] tabular-nums">{stats.last30d.toLocaleString()}</td>
-                            <td className="px-3 py-2 text-right font-semibold text-white tabular-nums">{stats.total.toLocaleString()}</td>
-                            <td className="px-3 py-2">
-                              <span className={`px-2 py-0.5 rounded text-xs ${c.status === 'active' ? 'bg-green-500/20 text-green-400' : 'text-[#666]'}`}>{c.status}</span>
-                            </td>
-                            <td className="px-3 py-2 text-center">
-                              <div className="relative inline-block">
-                                <button
-                                  onClick={() => setFeedAdsMenuOpen(feedAdsMenuOpen === c._id ? null : c._id)}
-                                  className="p-1.5 rounded-lg hover:bg-white/10 text-[#999] hover:text-white transition-colors"
-                                >
-                                  <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="3" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="13" r="1.5"/></svg>
-                                </button>
-                                {feedAdsMenuOpen === c._id && (
-                                  <>
-                                    <div className="fixed inset-0 z-40" onClick={() => setFeedAdsMenuOpen(null)} />
-                                    <div className="absolute right-0 top-8 z-50 w-36 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-xl overflow-hidden">
-                                      <button
-                                        onClick={() => { setFeedAdsMenuOpen(null); openEditCampaign(c); }}
-                                        className="w-full text-left px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2"
-                                      >
-                                        <span className="text-blue-400">✎</span> Edit
-                                      </button>
-                                      <button
-                                        onClick={async () => {
-                                          setFeedAdsMenuOpen(null);
-                                          try { await duplicateCampaigns([c._id]); } catch (err: any) { alert(err.response?.data?.message || 'Duplicate failed'); }
-                                        }}
-                                        className="w-full text-left px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2"
-                                      >
-                                        <span className="text-purple-400">⧉</span> Duplicate
-                                      </button>
-                                      <button
-                                        onClick={() => { setFeedAdsMenuOpen(null); toggleCampaignStatus(c); }}
-                                        className="w-full text-left px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2"
-                                      >
-                                        <span className="text-yellow-400">{c.status === 'active' ? '⏸' : '▶'}</span> {c.status === 'active' ? 'Pause' : 'Start'}
-                                      </button>
-                                      <div className="border-t border-white/5" />
-                                      <button
-                                        onClick={() => { setFeedAdsMenuOpen(null); handleDeleteCampaign(c._id); }}
-                                        className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2"
-                                      >
-                                        <span>🗑</span> Delete
-                                      </button>
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                            <span className={`text-xs px-2 py-0.5 rounded ${activeVariants > 0 ? 'bg-green-500/20 text-green-400' : 'bg-white/5 text-[#666]'}`}>
+                              {variantCount > 0 ? `${activeVariants}/${variantCount} ads` : 'empty'}
+                            </span>
+                            {variantCount < 4 && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCampForm({ ...campForm, slot: 'feed', advertiserId: advertisers[0]?._id || '', name: '', creative: '', destinationUrl: '', description: '', category: 'All', country: 'All', buttonText: 'Visit Site', feedTier: group.feedTier, tierSlot: group.tierSlot, position: slotNum, feedPlacement: 'both', videoUrl: '', badgeText: '' } as any);
+                                  setEditingCampaign(null);
+                                  setView('editCampaign');
+                                }}
+                                className="px-3 py-1 bg-[#b31b1b]/80 hover:bg-[#b31b1b] text-white rounded-lg text-xs font-semibold transition-colors"
+                              >
+                                + Add{variantCount > 0 ? ' Variant' : ' Ad'}
+                              </button>
+                            )}
+                          </div>
+                        </button>
+
+                        {/* Expanded variant table */}
+                        {isExpanded && (
+                          <div className="border-t border-white/5">
+                            <table className="w-full text-sm">
+                              <thead className="bg-white/[0.02]">
+                                <tr>
+                                  <th className="px-3 py-2 w-10"></th>
+                                  <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Advertiser</th>
+                                  <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Image</th>
+                                  <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Name</th>
+                                  <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Show on</th>
+                                  <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">Impr.</th>
+                                  <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">Clicks</th>
+                                  <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">CTR</th>
+                                  <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">24h</th>
+                                  <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">7d</th>
+                                  <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">30d</th>
+                                  <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Status</th>
+                                  <th className="px-3 py-2 text-center font-bold text-[#999] text-xs uppercase w-12"></th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-white/5">
+                                {group.campaigns.map((c) => {
+                                  const stats = getStats(c._id, c);
+                                  const impressions = stats.impressions ?? 0;
+                                  const ctr = stats.ctr ?? (impressions > 0 ? Number(((stats.total / impressions) * 100).toFixed(2)) : 0);
+                                  const isWinner = c._id === winnerId;
+                                  return (
+                                    <tr key={c._id} className="hover:bg-white/5 transition-colors">
+                                      <td className="px-3 py-2">
+                                        <input
+                                          type="checkbox"
+                                          checked={feedAdsSelectedIds.has(c._id)}
+                                          onChange={() => toggleFeedAdsSelect(c._id)}
+                                          className="rounded border-white/30 text-[#b31b1b] focus:ring-[#b31b1b]"
+                                        />
+                                      </td>
+                                      <td className="px-3 py-2 text-white">{c.advertiserName || advertisers.find((a) => a._id === c.advertiserId)?.name || '—'}</td>
+                                      <td className="px-3 py-2">
+                                        {c.creative ? <img src={c.creative} alt="" className="h-10 w-14 object-cover rounded" /> : <span className="text-[#666]">—</span>}
+                                      </td>
+                                      <td className="px-3 py-2 text-white font-medium">
+                                        <span className="inline-flex items-center gap-1.5">
+                                          {c.name}
+                                          {(c as any).videoUrl && (
+                                            <svg className="w-4 h-4 text-purple-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
+                                          )}
+                                          {isWinner && (
+                                            <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-black uppercase bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">Winner</span>
+                                          )}
+                                        </span>
+                                      </td>
+                                      <td className="px-3 py-2 text-[#999]">{c.feedPlacement === 'both' ? 'Both' : c.feedPlacement === 'groups' ? 'Groups' : c.feedPlacement === 'bots' ? 'Bots' : 'Both'}</td>
+                                      <td className="px-3 py-2 text-right text-[#999] tabular-nums">{impressions.toLocaleString()}</td>
+                                      <td className="px-3 py-2 text-right font-semibold text-white tabular-nums">{stats.total.toLocaleString()}</td>
+                                      <td className="px-3 py-2 text-right tabular-nums">
+                                        <span className={`font-bold ${ctr > 3 ? 'text-green-400' : ctr > 1 ? 'text-blue-400' : 'text-[#999]'}`}>{ctr}%</span>
+                                      </td>
+                                      <td className="px-3 py-2 text-right text-green-400 tabular-nums">{stats.last24h.toLocaleString()}</td>
+                                      <td className="px-3 py-2 text-right text-[#999] tabular-nums">{stats.last7d.toLocaleString()}</td>
+                                      <td className="px-3 py-2 text-right text-[#999] tabular-nums">{stats.last30d.toLocaleString()}</td>
+                                      <td className="px-3 py-2">
+                                        <span className={`px-2 py-0.5 rounded text-xs ${c.status === 'active' ? 'bg-green-500/20 text-green-400' : 'text-[#666]'}`}>{c.status}</span>
+                                      </td>
+                                      <td className="px-3 py-2 text-center">
+                                        <div className="relative inline-block">
+                                          <button
+                                            onClick={() => setFeedAdsMenuOpen(feedAdsMenuOpen === c._id ? null : c._id)}
+                                            className="p-1.5 rounded-lg hover:bg-white/10 text-[#999] hover:text-white transition-colors"
+                                          >
+                                            <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="3" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="13" r="1.5"/></svg>
+                                          </button>
+                                          {feedAdsMenuOpen === c._id && (
+                                            <>
+                                              <div className="fixed inset-0 z-40" onClick={() => setFeedAdsMenuOpen(null)} />
+                                              <div className="absolute right-0 top-8 z-50 w-36 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-xl overflow-hidden">
+                                                <button
+                                                  onClick={() => { setFeedAdsMenuOpen(null); openEditCampaign(c); }}
+                                                  className="w-full text-left px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                                                >
+                                                  <span className="text-blue-400">✎</span> Edit
+                                                </button>
+                                                <button
+                                                  onClick={async () => {
+                                                    setFeedAdsMenuOpen(null);
+                                                    try { await duplicateCampaigns([c._id]); } catch (err: any) { alert(err.response?.data?.message || 'Duplicate failed'); }
+                                                  }}
+                                                  className="w-full text-left px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                                                >
+                                                  <span className="text-purple-400">⧉</span> Duplicate
+                                                </button>
+                                                <button
+                                                  onClick={() => { setFeedAdsMenuOpen(null); toggleCampaignStatus(c); }}
+                                                  className="w-full text-left px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                                                >
+                                                  <span className="text-yellow-400">{c.status === 'active' ? '⏸' : '▶'}</span> {c.status === 'active' ? 'Pause' : 'Start'}
+                                                </button>
+                                                <div className="border-t border-white/5" />
+                                                <button
+                                                  onClick={() => { setFeedAdsMenuOpen(null); handleDeleteCampaign(c._id); }}
+                                                  className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2"
+                                                >
+                                                  <span>🗑</span> Delete
+                                                </button>
+                                              </div>
+                                            </>
+                                          )}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-                {sorted.length === 0 && (
-                  <div className="p-8 text-center text-[#666]">No feed ads. Create one with &quot;+ New feed ad&quot; or add a campaign with slot In-Feed in By slot.</div>
+
+                {sortedPositions.length === 0 && (
+                  <div className="p-8 text-center text-[#666]">No feed ads match the current filters. Create one with &quot;+ New feed ad&quot;.</div>
                 )}
               </>
             );

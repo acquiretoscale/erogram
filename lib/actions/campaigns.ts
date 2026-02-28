@@ -11,17 +11,10 @@ const SLOT_LIMITS: Record<string, number> = {
   // Global banner shown across the site (Bots/Groups/Articles/Join pages)
   'top-banner': 2,
   'homepage-hero': 1,
-  feed: 12, // 4 per tier (tier 1, 2, 3)
+  feed: 16, // 4 slots x up to 4 A/B variants each
   'navbar-cta': 1,
   'join-cta': 1,
   'filter-cta': 1,
-};
-
-// Grid positions for feed: first 12 groups get 4 ads at 3,6,9,12; next 12 at 15,18,21,24; next 12 at 27,30,33,36
-const FEED_TIER_POSITIONS: Record<number, number[]> = {
-  1: [3, 6, 9, 12],
-  2: [15, 18, 21, 24],
-  3: [27, 30, 33, 36],
 };
 
 async function authenticateAdmin(token: string) {
@@ -142,23 +135,23 @@ export async function createCampaign(
   const now = new Date();
 
   if (data.slot === 'feed') {
-    const tier = data.feedTier != null ? Number(data.feedTier) : null;
     const slot = data.tierSlot != null ? Number(data.tierSlot) : null;
-    if (tier != null && slot != null) {
-      if (tier < 1 || slot < 1 || slot > 4) {
-        throw new Error('Feed Tier must be ≥ 1 and Slot must be 1–4.');
+    if (slot != null) {
+      if (slot < 1 || slot > 4) {
+        throw new Error('Feed Slot must be 1–4.');
       }
-      const existing = await Campaign.findOne({
+      (data as any).feedTier = 1; // all feed ads live in tier 1
+      const variantCount = await Campaign.countDocuments({
         slot: 'feed',
-        feedTier: tier,
+        feedTier: 1,
         tierSlot: slot,
         status: 'active',
         isVisible: true,
         startDate: { $lte: now },
         endDate: { $gte: now },
       });
-      if (existing) {
-        throw new Error(`Feed Tier ${tier} Slot ${slot} is already taken.`);
+      if (variantCount >= 4) {
+        throw new Error(`Slot ${slot} already has 4 A/B variants (max). Pause or remove one first.`);
       }
     }
   } else {
@@ -359,7 +352,7 @@ export async function getSlotCapacity(token: string) {
 }
 
 /**
- * Get feed tier capacity (4 slots per tier). Used by admin when creating feed campaigns.
+ * Get feed slot capacity (4 slots, up to 4 A/B variants each). Used by admin.
  */
 export async function getFeedTierCapacity(token: string) {
   const admin = await authenticateAdmin(token);
@@ -376,19 +369,20 @@ export async function getFeedTierCapacity(token: string) {
         isVisible: true,
         startDate: { $lte: now },
         endDate: { $gte: now },
-        feedTier: { $in: [1, 2, 3] },
+        feedTier: 1,
+        tierSlot: { $gte: 1, $lte: 4 },
       },
     },
-    { $group: { _id: '$feedTier', count: { $sum: 1 } } },
+    { $group: { _id: '$tierSlot', count: { $sum: 1 } } },
   ]);
 
-  const countByTier = new Map(counts.map((c: any) => [c._id, c.count]));
-  return [1, 2, 3].map((tier) => ({
-    tier,
-    label: tier === 1 ? 'Top (first 12 groups)' : tier === 2 ? 'Middle (next 12)' : 'Bottom (next 12)',
+  const countBySlot = new Map(counts.map((c: any) => [c._id, c.count]));
+  return [1, 2, 3, 4].map((s) => ({
+    tier: 1,
+    label: `Slot ${s}`,
     max: 4,
-    active: countByTier.get(tier) || 0,
-    remaining: 4 - (countByTier.get(tier) || 0),
+    active: countBySlot.get(s) || 0,
+    remaining: 4 - (countBySlot.get(s) || 0),
   }));
 }
 
@@ -409,14 +403,9 @@ async function normalizeFeedPositions(): Promise<void> {
   if (allFeed.length === 0) return;
 
   const withKey = allFeed.map((c: any) => {
-    const tier = c.feedTier as number | null;
     const slot = c.tierSlot as number | null;
     const stored = c.position != null ? Number(c.position) : 999;
-    const tierPos = tier != null ? FEED_TIER_POSITIONS[tier] : null;
-    const sortKey =
-      tierPos != null && slot != null && slot >= 1 && slot <= 4 && tierPos[slot - 1] != null
-        ? tierPos[slot - 1]
-        : stored;
+    const sortKey = slot != null && slot >= 1 && slot <= 4 ? slot : stored;
     const isActive = c.status === 'active';
     return { c, sortKey, isActive };
   });
@@ -455,54 +444,56 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
     isVisible: true,
     startDate: { $lte: now },
     endDate: { $gte: startOfToday },
-    $and: [
-      {
-        $or: [
-          { feedTier: { $in: [1, 2, 3] }, tierSlot: { $gte: 1, $lte: 4 } },
-          { position: { $gte: 1 } },
-        ],
-      },
-      {
-        $or: [
-          { feedPlacement: placement },
-          { feedPlacement: 'both' },
-          { feedPlacement: { $exists: false } },
-        ],
-      },
+    feedTier: 1,
+    tierSlot: { $gte: 1, $lte: 4 },
+    $or: [
+      { feedPlacement: placement },
+      { feedPlacement: 'both' },
+      { feedPlacement: { $exists: false } },
     ],
   })
     .select('_id creative destinationUrl slot feedTier tierSlot position description category country buttonText name feedPlacement videoUrl badgeText verified')
     .lean();
 
-  const withSortKey = campaigns.map((c: any) => {
-    const tier = c.feedTier as number | null;
-    const slot = c.tierSlot as number | null;
-    const storedPosition = c.position != null ? Number(c.position) : 999;
-    const positions = tier != null ? FEED_TIER_POSITIONS[tier] : null;
-    const sortPosition =
-      positions != null && slot != null && slot >= 1 && slot <= 4 && positions[slot - 1] != null
-        ? positions[slot - 1]
-        : storedPosition;
-    return { c, sortPosition };
-  });
-  withSortKey.sort((a, b) => a.sortPosition - b.sortPosition);
+  // Group by tierSlot (1-4) for A/B variant selection
+  const slotGroups = new Map<number, any[]>();
+  for (const c of campaigns) {
+    const ts = (c as any).tierSlot as number;
+    if (!slotGroups.has(ts)) slotGroups.set(ts, []);
+    slotGroups.get(ts)!.push(c);
+  }
 
-  // Only 12 ads. Assign display positions 5, 10, 15, … 60 (one ad every 5 entries).
-  return withSortKey.slice(0, 12).map(({ c }, i) => ({
-    _id: c._id.toString(),
-    creative: c.creative,
-    destinationUrl: c.destinationUrl,
-    slot: c.slot,
-    position: FEED_DISPLAY_POSITIONS[i],
-    description: c.description || '',
-    category: c.category || 'All',
-    country: c.country || 'All',
-    buttonText: c.buttonText || 'Visit Site',
-    name: c.name,
-    videoUrl: c.videoUrl || '',
-    badgeText: c.badgeText || '',
-    verified: Boolean(c.verified),
-  }));
+  // For each of the 4 slots, randomly pick one variant
+  const slotPicks: (any | null)[] = [null, null, null, null];
+  for (let s = 1; s <= 4; s++) {
+    const variants = slotGroups.get(s);
+    if (variants && variants.length > 0) {
+      slotPicks[s - 1] = variants[Math.floor(Math.random() * variants.length)];
+    }
+  }
+
+  // Loop slots 1-4 across all 12 display positions: 1,2,3,4,1,2,3,4,1,2,3,4
+  const results: any[] = [];
+  for (let i = 0; i < FEED_DISPLAY_POSITIONS.length; i++) {
+    const pick = slotPicks[i % 4];
+    if (!pick) continue;
+    results.push({
+      _id: pick._id.toString(),
+      creative: pick.creative,
+      destinationUrl: pick.destinationUrl,
+      slot: pick.slot,
+      position: FEED_DISPLAY_POSITIONS[i],
+      description: pick.description || '',
+      category: pick.category || 'All',
+      country: pick.country || 'All',
+      buttonText: pick.buttonText || 'Visit Site',
+      name: pick.name,
+      videoUrl: pick.videoUrl || '',
+      badgeText: pick.badgeText || '',
+      verified: Boolean(pick.verified),
+    });
+  }
+  return results;
 }
 
 /**
@@ -516,6 +507,19 @@ export async function trackClick(campaignId: string, placement?: string) {
     await CampaignClick.create({ campaignId, clickedAt: new Date() });
   } catch {
     // Silently fail — click tracking should never block the user
+  }
+}
+
+/**
+ * Track an impression on a campaign. Fire-and-forget from the client.
+ * Increments Campaign.impressions by 1.
+ */
+export async function trackImpression(campaignId: string) {
+  try {
+    await connectDB();
+    await Campaign.findByIdAndUpdate(campaignId, { $inc: { impressions: 1 } });
+  } catch {
+    // Silently fail
   }
 }
 
@@ -562,15 +566,14 @@ export async function getGlobalClickStats(token: string) {
   };
 }
 
-/** Admin: click stats per feed campaign (total, last 24h, 7d, 30d) for Feed Ads dashboard. */
+/** Admin: click stats per feed campaign (total, last 24h, 7d, 30d) + impressions & CTR for Feed Ads dashboard. */
 export async function getFeedCampaignClickStats(token: string) {
   const admin = await authenticateAdmin(token);
   if (!admin) throw new Error('Unauthorized');
   await connectDB();
-  const feedCampaigns = await Campaign.find({ slot: 'feed' }).select('_id clicks').lean();
+  const feedCampaigns = await Campaign.find({ slot: 'feed' }).select('_id clicks impressions').lean();
   const campaignIds = feedCampaigns.map((c: any) => c._id);
   const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const last7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const last30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -590,17 +593,83 @@ export async function getFeedCampaignClickStats(token: string) {
     ]).then((r: { _id: any; clicks: number }[]) => new Map(r.map((x) => [x._id.toString(), x.clicks]))),
   ]);
 
-  const result: Record<string, { total: number; last24h: number; last7d: number; last30d: number }> = {};
+  const result: Record<string, { total: number; last24h: number; last7d: number; last30d: number; impressions: number; ctr: number }> = {};
   feedCampaigns.forEach((c: any) => {
     const id = c._id.toString();
+    const impressions = c.impressions ?? 0;
+    const totalClicks = c.clicks ?? 0;
     result[id] = {
-      total: c.clicks ?? 0,
+      total: totalClicks,
       last24h: by24h.get(id) ?? 0,
       last7d: by7d.get(id) ?? 0,
       last30d: by30d.get(id) ?? 0,
+      impressions,
+      ctr: impressions > 0 ? Number(((totalClicks / impressions) * 100).toFixed(2)) : 0,
     };
   });
   return result;
+}
+
+/** Admin: A/B stats for feed campaigns grouped by position (feedTier, tierSlot). */
+export async function getFeedABStats(token: string) {
+  const admin = await authenticateAdmin(token);
+  if (!admin) throw new Error('Unauthorized');
+  await connectDB();
+
+  const feedCampaigns = await Campaign.find({ slot: 'feed' })
+    .select('_id name feedTier tierSlot impressions clicks status advertiserId')
+    .populate('advertiserId', 'name')
+    .lean();
+
+  const groups: Record<string, {
+    feedTier: number;
+    tierSlot: number;
+    variants: {
+      _id: string;
+      name: string;
+      advertiserName: string;
+      impressions: number;
+      clicks: number;
+      ctr: number;
+      status: string;
+      isWinner: boolean;
+    }[];
+  }> = {};
+
+  for (const c of feedCampaigns as any[]) {
+    const tier = c.feedTier as number | null;
+    const slot = c.tierSlot as number | null;
+    if (tier == null || slot == null) continue;
+
+    const key = `${tier}-${slot}`;
+    if (!groups[key]) {
+      groups[key] = { feedTier: tier, tierSlot: slot, variants: [] };
+    }
+
+    const impressions = c.impressions ?? 0;
+    const clicks = c.clicks ?? 0;
+    groups[key].variants.push({
+      _id: c._id.toString(),
+      name: c.name,
+      advertiserName: c.advertiserId?.name || 'Unknown',
+      impressions,
+      clicks,
+      ctr: impressions > 0 ? Number(((clicks / impressions) * 100).toFixed(2)) : 0,
+      status: c.status,
+      isWinner: false,
+    });
+  }
+
+  // Mark winner in each position group (highest CTR with min 100 impressions)
+  for (const group of Object.values(groups)) {
+    const eligible = group.variants.filter((v) => v.impressions >= 100);
+    if (eligible.length > 0) {
+      eligible.sort((a, b) => b.ctr - a.ctr);
+      eligible[0].isWinner = true;
+    }
+  }
+
+  return groups;
 }
 
 /** Admin: total clicks per advertiser (all-time, last 7d, last 30d) for Overview. */

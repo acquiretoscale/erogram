@@ -8,6 +8,7 @@ import {
   getSlotClickTotals,
   getClicksByAdvertiser,
   getFeedCampaignClickStats,
+  getFeedABStats,
 } from '@/lib/actions/campaigns';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +21,7 @@ function getToken(req: NextRequest): string {
 export async function GET(req: NextRequest) {
   try {
     const token = getToken(req);
-    const [advertisers, campaigns, slots, feedTierCapacity, globalStats, slotTotals, clicksByAdvertiser, feedClickStats] = await Promise.all([
+    const [advertisers, campaigns, slots, feedTierCapacity, globalStats, slotTotals, clicksByAdvertiser, feedClickStats, feedABStats] = await Promise.all([
       getAdvertisers(token),
       getCampaigns(token),
       getSlotCapacity(token),
@@ -29,6 +30,7 @@ export async function GET(req: NextRequest) {
       getSlotClickTotals(token).catch(() => []),
       getClicksByAdvertiser(token).catch(() => []),
       getFeedCampaignClickStats(token).catch(() => ({})),
+      getFeedABStats(token).catch(() => ({})),
     ]);
     return NextResponse.json({
       advertisers,
@@ -39,6 +41,7 @@ export async function GET(req: NextRequest) {
       slotTotals,
       clicksByAdvertiser,
       feedClickStats,
+      feedABStats,
     });
   } catch (err: any) {
     return NextResponse.json({ message: err.message || 'Unauthorized' }, { status: err.message === 'Unauthorized' ? 401 : 500 });

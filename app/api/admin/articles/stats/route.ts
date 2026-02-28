@@ -41,10 +41,17 @@ export async function GET(req: NextRequest) {
       d.setDate(d.getDate() - i);
       last7dKeys.push(d.toISOString().slice(0, 10));
     }
+    const last30dKeys: string[] = [];
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      last30dKeys.push(d.toISOString().slice(0, 10));
+    }
 
     let totalClicks = 0;
     let totalClicks24h = 0;
     let totalClicks7d = 0;
+    let totalClicks30d = 0;
 
     for (const a of articles as any[]) {
       totalClicks += a.views || 0;
@@ -53,12 +60,14 @@ export async function GET(req: NextRequest) {
         : (a.viewsByDay || {});
       totalClicks24h += dayMap[todayKey] || 0;
       totalClicks7d += last7dKeys.reduce((s, k) => s + (dayMap[k] || 0), 0);
+      totalClicks30d += last30dKeys.reduce((s, k) => s + (dayMap[k] || 0), 0);
     }
 
     return NextResponse.json({
       totalClicks,
       totalClicks24h,
       totalClicks7d,
+      totalClicks30d,
       count: articles.length,
     });
   } catch (e: any) {
