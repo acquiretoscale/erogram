@@ -64,7 +64,8 @@ async function getArticle(slug: string) {
       twitterDescription: ar.twitterDescription || '',
     };
 
-    Article.findByIdAndUpdate(ar._id, { $inc: { views: 1 } }).catch(err => console.error('Error updating article views:', err));
+    const todayKey = new Date().toISOString().slice(0, 10);
+    Article.findByIdAndUpdate(ar._id, { $inc: { views: 1, [`viewsByDay.${todayKey}`]: 1 } }).catch(err => console.error('Error updating article views:', err));
     return result;
   } catch (error: any) {
     console.error('Error fetching article:', error);
