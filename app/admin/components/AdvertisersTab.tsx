@@ -2294,8 +2294,8 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
             const sortedPositions = Object.entries(posGroups).sort(([, a], [, b]) => a.tierSlot - b.tierSlot);
 
             const feedTotals = Object.values(feedClickStats).reduce(
-              (acc, s) => ({ total: acc.total + s.total, last24h: acc.last24h + s.last24h, last7d: acc.last7d + s.last7d, last30d: acc.last30d + s.last30d, impressions: (acc.impressions || 0) + (s.impressions || 0) }),
-              { total: 0, last24h: 0, last7d: 0, last30d: 0, impressions: 0 }
+              (acc, s) => ({ total: acc.total + s.total, last24h: acc.last24h + s.last24h, last7d: acc.last7d + s.last7d, last30d: acc.last30d + s.last30d, impressions: acc.impressions + (s.impressions || 0) }),
+              { total: 0, last24h: 0, last7d: 0, last30d: 0, impressions: 0 } as { total: number; last24h: number; last7d: number; last30d: number; impressions: number }
             );
             const overallCtr = feedTotals.impressions > 0 ? ((feedTotals.total / feedTotals.impressions) * 100).toFixed(2) : '0.00';
             const overallPrev7d = feedTotals.last30d - feedTotals.last7d;
