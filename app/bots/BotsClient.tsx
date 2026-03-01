@@ -531,9 +531,9 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
             {/* All Bots */}
             <div className="relative">
               <div className="text-center mb-12">
-                <h2 className="text-3xl md:text-4xl font-black text-[#f5f5f5] mb-4">
-                  🔥 All Bots
-                </h2>
+                <h1 className="text-3xl md:text-4xl font-black text-[#f5f5f5] mb-4">
+                  Discover NSFW Telegram Bots
+                </h1>
                 <p className="text-[#999] text-lg">
                   Discover amazing bots
                 </p>

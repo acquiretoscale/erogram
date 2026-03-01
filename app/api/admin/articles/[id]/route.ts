@@ -6,7 +6,7 @@ import { User, Article, Advertiser } from '@/lib/models';
 
 export const dynamic = 'force-dynamic';
 import { slugify } from '@/lib/utils/slugify';
-import { submitToIndexNow } from '@/lib/utils/indexNow';
+import { pingIndexNow } from '@/lib/utils/indexNow';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -270,7 +270,7 @@ export async function PUT(
     // Submit to IndexNow whenever a published article is updated (content, title, etc.)
     // so search engines re-crawl the page with the latest changes.
     if (setFields.status === 'published' || (oldArticle.status === 'published' && setFields.status !== 'draft')) {
-      submitToIndexNow([`https://erogram.pro/articles/${article.slug}`]);
+      pingIndexNow(`https://erogram.pro/articles/${article.slug}`);
     }
 
     revalidatePath('/articles');

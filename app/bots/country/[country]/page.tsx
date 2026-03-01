@@ -181,7 +181,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return {
       // Root layout already appends "| Erogram" via `metadata.title.template`.
       title: `NSFW Telegram Bots in ${country}`,
-      description: `Discover NSFW Telegram bots in ${country}. Find AI chatbots and roleplay bots for adult conversations.`,
+      description: `Discover the best NSFW Telegram bots in ${country}. Browse AI chatbots, roleplay companions, and adult entertainment bots. Find verified ${country} bots on Erogram.pro — updated daily.`,
       alternates: {
         canonical: countryUrl(country),
       },

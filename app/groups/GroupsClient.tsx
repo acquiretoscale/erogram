@@ -555,9 +555,9 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
               </section>
 
               <div className="text-center mb-6">
-                <h2 className="text-2xl md:text-3xl font-black text-[#f5f5f5]">
-                  🔥 All Groups
-                </h2>
+                <h1 className="text-2xl md:text-3xl font-black text-[#f5f5f5]">
+                  Discover NSFW Telegram Groups
+                </h1>
               </div>
 
               <div className="relative">

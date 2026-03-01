@@ -6,7 +6,7 @@ import { User, Article, Advertiser } from '@/lib/models';
 
 export const dynamic = 'force-dynamic';
 import { slugify } from '@/lib/utils/slugify';
-import { submitToIndexNow } from '@/lib/utils/indexNow';
+import { pingIndexNow } from '@/lib/utils/indexNow';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -303,7 +303,7 @@ export async function POST(req: NextRequest) {
       };
 
       if (articleStatus === 'published') {
-        submitToIndexNow([`https://erogram.pro/articles/${slug}`]);
+        pingIndexNow(`https://erogram.pro/articles/${slug}`);
       }
       revalidatePath('/articles');
       revalidatePath(`/articles/${slug}`);

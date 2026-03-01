@@ -376,7 +376,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
         <div className="absolute inset-0 bg-[#0a0a0a]"></div>
         <Image
           src={groupImage}
-          alt=""
+          alt={`${entity.name} background`}
           fill
           className="object-cover opacity-20 blur-3xl scale-110"
           priority

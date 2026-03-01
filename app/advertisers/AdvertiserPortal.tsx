@@ -323,7 +323,7 @@ function Dashboard({ token, advertiser, onLogout }: { token: string; advertiser:
               <p className="text-[10px] text-gray-500">{advertiser.company || advertiser.email}</p>
             </div>
             {advertiser.logo ? (
-              <Image src={advertiser.logo} alt="" width={32} height={32} className="w-8 h-8 rounded-full object-cover border border-white/10" />
+              <Image src={advertiser.logo} alt={`${advertiser.name} logo`} width={32} height={32} className="w-8 h-8 rounded-full object-cover border border-white/10" />
             ) : (
               <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-xs font-bold text-amber-400">
                 {advertiser.name.charAt(0).toUpperCase()}
@@ -418,7 +418,7 @@ function Dashboard({ token, advertiser, onLogout }: { token: string; advertiser:
                     {activeCampaigns.map((c) => (
                       <div key={c._id} className="flex items-center gap-4 rounded-lg bg-white/[0.02] border border-white/[0.04] p-3 sm:p-4">
                         {c.creative && (
-                          <Image src={c.creative} alt="" width={48} height={48} className="w-12 h-12 rounded-lg object-cover border border-white/10 shrink-0" />
+                          <Image src={c.creative} alt={c.name || 'Campaign creative'} width={48} height={48} className="w-12 h-12 rounded-lg object-cover border border-white/10 shrink-0" />
                         )}
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-white truncate">{c.name}</p>
@@ -494,7 +494,7 @@ function Dashboard({ token, advertiser, onLogout }: { token: string; advertiser:
                     <div key={c._id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 sm:p-5">
                       <div className="flex items-start gap-4">
                         {c.creative && (
-                          <Image src={c.creative} alt="" width={64} height={64} className="w-16 h-16 rounded-lg object-cover border border-white/10 shrink-0 hidden sm:block" />
+                          <Image src={c.creative} alt={c.name || 'Campaign creative'} width={64} height={64} className="w-16 h-16 rounded-lg object-cover border border-white/10 shrink-0 hidden sm:block" />
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -575,7 +575,7 @@ function Dashboard({ token, advertiser, onLogout }: { token: string; advertiser:
                 {featuredGroups.map((g) => (
                   <div key={g._id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
                     {g.image && (
-                      <Image src={g.image} alt="" width={400} height={200} className="w-full h-32 object-cover border-b border-white/[0.06]" />
+                      <Image src={g.image} alt={g.name || 'Featured group'} width={400} height={200} className="w-full h-32 object-cover border-b border-white/[0.06]" />
                     )}
                     <div className="p-4">
                       <h4 className="text-sm font-bold text-white mb-2">{g.name}</h4>

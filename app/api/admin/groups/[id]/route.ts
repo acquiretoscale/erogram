@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import { User, Group } from '@/lib/models';
 import { sendNewGroupTelegramNotification } from '@/lib/utils/telegramNotify';
-import { submitToIndexNow } from '@/lib/utils/indexNow';
+import { pingIndexNow } from '@/lib/utils/indexNow';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -159,7 +159,7 @@ export async function PUT(
         }
 
         // Submit to IndexNow
-        submitToIndexNow([`https://erogram.pro/${group.slug}`]);
+        pingIndexNow(`https://erogram.pro/${group.slug}`);
       } catch (err) {
         console.error('[Group Update] Failed to send Telegram notification:', err);
         // Don't fail the update if notification fails

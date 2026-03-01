@@ -94,9 +94,9 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-md animate-[fadeInUp_0.6s_ease-out]">
         <div className="glass rounded-2xl p-8 sm:p-12 backdrop-blur-lg border border-white/10">
           <div className="text-center mb-8">
-            <h2 className="text-3xl sm:text-4xl font-black mb-2 gradient-text">
-              Welcome!
-            </h2>
+            <h1 className="text-3xl sm:text-4xl font-black mb-2 gradient-text">
+              Login to Erogram
+            </h1>
             <p className="text-[#999]">
               Login to discover amazing groups
             </p>
