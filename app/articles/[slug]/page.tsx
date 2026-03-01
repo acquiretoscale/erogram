@@ -79,8 +79,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!article) {
     return {
-      // Root layout already appends "| Erogram" via `metadata.title.template`.
       title: 'Article Not Found',
+      robots: { index: false, follow: false },
     };
   }
 
