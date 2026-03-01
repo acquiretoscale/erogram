@@ -16,9 +16,15 @@ interface PageProps {
 const normalizeCountry = (country: string) => country.toLowerCase();
 
 export async function generateStaticParams() {
-    return countries.map((country) => ({
-        country: normalizeCountry(country),
-    }));
+    await connectDB();
+    const counts = await Group.aggregate([
+        { $match: { status: 'approved', isAdvertisement: false } },
+        { $group: { _id: '$country', n: { $sum: 1 } } },
+    ]);
+    const active = new Set(counts.map((c: any) => (c._id as string)?.toLowerCase()));
+    return countries
+        .filter(c => c !== 'All' && active.has(c.toLowerCase()))
+        .map((country) => ({ country: normalizeCountry(country) }));
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

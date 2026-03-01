@@ -5,7 +5,7 @@ import { categories, countries } from '@/app/groups/constants';
 
 export const metadata: Metadata = {
   title: 'Add Group or Bot | Erogram',
-  description: 'Submit your Telegram group or bot for moderation. No login required.',
+  description: 'Submit your Telegram group or bot to Erogram.pro for free. Get listed in the largest NSFW Telegram directory and reach thousands of active users. No login required — fast review and approval.',
 };
 
 export default function AddPage() {

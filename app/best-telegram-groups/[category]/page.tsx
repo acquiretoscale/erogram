@@ -16,9 +16,15 @@ interface PageProps {
 const normalizeCategory = (cat: string) => cat.toLowerCase();
 
 export async function generateStaticParams() {
-    return categories.map((category) => ({
-        category: normalizeCategory(category),
-    }));
+    await connectDB();
+    const counts = await Group.aggregate([
+        { $match: { status: 'approved', isAdvertisement: false } },
+        { $group: { _id: '$category', n: { $sum: 1 } } },
+    ]);
+    const active = new Set(counts.map((c: any) => (c._id as string)?.toLowerCase()));
+    return categories
+        .filter(cat => cat !== 'All' && active.has(cat.toLowerCase()))
+        .map((category) => ({ category: normalizeCategory(category) }));
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

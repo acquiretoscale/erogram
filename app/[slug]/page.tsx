@@ -345,13 +345,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (group) {
     const groupUrl = `${BASE_URL}/${group.slug}`;
 
-    // Create enhanced description combining group description with site branding
-    const baseDescription = group.description || `Join ${group.name} - a curated NSFW Telegram community`;
-    const enhancedDescription = `${baseDescription} | Erogram.pro - Discover Erotic Telegram Groups Today. Connect with like-minded adults in verified NSFW communities worldwide.`;
+    const category = group.category || 'NSFW';
+    const country = group.country && group.country !== 'All' ? ` from ${group.country}` : '';
+    const baseDescription = group.description
+      || `Join ${group.name}, a popular ${category} Telegram group${country}. Browse members, read reviews, and connect with an active adult community on Erogram.pro.`;
+    const enhancedDescription = baseDescription.length >= 120
+      ? baseDescription
+      : `${baseDescription} | Erogram.pro - Discover verified NSFW Telegram groups. Connect with like-minded adults in curated communities worldwide.`;
 
-    // Ensure description is not too long for SEO (aim for 150-160 characters)
     const finalDescription = enhancedDescription.length > 160
-      ? `${baseDescription.slice(0, 120)}... | Erogram.pro - Discover Erotic Telegram Groups Today`
+      ? enhancedDescription.slice(0, 157) + '...'
       : enhancedDescription;
 
     return {
@@ -395,13 +398,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (bot) {
     const botUrl = `${BASE_URL}/${bot.slug}`;
 
-    // Create enhanced description combining bot description with site branding
-    const baseDescription = bot.description || `Use ${bot.name} - a curated NSFW Telegram bot`;
-    const enhancedDescription = `${baseDescription} | Erogram.pro - Discover Erotic Telegram Bots Today. Connect with amazing NSFW bots for adult entertainment.`;
+    const botCategory = bot.category || 'NSFW';
+    const baseDescription = bot.description
+      || `Try ${bot.name}, a popular ${botCategory} Telegram bot. Explore features, user reviews, and start chatting with this adult entertainment bot on Erogram.pro.`;
+    const enhancedDescription = baseDescription.length >= 120
+      ? baseDescription
+      : `${baseDescription} | Erogram.pro - Discover the best NSFW Telegram bots. AI companions, adult chat bots, and more.`;
 
-    // Ensure description is not too long for SEO (aim for 150-160 characters)
     const finalDescription = enhancedDescription.length > 160
-      ? `${baseDescription.slice(0, 120)}... | Erogram.pro - Discover Erotic Telegram Bots Today`
+      ? enhancedDescription.slice(0, 157) + '...'
       : enhancedDescription;
 
     return {
