@@ -13,62 +13,31 @@ interface VirtualizedGroupGridProps {
 
 type Item = { type: 'group' | 'campaign'; data: Group | FeedCampaign; index: number };
 
-const BLOCK = 6;
-const ADS_PER_BLOCK = 2;
-const GROUPS_PER_BLOCK = BLOCK - ADS_PER_BLOCK; // 4
+const MIN_GAP = 4;
+const MAX_GAP = 6;
+const FIRST_AD_AFTER = 3; // first ad appears after 3 real groups
 
-function randomNonAdjacentPair(): Set<number> {
-    const pairs: [number, number][] = [];
-    for (let i = 0; i < BLOCK - 2; i++) {
-        for (let j = i + 2; j < BLOCK; j++) {
-            pairs.push([i, j]);
-        }
-    }
-    const [p1, p2] = pairs[Math.floor(Math.random() * pairs.length)];
-    return new Set([p1, p2]);
+function randBetween(min: number, max: number): number {
+    return min + Math.floor(Math.random() * (max - min + 1));
 }
 
 function buildFeedItems(groups: Group[], campaigns: FeedCampaign[]): Item[] {
     const items: Item[] = [];
     let groupIdx = 0;
     let campaignIdx = 0;
+    let groupsSinceLastAd = 0;
+    let nextAdAt = FIRST_AD_AFTER;
 
-    // Count how many pinned/featured groups lead the list
-    let featuredCount = 0;
-    while (featuredCount < groups.length && groups[featuredCount].pinned) {
-        featuredCount++;
-    }
-
-    // Place featured groups first, then immediately insert the first ad
-    while (groupIdx < featuredCount) {
+    while (groupIdx < groups.length) {
         items.push({ type: 'group', data: groups[groupIdx], index: items.length });
         groupIdx++;
-    }
-    if (campaigns.length > 0) {
-        items.push({ type: 'campaign', data: campaigns[campaignIdx % campaigns.length], index: items.length });
-        campaignIdx++;
-    }
+        groupsSinceLastAd++;
 
-    // Continue with remaining groups in blocks of 6 (4 groups + 2 ads)
-    while (groupIdx < groups.length) {
-        const groupsLeft = groups.length - groupIdx;
-
-        if (groupsLeft >= GROUPS_PER_BLOCK && campaigns.length > 0) {
-            const adSlots = randomNonAdjacentPair();
-            let adsPlaced = 0;
-            for (let slot = 0; slot < BLOCK; slot++) {
-                if (adSlots.has(slot) && adsPlaced < ADS_PER_BLOCK) {
-                    items.push({ type: 'campaign', data: campaigns[campaignIdx % campaigns.length], index: items.length });
-                    campaignIdx++;
-                    adsPlaced++;
-                } else if (groupIdx < groups.length) {
-                    items.push({ type: 'group', data: groups[groupIdx], index: items.length });
-                    groupIdx++;
-                }
-            }
-        } else {
-            items.push({ type: 'group', data: groups[groupIdx], index: items.length });
-            groupIdx++;
+        if (groupsSinceLastAd >= nextAdAt && campaigns.length > 0) {
+            items.push({ type: 'campaign', data: campaigns[campaignIdx % campaigns.length], index: items.length });
+            campaignIdx++;
+            groupsSinceLastAd = 0;
+            nextAdAt = randBetween(MIN_GAP, MAX_GAP);
         }
     }
     return items;
@@ -85,12 +54,8 @@ const VirtualizedGroupGrid = React.memo(function VirtualizedGroupGrid({
     onOpenReviewModal,
     onOpenReportModal,
 }: VirtualizedGroupGridProps) {
-    // Server renders groups only (no Math.random) → no hydration mismatch.
-    // After mount, useEffect inserts ads with random placement client-side.
     const [items, setItems] = useState<Item[]>(() => groupsOnly(groups));
 
-    // Always insert feed ad slots when we have campaigns (mobile + desktop). isTelegram only
-    // affects whether AdvertCard renders content or a placeholder, so the grid layout stays correct.
     useEffect(() => {
         if (feedCampaigns.length > 0) {
             setItems(buildFeedItems(groups, feedCampaigns));

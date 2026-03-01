@@ -778,20 +778,9 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
   );
 });
 
-const BOT_FEED_BLOCK = 6;
-const BOT_FEED_ADS = 2;
-const BOT_FEED_ENTRIES = BOT_FEED_BLOCK - BOT_FEED_ADS; // 4
-
-function botFeedNonAdjacentPair(): Set<number> {
-  const pairs: [number, number][] = [];
-  for (let i = 0; i < BOT_FEED_BLOCK - 2; i++) {
-    for (let j = i + 2; j < BOT_FEED_BLOCK; j++) {
-      pairs.push([i, j]);
-    }
-  }
-  const [p1, p2] = pairs[Math.floor(Math.random() * pairs.length)];
-  return new Set([p1, p2]);
-}
+const BOT_FIRST_AD_AFTER = 3;
+const BOT_MIN_GAP = 4;
+const BOT_MAX_GAP = 6;
 
 function buildBotFeedItems(bots: Bot[], campaigns: FeedCampaign[]): Array<{ type: 'bot' | 'campaign'; data: Bot | FeedCampaign; index: number }> {
   const items: Array<{ type: 'bot' | 'campaign'; data: Bot | FeedCampaign; index: number }> = [];
@@ -801,24 +790,19 @@ function buildBotFeedItems(bots: Bot[], campaigns: FeedCampaign[]): Array<{ type
   }
   let botIdx = 0;
   let campaignIdx = 0;
+  let botsSinceLastAd = 0;
+  let nextAdAt = BOT_FIRST_AD_AFTER;
+
   while (botIdx < bots.length) {
-    const botsLeft = bots.length - botIdx;
-    if (botsLeft >= BOT_FEED_ENTRIES) {
-      const adSlots = botFeedNonAdjacentPair();
-      let adsPlaced = 0;
-      for (let slot = 0; slot < BOT_FEED_BLOCK; slot++) {
-        if (adSlots.has(slot) && adsPlaced < BOT_FEED_ADS) {
-          items.push({ type: 'campaign', data: campaigns[campaignIdx % campaigns.length], index: items.length });
-          campaignIdx++;
-          adsPlaced++;
-        } else if (botIdx < bots.length) {
-          items.push({ type: 'bot', data: bots[botIdx], index: items.length });
-          botIdx++;
-        }
-      }
-    } else {
-      items.push({ type: 'bot', data: bots[botIdx], index: items.length });
-      botIdx++;
+    items.push({ type: 'bot', data: bots[botIdx], index: items.length });
+    botIdx++;
+    botsSinceLastAd++;
+
+    if (botsSinceLastAd >= nextAdAt) {
+      items.push({ type: 'campaign', data: campaigns[campaignIdx % campaigns.length], index: items.length });
+      campaignIdx++;
+      botsSinceLastAd = 0;
+      nextAdAt = BOT_MIN_GAP + Math.floor(Math.random() * (BOT_MAX_GAP - BOT_MIN_GAP + 1));
     }
   }
   return items;

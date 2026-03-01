@@ -64,6 +64,9 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [groupsLoadError, setGroupsLoadError] = useState(false);
+
+  const [topGroups, setTopGroups] = useState<Group[]>([]);
+  const [topGroupsLoading, setTopGroupsLoading] = useState(true);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedGroupForReview, setSelectedGroupForReview] = useState<Group | null>(null);
   const [groupReviews, setGroupReviews] = useState<any[]>([]);
@@ -77,6 +80,15 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
 
 
+
+  useEffect(() => {
+    setTopGroupsLoading(true);
+    fetch('/api/groups?topGroup=true&limit=3')
+      .then(res => res.json())
+      .then(data => { if (data.groups) setTopGroups(data.groups); })
+      .catch(err => console.error('Failed to fetch top groups:', err))
+      .finally(() => setTopGroupsLoading(false));
+  }, []);
 
   useEffect(() => {
     // Get username from localStorage on mount
@@ -516,9 +528,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
             </div>
           </aside>
 
-          {/* Groups Grid - NO "Top Groups" section here; only All Groups + pinned + grid */}
           <div className="lg:w-3/4 min-w-0 shrink-0">
-            {/* All Groups */}
             <div className="relative">
               {/* Popular categories – compact, SEO-friendly real links */}
               <section className="mb-6 rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-950/40 to-orange-950/20 px-4 py-3 shadow-md" aria-labelledby="popular-categories-heading">
@@ -553,6 +563,39 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                   </ul>
                 </nav>
               </section>
+
+              {/* Top 3 Groups (most clicked last 3 days) */}
+              {(topGroups.length > 0 || topGroupsLoading) && (
+                <div className="mb-10 relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-yellow-600/10 via-orange-600/10 to-red-600/10 rounded-3xl" />
+                  <div className="relative p-4 sm:p-6">
+                    <div className="text-center mb-4 sm:mb-6">
+                      <h2 className="text-2xl sm:text-3xl font-black text-[#f5f5f5] drop-shadow-2xl">
+                        🏆 Top Groups
+                      </h2>
+                      <p className="text-[#999] text-sm mt-1">Most popular this week</p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                      {topGroupsLoading ? (
+                        Array.from({ length: 3 }, (_, i) => (
+                          <GroupCardSkeleton key={`top-skeleton-${i}`} />
+                        ))
+                      ) : (
+                        topGroups.slice(0, 3).map((group) => (
+                          <GroupCard
+                            key={`top-${group._id}`}
+                            group={group}
+                            isIndex={0}
+                            isFeatured
+                            onOpenReviewModal={openReviewModal}
+                            onOpenReportModal={openReportModal}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="text-center mb-6">
                 <h1 className="text-2xl md:text-3xl font-black text-[#f5f5f5]">

@@ -55,6 +55,46 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get('search') || '';
     const category = searchParams.get('category') || '';
     const country = searchParams.get('country') || '';
+    const topGroup = searchParams.get('topGroup') === 'true';
+
+    // Fast path: top groups by recent clicks (weeklyClicks resets every 3 days)
+    if (topGroup) {
+      const topLimit = parseInt(searchParams.get('limit') || '3', 10);
+      const topGroups = await Group.find({
+        status: 'approved',
+        isAdvertisement: { $ne: true },
+        pinned: { $ne: true },
+      })
+        .sort({ weeklyClicks: -1, views: -1 })
+        .limit(topLimit)
+        .select('-image')
+        .lean();
+
+      const origin = req.headers.get('x-forwarded-host')
+        ? `https://${req.headers.get('x-forwarded-host')}`
+        : new URL(req.url).origin;
+
+      return NextResponse.json({
+        groups: topGroups.map((g: any) => ({
+          _id: g._id.toString(),
+          name: (g.name || '').slice(0, 150),
+          slug: (g.slug || '').slice(0, 100),
+          category: (g.category || '').slice(0, 50),
+          country: (g.country || '').slice(0, 50),
+          description: (g.description || '').slice(0, 150),
+          image: resolveImageUrl(g.image, origin),
+          telegramLink: (g.telegramLink || '').slice(0, 150),
+          isAdvertisement: false,
+          advertisementUrl: null,
+          pinned: false,
+          clickCount: g.clickCount || 0,
+          views: g.views || 0,
+          memberCount: g.memberCount || 0,
+          verified: g.verified || false,
+          weeklyClicks: g.weeklyClicks || 0,
+        })),
+      });
+    }
 
     // Exclude image field to prevent maxSize errors - images loaded lazily via API.
     // Exclude Group-based adverts so in-feed ads come only from Campaigns (Advertisers).
