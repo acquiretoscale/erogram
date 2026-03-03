@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
 import { User } from '@/lib/models';
-import { MAX_PREMIUM_SLOTS } from '../stars/route';
+import { MAX_PREMIUM_SLOTS } from '@/lib/auth';
 
 const BOT_TOKEN = process.env.TELEGRAM_PAYMENT_BOT_TOKEN || '';
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET || '';

@@ -42,3 +42,4 @@ export async function authenticateUser(req: NextRequest): Promise<AuthUser | nul
 }
 
 export const FREE_BOOKMARK_LIMIT = 4;
+export const MAX_PREMIUM_SLOTS = 100;
