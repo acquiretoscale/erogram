@@ -1,15 +1,28 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
+import SavedTab from './SavedTab';
+import VaultTab from './VaultTab';
 
-export default function ProfilePage() {
+type Tab = 'profile' | 'saved' | 'vault';
+type ViewMode = 'admin' | 'premium' | 'free';
+
+function ProfileContent() {
   const [mounted, setMounted] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [firstName, setFirstName] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [isPremium, setIsPremium] = useState(false);
+  const [premiumPlan, setPremiumPlan] = useState<string | null>(null);
+  const [premiumSince, setPremiumSince] = useState<string | null>(null);
+  const [premiumExpiresAt, setPremiumExpiresAt] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('admin');
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<Tab>((searchParams.get('tab') as Tab) || 'profile');
   const router = useRouter();
 
   useEffect(() => {
@@ -25,17 +38,28 @@ export default function ProfilePage() {
       return;
     }
 
-    const storedUsername = localStorage.getItem('username');
-    const storedFirstName = localStorage.getItem('firstName');
-    const storedPhotoUrl = localStorage.getItem('photoUrl');
+    setUsername(localStorage.getItem('username'));
+    setFirstName(localStorage.getItem('firstName'));
+    setPhotoUrl(localStorage.getItem('photoUrl'));
+    setIsAdmin(localStorage.getItem('isAdmin') === 'true');
 
-    setUsername(storedUsername);
-    setFirstName(storedFirstName);
-    setPhotoUrl(storedPhotoUrl);
+    fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => {
+        if (data.premium) setIsPremium(true);
+        if (data.isAdmin) setIsAdmin(true);
+        if (data.premiumPlan) setPremiumPlan(data.premiumPlan);
+        if (data.premiumSince) setPremiumSince(data.premiumSince);
+        if (data.premiumExpiresAt) setPremiumExpiresAt(data.premiumExpiresAt);
+      })
+      .catch(() => {});
   }, [mounted, router]);
 
+  const effectivePremium = isAdmin
+    ? viewMode === 'admin' || viewMode === 'premium'
+    : isPremium;
+
   const handleDeleteProfile = () => {
-    // For now, just sign out the user
     localStorage.removeItem('token');
     localStorage.removeItem('username');
     localStorage.removeItem('isAdmin');
@@ -44,79 +68,211 @@ export default function ProfilePage() {
     router.push('/');
   };
 
-  if (!mounted) {
-    return null;
-  }
+  if (!mounted) return null;
 
   return (
     <div className="min-h-screen bg-[#111111]">
-      {/* Navigation */}
       <Navbar username={username} setUsername={setUsername} />
 
-      {/* Main Content */}
-      <div className="pt-24 px-6">
+      <div className="pt-24 px-4 sm:px-6">
         <div className="max-w-2xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 60 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="glass rounded-2xl p-8 backdrop-blur-lg border border-white/10"
-          >
-            <div className="text-center mb-8">
-              <h1 className="text-3xl sm:text-4xl font-black mb-2 gradient-text">
-                Your Profile
-              </h1>
-              <p className="text-[#999]">
-                Manage your account settings
-              </p>
-            </div>
-
-            {/* Profile Info */}
-            <div className="space-y-6 mb-8">
-              {photoUrl && (
-                <div className="flex justify-center">
-                  <img
-                    src={photoUrl}
-                    alt="Profile"
-                    className="w-24 h-24 rounded-full border-2 border-[#b31b1b]"
-                  />
-                </div>
+          {/* Admin: View As switcher */}
+          {isAdmin && (
+            <div className="mb-4 p-3 rounded-xl bg-purple-500/5 border border-purple-500/20 flex items-center gap-3 flex-wrap">
+              <span className="text-xs text-purple-400 font-bold uppercase tracking-wider">View as:</span>
+              {([
+                { key: 'admin' as ViewMode, label: 'Admin (full access)', color: 'purple' },
+                { key: 'premium' as ViewMode, label: 'Premium User', color: 'amber' },
+                { key: 'free' as ViewMode, label: 'Free User', color: 'gray' },
+              ]).map(mode => (
+                <button
+                  key={mode.key}
+                  onClick={() => setViewMode(mode.key)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    viewMode === mode.key
+                      ? mode.color === 'purple' ? 'bg-purple-500/20 text-purple-300 ring-1 ring-purple-500/30'
+                      : mode.color === 'amber' ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/30'
+                      : 'bg-white/10 text-white ring-1 ring-white/20'
+                      : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60'
+                  }`}
+                >
+                  {mode.label}
+                </button>
+              ))}
+              {viewMode !== 'admin' && (
+                <span className="text-[10px] text-purple-400/60 ml-auto">Simulating {viewMode === 'premium' ? 'premium' : 'free'} user experience</span>
               )}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-[#f5f5f5] mb-1">
-                    Username
-                  </label>
-                  <div className="glass rounded-lg p-3 text-[#f5f5f5]">
-                    {username || 'N/A'}
+            </div>
+          )}
+
+          {/* Tabs */}
+          <div className="flex gap-1 mb-6 bg-white/[0.03] rounded-xl p-1 border border-white/5">
+            <button
+              onClick={() => setActiveTab('profile')}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === 'profile'
+                  ? 'bg-white/10 text-white'
+                  : 'text-white/40 hover:text-white/60'
+              }`}
+            >
+              Profile
+            </button>
+            <button
+              onClick={() => setActiveTab('saved')}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                activeTab === 'saved'
+                  ? 'bg-white/10 text-white'
+                  : 'text-white/40 hover:text-white/60'
+              }`}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
+              Saved
+            </button>
+            <button
+              onClick={() => setActiveTab('vault')}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                activeTab === 'vault'
+                  ? 'bg-white/10 text-white'
+                  : 'text-white/40 hover:text-white/60'
+              }`}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={activeTab === 'vault' ? '#f59e0b' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              Vault
+            </button>
+          </div>
+
+          {activeTab === 'profile' ? (
+            <motion.div
+              initial={{ opacity: 0, y: 60 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="glass rounded-2xl p-8 backdrop-blur-lg border border-white/10"
+            >
+              <div className="text-center mb-8">
+                <h1 className="text-3xl sm:text-4xl font-black mb-2 gradient-text">
+                  Your Profile
+                </h1>
+                <p className="text-[#999]">
+                  Manage your account settings
+                </p>
+                {effectivePremium && (
+                  <div className="inline-flex items-center gap-1 mt-2 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-amber-500/20 to-amber-600/20 border border-amber-500/30 text-amber-400">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
+                    Premium{isAdmin && viewMode !== 'admin' ? ` (simulated)` : ''}
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#f5f5f5] mb-1">
-                    First Name
-                  </label>
-                  <div className="glass rounded-lg p-3 text-[#f5f5f5]">
-                    {firstName || 'N/A'}
+                )}
+                {effectivePremium && (premiumPlan || premiumSince || premiumExpiresAt) && viewMode === 'admin' && (
+                  <div className="mt-3 mx-auto max-w-xs rounded-xl border border-amber-500/15 bg-amber-500/[0.04] p-3 text-left space-y-1.5">
+                    {premiumPlan && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-white/40">Plan</span>
+                        <span className="text-amber-400 font-semibold capitalize">{premiumPlan}</span>
+                      </div>
+                    )}
+                    {premiumSince && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-white/40">Member since</span>
+                        <span className="text-white/70">{new Date(premiumSince).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                    {premiumExpiresAt ? (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-white/40">Expires</span>
+                        <span className={`font-medium ${new Date(premiumExpiresAt) < new Date(Date.now() + 7 * 86400000) ? 'text-red-400' : 'text-white/70'}`}>
+                          {new Date(premiumExpiresAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    ) : premiumPlan === 'lifetime' ? (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-white/40">Expires</span>
+                        <span className="text-green-400 font-medium">Never — Lifetime</span>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-6 mb-8">
+                {photoUrl && (
+                  <div className="flex justify-center">
+                    <img
+                      src={photoUrl}
+                      alt="Profile"
+                      className="w-24 h-24 rounded-full border-2 border-[#b31b1b]"
+                    />
+                  </div>
+                )}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[#f5f5f5] mb-1">
+                      Username
+                    </label>
+                    <div className="glass rounded-lg p-3 text-[#f5f5f5]">
+                      {username || 'N/A'}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#f5f5f5] mb-1">
+                      First Name
+                    </label>
+                    <div className="glass rounded-lg p-3 text-[#f5f5f5]">
+                      {firstName || 'N/A'}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Delete Profile Button */}
-            <div className="text-center">
-              <button
-                onClick={handleDeleteProfile}
-                className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-bold"
-              >
-                Delete Profile
-              </button>
-              <p className="text-sm text-[#999] mt-2">
-                This will sign you out of your account.
-              </p>
-            </div>
-          </motion.div>
+              {!effectivePremium && (
+                <div className="mb-6 p-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.04] text-center">
+                  <p className="text-white/70 text-sm mb-2">Unlock the <strong className="text-amber-400">Premium Vault</strong>, unlimited bookmarks &amp; more</p>
+                  <a href="/premium" className="inline-block px-5 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-white text-sm font-bold transition">
+                    Upgrade to Premium
+                  </a>
+                </div>
+              )}
+
+              <div className="text-center">
+                <button
+                  onClick={handleDeleteProfile}
+                  className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-bold"
+                >
+                  Delete Profile
+                </button>
+                <p className="text-sm text-[#999] mt-2">
+                  This will sign you out of your account.
+                </p>
+              </div>
+            </motion.div>
+          ) : activeTab === 'saved' ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <SavedTab isPremium={effectivePremium} />
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <VaultTab isPremium={effectivePremium} />
+            </motion.div>
+          )}
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense>
+      <ProfileContent />
+    </Suspense>
   );
 }

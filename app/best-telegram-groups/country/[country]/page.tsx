@@ -48,10 +48,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
     const meta = {
         title: `10 Best ${realCountry} Telegram Groups & Channels (${year})`,
-        description: `Discover the top 10 best ${realCountry} Telegram groups and channels in ${year}. Curated list of the most popular and active communities in ${realCountry}.`,
+        description: `Discover the top 10 best ${realCountry} Telegram groups and channels in ${year}. Curated, verified list of the most popular and active adult communities in ${realCountry}. Join free on Erogram.pro.`,
         openGraph: {
             title: `10 Best ${realCountry} Telegram Groups (${year})`,
-            description: `Join the best ${realCountry} Telegram communities. Ranked by popularity and activity.`,
+            description: `Discover the top 10 best ${realCountry} Telegram groups and channels in ${year}. Curated, verified list of the most popular and active adult communities in ${realCountry}.`,
         },
         keywords: `${realCountry} telegram groups, ${realCountry} telegram channels, best ${realCountry} groups, telegram links ${realCountry}`,
         alternates: {

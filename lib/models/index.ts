@@ -29,6 +29,11 @@ export const userSchema = new Schema(
     hideTelegramHandle: { type: Boolean, default: false },
     showTelegramHandle: { type: Boolean, default: true },
     showNicknameUnderGroups: { type: Boolean, default: true },
+    premium: { type: Boolean, default: false },
+    premiumPlan: { type: String, enum: ['monthly', 'yearly', 'lifetime', null], default: null },
+    premiumSince: { type: Date, default: null },
+    premiumExpiresAt: { type: Date, default: null },
+    lastPaymentChargeId: { type: String, default: null },
     stats: {
       groupsCreated: { type: Number, default: 0 },
       groupsSaved: { type: Number, default: 0 },
@@ -69,11 +74,17 @@ export const groupSchema = new Schema(
     },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
     createdByUsername: { type: String, default: '' },
-    status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+    status: { type: String, enum: ['pending', 'approved', 'rejected', 'scheduled', 'deleted'], default: 'pending' },
+    deletedAt: { type: Date, default: null },
     reviewedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     reviewedAt: { type: Date },
     createdAt: { type: Date, default: Date.now },
     pinned: { type: Boolean, default: false },
+    // CSV bulk-import scheduling fields
+    scheduledPublishAt: { type: Date, default: null },
+    importBatchId: { type: String, default: null },
+    importSource: { type: String, default: null },
+    sourceImageUrl: { type: String, default: null },
     views: { type: Number, default: 0 },
     weeklyViews: { type: Number, default: 0 },
     weeklyClicks: { type: Number, default: 0 },
@@ -88,11 +99,16 @@ export const groupSchema = new Schema(
     lastClickedAt: { type: Date },
     memberCount: { type: Number, default: 0 },
     memberCountUpdatedAt: { type: Date },
-    // Show a verified checkmark next to the group title (like Instagram verified)
     verified: { type: Boolean, default: false },
+    premiumOnly: { type: Boolean, default: false },
+    hideFromStories: { type: Boolean, default: false },
+    storyViews: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
+
+groupSchema.index({ status: 1, scheduledPublishAt: 1 });
+groupSchema.index({ premiumOnly: 1, status: 1 });
 
 // Post/Comment Schema
 export const postSchema = new Schema(
@@ -438,7 +454,7 @@ export const campaignSchema = new Schema(
     // Feed-specific fields
     position: { type: Number, default: null },
     feedTier: { type: Number, default: null }, // 1=top, 2=middle, 3=bottom (only for slot=feed)
-    tierSlot: { type: Number, default: null }, // 1-4 within tier
+    tierSlot: { type: Number, default: null }, // 1-3 within tier (1=Top Groups, 2=Discover NSFW Telegram, 3=Discover NSFW Groups)
     description: { type: String, default: '' },
     category: { type: String, default: 'All' },
     country: { type: String, default: 'All' },
@@ -468,6 +484,60 @@ export const campaignClickSchema = new Schema(
 );
 campaignClickSchema.index({ clickedAt: 1 });
 
+// CampaignImpressionDaily: daily aggregated impression counts for period-specific CTR
+export const campaignImpressionDailySchema = new Schema(
+  {
+    campaignId: { type: Schema.Types.ObjectId, ref: 'Campaign', required: true },
+    date: { type: String, required: true }, // "YYYY-MM-DD"
+    count: { type: Number, default: 0 },
+  },
+  { timestamps: false }
+);
+campaignImpressionDailySchema.index({ campaignId: 1, date: 1 }, { unique: true });
+campaignImpressionDailySchema.index({ date: 1 });
+
+// StorySlideContent — admin-managed slides for EROGRAM announcements, AI GF ads, random girl CTAs
+export const storySlideContentSchema = new Schema(
+  {
+    categorySlug: { type: String, required: true, index: true },
+    mediaType: { type: String, enum: ['image', 'video'], required: true },
+    mediaUrl: { type: String, required: true },
+    ctaText: { type: String, default: '' },
+    ctaUrl: { type: String, default: '' },
+    duration: { type: Number, default: 24 },
+    expiresAt: { type: Date, default: null },
+    enabled: { type: Boolean, default: true },
+    clientName: { type: String, default: '' },
+    sortOrder: { type: Number, default: 0 },
+    views: { type: Number, default: 0 },
+  },
+  { timestamps: true }
+);
+storySlideContentSchema.index({ categorySlug: 1, enabled: 1, expiresAt: 1 });
+
+// Bookmark Schema
+export const bookmarkSchema = new Schema(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    itemType: { type: String, enum: ['group', 'bot'], required: true },
+    itemId: { type: Schema.Types.ObjectId, required: true },
+    folderId: { type: Schema.Types.ObjectId, ref: 'BookmarkFolder', default: null },
+  },
+  { timestamps: true }
+);
+bookmarkSchema.index({ userId: 1, itemType: 1, itemId: 1 }, { unique: true });
+bookmarkSchema.index({ userId: 1, folderId: 1 });
+
+// BookmarkFolder Schema
+export const bookmarkFolderSchema = new Schema(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    name: { type: String, required: true, maxlength: 40 },
+    sortOrder: { type: Number, default: 0 },
+  },
+  { timestamps: true }
+);
+
 // Export models
 export const User = models.User || model('User', userSchema);
 export const Group = models.Group || model('Group', groupSchema);
@@ -488,3 +558,7 @@ export const Image = models.Image || model('Image', imageSchema);
 export const Advertiser = models.Advertiser || model('Advertiser', advertiserSchema);
 export const Campaign = models.Campaign || model('Campaign', campaignSchema);
 export const CampaignClick = models.CampaignClick || model('CampaignClick', campaignClickSchema);
+export const CampaignImpressionDaily = models.CampaignImpressionDaily || model('CampaignImpressionDaily', campaignImpressionDailySchema);
+export const StorySlideContent = models.StorySlideContent || model('StorySlideContent', storySlideContentSchema);
+export const Bookmark = models.Bookmark || model('Bookmark', bookmarkSchema);
+export const BookmarkFolder = models.BookmarkFolder || model('BookmarkFolder', bookmarkFolderSchema);

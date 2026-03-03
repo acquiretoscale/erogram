@@ -3,7 +3,9 @@ import HomeClient from './HomeClient';
 import connectDB from '@/lib/db/mongodb';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { getActiveCampaigns } from '@/lib/actions/campaigns';
-import { Article, User } from '@/lib/models';
+import { Article, User, Group } from '@/lib/models';
+
+export const revalidate = 300;
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
 
@@ -81,9 +83,42 @@ export const metadata: Metadata = {
   },
 };
 
+async function getNewGroups(limit: number = 8) {
+  try {
+    await connectDB();
+    const groups = await Group.find({
+      status: 'approved',
+      isAdvertisement: { $ne: true },
+      premiumOnly: { $ne: true },
+    })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .select('name slug image category country description createdAt memberCount views')
+      .lean();
+
+    return (groups as any[]).map((g) => ({
+      _id: g._id.toString(),
+      name: g.name || '',
+      slug: g.slug || '',
+      image: g.image || '',
+      category: g.category || '',
+      country: g.country || '',
+      description: (g.description || '').slice(0, 120),
+      memberCount: g.memberCount || 0,
+      views: g.views || 0,
+    }));
+  } catch (error) {
+    console.error('Error fetching new groups:', error);
+    return [];
+  }
+}
+
 export default async function Home() {
-  const featuredArticles = await getFeaturedArticles(6);
-  const heroCampaigns = await getActiveCampaigns('homepage-hero');
+  const [featuredArticles, heroCampaigns, newGroups] = await Promise.all([
+    getFeaturedArticles(6),
+    getActiveCampaigns('homepage-hero'),
+    getNewGroups(8),
+  ]);
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -173,7 +208,7 @@ export default async function Home() {
         }}
       />
       <ErrorBoundary>
-        <HomeClient featuredArticles={featuredArticles} heroCampaigns={heroCampaigns} />
+        <HomeClient featuredArticles={featuredArticles} heroCampaigns={heroCampaigns} newGroups={newGroups} />
       </ErrorBoundary>
     </>
   );

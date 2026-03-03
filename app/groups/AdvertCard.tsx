@@ -123,7 +123,7 @@ function VideoAdCard({ campaign, handleClick }: { campaign: FeedCampaign; handle
         >
             <div
                 ref={cardRef}
-                className="rounded-3xl overflow-hidden h-full min-h-[420px] sm:min-h-[480px] relative cursor-pointer group border border-white/5 hover:border-white/20 transition-all duration-500 hover:shadow-2xl hover:shadow-black/50 bg-[#0a0a0a]"
+                className="rounded-2xl sm:rounded-3xl overflow-hidden h-full min-h-[280px] sm:min-h-[480px] relative cursor-pointer group border border-white/5 hover:border-white/20 transition-all duration-500 hover:shadow-2xl hover:shadow-black/50 bg-[#0a0a0a]"
                 onClick={handleClick}
                 role="link"
                 tabIndex={0}
@@ -154,23 +154,23 @@ function VideoAdCard({ campaign, handleClick }: { campaign: FeedCampaign; handle
                     </div>
                 )}
 
-                {/* Bottom content: visiting now + title + description + rating + CTA */}
-                <div className="absolute bottom-0 left-0 right-0 p-5 z-10 flex flex-col gap-2.5">
+                {/* Bottom content */}
+                <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-5 z-10 flex flex-col gap-1.5 sm:gap-2.5">
                     <div className="flex justify-start">
-                        <div className="bg-black/80 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-lg">
-                            <span className="text-xs text-red-400">⚡</span>
-                            <span className="text-xs font-bold text-white">{visitingCount} visiting now</span>
+                        <div className="bg-black/80 backdrop-blur-md border border-white/10 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg flex items-center gap-1 sm:gap-1.5 shadow-lg">
+                            <span className="text-[10px] sm:text-xs text-red-400">⚡</span>
+                            <span className="text-[10px] sm:text-xs font-bold text-white">{visitingCount} visiting</span>
                         </div>
                     </div>
-                    <h3 className="text-xl font-black text-white leading-tight drop-shadow-lg flex items-center gap-1.5">
+                    <h3 className="text-sm sm:text-xl font-black text-white leading-tight drop-shadow-lg flex items-center gap-1">
                         <span className="truncate min-w-0">{campaign.name}</span>
                         {campaign.verified && (
-                            <svg className="w-[16px] h-[16px] text-blue-500 shrink-0 drop-shadow-lg" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
+                            <svg className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500 shrink-0 drop-shadow-lg" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
                         )}
                     </h3>
 
                     {campaign.description && (
-                        <p className="text-gray-300 text-sm line-clamp-2 leading-relaxed drop-shadow">
+                        <p className="text-gray-300 text-xs sm:text-sm line-clamp-1 sm:line-clamp-2 leading-relaxed drop-shadow">
                             {campaign.description}
                         </p>
                     )}
@@ -178,16 +178,16 @@ function VideoAdCard({ campaign, handleClick }: { campaign: FeedCampaign; handle
                     {/* Star rating row */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1">
-                            <span className="text-yellow-500 text-sm">⭐</span>
-                            <span className="text-white font-bold text-sm drop-shadow">{rating}</span>
-                            <span className="text-gray-400 text-xs drop-shadow">({reviewCount})</span>
+                            <span className="text-yellow-500 text-[10px] sm:text-sm">⭐</span>
+                            <span className="text-white font-bold text-[10px] sm:text-sm drop-shadow">{rating}</span>
+                            <span className="text-gray-400 text-[10px] sm:text-xs drop-shadow">({reviewCount})</span>
                         </div>
-                        <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wide drop-shadow">Promoted</span>
+                        <span className="hidden sm:inline text-[10px] text-gray-400 font-medium uppercase tracking-wide drop-shadow">Promoted</span>
                     </div>
 
                     <button
                         onClick={(e) => { e.stopPropagation(); handleClick(); }}
-                        className="w-full py-3.5 px-4 rounded-xl font-black text-white text-sm uppercase tracking-wide bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                        className="w-full py-2.5 sm:py-3.5 px-3 sm:px-4 rounded-xl font-black text-white text-xs sm:text-sm uppercase tracking-wide bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
                     >
                         🚀 {buttonText}
                     </button>
@@ -482,9 +482,9 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                 onHoverEnd={() => setIsHovered(false)}
                 className="h-full"
             >
-                <div className={`glass rounded-3xl overflow-hidden h-full flex flex-col backdrop-blur-xl border transition-all duration-500 group relative border-white/5 hover:border-white/20 hover:shadow-2xl hover:shadow-black/50`}>
+                <div className={`glass rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col backdrop-blur-xl border transition-all duration-500 group relative border-white/5 hover:border-white/20 hover:shadow-2xl hover:shadow-black/50`}>
                     {/* Advert Image */}
-                    <div ref={imgRef} className="relative w-full h-52 overflow-hidden bg-[#1a1a1a]">
+                    <div ref={imgRef} className="relative w-full h-32 sm:h-52 overflow-hidden bg-[#1a1a1a]">
                         <Image
                             src={imageSrc}
                             alt={ad.name}
@@ -521,32 +521,32 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                     </div>
 
                     {/* Card Content */}
-                    <div className="p-5 flex-grow flex flex-col relative">
+                    <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
                         {/* Title */}
-                        <h3 className="text-xl font-black text-white mb-3 leading-tight group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
+                        <h3 className="text-sm sm:text-xl font-black text-white mb-2 sm:mb-3 leading-tight group-hover:text-blue-400 transition-colors flex items-center gap-1">
                             <span className="truncate min-w-0">{ad.name}</span>
                             {showVerified && (
-                                <svg className="w-[16px] h-[16px] text-blue-500 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
+                                <svg className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
                             )}
                         </h3>
 
-                        {/* Description (no category/country tags — simple feed) */}
-                        <div className="mb-6 flex-grow">
-                            <p className="text-gray-400 text-sm line-clamp-3 leading-relaxed">
+                        {/* Description */}
+                        <div className="mb-3 sm:mb-6 flex-grow">
+                            <p className="text-gray-400 text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed">
                                 {ad.description}
                             </p>
                         </div>
 
                         {/* Footer Actions */}
-                        <div className="mt-auto space-y-3">
+                        <div className="mt-auto space-y-2 sm:space-y-3">
                             {/* Rating Row (Fake) */}
                             <div className="flex items-center justify-between px-1">
                                 <div className="flex items-center gap-1">
-                                    <span className="text-yellow-500 text-sm">⭐</span>
-                                    <span className="text-white font-bold text-sm">{(seededRandom(seed + 'rating') * 0.7 + 4.2).toFixed(1)}</span>
-                                    <span className="text-gray-500 text-xs">({Math.floor(seededRandom(seed + 'reviews') * 38 + 5)})</span>
+                                    <span className="text-yellow-500 text-[10px] sm:text-sm">⭐</span>
+                                    <span className="text-white font-bold text-[10px] sm:text-sm">{(seededRandom(seed + 'rating') * 0.7 + 4.2).toFixed(1)}</span>
+                                    <span className="text-gray-500 text-[10px] sm:text-xs">({Math.floor(seededRandom(seed + 'reviews') * 38 + 5)})</span>
                                 </div>
-                                <div className="text-xs text-gray-500 font-medium">
+                                <div className="hidden sm:block text-xs text-gray-500 font-medium">
                                     Promoted
                                 </div>
                             </div>
@@ -554,11 +554,11 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                             {/* Main Button */}
                             <button
                                 onClick={handleClick}
-                                className={`group/btn relative flex items-center justify-center w-full overflow-hidden rounded-xl py-3.5 px-4 font-black text-white shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-blue-500/40`}
+                                className={`group/btn relative flex items-center justify-center w-full overflow-hidden rounded-xl py-2.5 sm:py-3.5 px-3 sm:px-4 font-black text-white shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-blue-500/40`}
                             >
                                 <div className="absolute inset-0 bg-white/20 opacity-0 transition-opacity duration-300 group-hover/btn:opacity-100" />
-                                <span className={`relative flex items-center justify-center gap-2 text-sm uppercase tracking-wider`}>
-                                    <span className="text-lg">🚀</span> {displayButtonText}
+                                <span className={`relative flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm uppercase tracking-wider`}>
+                                    <span className="text-base sm:text-lg">🚀</span> {displayButtonText}
                                 </span>
                             </button>
                         </div>
@@ -580,15 +580,15 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
             <div className={`glass rounded-2xl overflow-hidden h-full flex flex-col backdrop-blur-lg border-2 ${colorScheme.border} ${colorScheme.hoverBorder} transition-all duration-300 ${isHovered ? 'hover-glow scale-[1.02]' : ''} relative shadow-lg shadow-black/40`}>
                 {/* Random Badge */}
                 {showBadge && (
-                    <div className="absolute top-3 right-3 z-10">
-                        <span className={`px-3 py-1 rounded-full ${badge.color} text-white text-xs font-black uppercase tracking-wider shadow-lg flex items-center gap-1 animate-pulse`}>
-                            <span>{badge.icon}</span> {badge.text}
+                    <div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10">
+                        <span className={`px-2 sm:px-3 py-0.5 sm:py-1 rounded-full ${badge.color} text-white text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-lg flex items-center gap-1 animate-pulse`}>
+                            <span>{badge.icon}</span> <span className="hidden sm:inline">{badge.text}</span>
                         </span>
                     </div>
                 )}
 
                 {/* Advert Image */}
-                <div ref={imgRef} className="relative w-full h-48 overflow-hidden bg-gray-800">
+                <div ref={imgRef} className="relative w-full h-32 sm:h-48 overflow-hidden bg-gray-800">
                     <Image
                         src={imageSrc}
                         alt={ad.name}
@@ -614,17 +614,17 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                 </div>
 
                 {/* Card Content */}
-                <div className="p-5 flex-grow flex flex-col relative">
-                    <h3 className="text-xl md:text-2xl font-black text-white mb-3 text-center drop-shadow-md flex items-center justify-center gap-1.5">
+                <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
+                    <h3 className="text-sm sm:text-xl md:text-2xl font-black text-white mb-2 sm:mb-3 text-center drop-shadow-md flex items-center justify-center gap-1">
                         <span className="truncate min-w-0">{ad.name}</span>
                         {showVerified && (
-                            <svg className="w-[16px] h-[16px] text-blue-500 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
+                            <svg className="w-[14px] h-[14px] sm:w-[16px] sm:h-[16px] text-blue-500 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
                         )}
                     </h3>
 
-                    {/* Description (no category/country — simple feed) */}
-                    <div className="mb-6 flex-grow">
-                        <p className="text-gray-300 text-center text-sm line-clamp-3 leading-relaxed font-medium">
+                    {/* Description */}
+                    <div className="mb-3 sm:mb-6 flex-grow">
+                        <p className="text-gray-300 text-center text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed font-medium">
                             {ad.description}
                         </p>
                     </div>
@@ -632,10 +632,10 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                     {/* Action Button */}
                     <button
                         onClick={handleClick}
-                        className={`group relative w-full overflow-hidden rounded-xl py-3.5 px-4 font-black text-white shadow-lg transition-all duration-300 hover:scale-[1.03] hover:shadow-xl bg-gradient-to-r ${colorScheme.from} ${colorScheme.to} ${colorScheme.hoverFrom} ${colorScheme.hoverTo}`}
+                        className={`group relative w-full overflow-hidden rounded-xl py-2.5 sm:py-3.5 px-3 sm:px-4 font-black text-white shadow-lg transition-all duration-300 hover:scale-[1.03] hover:shadow-xl bg-gradient-to-r ${colorScheme.from} ${colorScheme.to} ${colorScheme.hoverFrom} ${colorScheme.hoverTo}`}
                     >
                         <div className="absolute inset-0 flex items-center justify-center bg-white/20 opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
-                        <span className="relative flex items-center justify-center gap-2 text-lg uppercase tracking-wide">
+                        <span className="relative flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-lg uppercase tracking-wide">
                             {displayButtonText}
                             <span className="animate-pulse">🚀</span>
                         </span>

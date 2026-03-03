@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "erogram-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3939,
+      "cwd": "/Users/themaf/Desktop/@ACQUISITION/EROGRAM PROJECT /@EROGRAM/erogram-v2"
+    }
+  ]
+}

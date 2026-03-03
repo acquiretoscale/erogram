@@ -19,6 +19,8 @@ import AdvertsTab from './components/AdvertsTab';
 import AdvertisersTab from './components/AdvertisersTab';
 import UsersTab from './components/UsersTab';
 import SettingsTab from './components/SettingsTab';
+import CsvImportTab from './components/CsvImportTab';
+import StoryCategoriesTab from './components/StoryCategoriesTab';
 
 export default function AdminPage() {
   const [mounted, setMounted] = useState(false);
@@ -215,6 +217,8 @@ export default function AdminPage() {
               {activeTab === 'advertisers' && <AdvertisersTab setActiveTab={setActiveTab} />}
               {activeTab === 'users' && <UsersTab />}
               {activeTab === 'settings' && <SettingsTab />}
+              {activeTab === 'csv-import' && <CsvImportTab />}
+              {activeTab === 'stories' && <StoryCategoriesTab />}
             </motion.div>
           </AnimatePresence>
         </div>

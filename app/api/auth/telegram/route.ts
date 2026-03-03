@@ -5,7 +5,7 @@ import connectDB from '@/lib/db/mongodb';
 import { User } from '@/lib/models';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8441115133:AAFN2d6HLxcRHkrNXF3uZ1J31ZKzwBIVbNQ';
+const BOT_TOKEN = process.env.TELEGRAM_PAYMENT_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || '';
 
 // Check Telegram auth data
 function checkTelegramAuth(data: any, botToken: string): boolean {

@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 
 const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || 'erogramimages';
 
@@ -48,6 +48,46 @@ export async function uploadToR2(
 
 export function getR2PublicUrl(): string {
   return process.env.R2_PUBLIC_URL || '';
+}
+
+/**
+ * List files in an R2 folder, optionally filtering by max size.
+ * Returns public URLs of matching objects.
+ */
+export async function listR2Files(
+  prefix: string,
+  opts: { maxSizeMB?: number; extensions?: string[] } = {}
+): Promise<string[]> {
+  if (!isR2Configured()) return [];
+  const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || '';
+  const client = getR2Client();
+  const maxBytes = (opts.maxSizeMB ?? Infinity) * 1024 * 1024;
+  const exts = opts.extensions ?? ['.mp4', '.webm', '.mov', '.jpg', '.jpeg', '.png', '.webp'];
+
+  const urls: string[] = [];
+  let continuationToken: string | undefined;
+
+  do {
+    const res = await client.send(
+      new ListObjectsV2Command({
+        Bucket: R2_BUCKET_NAME,
+        Prefix: prefix.endsWith('/') ? prefix : `${prefix}/`,
+        MaxKeys: 1000,
+        ContinuationToken: continuationToken,
+      })
+    );
+    for (const obj of res.Contents ?? []) {
+      if (!obj.Key || !obj.Size) continue;
+      if (obj.Size > maxBytes) continue;
+      const lower = obj.Key.toLowerCase();
+      if (exts.some(ext => lower.endsWith(ext))) {
+        urls.push(`${R2_PUBLIC_URL}/${obj.Key}`);
+      }
+    }
+    continuationToken = res.IsTruncated ? res.NextContinuationToken : undefined;
+  } while (continuationToken);
+
+  return urls;
 }
 
 export { R2_BUCKET_NAME };

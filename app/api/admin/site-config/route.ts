@@ -274,7 +274,13 @@ export async function PUT(req: NextRequest) {
         };
       }
       if (body.generalSettings && typeof body.generalSettings === 'object') {
-        (config as any).generalSettings = { ...((config as any).generalSettings || {}), ...body.generalSettings };
+        const gs = (config as any).generalSettings || {};
+        const next = { ...gs, ...body.generalSettings };
+        // Explicit storyCategories so Mongoose properly persists the array
+        if (Array.isArray(body.generalSettings.storyCategories)) {
+          next.storyCategories = body.generalSettings.storyCategories;
+        }
+        (config as any).generalSettings = next;
         config.markModified('generalSettings');
       }
       await config.save();

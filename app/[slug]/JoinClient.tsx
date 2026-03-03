@@ -7,6 +7,7 @@ import Image from 'next/image';
 import axios from 'axios';
 import Navbar from '@/components/Navbar';
 import HeaderBanner from '@/components/HeaderBanner';
+import BookmarkButton from '@/components/BookmarkButton';
 import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 
@@ -22,6 +23,7 @@ interface Entity {
   views?: number;
   clickCount?: number;
   memberCount?: number;
+  premiumOnly?: boolean;
   reviews?: Array<{
     _id: string;
     authorName: string;
@@ -64,6 +66,7 @@ interface JoinClientProps {
   initialIsTelegram?: boolean;
   joinCtaCampaign?: JoinCtaCampaign | null;
   topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string; slot: string }>;
+  isDeleted?: boolean;
 }
 
 interface PopupAdvert {
@@ -86,7 +89,7 @@ const DEFAULT_JOIN_CTA = {
   description: 'Build your own AI girlfriend 💖',
 };
 
-export default function JoinClient({ entity, type, similarGroups = [], initialIsMobile = false, initialIsTelegram = false, joinCtaCampaign = null, topBannerCampaigns = [] }: JoinClientProps) {
+export default function JoinClient({ entity, type, similarGroups = [], initialIsMobile = false, initialIsTelegram = false, joinCtaCampaign = null, topBannerCampaigns = [], isDeleted = false }: JoinClientProps) {
   const [countdown, setCountdown] = useState(0);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [buttonConfig, setButtonConfig] = useState<ButtonConfig | null>(null);
@@ -99,9 +102,15 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
   const [adsReady, setAdsReady] = useState(false);
   const clickTrackedRef = useRef(false);
 
+  const [authChecked, setAuthChecked] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isPremiumUser, setIsPremiumUser] = useState(false);
+
   // Use server-provided device detection to avoid late client-only toggles (CLS).
   const isMobile = initialIsMobile;
   const isTelegram = initialIsTelegram;
+
+  const isPremiumGated = entity.premiumOnly === true;
 
 
   const encodedCountry = encodeURIComponent(entity.country || '');
@@ -155,6 +164,22 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
   useEffect(() => {
     fetchButtonConfig();
     fetchGroupImage();
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (token) {
+      setIsLoggedIn(true);
+      fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data) {
+            if (data.premium || data.isAdmin) setIsPremiumUser(true);
+          }
+          setAuthChecked(true);
+        })
+        .catch(() => setAuthChecked(true));
+    } else {
+      setAuthChecked(true);
+    }
 
     // Wait 3 seconds before allowing ads to load
     const adTimer = setTimeout(() => {
@@ -402,8 +427,68 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-12 lg:py-20">
+      {/* Premium Gate — loading state */}
+      {isPremiumGated && !authChecked && (
+        <div className="relative z-10 flex items-center justify-center min-h-[60vh]">
+          <div className="animate-pulse flex flex-col items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-amber-500/20" />
+            <div className="h-4 w-32 bg-white/10 rounded" />
+          </div>
+        </div>
+      )}
+
+      {/* Premium Gate — blocks content for non-premium visitors */}
+      {isPremiumGated && authChecked && !isPremiumUser && (
+        <div className="relative z-10 flex items-center justify-center min-h-[60vh] px-4">
+          <div className="max-w-lg w-full text-center">
+            <div className="bg-[#151515] rounded-3xl p-10 border border-amber-500/20 shadow-2xl">
+              <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="white"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM12 17c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"/></svg>
+              </div>
+              <h2 className="text-2xl font-black text-white mb-3">Premium Content</h2>
+              <p className="text-gray-400 mb-2">
+                <span className="font-bold text-white">{entity.name}</span> is part of the <span className="text-amber-400 font-bold">Erogram Private Vault</span>.
+              </p>
+              <p className="text-gray-500 text-sm mb-8">
+                Unlock hundreds of hand-picked, exclusive Telegram groups available only to Erogram Premium members.
+              </p>
+              {!isLoggedIn ? (
+                <div className="space-y-3">
+                  <a
+                    href="/login"
+                    className="block w-full px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold rounded-2xl shadow-lg hover:scale-105 transition-all text-lg"
+                  >
+                    Log in with Telegram
+                  </a>
+                  <p className="text-gray-500 text-xs">Already a Premium member? Log in to access this content.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <a
+                    href="/premium"
+                    className="block w-full px-8 py-4 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white font-black rounded-2xl shadow-lg shadow-amber-500/20 hover:scale-105 transition-all text-lg"
+                  >
+                    Upgrade to Erogram Premium
+                  </a>
+                  <p className="text-gray-500 text-xs">Get unlimited access to our Private Vault and more.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content Area — hidden for gated premium content (also hidden while auth is loading for premium groups to prevent flash) */}
+      <main className={`relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-12 lg:py-20 ${isPremiumGated && (!authChecked || !isPremiumUser) ? 'hidden' : ''}`}>
+        {isDeleted && (
+          <div className="mb-8 p-5 bg-red-900/30 border border-red-500/40 rounded-2xl flex items-center gap-4">
+            <span className="text-3xl flex-shrink-0">🚫</span>
+            <div>
+              <h3 className="text-lg font-bold text-red-300">This group has been removed</h3>
+              <p className="text-sm text-red-200/70 mt-1">This community is no longer available on Erogram. Browse other groups to find similar communities.</p>
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
 
           {/* Left Column: Image & Quick Stats */}
@@ -428,6 +513,15 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                 <div className="absolute top-3 right-3 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-md shadow-lg flex items-center gap-1">
                   <span>✓</span> Verified
                 </div>
+                {/* Premium Badge Overlay */}
+                {isPremiumGated && (
+                  <div className="absolute bottom-3 left-3 right-3 flex justify-center">
+                    <div className="px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-600 to-orange-500 text-white text-xs font-black tracking-wider shadow-lg shadow-amber-500/30 flex items-center gap-1.5">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
+                      PREMIUM EXCLUSIVE
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Quick Info Grid */}
@@ -470,10 +564,19 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
             >
-              {/* Header */}
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-6 leading-tight tracking-tight">
-                {entity.name}
-              </h1>
+              {/* Header with Bookmark */}
+              <div className="flex items-start justify-between gap-4 mb-6">
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-tight tracking-tight">
+                  {entity.name}
+                  {isPremiumGated && (
+                    <span className="inline-flex items-center gap-1.5 ml-3 align-middle px-3 py-1 text-sm font-bold rounded-lg bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-amber-400 shadow-lg shadow-amber-500/10 animate-pulse-subtle">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
+                      PREMIUM
+                    </span>
+                  )}
+                </h1>
+                <BookmarkButton itemId={entity._id} itemType={type} size="md" className="shrink-0 mt-2 w-11 h-11 rounded-xl bg-orange-500/15 border border-orange-500/30 hover:bg-orange-500/25 hover:border-orange-500/50 hover:shadow-lg hover:shadow-orange-500/10" />
+              </div>
 
               {/* Tags Row */}
               <div className="flex flex-wrap gap-3 mb-8">
@@ -495,11 +598,12 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                 </p>
               </div>
 
-              {/* Primary Action Area */}
+              {/* Primary Action Area — hidden for deleted groups */}
+              {!isDeleted && (
               <div className="bg-[#151515] rounded-3xl p-6 sm:p-8 border border-white/10 shadow-xl mb-12 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-600/10 to-purple-600/10 blur-3xl rounded-full pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
 
-                <h2 className="text-2xl font-bold text-white mb-2 relative z-10">Ready to join?</h2>
+                <h2 className="text-2xl font-bold text-white relative z-10 mb-2">Ready to join?</h2>
                 <p className="text-gray-400 mb-6 relative z-10">Click the button below to access this community on Telegram.</p>
 
                 {!userInteracted ? (
@@ -567,20 +671,21 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                   </a>
                 </div>
               </div>
+              )}
 
-              {/* Official Group Button */}
+              {/* Premium Upgrade — hidden for premium users */}
+              {!isPremiumUser && (
               <div className="mb-12 text-center">
                 <a
-                  href="https://t.me/erogrampro"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 text-white font-black rounded-2xl shadow-lg shadow-orange-500/20 hover:scale-105 transition-transform"
+                  href="/premium"
+                  className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white font-black rounded-2xl shadow-lg shadow-amber-500/20 hover:scale-105 hover:shadow-amber-500/30 transition-all"
                 >
-                  <span className="text-2xl">👑</span>
-                  <span>Join Official VIP Channel</span>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
+                  <span>Upgrade to Erogram Premium</span>
                 </a>
-                <p className="text-gray-500 text-sm mt-2">Get exclusive updates, premium content, and VIP offers.</p>
+                <p className="text-gray-500 text-sm mt-3">Unlock our Private Vault — hundreds of hand-picked Telegram groups.</p>
               </div>
+              )}
 
               {/* Reviews Section */}
               {entity.reviews && entity.reviews.length > 0 && (

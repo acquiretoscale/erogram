@@ -38,6 +38,18 @@ interface Article {
   };
 }
 
+interface NewGroup {
+  _id: string;
+  name: string;
+  slug: string;
+  image: string;
+  category: string;
+  country: string;
+  description: string;
+  memberCount: number;
+  views: number;
+}
+
 interface CampaignData {
   _id: string;
   creative: string;
@@ -48,9 +60,10 @@ interface CampaignData {
 interface HomeClientProps {
   featuredArticles: Article[];
   heroCampaigns?: CampaignData[];
+  newGroups?: NewGroup[];
 }
 
-export default function HomeClient({ featuredArticles, heroCampaigns = [] }: HomeClientProps) {
+export default function HomeClient({ featuredArticles, heroCampaigns = [], newGroups = [] }: HomeClientProps) {
   const router = useRouter();
   const [username, setUsername] = useState<string | null>(null);
   const [useLightAnimations, setUseLightAnimations] = useState(false);
@@ -515,6 +528,83 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [] }: Hom
                 >
                   View All Articles
                 </motion.button>
+              </Link>
+            </div>
+          </motion.div>
+        )}
+
+        {/* New Additions Section */}
+        {newGroups.length > 0 && (
+          <motion.div
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true, margin: "-100px" }}
+            variants={fadeInUp}
+            className="mt-20 sm:mt-40 max-w-7xl mx-auto px-4"
+            style={{ willChange: 'transform, opacity' }}
+          >
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center mb-4 text-[#f5f5f5]">
+              Fresh <span className="gradient-text">New Additions</span>
+            </h2>
+            <p className="text-center text-[#999] text-sm mb-12 sm:mb-16 max-w-xl mx-auto">
+              The latest groups added to Erogram — updated daily
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+              {newGroups.map((group, idx) => (
+                <motion.div
+                  key={group._id}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: idx * 0.05 }}
+                >
+                  <Link
+                    href={`/${group.slug}`}
+                    className="block glass rounded-2xl overflow-hidden border border-white/5 hover:border-[#b31b1b]/50 transition-all duration-300 hover:scale-[1.03] group"
+                  >
+                    <div className="aspect-square relative overflow-hidden bg-[#1a1a1a]">
+                      <Image
+                        src={group.image && (group.image.startsWith('https://') || group.image.startsWith('/')) ? group.image : '/assets/placeholder-no-image.png'}
+                        alt={group.name}
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        className="object-cover group-hover:scale-110 transition-transform duration-500"
+                        onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                      <div className="absolute top-2 left-2">
+                        <span className="px-2 py-0.5 rounded-full bg-[#b31b1b]/90 text-white text-[10px] font-bold uppercase tracking-wide">
+                          New
+                        </span>
+                      </div>
+                      <div className="absolute bottom-0 left-0 right-0 p-3">
+                        <h3 className="text-white font-bold text-sm leading-tight line-clamp-2 drop-shadow-lg">
+                          {group.name}
+                        </h3>
+                      </div>
+                    </div>
+                    <div className="p-3 flex items-center justify-between">
+                      <span className="text-[10px] text-[#999] font-medium uppercase tracking-wide truncate">
+                        {group.category}
+                      </span>
+                      {group.memberCount > 0 && (
+                        <span className="text-[10px] text-[#999] flex items-center gap-1 shrink-0">
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                          {group.memberCount >= 1000 ? `${(group.memberCount / 1000).toFixed(1)}K` : group.memberCount}
+                        </span>
+                      )}
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+            <div className="text-center mt-8">
+              <Link
+                href="/groups"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-[#b31b1b] hover:bg-[#d32f2f] text-white rounded-lg text-lg font-semibold transition-all hover:scale-105"
+              >
+                Browse All Groups
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
               </Link>
             </div>
           </motion.div>

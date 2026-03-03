@@ -200,7 +200,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
   const [globalStats, setGlobalStats] = useState<{ totalClicks: number; todayClicks?: number; last24h?: number; last7Days: number; last30Days: number } | null>(null);
   const [slotTotals, setSlotTotals] = useState<Array<{ slot: string; totalClicks: number; campaignCount: number }>>([]);
   const [clicksByAdvertiser, setClicksByAdvertiser] = useState<Array<{ advertiserId: string; advertiserName: string; totalClicks: number; last7Days: number; last30Days: number }>>([]);
-  const [feedClickStats, setFeedClickStats] = useState<Record<string, { total: number; last24h: number; last7d: number; last30d: number; impressions?: number; ctr?: number }>>({});
+  const [feedClickStats, setFeedClickStats] = useState<Record<string, { total: number; last24h: number; last48h?: number; last7d: number; last30d: number; impressions?: number; ctr?: number; impressions24h?: number; ctr24h?: number; impressions48h?: number; ctr48h?: number }>>({});
   const [feedABStats, setFeedABStats] = useState<Record<string, { feedTier: number; tierSlot: number; variants: { _id: string; name: string; advertiserName: string; impressions: number; clicks: number; ctr: number; status: string; isWinner: boolean }[] }>>({});
   // Filtered dashboard (Overview KPIs + charts)
   const [dashboardRange, setDashboardRange] = useState<'today' | '7d' | '30d' | 'custom' | 'lifetime'>('30d');
@@ -448,7 +448,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
       status: camp.status,
       isVisible: camp.isVisible,
       position: camp.slot === 'feed'
-        ? (camp.position ?? (camp.feedTier != null && camp.tierSlot != null ? (camp.feedTier - 1) * 4 + camp.tierSlot : 1))
+        ? (camp.position ?? (camp.feedTier != null && camp.tierSlot != null ? (camp.feedTier - 1) * 3 + camp.tierSlot : 1))
         : camp.position,
       feedTier: camp.feedTier ?? null,
       tierSlot: camp.tierSlot ?? null,
@@ -529,8 +529,8 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
         verified: isFeed ? Boolean(campForm.verified) : false,
       };
       if (isFeed && !editingCampaign) {
-        payload.feedTier = Math.ceil((feedPos ?? 1) / 4);
-        payload.tierSlot = ((feedPos ?? 1) - 1) % 4 + 1;
+        payload.feedTier = Math.ceil((feedPos ?? 1) / 3);
+        payload.tierSlot = ((feedPos ?? 1) - 1) % 3 + 1;
       }
       const assignableSlots = FEED_SLOTS.includes(campForm.slot) || CTA_SLOTS.includes(campForm.slot) || ['homepage-hero', 'top-banner'].includes(campForm.slot);
       if (assignableSlots && campForm.advertiserId) payload.advertiserId = String(campForm.advertiserId).trim();
@@ -2215,7 +2215,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                             <td className="px-5 py-3 text-[#999]">
                               {camp.slot === 'feed'
                                 ? (() => {
-                                    const p = camp.position ?? (camp.feedTier != null && camp.tierSlot != null ? (camp.feedTier - 1) * 4 + camp.tierSlot : null);
+                                    const p = camp.position ?? (camp.feedTier != null && camp.tierSlot != null ? (camp.feedTier - 1) * 3 + camp.tierSlot : null);
                                     return p != null ? `#${p}` : '—';
                                   })()
                                 : camp.slot === 'sidebar-feed'
@@ -2278,9 +2278,9 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
               return s;
             };
 
-            // Build 4 slots (tier 1, tierSlot 1-4), populate from filtered campaigns
+            // Build 3 slots (tier 1, tierSlot 1-3), populate from filtered campaigns
             const posGroups: Record<string, { feedTier: number; tierSlot: number; campaigns: CampaignRow[] }> = {};
-            for (let ts = 1; ts <= 4; ts++) {
+            for (let ts = 1; ts <= 3; ts++) {
               posGroups[`1-${ts}`] = { feedTier: 1, tierSlot: ts, campaigns: [] };
             }
             for (const c of filteredByShowOn) {
@@ -2294,10 +2294,18 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
             const sortedPositions = Object.entries(posGroups).sort(([, a], [, b]) => a.tierSlot - b.tierSlot);
 
             const feedTotals = Object.values(feedClickStats).reduce(
-              (acc, s) => ({ total: acc.total + s.total, last24h: acc.last24h + s.last24h, last7d: acc.last7d + s.last7d, last30d: acc.last30d + s.last30d, impressions: acc.impressions + (s.impressions || 0) }),
-              { total: 0, last24h: 0, last7d: 0, last30d: 0, impressions: 0 } as { total: number; last24h: number; last7d: number; last30d: number; impressions: number }
+              (acc, s) => ({
+                total: acc.total + s.total, last24h: acc.last24h + s.last24h, last7d: acc.last7d + s.last7d, last30d: acc.last30d + s.last30d,
+                impressions: acc.impressions + (s.impressions || 0),
+                impressions24h: acc.impressions24h + (s.impressions24h || 0),
+                impressions48h: acc.impressions48h + (s.impressions48h || 0),
+                last48h: acc.last48h + (s.last48h || 0),
+              }),
+              { total: 0, last24h: 0, last48h: 0, last7d: 0, last30d: 0, impressions: 0, impressions24h: 0, impressions48h: 0 } as { total: number; last24h: number; last48h: number; last7d: number; last30d: number; impressions: number; impressions24h: number; impressions48h: number }
             );
             const overallCtr = feedTotals.impressions > 0 ? ((feedTotals.total / feedTotals.impressions) * 100).toFixed(2) : '0.00';
+            const overallCtr24h = feedTotals.impressions24h > 0 ? ((feedTotals.last24h / feedTotals.impressions24h) * 100).toFixed(2) : '—';
+            const overallCtr48h = feedTotals.impressions48h > 0 ? ((feedTotals.last48h / feedTotals.impressions48h) * 100).toFixed(2) : '—';
             const overallPrev7d = feedTotals.last30d - feedTotals.last7d;
             const overallTrendPct = overallPrev7d > 0 ? Math.round(((feedTotals.last7d - overallPrev7d) / overallPrev7d) * 100) : (feedTotals.last7d > 0 ? 100 : 0);
 
@@ -2362,7 +2370,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
               <>
                 <div className="mb-6">
                   <h2 className="text-xl font-bold text-white mb-2">Feed Ads — A/B Testing</h2>
-                  <p className="text-[#999] text-sm">4 slots, each holding up to 4 A/B variants. Slots loop in the feed (1→2→3→4→1→2→...). One random variant shown per impression. Click a slot to manage its ads.</p>
+                  <p className="text-[#999] text-sm">3 slots (Top Groups pos 2, Discover NSFW Telegram pos 3, Discover NSFW Groups pos 8), each holding up to 4 A/B variants. Slots loop in the feed (1→2→3→1→2→...). One random variant shown per impression. Click a slot to manage its ads.</p>
                 </div>
 
                 {/* KPI row */}
@@ -2394,7 +2402,17 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                   </div>
                   <div className="glass rounded-lg p-4 border border-white/5">
                     <div className="text-lg font-black text-blue-400">{overallCtr}%</div>
-                    <div className="text-[10px] text-[#999] uppercase">Avg CTR</div>
+                    <div className="text-[10px] text-[#999] uppercase">CTR (all-time)</div>
+                  </div>
+                  <div className="glass rounded-lg p-4 border border-white/5">
+                    <div className="text-lg font-black text-green-400">{overallCtr24h}{overallCtr24h !== '—' ? '%' : ''}</div>
+                    <div className="text-[10px] text-[#999] uppercase">CTR 24h</div>
+                    <div className="text-[10px] text-[#666] mt-0.5">{feedTotals.impressions24h.toLocaleString()} impr</div>
+                  </div>
+                  <div className="glass rounded-lg p-4 border border-white/5">
+                    <div className="text-lg font-black text-yellow-400">{overallCtr48h}{overallCtr48h !== '—' ? '%' : ''}</div>
+                    <div className="text-[10px] text-[#999] uppercase">CTR 48h</div>
+                    <div className="text-[10px] text-[#666] mt-0.5">{feedTotals.impressions48h.toLocaleString()} impr</div>
                   </div>
                 </div>
 
@@ -2512,7 +2530,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                     const isExpanded = expandedPositions.has(posKey);
                     const variantCount = group.campaigns.length;
                     const activeVariants = group.campaigns.filter((c) => c.status === 'active').length;
-                    const slotNum = (group.feedTier - 1) * 4 + group.tierSlot;
+                    const slotNum = (group.feedTier - 1) * 3 + group.tierSlot;
 
                     // Unique advertiser names in this slot
                     const advNames = [...new Set(group.campaigns.map((c) => c.advertiserName || advertisers.find((a) => a._id === c.advertiserId)?.name || '').filter(Boolean))];
@@ -2594,6 +2612,8 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                                   <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">Impr.</th>
                                   <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">Clicks</th>
                                   <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">CTR</th>
+                                  <th className="px-3 py-2 text-right font-bold text-green-500/70 text-xs uppercase">CTR 24h</th>
+                                  <th className="px-3 py-2 text-right font-bold text-yellow-500/70 text-xs uppercase">CTR 48h</th>
                                   <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">24h</th>
                                   <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">7d</th>
                                   <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">30d</th>
@@ -2606,6 +2626,8 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                                   const stats = getStats(c._id, c);
                                   const impressions = stats.impressions ?? 0;
                                   const ctr = stats.ctr ?? (impressions > 0 ? Number(((stats.total / impressions) * 100).toFixed(2)) : 0);
+                                  const ctr24h = (stats as any).ctr24h ?? 0;
+                                  const ctr48h = (stats as any).ctr48h ?? 0;
                                   const isWinner = c._id === winnerId;
                                   return (
                                     <tr key={c._id} className="hover:bg-white/5 transition-colors">
@@ -2637,6 +2659,12 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                                       <td className="px-3 py-2 text-right font-semibold text-white tabular-nums">{stats.total.toLocaleString()}</td>
                                       <td className="px-3 py-2 text-right tabular-nums">
                                         <span className={`font-bold ${ctr > 3 ? 'text-green-400' : ctr > 1 ? 'text-blue-400' : 'text-[#999]'}`}>{ctr}%</span>
+                                      </td>
+                                      <td className="px-3 py-2 text-right tabular-nums">
+                                        <span className={`font-bold ${ctr24h > 3 ? 'text-green-400' : ctr24h > 1 ? 'text-green-400/70' : 'text-[#666]'}`}>{ctr24h > 0 ? `${ctr24h}%` : '—'}</span>
+                                      </td>
+                                      <td className="px-3 py-2 text-right tabular-nums">
+                                        <span className={`font-bold ${ctr48h > 3 ? 'text-yellow-400' : ctr48h > 1 ? 'text-yellow-400/70' : 'text-[#666]'}`}>{ctr48h > 0 ? `${ctr48h}%` : '—'}</span>
                                       </td>
                                       <td className="px-3 py-2 text-right text-green-400 tabular-nums">{stats.last24h.toLocaleString()}</td>
                                       <td className="px-3 py-2 text-right text-[#999] tabular-nums">{stats.last7d.toLocaleString()}</td>

@@ -3,7 +3,7 @@
 import jwt from 'jsonwebtoken';
 import mongoose, { type PipelineStage } from 'mongoose';
 import connectDB from '@/lib/db/mongodb';
-import { User, Campaign, CampaignClick, Advertiser, Article, Group } from '@/lib/models';
+import { User, Campaign, CampaignClick, CampaignImpressionDaily, Advertiser, Article, Group } from '@/lib/models';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -11,7 +11,7 @@ const SLOT_LIMITS: Record<string, number> = {
   // Global banner shown across the site (Bots/Groups/Articles/Join pages)
   'top-banner': 2,
   'homepage-hero': 1,
-  feed: 16, // 4 slots x up to 4 A/B variants each
+  feed: 12, // 3 slots x up to 4 A/B variants each
   'navbar-cta': 1,
   'join-cta': 1,
   'filter-cta': 1,
@@ -137,8 +137,8 @@ export async function createCampaign(
   if (data.slot === 'feed') {
     const slot = data.tierSlot != null ? Number(data.tierSlot) : null;
     if (slot != null) {
-      if (slot < 1 || slot > 4) {
-        throw new Error('Feed Slot must be 1–4.');
+      if (slot < 1 || slot > 3) {
+        throw new Error('Feed Slot must be 1–3.');
       }
       (data as any).feedTier = 1; // all feed ads live in tier 1
       const variantCount = await Campaign.countDocuments({
@@ -352,7 +352,7 @@ export async function getSlotCapacity(token: string) {
 }
 
 /**
- * Get feed slot capacity (4 slots, up to 4 A/B variants each). Used by admin.
+ * Get feed slot capacity (3 slots, up to 4 A/B variants each). Used by admin.
  */
 export async function getFeedTierCapacity(token: string) {
   const admin = await authenticateAdmin(token);
@@ -370,16 +370,17 @@ export async function getFeedTierCapacity(token: string) {
         startDate: { $lte: now },
         endDate: { $gte: now },
         feedTier: 1,
-        tierSlot: { $gte: 1, $lte: 4 },
+        tierSlot: { $gte: 1, $lte: 3 },
       },
     },
     { $group: { _id: '$tierSlot', count: { $sum: 1 } } },
   ]);
 
+  const TIER_LABELS = ['Top Groups — Position 2', 'Discover NSFW Telegram — Position 3', 'Discover NSFW Groups — Position 8'];
   const countBySlot = new Map(counts.map((c: any) => [c._id, c.count]));
-  return [1, 2, 3, 4].map((s) => ({
+  return [1, 2, 3].map((s) => ({
     tier: 1,
-    label: `Slot ${s}`,
+    label: TIER_LABELS[s - 1],
     max: 4,
     active: countBySlot.get(s) || 0,
     remaining: 4 - (countBySlot.get(s) || 0),
@@ -405,7 +406,7 @@ async function normalizeFeedPositions(): Promise<void> {
   const withKey = allFeed.map((c: any) => {
     const slot = c.tierSlot as number | null;
     const stored = c.position != null ? Number(c.position) : 999;
-    const sortKey = slot != null && slot >= 1 && slot <= 4 ? slot : stored;
+    const sortKey = slot != null && slot >= 1 && slot <= 3 ? slot : stored;
     const isActive = c.status === 'active';
     return { c, sortKey, isActive };
   });
@@ -445,7 +446,7 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
     startDate: { $lte: now },
     endDate: { $gte: startOfToday },
     feedTier: 1,
-    tierSlot: { $gte: 1, $lte: 4 },
+    tierSlot: { $gte: 1, $lte: 3 },
     $or: [
       { feedPlacement: placement },
       { feedPlacement: 'both' },
@@ -455,7 +456,7 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
     .select('_id creative destinationUrl slot feedTier tierSlot position description category country buttonText name feedPlacement videoUrl badgeText verified')
     .lean();
 
-  // Group by tierSlot (1-4) for A/B variant selection
+  // Group by tierSlot (1-3) for A/B variant selection
   const slotGroups = new Map<number, any[]>();
   for (const c of campaigns) {
     const ts = (c as any).tierSlot as number;
@@ -463,19 +464,19 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
     slotGroups.get(ts)!.push(c);
   }
 
-  // For each of the 4 slots, randomly pick one variant
-  const slotPicks: (any | null)[] = [null, null, null, null];
-  for (let s = 1; s <= 4; s++) {
+  // For each of the 3 slots, randomly pick one variant
+  const slotPicks: (any | null)[] = [null, null, null];
+  for (let s = 1; s <= 3; s++) {
     const variants = slotGroups.get(s);
     if (variants && variants.length > 0) {
       slotPicks[s - 1] = variants[Math.floor(Math.random() * variants.length)];
     }
   }
 
-  // Loop slots 1-4 across all 12 display positions: 1,2,3,4,1,2,3,4,1,2,3,4
+  // Loop slots 1-3 across all 12 display positions: 1,2,3,1,2,3,1,2,3,1,2,3
   const results: any[] = [];
   for (let i = 0; i < FEED_DISPLAY_POSITIONS.length; i++) {
-    const pick = slotPicks[i % 4];
+    const pick = slotPicks[i % 3];
     if (!pick) continue;
     results.push({
       _id: pick._id.toString(),
@@ -483,6 +484,7 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
       destinationUrl: pick.destinationUrl,
       slot: pick.slot,
       position: FEED_DISPLAY_POSITIONS[i],
+      tierSlot: (pick as any).tierSlot,
       description: pick.description || '',
       category: pick.category || 'All',
       country: pick.country || 'All',
@@ -512,12 +514,21 @@ export async function trackClick(campaignId: string, placement?: string) {
 
 /**
  * Track an impression on a campaign. Fire-and-forget from the client.
- * Increments Campaign.impressions by 1.
+ * Increments Campaign.impressions (all-time) and upserts a daily counter
+ * for period-specific CTR calculations.
  */
 export async function trackImpression(campaignId: string) {
   try {
     await connectDB();
-    await Campaign.findByIdAndUpdate(campaignId, { $inc: { impressions: 1 } });
+    const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+    await Promise.all([
+      Campaign.findByIdAndUpdate(campaignId, { $inc: { impressions: 1 } }),
+      CampaignImpressionDaily.updateOne(
+        { campaignId, date: today },
+        { $inc: { count: 1 } },
+        { upsert: true },
+      ),
+    ]);
   } catch {
     // Silently fail
   }
@@ -566,7 +577,7 @@ export async function getGlobalClickStats(token: string) {
   };
 }
 
-/** Admin: click stats per feed campaign (total, last 24h, 7d, 30d) + impressions & CTR for Feed Ads dashboard. */
+/** Admin: click stats per feed campaign (total, last 24h, 48h, 7d, 30d) + period-specific impressions & CTR. */
 export async function getFeedCampaignClickStats(token: string) {
   const admin = await authenticateAdmin(token);
   if (!admin) throw new Error('Unauthorized');
@@ -575,12 +586,23 @@ export async function getFeedCampaignClickStats(token: string) {
   const campaignIds = feedCampaigns.map((c: any) => c._id);
   const now = new Date();
   const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const last48h = new Date(now.getTime() - 48 * 60 * 60 * 1000);
   const last7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const last30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-  const [by24h, by7d, by30d] = await Promise.all([
+  // Date strings for daily impression lookups
+  const today = now.toISOString().slice(0, 10);
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const twoDaysAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const sevenDaysAgo = last7d.toISOString().slice(0, 10);
+
+  const [by24h, by48h, by7d, by30d, impressionsDaily] = await Promise.all([
     CampaignClick.aggregate([
       { $match: { campaignId: { $in: campaignIds }, clickedAt: { $gte: last24h } } },
+      { $group: { _id: '$campaignId', clicks: { $sum: 1 } } },
+    ]).then((r: { _id: any; clicks: number }[]) => new Map(r.map((x) => [x._id.toString(), x.clicks]))),
+    CampaignClick.aggregate([
+      { $match: { campaignId: { $in: campaignIds }, clickedAt: { $gte: last48h } } },
       { $group: { _id: '$campaignId', clicks: { $sum: 1 } } },
     ]).then((r: { _id: any; clicks: number }[]) => new Map(r.map((x) => [x._id.toString(), x.clicks]))),
     CampaignClick.aggregate([
@@ -591,20 +613,45 @@ export async function getFeedCampaignClickStats(token: string) {
       { $match: { campaignId: { $in: campaignIds }, clickedAt: { $gte: last30d } } },
       { $group: { _id: '$campaignId', clicks: { $sum: 1 } } },
     ]).then((r: { _id: any; clicks: number }[]) => new Map(r.map((x) => [x._id.toString(), x.clicks]))),
+    // Daily impression buckets for period-specific CTR
+    CampaignImpressionDaily.aggregate([
+      { $match: { campaignId: { $in: campaignIds }, date: { $gte: sevenDaysAgo } } },
+      {
+        $group: {
+          _id: '$campaignId',
+          imp24h: { $sum: { $cond: [{ $gte: ['$date', yesterday] }, '$count', 0] } },
+          imp48h: { $sum: { $cond: [{ $gte: ['$date', twoDaysAgo] }, '$count', 0] } },
+          imp7d: { $sum: '$count' },
+        },
+      },
+    ]).then((r: any[]) => new Map(r.map((x) => [x._id.toString(), { imp24h: x.imp24h, imp48h: x.imp48h, imp7d: x.imp7d }]))),
   ]);
 
-  const result: Record<string, { total: number; last24h: number; last7d: number; last30d: number; impressions: number; ctr: number }> = {};
+  const result: Record<string, {
+    total: number; last24h: number; last48h: number; last7d: number; last30d: number;
+    impressions: number; ctr: number;
+    impressions24h: number; ctr24h: number;
+    impressions48h: number; ctr48h: number;
+  }> = {};
   feedCampaigns.forEach((c: any) => {
     const id = c._id.toString();
     const impressions = c.impressions ?? 0;
     const totalClicks = c.clicks ?? 0;
+    const clicks24h = by24h.get(id) ?? 0;
+    const clicks48h = by48h.get(id) ?? 0;
+    const daily = impressionsDaily.get(id) || { imp24h: 0, imp48h: 0, imp7d: 0 };
     result[id] = {
       total: totalClicks,
-      last24h: by24h.get(id) ?? 0,
+      last24h: clicks24h,
+      last48h: clicks48h,
       last7d: by7d.get(id) ?? 0,
       last30d: by30d.get(id) ?? 0,
       impressions,
       ctr: impressions > 0 ? Number(((totalClicks / impressions) * 100).toFixed(2)) : 0,
+      impressions24h: daily.imp24h,
+      ctr24h: daily.imp24h > 0 ? Number(((clicks24h / daily.imp24h) * 100).toFixed(2)) : 0,
+      impressions48h: daily.imp48h,
+      ctr48h: daily.imp48h > 0 ? Number(((clicks48h / daily.imp48h) * 100).toFixed(2)) : 0,
     };
   });
   return result;

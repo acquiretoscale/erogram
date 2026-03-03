@@ -92,12 +92,12 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
             onHoverEnd={() => setIsHovered(false)}
             className="h-full"
         >
-            <div className={`glass rounded-3xl overflow-hidden h-full flex flex-col backdrop-blur-xl border transition-all duration-500 group relative ${isFeatured
+            <div className={`glass rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col backdrop-blur-xl border transition-all duration-500 group relative ${isFeatured
                 ? 'border-yellow-500/30 shadow-[0_0_30px_rgba(234,179,8,0.1)] hover:border-yellow-500/60 hover:shadow-[0_0_50px_rgba(234,179,8,0.2)]'
                 : 'border-white/5 hover:border-white/20 hover:shadow-2xl hover:shadow-black/50'
                 }`}>
-                {/* Group Image - use Next/Image for absolute URLs, plain img for same-origin relative paths or placeholder */}
-                <div ref={imgRef} className="relative w-full h-52 overflow-hidden bg-[#1a1a1a]">
+                {/* Group Image */}
+                <div ref={imgRef} className="relative w-full h-32 sm:h-52 overflow-hidden bg-[#1a1a1a]">
                     {isAbsoluteUrl(imageSrc) ? (
                         <Image
                             key={imageSrc}
@@ -152,42 +152,42 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                 </div>
 
                 {/* Card Content */}
-                <div className="p-5 flex-grow flex flex-col relative">
+                <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
                     {/* Title */}
-                    <h3 className="text-xl font-black text-white mb-3 leading-tight group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
+                    <h3 className="text-sm sm:text-xl font-black text-white mb-2 sm:mb-3 leading-tight group-hover:text-blue-400 transition-colors flex items-center gap-1">
                         <span className="truncate min-w-0">{group.name}</span>
                         {group.verified && (
-                            <svg className="w-[16px] h-[16px] text-blue-500 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
+                            <svg className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
                         )}
                     </h3>
 
                     {/* Tags */}
-                    <div className="flex flex-wrap gap-2 mb-4">
-                        <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-gray-300 text-xs font-medium hover:bg-white/10 transition-colors">
+                    <div className="flex flex-wrap gap-1 sm:gap-2 mb-2 sm:mb-4">
+                        <span className="px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg bg-white/5 border border-white/5 text-gray-300 text-[10px] sm:text-xs font-medium">
                             {group.category}
                         </span>
-                        <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-gray-300 text-xs font-medium hover:bg-white/10 transition-colors">
+                        <span className="px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg bg-white/5 border border-white/5 text-gray-300 text-[10px] sm:text-xs font-medium">
                             {group.country}
                         </span>
                     </div>
 
                     {/* Description */}
-                    <div className="mb-6 flex-grow">
-                        <p className="text-gray-400 text-sm line-clamp-3 leading-relaxed">
+                    <div className="mb-3 sm:mb-6 flex-grow">
+                        <p className="text-gray-400 text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed">
                             {group.description}
                         </p>
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="mt-auto space-y-3">
+                    <div className="mt-auto space-y-2 sm:space-y-3">
                         {/* Rating Row */}
                         <div className="flex items-center justify-between px-1">
                             <div className="flex items-center gap-1">
-                                <span className="text-yellow-500 text-sm">⭐</span>
-                                <span className="text-white font-bold text-sm">{(group.averageRating || 0).toFixed(1)}</span>
-                                <span className="text-gray-500 text-xs">({group.reviewCount || 0})</span>
+                                <span className="text-yellow-500 text-[10px] sm:text-sm">⭐</span>
+                                <span className="text-white font-bold text-[10px] sm:text-sm">{(group.averageRating || 0).toFixed(1)}</span>
+                                <span className="text-gray-500 text-[10px] sm:text-xs">({group.reviewCount || 0})</span>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="hidden sm:flex gap-2">
                                 <button
                                     onClick={(e) => {
                                         e.preventDefault();
@@ -219,21 +219,21 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                                 : `/${group.slug}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className={`group/btn relative flex items-center justify-center w-full overflow-hidden rounded-xl py-3.5 px-4 font-black text-white shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${isFeatured
+                            className={`group/btn relative flex items-center justify-center w-full overflow-hidden rounded-xl py-2.5 sm:py-3.5 px-3 sm:px-4 font-black text-white shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${isFeatured
                                 ? 'bg-gradient-to-r from-yellow-500 to-red-600 hover:shadow-orange-500/40'
                                 : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-blue-500/40'
                                 }`}
                         >
                             <div className="absolute inset-0 bg-white/20 opacity-0 transition-opacity duration-300 group-hover/btn:opacity-100" />
 
-                            <span className={`relative flex items-center justify-center gap-2 text-sm uppercase tracking-wider`}>
+                            <span className={`relative flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm uppercase tracking-wider`}>
                                 {group.isAdvertisement ? (
                                     <>
-                                        <span>🔗</span> Visit Link
+                                        <span>🔗</span> Visit
                                     </>
                                 ) : (
                                     <>
-                                        <span className="text-lg">🚀</span> Join Group
+                                        <span className="text-base sm:text-lg">🚀</span> Join
                                     </>
                                 )}
                             </span>

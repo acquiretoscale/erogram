@@ -27,7 +27,11 @@ export default function GroupsTab() {
         verified: false,
         advertiserId: '' as string,
         showVerified: false,
+        premiumOnly: false,
     });
+
+    const [premiumFilter, setPremiumFilter] = useState<'all' | 'premium' | 'public'>('all');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'pending' | 'scheduled' | 'rejected'>('all');
     const [isSaving, setIsSaving] = useState(false);
 
     // Pagination
@@ -35,15 +39,18 @@ export default function GroupsTab() {
     const itemsPerPage = 10;
 
     // Sort: column key and direction
-    type SortKey = 'name' | 'category' | 'status' | 'views' | 'recent' | 'clicks' | 'recentClicks' | 'country';
-    const [sortBy, setSortBy] = useState<SortKey>('name');
-    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+    type SortKey = 'name' | 'category' | 'status' | 'views' | 'recent' | 'clicks' | 'recentClicks' | 'country' | 'dateAdded';
+    const [sortBy, setSortBy] = useState<SortKey>('dateAdded');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
     // Bulk selection and actions
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [bulkActionLoading, setBulkActionLoading] = useState(false);
     // Info tooltip: which column's details are visible
     const [infoTooltip, setInfoTooltip] = useState<'views' | 'clicks' | null>(null);
+    // Fetch Telegram photos
+    const [fetchingPhotos, setFetchingPhotos] = useState(false);
+    const [photoProgress, setPhotoProgress] = useState<{ done: number; total: number; success: number } | null>(null);
 
     useEffect(() => {
         fetchGroups();
@@ -87,6 +94,7 @@ export default function GroupsTab() {
             verified: group.verified || false,
             advertiserId: group.advertiserId || '',
             showVerified: group.showVerified ?? false,
+            premiumOnly: group.premiumOnly || false,
         });
         setShowEditor(true);
     };
@@ -181,12 +189,17 @@ export default function GroupsTab() {
     const getRecentViews = (g: any) => g.weeklyViews ?? 0;
     const getRecentClicks = (g: any) => g.weeklyClicks ?? 0;
 
-    // Filter, Sort, and Pagination
-    const filteredGroups = groups.filter((group) =>
-        group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        group.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        group.country.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredGroups = groups.filter((group) => {
+        const matchesSearch = group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            group.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (group.country || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (group.telegramLink || '').toLowerCase().includes(searchQuery.toLowerCase());
+        if (!matchesSearch) return false;
+        if (premiumFilter === 'premium' && !group.premiumOnly) return false;
+        if (premiumFilter === 'public' && group.premiumOnly) return false;
+        if (statusFilter !== 'all' && group.status !== statusFilter) return false;
+        return true;
+    });
 
     const sortedGroups = [...filteredGroups].sort((a, b) => {
         let aVal: string | number = '';
@@ -215,6 +228,9 @@ export default function GroupsTab() {
         } else if (sortBy === 'country') {
             aVal = (a.country || '').toLowerCase();
             bVal = (b.country || '').toLowerCase();
+        } else if (sortBy === 'dateAdded') {
+            aVal = new Date(a.createdAt || 0).getTime();
+            bVal = new Date(b.createdAt || 0).getTime();
         }
         if (typeof aVal === 'number' && typeof bVal === 'number') {
             return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
@@ -286,6 +302,32 @@ export default function GroupsTab() {
         alert(failed ? `Updated ${done} group(s). ${failed} failed.` : `Updated ${done} group(s) to ${newStatus}.`);
     };
 
+    const handleBulkPremium = async (value: boolean) => {
+        if (selectedIds.size === 0) return;
+        const label = value ? 'Premium Vault' : 'Public';
+        if (!confirm(`Move ${selectedIds.size} group(s) to ${label}?`)) return;
+        setBulkActionLoading(true);
+        const token = localStorage.getItem('token');
+        let done = 0;
+        let failed = 0;
+        for (const id of selectedIds) {
+            try {
+                await axios.put(
+                    `/api/admin/groups/${id}`,
+                    { premiumOnly: value },
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                done++;
+            } catch {
+                failed++;
+            }
+        }
+        setBulkActionLoading(false);
+        setSelectedIds(new Set());
+        fetchGroups();
+        alert(failed ? `Moved ${done} group(s). ${failed} failed.` : `Moved ${done} group(s) to ${label}.`);
+    };
+
     const handleSendPremiumNotification = async (id: string) => {
         try {
             const token = localStorage.getItem('token');
@@ -298,6 +340,48 @@ export default function GroupsTab() {
         }
     };
 
+    const isMissingImage = (g: any) =>
+        !g.image || g.image === '/assets/image.jpg' || g.image === PLACEHOLDER_IMAGE_URL;
+
+    const fetchTelegramPhotos = async () => {
+        const target = selectedIds.size > 0
+            ? groups.filter(g => selectedIds.has(g._id) && isMissingImage(g))
+            : filteredGroups.filter(isMissingImage);
+
+        if (target.length === 0) {
+            alert('No groups with missing images found in the current selection/filter.');
+            return;
+        }
+
+        if (!confirm(`Fetch Telegram profile pictures for ${target.length} group(s) missing images?`)) return;
+
+        setFetchingPhotos(true);
+        setPhotoProgress({ done: 0, total: target.length, success: 0 });
+        const token = localStorage.getItem('token');
+        let totalSuccess = 0;
+
+        for (let i = 0; i < target.length; i += 5) {
+            const batch = target.slice(i, i + 5).map(g => g._id);
+            try {
+                const res = await axios.post('/api/admin/csv-import/fetch-photos', { groupIds: batch }, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                const results = res.data?.results || [];
+                for (const r of results) {
+                    if (r.status === 'success' && r.url) {
+                        totalSuccess++;
+                        setGroups(prev => prev.map(g => g._id === r.id ? { ...g, image: r.url } : g));
+                    }
+                }
+            } catch { /* continue */ }
+            setPhotoProgress({ done: Math.min(i + 5, target.length), total: target.length, success: totalSuccess });
+        }
+
+        setFetchingPhotos(false);
+        setPhotoProgress(null);
+        alert(`Done! Fetched ${totalSuccess} of ${target.length} images from Telegram.`);
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -305,7 +389,27 @@ export default function GroupsTab() {
                     <h1 className="text-3xl font-black text-white mb-1">Groups</h1>
                     <p className="text-[#999] text-sm">Manage {groups.length} total groups</p>
                 </div>
-                <div className="flex gap-3 w-full md:w-auto">
+                <div className="flex gap-3 w-full md:w-auto flex-wrap">
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => { setStatusFilter(e.target.value as any); setCurrentPage(1); }}
+                        className="px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded-xl text-white text-sm focus:ring-2 focus:ring-[#b31b1b] outline-none appearance-none"
+                    >
+                        <option value="all">All Status</option>
+                        <option value="approved">Approved</option>
+                        <option value="pending">Pending</option>
+                        <option value="scheduled">Scheduled</option>
+                        <option value="rejected">Rejected</option>
+                    </select>
+                    <select
+                        value={premiumFilter}
+                        onChange={(e) => { setPremiumFilter(e.target.value as any); setCurrentPage(1); }}
+                        className="px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded-xl text-white text-sm focus:ring-2 focus:ring-[#b31b1b] outline-none appearance-none"
+                    >
+                        <option value="all">All Groups</option>
+                        <option value="premium">Premium Only</option>
+                        <option value="public">Public Only</option>
+                    </select>
                     <div className="relative flex-grow md:flex-grow-0">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">🔍</span>
                         <input
@@ -314,13 +418,46 @@ export default function GroupsTab() {
                             value={searchQuery}
                             onChange={(e) => {
                                 setSearchQuery(e.target.value);
-                                setCurrentPage(1); // Reset to first page on search
+                                setCurrentPage(1);
                             }}
                             className="w-full md:w-64 pl-10 pr-4 py-2 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none transition-all"
                         />
                     </div>
+                    <button
+                        onClick={fetchTelegramPhotos}
+                        disabled={fetchingPhotos}
+                        className="px-3 py-2 bg-[#0088cc]/15 border border-[#0088cc]/25 text-[#4ab3f4] rounded-xl text-sm font-medium hover:bg-[#0088cc]/25 disabled:opacity-50 transition-all flex items-center gap-2 whitespace-nowrap"
+                        title={selectedIds.size > 0 ? `Fetch images for ${selectedIds.size} selected groups` : 'Fetch missing images from Telegram'}
+                    >
+                        {fetchingPhotos ? (
+                            <>
+                                <div className="w-3.5 h-3.5 border-2 border-[#4ab3f4]/30 border-t-[#4ab3f4] rounded-full animate-spin" />
+                                {photoProgress ? `${photoProgress.done}/${photoProgress.total}` : 'Fetching...'}
+                            </>
+                        ) : (
+                            <>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                                Fetch Images
+                            </>
+                        )}
+                    </button>
                 </div>
             </div>
+
+            {/* Photo fetch progress bar */}
+            {fetchingPhotos && photoProgress && (
+                <div className="rounded-xl bg-[#0088cc]/10 border border-[#0088cc]/20 p-3 flex items-center gap-3">
+                    <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-[#0088cc] rounded-full transition-all duration-300"
+                            style={{ width: `${(photoProgress.done / photoProgress.total) * 100}%` }}
+                        />
+                    </div>
+                    <span className="text-xs text-[#4ab3f4] font-medium whitespace-nowrap">
+                        {photoProgress.done}/{photoProgress.total} — {photoProgress.success} fetched
+                    </span>
+                </div>
+            )}
 
             {/* Table */}
             <div className="glass rounded-2xl border border-white/5 overflow-hidden">
@@ -353,6 +490,30 @@ export default function GroupsTab() {
                                 >
                                     Reject
                                 </button>
+                                <span className="w-px h-5 bg-white/10" />
+                                <button
+                                    onClick={() => handleBulkPremium(true)}
+                                    disabled={bulkActionLoading}
+                                    className="px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-lg text-sm font-medium hover:bg-amber-500/30 disabled:opacity-50 transition-colors"
+                                >
+                                    Move to Vault
+                                </button>
+                                <button
+                                    onClick={() => handleBulkPremium(false)}
+                                    disabled={bulkActionLoading}
+                                    className="px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg text-sm font-medium hover:bg-blue-500/30 disabled:opacity-50 transition-colors"
+                                >
+                                    Make Public
+                                </button>
+                                <span className="w-px h-5 bg-white/10" />
+                                <button
+                                    onClick={fetchTelegramPhotos}
+                                    disabled={fetchingPhotos}
+                                    className="px-3 py-1.5 bg-[#0088cc]/20 text-[#4ab3f4] rounded-lg text-sm font-medium hover:bg-[#0088cc]/30 disabled:opacity-50 transition-colors"
+                                >
+                                    {fetchingPhotos ? 'Fetching...' : 'Fetch Images'}
+                                </button>
+                                <span className="w-px h-5 bg-white/10" />
                                 <button
                                     onClick={clearSelection}
                                     className="px-3 py-1.5 bg-white/10 text-gray-400 rounded-lg text-sm hover:bg-white/15 transition-colors"
@@ -391,6 +552,12 @@ export default function GroupsTab() {
                                             onClick={() => handleSort('status')}
                                         >
                                             Status {sortBy === 'status' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
+                                        </th>
+                                        <th
+                                            className="px-4 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none"
+                                            onClick={() => handleSort('dateAdded')}
+                                        >
+                                            Added {sortBy === 'dateAdded' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
                                         </th>
                                         <th
                                             className="px-4 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none relative"
@@ -463,6 +630,7 @@ export default function GroupsTab() {
                                                     <div>
                                                         <div className="font-medium text-white flex items-center gap-2">
                                                             {group.name}
+                                                            {group.premiumOnly && <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold">VAULT</span>}
                                                             {group.pinned && <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded">FEATURED</span>}
                                                             {group.pinned && group.advertiserId && (() => {
                                                                 const adv = advertisers.find((a) => a._id === group.advertiserId);
@@ -482,10 +650,15 @@ export default function GroupsTab() {
                                             <td className="px-6 py-4">
                                                 <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${group.status === 'approved' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
                                                     group.status === 'pending' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
+                                                    group.status === 'scheduled' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
                                                         'bg-red-500/10 text-red-400 border-red-500/20'
                                                     }`}>
                                                     {group.status.charAt(0).toUpperCase() + group.status.slice(1)}
                                                 </span>
+                                                {group.premiumOnly && <span className="ml-1.5 text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold">VAULT</span>}
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <span className="text-xs text-[#666] whitespace-nowrap">{group.createdAt ? new Date(group.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—'}</span>
                                             </td>
                                             <td className="px-4 py-4">
                                                 <span className="text-sm text-gray-300 tabular-nums">{(group.views ?? 0).toLocaleString()}</span>
@@ -690,6 +863,22 @@ export default function GroupsTab() {
                                             </span>
                                         </label>
                                         <span className="text-xs text-[#666] ml-3">Shows a blue verified badge next to the group title</span>
+                                    </div>
+
+                                    <div className="flex items-center">
+                                        <label className="flex items-center gap-3 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={groupData.premiumOnly}
+                                                onChange={(e) => setGroupData({ ...groupData, premiumOnly: e.target.checked })}
+                                                className="w-5 h-5 rounded border-white/10 bg-[#1a1a1a] text-amber-500 focus:ring-amber-500"
+                                            />
+                                            <span className="text-white font-medium flex items-center gap-2">
+                                                <svg className="w-4 h-4 text-amber-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
+                                                Premium Vault
+                                            </span>
+                                        </label>
+                                        <span className="text-xs text-[#666] ml-3">Hidden from public, only visible to premium users</span>
                                     </div>
 
                                     {groupData.pinned && (

@@ -46,16 +46,20 @@ async function getGroup(slug: string) {
       return null;
     }
 
-    // Increment view count (fire and forget)
     const groupId = (group as any)._id;
-    const todayUtc = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-    Group.findByIdAndUpdate(groupId, {
-      $inc: {
-        views: 1,
-        weeklyViews: 1,
-        [`viewsByDay.${todayUtc}`]: 1,
-      },
-    }).catch(err => console.error('Error updating views:', err));
+    const isDeleted = (group as any).status === 'deleted';
+
+    // Only increment view count for non-deleted groups
+    if (!isDeleted) {
+      const todayUtc = new Date().toISOString().slice(0, 10);
+      Group.findByIdAndUpdate(groupId, {
+        $inc: {
+          views: 1,
+          weeklyViews: 1,
+          [`viewsByDay.${todayUtc}`]: 1,
+        },
+      }).catch(err => console.error('Error updating views:', err));
+    }
 
     // Background update of member count if stale (older than 24h)
     const lastUpdate = (group as any).memberCountUpdatedAt ? new Date((group as any).memberCountUpdatedAt) : new Date(0);
@@ -81,7 +85,6 @@ async function getGroup(slug: string) {
       .select('authorName content rating createdAt')
       .lean();
 
-    // Build result object
     const result = {
       _id: (group as any)._id.toString(),
       name: (group as any).name,
@@ -94,6 +97,8 @@ async function getGroup(slug: string) {
       views: (group as any).views || 0,
       memberCount: (group as any).memberCount || 0,
       createdAt: (group as any).createdAt,
+      status: (group as any).status as string,
+      premiumOnly: (group as any).premiumOnly || false,
       reviews: reviews.map((r: any) => ({
         _id: r._id.toString(),
         authorName: r.authorName || 'Anonymous',
@@ -347,15 +352,24 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
     const category = group.category || 'NSFW';
     const country = group.country && group.country !== 'All' ? ` from ${group.country}` : '';
+    const memberInfo = group.memberCount ? ` with ${group.memberCount.toLocaleString()}+ members` : '';
     const baseDescription = group.description
-      || `Join ${group.name}, a popular ${category} Telegram group${country}. Browse members, read reviews, and connect with an active adult community on Erogram.pro.`;
-    const enhancedDescription = baseDescription.length >= 120
-      ? baseDescription
-      : `${baseDescription} | Erogram.pro - Discover verified NSFW Telegram groups. Connect with like-minded adults in curated communities worldwide.`;
+      || `Join ${group.name}, a popular ${category} Telegram group${country}.`;
 
-    const finalDescription = enhancedDescription.length > 160
-      ? enhancedDescription.slice(0, 157) + '...'
-      : enhancedDescription;
+    let finalDescription = baseDescription;
+    if (finalDescription.length < 150) {
+      const suffixes = [
+        `${memberInfo ? ` A verified community${memberInfo}.` : ''}`,
+        ` Browse reviews, join the conversation, and connect with like-minded adults on Erogram.pro — the largest NSFW Telegram directory.`,
+      ];
+      for (const s of suffixes) {
+        if (finalDescription.length >= 150) break;
+        finalDescription += s;
+      }
+    }
+    if (finalDescription.length > 160) {
+      finalDescription = finalDescription.slice(0, 157) + '...';
+    }
 
     return {
       // Root layout already appends "| Erogram" via `metadata.title.template`.
@@ -400,14 +414,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
     const botCategory = bot.category || 'NSFW';
     const baseDescription = bot.description
-      || `Try ${bot.name}, a popular ${botCategory} Telegram bot. Explore features, user reviews, and start chatting with this adult entertainment bot on Erogram.pro.`;
-    const enhancedDescription = baseDescription.length >= 120
-      ? baseDescription
-      : `${baseDescription} | Erogram.pro - Discover the best NSFW Telegram bots. AI companions, adult chat bots, and more.`;
+      || `Try ${bot.name}, a popular ${botCategory} Telegram bot.`;
 
-    const finalDescription = enhancedDescription.length > 160
-      ? enhancedDescription.slice(0, 157) + '...'
-      : enhancedDescription;
+    let finalDescription = baseDescription;
+    if (finalDescription.length < 150) {
+      finalDescription += ` Explore features, read user reviews, and start chatting on Erogram.pro — the largest directory of NSFW Telegram bots and AI companions.`;
+    }
+    if (finalDescription.length > 160) {
+      finalDescription = finalDescription.slice(0, 157) + '...';
+    }
 
     return {
       title: `${bot.name} - Use NSFW Telegram Bot`,
@@ -546,7 +561,7 @@ export default async function JoinPage({ params }: PageProps) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
-        <JoinClient entity={group} type="group" similarGroups={similarGroups} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} />
+        <JoinClient entity={group} type="group" similarGroups={similarGroups} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} isDeleted={group.status === 'deleted'} />
       </>
     );
   }

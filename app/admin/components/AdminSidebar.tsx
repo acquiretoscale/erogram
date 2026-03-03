@@ -17,6 +17,8 @@ const tabs = [
     { id: 'bots', name: 'Bots', icon: '🤖' },
     { id: 'pending', name: 'Pending Groups', icon: '⏳' },
     { id: 'pending-bots', name: 'Pending Bots', icon: '🤖' },
+    { id: 'csv-import', name: 'CSV Import', icon: '📤' },
+    { id: 'stories', name: 'Stories', icon: '📖' },
     { id: 'reviews', name: 'Reviews', icon: '⭐' },
     { id: 'reports', name: 'Reports', icon: '🚨' },
     { id: 'articles', name: 'Articles', icon: '📝' },

@@ -35,8 +35,8 @@ export async function generateMetadata(
     : `Discover NSFW Telegram Groups – Page ${page}`;
 
   const description = page === 1
-    ? 'Browse and discover NSFW Telegram groups. Find communities by category, country, and interests.'
-    : `Browse more NSFW Telegram groups (page ${page}). Find communities by category, country, and interests.`;
+    ? 'Browse and discover the best NSFW Telegram groups on Erogram.pro. Find verified adult communities by category, country, and interests. Updated daily with new groups.'
+    : `Browse NSFW Telegram groups — page ${page}. Discover verified adult communities sorted by popularity. Find groups by category, country, and interests on Erogram.pro.`;
 
   return {
     title,

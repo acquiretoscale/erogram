@@ -71,17 +71,16 @@ function StatCard({ label, value, suffix, gradient, delay, ready, full, live, co
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay }}
-      className={`relative overflow-hidden rounded-2xl border border-white/10 p-6 sm:p-8 text-center ${gradient}`}
+      className={`relative overflow-hidden glass rounded-2xl p-6 sm:p-8 text-center hover-glow hover:-translate-y-1 transition-all duration-300 border-white/5 bg-white/[0.02] ${gradient}`}
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent pointer-events-none" />
       {live && (
         <div className="absolute top-3 right-3 flex items-center gap-1.5">
-          <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400/70">Live</span>
+          <span className="flex h-1.5 w-1.5 rounded-full bg-[#ff3366] animate-pulse" />
+          <span className="text-[9px] font-bold uppercase tracking-wider text-[#ff3366]/70">Live</span>
         </div>
       )}
-      <p className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-white/60 mb-2">{label}</p>
-      <p className="text-3xl sm:text-4xl font-black text-white tabular-nums">
+      <p className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-white/40 mb-2">{label}</p>
+      <p className="text-3xl sm:text-4xl font-black text-[#f5f5f5] tabular-nums">
         {full ? animated.toLocaleString() : fmt(animated)}{suffix && <span className="text-lg text-white/40 ml-1">{suffix}</span>}
       </p>
     </motion.div>
@@ -159,7 +158,7 @@ export default function AdvertiseStats() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -60, opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="fixed top-0 left-0 right-0 z-50 border-b border-amber-600/40 bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 shadow-lg shadow-amber-800/30"
+            className="fixed top-0 left-0 right-0 z-50 border-b border-red-700/40 bg-gradient-to-r from-[#b31b1b] via-red-600 to-[#b31b1b] shadow-lg shadow-red-900/30"
           >
             <div className="max-w-5xl mx-auto px-4 sm:px-8 py-2.5 flex flex-wrap items-center justify-center gap-x-6 gap-y-1">
               <StatCard label="Total visits" value={data.totalViews} gradient="" delay={0} ready full live compact />
@@ -177,14 +176,13 @@ export default function AdvertiseStats() {
       </AnimatePresence>
 
       <div ref={statsRef} className="space-y-8 mb-16">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Total visits" value={data.totalViews} gradient="bg-gradient-to-br from-blue-900/40 to-purple-900/30" delay={0.1} ready full live />
-          <StatCard label="Clicks (24h)" value={data.last24hClicks} gradient="bg-gradient-to-br from-amber-900/40 to-orange-900/30" delay={0.15} ready full live />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <StatCard label="Total visits" value={data.totalViews} gradient="bg-gradient-to-br from-red-950/50 to-rose-950/40" delay={0.1} ready full live />
           {typeof data.activeVisitors === 'number' && data.activeVisitors > 0 && (
-            <StatCard label="Visitors (last 30 min)" value={data.activeVisitors} gradient="bg-gradient-to-br from-emerald-900/40 to-cyan-900/30" delay={0.21} ready full live />
+            <StatCard label="Visitors (last 30 min)" value={data.activeVisitors} gradient="bg-gradient-to-br from-red-900/40 to-red-950/30" delay={0.21} ready full live />
           )}
           {tg && tg.totalSubscribers > 0 && (
-            <StatCard label="Telegram subscribers" value={tg.totalSubscribers} suffix="+" gradient="bg-gradient-to-br from-emerald-900/40 to-teal-900/30" delay={0.24} ready />
+            <StatCard label="Telegram subscribers" value={tg.totalSubscribers} suffix="+" gradient="bg-gradient-to-br from-rose-900/40 to-red-950/30" delay={0.24} ready />
           )}
         </div>
 
@@ -194,22 +192,24 @@ export default function AdvertiseStats() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden"
+            className="glass rounded-2xl border-white/5 bg-white/[0.02] overflow-hidden hover-glow"
           >
-            <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
+            <div className="px-6 py-5 border-b border-white/[0.08] flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="flex h-2 w-2 rounded-full bg-orange-400 animate-pulse" />
+                <span className="flex h-2 w-2 rounded-full bg-[#ff3366] animate-pulse" />
                 <div>
                   <h3 className="font-bold text-white text-sm">Clicks by ad type (24h)</h3>
                   <p className="text-xs text-gray-500">Breakdown of clicks delivered to advertisers</p>
                 </div>
               </div>
-              <span className="text-sm font-bold text-orange-400 tabular-nums">{data.last24hClicks.toLocaleString()} total</span>
+              <span className="text-sm font-bold text-[#ff3366] tabular-nums">{data.last24hClicks.toLocaleString()} total</span>
             </div>
             <div className="p-5 space-y-3">
               {data.clickBreakdown.map((item, i) => {
+                const totalClicks24h = data.last24hClicks || 1;
+                const pctOfTotal = ((item.clicks / totalClicks24h) * 100).toFixed(1);
                 const max = data.clickBreakdown![0].clicks || 1;
-                const pct = Math.round((item.clicks / max) * 100);
+                const barPct = Math.round((item.clicks / max) * 100);
                 return (
                   <motion.div
                     key={item.source}
@@ -219,13 +219,13 @@ export default function AdvertiseStats() {
                   >
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-sm text-white/80 font-medium">{item.source}</span>
-                      <span className="text-sm text-white font-bold tabular-nums">{item.clicks.toLocaleString()}</span>
+                      <span className="text-sm text-white font-bold tabular-nums">{pctOfTotal}%</span>
                     </div>
                     <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
                       <motion.div
-                        className="h-full rounded-full bg-gradient-to-r from-orange-500 to-amber-400"
+                        className="h-full rounded-full bg-gradient-to-r from-[#b31b1b] to-[#ff3366]"
                         initial={{ width: 0 }}
-                        animate={{ width: `${pct}%` }}
+                        animate={{ width: `${barPct}%` }}
                         transition={{ duration: 0.8, delay: 0.4 + i * 0.05, ease: 'easeOut' }}
                       />
                     </div>

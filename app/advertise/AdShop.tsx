@@ -19,14 +19,12 @@ interface Product {
 }
 
 const PRODUCTS: Product[] = [
-  { id: 'feed-s1', name: 'In-Feed Slot 1', category: 'in-feed', monthlyVideo: 450, monthlyImage: 350,
-    description: 'Premier position in the feed. Highest traffic share, first in the 4-slot ad rotation. Captures the most attention immediately.' },
-  { id: 'feed-s2', name: 'In-Feed Slot 2', category: 'in-feed', monthlyVideo: 380, monthlyImage: 280,
-    description: 'High-traffic second position with strong visibility. Appears right after Slot 1 in the rotation sequence.' },
-  { id: 'feed-s3', name: 'In-Feed Slot 3', category: 'in-feed', monthlyVideo: 300, monthlyImage: 220,
-    description: 'Momentum slot for deep-scroll users who are actively engaged and more likely to interact.' },
-  { id: 'feed-s4', name: 'In-Feed Slot 4', category: 'in-feed', monthlyVideo: 300, monthlyImage: 220,
-    description: 'Final slot in each rotation cycle. Ads loop continuously as users keep scrolling, creating repeated brand exposure.' },
+  { id: 'feed-s1', name: 'In-Feed Slot 1 — Top Groups', category: 'in-feed', monthlyVideo: 450, monthlyImage: 350,
+    description: 'Premier position in the Top Groups section (position 2). Highest traffic share — appears alongside the most popular groups for maximum first-touch attention.' },
+  { id: 'feed-s2', name: 'In-Feed Slot 2 — Discover NSFW Telegram', category: 'in-feed', monthlyVideo: 380, monthlyImage: 280,
+    description: 'Position 3 in the Discover NSFW Telegram Groups section. High visibility as users start browsing the main feed.' },
+  { id: 'feed-s3', name: 'In-Feed Slot 3 — Discover NSFW Groups', category: 'in-feed', monthlyVideo: 300, monthlyImage: 220,
+    description: 'Position 8 in the feed for deep-scroll engaged users. Strong value for sustained visibility with a high-quality audience.' },
 
   { id: 'cta-menu', name: 'Menu CTA', category: 'cta', monthly: 300,
     description: 'Permanent link in the main navigation bar. Visible on every single page across the entire site — groups, bots, articles, and join pages.' },

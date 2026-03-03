@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import Navbar from '@/components/Navbar';
 import AddClient from './AddClient';
-import { categories, countries } from '@/app/groups/constants';
+import { filterCategories, filterCountries } from '@/app/groups/constants';
 
 export const metadata: Metadata = {
   title: 'Add Group or Bot | Erogram',
@@ -12,7 +12,7 @@ export default function AddPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
       <Navbar />
-      <AddClient categories={categories} countries={countries} />
+      <AddClient categories={filterCategories} countries={filterCountries} />
     </div>
   );
 }

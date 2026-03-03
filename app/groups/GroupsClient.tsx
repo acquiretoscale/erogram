@@ -7,11 +7,13 @@ import axios from 'axios';
 import dynamic from 'next/dynamic';
 import Navbar from '@/components/Navbar';
 import HeaderBanner from '@/components/HeaderBanner';
-import { categories, countries } from './constants';
-import { Group, FeedCampaign } from './types';
+import { filterOptions, filterCategories, filterCountries } from './constants';
+import { Group, FeedCampaign, StoryCategory } from './types';
 import GroupCard from './GroupCard';
+import AdvertCard from './AdvertCard';
 import VirtualizedGroupGrid from './VirtualizedGroupGrid';
 import GroupCardSkeleton from './GroupCardSkeleton';
+import StoryBar from './StoryBar';
 // Lazy load modals to reduce initial bundle size
 const ReviewModal = dynamic(() => import('./ReviewModal'), {
   loading: () => <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50"><div className="text-white">Loading...</div></div>
@@ -25,6 +27,8 @@ const AddGroupModal = dynamic(() => import('./AddGroupModal'), {
   loading: () => <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50"><div className="text-white">Loading...</div></div>
 });
 
+const StoryViewer = dynamic(() => import('./StoryViewer'), { ssr: false });
+
 interface GroupsClientProps {
   initialGroups: Group[];
   feedCampaigns?: FeedCampaign[];
@@ -32,10 +36,11 @@ interface GroupsClientProps {
   initialIsMobile?: boolean;
   initialIsTelegram?: boolean;
   topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string }>;
-  /** Passed as separate strings to avoid hydration mismatch (stable serialization). */
+  storyData?: StoryCategory[];
 }
 
-export default function GroupsClient({ initialGroups, feedCampaigns = [], initialCountry, initialIsMobile = false, initialIsTelegram = false, topBannerCampaigns = [] }: GroupsClientProps) {
+export default function GroupsClient({ initialGroups, feedCampaigns = [], initialCountry, initialIsMobile = false, initialIsTelegram = false, topBannerCampaigns = [], storyData = [] }: GroupsClientProps) {
+  const STORY_SEEN_KEY = 'erogram:stories:seen:v1';
   const [username, setUsername] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedCountry, setSelectedCountry] = useState(initialCountry || 'All');
@@ -43,6 +48,24 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [showAddGroupModal, setShowAddGroupModal] = useState(false);
+  const [isStoryOpen, setIsStoryOpen] = useState(false);
+  const [activeStoryIndex, setActiveStoryIndex] = useState(0);
+  const [seenStoryMap, setSeenStoryMap] = useState<Record<string, string>>({});
+
+  const markStoryCategorySeen = (slug?: string) => {
+    if (!slug || typeof window === 'undefined') return;
+    setSeenStoryMap((prev) => {
+      const next = { ...prev, [slug]: new Date().toISOString() };
+      localStorage.setItem(STORY_SEEN_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const handleOpenStory = (categoryIndex: number) => {
+    markStoryCategorySeen(storyData[categoryIndex]?.slug);
+    setActiveStoryIndex(categoryIndex);
+    setIsStoryOpen(true);
+  };
 
   // Split real groups vs DB-backed advert-groups (isAdvertisement=true)
   const initialAdvertGroups = initialGroups.filter(g => g.isAdvertisement);
@@ -83,7 +106,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
   useEffect(() => {
     setTopGroupsLoading(true);
-    fetch('/api/groups?topGroup=true&limit=3')
+    fetch('/api/groups?topGroup=true&limit=4')
       .then(res => res.json())
       .then(data => { if (data.groups) setTopGroups(data.groups); })
       .catch(err => console.error('Failed to fetch top groups:', err))
@@ -116,6 +139,25 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
       }
     }
   }, [initialIsMobile, initialIsTelegram]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(STORY_SEEN_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const cleaned = Object.fromEntries(
+          Object.entries(parsed).filter(
+            ([key, value]) => typeof key === 'string' && typeof value === 'string'
+          )
+        );
+        setSeenStoryMap(cleaned as Record<string, string>);
+      }
+    } catch {
+      // Ignore malformed localStorage content and keep defaults
+    }
+  }, []);
 
   // Fetch pinned groups that match current filters
   useEffect(() => {
@@ -402,8 +444,35 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
     return [...pinnedGroups.slice(0, 2), ...regularGroups];
   }, [pinnedGroups, regularGroups]);
 
-  // Custom hook for debouncing
-  // This hook was moved up to be defined before its first use.
+  const filterValue = useMemo(() => {
+    if (selectedCategory !== 'All') return `cat:${selectedCategory}`;
+    if (selectedCountry !== 'All') return `country:${selectedCountry}`;
+    return 'All';
+  }, [selectedCategory, selectedCountry]);
+
+  const handleFilterChange = (value: string) => {
+    if (value === 'All') {
+      setSelectedCategory('All');
+      setSelectedCountry('All');
+    } else if (value.startsWith('cat:')) {
+      setSelectedCategory(value.slice(4));
+      setSelectedCountry('All');
+    } else if (value.startsWith('country:')) {
+      setSelectedCategory('All');
+      setSelectedCountry(value.slice(8));
+    }
+  };
+
+  // Split feed campaigns by tier:
+  // Tier 1 → Top Groups section (position 2)
+  // Tier 2+3 → main grid (positions 3 and 8, then looping)
+  const tier1Campaign = useMemo(() => {
+    return feedCampaigns.find(c => c.tierSlot === 1) ?? null;
+  }, [feedCampaigns]);
+
+  const gridCampaigns = useMemo(() => {
+    return feedCampaigns.filter(c => c.tierSlot !== 1);
+  }, [feedCampaigns]);
 
   return (
     <div className="min-h-screen bg-[#111111]">
@@ -472,39 +541,21 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                 <p className="text-[#999] text-sm">Find your perfect group</p>
               </div>
 
-              {/* Category Filter */}
+              {/* Browse By (flat merged list of categories + countries) */}
               <div className="mb-6">
                 <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
                   <span className="mr-2" suppressHydrationWarning>📂</span>
-                  Category
+                  Browse By
                 </label>
                 <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  value={filterValue}
+                  onChange={(e) => handleFilterChange(e.target.value)}
                   className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none transition-all"
                 >
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat} className="bg-[#222]">
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Country Filter */}
-              <div className="mb-6">
-                <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
-                  <span className="mr-2" suppressHydrationWarning>🌍</span>
-                  Country
-                </label>
-                <select
-                  value={selectedCountry}
-                  onChange={(e) => setSelectedCountry(e.target.value)}
-                  className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none transition-all"
-                >
-                  {countries.map((country) => (
-                    <option key={country} value={country} className="bg-[#222]">
-                      {country}
+                  <option value="All" className="bg-[#222]">All</option>
+                  {filterOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value} className="bg-[#222]">
+                      {opt.label}
                     </option>
                   ))}
                 </select>
@@ -525,75 +576,111 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                 />
               </div>
 
+              {/* Filter Actions */}
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => {
+                    setShowFilters(false);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="w-full px-4 py-3 bg-[#b31b1b] hover:bg-[#c42b2b] text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
+                >
+                  <span className="text-lg">🔍</span>
+                  {filterValue !== 'All' || searchQuery
+                    ? 'Apply Filters'
+                    : 'Show Results'}
+                </button>
+
+                {(filterValue !== 'All' || searchQuery) && (
+                  <button
+                    onClick={() => {
+                      handleFilterChange('All');
+                      setSearchQuery('');
+                    }}
+                    className="w-full px-4 py-3 bg-white/5 hover:bg-white/10 text-[#999] hover:text-white rounded-xl font-bold transition-colors border border-white/10"
+                  >
+                    Reset Filters
+                  </button>
+                )}
+              </div>
+
             </div>
           </aside>
 
           <div className="lg:w-3/4 min-w-0 shrink-0">
             <div className="relative">
-              {/* Popular categories – compact, SEO-friendly real links */}
-              <section className="mb-6 rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-950/40 to-orange-950/20 px-4 py-3 shadow-md" aria-labelledby="popular-categories-heading">
-                <h3 id="popular-categories-heading" className="text-sm font-bold text-amber-200/95 mb-2.5 flex items-center gap-1.5">
-                  <span aria-hidden>🔥</span>
-                  Popular categories
-                </h3>
-                <nav aria-label="Popular Telegram group categories">
-                  <ul className="flex flex-wrap gap-2 list-none m-0 p-0">
-                    {[
-                      { label: 'Lesbian', href: '/best-telegram-groups/lesbian' },
-                      { label: 'Threesome', href: '/best-telegram-groups/threesome' },
-                      { label: 'Big Ass', href: '/best-telegram-groups/big%20ass' },
-                      { label: 'Amateur', href: '/best-telegram-groups/amateur' },
-                      { label: 'Onlyfans', href: '/best-telegram-groups/onlyfans' },
-                      { label: 'Hentai', href: '/best-telegram-groups/hentai' },
-                      { label: 'Thailand', href: '/groups/country/Thailand' },
-                      { label: 'Russia', href: '/groups/country/Russia' },
-                      { label: 'UK', href: '/groups/country/UK' },
-                      { label: 'Germany', href: '/groups/country/Germany' },
-                      { label: 'France', href: '/groups/country/France' },
-                    ].map(({ label, href }) => (
-                      <li key={href}>
-                        <Link
-                          href={href}
-                          className="inline-block px-3 py-1.5 text-xs font-medium text-amber-50 bg-white/10 hover:bg-amber-500/30 border border-amber-400/30 rounded-lg text-[#f5f5f5] transition-colors hover:border-amber-400/50"
-                        >
-                          {label}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </nav>
-              </section>
+              {/* Story circles (replaces old Popular Categories) */}
+              <StoryBar
+                storyData={storyData}
+                seenStoryMap={seenStoryMap}
+                onOpenStory={handleOpenStory}
+              />
 
-              {/* Top 3 Groups (most clicked last 3 days) */}
+              {/* Top Groups (most clicked last 3 days) */}
               {(topGroups.length > 0 || topGroupsLoading) && (
-                <div className="mb-10 relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-yellow-600/10 via-orange-600/10 to-red-600/10 rounded-3xl" />
-                  <div className="relative p-4 sm:p-6">
-                    <div className="text-center mb-4 sm:mb-6">
-                      <h2 className="text-2xl sm:text-3xl font-black text-[#f5f5f5] drop-shadow-2xl">
-                        🏆 Top Groups
-                      </h2>
-                      <p className="text-[#999] text-sm mt-1">Most popular this week</p>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                <div className="mb-10 relative rounded-3xl p-[2px]" style={{ background: 'linear-gradient(135deg, #f59e0b, #ea580c, #dc2626, #ea580c, #f59e0b)' }}>
+                  <div className="rounded-[22px] bg-[#111111] relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-amber-900/20 via-orange-900/10 to-red-900/10" />
+                    <div className="relative p-4 sm:p-6">
+                      <div className="text-center mb-4 sm:mb-6">
+                        <h2 className="text-2xl sm:text-3xl font-black text-[#f5f5f5] drop-shadow-2xl">
+                          🏆 Top Groups
+                        </h2>
+                        <p className="text-amber-300/60 text-sm mt-1 font-medium">Most popular this week</p>
+                      </div>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
                       {topGroupsLoading ? (
-                        Array.from({ length: 3 }, (_, i) => (
+                        Array.from({ length: 4 }, (_, i) => (
                           <GroupCardSkeleton key={`top-skeleton-${i}`} />
                         ))
                       ) : (
-                        topGroups.slice(0, 3).map((group) => (
-                          <GroupCard
-                            key={`top-${group._id}`}
-                            group={group}
-                            isIndex={0}
-                            isFeatured
-                            onOpenReviewModal={openReviewModal}
-                            onOpenReportModal={openReportModal}
-                          />
-                        ))
+                        <>
+                          {/* Position 1: First top group */}
+                          {topGroups[0] && (
+                            <GroupCard
+                              key={`top-${topGroups[0]._id}`}
+                              group={topGroups[0]}
+                              isIndex={0}
+                              isFeatured
+                              onOpenReviewModal={openReviewModal}
+                              onOpenReportModal={openReportModal}
+                            />
+                          )}
+                          {/* Position 2: Tier 1 in-feed ad (or second top group) */}
+                          {tier1Campaign && !isTelegram ? (
+                            <AdvertCard
+                              key={`tier1-${tier1Campaign._id}`}
+                              campaign={tier1Campaign}
+                              isIndex={1}
+                              shouldPreload={true}
+                              onVisible={undefined}
+                            />
+                          ) : topGroups[1] ? (
+                            <GroupCard
+                              key={`top-${topGroups[1]._id}`}
+                              group={topGroups[1]}
+                              isIndex={1}
+                              isFeatured
+                              onOpenReviewModal={openReviewModal}
+                              onOpenReportModal={openReportModal}
+                            />
+                          ) : null}
+                          {/* Position 3 & 4: remaining top groups (shifted by 1 if ad present) */}
+                          {(tier1Campaign && !isTelegram ? topGroups.slice(1, 3) : topGroups.slice(2, 4)).map((g, i) => (
+                            <GroupCard
+                              key={`top-${g._id}`}
+                              group={g}
+                              isIndex={i + 2}
+                              isFeatured
+                              onOpenReviewModal={openReviewModal}
+                              onOpenReportModal={openReportModal}
+                            />
+                          ))}
+                        </>
                       )}
                     </div>
                   </div>
+                </div>
                 </div>
               )}
 
@@ -616,7 +703,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                 )}
                 <VirtualizedGroupGrid
                   groups={displayGroups}
-                  feedCampaigns={feedCampaigns ?? []}
+                  feedCampaigns={gridCampaigns}
                   isTelegram={isTelegram}
                   onOpenReviewModal={openReviewModal}
                   onOpenReportModal={openReportModal}
@@ -624,7 +711,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
               </div>
 
               {loading && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mt-6">
                   {Array.from({ length: 6 }, (_, i) => (
                     <GroupCardSkeleton key={`skeleton-${i}`} />
                   ))}
@@ -666,14 +753,24 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
       {/* Add Group Modal */}
       {showAddGroupModal && (
         <AddGroupModal
-          categories={categories}
-          countries={countries}
+          categories={filterCategories}
+          countries={filterCountries}
           onClose={() => setShowAddGroupModal(false)}
           onSuccess={() => {
             setShowAddGroupModal(false);
             // Optionally refresh groups if needed
             window.location.reload();
           }}
+        />
+      )}
+
+      {/* Story Viewer (fullscreen portal overlay) */}
+      {isStoryOpen && storyData.length > 0 && (
+        <StoryViewer
+          storyData={storyData}
+          initialCategoryIndex={activeStoryIndex}
+          onCategorySeen={markStoryCategorySeen}
+          onClose={() => setIsStoryOpen(false)}
         />
       )}
     </div>

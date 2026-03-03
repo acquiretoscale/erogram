@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
       })
         .sort({ weeklyClicks: -1, views: -1 })
         .limit(topLimit)
-        .select('-image')
+        .select('name slug category country description image telegramLink clickCount views memberCount verified weeklyClicks')
         .lean();
 
       const origin = req.headers.get('x-forwarded-host')

@@ -193,7 +193,11 @@ export async function DELETE(
     }
     
     const { id } = await params;
-    const group = await Group.findByIdAndDelete(id);
+    const group = await Group.findByIdAndUpdate(
+      id,
+      { status: 'deleted', deletedAt: new Date() },
+      { new: true }
+    );
     
     if (!group) {
       return NextResponse.json(
@@ -202,7 +206,7 @@ export async function DELETE(
       );
     }
     
-    return NextResponse.json({ message: 'Group deleted successfully' });
+    return NextResponse.json({ message: 'Group soft-deleted successfully' });
   } catch (error: any) {
     console.error('Group delete error:', error);
     return NextResponse.json(

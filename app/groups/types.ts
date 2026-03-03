@@ -55,4 +55,52 @@ export interface FeedCampaign {
     badgeText?: string;
     /** Show verified checkmark next to the ad title */
     verified?: boolean;
+    /** Tier slot (1-3): determines which section the ad appears in */
+    tierSlot?: number;
 }
+
+// ─── Story Types ───
+
+export interface StoryGroup {
+    _id: string;
+    name: string;
+    slug: string;
+    image: string;
+    videoUrl?: string;
+    category: string;
+    country: string;
+    description: string;
+    createdAt?: string;
+    memberCount?: number;
+}
+
+/** A single media slide (R2 video/image or admin-uploaded) */
+export interface StoryMediaSlide {
+    _id: string;
+    mediaType: 'image' | 'video';
+    mediaUrl: string;
+    ctaText?: string;
+    ctaUrl?: string;
+    clientName?: string;
+}
+
+export interface StoryCategory {
+    slug: string;
+    label: string;
+    profileImage: string;
+    hasNewContent: boolean;
+    /** DB groups (for erogram newest-additions view) */
+    groups: StoryGroup[];
+    /** R2/admin media slides (for random-girl, AI GF, erogram announcements) */
+    mediaSlides?: StoryMediaSlide[];
+    ctaText?: string;
+    ctaUrl?: string;
+    verified?: boolean;
+    r2Folder?: string;
+    /** 'erogram' | 'random-girl' | 'advert' — passed from config so viewer knows the type */
+    storyType?: string;
+}
+
+export type StorySlide =
+    | { type: 'group'; data: StoryGroup }
+    | { type: 'media'; data: StoryMediaSlide };

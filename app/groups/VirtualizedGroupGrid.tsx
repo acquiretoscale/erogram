@@ -13,38 +13,42 @@ interface VirtualizedGroupGridProps {
 
 type Item = { type: 'group' | 'campaign'; data: Group | FeedCampaign; index: number };
 
-const MIN_GAP = 4;
-const MAX_GAP = 6;
-const FIRST_AD_AFTER = 3; // first ad appears after 3 real groups
-
-function randBetween(min: number, max: number): number {
-    return min + Math.floor(Math.random() * (max - min + 1));
-}
+// Static ad positions in the grid (1-indexed group count):
+// Tier 2 → after 2 groups (position 3 in the grid)
+// Tier 3 → after 7 groups (position 8 in the grid)
+// Then loop every 5 groups, cycling through tiers 1→2→3
+const FIRST_AD_POSITION = 2;  // after 2 groups
+const SECOND_AD_POSITION = 7; // after 7 groups (5 more after first ad)
+const LOOP_GAP = 5;           // subsequent ads every 5 groups
 
 function buildFeedItems(groups: Group[], campaigns: FeedCampaign[]): Item[] {
     const items: Item[] = [];
+    if (campaigns.length === 0) {
+        return groups.map((g, i) => ({ type: 'group' as const, data: g, index: i }));
+    }
+
+    // Build set of group-count positions where ads should appear
+    const adPositions: number[] = [FIRST_AD_POSITION, SECOND_AD_POSITION];
+    let pos = SECOND_AD_POSITION + LOOP_GAP;
+    while (pos < groups.length + campaigns.length) {
+        adPositions.push(pos);
+        pos += LOOP_GAP;
+    }
+
     let groupIdx = 0;
     let campaignIdx = 0;
-    let groupsSinceLastAd = 0;
-    let nextAdAt = FIRST_AD_AFTER;
+    let groupCount = 0;
 
-    while (groupIdx < groups.length) {
-        items.push({ type: 'group', data: groups[groupIdx], index: items.length });
-        groupIdx++;
-        groupsSinceLastAd++;
-
-        if (groupsSinceLastAd >= nextAdAt && campaigns.length > 0) {
+    for (let i = 0; groupIdx < groups.length; i++) {
+        if (adPositions.includes(groupCount) && campaignIdx < campaigns.length) {
             items.push({ type: 'campaign', data: campaigns[campaignIdx % campaigns.length], index: items.length });
             campaignIdx++;
-            groupsSinceLastAd = 0;
-            nextAdAt = randBetween(MIN_GAP, MAX_GAP);
         }
+        items.push({ type: 'group', data: groups[groupIdx], index: items.length });
+        groupIdx++;
+        groupCount++;
     }
     return items;
-}
-
-function groupsOnly(groups: Group[]): Item[] {
-    return groups.map((g, i) => ({ type: 'group' as const, data: g, index: i }));
 }
 
 const VirtualizedGroupGrid = React.memo(function VirtualizedGroupGrid({
@@ -54,18 +58,14 @@ const VirtualizedGroupGrid = React.memo(function VirtualizedGroupGrid({
     onOpenReviewModal,
     onOpenReportModal,
 }: VirtualizedGroupGridProps) {
-    const [items, setItems] = useState<Item[]>(() => groupsOnly(groups));
+    const [items, setItems] = useState<Item[]>(() => buildFeedItems(groups, feedCampaigns));
 
     useEffect(() => {
-        if (feedCampaigns.length > 0) {
-            setItems(buildFeedItems(groups, feedCampaigns));
-        } else {
-            setItems(groupsOnly(groups));
-        }
+        setItems(buildFeedItems(groups, feedCampaigns));
     }, [groups, feedCampaigns]);
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
             {items.map((item) => {
                 if (item.type === 'group') {
                     return (

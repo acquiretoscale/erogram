@@ -14,9 +14,9 @@ const cliUri = process.argv[2];
 if (cliUri) process.env.MONGODB_URI = cliUri;
 
 const FEED_TIER_POSITIONS: Record<number, number[]> = {
-  1: [3, 6, 9, 12],
-  2: [15, 18, 21, 24],
-  3: [27, 30, 33, 36],
+  1: [3, 6, 9],
+  2: [12, 15, 18],
+  3: [21, 24, 27],
 };
 
 async function run() {
@@ -41,7 +41,7 @@ async function run() {
     const stored = c.position != null ? Number(c.position) : 999;
     const tierPos = tier != null ? FEED_TIER_POSITIONS[tier] : null;
     const sortKey =
-      tierPos != null && slot != null && slot >= 1 && slot <= 4 && tierPos[slot - 1] != null
+      tierPos != null && slot != null && slot >= 1 && slot <= 3 && tierPos[slot - 1] != null
         ? tierPos[slot - 1]
         : stored;
     return { c, sortKey, isActive: c.status === 'active' };

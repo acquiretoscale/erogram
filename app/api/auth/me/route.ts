@@ -27,12 +27,20 @@ export async function GET(req: NextRequest) {
         { status: 404 }
       );
     }
-    
+
+    const u = user as any;
+    const isPremium = u.premium === true &&
+      (!u.premiumExpiresAt || new Date(u.premiumExpiresAt) > new Date());
+
     return NextResponse.json({
       id: user._id,
       username: user.username,
       email: user.email,
       isAdmin: user.isAdmin,
+      premium: isPremium,
+      premiumPlan: isPremium ? (u.premiumPlan || null) : null,
+      premiumSince: isPremium ? (u.premiumSince || null) : null,
+      premiumExpiresAt: u.premiumExpiresAt || null,
     });
   } catch (error: any) {
     console.error('Auth check error:', error);
@@ -42,4 +50,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-

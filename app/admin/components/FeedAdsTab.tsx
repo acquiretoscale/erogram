@@ -143,14 +143,14 @@ export default function FeedAdsTab() {
     setSaving(true);
     try {
       let position = slotToPosition(form.slot);
-      const feedTier = Math.ceil(position / 4) as 1 | 2 | 3;
-      const tierSlot = ((position - 1) % 4) + 1;
+      const feedTier = Math.ceil(position / 3) as 1 | 2 | 3;
+      const tierSlot = ((position - 1) % 3) + 1;
       const usedTierSlot = new Set(campaigns.filter((c) => c._id !== editing?._id).map((c) => `${c.feedTier}-${c.tierSlot}`));
       let key = `${feedTier}-${tierSlot}`;
       if (!editing && usedTierSlot.has(key)) {
         for (let p = 1; p <= FEED_SLOT_MAX; p++) {
-          const t = Math.ceil(p / 4);
-          const s = ((p - 1) % 4) + 1;
+          const t = Math.ceil(p / 3);
+          const s = ((p - 1) % 3) + 1;
           if (!usedTierSlot.has(`${t}-${s}`)) {
             position = p;
             key = `${t}-${s}`;
@@ -158,8 +158,8 @@ export default function FeedAdsTab() {
           }
         }
       }
-      const finalTier = Math.ceil(position / 4) as 1 | 2 | 3;
-      const finalSlot = ((position - 1) % 4) + 1;
+      const finalTier = Math.ceil(position / 3) as 1 | 2 | 3;
+      const finalSlot = ((position - 1) % 3) + 1;
       const payload: Record<string, unknown> = {
         name: form.name.trim(),
         slot: 'feed',
