@@ -70,7 +70,7 @@ const PRODUCTS: Product[] = [
     description: 'One dedicated image/video post with a CTA promoting your brand on all our groups.' },
   { id: 'tg-blast-7',   name: '7-Day Full Blast (Button CTA on all our posts)',  category: 'telegram', oneTime: 150,
     description: 'Persistent button link with CTA on every video and image post across our groups for 7 days. 1 to 4 posts daily on each group.' },
-  { id: 'tg-blast-30',  name: '30-Day Full Blast (Button CTA on all our posts)', category: 'telegram', monthly: 600,
+  { id: 'tg-blast-30',  name: '30-Day Full Blast (Button CTA on all our posts)', category: 'telegram', monthly: 400,
     description: 'Persistent button link with CTA on every post across our groups for 30 days. 1 to 4 posts daily on each group.' },
   { id: 'guest-post',   name: 'Guest Post (up to 3,000 words)', category: 'content', oneTime: 100,
     description: 'Publish your own high-quality article on Erogram.pro. Permanent backlink, SEO juice, and brand authority.' },
