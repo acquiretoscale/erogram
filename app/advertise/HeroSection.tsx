@@ -15,10 +15,7 @@ export default function HeroSection() {
         <span className="text-[#f5f5f5]">MEDIA KIT.</span>
       </h1>
       <p className="text-[11px] sm:text-xs text-[#ff3366]/80 uppercase tracking-[0.18em] mb-4">
-        Updated February 25, 2026
-      </p>
-      <p className="text-[#999] max-w-xl mx-auto text-base sm:text-lg">
-        Erogram Pro connects brands with a high-intent, mobile-first, Tier-1 audience through performance-driven placements. We deliver attention, clicks, and scalable exposure inside a fast-growing ecosystem.
+        Updated March 2026
       </p>
     </motion.div>
   );

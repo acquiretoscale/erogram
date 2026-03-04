@@ -16,7 +16,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { name, email, message, company } = body as { name?: string; email?: string; message?: string; company?: string };
+    const { name, email, message, company, website } = body as {
+      name?: string; email?: string; message?: string; company?: string; website?: string;
+    };
 
     if (!name?.trim() || !email?.trim() || !message?.trim()) {
       return NextResponse.json(
@@ -36,7 +38,8 @@ export async function POST(req: NextRequest) {
         `<p><strong>Name:</strong> ${escapeHtml(name.trim())}</p>`,
         `<p><strong>Email:</strong> ${escapeHtml(email.trim())}</p>`,
         company?.trim() ? `<p><strong>Company:</strong> ${escapeHtml(company.trim())}</p>` : '',
-        `<p><strong>Message:</strong></p><pre>${escapeHtml(message.trim())}</pre>`,
+        website?.trim() ? `<p><strong>Website:</strong> <a href="${escapeHtml(website.trim())}">${escapeHtml(website.trim())}</a></p>` : '',
+        `<hr/><p><strong>Order Details:</strong></p><pre style="white-space:pre-wrap;font-family:monospace;background:#f5f5f5;padding:12px;border-radius:8px;">${escapeHtml(message.trim())}</pre>`,
       ].join(''),
     });
 

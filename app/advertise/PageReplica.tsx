@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface GroupData {
@@ -36,7 +37,7 @@ const AD_SLOTS: AdSlot[] = [
   // Individual page slots
   { id: 'join-cta', gridIdx: -1, tier: 'platinum', kind: 'cta', page: 'individual', label: 'In-Page CTA (Top)', description: 'Primary call-to-action displayed right below the \"Join Channel\" button on every group/bot page. Highest-intent placement — users are already engaging. Text + link, customizable label.', videoPrice: '—', imagePrice: '$300', estViews: '26K', estClicks: '3.2K' },
   { id: 'vip-cta', gridIdx: -1, tier: 'gold', kind: 'cta', page: 'individual', label: 'Official Channel CTA', description: 'Eye-catching button placed below the join area on every group/bot page. High visibility with strong conversion.', videoPrice: '—', imagePrice: '$200', estViews: '26K', estClicks: '2.1K' },
-  { id: 'popular-cta', gridIdx: -1, tier: 'gold', kind: 'cta', page: 'individual', label: 'Popular CTA', description: 'Branded CTA button embedded directly within the Popular Categories sidebar on the groups directory — the single highest-engagement zone on the page according to heatmap analytics. Users actively clicking through popular categories encounter your button at the peak of their browsing intent. Text + link, zero creative production needed.', videoPrice: '—', imagePrice: '$280', estViews: '48K', estClicks: '4.2K' },
+
   { id: 'home-menu-cta', gridIdx: -1, tier: 'gold', kind: 'cta', page: 'individual', label: 'Menu CTA Button', description: 'Branded button in the navigation bar — visible on every single page across the entire site (homepage, groups, bots, articles). Text + link, no creative needed. Always visible, always clickable.', videoPrice: '—', imagePrice: '$300', estViews: '132K', estClicks: '5.8K' },
   // Homepage slots
   { id: 'home-hero', gridIdx: -1, tier: 'platinum', page: 'homepage', label: 'Homepage Hero Banner', description: 'Full-width banner at the very top of the homepage, above the fold. The first visual element every visitor sees. Image or video creative, auto-sized. Maximum brand impact.', videoPrice: '$500', imagePrice: '$400', estViews: '52K', estClicks: '4.6K' },
@@ -54,11 +55,53 @@ const TIER_STYLES = {
 
 const CATEGORIES = ['All', 'Anal', 'Oral', 'MILF', 'BBC', 'Hentai', 'Asian', 'Latina', 'Cosplay'];
 
-const PAGE_DESCRIPTIONS: Record<PageView, { title: string; subtitle: string; body: string; accent: string; accentBorder: string; accentBg: string; icon: string }> = {
+const PAGE_DESCRIPTIONS: Record<PageView, { title: string; subtitle: string; body: React.ReactNode; accent: string; accentBorder: string; accentBg: string; icon: string }> = {
   listing: {
     title: 'IN-FEED',
-    subtitle: 'MAIN PAGE',
-    body: 'In-Feed is the core performance engine and drives almost 60% of traffic sent to advertisers. Placements run on both Groups and Bots pages in a 3-slot loop (Top Groups → Discover NSFW Telegram → Discover NSFW Groups → repeat), so exposure compounds as users continue scrolling. Each slot has a fixed position in the page with the visual rotating between up to 4 ad variants.',
+    subtitle: 'PREMIUM IN-FEED ADVERTISING',
+    body: (
+      <div className="mt-2 space-y-3 text-[11px] sm:text-xs text-gray-600 max-w-2xl leading-relaxed">
+        <p className="text-gray-700">Maximize visibility with native placements designed to capture user attention immediately. In-Feed shows on Groups and Bots page, website main pages with <span className="font-bold text-gray-900">over 400K monthly page views</span>.</p>
+
+        {/* Placement Tiers */}
+        <div>
+          <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">Placement Tiers</span>
+          <div className="mt-1.5 space-y-1.5">
+            <div className="flex items-start gap-2">
+              <span className="shrink-0 mt-0.5 bg-gradient-to-r from-gray-200 to-gray-400 text-gray-900 text-[8px] font-black px-1.5 py-[1px] rounded uppercase tracking-wider shadow-sm">Platinum</span>
+              <p>Show on Top Groups / Top bots on Bots and Groups page. The first asset seen by visitors. Generates <span className="font-semibold text-gray-800">50–60% higher CTR</span> than lower tiers.</p>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="shrink-0 mt-0.5 bg-gradient-to-r from-amber-400 to-yellow-300 text-amber-900 text-[8px] font-black px-1.5 py-[1px] rounded uppercase tracking-wider shadow-sm">Gold</span>
+              <p>Recent Groups. First position in the feed.</p>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="shrink-0 mt-0.5 bg-gradient-to-r from-gray-400 to-gray-300 text-gray-800 text-[8px] font-black px-1.5 py-[1px] rounded uppercase tracking-wider shadow-sm">Silver</span>
+              <p>High-visibility 3rd position in the feed.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Delivery Models */}
+        <div>
+          <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">Delivery Models</span>
+          <div className="mt-1 space-y-0.5">
+            <p><span className="font-bold text-gray-800">Rotational</span> : Your ad shares the slot with 3 other advertisers. You receive <span className="font-semibold text-gray-800">25% of the traffic</span>.</p>
+            <p><span className="font-bold text-gray-800">Exclusive</span> : Your ad is the only one shown in that tier. You receive <span className="font-semibold text-gray-800">100% of the traffic and Share of Voice</span>.</p>
+          </div>
+        </div>
+
+        {/* Exclusive Add-ons */}
+        <div>
+          <p className="text-gray-700">With exclusive, we can run <span className="font-semibold text-gray-800">A/B split testing</span> and <span className="font-semibold text-gray-800">video ads</span> at no additional cost.</p>
+          <div className="mt-1 space-y-0.5">
+            <p><span className="font-bold text-gray-800">Video Creative</span>: Available on request. Video ads generate up to <span className="font-semibold text-gray-800">3x more engagement</span> than static images.</p>
+            <p><span className="font-bold text-gray-800">Creative Split-Testing</span>: We can run a 48-hour test across 4 ad slots to identify the highest-performing creative before scaling.</p>
+          </div>
+          <p className="mt-1 text-[10px] text-gray-400 italic">Note: Feature availability depends on current campaign inventory.*</p>
+        </div>
+      </div>
+    ),
     accent: 'text-amber-600',
     accentBorder: 'border-amber-400',
     accentBg: 'bg-amber-50',
@@ -271,84 +314,6 @@ function IndividualPageContent({ activeId, setActiveId, group, mobile }: { activ
               <p className="text-[10px] text-gray-500 mt-2" style={BLUR_STYLE}>Get exclusive updates, premium content, and VIP offers.</p>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Groups page miniature (Popular CTA) ─── */
-
-const POPULAR_CATS = ['Lesbian', 'Threesome', 'Big Ass', 'Amateur', 'Onlyfans', 'Hentai', 'Thailand', 'Russia', 'UK', 'Germany', 'France'];
-
-function GroupsPageCtaContent({ activeId, setActiveId, groups, mobile }: { activeId: string | null; setActiveId: (id: string | null) => void; groups: GroupData[]; mobile: boolean }) {
-  let groupCounter = 0;
-  const cols = 3;
-  const feedCount = 9;
-
-  return (
-    <div className="bg-[#0d0d0d]">
-      <MiniTopMenu mobile={mobile} showMenuCta={false} />
-
-      <div className="px-5 pt-4 pb-5">
-        <div className="flex gap-4">
-          <aside className="w-[260px] shrink-0 rounded-xl border border-white/10 bg-[#141414] p-3" style={BLUR_STYLE}>
-            <div className="h-[34px] rounded-lg bg-white/5 border border-white/10 flex items-center px-3 mb-3">
-              <span className="text-[11px] text-gray-400 font-semibold">Search groups...</span>
-            </div>
-            <div className="space-y-2">
-              <p className="text-[11px] font-bold text-gray-300 uppercase tracking-wider">Filters</p>
-              {CATEGORIES.map((item, i) => (
-                <div key={item} className={`h-[30px] rounded-md border px-3 flex items-center ${i === 0 ? 'border-gray-300 bg-gray-300/15 text-gray-200' : 'border-white/10 bg-white/[0.02] text-gray-500'}`}>
-                  <span className="text-[11px] font-semibold">{item}</span>
-                </div>
-              ))}
-            </div>
-          </aside>
-
-          <section className="flex-1 rounded-xl border border-white/10 bg-[#111] overflow-hidden">
-            <div className="px-4 py-3 border-b border-white/10" style={BLUR_STYLE}>
-              <p className="text-2xl font-black text-white/90">All Groups</p>
-            </div>
-
-            <div className="px-3 py-2.5 border-b border-white/10 flex gap-1.5 overflow-hidden items-center">
-              {CATEGORIES.map((c, i) => (
-                <span key={c} className={`text-[10px] font-semibold px-2.5 py-1 rounded-md shrink-0 ${i === 0 ? 'bg-gray-200/20 text-gray-200 border border-gray-200/30' : 'bg-white/[0.03] text-gray-400 border border-white/10'}`} style={BLUR_STYLE}>{c}</span>
-              ))}
-            </div>
-
-            {/* Popular categories section with CTA mixed in */}
-            <div className="px-4 py-3 border-b border-white/10">
-              <div className="flex items-center gap-2 mb-2.5">
-                <span className="text-[16px]">🔥</span>
-                <span className="text-[16px] font-bold text-white/80">Popular categories</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {POPULAR_CATS.slice(0, 4).map((cat) => (
-                  <span key={cat} className="text-[13px] font-semibold px-3.5 py-1.5 rounded-lg bg-white/[0.04] text-gray-400 border border-white/10" style={BLUR_STYLE}>{cat}</span>
-                ))}
-                <span
-                  onClick={() => setActiveId(activeId === 'popular-cta' ? null : 'popular-cta')}
-                  className={`ad-pulse text-[22px] font-black px-5 py-2 rounded-lg cursor-pointer transition-all duration-200 border border-amber-400/50 bg-gradient-to-r from-amber-500/25 via-yellow-500/20 to-amber-500/25 text-amber-400 uppercase tracking-wider ${activeId === 'popular-cta' ? 'ad-active ring-2 ring-amber-400/60 shadow-[0_0_20px_rgba(245,158,11,0.5)]' : ''}`}
-                >Popular CTA</span>
-                {POPULAR_CATS.slice(4, 8).map((cat) => (
-                  <span key={cat} className="text-[13px] font-semibold px-3.5 py-1.5 rounded-lg bg-white/[0.04] text-gray-400 border border-white/10" style={BLUR_STYLE}>{cat}</span>
-                ))}
-                {POPULAR_CATS.slice(8).map((cat) => (
-                  <span key={cat} className="text-[13px] font-semibold px-3.5 py-1.5 rounded-lg bg-white/[0.04] text-gray-400 border border-white/10" style={BLUR_STYLE}>{cat}</span>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid gap-3 p-3" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
-              {Array.from({ length: feedCount }).map((_, idx) => {
-                if (groups.length === 0) return <div key={`ph-${idx}`} className="rounded-xl bg-white/[0.02] border border-white/[0.06] h-[220px] animate-pulse" style={BLUR_STYLE} />;
-                const g = groups[groupCounter % groups.length];
-                groupCounter++;
-                return <MiniGroupCard key={`g-${idx}`} group={g} />;
-              })}
-            </div>
-          </section>
         </div>
       </div>
     </div>
@@ -723,7 +688,7 @@ function DetailPanel({ slot }: { slot: AdSlot }) {
 
 /* ─── Section view config ─── */
 
-const VIEWS: { id: PageView; title: string; subtitle: string; body: string; accent: string; accentBorder: string; accentBg: string; icon: string; innerH: number }[] = [
+const VIEWS: { id: PageView; title: string; subtitle: string; body: React.ReactNode; accent: string; accentBorder: string; accentBg: string; icon: string; innerH: number }[] = [
   { id: 'listing', innerH: 1893, ...PAGE_DESCRIPTIONS.listing },
   { id: 'individual', innerH: 1456, ...PAGE_DESCRIPTIONS.individual },
   { id: 'homepage', innerH: 1170, ...PAGE_DESCRIPTIONS.homepage },
@@ -803,7 +768,7 @@ export default function PageReplica() {
                       <span className={`text-[11px] font-bold uppercase tracking-[0.2em] ${view.accent}`}>{view.subtitle}</span>
                     </div>
                   </div>
-                  <p className="mt-2 text-[11px] sm:text-xs text-gray-600 max-w-2xl leading-relaxed">{view.body}</p>
+                  <div className="mt-2 text-sm text-gray-700 leading-relaxed">{view.body}</div>
                 </div>
 
                 {/* Miniature + detail side by side */}
@@ -817,17 +782,6 @@ export default function PageReplica() {
                       <div className="flex-1 min-w-0">
                         <AnimatePresence mode="wait">
                           {(activeId === 'join-cta' || activeId === 'vip-cta') && activeInView && <DetailPanel slot={activeInView} />}
-                        </AnimatePresence>
-                      </div>
-                    </div>
-                    {/* Groups page miniature + its detail */}
-                    <div className="flex flex-col lg:flex-row gap-5 items-start">
-                      <MiniScreen innerW={innerW} innerH={1600} scale={scale}>
-                        <GroupsPageCtaContent activeId={activeId} setActiveId={setActiveId} groups={groups} mobile={false} />
-                      </MiniScreen>
-                      <div className="flex-1 min-w-0">
-                        <AnimatePresence mode="wait">
-                          {activeId === 'popular-cta' && activeInView && <DetailPanel slot={activeInView} />}
                         </AnimatePresence>
                       </div>
                     </div>
@@ -857,10 +811,71 @@ export default function PageReplica() {
                   </div>
                 )}
 
-                {view.id === 'listing' && <AdFormatComparison />}
+                {view.id === 'listing' && (
+                  <>
+                    <AdFormatComparison />
+
+                    {/* ── EROGRAM STORY SECTION ── */}
+                    <div className="mt-10">
+                      <div className="flex items-center gap-3 mb-8">
+                        <div className="h-px flex-1 bg-gray-200" />
+                        <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-300">Next Placement</span>
+                        <div className="h-px flex-1 bg-gray-200" />
+                      </div>
+
+                      <div className="mb-6 rounded-xl bg-rose-50 border-l-4 border-rose-400 px-5 py-5">
+                        <div className="flex items-center gap-3 mb-4">
+                          <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-rose-600 bg-white font-black text-sm border border-gray-200 shadow-sm">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                              <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><path d="M17.66 6.344l-.828.828M6.344 17.66l-.828.828M17.66 17.66l-.828-.828M6.344 6.344l-.828-.828"/>
+                            </svg>
+                          </span>
+                          <div>
+                            <h2 className="text-lg sm:text-xl font-black text-gray-900 uppercase tracking-wide leading-tight">Erogram Story</h2>
+                            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-rose-600">Instagram-Style — Groups Page</span>
+                          </div>
+                          <span className="ml-auto text-[9px] font-black px-2 py-1 rounded-full bg-rose-500 text-white uppercase tracking-wider">New</span>
+                        </div>
+
+                        {/* Screenshot — right below title */}
+                        <div className="rounded-xl overflow-hidden border border-rose-100 shadow-md mb-4">
+                          <Image
+                            src="/assets/erogram-stories.png"
+                            alt="Erogram Story placement on Groups page"
+                            width={1400}
+                            height={600}
+                            className="w-full h-auto"
+                          />
+                        </div>
+
+                        <div className="space-y-3 text-[11px] sm:text-xs text-gray-600 max-w-2xl leading-relaxed">
+                          <p className="text-gray-700">One of the <span className="font-bold text-gray-900">highest-engagement formats on Erogram</span>. We create a dedicated brand profile and publish Stories — video or image — directly on the Groups page, exactly where users land first.</p>
+                          <p className="text-gray-700">It works just like Instagram Stories: a circular profile preview at the top of the page, tapped to reveal your full creative with a <span className="font-bold text-gray-900">CTA button</span>. The format is instantly familiar, impossible to miss, and drives exceptional interaction rates.</p>
+                          <div>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-rose-600">Why it works</span>
+                            <div className="mt-1.5 space-y-1">
+                              {[
+                                ['First thing visible', 'on the main Groups page — above the fold, before any group card.'],
+                                ['Familiar format', '— users already know how to interact with Stories. No learning curve, instant engagement.'],
+                                ['Video & image', 'supported. Motion content drives up to 3× more engagement than static banners.'],
+                                ['Direct CTA', 'embedded in the Story — one tap goes straight to your destination.'],
+                              ].map(([bold, rest]) => (
+                                <div key={bold} className="flex items-start gap-2">
+                                  <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-rose-400 mt-1.5" />
+                                  <p><span className="font-semibold text-gray-800">{bold}</span> {rest}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             );
           })}
+
         </div>
       </div>
     </motion.div>

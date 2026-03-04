@@ -1,99 +1,161 @@
 'use client';
 
+import Image from 'next/image';
+
+const DEVICES = [
+  { os: 'iOS',       visitors: '32.7K', pct: 52.9 },
+  { os: 'Android',   visitors: '23.9K', pct: 38.7 },
+  { os: 'Windows',   visitors: '2.7K',  pct: 4.4  },
+  { os: 'macOS',     visitors: '2.0K',  pct: 3.3  },
+  { os: 'GNU/Linux', visitors: '357',   pct: 0.6  },
+];
+
 export default function AudienceDevices() {
-    return (
-        <div className="mb-10">
-            <div className="flex items-center gap-2 mb-5">
-                <span className="text-lg">🌐</span>
-                <h3 className="text-xl font-black text-[#f5f5f5]">Erogram Website</h3>
+  return (
+    <div className="mb-10">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-1 h-5 rounded-full bg-gradient-to-b from-[#ff3366] to-[#b31b1b]" />
+        <h3 className="text-xl font-black text-[#f5f5f5]">Erogram Website</h3>
+      </div>
+
+      {/* ── DEVICES ── */}
+      <div className="rounded-2xl p-6 sm:p-8 mb-6 overflow-hidden bg-white border border-gray-100 shadow-sm">
+        <div className="rounded-xl border border-gray-200 overflow-hidden">
+
+          {/* Header */}
+          <div className="px-5 py-4 border-b border-gray-200 flex items-center gap-3 bg-white">
+            <div className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center">
+              <svg className="w-4 h-4 text-[#b31b1b]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <rect x="5" y="2" width="14" height="20" rx="2" /><line x1="12" y1="18" x2="12" y2="18.01" strokeWidth="2.5" strokeLinecap="round" />
+              </svg>
             </div>
+            <div>
+              <h3 className="text-sm font-bold text-gray-900">Device &amp; OS Breakdown</h3>
+              <p className="text-[10px] text-gray-600">Where your ads are seen</p>
+            </div>
+            <span className="ml-auto text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#b31b1b]/10 text-[#b31b1b] border border-[#b31b1b]/20 uppercase tracking-wider">91.6% Mobile</span>
+          </div>
 
-            {/* ── DEVICES ── */}
-            <div className="glass rounded-2xl p-6 sm:p-8 mb-6 overflow-hidden">
-                <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
-                    <div className="px-5 py-4 border-b border-white/[0.08] flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-[#b31b1b]/15 border border-[#b31b1b]/25 flex items-center justify-center text-sm">📱</div>
-                        <div>
-                            <h3 className="text-sm font-bold text-[#f5f5f5]">Device &amp; OS Breakdown</h3>
-                            <p className="text-[10px] text-[#999]">Where your ads are seen</p>
-                        </div>
-                        <span className="ml-auto text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#b31b1b]/15 text-[#ff3366] border border-[#b31b1b]/25 uppercase tracking-wider">91.6% Mobile</span>
-                    </div>
+          <div className="flex flex-col lg:flex-row bg-white">
+            {/* Left — data */}
+            <div className="flex-1 p-5 sm:p-6">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-600 mb-4">Operating Systems</p>
 
-                    <div className="flex flex-col lg:flex-row">
-                        <div className="flex-1 p-5 sm:p-6">
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className="h-px flex-1 bg-gradient-to-r from-[#b31b1b]/40 to-transparent" />
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#ff3366]">The Data</span>
-                                <div className="h-px flex-1 bg-gradient-to-l from-[#b31b1b]/40 to-transparent" />
-                            </div>
-
-                            <div className="flex items-center gap-4 mb-5 pb-5 border-b border-white/[0.08]">
-                                <div className="relative w-20 h-20 shrink-0">
-                                    <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-                                        <circle cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="3" />
-                                        <circle cx="18" cy="18" r="14" fill="none" stroke="#ff3366" strokeWidth="3" strokeDasharray="52.9 100" strokeLinecap="round" />
-                                        <circle cx="18" cy="18" r="14" fill="none" stroke="#22c55e" strokeWidth="3" strokeDasharray="38.7 100" strokeDashoffset="-52.9" strokeLinecap="round" />
-                                    </svg>
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                        <span className="text-[11px] font-black text-[#f5f5f5]">91.6%</span>
-                                    </div>
-                                </div>
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-[#ff3366]" /><span className="text-xs text-[#999]">iOS</span><span className="text-xs font-bold text-[#f5f5f5] ml-auto">52.9%</span></div>
-                                    <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-green-500" /><span className="text-xs text-[#999]">Android</span><span className="text-xs font-bold text-[#f5f5f5] ml-auto">38.7%</span></div>
-                                    <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-[#999]" /><span className="text-xs text-[#999]">Desktop</span><span className="text-xs font-bold text-[#f5f5f5] ml-auto">8.3%</span></div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2.5">
-                                {[
-                                    { os: 'iOS', icon: '🍎', visitors: '32.7k', pct: 52.9, barColor: 'from-[#ff3366] to-[#b31b1b]' },
-                                    { os: 'Android', icon: '🤖', visitors: '23.9k', pct: 38.7, barColor: 'from-green-500 to-emerald-400' },
-                                    { os: 'Windows', icon: '🪟', visitors: '2.7k', pct: 4.4, barColor: 'from-sky-500 to-sky-400' },
-                                    { os: 'Mac', icon: '💻', visitors: '2k', pct: 3.3, barColor: 'from-[#999] to-[#666]' },
-                                    { os: 'GNU/Linux', icon: '🐧', visitors: '357', pct: 0.6, barColor: 'from-amber-500 to-amber-400' },
-                                ].map((d) => (
-                                    <div key={d.os} className="rounded-lg bg-white/[0.03] border border-white/[0.08] px-3 py-2.5 hover:bg-white/[0.06] transition-colors">
-                                        <div className="flex items-center justify-between mb-1.5">
-                                            <div className="flex items-center gap-2"><span className="text-sm">{d.icon}</span><span className="text-[13px] text-[#f5f5f5] font-medium">{d.os}</span></div>
-                                            <div className="flex items-center gap-3"><span className="text-[11px] text-[#999] tabular-nums">{d.visitors}</span><span className="text-[11px] text-[#f5f5f5] font-bold tabular-nums w-12 text-right">{d.pct}%</span></div>
-                                        </div>
-                                        <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden"><div className={`h-full rounded-full bg-gradient-to-r ${d.barColor}`} style={{ width: `${d.pct}%` }} /></div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="flex-1 p-5 sm:p-6 lg:border-l border-t lg:border-t-0 border-[#b31b1b]/20 bg-[#b31b1b]/5 flex flex-col justify-center">
-                            <div className="flex items-center gap-2 mb-5">
-                                <div className="h-px flex-1 bg-gradient-to-r from-[#b31b1b]/40 to-transparent" />
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#ff3366]">What It Means for Advertisers &amp; Partners</span>
-                                <div className="h-px flex-1 bg-gradient-to-l from-[#b31b1b]/40 to-transparent" />
-                            </div>
-
-                            <h4 className="text-lg font-black text-[#f5f5f5] mb-3 leading-tight">Mobile Dominance:<br /><span className="text-[#ff3366]">The Power of In-Feed Advertising</span></h4>
-                            <p className="text-sm text-[#999] leading-relaxed mb-4">
-                                Our data reveals a critical insight: <span className="text-[#f5f5f5] font-semibold">91.6% of our audience</span> accesses Erogram.pro via mobile devices.
-                                This overwhelming mobile preference is why our In-Feed Ads are not just an option, but our <span className="text-[#f5f5f5] font-semibold">most effective and recommended</span> advertising solution.
-                            </p>
-                            <p className="text-sm text-[#999] leading-relaxed mb-5">
-                                Unlike traditional banners, which are often ignored or blocked on mobile, our in-feed placements seamlessly integrate into the user experience, appearing natively within content feeds.
-                                This strategic approach has consistently yielded top results for our advertisers, ensuring your message is seen and engaged with where our audience spends most of their time.
-                            </p>
-                            <div className="rounded-xl bg-[#b31b1b]/10 border border-[#b31b1b]/20 p-4">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <svg className="w-4 h-4 text-[#ff3366]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
-                                    <span className="text-xs font-bold text-[#ff3366] uppercase tracking-wider">Key Takeaway</span>
-                                </div>
-                                <p className="text-xs text-[#999] leading-relaxed">
-                                    In-feed video ads on mobile generate up to <span className="text-[#f5f5f5] font-semibold">4x more clicks</span> than traditional banner placements. Your content appears exactly where users are already scrolling.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+              {/* Donut + legend */}
+              <div className="flex items-center gap-5 mb-5 pb-5 border-b border-gray-100">
+                <div className="relative w-20 h-20 shrink-0">
+                  <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
+                    <circle cx="18" cy="18" r="14" fill="none" stroke="#f3f4f6" strokeWidth="3.5" />
+                    <circle cx="18" cy="18" r="14" fill="none" stroke="#b31b1b" strokeWidth="3.5"
+                      strokeDasharray="52.9 100" strokeLinecap="butt" />
+                    <circle cx="18" cy="18" r="14" fill="none" stroke="#d1d5db" strokeWidth="3.5"
+                      strokeDasharray="38.7 100" strokeDashoffset="-52.9" strokeLinecap="butt" />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-[12px] font-black text-gray-900 leading-none">91.6%</span>
+                    <span className="text-[8px] text-gray-600 uppercase tracking-wider">mobile</span>
+                  </div>
                 </div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2 h-2 rounded-full bg-[#b31b1b] shrink-0" />
+                    <span className="text-xs text-gray-600">iOS</span>
+                    <span className="text-xs font-bold text-gray-900 ml-auto tabular-nums">52.9%</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2 h-2 rounded-full bg-gray-300 shrink-0" />
+                    <span className="text-xs text-gray-600">Android</span>
+                    <span className="text-xs font-bold text-gray-900 ml-auto tabular-nums">38.7%</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2 h-2 rounded-full bg-gray-200 shrink-0" />
+                    <span className="text-xs text-gray-600">Desktop</span>
+                    <span className="text-xs font-bold text-gray-900 ml-auto tabular-nums">8.3%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* OS bars */}
+              <div className="space-y-2">
+                {DEVICES.map((d) => (
+                  <div key={d.os} className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-2.5">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[13px] text-gray-700 font-medium">{d.os}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[11px] text-gray-600 tabular-nums">{d.visitors}</span>
+                        <span className="text-[12px] text-gray-900 font-bold tabular-nums w-10 text-right">{d.pct}%</span>
+                      </div>
+                    </div>
+                    <div className="h-2 rounded-full bg-gray-200">
+                      <div className="h-2 rounded-full"
+                        style={{
+                          width: `${d.pct}%`,
+                          background: d.os === 'iOS' ? '#b31b1b' : '#9ca3af',
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
+
+            {/* Right — insight */}
+            <div className="flex-1 p-5 sm:p-6 lg:border-l border-t lg:border-t-0 border-gray-100 bg-gray-50 flex flex-col justify-center">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-600 mb-4">Advertiser Insight</p>
+
+              <h4 className="text-lg font-black text-gray-900 mb-3 leading-snug">
+                Mobile-first audience.<br />
+                <span className="text-[#b31b1b]">In-Feed ads built for it.</span>
+              </h4>
+              <p className="text-sm text-gray-600 leading-relaxed mb-4">
+                <span className="text-gray-800 font-semibold">91.6% of our audience</span> accesses Erogram.pro on mobile.
+                Our In-Feed placements are native to this experience — appearing directly in the content scroll, not as intrusive banners that get ignored.
+              </p>
+              <p className="text-sm text-gray-600 leading-relaxed mb-5">
+                This makes In-Feed the highest-performing ad format on the platform, with measurably higher CTR than any other placement type.
+              </p>
+              <div className="rounded-xl bg-white border border-gray-200 p-4">
+                <p className="text-[10px] font-black uppercase tracking-wider text-gray-600 mb-1.5">Key Takeaway</p>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  In-feed video ads on mobile generate up to <span className="text-gray-800 font-semibold">4x more clicks</span> than banner placements. Your message appears where users are already engaged.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-    );
+      </div>
+
+      {/* ── SIMILARWEB ── */}
+      <div className="rounded-2xl p-6 sm:p-8 mt-6 overflow-hidden bg-white border border-gray-100 shadow-sm">
+        <div className="rounded-xl border border-gray-200 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-200 flex items-center gap-3 bg-white">
+            <div className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center">
+              <svg className="w-4 h-4 text-[#b31b1b]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="M18 20V10M12 20V4M6 20v-6" strokeLinecap="round" />
+              </svg>
+            </div>
+            <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">SimilarWeb Stats Overview</h3>
+          </div>
+          <div className="p-4 flex items-center justify-center bg-white">
+            <div className="rounded-xl overflow-hidden border border-gray-100 shadow-sm w-[80%] sm:w-[60%] lg:w-[30%]">
+              <Image
+                src="/assets/similarweb-stats.png"
+                alt="SimilarWeb traffic chart — erogram.pro visits over time Nov–Jan 2026"
+                width={700} height={900} className="w-full h-auto"
+              />
+            </div>
+          </div>
+          <div className="flex items-center justify-center gap-2 px-5 py-3.5 border-t border-gray-100 bg-gray-50">
+            <svg className="w-4 h-4 text-[#b31b1b] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            <a href="https://pro.similarweb.com/?domain=erogram.pro" target="_blank" rel="noopener noreferrer"
+              className="text-xs font-bold text-[#b31b1b] hover:underline tracking-wide">
+              Source: pro.similarweb.com — erogram.pro
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

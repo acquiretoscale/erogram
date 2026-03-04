@@ -57,7 +57,7 @@ function StatCard({ label, value, suffix, gradient, delay, ready, full, live, co
   if (compact) {
     return (
       <div className="flex items-center gap-2">
-        {live && <span className="flex h-1.5 w-1.5 rounded-full bg-white animate-pulse shrink-0" />}
+        {live && <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />}
         <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-white/80">{label}</span>
         <span className="text-sm sm:text-base font-black text-white tabular-nums">
           {full ? animated.toLocaleString() : fmt(animated)}{suffix && <span className="text-xs text-white/70 ml-0.5">{suffix}</span>}
@@ -75,8 +75,8 @@ function StatCard({ label, value, suffix, gradient, delay, ready, full, live, co
     >
       {live && (
         <div className="absolute top-3 right-3 flex items-center gap-1.5">
-          <span className="flex h-1.5 w-1.5 rounded-full bg-[#ff3366] animate-pulse" />
-          <span className="text-[9px] font-bold uppercase tracking-wider text-[#ff3366]/70">Live</span>
+          <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400/70">Live</span>
         </div>
       )}
       <p className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-white/40 mb-2">{label}</p>
@@ -160,81 +160,44 @@ export default function AdvertiseStats() {
             transition={{ duration: 0.25 }}
             className="fixed top-0 left-0 right-0 z-50 border-b border-red-700/40 bg-gradient-to-r from-[#b31b1b] via-red-600 to-[#b31b1b] shadow-lg shadow-red-900/30"
           >
-            <div className="max-w-5xl mx-auto px-4 sm:px-8 py-2.5 flex flex-wrap items-center justify-center gap-x-6 gap-y-1">
-              <StatCard label="Total visits" value={data.totalViews} gradient="" delay={0} ready full live compact />
-              <div className="hidden sm:block w-px h-5 bg-white/25" />
-              <StatCard label="Clicks (24h)" value={data.last24hClicks} gradient="" delay={0} ready full live compact />
-              {typeof data.activeVisitors === 'number' && data.activeVisitors > 0 && (
-                <>
-                  <div className="hidden sm:block w-px h-5 bg-white/25" />
-                  <StatCard label="Active now" value={data.activeVisitors} gradient="" delay={0} ready full live compact />
-                </>
-              )}
+            <div className="max-w-5xl mx-auto px-4 sm:px-8 py-2.5 flex flex-wrap items-center justify-between gap-y-1">
+              <div className="flex items-center gap-x-6">
+                <StatCard label="Total visits" value={data.totalViews} gradient="" delay={0} ready full live compact />
+                {typeof data.activeVisitors === 'number' && data.activeVisitors > 0 && (
+                  <>
+                    <div className="hidden sm:block w-px h-5 bg-white/25" />
+                    <StatCard label="Active users (last 60 min)" value={data.activeVisitors} gradient="" delay={0} ready full live compact />
+                  </>
+                )}
+              </div>
+              <nav className="hidden md:flex items-center gap-1.5">
+                <a href="#audience-stats" className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider text-white/70 hover:text-white hover:bg-white/10 transition-all">
+                  Audience Stats
+                </a>
+                <a href="#website-ads" className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider text-white/70 hover:text-white hover:bg-white/10 transition-all">
+                  Ad Placements
+                </a>
+                <a href="#ad-pricing-list" className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-white/15 text-white hover:bg-white/25 transition-all">
+                  Advertising Rates
+                </a>
+              </nav>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
       <div ref={statsRef} className="space-y-8 mb-16">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard label="Total visits" value={data.totalViews} gradient="bg-gradient-to-br from-red-950/50 to-rose-950/40" delay={0.1} ready full live />
           {typeof data.activeVisitors === 'number' && data.activeVisitors > 0 && (
-            <StatCard label="Visitors (last 30 min)" value={data.activeVisitors} gradient="bg-gradient-to-br from-red-900/40 to-red-950/30" delay={0.21} ready full live />
+            <StatCard label="Active users (last 60 min)" value={data.activeVisitors} gradient="bg-gradient-to-br from-red-900/40 to-red-950/30" delay={0.21} ready full live />
           )}
           {tg && tg.totalSubscribers > 0 && (
             <StatCard label="Telegram subscribers" value={tg.totalSubscribers} suffix="+" gradient="bg-gradient-to-br from-rose-900/40 to-red-950/30" delay={0.24} ready />
           )}
+          <StatCard label="Page views / month" value={400000} suffix="+" gradient="bg-gradient-to-br from-red-950/50 to-rose-950/40" delay={0.3} ready />
         </div>
 
-        {/* Click breakdown by source */}
-        {data.clickBreakdown && data.clickBreakdown.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="glass rounded-2xl border-white/5 bg-white/[0.02] overflow-hidden hover-glow"
-          >
-            <div className="px-6 py-5 border-b border-white/[0.08] flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="flex h-2 w-2 rounded-full bg-[#ff3366] animate-pulse" />
-                <div>
-                  <h3 className="font-bold text-white text-sm">Clicks by ad type (24h)</h3>
-                  <p className="text-xs text-gray-500">Breakdown of clicks delivered to advertisers</p>
-                </div>
-              </div>
-              <span className="text-sm font-bold text-[#ff3366] tabular-nums">{data.last24hClicks.toLocaleString()} total</span>
-            </div>
-            <div className="p-5 space-y-3">
-              {data.clickBreakdown.map((item, i) => {
-                const totalClicks24h = data.last24hClicks || 1;
-                const pctOfTotal = ((item.clicks / totalClicks24h) * 100).toFixed(1);
-                const max = data.clickBreakdown![0].clicks || 1;
-                const barPct = Math.round((item.clicks / max) * 100);
-                return (
-                  <motion.div
-                    key={item.source}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.3, delay: 0.35 + i * 0.05 }}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-sm text-white/80 font-medium">{item.source}</span>
-                      <span className="text-sm text-white font-bold tabular-nums">{pctOfTotal}%</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
-                      <motion.div
-                        className="h-full rounded-full bg-gradient-to-r from-[#b31b1b] to-[#ff3366]"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${barPct}%` }}
-                        transition={{ duration: 0.8, delay: 0.4 + i * 0.05, ease: 'easeOut' }}
-                      />
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
 
       </div>
     </>

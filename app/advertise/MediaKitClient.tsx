@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import AdvertiseGate from './AdvertiseGate';
 import AdvertiseStats from './AdvertiseStats';
 import HeroSection from './HeroSection';
 import AudienceDevices from './AudienceDevices';
@@ -27,8 +26,7 @@ export default function MediaKitClient() {
   }, []);
 
   return (
-    <AdvertiseGate>
-      <div className="min-h-screen bg-[#111111] text-[#f5f5f5] overflow-hidden">
+    <div className="min-h-screen bg-[#111111] text-[#f5f5f5] overflow-hidden">
         {/* Animated Background — same as Erogram homepage */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-[#ff0000]/10 to-transparent rounded-full blur-[100px] opacity-30" />
@@ -37,14 +35,25 @@ export default function MediaKitClient() {
 
         {/* Top bar */}
         <header className="relative z-10 border-b border-[#333] bg-[#111111]/95 backdrop-blur-md">
-          <div className="max-w-5xl mx-auto px-4 sm:px-8 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="max-w-5xl mx-auto px-4 sm:px-8 py-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 shrink-0">
               <div className="w-8 h-8 rounded-lg bg-[#b31b1b] flex items-center justify-center text-sm font-black text-white">E</div>
               <div>
                 <span className="text-sm font-bold text-[#f5f5f5]">Erogram.pro</span>
                 <span className="text-xs text-[#999] ml-2 hidden sm:inline">Media Kit</span>
               </div>
             </div>
+            <nav className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+              <a href="#audience-stats" className="whitespace-nowrap px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider text-[#ccc] hover:text-white hover:bg-white/10 transition-all">
+                Audience Stats
+              </a>
+              <a href="#website-ads" className="whitespace-nowrap px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider text-[#ccc] hover:text-white hover:bg-white/10 transition-all">
+                Ad Placements
+              </a>
+              <a href="#ad-pricing-list" className="whitespace-nowrap px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-[#b31b1b] text-white hover:bg-[#991b1b] transition-all">
+                Advertising Rates
+              </a>
+            </nav>
           </div>
         </header>
 
@@ -53,7 +62,9 @@ export default function MediaKitClient() {
           <HeroSection />
 
           {/* Live Stats */}
-          <AdvertiseStats />
+          <div id="audience-stats">
+            <AdvertiseStats />
+          </div>
 
           {/* Audience Insights */}
           <motion.div
@@ -63,13 +74,6 @@ export default function MediaKitClient() {
             transition={{ duration: 0.5 }}
             className="mb-14"
           >
-            <div className="flex items-center gap-2 mb-3">
-              <span className="inline-block px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border border-[#b31b1b]/30 text-[#ff3366] bg-[#b31b1b]/10">
-                Audience Insights
-              </span>
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-black text-[#f5f5f5] mb-8">Know your audience</h2>
-
             {/* PART 1: Erogram Website */}
             <AudienceDevices />
             <AudienceCountries />
@@ -128,7 +132,8 @@ export default function MediaKitClient() {
                 <span className="text-[#f5f5f5]"> RATES</span>
               </h2>
               <p className="mt-3 text-sm sm:text-base text-[#999] max-w-xl mx-auto">
-                Transparent pricing for every placement. Multi-month bookings unlock 15–30% discounts. Reach out to get started.
+                Transparent pricing for every placement. Multi-month bookings unlock up to{' '}
+                <span className="font-black text-white">30% discount</span>.
               </p>
             </div>
             <AdShop />
@@ -165,6 +170,5 @@ export default function MediaKitClient() {
           </div>
         </footer>
       </div>
-    </AdvertiseGate>
   );
 }
