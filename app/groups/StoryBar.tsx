@@ -66,25 +66,33 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
 
       <h3 className="sr-only">Recent Groups</h3>
 
-      {/* Main card — matches screenshot: very dark bg, subtle rounded border */}
-      <div className="relative rounded-2xl overflow-hidden" style={{ background: '#111114', border: '1px solid rgba(255,255,255,0.08)' }}>
+      {/* Main card — warm orange gradient with glossy reflection */}
+      <div className="relative rounded-2xl overflow-hidden" style={{
+        background: 'linear-gradient(165deg, #1a1008 0%, #2a1a0a 40%, #1f1208 100%)',
+        border: '1px solid rgba(245,158,11,0.2)',
+        boxShadow: '0 4px 24px rgba(245,158,11,0.08), inset 0 1px 0 rgba(255,200,100,0.08)',
+      }}>
+        {/* Glossy reflection overlay */}
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: 'linear-gradient(180deg, rgba(255,180,60,0.07) 0%, transparent 40%, transparent 85%, rgba(245,158,11,0.04) 100%)',
+        }} />
 
-        {/* Header */}
-        <div className="px-4 pt-3.5 pb-2.5 flex items-center gap-2.5">
-          {/* Camera icon */}
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #ff6b35, #e91e8c)' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-              <path d="M12 15.2A3.2 3.2 0 1 1 12 8.8a3.2 3.2 0 0 1 0 6.4zM20 4h-3.17L15 2H9L7.17 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/>
+        {/* Compact header — dark with orange accent */}
+        <div className="relative z-[1] px-4 py-2.5 flex items-center gap-2.5" style={{ background: '#0a0a0a' }}>
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #f97316, #ea580c)' }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="2" width="20" height="20" rx="5" />
+              <circle cx="12" cy="12" r="5" />
+              <circle cx="17.5" cy="6.5" r="1.5" fill="white" stroke="none" />
             </svg>
           </div>
           <div>
-            <h4 className="text-sm font-bold text-white leading-tight tracking-tight">Stories</h4>
-            <p className="text-[11px] text-white/40 leading-tight">See what&apos;s new</p>
+            <h4 className="text-[13px] font-black uppercase tracking-widest leading-tight text-white">Erogram Stories</h4>
+            <p className="text-[10px] font-medium leading-tight" style={{ color: '#f97316' }}>See what&apos;s new</p>
           </div>
+          {/* Orange accent line at bottom */}
+          <div className="absolute bottom-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(90deg, #f97316, #ea580c, #f59e0b)' }} />
         </div>
-
-        {/* Thin separator */}
-        <div className="h-px mx-4" style={{ background: 'rgba(255,255,255,0.06)' }} />
 
         {/* Scroll container */}
         <div className="relative group/scroll">
@@ -92,7 +100,7 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
             <button
               onClick={() => scroll('left')}
               className="absolute left-0 top-0 bottom-0 z-10 w-10 flex items-center justify-start pl-1.5 opacity-0 group-hover/scroll:opacity-100 transition-opacity duration-200"
-              style={{ background: 'linear-gradient(to right, #111114 40%, transparent)' }}
+              style={{ background: 'linear-gradient(to right, #1a1008 40%, transparent)' }}
               aria-label="Scroll left"
             >
               <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">
@@ -105,7 +113,7 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
             <button
               onClick={() => scroll('right')}
               className="absolute right-0 top-0 bottom-0 z-10 w-10 flex items-center justify-end pr-1.5 opacity-0 group-hover/scroll:opacity-100 transition-opacity duration-200"
-              style={{ background: 'linear-gradient(to left, #111114 40%, transparent)' }}
+              style={{ background: 'linear-gradient(to left, #1a1008 40%, transparent)' }}
               aria-label="Scroll right"
             >
               <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">
@@ -229,14 +237,14 @@ function StoryCircle({
           )}
         </div>
 
-        {/* Dark moat between ring and image */}
+        {/* Moat between ring and image */}
         <div
           className="absolute inset-[3px] rounded-full"
-          style={{ background: '#111114' }}
+          style={{ background: '#1a1008' }}
         />
 
         {/* Profile image */}
-        <div className="absolute inset-[5px] rounded-full overflow-hidden" style={{ background: '#1e1e22' }}>
+        <div className="absolute inset-[5px] rounded-full overflow-hidden" style={{ background: '#2a1a0a' }}>
           <img
             src={imgSrc}
             alt={category.label}
@@ -248,7 +256,7 @@ function StoryCircle({
 
       {/* Label + verified badge */}
       <span className={`flex items-center gap-0.5 text-[10px] md:text-[11px] font-semibold transition-colors duration-200 max-w-[76px] md:max-w-[84px] ${
-        hasUnseen ? 'text-white/90 group-hover:text-white' : 'text-white/35 group-hover:text-white/55'
+        hasUnseen ? 'text-amber-200/90 group-hover:text-amber-100' : 'text-amber-200/30 group-hover:text-amber-200/50'
       }`}>
         <span className="truncate">{category.label}</span>
         {category.verified && <VerifiedBadge size={11} />}
