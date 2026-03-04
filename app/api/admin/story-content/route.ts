@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
       mediaUrl: body.mediaUrl,
       ctaText: body.ctaText || '',
       ctaUrl: body.ctaUrl || '',
+      caption: body.caption || '',
       duration: durationHours,
       expiresAt,
       enabled: body.enabled ?? true,

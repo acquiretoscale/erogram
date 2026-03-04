@@ -82,6 +82,9 @@ export interface StoryMediaSlide {
     ctaText?: string;
     ctaUrl?: string;
     clientName?: string;
+    caption?: string;
+    likes?: number;
+    clicks?: number;
 }
 
 export interface StoryCategory {

@@ -32,6 +32,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (body.ctaUrl !== undefined) update.ctaUrl = body.ctaUrl;
     if (body.enabled !== undefined) update.enabled = body.enabled;
     if (body.clientName !== undefined) update.clientName = body.clientName;
+    if (body.caption !== undefined) update.caption = body.caption;
     if (body.sortOrder !== undefined) update.sortOrder = body.sortOrder;
     if (body.duration !== undefined) {
       update.duration = body.duration;

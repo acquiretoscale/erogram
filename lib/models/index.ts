@@ -510,6 +510,9 @@ export const storySlideContentSchema = new Schema(
     clientName: { type: String, default: '' },
     sortOrder: { type: Number, default: 0 },
     views: { type: Number, default: 0 },
+    caption: { type: String, default: '' },
+    likes: { type: Number, default: 0 },
+    clicks: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

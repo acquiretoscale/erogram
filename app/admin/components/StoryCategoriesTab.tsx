@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 
 interface StoryCategoryConfig {
@@ -25,6 +25,7 @@ interface StorySlide {
   mediaUrl: string;
   ctaText: string;
   ctaUrl: string;
+  caption: string;
   duration: number;
   expiresAt: string | null;
   enabled: boolean;
@@ -32,6 +33,8 @@ interface StorySlide {
   sortOrder: number;
   createdAt?: string;
   views?: number;
+  likes?: number;
+  clicks?: number;
 }
 
 interface StoryGroupItem {
@@ -52,106 +55,7 @@ const DEFAULT_CATEGORIES: StoryCategoryConfig[] = [
   { slug: 'random-girl-2', label: 'Carla', enabled: true, profileImage: '', filterType: 'random-girl', filterValue: '', sortOrder: 3, maxItems: 3, r2Folder: 'tgempire/instabaddies' },
 ];
 
-const inputClass = 'w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder-white/30 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 outline-none transition';
-
-function ProfileImageUpload({
-  currentUrl,
-  label,
-  onUploaded,
-  onClear,
-  readToken,
-}: {
-  currentUrl: string;
-  label: string;
-  onUploaded: (url: string) => void;
-  onClear: () => void;
-  readToken: () => string;
-}) {
-  const [uploading, setUploading] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
-
-  const upload = async (file: File) => {
-    if (!file.type.startsWith('image/')) return;
-    setUploading(true);
-    try {
-      const form = new FormData();
-      form.append('file', file);
-      const res = await axios.post('/api/upload', form, {
-        headers: { Authorization: `Bearer ${readToken()}` },
-      });
-      if (res.data?.url) onUploaded(res.data.url);
-    } catch (err) {
-      console.error('Upload failed:', err);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (f) upload(f);
-    e.target.value = '';
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const f = e.dataTransfer.files?.[0];
-    if (f) upload(f);
-  };
-
-  return (
-    <div className="flex items-center gap-4">
-      {/* Preview circle */}
-      <div
-        className={`relative w-16 h-16 rounded-full overflow-hidden shrink-0 border-2 transition-colors ${
-          dragOver ? 'border-blue-500 bg-blue-500/10' : 'border-white/10 bg-white/5'
-        }`}
-        onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={handleDrop}
-      >
-        {currentUrl ? (
-          <img src={currentUrl} alt="Profile" className="w-full h-full object-cover" />
-        ) : (
-          <span className="absolute inset-0 flex items-center justify-center text-white/15 text-2xl font-bold">
-            {(label || '?')[0]}
-          </span>
-        )}
-        {uploading && (
-          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <label className="relative cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium transition">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
-          </svg>
-          {uploading ? 'Uploading...' : 'Upload Photo'}
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFile}
-            disabled={uploading}
-            className="absolute inset-0 opacity-0 cursor-pointer"
-          />
-        </label>
-        {currentUrl && (
-          <button
-            onClick={onClear}
-            className="text-[10px] text-red-400/60 hover:text-red-400 transition text-left"
-          >
-            Remove photo
-          </button>
-        )}
-        <p className="text-[10px] text-white/20">Drop image or click to upload</p>
-      </div>
-    </div>
-  );
-}
+const INPUT = 'w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder-white/30 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 outline-none transition';
 
 export default function StoryCategoriesTab() {
   const [categories, setCategories] = useState<StoryCategoryConfig[]>([]);
@@ -159,604 +63,588 @@ export default function StoryCategoriesTab() {
   const [storyGroups, setStoryGroups] = useState<StoryGroupItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeSlug, setActiveSlug] = useState<string>('erogram');
-  const [slideForm, setSlideForm] = useState<Partial<StorySlide>>({});
-  const [showSlideForm, setShowSlideForm] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [activeSlug, setActiveSlug] = useState<string | null>(null);
+  const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [uploadingCount, setUploadingCount] = useState(0);
+  const [editingSlideId, setEditingSlideId] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  function readToken(): string {
+  function token(): string {
     try { return localStorage.getItem('token') ?? ''; } catch { return ''; }
   }
+  function authH() { return { headers: { Authorization: `Bearer ${token()}` } }; }
 
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const token = readToken();
       const [configRes, slidesRes, groupsRes] = await Promise.all([
-        axios.get('/api/admin/site-config', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('/api/admin/story-content', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('/api/admin/story-groups', { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { groups: [] } })),
+        axios.get('/api/admin/site-config', authH()),
+        axios.get('/api/admin/story-content', authH()),
+        axios.get('/api/admin/story-groups', authH()).catch(() => ({ data: { groups: [] } })),
       ]);
       const gs = configRes.data?.generalSettings || {};
       const saved: StoryCategoryConfig[] = Array.isArray(gs.storyCategories) ? gs.storyCategories : [];
-      const usedSlugs = new Set<string>();
-      const merged = DEFAULT_CATEGORIES.map(def => {
-        usedSlugs.add(def.slug);
-        const s = saved.find((c: any) => c.slug === def.slug);
-        return s ? { ...def, ...s, filterType: def.filterType } : def;
-      });
-      for (const cat of saved) {
-        if (cat?.slug && !usedSlugs.has(cat.slug)) {
-          merged.push(cat);
-        }
-      }
-      setCategories(merged);
+      setCategories(saved.length > 0 ? saved : DEFAULT_CATEGORIES);
       setSlides(slidesRes.data || []);
       setStoryGroups(groupsRes.data?.groups || []);
     } catch (err) {
-      console.error('Failed to load story config:', err);
+      console.error('Load failed:', err);
       setCategories(DEFAULT_CATEGORIES);
     } finally {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const saveCategories = async (cats?: StoryCategoryConfig[]) => {
+  const saveCats = async (cats?: StoryCategoryConfig[]) => {
     const toSave = cats ?? categories;
     try {
-      setIsSaving(true);
-      setSaveMessage(null);
-      const token = readToken();
-      if (!token) {
-        setSaveMessage({ type: 'error', text: 'Not logged in — please refresh the page and log in again' });
-        return;
-      }
-      const res = await axios.put('/api/admin/site-config', {
-        generalSettings: { storyCategories: toSave },
-      }, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.status === 200) {
-        setCategories(toSave);
-        setSaveMessage({ type: 'success', text: 'Saved!' });
-      }
-      setTimeout(() => setSaveMessage(null), 3000);
+      setIsSaving(true); setSaveMsg(null);
+      const t = token();
+      if (!t) { setSaveMsg({ ok: false, text: 'Not logged in' }); return; }
+      await axios.put('/api/admin/site-config', { generalSettings: { storyCategories: toSave } }, authH());
+      setCategories(toSave);
+      setSaveMsg({ ok: true, text: 'Saved!' });
+      setTimeout(() => setSaveMsg(null), 2500);
     } catch (err: any) {
-      console.error('Save failed:', err);
-      const status = err?.response?.status;
-      if (status === 401) {
-        setSaveMessage({ type: 'error', text: 'Session expired — please refresh and log in again' });
-      } else {
-        const msg = err?.response?.data?.message || err?.message || 'Save failed';
-        setSaveMessage({ type: 'error', text: msg });
-      }
+      setSaveMsg({ ok: false, text: err?.response?.status === 401 ? 'Session expired' : 'Save failed' });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const updateCategory = (slug: string, field: string, value: string | boolean | number) => {
+  const updateCat = (slug: string, field: string, value: string | boolean | number, save = false) => {
     const updated = categories.map(c => c.slug === slug ? { ...c, [field]: value } : c);
     setCategories(updated);
+    if (save) saveCats(updated);
   };
 
-  const addProfile = () => {
-    const num = categories.filter(c => c.filterType === 'random-girl').length + 1;
-    const slug = `random-girl-${Date.now()}`;
+  const saveCurrent = () => saveCats();
+
+  const moveCat = (slug: string, dir: 'up' | 'down') => {
+    const sorted = [...categories].sort((a, b) => (a.sortOrder ?? 99) - (b.sortOrder ?? 99));
+    const idx = sorted.findIndex(c => c.slug === slug);
+    const swap = dir === 'up' ? idx - 1 : idx + 1;
+    if (swap < 0 || swap >= sorted.length) return;
+    const tmp = sorted[idx].sortOrder;
+    sorted[idx] = { ...sorted[idx], sortOrder: sorted[swap].sortOrder };
+    sorted[swap] = { ...sorted[swap], sortOrder: tmp };
+    setCategories(sorted);
+    saveCats(sorted);
+  };
+
+  const createProfile = (type: 'advert' | 'random-girl') => {
+    const slug = `${type === 'advert' ? 'ad' : 'girl'}-${Date.now()}`;
     const newCat: StoryCategoryConfig = {
-      slug,
-      label: `Girl ${num + 1}`,
-      enabled: true,
-      profileImage: '',
-      filterType: 'random-girl',
-      filterValue: '',
-      sortOrder: categories.length,
-      maxItems: 3,
-      r2Folder: 'tgempire/instabaddies',
+      slug, label: type === 'advert' ? 'New Ad' : 'New Profile', enabled: true, profileImage: '',
+      filterType: type, filterValue: '', sortOrder: categories.length,
+      maxItems: type === 'advert' ? 10 : 3,
+      r2Folder: type === 'random-girl' ? 'tgempire/instabaddies' : '',
     };
     const updated = [...categories, newCat];
     setCategories(updated);
+    saveCats(updated);
+    setShowCreateDialog(false);
     setActiveSlug(slug);
   };
 
-  const isDefaultSlug = (slug: string) => DEFAULT_CATEGORIES.some(d => d.slug === slug);
-
-  const removeProfile = (slug: string) => {
-    if (isDefaultSlug(slug)) { alert('Cannot remove default profiles.'); return; }
-    if (!confirm('Remove this profile? This cannot be undone.')) return;
+  const deleteProfile = (slug: string) => {
+    if (!confirm('Delete this profile and all its data?')) return;
     const updated = categories.filter(c => c.slug !== slug);
     setCategories(updated);
-    if (activeSlug === slug) setActiveSlug(categories[0]?.slug || 'erogram');
-    saveCategories(updated);
+    setActiveSlug(null);
+    saveCats(updated);
   };
 
-  const activeCat = categories.find(c => c.slug === activeSlug);
-  const activeSlides = slides.filter(s => s.categorySlug === activeSlug);
-
-  const saveSlide = async () => {
-    try {
-      const token = readToken();
-      if (slideForm._id) {
-        await axios.put(`/api/admin/story-content/${slideForm._id}`, slideForm, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      } else {
-        await axios.post('/api/admin/story-content', { ...slideForm, categorySlug: activeSlug }, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      }
-      setShowSlideForm(false);
-      setSlideForm({});
-      loadData();
-    } catch (err) {
-      console.error('Save slide failed:', err);
+  const uploadFiles = async (files: FileList | File[]) => {
+    if (!activeSlug) return;
+    const fileArr = Array.from(files).filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'));
+    if (fileArr.length === 0) return;
+    setUploadingCount(fileArr.length);
+    const existing = slides.filter(s => s.categorySlug === activeSlug).length;
+    for (let i = 0; i < fileArr.length; i++) {
+      const file = fileArr[i];
+      const isVideo = file.type.startsWith('video/');
+      const form = new FormData(); form.append('file', file);
+      try {
+        const res = await axios.post(isVideo ? '/api/upload/video' : '/api/upload', form, authH());
+        if (res.data?.url) {
+          await axios.post('/api/admin/story-content', {
+            categorySlug: activeSlug, mediaType: isVideo ? 'video' : 'image',
+            mediaUrl: res.data.url, ctaText: '', ctaUrl: '', caption: '',
+            duration: 0, enabled: true, clientName: '', sortOrder: existing + i,
+          }, authH());
+        }
+      } catch (err) { console.error('Upload failed:', file.name, err); }
+      setUploadingCount(fileArr.length - i - 1);
     }
+    setUploadingCount(0);
+    loadData();
+  };
+
+  const updateSlide = async (id: string, updates: Partial<StorySlide>) => {
+    try {
+      await axios.put(`/api/admin/story-content/${id}`, updates, authH());
+      setSlides(prev => prev.map(s => s._id === id ? { ...s, ...updates } : s));
+    } catch (err) { console.error('Update failed:', err); }
   };
 
   const deleteSlide = async (id: string) => {
-    if (!confirm('Delete this slide?')) return;
+    if (!confirm('Delete this story?')) return;
     try {
-      const token = readToken();
-      await axios.delete(`/api/admin/story-content/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await axios.delete(`/api/admin/story-content/${id}`, authH());
+      setSlides(prev => prev.filter(s => s._id !== id));
+    } catch (err) { console.error('Delete failed:', err); }
+  };
+
+  const moveSlide = async (slide: StorySlide, dir: 'up' | 'down') => {
+    const sorted = activeSlidesSorted;
+    const idx = sorted.findIndex(s => s._id === slide._id);
+    const swap = dir === 'up' ? idx - 1 : idx + 1;
+    if (swap < 0 || swap >= sorted.length) return;
+    try {
+      await Promise.all([
+        axios.put(`/api/admin/story-content/${sorted[idx]._id}`, { sortOrder: sorted[swap].sortOrder }, authH()),
+        axios.put(`/api/admin/story-content/${sorted[swap]._id}`, { sortOrder: sorted[idx].sortOrder }, authH()),
+      ]);
       loadData();
-    } catch (err) {
-      console.error('Delete failed:', err);
-    }
+    } catch (err) { console.error('Reorder failed:', err); }
   };
 
-  const hideGroupFromStories = async (groupId: string) => {
-    if (!confirm('Hide this group from stories? It sets hideFromStories=true on the group.')) return;
+  const hideGroup = async (groupId: string) => {
+    if (!confirm('Hide from stories?')) return;
     try {
-      const token = readToken();
-      await axios.post('/api/admin/story-groups/hide', { groupId }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await axios.post('/api/admin/story-groups/hide', { groupId }, authH());
       setStoryGroups(prev => prev.filter(g => g._id !== groupId));
-    } catch (err) {
-      console.error('Hide from stories failed:', err);
-    }
+    } catch (err) { console.error('Hide failed:', err); }
   };
 
-  if (isLoading) {
-    return <div className="text-center py-12 text-white/50">Loading stories config...</div>;
+  const activeCat = activeSlug ? categories.find(c => c.slug === activeSlug) : null;
+  const activeSlidesSorted = slides.filter(s => s.categorySlug === activeSlug).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+  const getProfileStats = (slug: string) => {
+    const catSlides = slides.filter(s => s.categorySlug === slug);
+    return {
+      stories: catSlides.length,
+      views: catSlides.reduce((sum, s) => sum + (s.views ?? 0), 0),
+      likes: catSlides.reduce((sum, s) => sum + (s.likes ?? 0), 0),
+      clicks: catSlides.reduce((sum, s) => sum + (s.clicks ?? 0), 0),
+    };
+  };
+
+  if (isLoading) return <div className="text-center py-12 text-white/50">Loading...</div>;
+
+  // ══════════════════════════════════════
+  //  VIEW 1: PROFILE LISTING (no active)
+  // ══════════════════════════════════════
+  if (!activeCat) {
+    const sorted = [...categories].sort((a, b) => (a.sortOrder ?? 99) - (b.sortOrder ?? 99));
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-white">Stories</h2>
+            <p className="text-white/40 text-sm mt-1">Select a profile to manage, or create a new one.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {saveMsg && <span className={`text-xs ${saveMsg.ok ? 'text-green-400' : 'text-red-400'}`}>{saveMsg.text}</span>}
+            <button onClick={() => saveCats()} disabled={isSaving}
+              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium disabled:opacity-50 transition">
+              {isSaving ? 'Saving...' : 'Save Order'}
+            </button>
+          </div>
+        </div>
+
+        {/* Profile grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {sorted.map((cat, i) => {
+            const stats = getProfileStats(cat.slug);
+            const typeLabel = cat.filterType === 'advert' ? 'AD' : cat.filterType === 'erogram' ? 'EROGRAM' : 'NORMAL';
+            const typeColor = cat.filterType === 'advert' ? 'bg-orange-500/20 text-orange-400' : cat.filterType === 'erogram' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400';
+            return (
+              <div key={cat.slug}
+                className="rounded-xl bg-white/[0.03] border border-white/[0.08] hover:border-white/20 hover:bg-white/[0.05] transition-all cursor-pointer group relative"
+                onClick={() => setActiveSlug(cat.slug)}>
+                {/* Reorder arrows */}
+                <div className="absolute top-2 right-2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition z-10" onClick={e => e.stopPropagation()}>
+                  <button onClick={() => moveCat(cat.slug, 'up')} disabled={i === 0}
+                    className="p-1 rounded bg-white/10 text-white/50 hover:bg-white/20 disabled:opacity-20 transition">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="15,18 9,12 15,6" /></svg>
+                  </button>
+                  <button onClick={() => moveCat(cat.slug, 'down')} disabled={i === sorted.length - 1}
+                    className="p-1 rounded bg-white/10 text-white/50 hover:bg-white/20 disabled:opacity-20 transition">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="9,6 15,12 9,18" /></svg>
+                  </button>
+                </div>
+
+                <div className="p-4 flex items-center gap-3">
+                  {/* Avatar */}
+                  <div className="w-14 h-14 rounded-full bg-white/5 border border-white/10 overflow-hidden shrink-0">
+                    {cat.profileImage ? (
+                      <img src={cat.profileImage} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="w-full h-full flex items-center justify-center text-white/15 text-xl font-bold">{(cat.label || '?')[0]}</span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-white font-semibold text-sm truncate">{cat.label}</span>
+                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${typeColor}`}>{typeLabel}</span>
+                      {!cat.enabled && <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-red-500/20 text-red-400">PAUSED</span>}
+                    </div>
+                    <div className="flex items-center gap-3 text-[11px] text-white/30">
+                      <span className="text-white/20 font-mono">#{i + 1}</span>
+                      {stats.stories > 0 && (
+                        <>
+                          <span>{stats.stories} stories</span>
+                          <span className="flex items-center gap-1">
+                            <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" className="text-blue-400/50"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                            {stats.views.toLocaleString()}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" className="text-red-400/50"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                            {stats.likes.toLocaleString()}
+                          </span>
+                          {stats.clicks > 0 && (
+                            <span className="flex items-center gap-1">
+                              <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" className="text-green-400/50"><path d="M13.5 2c-5.629 0-10.212 4.436-10.475 10h-3.025l4.537 5.917 4.463-5.917h-2.975c.26-3.902 3.508-7 7.475-7 4.136 0 7.5 3.364 7.5 7.5s-3.364 7.5-7.5 7.5c-2.381 0-4.502-1.119-5.876-2.854l-1.847 2.449c1.919 2.088 4.664 3.405 7.723 3.405 5.798 0 10.5-4.702 10.5-10.5s-4.702-10.5-10.5-10.5z"/></svg>
+                              {stats.clicks.toLocaleString()} clicks
+                            </span>
+                          )}
+                        </>
+                      )}
+                      {cat.filterType === 'random-girl' && <span>R2: {cat.r2Folder || '—'}</span>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Create new card */}
+          <button onClick={() => setShowCreateDialog(true)}
+            className="rounded-xl border-2 border-dashed border-white/10 hover:border-white/20 hover:bg-white/[0.03] transition-all p-4 flex items-center justify-center gap-3 min-h-[82px]">
+            <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </div>
+            <span className="text-green-400/70 text-sm font-medium">Create Profile</span>
+          </button>
+        </div>
+
+        {/* Create dialog */}
+        {showCreateDialog && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowCreateDialog(false)}>
+            <div className="bg-[#1a1a1e] rounded-xl border border-white/10 p-6 w-full max-w-sm space-y-4" onClick={e => e.stopPropagation()}>
+              <h3 className="text-lg font-bold text-white">Create Story Profile</h3>
+              <p className="text-white/40 text-sm">Choose the type of profile:</p>
+              <div className="space-y-2">
+                <button onClick={() => createProfile('advert')}
+                  className="w-full p-4 rounded-xl bg-white/[0.03] border border-white/10 hover:border-orange-500/40 hover:bg-orange-500/5 transition text-left group">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2" strokeLinecap="round"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+                    </div>
+                    <div>
+                      <span className="text-white font-semibold text-sm block">Ad Profile</span>
+                      <span className="text-white/30 text-xs">Upload photos & videos, add CTAs, track views. For paid campaigns.</span>
+                    </div>
+                  </div>
+                </button>
+                <button onClick={() => createProfile('random-girl')}
+                  className="w-full p-4 rounded-xl bg-white/[0.03] border border-white/10 hover:border-purple-500/40 hover:bg-purple-500/5 transition text-left group">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2" strokeLinecap="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+                    </div>
+                    <div>
+                      <span className="text-white font-semibold text-sm block">Normal Profile</span>
+                      <span className="text-white/30 text-xs">Shares random photos/videos from an R2 folder. Optional CTA.</span>
+                    </div>
+                  </div>
+                </button>
+              </div>
+              <button onClick={() => setShowCreateDialog(false)} className="w-full py-2 text-sm text-white/40 hover:text-white/60 transition">Cancel</button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
-  const typeLabels: Record<string, string> = {
-    erogram: 'Newest groups + announcements',
-    'random-girl': 'Random R2 media (girl story)',
-    advert: 'Ad spot (client rotation)',
-  };
+  // ══════════════════════════════════════
+  //  VIEW 2: PROFILE DETAIL (active)
+  // ══════════════════════════════════════
+  const stats = getProfileStats(activeCat.slug);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-xl font-bold text-white">Stories Management</h2>
-        <div className="flex items-center gap-3">
-          {saveMessage && (
-            <span className={`text-sm ${saveMessage.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
-              {saveMessage.text}
+    <div className="space-y-5">
+      {/* Back + header */}
+      <div className="flex items-center gap-4">
+        <button onClick={() => { setActiveSlug(null); setEditingSlideId(null); }}
+          className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15,18 9,12 15,6" /></svg>
+        </button>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-bold text-white truncate">{activeCat.label}</h2>
+            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+              activeCat.filterType === 'advert' ? 'bg-orange-500/20 text-orange-400' : activeCat.filterType === 'erogram' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'
+            }`}>{activeCat.filterType === 'advert' ? 'AD' : activeCat.filterType === 'erogram' ? 'EROGRAM' : 'NORMAL'}</span>
+          </div>
+          {stats.stories > 0 && (
+            <span className="text-[11px] text-white/30">
+              {stats.stories} stories &middot; {stats.views.toLocaleString()} views &middot; {stats.likes.toLocaleString()} likes{stats.clicks > 0 ? ` · ${stats.clicks.toLocaleString()} CTA clicks` : ''}
             </span>
           )}
-          <button
-            onClick={() => saveCategories()}
-            disabled={isSaving}
-            className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium disabled:opacity-50 transition"
-          >
-            {isSaving ? 'Saving...' : 'Save Changes'}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {saveMsg && <span className={`text-xs ${saveMsg.ok ? 'text-green-400' : 'text-red-400'}`}>{saveMsg.text}</span>}
+          <button onClick={() => saveCats()} disabled={isSaving}
+            className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium disabled:opacity-50 transition">
+            {isSaving ? '...' : 'Save'}
           </button>
         </div>
       </div>
 
-      <p className="text-white/40 text-sm">
-        Story circles: EROGRAM, AI GF, and as many girl profiles as you want. Edit settings per profile and manage content below.
-      </p>
-
-      {/* Category tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2 items-center">
-        {categories.map(cat => (
-          <button
-            key={cat.slug}
-            onClick={() => setActiveSlug(cat.slug)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
-              activeSlug === cat.slug
-                ? 'bg-blue-600 text-white'
-                : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            {cat.label || cat.slug}
-            {cat.verified && <span className="ml-1 text-blue-400">✓</span>}
-          </button>
-        ))}
-        <button
-          onClick={addProfile}
-          className="px-3 py-2 rounded-lg bg-green-600/20 text-green-400 text-sm font-medium hover:bg-green-600/30 transition whitespace-nowrap"
-        >
-          + Add Profile
-        </button>
-      </div>
-
-      {/* Active category settings */}
-      {activeCat && (
-        <div className="rounded-xl bg-white/[0.03] border border-white/10 p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-white">{activeCat.label}</h3>
-            <span className="px-2 py-1 rounded bg-white/10 text-white/50 text-xs">{typeLabels[activeCat.filterType]}</span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs text-white/50 mb-1">Display Label</label>
-              <input
-                value={activeCat.label}
-                onChange={e => updateCategory(activeCat.slug, 'label', e.target.value)}
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-white/50 mb-1">Profile Photo</label>
-              <ProfileImageUpload
-                currentUrl={activeCat.profileImage}
-                label={activeCat.label}
-                onUploaded={(url) => {
-                  const updated = categories.map(c => c.slug === activeCat.slug ? { ...c, profileImage: url } : c);
-                  updateCategory(activeCat.slug, 'profileImage', url);
-                  saveCategories(updated);
-                }}
-                onClear={() => {
-                  const updated = categories.map(c => c.slug === activeCat.slug ? { ...c, profileImage: '' } : c);
-                  updateCategory(activeCat.slug, 'profileImage', '');
-                  saveCategories(updated);
-                }}
-                readToken={readToken}
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-white/50 mb-1">R2 Folder</label>
-              <input
-                value={activeCat.r2Folder || ''}
-                onChange={e => updateCategory(activeCat.slug, 'r2Folder', e.target.value)}
-                placeholder="e.g. tgempire/instabaddies"
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-white/50 mb-1">Max Items</label>
-              <input
-                type="number"
-                value={activeCat.maxItems ?? 3}
-                onChange={e => updateCategory(activeCat.slug, 'maxItems', parseInt(e.target.value) || 3)}
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-white/50 mb-1">CTA Text</label>
-              <input
-                value={activeCat.ctaText || ''}
-                onChange={e => updateCategory(activeCat.slug, 'ctaText', e.target.value)}
-                placeholder="e.g. Try AI Girlfriend"
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-white/50 mb-1">CTA URL</label>
-              <input
-                value={activeCat.ctaUrl || ''}
-                onChange={e => updateCategory(activeCat.slug, 'ctaUrl', e.target.value)}
-                placeholder="/bots or https://..."
-                className={inputClass}
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 text-sm text-white/70">
-                <input
-                  type="checkbox"
-                  checked={activeCat.enabled}
-                  onChange={e => updateCategory(activeCat.slug, 'enabled', e.target.checked)}
-                  className="rounded"
-                />
-                Enabled
-              </label>
-              <label className="flex items-center gap-2 text-sm text-white/70">
-                <input
-                  type="checkbox"
-                  checked={activeCat.verified || false}
-                  onChange={e => updateCategory(activeCat.slug, 'verified', e.target.checked)}
-                  className="rounded"
-                />
-                Verified badge
-              </label>
-            </div>
-            {!isDefaultSlug(activeCat.slug) && (
-              <button
-                onClick={() => removeProfile(activeCat.slug)}
-                className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 text-xs font-medium hover:bg-red-500/20 transition"
-              >
-                Remove Profile
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Random girl: just show R2 folder info, no slides needed */}
-      {activeCat?.filterType === 'random-girl' && (
-        <div className="rounded-xl bg-white/[0.03] border border-white/10 p-5 space-y-3">
-          <h3 className="text-base font-semibold text-white">Content Source</h3>
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
-            <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0 mt-0.5">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2" strokeLinecap="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" /></svg>
-            </div>
-            <div>
-              <p className="text-white/70 text-sm font-medium">{activeCat.r2Folder || 'tgempire/instabaddies'}</p>
-              <p className="text-white/30 text-xs mt-0.5">
-                Videos and images are picked randomly from this R2 folder each page load. Display name uses the label above (e.g. Vicky, Carla).
-              </p>
-            </div>
-          </div>
-          <p className="text-white/20 text-[10px]">To change content, upload files directly to the R2 folder above. No slides to manage here.</p>
-        </div>
-      )}
-
-      {/* EROGRAM and AI GF: slide management */}
-      {activeCat?.filterType !== 'random-girl' && (
-      <div className="rounded-xl bg-white/[0.03] border border-white/10 p-5 space-y-4">
+      {/* ── Settings card ── */}
+      <div className="rounded-xl bg-white/[0.03] border border-white/10 p-4 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold text-white">
-            Content Slides — {activeCat?.label}
-          </h3>
-          <button
-            onClick={() => {
-              setSlideForm({
-                mediaType: 'video',
-                mediaUrl: '',
-                ctaText: '',
-                ctaUrl: '',
-                duration: activeCat?.filterType === 'advert' ? 0 : 24,
-                enabled: true,
-                clientName: '',
-                sortOrder: activeSlides.length,
-              });
-              setShowSlideForm(true);
-            }}
-            className="px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-medium transition"
-          >
-            + Add Slide
-          </button>
-        </div>
-
-        {activeCat?.filterType === 'erogram' && (
-          <>
-          <p className="text-white/30 text-xs">
-            EROGRAM auto-fetches newest groups from DB. Add slides here for announcements (set duration up to 168h = 7 days).
-          </p>
-
-          {/* Current group stories from DB */}
-          {storyGroups.length > 0 && (
-            <div className="rounded-lg bg-white/[0.02] border border-white/[0.06] p-4 space-y-2">
-              <h4 className="text-sm font-semibold text-white/70 flex items-center gap-2">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-                Current Group Stories ({storyGroups.length})
-              </h4>
-              <div className="space-y-1.5">
-                {storyGroups.map(g => (
-                  <div key={g._id} className="flex items-center gap-3 p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition">
-                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-white/5 shrink-0">
-                      <img src={g.image} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-white/80 text-sm font-medium truncate">{g.name}</span>
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-blue-500/20 text-blue-400">{g.category}</span>
-                        {g.premiumOnly && <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-amber-500/20 text-amber-400">VAULT</span>}
-                      </div>
-                      <div className="flex items-center gap-3 text-[11px] text-white/30 mt-0.5">
-                        <span>{new Date(g.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                        <span className="flex items-center gap-1 text-blue-400/60">
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-                          {(g.storyViews ?? 0).toLocaleString()} story views
-                        </span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => hideGroupFromStories(g._id)}
-                      className="px-2 py-1 rounded bg-red-500/20 text-red-400 text-xs hover:bg-red-500/30 transition shrink-0"
-                      title="Hide from stories"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
+          <div className="flex items-center gap-3">
+            <label className="relative w-12 h-12 rounded-full overflow-hidden bg-white/5 border border-white/10 cursor-pointer shrink-0 group">
+              {activeCat.profileImage ? <img src={activeCat.profileImage} alt="" className="w-full h-full object-cover" /> : (
+                <span className="w-full h-full flex items-center justify-center text-white/20 text-lg font-bold">{(activeCat.label || '?')[0]}</span>
+              )}
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M12 15.2A3.2 3.2 0 1 1 12 8.8a3.2 3.2 0 0 1 0 6.4zM20 4h-3.17L15 2H9L7.17 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/></svg>
+              </div>
+              <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={async e => {
+                const f = e.target.files?.[0]; if (!f) return;
+                const form = new FormData(); form.append('file', f);
+                try {
+                  const res = await axios.post('/api/upload', form, authH());
+                  if (res.data?.url) { const u = categories.map(c => c.slug === activeCat.slug ? { ...c, profileImage: res.data.url } : c); setCategories(u); saveCats(u); }
+                } catch { /* */ }
+                e.target.value = '';
+              }} />
+            </label>
+            <div>
+              <input value={activeCat.label} onChange={e => updateCat(activeCat.slug, 'label', e.target.value)} onBlur={saveCurrent}
+                className="bg-transparent text-white font-bold text-base outline-none border-b border-transparent focus:border-white/20 transition w-44" />
+              <div className="flex items-center gap-3 mt-1">
+                <label className="flex items-center gap-1 text-[11px] text-white/40 cursor-pointer">
+                  <input type="checkbox" checked={activeCat.verified || false} onChange={e => updateCat(activeCat.slug, 'verified', e.target.checked, true)} className="rounded w-3 h-3" />
+                  Verified
+                </label>
               </div>
             </div>
-          )}
-          </>
-        )}
-        {activeCat?.filterType === 'advert' && (
-          <p className="text-white/30 text-xs">
-            AI GF ad spot: add up to 4 client slides. Each slide rotates. Duration = 0 means no expiry (ongoing).
-          </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => {
+              const u = categories.map(c => c.slug === activeCat.slug ? { ...c, enabled: !c.enabled } : c);
+              setCategories(u); saveCats(u);
+            }} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${
+              activeCat.enabled ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+            }`}>
+              {activeCat.enabled ? 'LIVE' : 'PAUSED'}
+            </button>
+            <button onClick={() => deleteProfile(activeCat.slug)} className="px-3 py-2 rounded-lg bg-red-500/10 text-red-400 text-xs hover:bg-red-500/20 transition">Delete</button>
+          </div>
+        </div>
+
+        {/* R2 folder + max items for non-advert */}
+        {activeCat.filterType !== 'advert' && activeCat.filterType !== 'erogram' && (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] text-white/40 mb-1">R2 Folder</label>
+              <input value={activeCat.r2Folder || ''} onChange={e => updateCat(activeCat.slug, 'r2Folder', e.target.value)} onBlur={saveCurrent} placeholder="e.g. tgempire/instabaddies" className={INPUT} />
+            </div>
+            <div>
+              <label className="block text-[10px] text-white/40 mb-1">Max Items</label>
+              <input type="number" value={activeCat.maxItems ?? 3} onChange={e => updateCat(activeCat.slug, 'maxItems', parseInt(e.target.value) || 3)} onBlur={saveCurrent} className={INPUT} />
+            </div>
+          </div>
         )}
 
-        {activeSlides.length === 0 ? (
-          <div className="text-center py-8 text-white/20 text-sm">No content slides yet</div>
-        ) : (
+        {/* CTA for random-girl profiles */}
+        {activeCat.filterType === 'random-girl' && (
           <div className="space-y-2">
-            {activeSlides.map(s => (
-              <div key={s._id} className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.03] border border-white/[0.06]">
-                <div className="w-14 h-14 rounded-lg overflow-hidden bg-white/5 shrink-0">
-                  {s.mediaType === 'video' ? (
-                    <video src={s.mediaUrl} className="w-full h-full object-cover" muted />
-                  ) : (
-                    <img src={s.mediaUrl} alt="" className="w-full h-full object-cover" />
-                  )}
+            <label className="block text-[10px] text-white/40 uppercase tracking-wider font-bold">CTA on all stories from this profile</label>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] text-white/40 mb-1">CTA Text</label>
+                <input value={activeCat.ctaText || ''} onChange={e => updateCat(activeCat.slug, 'ctaText', e.target.value)} onBlur={saveCurrent} placeholder="e.g. Join Now" className={INPUT} />
+              </div>
+              <div>
+                <label className="block text-[10px] text-white/40 mb-1">CTA URL</label>
+                <input value={activeCat.ctaUrl || ''} onChange={e => updateCat(activeCat.slug, 'ctaUrl', e.target.value)} onBlur={saveCurrent} placeholder="https://..." className={INPUT} />
+              </div>
+            </div>
+            <p className="text-white/20 text-[10px]">This CTA will show on every story from R2 folder <strong className="text-white/40">{activeCat.r2Folder || '—'}</strong></p>
+          </div>
+        )}
+      </div>
+
+      {/* ── EROGRAM: group stories ── */}
+      {activeCat.filterType === 'erogram' && storyGroups.length > 0 && (
+        <div className="rounded-xl bg-white/[0.03] border border-white/10 p-4 space-y-2">
+          <h4 className="text-xs font-semibold text-white/50 uppercase tracking-wider">Group Stories ({storyGroups.length})</h4>
+          <div className="space-y-1.5">
+            {storyGroups.map(g => (
+              <div key={g._id} className="flex items-center gap-3 p-2 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+                <div className="w-8 h-8 rounded-lg overflow-hidden bg-white/5 shrink-0">
+                  <img src={g.image} alt="" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-white/80 text-sm font-medium truncate">{s.mediaUrl.split('/').pop()}</span>
-                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${s.enabled ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                      {s.enabled ? 'Active' : 'Off'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 text-[11px] text-white/30 mt-0.5">
-                    <span>{s.mediaType}</span>
-                    <span>{s.duration === 0 ? 'No expiry' : `${s.duration}h`}</span>
-                    {s.clientName && <span>Client: {s.clientName}</span>}
-                    {s.ctaText && <span>CTA: {s.ctaText}</span>}
-                    <span className="flex items-center gap-1 text-blue-400/60">
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-                      {(s.views ?? 0).toLocaleString()}
-                    </span>
-                  </div>
+                  <span className="text-white/70 text-xs font-medium truncate block">{g.name}</span>
+                  <span className="text-[10px] text-white/25">{(g.storyViews ?? 0).toLocaleString()} views</span>
                 </div>
-                <div className="flex gap-1.5">
-                  <button
-                    onClick={() => { setSlideForm(s); setShowSlideForm(true); }}
-                    className="px-2 py-1 rounded bg-white/10 text-white/60 text-xs hover:bg-white/20 transition"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => s._id && deleteSlide(s._id)}
-                    className="px-2 py-1 rounded bg-red-500/20 text-red-400 text-xs hover:bg-red-500/30 transition"
-                  >
-                    Delete
-                  </button>
-                </div>
+                <button onClick={() => hideGroup(g._id)} className="px-2 py-1 rounded bg-red-500/20 text-red-400 text-[10px] hover:bg-red-500/30 transition">Remove</button>
               </div>
             ))}
           </div>
-        )}
-      </div>
-      )}
-
-      {/* Slide form modal */}
-      {showSlideForm && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowSlideForm(false)}>
-          <div className="bg-[#1a1a1e] rounded-xl border border-white/10 p-6 w-full max-w-lg space-y-4" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-white">{slideForm._id ? 'Edit Slide' : 'Add Slide'}</h3>
-
-            <div>
-              <label className="block text-xs text-white/50 mb-1">Media URL (R2 public URL)</label>
-              <input
-                value={slideForm.mediaUrl || ''}
-                onChange={e => setSlideForm(f => ({ ...f, mediaUrl: e.target.value }))}
-                placeholder="https://pub-xxx.r2.dev/stories/AI-GF/video.mp4"
-                className={inputClass}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-white/50 mb-1">Media Type</label>
-                <select
-                  value={slideForm.mediaType || 'video'}
-                  onChange={e => setSlideForm(f => ({ ...f, mediaType: e.target.value as 'image' | 'video' }))}
-                  className={inputClass}
-                >
-                  <option value="video">Video</option>
-                  <option value="image">Image</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-white/50 mb-1">Duration (hours, 0 = no expiry)</label>
-                <input
-                  type="number"
-                  value={slideForm.duration ?? 24}
-                  onChange={e => setSlideForm(f => ({ ...f, duration: parseInt(e.target.value) || 0 }))}
-                  min={0}
-                  max={168}
-                  className={inputClass}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-white/50 mb-1">CTA Text</label>
-                <input
-                  value={slideForm.ctaText || ''}
-                  onChange={e => setSlideForm(f => ({ ...f, ctaText: e.target.value }))}
-                  placeholder="e.g. Visit Site"
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-white/50 mb-1">CTA URL</label>
-                <input
-                  value={slideForm.ctaUrl || ''}
-                  onChange={e => setSlideForm(f => ({ ...f, ctaUrl: e.target.value }))}
-                  placeholder="https://..."
-                  className={inputClass}
-                />
-              </div>
-            </div>
-
-            {activeCat?.filterType === 'advert' && (
-              <div>
-                <label className="block text-xs text-white/50 mb-1">Client Name</label>
-                <input
-                  value={slideForm.clientName || ''}
-                  onChange={e => setSlideForm(f => ({ ...f, clientName: e.target.value }))}
-                  placeholder="e.g. DreamGF"
-                  className={inputClass}
-                />
-              </div>
-            )}
-
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 text-sm text-white/70">
-                <input
-                  type="checkbox"
-                  checked={slideForm.enabled ?? true}
-                  onChange={e => setSlideForm(f => ({ ...f, enabled: e.target.checked }))}
-                  className="rounded"
-                />
-                Enabled
-              </label>
-              <div>
-                <label className="block text-xs text-white/50 mb-1">Sort Order</label>
-                <input
-                  type="number"
-                  value={slideForm.sortOrder ?? 0}
-                  onChange={e => setSlideForm(f => ({ ...f, sortOrder: parseInt(e.target.value) || 0 }))}
-                  className={inputClass + ' w-20'}
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                onClick={() => { setShowSlideForm(false); setSlideForm({}); }}
-                className="px-4 py-2 rounded-lg bg-white/10 text-white/60 text-sm hover:bg-white/20 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveSlide}
-                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition"
-              >
-                {slideForm._id ? 'Update' : 'Create'}
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
-      {/* Help info */}
-      <div className="rounded-xl bg-blue-500/5 border border-blue-500/10 p-4 space-y-2">
-        <h4 className="text-sm font-bold text-blue-400">How Stories Work</h4>
-        <ul className="text-xs text-white/40 space-y-1">
-          <li><strong className="text-white/60">EROGRAM</strong> — Auto-shows newest groups (24h). Add announcement slides with custom duration (up to 7 days).</li>
-          <li><strong className="text-white/60">Random Girl</strong> — Picks random name + random media from R2 folder each page load. Optional CTA.</li>
-          <li><strong className="text-white/60">AI GF</strong> — Ad spot: add up to 4 client slides with CTA. No time limit. Rotation.</li>
-          <li><strong className="text-white/60">Video specs</strong> — MP4 H.264, 720x1280, under 1MB. Use <code className="text-blue-300/60">ffmpeg -i in.mp4 -vf &quot;scale=720:1280&quot; -c:v libx264 -crf 30 -an -movflags +faststart -t 10 out.mp4</code></li>
-        </ul>
+      {/* ══════════════════════════════
+          UPLOAD + MEDIA CARDS
+         ══════════════════════════════ */}
+      {activeCat.filterType !== 'random-girl' && (
+        <div className="space-y-4">
+          {/* Upload zone */}
+          <div className={`rounded-xl border-2 border-dashed transition-all p-6 text-center cursor-pointer ${
+            dragOver ? 'border-blue-500 bg-blue-500/10' : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
+          }`}
+            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={e => { e.preventDefault(); setDragOver(false); uploadFiles(e.dataTransfer.files); }}
+            onClick={() => fileInputRef.current?.click()}>
+            <input ref={fileInputRef} type="file" accept="image/*,video/mp4,video/webm,video/quicktime" multiple
+              className="hidden" onChange={e => { if (e.target.files) uploadFiles(e.target.files); e.target.value = ''; }} />
+            {uploadingCount > 0 ? (
+              <div className="flex items-center justify-center gap-3">
+                <div className="w-5 h-5 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
+                <span className="text-blue-400 text-sm font-medium">Uploading {uploadingCount} file{uploadingCount > 1 ? 's' : ''}...</span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-3">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                <span className="text-white/50 text-sm">Drop images & videos here, or click to browse</span>
+              </div>
+            )}
+          </div>
+
+          {/* Media cards */}
+          {activeSlidesSorted.length === 0 ? (
+            <p className="text-center text-white/20 text-sm py-4">No stories yet. Upload media above.</p>
+          ) : (
+            <div className="space-y-2">
+              {activeSlidesSorted.map((slide, i) => (
+                <StoryCard key={slide._id} slide={slide} index={i} total={activeSlidesSorted.length}
+                  isEditing={editingSlideId === slide._id}
+                  onToggleEdit={() => setEditingSlideId(editingSlideId === slide._id ? null : (slide._id ?? null))}
+                  onUpdate={u => slide._id && updateSlide(slide._id, u)}
+                  onDelete={() => slide._id && deleteSlide(slide._id)}
+                  onMove={d => moveSlide(slide, d)} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Story card with inline editing ──
+function StoryCard({ slide, index, total, isEditing, onToggleEdit, onUpdate, onDelete, onMove }: {
+  slide: StorySlide; index: number; total: number; isEditing: boolean;
+  onToggleEdit: () => void; onUpdate: (u: Partial<StorySlide>) => void; onDelete: () => void; onMove: (d: 'up' | 'down') => void;
+}) {
+  const [cta, setCta] = useState({ text: slide.ctaText || '', url: slide.ctaUrl || '' });
+  const [caption, setCaption] = useState(slide.caption || '');
+  const [client, setClient] = useState(slide.clientName || '');
+  const [overlay, setOverlay] = useState<'none' | 'cta' | 'caption'>(
+    slide.ctaText ? 'cta' : slide.caption ? 'caption' : 'none'
+  );
+
+  const pickOverlay = (t: 'none' | 'cta' | 'caption') => {
+    setOverlay(t);
+    if (t === 'none') { setCta({ text: '', url: '' }); setCaption(''); onUpdate({ ctaText: '', ctaUrl: '', caption: '' }); }
+    else if (t === 'cta') { setCaption(''); onUpdate({ caption: '' }); }
+    else { setCta({ text: '', url: '' }); onUpdate({ ctaText: '', ctaUrl: '' }); }
+  };
+
+  return (
+    <div className={`rounded-xl border transition-all ${isEditing ? 'border-blue-500/30 bg-white/[0.04]' : 'border-white/[0.06] bg-white/[0.015] hover:bg-white/[0.03]'}`}>
+      <div className="flex items-center gap-3 p-3">
+        <div className="flex flex-col gap-0.5 shrink-0">
+          <button onClick={() => onMove('up')} disabled={index === 0} className="p-0.5 text-white/20 hover:text-white disabled:opacity-10 transition">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="18,15 12,9 6,15"/></svg>
+          </button>
+          <span className="text-[9px] text-white/15 text-center font-mono">{index + 1}</span>
+          <button onClick={() => onMove('down')} disabled={index === total - 1} className="p-0.5 text-white/20 hover:text-white disabled:opacity-10 transition">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="6,9 12,15 18,9"/></svg>
+          </button>
+        </div>
+        <div className="w-14 h-14 rounded-lg overflow-hidden bg-white/5 shrink-0 relative">
+          {slide.mediaType === 'video' ? (
+            <><video src={slide.mediaUrl} className="w-full h-full object-cover" muted preload="metadata" /><div className="absolute bottom-0.5 right-0.5 bg-black/70 rounded px-1"><svg width="7" height="7" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg></div></>
+          ) : <img src={slide.mediaUrl} alt="" className="w-full h-full object-cover" />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${slide.mediaType === 'video' ? 'bg-purple-500/15 text-purple-400' : 'bg-blue-500/15 text-blue-400'}`}>{slide.mediaType}</span>
+            {slide.ctaText && <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-green-500/15 text-green-400">CTA</span>}
+            {slide.caption && !slide.ctaText && <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-yellow-500/15 text-yellow-400">Caption</span>}
+          </div>
+          <div className="flex items-center gap-3 text-[10px] text-white/25">
+            <span>{(slide.views ?? 0).toLocaleString()} views</span>
+            <span>{(slide.likes ?? 0).toLocaleString()} likes</span>
+            {(slide.clicks ?? 0) > 0 && <span className="text-green-400/50">{(slide.clicks ?? 0).toLocaleString()} clicks</span>}
+          </div>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button onClick={onToggleEdit} className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition ${isEditing ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
+            {isEditing ? 'Done' : 'Edit'}
+          </button>
+          <button onClick={onDelete} className="p-1.5 rounded-lg text-red-400/40 hover:bg-red-500/20 hover:text-red-400 transition">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          </button>
+        </div>
       </div>
+      {isEditing && (
+        <div className="border-t border-white/[0.05] p-4 space-y-3">
+          <div>
+            <label className="block text-[10px] text-white/30 mb-2 uppercase tracking-wider font-bold">Overlay</label>
+            <div className="flex gap-2">
+              {(['none', 'cta', 'caption'] as const).map(t => (
+                <button key={t} onClick={() => pickOverlay(t)}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition ${overlay === t ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/30 hover:bg-white/10'}`}>
+                  {t === 'none' ? 'Nothing' : t === 'cta' ? 'CTA Button' : 'Caption'}
+                </button>
+              ))}
+            </div>
+          </div>
+          {overlay === 'cta' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="block text-[10px] text-white/30 mb-1">Button Text</label><input value={cta.text} onChange={e => setCta(p => ({...p, text: e.target.value}))} onBlur={() => onUpdate({ ctaText: cta.text, ctaUrl: cta.url })} placeholder="Visit Site" className={INPUT}/></div>
+              <div><label className="block text-[10px] text-white/30 mb-1">Button URL</label><input value={cta.url} onChange={e => setCta(p => ({...p, url: e.target.value}))} onBlur={() => onUpdate({ ctaText: cta.text, ctaUrl: cta.url })} placeholder="https://..." className={INPUT}/></div>
+            </div>
+          )}
+          {overlay === 'caption' && (
+            <div><label className="block text-[10px] text-white/30 mb-1">Caption</label><textarea value={caption} onChange={e => setCaption(e.target.value)} onBlur={() => onUpdate({ caption })} placeholder="Text on this story..." rows={2} className={INPUT + ' resize-none'}/></div>
+          )}
+          <div className="flex items-center gap-4">
+            <div className="flex-1"><label className="block text-[10px] text-white/30 mb-1">Client Name</label><input value={client} onChange={e => setClient(e.target.value)} onBlur={() => onUpdate({ clientName: client })} placeholder="Optional" className={INPUT}/></div>
+            <label className="flex items-center gap-2 text-[11px] text-white/40 cursor-pointer pt-4"><input type="checkbox" checked={slide.enabled} onChange={e => onUpdate({ enabled: e.target.checked })} className="rounded w-3 h-3"/>Enabled</label>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

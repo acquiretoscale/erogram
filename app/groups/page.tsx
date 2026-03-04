@@ -220,6 +220,8 @@ async function getStoryData(categories: StoryCategoryConfig[]): Promise<StoryCat
             mediaUrl: a.mediaUrl,
             ctaText: a.ctaText || '',
             ctaUrl: a.ctaUrl || '',
+            caption: a.caption || '',
+            likes: a.likes ?? 0,
           }));
 
           const hasNewContent = finalGroups.some((g: any) => new Date(g.createdAt) > twentyFourHoursAgo) || mediaSlides.length > 0;
@@ -284,16 +286,17 @@ async function getStoryData(categories: StoryCategoryConfig[]): Promise<StoryCat
             enabled: true,
           })
             .sort({ sortOrder: 1, createdAt: -1 })
-            .limit(4)
             .lean();
 
           let mediaSlides: StoryMediaSlide[] = (adminSlides as any[]).map((a) => ({
             _id: a._id.toString(),
             mediaType: a.mediaType,
             mediaUrl: a.mediaUrl,
-            ctaText: a.ctaText || cat.ctaText || '',
-            ctaUrl: a.ctaUrl || cat.ctaUrl || '',
+            ctaText: a.ctaText || '',
+            ctaUrl: a.ctaUrl || '',
             clientName: a.clientName || '',
+            caption: a.caption || '',
+            likes: a.likes ?? 0,
           }));
 
           // Fallback: if no admin slides yet, pick from R2
@@ -312,8 +315,8 @@ async function getStoryData(categories: StoryCategoryConfig[]): Promise<StoryCat
                 _id: `ad-${cat.slug}-${i}`,
                 mediaType: isVideo ? 'video' : 'image' as const,
                 mediaUrl: url,
-                ctaText: cat.ctaText || 'Try AI Girlfriend',
-                ctaUrl: cat.ctaUrl || '/bots',
+                ctaText: cat.ctaText || '',
+                ctaUrl: cat.ctaUrl || '',
               };
             });
           }

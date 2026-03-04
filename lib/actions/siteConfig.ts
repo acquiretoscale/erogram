@@ -27,9 +27,8 @@ export interface StoryCategoryConfig {
 }
 
 /** Public: get enabled story categories from SiteConfig. No auth.
- *  Merges DB-saved categories with DEFAULT_STORY_CATEGORIES.
- *  DB values win for any slug that exists in both (preserves admin edits).
- *  Extra DB-only categories (e.g. added via admin) are included too.
+ *  If admin has saved categories, uses exactly those (deleted defaults stay deleted).
+ *  Falls back to DEFAULT_STORY_CATEGORIES only if nothing is saved yet.
  */
 export async function getStoryCategories(): Promise<StoryCategoryConfig[]> {
   await connectDB();
@@ -37,27 +36,15 @@ export async function getStoryCategories(): Promise<StoryCategoryConfig[]> {
   const gs = (doc as any)?.generalSettings;
   const dbCats: StoryCategoryConfig[] = Array.isArray(gs?.storyCategories) ? gs.storyCategories : [];
 
-  const dbMap = new Map(dbCats.filter(c => c?.slug).map(c => [c.slug, c]));
-  const usedSlugs = new Set<string>();
-
-  const merged: StoryCategoryConfig[] = DEFAULT_STORY_CATEGORIES.map(def => {
-    usedSlugs.add(def.slug);
-    if (!dbMap.has(def.slug)) return def;
-    const m = { ...def, ...dbMap.get(def.slug)! };
-    if (DEFAULT_STORY_CATEGORIES.find(d => d.slug === def.slug)) {
-      m.filterType = def.filterType;
-    }
-    return m;
-  });
-
-  // Include any extra profiles added via admin (not in defaults)
-  for (const cat of dbCats) {
-    if (cat?.slug && !usedSlugs.has(cat.slug)) {
-      merged.push(cat);
-    }
+  // If admin has saved categories, use exactly what they saved
+  if (dbCats.length > 0) {
+    return dbCats
+      .filter(c => c?.slug && c.enabled)
+      .sort((a, b) => (a.sortOrder ?? 99) - (b.sortOrder ?? 99));
   }
 
-  return merged
+  // No saved categories yet — use defaults
+  return DEFAULT_STORY_CATEGORIES
     .filter(c => c.enabled)
     .sort((a, b) => (a.sortOrder ?? 99) - (b.sortOrder ?? 99));
 }
