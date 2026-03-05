@@ -22,14 +22,19 @@ async function answerPreCheckoutQuery(id: string, ok: boolean, errorMessage?: st
   });
 }
 
+const VALID_PLANS = new Set(['monthly', 'yearly', 'lifetime']);
+
 export async function POST(req: NextRequest) {
   try {
-    // Verify webhook secret if configured
-    if (WEBHOOK_SECRET) {
-      const secret = req.headers.get('x-telegram-bot-api-secret-token');
-      if (secret !== WEBHOOK_SECRET) {
-        return NextResponse.json({ ok: false }, { status: 403 });
-      }
+    // Always require webhook secret — refuse everything if not configured
+    if (!WEBHOOK_SECRET) {
+      console.error('TELEGRAM_WEBHOOK_SECRET not set — blocking all webhook requests');
+      return NextResponse.json({ ok: false }, { status: 503 });
+    }
+
+    const secret = req.headers.get('x-telegram-bot-api-secret-token');
+    if (secret !== WEBHOOK_SECRET) {
+      return NextResponse.json({ ok: false }, { status: 403 });
     }
 
     const update = await req.json();
@@ -38,21 +43,24 @@ export async function POST(req: NextRequest) {
       const query = update.pre_checkout_query;
       try {
         const payload = JSON.parse(query.invoice_payload);
-        if (!payload.userId || !payload.plan) {
+        if (!payload.userId || !payload.plan || !VALID_PLANS.has(payload.plan)) {
           await answerPreCheckoutQuery(query.id, false, 'Invalid payment data');
           return NextResponse.json({ ok: true });
         }
 
         await connectDB();
 
-        // Re-verify user is not already premium
         const user = await User.findById(payload.userId).lean() as any;
-        if (user?.premium && (!user.premiumExpiresAt || new Date(user.premiumExpiresAt) > new Date())) {
+        if (!user) {
+          await answerPreCheckoutQuery(query.id, false, 'User not found');
+          return NextResponse.json({ ok: true });
+        }
+
+        if (user.premium && (!user.premiumExpiresAt || new Date(user.premiumExpiresAt) > new Date())) {
           await answerPreCheckoutQuery(query.id, false, 'You are already a Premium member');
           return NextResponse.json({ ok: true });
         }
 
-        // Re-verify slot availability
         const taken = await User.countDocuments({
           premium: true,
           $or: [{ premiumExpiresAt: null }, { premiumExpiresAt: { $gt: new Date() } }],
@@ -76,15 +84,28 @@ export async function POST(req: NextRequest) {
         const payload = JSON.parse(payment.invoice_payload);
         const { userId, plan } = payload;
 
+        if (!userId || !plan || !VALID_PLANS.has(plan)) {
+          console.error('Webhook received invalid payload:', payload);
+          return NextResponse.json({ ok: true });
+        }
+
         await connectDB();
 
-        // Idempotency: check if this charge was already processed
+        const user = await User.findById(userId).lean() as any;
+        if (!user) {
+          console.error('Webhook payment for non-existent user:', userId);
+          return NextResponse.json({ ok: true });
+        }
+
         const chargeId = payment.provider_payment_charge_id || payment.telegram_payment_charge_id;
-        if (chargeId) {
-          const existing = await User.findOne({ lastPaymentChargeId: chargeId }).lean();
-          if (existing) {
-            return NextResponse.json({ ok: true });
-          }
+        if (!chargeId) {
+          console.error('Webhook payment missing charge ID');
+          return NextResponse.json({ ok: true });
+        }
+
+        const existing = await User.findOne({ lastPaymentChargeId: chargeId }).lean();
+        if (existing) {
+          return NextResponse.json({ ok: true });
         }
 
         const now = new Date();
@@ -92,6 +113,7 @@ export async function POST(req: NextRequest) {
           premium: true,
           premiumPlan: plan,
           premiumSince: now,
+          lastPaymentChargeId: chargeId,
         };
 
         if (plan === 'lifetime') {
@@ -106,12 +128,8 @@ export async function POST(req: NextRequest) {
           updateData.premiumExpiresAt = expiresAt;
         }
 
-        if (chargeId) {
-          updateData.lastPaymentChargeId = chargeId;
-        }
-
         await User.findByIdAndUpdate(userId, updateData);
-        logEvent({ event: 'payment_success', userId, plan, chargeId: chargeId || null });
+        logEvent({ event: 'payment_success', userId, plan, chargeId });
       } catch (err) {
         console.error('Failed to process successful payment:', err);
       }
