@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
-import { PremiumEvent, User } from '@/lib/models';
+import { PremiumEvent, User, Bookmark, BookmarkFolder } from '@/lib/models';
 import { authenticateUser } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
@@ -63,10 +63,30 @@ export async function GET(req: NextRequest) {
       premium: true,
       $or: [{ premiumExpiresAt: null }, { premiumExpiresAt: { $gt: new Date() } }],
     })
-      .select('username telegramUsername premiumPlan premiumSince premiumExpiresAt')
+      .select('username telegramUsername firstName lastName telegramId premiumPlan premiumSince premiumExpiresAt lastPaymentChargeId')
       .sort({ premiumSince: -1 })
       .lean(),
   ]);
+
+  // Collect user IDs so we can fetch bookmark/folder counts in one aggregation each
+  const premiumUserIds = (premiumUsers as any[]).map((u: any) => u._id);
+
+  const [bookmarkCounts, folderCounts] = await Promise.all([
+    Bookmark.aggregate([
+      { $match: { userId: { $in: premiumUserIds } } },
+      { $group: { _id: '$userId', count: { $sum: 1 } } },
+    ]),
+    BookmarkFolder.aggregate([
+      { $match: { userId: { $in: premiumUserIds } } },
+      { $group: { _id: '$userId', count: { $sum: 1 } } },
+    ]),
+  ]);
+
+  const bookmarksByUser = new Map<string, number>();
+  for (const row of bookmarkCounts) bookmarksByUser.set(String(row._id), row.count);
+
+  const foldersByUser = new Map<string, number>();
+  for (const row of folderCounts) foldersByUser.set(String(row._id), row.count);
 
   const countsMap: Record<string, number> = {};
   for (const e of eventCounts) {
@@ -101,12 +121,35 @@ export async function GET(req: NextRequest) {
     alreadyPremium: countsMap['already_premium'] || 0,
   };
 
+  const premiumUsersWithUsage = (premiumUsers as any[]).map((u: any) => {
+    const uid = String(u._id);
+    const expiresAt = u.premiumExpiresAt ? new Date(u.premiumExpiresAt) : null;
+    const msLeft = expiresAt ? expiresAt.getTime() - Date.now() : null;
+    const daysLeft = msLeft !== null ? Math.ceil(msLeft / 86_400_000) : null;
+    // Build a display name: firstName lastName or fallback to telegramUsername or username
+    const nameParts = [u.firstName, u.lastName].filter(Boolean).join(' ');
+    return {
+      _id: uid,
+      username: u.username,
+      displayName: nameParts || null,
+      telegramUsername: u.telegramUsername || null,
+      telegramId: u.telegramId || null,
+      premiumPlan: u.premiumPlan || null,
+      premiumSince: u.premiumSince || null,
+      premiumExpiresAt: u.premiumExpiresAt || null,
+      daysLeft,
+      isExpiringSoon: daysLeft !== null && daysLeft <= 7,
+      bookmarks: bookmarksByUser.get(uid) ?? 0,
+      folders: foldersByUser.get(uid) ?? 0,
+    };
+  });
+
   return NextResponse.json({
     funnel,
     daily,
     plans,
     recentEvents,
-    premiumUsers,
+    premiumUsers: premiumUsersWithUsage,
     period: days,
   });
 }

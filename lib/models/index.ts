@@ -552,6 +552,21 @@ premiumEventSchema.index({ event: 1, createdAt: -1 });
 premiumEventSchema.index({ userId: 1, createdAt: -1 });
 premiumEventSchema.index({ createdAt: -1 });
 
+// Stars Rate (USD/USDT per Star) — one row per UTC day
+export const starsRateSchema = new Schema(
+  {
+    date: { type: String, required: true, unique: true }, // "YYYY-MM-DD" (UTC)
+    usdtPerStar: { type: Number, required: true },
+    tonPerStar: { type: Number, required: false, default: null },
+    usdtPerTon: { type: Number, required: false, default: null },
+    source: { type: String, required: true, default: 'telegram_stars_rates' },
+    fetchedAt: { type: Date, required: true, default: Date.now },
+  },
+  { timestamps: true }
+);
+starsRateSchema.index({ date: 1 }, { unique: true });
+starsRateSchema.index({ fetchedAt: -1 });
+
 // Bookmark Schema
 export const bookmarkSchema = new Schema(
   {
@@ -598,5 +613,6 @@ export const CampaignClick = models.CampaignClick || model('CampaignClick', camp
 export const CampaignImpressionDaily = models.CampaignImpressionDaily || model('CampaignImpressionDaily', campaignImpressionDailySchema);
 export const StorySlideContent = models.StorySlideContent || model('StorySlideContent', storySlideContentSchema);
 export const PremiumEvent = models.PremiumEvent || model('PremiumEvent', premiumEventSchema);
+export const StarsRate = models.StarsRate || model('StarsRate', starsRateSchema);
 export const Bookmark = models.Bookmark || model('Bookmark', bookmarkSchema);
 export const BookmarkFolder = models.BookmarkFolder || model('BookmarkFolder', bookmarkFolderSchema);

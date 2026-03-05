@@ -61,6 +61,9 @@ export default function PremiumClient() {
   const [lifetimeSlots] = useState<number>(calcLifetimeSlots());
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
+  const [premiumPlan, setPremiumPlan] = useState<string | null>(null);
+  const [premiumSince, setPremiumSince] = useState<string | null>(null);
+  const [premiumExpiresAt, setPremiumExpiresAt] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const [awaitingPayment, setAwaitingPayment] = useState(false);
@@ -75,6 +78,9 @@ export default function PremiumClient() {
       const d = await res.json();
       if (d.premium) {
         setIsPremium(true);
+        setPremiumPlan(d.premiumPlan || null);
+        setPremiumSince(d.premiumSince || null);
+        setPremiumExpiresAt(d.premiumExpiresAt || null);
         setAwaitingPayment(false);
         if (pollRef.current) {
           clearInterval(pollRef.current);
@@ -289,9 +295,60 @@ export default function PremiumClient() {
 
           {/* Already Premium */}
           {isPremium && (
-            <div className="text-center py-5 rounded-xl border border-green-500/20 bg-green-500/[0.04] mb-3">
-              <div className="text-white font-bold mb-1">&#10003; You&apos;re Premium</div>
-              <Link href="/profile?tab=vault" className="inline-block mt-2 px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-white text-sm font-bold transition">Open Vault</Link>
+            <div className="py-5 px-5 rounded-xl border border-amber-500/25 bg-amber-500/[0.04] mb-3 space-y-3">
+              {/* Header */}
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
+                </div>
+                <span className="text-amber-400 font-bold text-sm">You&apos;re Premium</span>
+                {premiumPlan && (
+                  <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/25 capitalize">
+                    {premiumPlan}
+                  </span>
+                )}
+              </div>
+
+              {/* Subscription details */}
+              <div className="grid grid-cols-2 gap-2">
+                {premiumSince && (
+                  <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2">
+                    <p className="text-white/30 text-[9px] uppercase font-bold tracking-wider mb-0.5">Member since</p>
+                    <p className="text-white/80 text-xs font-semibold">
+                      {new Date(premiumSince).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </p>
+                  </div>
+                )}
+                <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2">
+                  <p className="text-white/30 text-[9px] uppercase font-bold tracking-wider mb-0.5">Valid until</p>
+                  {premiumExpiresAt ? (
+                    <>
+                      <p className="text-white/80 text-xs font-semibold">
+                        {new Date(premiumExpiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </p>
+                      {(() => {
+                        const msLeft = new Date(premiumExpiresAt).getTime() - Date.now();
+                        const daysLeft = Math.ceil(msLeft / 86_400_000);
+                        const isExpiringSoon = daysLeft <= 7;
+                        return (
+                          <p className={`text-[9px] font-bold mt-0.5 ${isExpiringSoon ? 'text-red-400' : 'text-white/30'}`}>
+                            {daysLeft > 0 ? `${daysLeft} day${daysLeft === 1 ? '' : 's'} left` : 'Expired'}
+                          </p>
+                        );
+                      })()}
+                    </>
+                  ) : (
+                    <p className="text-purple-400 text-xs font-bold">Lifetime ♾</p>
+                  )}
+                </div>
+              </div>
+
+              <Link
+                href="/profile?tab=vault"
+                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-white text-sm font-bold transition"
+              >
+                <span>&#128274;</span> Open Vault
+              </Link>
             </div>
           )}
 
