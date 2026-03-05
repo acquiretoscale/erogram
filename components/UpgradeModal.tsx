@@ -1,7 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+
+function trackPremiumEvent(event: string, extra?: Record<string, string | null>) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  fetch('/api/payments/track', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ event, source: 'upgrade_modal', ...extra }),
+  }).catch(() => {});
+}
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -14,8 +25,17 @@ export default function UpgradeModal({ isOpen, onClose, reason }: UpgradeModalPr
   const [error, setError] = useState('');
   const [soldOut, setSoldOut] = useState(false);
   const [slotsLeft, setSlotsLeft] = useState<number | null>(null);
+  const lastTrackedOpen = useRef(false);
 
   useEffect(() => {
+    if (isOpen && !lastTrackedOpen.current) {
+      lastTrackedOpen.current = true;
+      trackPremiumEvent('modal_open', { reason: reason || null });
+    }
+    if (!isOpen) {
+      lastTrackedOpen.current = false;
+    }
+
     if (isOpen) {
       fetch('/api/payments/slots')
         .then(r => r.json())
@@ -25,11 +45,12 @@ export default function UpgradeModal({ isOpen, onClose, reason }: UpgradeModalPr
         })
         .catch(() => {});
     }
-  }, [isOpen]);
+  }, [isOpen, reason]);
 
   if (!isOpen) return null;
 
   const handlePurchase = async (plan: 'monthly' | 'yearly' | 'lifetime') => {
+    trackPremiumEvent('plan_click', { plan });
     setLoading(plan);
     setError('');
     try {

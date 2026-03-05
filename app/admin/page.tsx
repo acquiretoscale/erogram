@@ -21,6 +21,7 @@ import UsersTab from './components/UsersTab';
 import SettingsTab from './components/SettingsTab';
 import CsvImportTab from './components/CsvImportTab';
 import StoryCategoriesTab from './components/StoryCategoriesTab';
+import PremiumTab from './components/PremiumTab';
 
 export default function AdminPage() {
   const [mounted, setMounted] = useState(false);
@@ -215,6 +216,7 @@ export default function AdminPage() {
               {activeTab === 'articles' && <ArticlesTab />}
               {activeTab === 'adverts' && <AdvertsTab />}
               {activeTab === 'advertisers' && <AdvertisersTab setActiveTab={setActiveTab} />}
+              {activeTab === 'premium' && <PremiumTab />}
               {activeTab === 'users' && <UsersTab />}
               {activeTab === 'settings' && <SettingsTab />}
               {activeTab === 'csv-import' && <CsvImportTab />}

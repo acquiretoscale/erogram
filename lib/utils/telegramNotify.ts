@@ -2,8 +2,8 @@ import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8441115133:AAFN2d6HLxcRHkrNXF3uZ1J31ZKzwBIVbNQ';
-const CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID || '@erogrampro';
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+const CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID || '';
 
 function escapeHTML(text: string = '') {
   return String(text)

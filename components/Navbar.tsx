@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import UpgradeModal from '@/components/UpgradeModal';
+
 
 const DEFAULT_NAVBAR_CTA = {
   destinationUrl: 'https://lovescape.com/create-ai-sex-girlfriend/style?userId=5ebe4f139af9bcff39155f3e9f06fbce233415fd82fd4da2a9c51ea0921d4c0e&sourceId=Erogram&creativeId=6step_hent&p1=test',
@@ -40,7 +40,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
   const userMenuRef = useRef<HTMLDivElement>(null);
   const [navbarCta, setNavbarCta] = useState<{ _id: string; destinationUrl: string; description: string; buttonText: string } | null>(null);
   const [isPremium, setIsPremium] = useState(false);
-  const [showUpgrade, setShowUpgrade] = useState(false);
+
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -140,13 +140,13 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
 
           {/* VIP Upgrade */}
           {currentUsername && !isPremium && (
-            <button
-              onClick={() => setShowUpgrade(true)}
+            <Link
+              href="/premium"
               className={`${BTN_NAV} !text-amber-400 !bg-amber-500/[0.10] !border-amber-500/25 hover:!bg-amber-500/[0.18] inline-flex items-center gap-1`}
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
               VIP
-            </button>
+            </Link>
           )}
 
           {/* User */}
@@ -189,13 +189,14 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                         Saved
                       </Link>
                       {!isPremium && (
-                        <button
-                          onClick={() => { setShowUpgrade(true); setIsUserMenuOpen(false); }}
-                          className="w-full flex items-center gap-2.5 px-4 py-2 text-[13px] font-semibold text-amber-400 hover:bg-amber-500/10 transition text-left"
+                        <Link
+                          href="/premium"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center gap-2.5 px-4 py-2 text-[13px] font-semibold text-amber-400 hover:bg-amber-500/10 transition"
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
                           Upgrade to VIP
-                        </button>
+                        </Link>
                       )}
                       <div className="border-t border-white/5 mt-1 pt-1">
                         <button
@@ -299,13 +300,14 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                 Saved
               </Link>
               {!isPremium && (
-                <button
-                  onClick={() => { setShowUpgrade(true); setIsMenuOpen(false); }}
+                <Link
+                  href="/premium"
+                  onClick={() => setIsMenuOpen(false)}
                   className="w-full px-4 py-2.5 rounded-lg text-[14px] font-semibold text-center text-amber-400 bg-amber-500/[0.08] border border-amber-500/20 hover:bg-amber-500/[0.15] transition flex items-center justify-center gap-1.5"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
                   Upgrade to VIP
-                </button>
+                </Link>
               )}
               <button
                 onClick={handleLogout}
@@ -326,7 +328,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
         </div>
       </motion.div>
 
-      <UpgradeModal isOpen={showUpgrade} onClose={() => setShowUpgrade(false)} reason="bookmark_limit" />
+
     </motion.nav>
   );
 }

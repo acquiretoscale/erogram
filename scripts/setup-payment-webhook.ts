@@ -10,13 +10,24 @@
  * You only need to run this once (or again if you change the domain).
  */
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8441115133:AAFN2d6HLxcRHkrNXF3uZ1J31ZKzwBIVbNQ';
+const BOT_TOKEN = process.env.TELEGRAM_PAYMENT_BOT_TOKEN || '';
+const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET || '';
+
+if (!BOT_TOKEN) {
+  console.error('TELEGRAM_PAYMENT_BOT_TOKEN is not set. Aborting.');
+  process.exit(1);
+}
+if (!WEBHOOK_SECRET) {
+  console.error('TELEGRAM_WEBHOOK_SECRET is not set. Aborting — the webhook must be secured.');
+  process.exit(1);
+}
 const WEBHOOK_URL = 'https://erogram.pro/api/payments/webhook';
 
 async function main() {
   console.log('Setting up Telegram webhook for payments...');
   console.log(`Bot token: ${BOT_TOKEN.substring(0, 10)}...`);
   console.log(`Webhook URL: ${WEBHOOK_URL}`);
+  console.log(`Webhook secret: ${WEBHOOK_SECRET.substring(0, 8)}...`);
 
   // First check current webhook
   const infoRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo`);
@@ -30,6 +41,7 @@ async function main() {
     body: JSON.stringify({
       url: WEBHOOK_URL,
       allowed_updates: ['message', 'pre_checkout_query'],
+      secret_token: WEBHOOK_SECRET,
     }),
   });
 

@@ -47,8 +47,8 @@ const MOCK_STORIES: StoryCategory[] = [
     storyType: 'advert',
     groups: [],
     mediaSlides: [
-      { _id: 'ad1', mediaType: 'image', mediaUrl: `${PLACEHOLDER}AI+GF+1`, ctaText: 'Try Now', ctaUrl: '/bots', clientName: 'DreamGF' },
-      { _id: 'ad2', mediaType: 'image', mediaUrl: `${PLACEHOLDER}AI+GF+2`, ctaText: 'Get Started', ctaUrl: '/bots', clientName: 'CandyAI' },
+      { _id: 'ad1', mediaType: 'image', mediaUrl: `${PLACEHOLDER}AI+GF+1`, ctaText: 'Try Now', ctaUrl: '/bots', clientName: 'DreamGF', likes: 42 },
+      { _id: 'ad2', mediaType: 'image', mediaUrl: `${PLACEHOLDER}AI+GF+2`, caption: 'Your perfect AI companion awaits', clientName: 'CandyAI', likes: 18 },
     ],
   },
   {

@@ -49,13 +49,6 @@ function AdvertRow({ advert, onEdit, onDelete }: { advert: any; onEdit: (advert:
                     </div>
                 )}
             </td>
-            <td className="px-6 py-4 text-gray-400 text-sm">{advert.category}</td>
-            <td className="px-6 py-4 text-gray-400 text-sm">{advert.country}</td>
-            <td className="px-6 py-4">
-                <a href={advert.url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 hover:underline text-sm truncate block max-w-xs transition-colors">
-                    {advert.url}
-                </a>
-            </td>
             <td className="px-6 py-4">
                 <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${advert.status === 'active'
                     ? 'bg-green-500/10 text-green-400 border-green-500/20'
@@ -67,7 +60,8 @@ function AdvertRow({ advert, onEdit, onDelete }: { advert: any; onEdit: (advert:
             <td className="px-6 py-4">
                 {advert.pinned ? '⭐' : '-'}
             </td>
-            <td className="px-6 py-4 text-gray-400 text-sm">{advert.clickCount || 0}</td>
+            <td className="px-6 py-4 text-gray-400 text-sm">{(advert.views || 0).toLocaleString()}</td>
+            <td className="px-6 py-4 text-gray-400 text-sm">{(advert.clickCount || 0).toLocaleString()}</td>
             <td className="px-6 py-4">
                 <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
@@ -117,6 +111,7 @@ export default function AdvertsTab() {
         button3Url: '',
     });
     const [isSaving, setIsSaving] = useState(false);
+    const [sortByClicks, setSortByClicks] = useState(false);
     const [showSiteConfig, setShowSiteConfig] = useState(false);
     const [siteConfig, setSiteConfig] = useState({
         filterBanner1: { enabled: false, title: '', description: '', image: '', url: '', buttonText: 'Visit Site' },
@@ -375,11 +370,18 @@ export default function AdvertsTab() {
         }
     };
 
-    const filteredAdverts = adverts.filter((advert) =>
-        advert.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        advert.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        advert.country.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredAdverts = adverts
+        .filter((advert) =>
+            advert.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            advert.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            advert.country?.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        .sort((a, b) => sortByClicks ? (b.clickCount || 0) - (a.clickCount || 0) : 0);
+
+    const totalClicks = adverts.reduce((sum, a) => sum + (a.clickCount || 0), 0);
+    const totalViews = adverts.reduce((sum, a) => sum + (a.views || 0), 0);
+    const activeAdverts = adverts.filter(a => a.status === 'active').length;
+    const overallCTR = totalViews > 0 ? ((totalClicks / totalViews) * 100).toFixed(2) : '0.00';
 
     if (showEditor) {
         return (
@@ -691,6 +693,30 @@ export default function AdvertsTab() {
                 </div>
             </div>
 
+            {/* Stats Summary */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="glass rounded-2xl p-5 border border-white/5">
+                    <p className="text-xs font-bold text-[#666] uppercase tracking-wider mb-1">Total Views</p>
+                    <p className="text-2xl font-black text-white">{totalViews.toLocaleString()}</p>
+                    <p className="text-xs text-[#999] mt-1">Across all adverts</p>
+                </div>
+                <div className="glass rounded-2xl p-5 border border-white/5">
+                    <p className="text-xs font-bold text-[#666] uppercase tracking-wider mb-1">Total Clicks</p>
+                    <p className="text-2xl font-black text-white">{totalClicks.toLocaleString()}</p>
+                    <p className="text-xs text-[#999] mt-1">Across all adverts</p>
+                </div>
+                <div className="glass rounded-2xl p-5 border border-white/5">
+                    <p className="text-xs font-bold text-[#666] uppercase tracking-wider mb-1">CTR</p>
+                    <p className="text-2xl font-black text-white">{overallCTR}%</p>
+                    <p className="text-xs text-[#999] mt-1">Click-through rate</p>
+                </div>
+                <div className="glass rounded-2xl p-5 border border-white/5">
+                    <p className="text-xs font-bold text-[#666] uppercase tracking-wider mb-1">Active Ads</p>
+                    <p className="text-2xl font-black text-white">{activeAdverts}</p>
+                    <p className="text-xs text-[#999] mt-1">of {adverts.length} total</p>
+                </div>
+            </div>
+
             {/* Search */}
             <div className="glass rounded-2xl p-6 border border-white/5">
                 <div className="relative">
@@ -723,12 +749,17 @@ export default function AdvertsTab() {
                                 <tr>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">Image</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">Name</th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">Category</th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">Country</th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">URL</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">Status</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">Pinned</th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">Clicks</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">Views</th>
+                                    <th
+                                        className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider cursor-pointer select-none hover:text-white transition-colors"
+                                        onClick={() => setSortByClicks(!sortByClicks)}
+                                    >
+                                        <span className={sortByClicks ? 'text-[#b31b1b]' : 'text-[#666]'}>
+                                            Clicks {sortByClicks ? '↓' : '↕'}
+                                        </span>
+                                    </th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>

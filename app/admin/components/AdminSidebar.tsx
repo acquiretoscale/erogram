@@ -24,6 +24,7 @@ const tabs = [
     { id: 'articles', name: 'Articles', icon: '📝' },
     { id: 'adverts', name: 'Adverts', icon: '📢' },
     { id: 'advertisers', name: 'Advertisers', icon: '💰' },
+    { id: 'premium', name: 'Premium', icon: '💎' },
     { id: 'users', name: 'Users', icon: '👤' },
     { id: 'settings', name: 'Settings', icon: '⚙️' },
 ];

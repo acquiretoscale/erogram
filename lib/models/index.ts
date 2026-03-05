@@ -518,6 +518,40 @@ export const storySlideContentSchema = new Schema(
 );
 storySlideContentSchema.index({ categorySlug: 1, enabled: 1, expiresAt: 1 });
 
+// Premium Funnel Event Schema
+export const premiumEventSchema = new Schema(
+  {
+    event: {
+      type: String,
+      required: true,
+      enum: [
+        'page_view',        // visited /premium
+        'modal_open',       // UpgradeModal shown (bookmark/folder limit)
+        'plan_click',       // clicked "Grab the Deal"
+        'invoice_created',  // server created Telegram Stars invoice link
+        'invoice_error',    // server failed to create invoice
+        'pre_checkout',     // Telegram pre_checkout_query received
+        'payment_success',  // Telegram successful_payment processed
+        'already_premium',  // user tried to buy but already premium
+        'slots_full',       // all 100 slots taken
+      ],
+    },
+    userId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    username: { type: String, default: null },
+    plan: { type: String, enum: ['monthly', 'yearly', 'lifetime', null], default: null },
+    source: { type: String, enum: ['premium_page', 'upgrade_modal', 'server'], default: null },
+    reason: { type: String, default: null },
+    errorMessage: { type: String, default: null },
+    chargeId: { type: String, default: null },
+    ip: { type: String, default: null },
+    userAgent: { type: String, default: null },
+  },
+  { timestamps: true }
+);
+premiumEventSchema.index({ event: 1, createdAt: -1 });
+premiumEventSchema.index({ userId: 1, createdAt: -1 });
+premiumEventSchema.index({ createdAt: -1 });
+
 // Bookmark Schema
 export const bookmarkSchema = new Schema(
   {
@@ -563,5 +597,6 @@ export const Campaign = models.Campaign || model('Campaign', campaignSchema);
 export const CampaignClick = models.CampaignClick || model('CampaignClick', campaignClickSchema);
 export const CampaignImpressionDaily = models.CampaignImpressionDaily || model('CampaignImpressionDaily', campaignImpressionDailySchema);
 export const StorySlideContent = models.StorySlideContent || model('StorySlideContent', storySlideContentSchema);
+export const PremiumEvent = models.PremiumEvent || model('PremiumEvent', premiumEventSchema);
 export const Bookmark = models.Bookmark || model('Bookmark', bookmarkSchema);
 export const BookmarkFolder = models.BookmarkFolder || model('BookmarkFolder', bookmarkFolderSchema);

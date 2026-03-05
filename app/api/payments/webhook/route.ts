@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
-import { User } from '@/lib/models';
+import { User, PremiumEvent } from '@/lib/models';
 import { MAX_PREMIUM_SLOTS } from '@/lib/auth';
+
+function logEvent(data: Record<string, any>) {
+  PremiumEvent.create({ source: 'server', ...data }).catch(() => {});
+}
 
 const BOT_TOKEN = process.env.TELEGRAM_PAYMENT_BOT_TOKEN || '';
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET || '';
@@ -58,6 +62,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ ok: true });
         }
 
+        logEvent({ event: 'pre_checkout', userId: payload.userId, plan: payload.plan });
         await answerPreCheckoutQuery(query.id, true);
       } catch {
         await answerPreCheckoutQuery(query.id, false, 'Error processing payment');
@@ -106,6 +111,7 @@ export async function POST(req: NextRequest) {
         }
 
         await User.findByIdAndUpdate(userId, updateData);
+        logEvent({ event: 'payment_success', userId, plan, chargeId: chargeId || null });
       } catch (err) {
         console.error('Failed to process successful payment:', err);
       }

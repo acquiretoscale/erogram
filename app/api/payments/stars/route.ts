@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
-import { User } from '@/lib/models';
+import { User, PremiumEvent } from '@/lib/models';
 import { authenticateUser, MAX_PREMIUM_SLOTS } from '@/lib/auth';
 
 const BOT_TOKEN = process.env.TELEGRAM_PAYMENT_BOT_TOKEN || '';
@@ -10,6 +10,10 @@ const PLANS = {
   yearly: { title: 'Erogram VIP (Yearly)', description: 'Unlimited bookmarks, folders & exclusive unlisted groups for 1 year — 72% OFF', amount: 2000, days: 365 },
   lifetime: { title: 'Erogram VIP (Lifetime)', description: 'Unlimited VIP access forever — all features, all updates, no renewals', amount: 10000, days: null },
 } as const;
+
+function logEvent(data: Record<string, any>) {
+  PremiumEvent.create({ source: 'server', ...data }).catch(() => {});
+}
 
 export async function POST(req: NextRequest) {
   if (!BOT_TOKEN) {
@@ -21,6 +25,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
   if (user.premium) {
+    logEvent({ event: 'already_premium', userId: user._id, username: user.username });
     return NextResponse.json({ message: 'You are already a VIP member' }, { status: 400 });
   }
 
@@ -30,6 +35,7 @@ export async function POST(req: NextRequest) {
     $or: [{ premiumExpiresAt: null }, { premiumExpiresAt: { $gt: new Date() } }],
   });
   if (premiumCount >= MAX_PREMIUM_SLOTS) {
+    logEvent({ event: 'slots_full', userId: user._id, username: user.username });
     return NextResponse.json({ message: 'All VIP slots are taken. Check back later.', soldOut: true }, { status: 403 });
   }
 
@@ -59,12 +65,15 @@ export async function POST(req: NextRequest) {
 
     if (!data.ok) {
       console.error('Telegram createInvoiceLink failed:', data);
+      logEvent({ event: 'invoice_error', userId: user._id, username: user.username, plan, errorMessage: JSON.stringify(data) });
       return NextResponse.json({ message: 'Failed to create invoice' }, { status: 500 });
     }
 
+    logEvent({ event: 'invoice_created', userId: user._id, username: user.username, plan });
     return NextResponse.json({ url: data.result });
   } catch (err) {
     console.error('Payment error:', err);
+    logEvent({ event: 'invoice_error', userId: user._id, username: user.username, plan, errorMessage: String(err) });
     return NextResponse.json({ message: 'Server error' }, { status: 500 });
   }
 }

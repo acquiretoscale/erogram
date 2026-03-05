@@ -1,8 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
+
+function trackPremiumEvent(event: string, extra?: Record<string, string | null>) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  fetch('/api/payments/track', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ event, source: 'premium_page', ...extra }),
+  }).catch(() => {});
+}
 
 // Slots decrease 1/day from launch date, floored at minimum
 const LAUNCH = new Date('2025-03-01').getTime();
@@ -52,15 +63,39 @@ export default function PremiumClient() {
   const [isPremium, setIsPremium] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
+  const [awaitingPayment, setAwaitingPayment] = useState(false);
+  const tracked = useRef(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const checkPremiumStatus = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return false;
+    try {
+      const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+      const d = await res.json();
+      if (d.premium) {
+        setIsPremium(true);
+        setAwaitingPayment(false);
+        if (pollRef.current) {
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+        }
+        return true;
+      }
+    } catch { /* ignore */ }
+    return false;
+  }, []);
 
   useEffect(() => {
+    if (!tracked.current) {
+      tracked.current = true;
+      trackPremiumEvent('page_view');
+    }
+
     const token = localStorage.getItem('token');
     if (token) {
       setIsLoggedIn(true);
-      fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => r.json())
-        .then(d => { if (d.premium) setIsPremium(true); })
-        .catch(() => {});
+      checkPremiumStatus();
     }
     fetch('/api/payments/slots')
       .then(r => r.json())
@@ -78,17 +113,36 @@ export default function PremiumClient() {
       if (remaining === 0) localStorage.removeItem(TIMER_KEY);
     }, 1000);
 
-    return () => clearInterval(tick);
-  }, []);
+    return () => {
+      clearInterval(tick);
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [checkPremiumStatus]);
 
   const handlePurchase = async (plan: 'monthly' | 'yearly' | 'lifetime') => {
     if (!isLoggedIn) { window.location.href = '/login?redirect=/premium'; return; }
+    trackPremiumEvent('plan_click', { plan });
     setLoading(plan);
     setError('');
     try {
       const token = localStorage.getItem('token');
       const res = await axios.post('/api/payments/stars', { plan }, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.data?.url) window.open(res.data.url, '_blank');
+      if (res.data?.url) {
+        window.open(res.data.url, '_blank');
+        // Poll for premium status every 5s for up to 10 minutes after invoice opens
+        setAwaitingPayment(true);
+        if (pollRef.current) clearInterval(pollRef.current);
+        let attempts = 0;
+        pollRef.current = setInterval(async () => {
+          attempts++;
+          await checkPremiumStatus();
+          if (attempts >= 120) {
+            clearInterval(pollRef.current!);
+            pollRef.current = null;
+            setAwaitingPayment(false);
+          }
+        }, 5000);
+      }
     } catch (err: any) {
       if (err?.response?.data?.soldOut) setSoldOut(true);
       setError(err?.response?.data?.message || 'Failed to create payment');
@@ -221,6 +275,13 @@ export default function PremiumClient() {
               <span className="text-white/80 text-[13px]"><strong className="text-white">Early Access</strong> to new features</span>
             </div>
           </div>
+
+          {awaitingPayment && !isPremium && (
+            <div className="mb-3 px-3 py-3 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center gap-2.5">
+              <svg className="animate-spin shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+              <span className="text-amber-400 text-xs font-medium">Complete payment in Telegram — this page will update automatically once confirmed.</span>
+            </div>
+          )}
 
           {error && (
             <div className="mb-3 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center">{error}</div>

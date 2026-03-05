@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
 import { User } from '@/lib/models';
-
-const MAX_PREMIUM_SLOTS = 100;
+import { MAX_PREMIUM_SLOTS } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
