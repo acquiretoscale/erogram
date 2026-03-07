@@ -69,6 +69,8 @@ export default function StoryCategoriesTab() {
   const [editingSlideId, setEditingSlideId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [isGeneratingPremium, setIsGeneratingPremium] = useState(false);
+  const [storiesVisible, setStoriesVisible] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function token(): string {
@@ -87,6 +89,7 @@ export default function StoryCategoriesTab() {
       const gs = configRes.data?.generalSettings || {};
       const saved: StoryCategoryConfig[] = Array.isArray(gs.storyCategories) ? gs.storyCategories : [];
       setCategories(saved.length > 0 ? saved : DEFAULT_CATEGORIES);
+      setStoriesVisible(gs.showStories !== false);
       setSlides(slidesRes.data || []);
       setStoryGroups(groupsRes.data?.groups || []);
     } catch (err) {
@@ -114,6 +117,19 @@ export default function StoryCategoriesTab() {
       setSaveMsg({ ok: false, text: err?.response?.status === 401 ? 'Session expired' : 'Save failed' });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const toggleStoriesVisibility = async () => {
+    const newVal = !storiesVisible;
+    setStoriesVisible(newVal);
+    try {
+      await axios.put('/api/admin/site-config', { generalSettings: { showStories: newVal } }, authH());
+      setSaveMsg({ ok: true, text: newVal ? 'Stories visible' : 'Stories hidden' });
+      setTimeout(() => setSaveMsg(null), 2500);
+    } catch {
+      setStoriesVisible(!newVal);
+      setSaveMsg({ ok: false, text: 'Failed to update' });
     }
   };
 
@@ -223,6 +239,23 @@ export default function StoryCategoriesTab() {
     } catch (err) { console.error('Hide failed:', err); }
   };
 
+  const generatePremiumStories = async () => {
+    try {
+      setIsGeneratingPremium(true);
+      setSaveMsg(null);
+      const res = await axios.get('/api/admin/generate-premium-stories', authH());
+      const d = res.data;
+      setSaveMsg({ ok: true, text: `Created ${d.slidesCreated ?? 0} slide(s) from ${d.groupsUsed ?? 0} groups` });
+      setTimeout(() => setSaveMsg(null), 5000);
+      loadData();
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Generation failed';
+      setSaveMsg({ ok: false, text: msg });
+    } finally {
+      setIsGeneratingPremium(false);
+    }
+  };
+
   const activeCat = activeSlug ? categories.find(c => c.slug === activeSlug) : null;
   const activeSlidesSorted = slides.filter(s => s.categorySlug === activeSlug).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
@@ -250,8 +283,14 @@ export default function StoryCategoriesTab() {
             <h2 className="text-xl font-bold text-white">Stories</h2>
             <p className="text-white/40 text-sm mt-1">Select a profile to manage, or create a new one.</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {saveMsg && <span className={`text-xs ${saveMsg.ok ? 'text-green-400' : 'text-red-400'}`}>{saveMsg.text}</span>}
+            <button
+              onClick={toggleStoriesVisibility}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${storiesVisible ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'}`}
+            >
+              {storiesVisible ? '● LIVE' : '● OFF'}
+            </button>
             <button onClick={() => saveCats()} disabled={isSaving}
               className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium disabled:opacity-50 transition">
               {isSaving ? 'Saving...' : 'Save Order'}
@@ -487,6 +526,38 @@ export default function StoryCategoriesTab() {
           </div>
         )}
       </div>
+
+      {/* ── EROGRAM: premium stories generator ── */}
+      {activeCat.filterType === 'erogram' && (
+        <div className="rounded-xl bg-white/[0.03] border border-white/10 p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h4 className="text-xs font-semibold text-white/70 uppercase tracking-wider mb-0.5">Premium Stories</h4>
+              <p className="text-[11px] text-white/30">Auto-drops 2 story slides every 24h showing the latest 8 premium channels (4 per slide), with half-blurred names and an &quot;Unlock Premium&quot; CTA.</p>
+            </div>
+            <button
+              onClick={generatePremiumStories}
+              disabled={isGeneratingPremium}
+              className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-white disabled:opacity-50 transition active:scale-[0.97]"
+              style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
+            >
+              {isGeneratingPremium ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Generating…
+                </>
+              ) : (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <path d="M13.5 2c-5.629 0-10.212 4.436-10.475 10h-3.025l4.537 5.917 4.463-5.917h-2.975c.26-3.902 3.508-7 7.475-7 4.136 0 7.5 3.364 7.5 7.5s-3.364 7.5-7.5 7.5c-2.381 0-4.502-1.119-5.876-2.854l-1.847 2.449c1.919 2.088 4.664 3.405 7.723 3.405 5.798 0 10.5-4.702 10.5-10.5s-4.702-10.5-10.5-10.5z"/>
+                  </svg>
+                  Generate Now
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── EROGRAM: group stories ── */}
       {activeCat.filterType === 'erogram' && storyGroups.length > 0 && (

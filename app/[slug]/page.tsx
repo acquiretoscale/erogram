@@ -20,6 +20,41 @@ function safeImageUrl(img: unknown, fallback: string): string {
   return (typeof img === 'string' && img.startsWith('https://')) ? img : fallback;
 }
 
+async function getVaultTeaser() {
+  try {
+    await connectDB();
+    let groups = await Group.find({ showOnVaultTeaser: true, premiumOnly: true, status: 'approved' })
+      .sort({ vaultTeaserOrder: 1 })
+      .select('name image category country memberCount vaultTeaserOrder vaultCategories')
+      .lean();
+
+    if (groups.length > 12) {
+      const shuffled = [...groups].sort(() => Math.random() - 0.5);
+      groups = shuffled.slice(0, 12);
+    }
+
+    if (groups.length === 0) {
+      groups = await Group.find({ premiumOnly: true, status: 'approved' })
+        .sort({ createdAt: -1 })
+        .limit(12)
+        .select('name image category country memberCount vaultCategories')
+        .lean();
+    }
+
+    return (groups as any[]).map(g => ({
+      _id: g._id.toString(),
+      name: (g.name || '') as string,
+      image: (g.image || '') as string,
+      category: (g.category || '') as string,
+      country: (g.country || '') as string,
+      memberCount: (g.memberCount || 0) as number,
+      vaultCategories: (g as any).vaultCategories || [],
+    }));
+  } catch {
+    return [];
+  }
+}
+
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
@@ -85,20 +120,22 @@ async function getGroup(slug: string) {
       .select('authorName content rating createdAt')
       .lean();
 
+    const isPremium = (group as any).premiumOnly === true;
+
     const result = {
       _id: (group as any)._id.toString(),
       name: (group as any).name,
       slug: (group as any).slug,
       category: (group as any).category,
       country: (group as any).country,
-      telegramLink: (group as any).telegramLink,
+      telegramLink: isPremium ? '' : (group as any).telegramLink,
       description: (group as any).description,
       image: safeImageUrl((group as any).image, PLACEHOLDER_REL),
       views: (group as any).views || 0,
       memberCount: (group as any).memberCount || 0,
       createdAt: (group as any).createdAt,
       status: (group as any).status as string,
-      premiumOnly: (group as any).premiumOnly || false,
+      premiumOnly: isPremium,
       reviews: reviews.map((r: any) => ({
         _id: r._id.toString(),
         authorName: r.authorName || 'Anonymous',
@@ -518,7 +555,7 @@ export default async function JoinPage({ params }: PageProps) {
       name: group.name,
       description: group.description,
       url: pageUrl,
-      sameAs: group.telegramLink,
+      ...(group.telegramLink ? { sameAs: group.telegramLink } : {}),
       image: safeImageUrl(group.image, PLACEHOLDER_ABS),
       foundingDate: group.createdAt ? new Date(group.createdAt).getFullYear().toString() : undefined,
       memberOf: {
@@ -539,9 +576,10 @@ export default async function JoinPage({ params }: PageProps) {
       };
     }
 
-    const [joinCtaCampaigns, topBannerCampaigns] = await Promise.all([
+    const [joinCtaCampaigns, topBannerCampaigns, vaultTeaser] = await Promise.all([
       getActiveCampaigns('join-cta'),
       getActiveCampaigns('top-banner'),
+      getVaultTeaser(),
     ]);
     const joinCtaCampaign = joinCtaCampaigns[0] ?? null;
     const topBannerForPage =
@@ -561,7 +599,7 @@ export default async function JoinPage({ params }: PageProps) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
-        <JoinClient entity={group} type="group" similarGroups={similarGroups} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} isDeleted={group.status === 'deleted'} />
+        <JoinClient entity={group} type="group" similarGroups={similarGroups} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} isDeleted={group.status === 'deleted'} vaultTeaser={vaultTeaser} />
       </>
     );
   }
@@ -636,13 +674,14 @@ export default async function JoinPage({ params }: PageProps) {
       } : undefined,
     };
 
-    const [joinCtaCampaigns, topBannerCampaigns] = await Promise.all([
+    const [joinCtaCampaigns2, topBannerCampaigns2, vaultTeaser2] = await Promise.all([
       getActiveCampaigns('join-cta'),
       getActiveCampaigns('top-banner'),
+      getVaultTeaser(),
     ]);
-    const joinCtaCampaign = joinCtaCampaigns[0] ?? null;
+    const joinCtaCampaign = joinCtaCampaigns2[0] ?? null;
     const topBannerForPage =
-      topBannerCampaigns.length > 0 && topBannerCampaigns[0].creative ? topBannerCampaigns : [];
+      topBannerCampaigns2.length > 0 && topBannerCampaigns2[0].creative ? topBannerCampaigns2 : [];
 
     return (
       <>
@@ -658,7 +697,7 @@ export default async function JoinPage({ params }: PageProps) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplicationJsonLd) }}
         />
-        <JoinClient entity={bot} type="bot" similarGroups={[]} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} />
+        <JoinClient entity={bot} type="bot" similarGroups={[]} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} vaultTeaser={vaultTeaser2} />
       </>
     );
   }

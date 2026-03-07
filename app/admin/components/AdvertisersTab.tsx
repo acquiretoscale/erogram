@@ -188,11 +188,15 @@ function isTextOnlySlot(slot: string): boolean {
   return s === 'navbar-cta' || s === 'join-cta' || s === 'filter-cta';
 }
 
+type SectionTabType = 'overview' | 'slots' | 'buttonsBanners' | 'advertisers' | 'feedAds';
+
 interface AdvertisersTabProps {
   setActiveTab?: (tab: string) => void;
+  initialSection?: SectionTabType;
+  hideSectionTabs?: boolean;
 }
 
-export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {}) {
+export default function AdvertisersTab({ setActiveTab, initialSection = 'overview', hideSectionTabs = false }: AdvertisersTabProps) {
   const [advertisers, setAdvertisers] = useState<AdvertiserRow[]>([]);
   const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
   const [slots, setSlots] = useState<SlotInfo[]>([]);
@@ -241,7 +245,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
   const [feedAdsCustomTo, setFeedAdsCustomTo] = useState('');
   const [allAdsFilterSlot, setAllAdsFilterSlot] = useState<string>('all');
   const [managedSlot, setManagedSlot] = useState<string | null>(null);
-  const [sectionTab, setSectionTab] = useState<'overview' | 'slots' | 'buttonsBanners' | 'advertisers' | 'feedAds'>('overview');
+  const [sectionTab, setSectionTab] = useState<SectionTabType>(initialSection);
   // Slots from API = top-banner, homepage-hero, feed, navbar-cta, join-cta, filter-cta
   const displaySlots = slots;
   const [campaignStatusFilter, setCampaignStatusFilter] = useState<'all' | 'live' | 'ended' | 'paused'>('all');

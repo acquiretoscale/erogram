@@ -32,11 +32,15 @@ export async function GET(req: NextRequest) {
     const isPremium = u.premium === true &&
       (!u.premiumExpiresAt || new Date(u.premiumExpiresAt) > new Date());
 
+    const authProvider: 'telegram' | 'google' | 'password' =
+      u.telegramId ? 'telegram' : u.googleId ? 'google' : 'password';
+
     return NextResponse.json({
       id: user._id,
       username: user.username,
       email: user.email,
       isAdmin: user.isAdmin,
+      authProvider,
       premium: isPremium,
       premiumPlan: isPremium ? (u.premiumPlan || null) : null,
       premiumSince: isPremium ? (u.premiumSince || null) : null,

@@ -50,6 +50,16 @@ interface JoinCtaCampaign {
   buttonText: string;
 }
 
+interface VaultTeaserItem {
+  _id: string;
+  name: string;
+  image: string;
+  category: string;
+  country: string;
+  memberCount: number;
+  vaultCategories?: string[];
+}
+
 interface JoinClientProps {
   entity: Entity;
   type: 'group' | 'bot';
@@ -67,6 +77,7 @@ interface JoinClientProps {
   joinCtaCampaign?: JoinCtaCampaign | null;
   topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string; slot: string }>;
   isDeleted?: boolean;
+  vaultTeaser?: VaultTeaserItem[];
 }
 
 interface PopupAdvert {
@@ -89,7 +100,84 @@ const DEFAULT_JOIN_CTA = {
   description: 'Build your own AI girlfriend 💖',
 };
 
-export default function JoinClient({ entity, type, similarGroups = [], initialIsMobile = false, initialIsTelegram = false, joinCtaCampaign = null, topBannerCampaigns = [], isDeleted = false }: JoinClientProps) {
+function VaultTeaserBlock({ items }: { items: VaultTeaserItem[] }) {
+  const fmtNum = (n: number) => n >= 1_000_000 ? (n/1_000_000).toFixed(1)+'M' : n >= 1_000 ? (n/1_000).toFixed(n>=10_000?0:1)+'K' : n > 0 ? String(n) : null;
+
+  return (
+    <Link href="/premium" target="_blank" className="block mb-12 group/vault cursor-pointer">
+      <div className="text-center mb-4">
+        <span
+          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.25em] mb-3"
+          style={{ background: 'rgba(201,151,58,0.08)', border: '1px solid rgba(201,151,58,0.2)', color: '#b8964e' }}
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          Private Vault
+        </span>
+        <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+          Premium <span style={{ background: 'linear-gradient(135deg, #c9973a, #e8ba5a)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Secret Vault</span>
+        </h2>
+        <p className="text-white/30 text-xs mt-1">Exclusive groups only visible to Premium members</p>
+      </div>
+
+      <div
+        className="relative rounded-2xl overflow-hidden p-3 sm:p-4 transition-all group-hover/vault:scale-[1.01]"
+        style={{ background: 'linear-gradient(160deg, #0f0d09 0%, #110e08 60%, #0d0b07 100%)', border: '1px solid #2a1f0e' }}
+      >
+        <div className="absolute top-0 right-0 w-56 h-56 blur-3xl opacity-[0.06] rounded-full pointer-events-none" style={{ background: 'radial-gradient(ellipse, #c9973a 0%, transparent 60%)' }} />
+
+        <div className="relative grid grid-cols-2 gap-1.5">
+          {items.map(g => {
+            const fmt = fmtNum(g.memberCount);
+            const cats = g.vaultCategories && g.vaultCategories.length > 0 ? g.vaultCategories : [g.category];
+            return (
+              <div
+                key={g._id}
+                className="relative rounded-lg flex items-center gap-2 px-2 py-1.5 select-none"
+                style={{ background: 'linear-gradient(135deg, #120f09 0%, #150f08 100%)', border: '1px solid #2a1f0e' }}
+              >
+                <div className="absolute left-0 top-0 bottom-0 w-px" style={{ background: 'linear-gradient(180deg, transparent, #c9973a44, transparent)' }} />
+                <div className="shrink-0 w-8 h-8 rounded-md overflow-hidden" style={{ border: '1px solid #2e2010' }}>
+                  <img src={g.image || '/assets/placeholder-no-image.png'} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-[10px] truncate leading-tight mb-0.5 select-none pointer-events-none" aria-hidden="true">
+                    <span className="text-white">{g.name.slice(0, 4)}</span><span style={{ filter: 'blur(4px)', color: '#fff' }}>{g.name.slice(4) || '····'}</span>
+                  </div>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {cats.map((c, i) => (
+                      <span key={c} className="text-[7px] font-black uppercase tracking-[0.06em] px-1 py-0.5 rounded shrink-0" style={{ background: i === 0 ? '#1a1408' : '#12100a', border: '1px solid #c9973a22', color: i === 0 ? '#c9973a' : '#7a6040' }}>{c}</span>
+                    ))}
+                    {g.country && <span className="text-[8px] font-semibold truncate" style={{ color: '#5a4830' }}>{g.country}</span>}
+                    {fmt && <span className="text-[8px] font-semibold shrink-0" style={{ color: '#4a3820' }}>· {fmt}</span>}
+                  </div>
+                </div>
+                <svg className="shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#c9973a55" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none" style={{ background: 'linear-gradient(to bottom, transparent, #0f0d09)' }} />
+      </div>
+
+      <div className="mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl font-black text-sm transition-all group-hover/vault:scale-[1.02]"
+        style={{ background: 'linear-gradient(135deg, #c9973a, #a67c2e)', color: '#0d0c0a' }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        Unlock the Full Vault
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </div>
+      <p className="mt-2 text-center text-[10px]" style={{ color: '#4a3820' }}>100+ exclusive groups · Updated regularly</p>
+    </Link>
+  );
+}
+
+export default function JoinClient({ entity, type, similarGroups = [], initialIsMobile = false, initialIsTelegram = false, joinCtaCampaign = null, topBannerCampaigns = [], isDeleted = false, vaultTeaser = [] }: JoinClientProps) {
   const [countdown, setCountdown] = useState(0);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [buttonConfig, setButtonConfig] = useState<ButtonConfig | null>(null);
@@ -111,7 +199,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
   const isTelegram = initialIsTelegram;
 
   const isPremiumGated = entity.premiumOnly === true;
-
+  const [realTelegramLink, setRealTelegramLink] = useState(entity.telegramLink || '');
 
   const encodedCountry = encodeURIComponent(entity.country || '');
 
@@ -172,7 +260,19 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
         .then(r => r.ok ? r.json() : null)
         .then(data => {
           if (data) {
-            if (data.premium || data.isAdmin) setIsPremiumUser(true);
+            if (data.premium || data.isAdmin) {
+              setIsPremiumUser(true);
+              if (isPremiumGated && !entity.telegramLink) {
+                fetch('/api/vault/link', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                  body: JSON.stringify({ groupId: entity._id }),
+                })
+                  .then(r => r.ok ? r.json() : null)
+                  .then(d => { if (d?.telegramLink) setRealTelegramLink(d.telegramLink); })
+                  .catch(() => {});
+              }
+            }
           }
           setAuthChecked(true);
         })
@@ -266,10 +366,10 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
         setCountdown(countdown - 1);
       }, 1000);
       return () => clearTimeout(timer);
-    } else if (countdownStarted && countdown === 0 && entity) {
+    } else if (countdownStarted && countdown === 0 && entity && realTelegramLink) {
       trackClick();
       setIsRedirecting(true);
-      window.location.href = entity.telegramLink;
+      window.location.href = realTelegramLink;
     }
   }, [countdown, countdownStarted, entity]);
 
@@ -466,6 +566,8 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                 <div className="space-y-3">
                   <a
                     href="/premium"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="block w-full px-8 py-4 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white font-black rounded-2xl shadow-lg shadow-amber-500/20 hover:scale-105 transition-all text-lg"
                   >
                     Upgrade to Erogram Premium
@@ -631,7 +733,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                   <div className="space-y-3">
                     {buttonConfig && entity ? (
                       <a
-                        href={buttonConfig.button1.link || entity.telegramLink}
+                        href={buttonConfig.button1.link || realTelegramLink}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={trackClick}
@@ -641,7 +743,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                       </a>
                     ) : (
                       <a
-                        href={entity.telegramLink}
+                        href={realTelegramLink}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={() => {
@@ -673,20 +775,6 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
               </div>
               )}
 
-              {/* Premium Upgrade — hidden for premium users */}
-              {!isPremiumUser && (
-              <div className="mb-12 text-center">
-                <a
-                  href="/premium"
-                  className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white font-black rounded-2xl shadow-lg shadow-amber-500/20 hover:scale-105 hover:shadow-amber-500/30 transition-all"
-                >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                  <span>Upgrade to Erogram Premium</span>
-                </a>
-                <p className="text-gray-500 text-sm mt-3">Unlock our Private Vault — hundreds of hand-picked Telegram groups.</p>
-              </div>
-              )}
-
               {/* Reviews Section */}
               {entity.reviews && entity.reviews.length > 0 && (
                 <div className="mb-12">
@@ -712,6 +800,11 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                     ))}
                   </div>
                 </div>
+              )}
+
+              {/* Premium Vault Teaser — hidden for premium users */}
+              {!isPremiumUser && vaultTeaser.length > 0 && (
+                <VaultTeaserBlock items={vaultTeaser} />
               )}
 
               {/* Internal Linking / SEO Section */}

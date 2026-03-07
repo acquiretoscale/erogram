@@ -134,6 +134,7 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
                 onClick={() => onOpenStory(i)}
               />
             ))}
+            <PremiumUpgradeCircle />
           </div>
         </div>
       </div>
@@ -173,6 +174,44 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
         </div>
       </nav>
     </section>
+  );
+}
+
+function PremiumUpgradeCircle() {
+  return (
+    <Link
+      href="/premium"
+      target="_blank"
+      className="flex flex-col items-center gap-2 shrink-0 group outline-none"
+      aria-label="Upgrade to Erogram Premium"
+    >
+      <div className="relative w-[76px] h-[76px] md:w-[84px] md:h-[84px]">
+        {/* Spinning golden ring */}
+        <div className="absolute inset-0 rounded-full overflow-hidden">
+          <div
+            className="story-neon-ring absolute"
+            style={{
+              inset: '-24px',
+              background: 'conic-gradient(from 0deg, #f59e0b, #ef4444, #f59e0b, #fbbf24, #f59e0b)',
+            }}
+          />
+        </div>
+        {/* Moat */}
+        <div className="absolute inset-[3px] rounded-full" style={{ background: '#1a1008' }} />
+        {/* Inner background */}
+        <div
+          className="absolute inset-[5px] rounded-full flex items-center justify-center"
+          style={{ background: 'linear-gradient(135deg, #1c1203, #2d1f04)' }}
+        >
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="#f59e0b">
+            <path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/>
+          </svg>
+        </div>
+      </div>
+      <span className="text-[9px] md:text-[10px] font-black uppercase tracking-tight text-center leading-tight text-amber-400 group-hover:text-amber-300 transition-colors max-w-[76px] md:max-w-[84px]">
+        Upgrade<br />Premium
+      </span>
+    </Link>
   );
 }
 

@@ -228,7 +228,7 @@ function ProfileContent() {
               {!effectivePremium && (
                 <div className="mb-6 p-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.04] text-center">
                   <p className="text-white/70 text-sm mb-2">Unlock the <strong className="text-amber-400">Premium Vault</strong>, unlimited bookmarks &amp; more</p>
-                  <a href="/premium" className="inline-block px-5 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-white text-sm font-bold transition">
+                  <a href="/premium" target="_blank" rel="noopener noreferrer" className="inline-block px-5 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-white text-sm font-bold transition">
                     Upgrade to Premium
                   </a>
                 </div>

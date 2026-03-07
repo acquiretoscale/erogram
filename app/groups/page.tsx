@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { headers } from 'next/headers';
 import connectDB from '@/lib/db/mongodb';
-import { Group, Bot, StorySlideContent } from '@/lib/models';
+import { Group, Bot, StorySlideContent, SiteConfig } from '@/lib/models';
 import GroupsClient from './GroupsClient';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -45,7 +45,7 @@ async function getGroups(limit: number, isMobile: boolean = false) {
     // Use random sampling for better discovery experience. Exclude Group-based "advert" rows
     // so in-feed ads come only from Campaigns (Advertisers → By slot → In-Feed).
     const groups = await Group.aggregate([
-      { $match: { status: 'approved', isAdvertisement: { $ne: true } } },
+      { $match: { status: 'approved', isAdvertisement: { $ne: true }, premiumOnly: { $ne: true } } },
       { $sample: { size: limit } }, // Limit initial payload for mobile
       {
         $lookup: {
@@ -347,6 +347,51 @@ async function getStoryData(categories: StoryCategoryConfig[]): Promise<StoryCat
   }
 }
 
+async function getVaultTeaser() {
+  try {
+    await connectDB();
+
+    // Try admin-curated teaser groups first
+    let groups = await Group.find({ showOnVaultTeaser: true, premiumOnly: true, status: 'approved' })
+      .sort({ vaultTeaserOrder: 1 })
+      .select('name image category country memberCount vaultTeaserOrder vaultCategories')
+      .lean();
+
+    // If more than 12 featured, pick 12 randomly
+    if (groups.length > 12) {
+      const shuffled = [...groups].sort(() => Math.random() - 0.5);
+      groups = shuffled.slice(0, 12);
+    }
+
+    // Fallback: if none are marked for teaser, show the 12 most recent premium groups
+    if (groups.length === 0) {
+      groups = await Group.find({ premiumOnly: true, status: 'approved' })
+        .sort({ createdAt: -1 })
+        .limit(12)
+        .select('name image category country memberCount vaultCategories')
+        .lean();
+    }
+
+    const config = await SiteConfig.findOne({}).select('vaultTeaserCategories').lean() as any;
+    const catConfig: Array<{ name: string; visible: boolean; order: number }> = config?.vaultTeaserCategories || [];
+
+    return {
+      groups: (groups as any[]).map(g => ({
+        _id: g._id.toString(),
+        name: (g.name || '') as string,
+        image: (g.image || '') as string,
+        category: (g.category || '') as string,
+        country: (g.country || '') as string,
+        memberCount: (g.memberCount || 0) as number,
+        vaultCategories: (g as any).vaultCategories || [],
+      })),
+      catConfig: catConfig.filter(c => c.visible).sort((a, b) => a.order - b.order).map(c => c.name),
+    };
+  } catch {
+    return { groups: [], catConfig: [] };
+  }
+}
+
 export default async function GroupsPage() {
   const ua = (await headers()).get('user-agent');
   const { isMobile, isTelegram } = detectDeviceFromUserAgent(ua);
@@ -354,15 +399,21 @@ export default async function GroupsPage() {
   // Render a small, SEO-safe first page
   const groups = await getGroups(12, isMobile);
 
+  // Check if stories are enabled
+  await connectDB();
+  const siteConf = await SiteConfig.findOne({}).select('generalSettings').lean() as any;
+  const storiesEnabled = siteConf?.generalSettings?.showStories !== false;
+
   // Fetch story category config (from DB or defaults)
   let storyConfig = await getStoryCategories();
   if (storyConfig.length === 0) storyConfig = DEFAULT_STORY_CATEGORIES;
 
-  // In-feed ads + story data — all in parallel
-  const [topBannerCampaigns, feedCampaigns, storyData] = await Promise.all([
+  // In-feed ads + story data + vault teaser — all in parallel
+  const [topBannerCampaigns, feedCampaigns, storyData, vaultData] = await Promise.all([
     getActiveCampaigns('top-banner'),
     getActiveFeedCampaigns('groups'),
-    getStoryData(storyConfig),
+    storiesEnabled ? getStoryData(storyConfig) : Promise.resolve([] as StoryCategory[]),
+    getVaultTeaser(),
   ]);
 
   const topBannerForPage =
@@ -387,6 +438,8 @@ export default async function GroupsPage() {
           initialIsTelegram={isTelegram}
           topBannerCampaigns={topBannerForPage}
           storyData={storyData}
+          vaultTeaser={vaultData.groups}
+          vaultCatOrder={vaultData.catConfig}
         />
       </ErrorBoundary>
     </>

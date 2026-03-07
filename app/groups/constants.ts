@@ -6,7 +6,6 @@
 
 export const filterOptions: Array<{ label: string; value: string }> = [
     { label: 'Adult', value: 'cat:Adult' },
-    { label: 'Adult Chat', value: 'cat:Adult Chat' },
     { label: 'AI NSFW', value: 'cat:AI NSFW' },
     { label: 'Amateur', value: 'cat:Amateur' },
     { label: 'Anal', value: 'cat:Anal' },
@@ -41,7 +40,6 @@ export const filterOptions: Array<{ label: string; value: string }> = [
     { label: 'Russian', value: 'cat:Russian' },
     { label: 'Spain', value: 'country:Spain' },
     { label: 'Threesome', value: 'cat:Threesome' },
-    { label: 'Trans', value: 'cat:Trans' },
     { label: 'UK', value: 'country:UK' },
     { label: 'USA', value: 'country:USA' },
 ];
@@ -52,11 +50,11 @@ export const filterOptions: Array<{ label: string; value: string }> = [
 // ---------------------------------------------------------------------------
 
 export const filterCategories = [
-    'All', 'Adult', 'Adult Chat', 'AI NSFW', 'Amateur', 'Anal', 'Anime',
+    'Adult', 'AI NSFW', 'Amateur', 'Anal', 'Anime',
     'Asian', 'BDSM', 'Big Ass', 'Big Tits', 'Blowjob', 'Cosplay',
     'Creampie', 'Cuckold', 'Ebony', 'Fantasy', 'Feet', 'Fetish',
     'Hardcore', 'Hentai', 'Latina', 'Lesbian', 'Masturbation', 'MILF',
-    'Onlyfans', 'Privacy', 'Public', 'Russian', 'Telegram-Porn', 'Threesome', 'Trans',
+    'Onlyfans', 'Privacy', 'Public', 'Russian', 'Telegram-Porn', 'Threesome',
 ];
 
 export const filterCountries = [

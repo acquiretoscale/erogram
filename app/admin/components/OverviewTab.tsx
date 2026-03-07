@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 
 interface OverviewTabProps {
@@ -13,10 +14,9 @@ interface OverviewTabProps {
         pendingReportCount?: number;
         totalViews: number;
     };
-    setActiveTab: (tab: string) => void;
 }
 
-export default function OverviewTab({ metrics, setActiveTab }: OverviewTabProps) {
+export default function OverviewTab({ metrics }: OverviewTabProps) {
     const cardVariants = {
         initial: { opacity: 0, y: 20 },
         animate: { opacity: 1, y: 0 },
@@ -71,46 +71,31 @@ export default function OverviewTab({ metrics, setActiveTab }: OverviewTabProps)
                 >
                     <h2 className="text-xl font-bold text-white mb-6">Quick Actions</h2>
                     <div className="grid grid-cols-2 gap-4">
-                        <button
-                            onClick={() => setActiveTab('groups')}
-                            className="p-4 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 text-left transition-all group"
-                        >
+                        <Link href="/admin/groups" className="p-4 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 text-left transition-all group">
                             <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">➕</span>
                             <span className="font-semibold text-white block">Add Group</span>
                             <span className="text-xs text-[#666]">Manage listings</span>
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('buttons')}
-                            className="p-4 bg-pink-500/15 hover:bg-pink-500/25 rounded-xl border border-pink-500/30 text-left transition-all group"
-                        >
+                        </Link>
+                        <Link href="/advert/campaigns" className="p-4 bg-pink-500/15 hover:bg-pink-500/25 rounded-xl border border-pink-500/30 text-left transition-all group">
                             <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">🔘</span>
                             <span className="font-semibold text-white block">CTA Buttons</span>
                             <span className="text-xs text-pink-200/80">Navbar & Join page links</span>
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('adverts')}
-                            className="p-4 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 text-left transition-all group"
-                        >
+                        </Link>
+                        <Link href="/advert" className="p-4 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 text-left transition-all group">
                             <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">📢</span>
-                            <span className="font-semibold text-white block">Create Ad</span>
+                            <span className="font-semibold text-white block">Ads Manager</span>
                             <span className="text-xs text-[#666]">Launch a new campaign</span>
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('articles')}
-                            className="p-4 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 text-left transition-all group"
-                        >
+                        </Link>
+                        <Link href="/admin/articles" className="p-4 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 text-left transition-all group">
                             <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">📝</span>
                             <span className="font-semibold text-white block">Write Article</span>
                             <span className="text-xs text-[#666]">Publish new content</span>
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('settings')}
-                            className="p-4 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 text-left transition-all group"
-                        >
+                        </Link>
+                        <Link href="/admin/settings" className="p-4 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 text-left transition-all group">
                             <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">⚙️</span>
                             <span className="font-semibold text-white block">Settings</span>
                             <span className="text-xs text-[#666]">Configure site options</span>
-                        </button>
+                        </Link>
                     </div>
                 </motion.div>
 
@@ -142,34 +127,22 @@ export default function OverviewTab({ metrics, setActiveTab }: OverviewTabProps)
                         <div className="mt-6 pt-6 border-t border-white/10">
                             <h3 className="text-sm font-bold text-[#999] uppercase mb-4">Pending Review</h3>
                             <div className="grid grid-cols-2 gap-4">
-                                <button
-                                    onClick={() => setActiveTab('pending')}
-                                    className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-xl flex items-center justify-between hover:bg-orange-500/20 transition-colors"
-                                >
+                                <Link href="/admin/pending-groups" className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-xl flex items-center justify-between hover:bg-orange-500/20 transition-colors">
                                     <span className="text-orange-400 font-medium">Groups</span>
                                     <span className="bg-orange-500 text-black text-xs font-bold px-2 py-1 rounded-full">{metrics.pendingGroupCount}</span>
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('pending-bots')}
-                                    className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl flex items-center justify-between hover:bg-purple-500/20 transition-colors"
-                                >
+                                </Link>
+                                <Link href="/admin/pending-bots" className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl flex items-center justify-between hover:bg-purple-500/20 transition-colors">
                                     <span className="text-purple-400 font-medium">Bots</span>
                                     <span className="bg-purple-500 text-black text-xs font-bold px-2 py-1 rounded-full">{metrics.pendingBotCount || 0}</span>
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('reviews')}
-                                    className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-between hover:bg-blue-500/20 transition-colors"
-                                >
+                                </Link>
+                                <Link href="/admin/reviews" className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-between hover:bg-blue-500/20 transition-colors">
                                     <span className="text-blue-400 font-medium">Reviews</span>
                                     <span className="bg-blue-500 text-black text-xs font-bold px-2 py-1 rounded-full">{metrics.pendingReviewCount || 0}</span>
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('reports')}
-                                    className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center justify-between hover:bg-red-500/20 transition-colors"
-                                >
+                                </Link>
+                                <Link href="/admin/reports" className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center justify-between hover:bg-red-500/20 transition-colors">
                                     <span className="text-red-400 font-medium">Reports</span>
                                     <span className="bg-red-500 text-black text-xs font-bold px-2 py-1 rounded-full">{metrics.pendingReportCount || 0}</span>
-                                </button>
+                                </Link>
                             </div>
                         </div>
                     </div>

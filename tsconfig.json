@@ -92,7 +92,9 @@
     ".next-4390/types/**/*.ts",
     ".next-4390/dev/types/**/*.ts",
     ".next-4500/types/**/*.ts",
-    ".next-4500/dev/types/**/*.ts"
+    ".next-4500/dev/types/**/*.ts",
+    ".next-3941/types/**/*.ts",
+    ".next-3941/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

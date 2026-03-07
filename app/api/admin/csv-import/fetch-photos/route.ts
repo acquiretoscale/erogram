@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'R2 storage not configured' }, { status: 503 });
     }
 
-    const { groupIds } = await req.json();
+    const { groupIds, force } = await req.json();
     if (!Array.isArray(groupIds) || groupIds.length === 0) {
       return NextResponse.json({ results: [] });
     }
@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
         const group = await Group.findById(id);
         if (!group) { results.push({ id, status: 'skipped', error: 'Not found' }); continue; }
 
-        if (group.image && group.image !== '/assets/image.jpg') {
+        if (!force && group.image && group.image !== '/assets/image.jpg' && group.image !== '/assets/placeholder-no-image.png') {
           results.push({ id, status: 'skipped', error: 'Already has image' });
           continue;
         }

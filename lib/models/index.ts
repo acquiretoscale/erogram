@@ -101,6 +101,9 @@ export const groupSchema = new Schema(
     memberCountUpdatedAt: { type: Date },
     verified: { type: Boolean, default: false },
     premiumOnly: { type: Boolean, default: false },
+    showOnVaultTeaser: { type: Boolean, default: false },
+    vaultTeaserOrder: { type: Number, default: 999 },
+    vaultCategories: { type: [String], default: [] },
     hideFromStories: { type: Boolean, default: false },
     storyViews: { type: Number, default: 0 },
   },
@@ -109,6 +112,7 @@ export const groupSchema = new Schema(
 
 groupSchema.index({ status: 1, scheduledPublishAt: 1 });
 groupSchema.index({ premiumOnly: 1, status: 1 });
+groupSchema.index({ showOnVaultTeaser: 1, vaultTeaserOrder: 1 });
 
 // Post/Comment Schema
 export const postSchema = new Schema(
@@ -365,6 +369,10 @@ export const siteConfigSchema = new Schema(
     generalSettings: {
       type: Schema.Types.Mixed,
       default: () => ({}),
+    },
+    vaultTeaserCategories: {
+      type: [{ name: String, visible: { type: Boolean, default: true }, order: { type: Number, default: 0 } }],
+      default: [],
     },
   },
   { timestamps: true }

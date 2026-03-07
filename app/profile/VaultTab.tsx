@@ -101,6 +101,7 @@ export default function VaultTab({ isPremium }: { isPremium: boolean }) {
           </p>
           <Link
             href="/premium"
+            target="_blank"
             className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-bold text-sm transition-all hover:scale-[1.02]"
             style={{ background: 'linear-gradient(135deg, #c9973a, #a67c2e)', color: '#0d0c0a', boxShadow: '0 8px 32px #c9973a33' }}
           >

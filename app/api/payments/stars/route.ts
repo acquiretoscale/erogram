@@ -6,9 +6,9 @@ import { authenticateUser, MAX_PREMIUM_SLOTS } from '@/lib/auth';
 const BOT_TOKEN = process.env.TELEGRAM_PAYMENT_BOT_TOKEN || '';
 
 const PLANS = {
-  monthly: { title: 'Erogram VIP (Monthly)', description: 'Unlimited bookmarks, folders & exclusive unlisted groups for 30 days', amount: 600, days: 30 },
+  monthly: { title: 'Erogram VIP (Monthly)', description: 'Unlimited bookmarks, folders & exclusive unlisted groups for 30 days', amount: 920, days: 30 },
   yearly: { title: 'Erogram VIP (Yearly)', description: 'Unlimited bookmarks, folders & exclusive unlisted groups for 1 year — 72% OFF', amount: 2000, days: 365 },
-  lifetime: { title: 'Erogram VIP (Lifetime)', description: 'Unlimited VIP access forever — all features, all updates, no renewals', amount: 10000, days: null },
+  lifetime: { title: 'Erogram VIP (Lifetime)', description: 'Unlimited VIP access forever — all features, all updates, no renewals', amount: 6850, days: null },
 } as const;
 
 function logEvent(data: Record<string, any>) {

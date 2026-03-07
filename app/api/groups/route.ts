@@ -57,18 +57,42 @@ export async function GET(req: NextRequest) {
     const country = searchParams.get('country') || '';
     const topGroup = searchParams.get('topGroup') === 'true';
 
-    // Fast path: top groups by recent clicks (weeklyClicks resets every 3 days)
+    // Fast path: top groups by recent clicks
+    // Fetches a larger candidate pool then randomly picks `limit` for variety.
     if (topGroup) {
+      // Also trigger the periodic reset check here (shared with sortBy=views)
+      try {
+        const resetConfig = await SystemConfig.findOne({ key: 'view_reset' });
+        const now = new Date();
+        const resetInterval = 24 * 60 * 60 * 1000; // 24 hours
+        if (!resetConfig || (now.getTime() - new Date(resetConfig.lastUpdated).getTime() > resetInterval)) {
+          await Group.updateMany({}, { $set: { weeklyViews: 0, weeklyClicks: 0 } });
+          await Article.updateMany({}, { $set: { weeklyViews: 0 } });
+          if (resetConfig) { resetConfig.lastUpdated = now; await resetConfig.save(); }
+          else { await SystemConfig.create({ key: 'view_reset', value: { intervalDays: 1 }, lastUpdated: now }); }
+        }
+      } catch (err) { console.error('[API] Error checking/resetting views:', err); }
+
       const topLimit = parseInt(searchParams.get('limit') || '3', 10);
-      const topGroups = await Group.find({
+      const POOL_SIZE = Math.max(topLimit * 5, 20);
+      const candidates = await Group.find({
         status: 'approved',
         isAdvertisement: { $ne: true },
+        premiumOnly: { $ne: true },
         pinned: { $ne: true },
       })
         .sort({ weeklyClicks: -1, views: -1 })
-        .limit(topLimit)
+        .limit(POOL_SIZE)
         .select('name slug category country description image telegramLink clickCount views memberCount verified weeklyClicks')
         .lean();
+
+      // Weighted random pick: higher weeklyClicks = higher chance, but not deterministic
+      const weighted = (candidates as any[]).map((g, i) => ({
+        group: g,
+        weight: Math.max(1, (g.weeklyClicks || 0)) + Math.random() * 5 + (POOL_SIZE - i),
+      }));
+      weighted.sort((a, b) => b.weight - a.weight);
+      const topGroups = weighted.slice(0, topLimit).map(w => w.group);
 
       const origin = req.headers.get('x-forwarded-host')
         ? `https://${req.headers.get('x-forwarded-host')}`
@@ -98,7 +122,7 @@ export async function GET(req: NextRequest) {
 
     // Exclude image field to prevent maxSize errors - images loaded lazily via API.
     // Exclude Group-based adverts so in-feed ads come only from Campaigns (Advertisers).
-    let query: any = { status: 'approved', isAdvertisement: { $ne: true } };
+    let query: any = { status: 'approved', isAdvertisement: { $ne: true }, premiumOnly: { $ne: true } };
     let sortCriteria: any = { pinned: -1, createdAt: -1 };
 
     // Add search filter if search query provided
@@ -120,27 +144,25 @@ export async function GET(req: NextRequest) {
     }
 
     if (sortBy === 'views') {
-      // Check for view reset (every 3 days)
+      // Check for view reset (every 24 hours)
       try {
         const resetConfig = await SystemConfig.findOne({ key: 'view_reset' });
         const now = new Date();
-        // 3 days in milliseconds
-        const resetInterval = 3 * 24 * 60 * 60 * 1000;
+        const resetInterval = 24 * 60 * 60 * 1000;
 
         if (!resetConfig || (now.getTime() - new Date(resetConfig.lastUpdated).getTime() > resetInterval)) {
-          console.log('[API] Resetting group + article views (3-day interval)...');
+          console.log('[API] Resetting group + article views (24h interval)...');
 
           await Group.updateMany({}, { $set: { weeklyViews: 0, weeklyClicks: 0 } });
           await Article.updateMany({}, { $set: { weeklyViews: 0 } });
 
-          // Update or create config
           if (resetConfig) {
             resetConfig.lastUpdated = now;
             await resetConfig.save();
           } else {
             await SystemConfig.create({
               key: 'view_reset',
-              value: { intervalDays: 3 },
+              value: { intervalDays: 1 },
               lastUpdated: now
             });
           }
@@ -151,7 +173,7 @@ export async function GET(req: NextRequest) {
       }
 
       // For top groups by views, exclude pinned and Group-based adverts
-      query = { status: 'approved', pinned: { $ne: true }, isAdvertisement: { $ne: true } };
+      query = { status: 'approved', pinned: { $ne: true }, isAdvertisement: { $ne: true }, premiumOnly: { $ne: true } };
       sortCriteria = { weeklyViews: -1 };
       console.log('[API] Top groups query:', JSON.stringify(query));
     } else if (sortBy === 'newest') {

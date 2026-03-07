@@ -74,10 +74,19 @@ export interface StoryGroup {
     memberCount?: number;
 }
 
-/** A single media slide (R2 video/image or admin-uploaded) */
+/** A single channel entry embedded inside a premium-grid story slide */
+export interface PremiumGroupItem {
+    name: string;
+    slug: string;
+    image: string;
+    memberCount?: number;
+    category: string;
+}
+
+/** A single media slide (R2 video/image, admin-uploaded, or premium-grid) */
 export interface StoryMediaSlide {
     _id: string;
-    mediaType: 'image' | 'video';
+    mediaType: 'image' | 'video' | 'premium-grid';
     mediaUrl: string;
     ctaText?: string;
     ctaUrl?: string;
@@ -85,6 +94,8 @@ export interface StoryMediaSlide {
     caption?: string;
     likes?: number;
     clicks?: number;
+    /** Populated only when mediaType === 'premium-grid' */
+    premiumGroups?: PremiumGroupItem[];
 }
 
 export interface StoryCategory {

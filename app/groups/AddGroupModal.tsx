@@ -15,7 +15,7 @@ interface AddGroupModalProps {
 export default function AddGroupModal({ categories, countries, onClose, onSuccess }: AddGroupModalProps) {
   const [groupData, setGroupData] = useState({
     name: '',
-    category: 'All',
+    category: 'Adult',
     country: 'All',
     telegramLink: '',
     description: '',

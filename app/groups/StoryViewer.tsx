@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import type { StoryCategory, StorySlide, StoryMediaSlide, StoryGroup } from './types';
+import type { StoryCategory, StorySlide, StoryMediaSlide, StoryGroup, PremiumGroupItem } from './types';
 
 interface StoryViewerProps {
   storyData: StoryCategory[];
@@ -369,6 +369,11 @@ export default function StoryViewer({
             bgVideoRef={bgVideoRef}
             videoRef={videoRef}
             onVideoMeta={handleVideoMeta}
+            stopPointer={stopPointer}
+          />
+        ) : currentSlide.data.mediaType === 'premium-grid' ? (
+          <PremiumGridSlideView
+            slide={currentSlide.data}
             stopPointer={stopPointer}
           />
         ) : (
@@ -758,6 +763,172 @@ function MediaSlideView({
           <span className="text-white/30 text-[10px] font-medium">by {slide.clientName}</span>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Premium Grid slide (latest additions to premium) ──
+function PremiumGridSlideView({
+  slide,
+  stopPointer,
+}: {
+  slide: StoryMediaSlide;
+  stopPointer: (e: React.PointerEvent) => void;
+}) {
+  const groups: PremiumGroupItem[] = slide.premiumGroups ?? [];
+
+  return (
+    <div className="absolute inset-0 flex flex-col">
+      {/* Background */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: 'linear-gradient(160deg, #0d0515 0%, #1a0630 45%, #0a0a1a 100%)',
+        }}
+      />
+      {/* Glow blobs */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full opacity-30 blur-3xl"
+          style={{ background: 'radial-gradient(circle, #7c3aed 0%, transparent 70%)' }}
+        />
+        <div
+          className="absolute bottom-24 right-0 w-64 h-64 rounded-full opacity-20 blur-3xl"
+          style={{ background: 'radial-gradient(circle, #f59e0b 0%, transparent 70%)' }}
+        />
+      </div>
+
+      {/* Top gradients (for progress bar visibility) */}
+      <div className="absolute top-0 left-0 right-0 h-28 pointer-events-none"
+        style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.55), transparent)' }}
+      />
+
+      {/* Content — pointer-events-none so taps pass through to story nav */}
+      <div className="relative z-10 flex flex-col h-full px-4 pt-20 pb-6 pointer-events-none">
+
+        {/* Caption header */}
+        <div className="flex flex-col items-center mb-5">
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+              style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)' }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+                <path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z" />
+              </svg>
+            </div>
+            <span
+              className="text-[13px] font-black uppercase tracking-[0.18em]"
+              style={{ color: '#f59e0b' }}
+            >
+              {slide.caption || 'Latest additions to premium'}
+            </span>
+          </div>
+          <div className="h-px w-40 opacity-40"
+            style={{ background: 'linear-gradient(90deg, transparent, #f59e0b, transparent)' }}
+          />
+        </div>
+
+        {/* 2×2 grid of channel cards — purely visual, no click targets */}
+        <div className="grid grid-cols-2 gap-3 flex-1">
+          {groups.slice(0, 4).map((g) => (
+            <PremiumChannelCard key={g.slug} group={g} />
+          ))}
+          {Array.from({ length: Math.max(0, 4 - groups.length) }).map((_, i) => (
+            <div
+              key={`empty-${i}`}
+              className="rounded-2xl border border-white/5"
+              style={{ background: 'rgba(255,255,255,0.03)' }}
+            />
+          ))}
+        </div>
+
+        {/* CTA — only interactive element */}
+        <div className="mt-4 pointer-events-auto" onPointerDown={stopPointer}>
+          <Link
+            href={slide.ctaUrl || '/premium'}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="flex items-center justify-center gap-2.5 w-full py-4 rounded-2xl font-black text-white text-[15px] tracking-wide transition-all duration-200 active:scale-[0.97]"
+            style={{
+              background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 50%, #2563eb 100%)',
+              boxShadow: '0 8px 32px rgba(124,58,237,0.45)',
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            {slide.ctaText || 'Unlock Premium'}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PremiumChannelCard({
+  group,
+}: {
+  group: PremiumGroupItem;
+}) {
+  const half = Math.ceil(group.name.length / 2);
+  const visiblePart = group.name.slice(0, half);
+  const blurredPart = group.name.slice(half);
+
+  return (
+    <div
+      className="rounded-2xl overflow-hidden flex flex-col border border-white/10"
+      style={{ background: 'linear-gradient(180deg, rgba(30,20,50,0.9) 0%, rgba(18,10,35,0.95) 100%)' }}
+    >
+      {/* Thumbnail */}
+      <div className="relative w-full aspect-[4/3] bg-[#120a23] overflow-hidden">
+        <img
+          src={group.image}
+          alt=""
+          className="w-full h-full object-cover opacity-80"
+          draggable={false}
+          onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{ background: 'linear-gradient(to top, rgba(10,5,20,0.85) 0%, transparent 55%)' }}
+        />
+        <div
+          className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center"
+          style={{ background: 'rgba(124,58,237,0.8)', backdropFilter: 'blur(8px)' }}
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        </div>
+        <div className="absolute bottom-2 left-2">
+          <span
+            className="px-2 py-0.5 rounded-full text-white text-[8px] font-bold uppercase tracking-wider"
+            style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
+          >
+            {group.category}
+          </span>
+        </div>
+      </div>
+
+      {/* Info */}
+      <div className="px-2.5 py-2">
+        <p className="text-[12px] font-bold leading-tight mb-1 whitespace-nowrap overflow-hidden">
+          <span className="text-white">{visiblePart}</span>
+          <span className="text-white/80" style={{ filter: 'blur(5px)', userSelect: 'none' }}>{blurredPart}</span>
+        </p>
+        {(group.memberCount ?? 0) > 0 && (
+          <span className="flex items-center gap-1 text-blue-300/70 text-[10px] font-semibold">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
+            </svg>
+            {formatMembers(group.memberCount!)}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

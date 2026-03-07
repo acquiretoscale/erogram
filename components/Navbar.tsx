@@ -26,10 +26,10 @@ const BTN_PH = `${BTN} text-black bg-white border border-white/80 hover:bg-orang
 const BTN_PH_LOGIN = `${BTN} text-black bg-orange-500 border border-orange-500 hover:bg-orange-400 hover:border-orange-400`;
 
 const NAV_COLORS: Record<string, string> = {
-  Groups:    BTN_PH,
-  Bots:      BTN_PH,
-  Articles:  BTN_PH,
-  Advertise: BTN_PH,
+  Groups:    BTN_PH_LOGIN,
+  Bots:      BTN_PH_LOGIN,
+  Articles:  BTN_PH_LOGIN,
+  Advertise: BTN_PH_LOGIN,
   Login:     BTN_PH_LOGIN,
 };
 
@@ -134,20 +134,32 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
             Add
           </Link>
 
-          <Link href="/contact" className={NAV_COLORS['Advertise'] || BTN_NAV}>
-            Advertise
-          </Link>
-
-          {/* VIP Upgrade */}
-          {currentUsername && !isPremium && (
+          {/* Upgrade to Premium */}
+          {!isPremium && (
             <Link
               href="/premium"
-              className={`${BTN_NAV} !text-amber-400 !bg-amber-500/[0.10] !border-amber-500/25 hover:!bg-amber-500/[0.18] inline-flex items-center gap-1`}
+              target="_blank"
+              className="relative overflow-hidden text-[13px] px-4 py-1.5 rounded-lg font-black tracking-wide whitespace-nowrap inline-flex items-center gap-1.5 transition-all hover:scale-105 hover:shadow-lg hover:shadow-amber-500/30"
+              style={{
+                background: 'linear-gradient(135deg, #c9973a 0%, #e8ba5a 40%, #c9973a 60%, #a67c2e 100%)',
+                color: '#0d0c0a',
+                border: '1px solid rgba(232,186,90,0.5)',
+                boxShadow: '0 2px 12px rgba(201,151,58,0.25)',
+              }}
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-              VIP
+              <span className="absolute inset-0 overflow-hidden rounded-lg pointer-events-none">
+                <span className="absolute inset-0 -translate-x-full animate-[shimmer_2.5s_ease-in-out_infinite]" style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 50%, transparent 100%)' }} />
+              </span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="relative">
+                <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              <span className="relative">Upgrade to Premium</span>
             </Link>
           )}
+
+          <Link href="/contact" className={NAV_COLORS['Advertise'] || BTN_NAV}>
+            Contact
+          </Link>
 
           {/* User */}
           {currentUsername ? (
@@ -188,16 +200,6 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
                         Saved
                       </Link>
-                      {!isPremium && (
-                        <Link
-                          href="/premium"
-                          onClick={() => setIsUserMenuOpen(false)}
-                          className="flex items-center gap-2.5 px-4 py-2 text-[13px] font-semibold text-amber-400 hover:bg-amber-500/10 transition"
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                          Upgrade to VIP
-                        </Link>
-                      )}
                       <div className="border-t border-white/5 mt-1 pt-1">
                         <button
                           onClick={() => { handleLogout(); setIsUserMenuOpen(false); }}
@@ -274,12 +276,35 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
             Add Group or Bot
           </Link>
 
+          {!isPremium && (
+            <Link
+              href="/premium"
+              target="_blank"
+              onClick={() => setIsMenuOpen(false)}
+              className="relative overflow-hidden flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg text-[14px] font-black tracking-wide transition-all"
+              style={{
+                background: 'linear-gradient(135deg, #c9973a 0%, #e8ba5a 40%, #c9973a 60%, #a67c2e 100%)',
+                color: '#0d0c0a',
+                border: '1px solid rgba(232,186,90,0.5)',
+                boxShadow: '0 2px 16px rgba(201,151,58,0.3)',
+              }}
+            >
+              <span className="absolute inset-0 overflow-hidden rounded-lg pointer-events-none">
+                <span className="absolute inset-0 -translate-x-full animate-[shimmer_2.5s_ease-in-out_infinite]" style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 50%, transparent 100%)' }} />
+              </span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="relative">
+                <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              <span className="relative">Upgrade to Premium</span>
+            </Link>
+          )}
+
           <Link
             href="/contact"
             onClick={() => setIsMenuOpen(false)}
             className={`block px-4 py-2.5 rounded-lg text-[14px] ${NAV_COLORS['Advertise'] || BTN_NAV}`}
           >
-            Advertise
+            Contact
           </Link>
 
           <div className="h-px bg-white/[0.06] my-1" />
@@ -299,16 +324,6 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
               <Link href="/profile?tab=saved" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 rounded-lg text-[14px] text-white/70 hover:text-white hover:bg-white/5 transition">
                 Saved
               </Link>
-              {!isPremium && (
-                <Link
-                  href="/premium"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="w-full px-4 py-2.5 rounded-lg text-[14px] font-semibold text-center text-amber-400 bg-amber-500/[0.08] border border-amber-500/20 hover:bg-amber-500/[0.15] transition flex items-center justify-center gap-1.5"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                  Upgrade to VIP
-                </Link>
-              )}
               <button
                 onClick={handleLogout}
                 className="w-full px-4 py-2 rounded-lg text-[14px] text-white/40 hover:text-red-400 hover:bg-red-500/5 transition text-left"
