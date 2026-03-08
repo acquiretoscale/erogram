@@ -142,10 +142,9 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
       </div>}
 
       {/* Trending categories — always visible for SEO */}
-      <nav aria-label="Popular Telegram group categories" className="mt-3 rounded-xl p-2.5 shadow-sm" style={{ background: 'linear-gradient(135deg, #1a1510, #191510)', border: '1px solid rgba(245,158,11,0.15)' }}>
-        <div className="flex items-center gap-1.5 overflow-hidden max-h-[52px]">
-          <span className="text-[9px] font-black uppercase tracking-wider shrink-0 mr-0.5" style={{ color: '#f59e0b' }}>🔥 Trending</span>
-          <div className="flex flex-wrap gap-1 overflow-hidden max-h-[52px]">
+      <nav aria-label="Trending Telegram group categories" className="mt-3 rounded-xl p-2.5 shadow-sm" style={{ background: 'linear-gradient(135deg, #1a1510, #191510)', border: '1px solid rgba(245,158,11,0.15)' }}>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[9px] font-black uppercase tracking-wider shrink-0 mr-0.5" style={{ color: '#f59e0b' }}>🔥 Trending Categories</span>
             {[
               { label: 'Lesbian', href: '/best-telegram-groups/lesbian' },
               { label: 'Threesome', href: '/best-telegram-groups/threesome' },
@@ -172,7 +171,6 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
                 {label}
               </Link>
             ))}
-          </div>
         </div>
       </nav>
     </section>
