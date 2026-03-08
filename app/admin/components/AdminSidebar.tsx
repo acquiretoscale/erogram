@@ -1,45 +1,47 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect } from 'react';
 
 interface AdminSidebarProps {
+    activeTab: string;
+    setActiveTab: (tab: string) => void;
     onLogout: () => void;
     isOpen: boolean;
     onClose: () => void;
 }
 
 const tabs = [
-    { href: '/admin', name: 'Overview', icon: '📊' },
-    { href: '/admin/groups', name: 'Groups', icon: '👥' },
-    { href: '/admin/bots', name: 'Bots', icon: '🤖' },
-    { href: '/admin/pending-groups', name: 'Pending Groups', icon: '⏳' },
-    { href: '/admin/pending-bots', name: 'Pending Bots', icon: '🤖' },
-    { href: '/admin/csv-import', name: 'CSV Import', icon: '📤' },
-    { href: '/admin/reviews', name: 'Reviews', icon: '⭐' },
-    { href: '/admin/reports', name: 'Reports', icon: '🚨' },
-    { href: '/admin/articles', name: 'Articles', icon: '📝' },
-    { href: '/admin/premium', name: 'Premium', icon: '💎' },
-    { href: '/admin/vault', name: 'Secret Vault', icon: '🔒' },
-    { href: '/admin/users', name: 'Users', icon: '👤' },
-    { href: '/admin/settings', name: 'Settings', icon: '⚙️' },
+    { id: 'overview', name: 'Overview', icon: '📊' },
+    { id: 'groups', name: 'Groups', icon: '👥' },
+    { id: 'bots', name: 'Bots', icon: '🤖' },
+    { id: 'pending', name: 'Pending Groups', icon: '⏳' },
+    { id: 'pending-bots', name: 'Pending Bots', icon: '🤖' },
+    { id: 'csv-import', name: 'CSV Import', icon: '📤' },
+    { id: 'stories', name: 'Stories', icon: '📖' },
+    { id: 'reviews', name: 'Reviews', icon: '⭐' },
+    { id: 'reports', name: 'Reports', icon: '🚨' },
+    { id: 'articles', name: 'Articles', icon: '📝' },
+    { id: 'adverts', name: 'Adverts', icon: '📢' },
+    { id: 'advertisers', name: 'Advertisers', icon: '💰' },
+    { id: 'premium', name: 'Premium', icon: '💎' },
+    { id: 'users', name: 'Users', icon: '👤' },
+    { id: 'settings', name: 'Settings', icon: '⚙️' },
 ];
 
-export default function AdminSidebar({ onLogout, isOpen, onClose }: AdminSidebarProps) {
-    const pathname = usePathname();
-
-    const isActive = (href: string) => {
-        if (href === '/admin') return pathname === '/admin';
-        return pathname.startsWith(href);
-    };
-
-    const handleClick = () => {
-        if (typeof window !== 'undefined' && window.innerWidth < 768) onClose();
+export default function AdminSidebar({ activeTab, setActiveTab, onLogout, isOpen, onClose }: AdminSidebarProps) {
+    // Close sidebar when clicking outside on mobile (handled by overlay) or when route changes
+    // But here we are SPA-like, so just close on tab selection if mobile
+    const handleTabClick = (id: string) => {
+        setActiveTab(id);
+        if (window.innerWidth < 768) {
+            onClose();
+        }
     };
 
     return (
         <>
+            {/* Mobile Overlay */}
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
@@ -52,53 +54,51 @@ export default function AdminSidebar({ onLogout, isOpen, onClose }: AdminSidebar
                 )}
             </AnimatePresence>
 
+            {/* Sidebar */}
             <aside
-                className={`fixed left-0 top-0 bottom-0 w-64 bg-[#0a0a0a] border-r border-white/5 flex flex-col z-50 transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
+                className={`fixed left-0 top-0 bottom-0 w-64 bg-[#0a0a0a] border-r border-white/5 flex flex-col z-50 transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'
+                    } md:translate-x-0`}
             >
                 <div className="p-6 border-b border-white/5 flex justify-between items-center">
                     <div>
                         <h1 className="text-2xl font-black gradient-text">Admin Panel</h1>
                         <p className="text-xs text-[#666] mt-1">v2.0.0</p>
                     </div>
-                    <button onClick={onClose} className="md:hidden text-[#666] hover:text-white">✕</button>
+                    <button
+                        onClick={onClose}
+                        className="md:hidden text-[#666] hover:text-white"
+                    >
+                        ✕
+                    </button>
                 </div>
 
                 <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-1 custom-scrollbar">
                     {tabs.map((tab) => (
-                        <Link
-                            key={tab.href}
-                            href={tab.href}
-                            onClick={handleClick}
-                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${isActive(tab.href)
+                        <button
+                            key={tab.id}
+                            onClick={() => handleTabClick(tab.id)}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeTab === tab.id
                                 ? 'bg-[#b31b1b] text-white shadow-lg shadow-[#b31b1b]/20'
                                 : 'text-[#999] hover:bg-white/5 hover:text-white'
-                            }`}
+                                }`}
                         >
                             <span className="text-lg">{tab.icon}</span>
                             {tab.name}
-                        </Link>
+                        </button>
                     ))}
-
-                    <div className="my-3 border-t border-white/10" />
-
-                    <Link
-                        href="/advert"
-                        onClick={handleClick}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${pathname.startsWith('/advert')
-                            ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20'
-                            : 'text-amber-400 hover:bg-amber-500/10 hover:text-amber-300'
-                        }`}
-                    >
-                        <span className="text-lg">💰</span>
-                        Ads Manager
-                    </Link>
                 </nav>
 
                 <div className="p-4 border-t border-white/5 space-y-2">
-                    <a href="/" className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-[#999] hover:bg-white/5 hover:text-white transition-colors">
+                    <a
+                        href="/"
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-[#999] hover:bg-white/5 hover:text-white transition-colors"
+                    >
                         <span>🏠</span> Back to Site
                     </a>
-                    <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 transition-colors">
+                    <button
+                        onClick={onLogout}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 transition-colors"
+                    >
                         <span>🚪</span> Logout
                     </button>
                 </div>
