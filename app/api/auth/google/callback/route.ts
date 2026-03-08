@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     if (!tokenRes.ok) {
       const err = await tokenRes.text();
       console.error('Google token exchange failed:', err);
-      return NextResponse.redirect(`${loginPage}?error=google_token`);
+      return NextResponse.redirect(`${loginPage}?error=google_token&detail=${encodeURIComponent(err.slice(0, 300))}`);
     }
 
     const tokens = await tokenRes.json();
@@ -120,6 +120,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${callbackPage}?${params.toString()}`);
   } catch (err: any) {
     console.error('Google callback error:', err);
-    return NextResponse.redirect(`${loginPage}?error=server`);
+    return NextResponse.redirect(`${loginPage}?error=server&detail=${encodeURIComponent(String(err?.message || err).slice(0, 300))}`);
   }
 }
