@@ -67,27 +67,60 @@ export async function GET(req: NextRequest) {
     let user = await User.findOne({ googleId });
 
     if (!user) {
-      const baseUsername = (profile.email?.split('@')[0] || name.replace(/\s+/g, '_')).slice(0, 20);
-      let username = baseUsername;
-      let attempts = 0;
-      while (await User.findOne({ username })) {
-        attempts += 1;
-        username = `${baseUsername}_${attempts}`;
+      // Check if another account already uses this email
+      if (email) {
+        const existingByEmail = await User.findOne({ email });
+        if (existingByEmail) {
+          // Link Google to the existing account instead of creating a duplicate
+          existingByEmail.googleId = googleId;
+          if (name && !existingByEmail.firstName) existingByEmail.firstName = name;
+          if (picture && !existingByEmail.photoUrl) existingByEmail.photoUrl = picture;
+          await existingByEmail.save();
+          user = existingByEmail;
+        }
       }
 
-      user = await User.create({
-        username,
-        email: email || undefined,
-        googleId,
-        firstName: name,
-        photoUrl: picture,
-      });
-      notifyAdminsOfNewUser({ username, provider: 'google' }).catch(() => {});
+      if (!user) {
+        const baseUsername = (profile.email?.split('@')[0] || name.replace(/\s+/g, '_')).slice(0, 20);
+        let username = baseUsername;
+        let attempts = 0;
+        while (await User.findOne({ username })) {
+          attempts += 1;
+          username = `${baseUsername}_${attempts}`;
+        }
+
+        try {
+          user = await User.create({
+            username,
+            email: email || undefined,
+            googleId,
+            firstName: name,
+            photoUrl: picture,
+          });
+          notifyAdminsOfNewUser({ username, provider: 'google' }).catch(() => {});
+        } catch (err: any) {
+          if (err.code === 11000 && err.keyPattern?.email) {
+            // Race condition: email taken between check and insert — create without email
+            user = await User.create({
+              username,
+              googleId,
+              firstName: name,
+              photoUrl: picture,
+            });
+            notifyAdminsOfNewUser({ username, provider: 'google' }).catch(() => {});
+          } else {
+            throw err;
+          }
+        }
+      }
     } else {
       let updated = false;
       if (email && user.email !== email) {
-        user.email = email;
-        updated = true;
+        const emailTaken = await User.findOne({ email, _id: { $ne: user._id } });
+        if (!emailTaken) {
+          user.email = email;
+          updated = true;
+        }
       }
       if (name && user.firstName !== name) {
         user.firstName = name;
