@@ -48,26 +48,28 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
     });
   };
 
-  if (storyData.length === 0) return null;
+  const hasStories = storyData.length > 0;
 
   return (
     <section className="mb-6">
-      <style>{`
-        @keyframes story-neon-spin {
-          to { transform: rotate(360deg); }
-        }
-        .story-neon-ring {
-          animation: story-neon-spin 3s linear infinite;
-        }
-        .story-neon-ring-slow {
-          animation: story-neon-spin 5s linear infinite;
-        }
-      `}</style>
+      {hasStories && (
+        <style>{`
+          @keyframes story-neon-spin {
+            to { transform: rotate(360deg); }
+          }
+          .story-neon-ring {
+            animation: story-neon-spin 3s linear infinite;
+          }
+          .story-neon-ring-slow {
+            animation: story-neon-spin 5s linear infinite;
+          }
+        `}</style>
+      )}
 
       <h3 className="sr-only">Recent Groups</h3>
 
       {/* Main card — warm orange gradient with glossy reflection */}
-      <div className="relative rounded-2xl overflow-hidden" style={{
+      {hasStories && <div className="relative rounded-2xl overflow-hidden" style={{
         background: 'linear-gradient(165deg, #1a1008 0%, #2a1a0a 40%, #1f1208 100%)',
         border: '1px solid rgba(245,158,11,0.2)',
         boxShadow: '0 4px 24px rgba(245,158,11,0.08), inset 0 1px 0 rgba(255,200,100,0.08)',
@@ -137,9 +139,9 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
             <PremiumUpgradeCircle />
           </div>
         </div>
-      </div>
+      </div>}
 
-      {/* Trending categories — orange/gold pills, max 2 lines on mobile */}
+      {/* Trending categories — always visible for SEO */}
       <nav aria-label="Popular Telegram group categories" className="mt-3 rounded-xl p-2.5 shadow-sm" style={{ background: 'linear-gradient(135deg, #1a1510, #191510)', border: '1px solid rgba(245,158,11,0.15)' }}>
         <div className="flex items-center gap-1.5 overflow-hidden max-h-[52px]">
           <span className="text-[9px] font-black uppercase tracking-wider shrink-0 mr-0.5" style={{ color: '#f59e0b' }}>🔥 Trending</span>
