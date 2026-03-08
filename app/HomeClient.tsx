@@ -67,6 +67,10 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
   const router = useRouter();
   const [username, setUsername] = useState<string | null>(null);
   const [useLightAnimations, setUseLightAnimations] = useState(false);
+  const [isPremiumOrAdmin, setIsPremiumOrAdmin] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
 
   useEffect(() => {
     // Client-only: read from localStorage (avoid breaking SSR and restricted envs)
@@ -74,6 +78,13 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
       if (typeof window !== 'undefined') {
         setUsername(window.localStorage.getItem('username'));
         setUseLightAnimations(shouldUseLightAnimations());
+
+        const ua = navigator.userAgent;
+        setIsIOS(/iPad|iPhone|iPod/.test(ua) && !(window as any).MSStream);
+
+        if (window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone) {
+          setIsAppInstalled(true);
+        }
       }
     } catch {
       // Ignore storage access errors (privacy modes, blocked storage, etc.)
@@ -118,6 +129,34 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const token = localStorage.getItem('token');
+    const admin = localStorage.getItem('isAdmin') === 'true';
+    if (admin) { setIsPremiumOrAdmin(true); return; }
+    if (!token) return;
+    fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => { if (d.premium || d.isAdmin) setIsPremiumOrAdmin(true); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = (e: Event) => { e.preventDefault(); setDeferredPrompt(e); };
+    window.addEventListener('beforeinstallprompt', handler as EventListener);
+    return () => window.removeEventListener('beforeinstallprompt', handler as EventListener);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') setIsAppInstalled(true);
+      setDeferredPrompt(null);
+    }
+  };
 
   const fadeInUp = {
     initial: { opacity: 0, y: 60 },
@@ -296,6 +335,40 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                 <svg className="relative drop-shadow-sm" width="13" height="13" viewBox="0 0 24 24" fill="#1a1000"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
               </a>
             </motion.div>
+          )}
+
+          {/* Install App Buttons — Premium & Admin only */}
+          {isPremiumOrAdmin && !isAppInstalled && (
+            <div className="flex flex-row items-center justify-center gap-3 mt-5">
+              {/* Android install */}
+              {!isIOS && deferredPrompt && (
+                <button
+                  onClick={handleInstallClick}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-semibold transition-all hover:scale-105 active:scale-95"
+                  style={{ background: '#3DDC84', color: '#000' }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 2.236l1.644 2.84a.5.5 0 01-.865.5l-1.663-2.873A9.987 9.987 0 0012 1.5a9.987 9.987 0 00-4.639 1.203L5.698 5.576a.5.5 0 01-.865-.5l1.644-2.84C3.143 4.274 1 7.836 1 12h22c0-4.164-3.143-7.726-6.477-9.764zM7 9a1 1 0 110-2 1 1 0 010 2zm10 0a1 1 0 110-2 1 1 0 010 2zM1 12v7a2 2 0 002 2h18a2 2 0 002-2v-7H1z"/></svg>
+                  Install Android App
+                </button>
+              )}
+              {/* iOS install */}
+              {isIOS && (
+                <button
+                  onClick={() => {
+                    alert('Tap the Share button (box with arrow) at the bottom of Safari, then tap "Add to Home Screen".');
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-semibold transition-all hover:scale-105 active:scale-95"
+                  style={{ background: '#ffffff', color: '#000' }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                  Install iOS App
+                </button>
+              )}
+              {/* Desktop/non-iOS without prompt — show both as info */}
+              {!isIOS && !deferredPrompt && (
+                <span className="text-white/30 text-[11px]">Open on your phone to install the app</span>
+              )}
+            </div>
           )}
         </div>
 

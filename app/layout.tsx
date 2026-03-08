@@ -69,6 +69,12 @@ export default function RootLayout({
         <meta name="theme-color" content="#111111" />
         <meta name="generator" content="Next.js 16" />
 
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Erogram" />
+
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
 
@@ -76,10 +82,8 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                  for (var i = 0; i < registrations.length; i++) {
-                    registrations[i].unregister();
-                  }
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js');
                 });
               }
             `,
