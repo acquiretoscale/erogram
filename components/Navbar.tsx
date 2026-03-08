@@ -83,7 +83,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
     if (!token) return;
     fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
-      .then(d => { if (d.premium) setIsPremium(true); if (d.isAdmin) setIsAdminUser(true); })
+      .then(d => { if (d.premium) setIsPremium(true); if (d.isAdmin) { setIsAdminUser(true); localStorage.setItem('isAdmin', 'true'); } })
       .catch(() => {});
   }, [mounted]);
 

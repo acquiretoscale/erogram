@@ -390,32 +390,35 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
 
             {error && <div className="mb-3 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center">{error}</div>}
 
-            {isPremium && adminPreview === 'none' && (
+            {(isPremium || isAdmin) && adminPreview === 'none' && (
               <div className="py-4 px-4 rounded-xl mb-3 space-y-2.5" style={{ background: `${G.gold}05`, border: `1px solid ${G.gold}20` }}>
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style={{ background: `${G.gold}20` }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill={G.gold}><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
                   </div>
-                  <span className="font-bold text-sm" style={{ color: G.gold }}>You&apos;re Premium</span>
+                  <span className="font-bold text-sm" style={{ color: G.gold }}>{isAdmin && !isPremium ? 'Admin Access' : 'You\u2019re Premium'}</span>
                   {premiumPlan && <span className="ml-auto px-2 py-0.5 rounded-full text-[9px] font-black uppercase capitalize" style={{ background: `${G.gold}15`, color: G.goldLight, border: `1px solid ${G.gold}20` }}>{premiumPlan}</span>}
+                  {isAdmin && !isPremium && <span className="ml-auto px-2 py-0.5 rounded-full text-[9px] font-black uppercase" style={{ background: 'rgba(168,85,247,0.15)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.2)' }}>Admin</span>}
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {premiumSince && (
+                {isPremium && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {premiumSince && (
+                      <div className="rounded-lg px-2.5 py-1.5" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
+                        <p className="text-[8px] uppercase font-bold tracking-wider mb-0.5" style={{ color: G.goldDim }}>Member since</p>
+                        <p className="text-[11px] font-semibold text-white/80">{new Date(premiumSince).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                      </div>
+                    )}
                     <div className="rounded-lg px-2.5 py-1.5" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
-                      <p className="text-[8px] uppercase font-bold tracking-wider mb-0.5" style={{ color: G.goldDim }}>Member since</p>
-                      <p className="text-[11px] font-semibold text-white/80">{new Date(premiumSince).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                      <p className="text-[8px] uppercase font-bold tracking-wider mb-0.5" style={{ color: G.goldDim }}>Valid until</p>
+                      {premiumExpiresAt ? (
+                        <>
+                          <p className="text-[11px] font-semibold text-white/80">{new Date(premiumExpiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                          {(() => { const dl = Math.ceil((new Date(premiumExpiresAt).getTime() - Date.now()) / 86_400_000); return <p className={`text-[8px] font-bold mt-0.5 ${dl <= 7 ? 'text-red-400' : ''}`} style={dl > 7 ? { color: G.goldDim } : {}}>{dl > 0 ? `${dl} day${dl === 1 ? '' : 's'} left` : 'Expired'}</p>; })()}
+                        </>
+                      ) : <p className="text-[11px] font-bold text-purple-400">Lifetime ♾</p>}
                     </div>
-                  )}
-                  <div className="rounded-lg px-2.5 py-1.5" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
-                    <p className="text-[8px] uppercase font-bold tracking-wider mb-0.5" style={{ color: G.goldDim }}>Valid until</p>
-                    {premiumExpiresAt ? (
-                      <>
-                        <p className="text-[11px] font-semibold text-white/80">{new Date(premiumExpiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-                        {(() => { const dl = Math.ceil((new Date(premiumExpiresAt).getTime() - Date.now()) / 86_400_000); return <p className={`text-[8px] font-bold mt-0.5 ${dl <= 7 ? 'text-red-400' : ''}`} style={dl > 7 ? { color: G.goldDim } : {}}>{dl > 0 ? `${dl} day${dl === 1 ? '' : 's'} left` : 'Expired'}</p>; })()}
-                      </>
-                    ) : <p className="text-[11px] font-bold text-purple-400">Lifetime ♾</p>}
                   </div>
-                </div>
+                )}
                 <Link href="/profile?tab=vault" className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-lg text-sm font-bold transition-all hover:scale-[1.02]" style={{ background: `linear-gradient(135deg, ${G.gold}, #a67c2e)`, color: '#0d0c0a', boxShadow: `0 0 20px ${G.gold}20` }}>
                   🔒 Open Vault
                 </Link>
