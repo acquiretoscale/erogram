@@ -572,7 +572,6 @@ export const starsRateSchema = new Schema(
   },
   { timestamps: true }
 );
-starsRateSchema.index({ date: 1 }, { unique: true });
 starsRateSchema.index({ fetchedAt: -1 });
 
 // Bookmark Schema
