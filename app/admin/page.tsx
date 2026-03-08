@@ -4,11 +4,22 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import OverviewTab from './components/OverviewTab';
 
+type TrendPoint = { date: string; value: number };
+type Metric = { last24h?: number; lifetime?: number; trend30d?: TrendPoint[] };
+type MonitoringAlert = { level: 'critical' | 'warning' | 'info' | 'ok'; title: string; description: string; actionUrl?: string };
 type DashboardData = {
   generatedAt?: string;
-  kpis?: unknown;
-  pending?: unknown;
-  monitoring?: unknown;
+  headline?: {
+    totalPageviewsLifetime?: number;
+    earningsTodayUsd?: number;
+    earningsLifetimeUsd?: number;
+    starsLifetime?: number;
+    starsUsdRate?: number;
+    earningsSource?: string;
+  };
+  kpis?: { paidSubs?: Metric; newUsers?: Metric; newGroups?: Metric; adClicks?: Metric; totalViews?: Metric };
+  pending?: { groups: number; bots: number; reviews: number; reports: number; total: number };
+  monitoring?: { dbLatencyMs: number; alerts: MonitoringAlert[] };
 };
 
 export default function AdminOverviewPage() {
