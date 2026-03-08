@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import { User } from '@/lib/models';
+import { notifyAdminsOfNewUser } from '@/lib/utils/notifyAdmins';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -81,6 +82,7 @@ export async function GET(req: NextRequest) {
         firstName: name,
         photoUrl: picture,
       });
+      notifyAdminsOfNewUser({ username, provider: 'google' }).catch(() => {});
     } else {
       let updated = false;
       if (email && user.email !== email) {

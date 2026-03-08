@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import connectDB from '@/lib/db/mongodb';
 import { User, PremiumEvent } from '@/lib/models';
+import { notifyAdminsOfSale } from '@/lib/utils/notifyAdmins';
 
 const IPN_SECRET = process.env.NOWPAYMENTS_IPN_SECRET || '';
 
@@ -105,6 +106,9 @@ export async function POST(req: NextRequest) {
 
     await User.findByIdAndUpdate(userId, update);
     logEvent({ event: 'crypto_payment_success', userId, plan, paymentId: payment_id, paymentMethod: 'crypto' });
+
+    const userDoc = await User.findById(userId).lean() as any;
+    notifyAdminsOfSale({ plan, method: 'crypto', username: userDoc?.username }).catch(() => {});
   } catch (err) {
     console.error('NowPayments webhook processing error:', err);
   }

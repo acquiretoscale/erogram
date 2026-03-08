@@ -615,6 +615,19 @@ export const bookmarkFolderSchema = new Schema(
   { timestamps: true }
 );
 
+// Admin Push Subscription Schema — stores admin browser push subscriptions
+export const adminPushSubscriptionSchema = new Schema(
+  {
+    endpoint: { type: String, required: true, unique: true },
+    keys: {
+      p256dh: { type: String, required: true },
+      auth: { type: String, required: true },
+    },
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  },
+  { timestamps: true }
+);
+
 // Export models
 export const User = models.User || model('User', userSchema);
 export const Group = models.Group || model('Group', groupSchema);
@@ -641,3 +654,4 @@ export const PremiumEvent = models.PremiumEvent || model('PremiumEvent', premium
 export const StarsRate = models.StarsRate || model('StarsRate', starsRateSchema);
 export const Bookmark = models.Bookmark || model('Bookmark', bookmarkSchema);
 export const BookmarkFolder = models.BookmarkFolder || model('BookmarkFolder', bookmarkFolderSchema);
+export const AdminPushSubscription = models.AdminPushSubscription || model('AdminPushSubscription', adminPushSubscriptionSchema);

@@ -36,9 +36,21 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
   const userMenuRef = useRef<HTMLDivElement>(null);
   const [navbarCta, setNavbarCta] = useState<{ _id: string; destinationUrl: string; description: string; buttonText: string } | null>(null);
   const [isPremium, setIsPremium] = useState(false);
-
+  const [isAdminUser, setIsAdminUser] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream);
+    if (window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone) setIsAppInstalled(true);
+    const handler = (e: Event) => { e.preventDefault(); setDeferredPrompt(e); };
+    window.addEventListener('beforeinstallprompt', handler as EventListener);
+    return () => window.removeEventListener('beforeinstallprompt', handler as EventListener);
+  }, []);
 
   useEffect(() => {
     fetch('/api/campaigns/placement?slot=navbar-cta', { cache: 'no-store' })
@@ -71,7 +83,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
     if (!token) return;
     fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
-      .then(d => { if (d.premium) setIsPremium(true); })
+      .then(d => { if (d.premium) setIsPremium(true); if (d.isAdmin) setIsAdminUser(true); })
       .catch(() => {});
   }, [mounted]);
 
@@ -192,6 +204,24 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
                         Saved
                       </Link>
+                      {(isPremium || isAdminUser) && !isAppInstalled && (
+                        <button
+                          onClick={() => {
+                            setIsUserMenuOpen(false);
+                            if (deferredPrompt) {
+                              deferredPrompt.prompt();
+                              deferredPrompt.userChoice.then((r: any) => { if (r.outcome === 'accepted') setIsAppInstalled(true); });
+                              setDeferredPrompt(null);
+                            } else if (isIOS) {
+                              alert('Tap the Share button (box with arrow) at the bottom of Safari, then tap "Add to Home Screen".');
+                            }
+                          }}
+                          className="w-full flex items-center gap-2.5 px-4 py-2 text-[13px] text-white/70 hover:text-white hover:bg-white/5 transition text-left"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                          Download App
+                        </button>
+                      )}
                       <div className="border-t border-white/5 mt-1 pt-1">
                         <button
                           onClick={() => { handleLogout(); setIsUserMenuOpen(false); }}
@@ -308,6 +338,24 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
               <Link href="/profile?tab=saved" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 rounded-lg text-[14px] text-white/70 hover:text-white hover:bg-white/5 transition">
                 Saved
               </Link>
+              {(isPremium || isAdminUser) && !isAppInstalled && (
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    if (deferredPrompt) {
+                      deferredPrompt.prompt();
+                      deferredPrompt.userChoice.then((r: any) => { if (r.outcome === 'accepted') setIsAppInstalled(true); });
+                      setDeferredPrompt(null);
+                    } else if (isIOS) {
+                      alert('Tap the Share button (box with arrow) at the bottom of Safari, then tap "Add to Home Screen".');
+                    }
+                  }}
+                  className="w-full px-4 py-2 rounded-lg text-[14px] text-white/70 hover:text-white hover:bg-white/5 transition text-left flex items-center gap-2"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                  Download App
+                </button>
+              )}
               <button
                 onClick={handleLogout}
                 className="w-full px-4 py-2 rounded-lg text-[14px] text-white/40 hover:text-red-400 hover:bg-red-500/5 transition text-left"

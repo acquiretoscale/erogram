@@ -126,6 +126,9 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
   const [adminPreview, setAdminPreview] = useState<'none' | 'telegram' | 'google'>('none');
   const tracked = useRef(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isIOSDevice, setIsIOSDevice] = useState(false);
+  const [appInstalled, setAppInstalled] = useState(false);
 
   const checkPremiumStatus = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -171,6 +174,15 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
     const tick = setInterval(() => { const r = Math.max(0, getOrCreateExpiry() - Date.now()); setTimeLeft(r); if (r === 0) localStorage.removeItem(TIMER_KEY); }, 1000);
     return () => { clearInterval(tick); if (pollRef.current) clearInterval(pollRef.current); };
   }, [checkPremiumStatus]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setIsIOSDevice(/iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream);
+    if (window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone) setAppInstalled(true);
+    const handler = (e: Event) => { e.preventDefault(); setDeferredPrompt(e); };
+    window.addEventListener('beforeinstallprompt', handler as EventListener);
+    return () => window.removeEventListener('beforeinstallprompt', handler as EventListener);
+  }, []);
 
   const handlePurchase = async (plan: 'monthly' | 'yearly' | 'lifetime') => {
     if (!isLoggedIn) { window.location.href = '/login?redirect=/premium'; return; }
@@ -293,6 +305,19 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
             <p className="text-xs pl-6 mt-1" style={{ color: G.goldDim }}>So you only join real, active Telegram groups.</p>
           </div>
 
+          {/* Mobile App */}
+          <div>
+            <h3 className="text-sm font-black text-white mb-1.5 flex items-center gap-2">
+              <span>📱</span> Mobile App — Install on Your Phone
+            </h3>
+            <p className="text-xs pl-6 mb-1" style={{ color: G.goldText }}>Premium members get access to the <span className="font-bold" style={{ color: G.gold }}>Erogram mobile app.</span></p>
+            <div className="space-y-0.5 pl-6">
+              <p className="text-xs" style={{ color: G.goldText }}>✓ Works on Android & iOS</p>
+              <p className="text-xs" style={{ color: G.goldText }}>✓ Full-screen native experience</p>
+              <p className="text-xs" style={{ color: G.goldText }}>✓ Quick access from your home screen</p>
+            </div>
+          </div>
+
           {/* Inner Circle */}
           <div className="pt-2 border-t" style={{ borderColor: `${G.gold}15` }}>
             <h3 className="text-sm font-black text-white mb-1.5">Join the Erogram Inner Circle</h3>
@@ -394,6 +419,24 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                 <Link href="/profile?tab=vault" className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-lg text-sm font-bold transition-all hover:scale-[1.02]" style={{ background: `linear-gradient(135deg, ${G.gold}, #a67c2e)`, color: '#0d0c0a', boxShadow: `0 0 20px ${G.gold}20` }}>
                   🔒 Open Vault
                 </Link>
+                {!appInstalled && (deferredPrompt || isIOSDevice) && (
+                  <button
+                    onClick={() => {
+                      if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        deferredPrompt.userChoice.then((r: any) => { if (r.outcome === 'accepted') setAppInstalled(true); });
+                        setDeferredPrompt(null);
+                      } else if (isIOSDevice) {
+                        alert('Tap the Share button (box with arrow) at the bottom of Safari, then tap "Add to Home Screen".');
+                      }
+                    }}
+                    className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-lg text-sm font-bold transition-all hover:scale-[1.02]"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    📱 Download App
+                  </button>
+                )}
               </div>
             )}
 

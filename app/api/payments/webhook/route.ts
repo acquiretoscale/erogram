@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
 import { User, PremiumEvent } from '@/lib/models';
 import { MAX_PREMIUM_SLOTS } from '@/lib/auth';
+import { notifyAdminsOfSale } from '@/lib/utils/notifyAdmins';
 
 function logEvent(data: Record<string, any>) {
   PremiumEvent.create({ source: 'server', ...data }).catch(() => {});
@@ -202,6 +203,8 @@ export async function POST(req: NextRequest) {
 
         await User.findByIdAndUpdate(userId, updateData);
         logEvent({ event: 'payment_success', userId, plan, chargeId, paymentMethod: 'stars' });
+
+        notifyAdminsOfSale({ plan, method: 'stars', username: user.username }).catch(() => {});
       } catch (err) {
         console.error('Failed to process successful payment:', err);
       }

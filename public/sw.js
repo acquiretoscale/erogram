@@ -111,3 +111,35 @@ self.addEventListener('fetch', (event) => {
   // Default - network first for other requests
   event.respondWith(fetch(request));
 });
+
+// Push notification handler (admin sale alerts)
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+  try {
+    const data = event.data.json();
+    event.waitUntil(
+      self.registration.showNotification(data.title || 'Erogram', {
+        body: data.body || '',
+        icon: data.icon || '/icons/icon-192.png',
+        badge: data.badge || '/icons/icon-192.png',
+        tag: data.tag || 'erogram-notification',
+        data: data.data || {},
+      })
+    );
+  } catch (e) {
+    console.error('[SW] Push parse error:', e);
+  }
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if (client.url.includes(url) && 'focus' in client) return client.focus();
+      }
+      return self.clients.openWindow(url);
+    })
+  );
+});

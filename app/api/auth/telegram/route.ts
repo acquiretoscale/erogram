@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import { User } from '@/lib/models';
+import { notifyAdminsOfNewUser } from '@/lib/utils/notifyAdmins';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 const BOT_TOKEN = process.env.TELEGRAM_PAYMENT_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || '';
@@ -52,6 +53,7 @@ export async function POST(req: NextRequest) {
           firstName: data.first_name || null,
           photoUrl: data.photo_url || null,
         });
+        notifyAdminsOfNewUser({ username: user.username, provider: 'telegram' }).catch(() => {});
       } catch (error: any) {
         if (error.code === 11000 && error.keyPattern && error.keyPattern.email) {
           user = await User.create({
@@ -61,6 +63,7 @@ export async function POST(req: NextRequest) {
             firstName: data.first_name || null,
             photoUrl: data.photo_url || null,
           });
+          notifyAdminsOfNewUser({ username: user.username, provider: 'telegram' }).catch(() => {});
         } else {
           throw error;
         }
