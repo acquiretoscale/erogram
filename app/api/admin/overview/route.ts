@@ -105,7 +105,9 @@ export async function GET(req: NextRequest) {
   const since30dUtc = new Date(`${last30Days[0]}T00:00:00.000Z`);
 
   const dbPingStart = Date.now();
-  await mongoose.connection.db.admin().command({ ping: 1 });
+  if (mongoose.connection.db) {
+    await mongoose.connection.db.admin().command({ ping: 1 });
+  }
   const dbLatencyMs = Date.now() - dbPingStart;
 
   // Fetch Stars txs + rate in parallel with DB queries — same source as Premium section
