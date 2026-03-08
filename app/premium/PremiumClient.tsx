@@ -117,6 +117,7 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
   const [soldOut, setSoldOut] = useState(false);
   const [lifetimeSlots] = useState<number>(calcLifetimeSlots());
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [premiumPlan, setPremiumPlan] = useState<string | null>(null);
   const [premiumSince, setPremiumSince] = useState<string | null>(null);
@@ -150,8 +151,12 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
     if (typeof window !== 'undefined') { const p = new URLSearchParams(window.location.search); if (p.get('payment') === 'crypto_success') setAwaitingPayment(true); }
     const token = localStorage.getItem('token');
     if (token) {
-      setIsLoggedIn(true); checkPremiumStatus();
+      setIsLoggedIn(true); setAuthChecked(true); checkPremiumStatus();
       fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(d => { if (d.authProvider) { setAuthProvider(d.authProvider); if (d.authProvider === 'google') setPayMethod('crypto'); } if (d.isAdmin) setIsAdmin(true); }).catch(() => {});
+    } else {
+      setAuthChecked(true);
+      window.location.href = '/login?redirect=/premium';
+      return;
     }
     fetch('/api/payments/slots').then(r => r.json()).then(d => { if (d.remaining === 0) setSoldOut(true); }).catch(() => {});
     const expiry = getOrCreateExpiry(); setTimeLeft(Math.max(0, expiry - Date.now()));
@@ -178,6 +183,14 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
       if (res.data?.url) window.location.href = res.data.url;
     } catch (err: any) { if (err?.response?.data?.soldOut) setSoldOut(true); setError(err?.response?.data?.message || 'Failed to create crypto payment.'); } finally { setLoading(null); }
   };
+
+  if (!authChecked || !isLoggedIn) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(180deg, #070605 0%, #0a0906 100%)' }}>
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2" style={{ borderColor: '#c9973a' }} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, #070605 0%, #0a0906 100%)' }}>
