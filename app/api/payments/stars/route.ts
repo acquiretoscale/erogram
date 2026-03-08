@@ -6,9 +6,8 @@ import { authenticateUser, MAX_PREMIUM_SLOTS } from '@/lib/auth';
 const BOT_TOKEN = process.env.TELEGRAM_PAYMENT_BOT_TOKEN || '';
 
 const PLANS = {
-  monthly: { title: 'Erogram VIP (Monthly)', description: 'Unlimited bookmarks, folders & exclusive unlisted groups for 30 days', amount: 920, days: 30 },
-  yearly: { title: 'Erogram VIP (Yearly)', description: 'Unlimited bookmarks, folders & exclusive unlisted groups for 1 year — 72% OFF', amount: 2000, days: 365 },
-  lifetime: { title: 'Erogram VIP (Lifetime)', description: 'Unlimited VIP access forever — all features, all updates, no renewals', amount: 6850, days: null },
+  monthly: { title: 'Erogram VIP (Monthly)', description: 'Unlimited bookmarks, folders & exclusive unlisted groups for 30 days', amount: 600, days: 30 },
+  yearly: { title: 'Erogram VIP (Yearly)', description: 'Unlimited bookmarks, folders & exclusive unlisted groups for 1 year — best value', amount: 3333, days: 365 },
 } as const;
 
 function logEvent(data: Record<string, any>) {
@@ -69,11 +68,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Failed to create invoice' }, { status: 500 });
     }
 
-    logEvent({ event: 'invoice_created', userId: user._id, username: user.username, plan });
+    logEvent({ event: 'invoice_created', userId: user._id, username: user.username, plan, paymentMethod: 'stars' });
     return NextResponse.json({ url: data.result });
   } catch (err) {
     console.error('Payment error:', err);
-    logEvent({ event: 'invoice_error', userId: user._id, username: user.username, plan, errorMessage: String(err) });
+    logEvent({ event: 'invoice_error', userId: user._id, username: user.username, plan, errorMessage: String(err), paymentMethod: 'stars' });
     return NextResponse.json({ message: 'Server error' }, { status: 500 });
   }
 }

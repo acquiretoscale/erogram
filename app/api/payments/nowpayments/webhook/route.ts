@@ -87,6 +87,7 @@ export async function POST(req: NextRequest) {
       premium: true,
       premiumPlan: plan,
       premiumSince: now,
+      paymentMethod: 'crypto',
       lastPaymentChargeId: String(payment_id),
     };
 
@@ -103,7 +104,7 @@ export async function POST(req: NextRequest) {
     }
 
     await User.findByIdAndUpdate(userId, update);
-    logEvent({ event: 'crypto_payment_success', userId, plan, paymentId: payment_id });
+    logEvent({ event: 'crypto_payment_success', userId, plan, paymentId: payment_id, paymentMethod: 'crypto' });
   } catch (err) {
     console.error('NowPayments webhook processing error:', err);
   }

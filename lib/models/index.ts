@@ -33,6 +33,7 @@ export const userSchema = new Schema(
     premiumPlan: { type: String, enum: ['monthly', 'yearly', 'lifetime', null], default: null },
     premiumSince: { type: Date, default: null },
     premiumExpiresAt: { type: Date, default: null },
+    paymentMethod: { type: String, enum: ['stars', 'crypto', null], default: null },
     lastPaymentChargeId: { type: String, default: null },
     stats: {
       groupsCreated: { type: Number, default: 0 },
@@ -533,24 +534,41 @@ export const premiumEventSchema = new Schema(
       type: String,
       required: true,
       enum: [
-        'page_view',        // visited /premium
-        'modal_open',       // UpgradeModal shown (bookmark/folder limit)
-        'plan_click',       // clicked "Grab the Deal"
-        'invoice_created',  // server created Telegram Stars invoice link
-        'invoice_error',    // server failed to create invoice
-        'pre_checkout',     // Telegram pre_checkout_query received
-        'payment_success',  // Telegram successful_payment processed
-        'already_premium',  // user tried to buy but already premium
-        'slots_full',       // all 100 slots taken
+        'page_view',
+        'modal_open',
+        'plan_click',
+        'crypto_plan_click',
+        'invoice_created',
+        'invoice_error',
+        'crypto_invoice_created',
+        'crypto_invoice_error',
+        'pre_checkout',
+        'payment_success',
+        'crypto_payment_success',
+        'crypto_partial_payment',
+        'crypto_webhook_waiting',
+        'crypto_webhook_confirming',
+        'crypto_webhook_confirmed',
+        'crypto_webhook_sending',
+        'crypto_webhook_partially_paid',
+        'crypto_webhook_finished',
+        'crypto_webhook_failed',
+        'crypto_webhook_refunded',
+        'crypto_webhook_expired',
+        'already_premium',
+        'slots_full',
       ],
     },
     userId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
     username: { type: String, default: null },
     plan: { type: String, enum: ['monthly', 'yearly', 'lifetime', null], default: null },
     source: { type: String, enum: ['premium_page', 'upgrade_modal', 'server'], default: null },
+    paymentMethod: { type: String, enum: ['stars', 'crypto', null], default: null },
     reason: { type: String, default: null },
     errorMessage: { type: String, default: null },
     chargeId: { type: String, default: null },
+    orderId: { type: String, default: null },
+    paymentId: { type: String, default: null },
     ip: { type: String, default: null },
     userAgent: { type: String, default: null },
   },

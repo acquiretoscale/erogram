@@ -4,17 +4,16 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import OverviewTab from './components/OverviewTab';
 
+type DashboardData = {
+  generatedAt?: string;
+  kpis?: unknown;
+  pending?: unknown;
+  monitoring?: unknown;
+};
+
 export default function AdminOverviewPage() {
-  const [metrics, setMetrics] = useState({
-    userCount: 0,
-    groupCount: 0,
-    approvedGroupCount: 0,
-    pendingGroupCount: 0,
-    pendingBotCount: 0,
-    pendingReviewCount: 0,
-    pendingReportCount: 0,
-    totalViews: 0,
-  });
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchMetrics();
@@ -22,15 +21,18 @@ export default function AdminOverviewPage() {
 
   const fetchMetrics = async () => {
     try {
+      setLoading(true);
       const token = localStorage.getItem('token');
-      const res = await axios.get('/api/admin/metrics', {
+      const res = await axios.get('/api/admin/overview', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setMetrics(res.data);
+      setData(res.data);
     } catch {
-      // metrics will stay at defaults
+      // Keep fallback UI defaults if request fails
+    } finally {
+      setLoading(false);
     }
   };
 
-  return <OverviewTab metrics={metrics} />;
+  return <OverviewTab data={data} loading={loading} onRefresh={fetchMetrics} />;
 }

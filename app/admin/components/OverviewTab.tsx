@@ -3,172 +3,280 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
+type TrendPoint = { date: string; value: number };
+type Metric = { last24h?: number; lifetime?: number; trend30d?: TrendPoint[] };
+type MonitoringAlert = { level: 'critical' | 'warning' | 'info' | 'ok'; title: string; description: string; actionUrl?: string };
+type DashboardData = {
+  generatedAt?: string;
+  headline?: {
+    totalPageviewsLifetime?: number;
+    earningsTodayUsd?: number;
+    earningsLifetimeUsd?: number;
+    starsLifetime?: number;
+    starsUsdRate?: number;
+    earningsSource?: string;
+  };
+  kpis?: { paidSubs?: Metric; newUsers?: Metric; newGroups?: Metric; adClicks?: Metric; totalViews?: Metric };
+  pending?: { groups: number; bots: number; reviews: number; reports: number; total: number };
+  monitoring?: { dbLatencyMs: number; alerts: MonitoringAlert[] };
+};
+
 interface OverviewTabProps {
-    metrics: {
-        userCount: number;
-        groupCount: number;
-        approvedGroupCount: number;
-        pendingGroupCount: number;
-        pendingBotCount?: number;
-        pendingReviewCount?: number;
-        pendingReportCount?: number;
-        totalViews: number;
-    };
+  data: DashboardData | null;
+  loading: boolean;
+  onRefresh: () => void | Promise<void>;
 }
 
-export default function OverviewTab({ metrics }: OverviewTabProps) {
-    const cardVariants = {
-        initial: { opacity: 0, y: 20 },
-        animate: { opacity: 1, y: 0 },
-    };
+function formatNumber(value: number): string {
+  return new Intl.NumberFormat('en-US').format(value || 0);
+}
 
-    const stats = [
-        { title: 'Total Users', value: metrics.userCount, icon: '👥', color: 'bg-blue-500' },
-        { title: 'Total Groups', value: metrics.groupCount, icon: '📦', color: 'bg-green-500' },
-        { title: 'Approved', value: metrics.approvedGroupCount, icon: '✅', color: 'bg-purple-500' },
-        { title: 'Pending', value: metrics.pendingGroupCount, icon: '⏳', color: 'bg-orange-500' },
-        { title: 'Total Views', value: metrics.totalViews.toLocaleString(), icon: '👁️', color: 'bg-pink-500' },
-    ];
+function formatUsd(value: number): string {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value || 0);
+}
 
-    return (
-        <div className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-                {stats.map((stat, index) => (
-                    <motion.div
-                        key={stat.title}
-                        variants={cardVariants}
-                        initial="initial"
-                        animate="animate"
-                        transition={{ delay: index * 0.1 }}
-                        className="glass p-6 rounded-2xl border border-white/5 relative overflow-hidden group"
-                    >
-                        <div className={`absolute top-0 right-0 w-24 h-24 ${stat.color} opacity-10 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110`} />
+function Sparkline({ points, stroke = '#4f46e5' }: { points: TrendPoint[]; stroke?: string }) {
+  if (!points?.length) {
+    return <div className="h-14 rounded-md bg-slate-50 border border-slate-200" />;
+  }
 
-                        <div className="relative z-10">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className={`w-10 h-10 rounded-xl ${stat.color}/20 flex items-center justify-center text-xl`}>
-                                    {stat.icon}
-                                </div>
-                            </div>
+  const width = 100;
+  const height = 26;
+  const max = Math.max(...points.map((p) => p.value), 1);
+  const min = Math.min(...points.map((p) => p.value), 0);
+  const range = Math.max(max - min, 1);
+  const stepX = points.length > 1 ? width / (points.length - 1) : width;
 
-                            <h3 className="text-3xl font-bold text-white mb-1">{stat.value}</h3>
-                            <p className="text-sm text-[#999]">{stat.title}</p>
-                        </div>
-                    </motion.div>
-                ))}
-            </div>
+  const path = points
+    .map((p, i) => {
+      const x = i * stepX;
+      const normalized = (p.value - min) / range;
+      const y = height - normalized * height;
+      return `${x},${y}`;
+    })
+    .join(' ');
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="glass p-8 rounded-3xl border border-white/5"
-                >
-                    <h2 className="text-xl font-bold text-white mb-6">Quick Actions</h2>
-                    <div className="grid grid-cols-2 gap-4">
-                        <Link
-                            href="/admin/groups"
-                            className="p-4 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 text-left transition-all group"
-                        >
-                            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">➕</span>
-                            <span className="font-semibold text-white block">Add Group</span>
-                            <span className="text-xs text-[#666]">Manage listings</span>
-                        </Link>
-                        <Link
-                            href="/admin/advertisers"
-                            className="p-4 bg-pink-500/15 hover:bg-pink-500/25 rounded-xl border border-pink-500/30 text-left transition-all group"
-                        >
-                            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">🔘</span>
-                            <span className="font-semibold text-white block">CTA Buttons</span>
-                            <span className="text-xs text-pink-200/80">Navbar & Join page links</span>
-                        </Link>
-                        <Link
-                            href="/admin/adverts"
-                            className="p-4 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 text-left transition-all group"
-                        >
-                            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">📢</span>
-                            <span className="font-semibold text-white block">Create Ad</span>
-                            <span className="text-xs text-[#666]">Launch a new campaign</span>
-                        </Link>
-                        <Link
-                            href="/admin/articles"
-                            className="p-4 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 text-left transition-all group"
-                        >
-                            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">📝</span>
-                            <span className="font-semibold text-white block">Write Article</span>
-                            <span className="text-xs text-[#666]">Publish new content</span>
-                        </Link>
-                        <Link
-                            href="/admin/settings"
-                            className="p-4 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 text-left transition-all group"
-                        >
-                            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">⚙️</span>
-                            <span className="font-semibold text-white block">Settings</span>
-                            <span className="text-xs text-[#666]">Configure site options</span>
-                        </Link>
-                    </div>
-                </motion.div>
+  return (
+    <div className="h-14 rounded-md bg-slate-50 border border-slate-200 p-2">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
+        <polyline
+          fill="none"
+          stroke={stroke}
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          points={path}
+        />
+      </svg>
+    </div>
+  );
+}
 
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                    className="glass p-8 rounded-3xl border border-white/5"
-                >
-                    <h2 className="text-xl font-bold text-white mb-6">System Status</h2>
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
-                            <div className="flex items-center gap-3">
-                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                                <span className="text-green-400 font-medium">API Operational</span>
-                            </div>
-                            <span className="text-xs text-green-500/60">99.9% Uptime</span>
-                        </div>
-                        <div className="flex items-center justify-between p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
-                            <div className="flex items-center gap-3">
-                                <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                                <span className="text-blue-400 font-medium">Database Connected</span>
-                            </div>
-                            <span className="text-xs text-blue-500/60">12ms Latency</span>
-                        </div>
-
-                        <div className="mt-6 pt-6 border-t border-white/10">
-                            <h3 className="text-sm font-bold text-[#999] uppercase mb-4">Pending Review</h3>
-                            <div className="grid grid-cols-2 gap-4">
-                                <Link
-                                    href="/admin/pending-groups"
-                                    className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-xl flex items-center justify-between hover:bg-orange-500/20 transition-colors"
-                                >
-                                    <span className="text-orange-400 font-medium">Groups</span>
-                                    <span className="bg-orange-500 text-black text-xs font-bold px-2 py-1 rounded-full">{metrics.pendingGroupCount}</span>
-                                </Link>
-                                <Link
-                                    href="/admin/pending-bots"
-                                    className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl flex items-center justify-between hover:bg-purple-500/20 transition-colors"
-                                >
-                                    <span className="text-purple-400 font-medium">Bots</span>
-                                    <span className="bg-purple-500 text-black text-xs font-bold px-2 py-1 rounded-full">{metrics.pendingBotCount || 0}</span>
-                                </Link>
-                                <Link
-                                    href="/admin/reviews"
-                                    className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-between hover:bg-blue-500/20 transition-colors"
-                                >
-                                    <span className="text-blue-400 font-medium">Reviews</span>
-                                    <span className="bg-blue-500 text-black text-xs font-bold px-2 py-1 rounded-full">{metrics.pendingReviewCount || 0}</span>
-                                </Link>
-                                <Link
-                                    href="/admin/reports"
-                                    className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center justify-between hover:bg-red-500/20 transition-colors"
-                                >
-                                    <span className="text-red-400 font-medium">Reports</span>
-                                    <span className="bg-red-500 text-black text-xs font-bold px-2 py-1 rounded-full">{metrics.pendingReportCount || 0}</span>
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-                </motion.div>
-            </div>
+function KpiCard({
+  title,
+  label,
+  last24h,
+  lifetime,
+  points,
+  tone,
+}: {
+  title: string;
+  label: string;
+  last24h?: number;
+  lifetime?: number;
+  points: TrendPoint[];
+  tone: string;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-xl border border-slate-200 bg-white p-4"
+    >
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div>
+          <p className="text-[11px] uppercase tracking-wider text-slate-500">{label}</p>
+          <h3 className="text-sm font-semibold text-slate-900 mt-0.5">{title}</h3>
         </div>
+        <span className={`h-2 w-2 rounded-full ${tone}`} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div>
+          <p className="text-[10px] text-slate-500 uppercase tracking-wider">24h</p>
+          <p className="text-xl font-semibold text-slate-900">{formatNumber(last24h || 0)}</p>
+        </div>
+        <div>
+          <p className="text-[10px] text-slate-500 uppercase tracking-wider">Lifetime</p>
+          <p className="text-xl font-semibold text-slate-900">{formatNumber(lifetime || 0)}</p>
+        </div>
+      </div>
+
+      <Sparkline points={points} />
+      <p className="text-[10px] text-slate-500 mt-1.5">Last 30 days</p>
+    </motion.div>
+  );
+}
+
+function alertStyle(level: string) {
+  if (level === 'critical') return 'border-red-200 bg-red-50 text-red-700';
+  if (level === 'warning') return 'border-amber-200 bg-amber-50 text-amber-700';
+  if (level === 'ok') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+  return 'border-blue-200 bg-blue-50 text-blue-700';
+}
+
+export default function OverviewTab({ data, loading, onRefresh }: OverviewTabProps) {
+  const headline = data?.headline || {};
+  const kpis = data?.kpis || {};
+  const pending = data?.pending || { groups: 0, bots: 0, reviews: 0, reports: 0, total: 0 };
+  const monitoring = data?.monitoring || { dbLatencyMs: 0, alerts: [] };
+
+  if (loading) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-10 text-center text-slate-500">
+        Loading dashboard data...
+      </div>
     );
+  }
+
+  return (
+    <div className="-m-4 md:-m-8 p-4 md:p-6 min-h-screen bg-[#f6f8fc] space-y-3">
+      <div className="rounded-xl border border-slate-200 bg-white px-5 py-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-slate-500">Control Center</p>
+            <h1 className="text-2xl font-semibold text-slate-900 mt-1">Performance Dashboard</h1>
+          </div>
+          <button
+            onClick={() => onRefresh()}
+            className="px-3 py-1.5 rounded-lg border border-slate-300 text-sm text-slate-700 bg-white hover:bg-slate-50 transition-colors"
+          >
+            Refresh
+          </button>
+        </div>
+        <p className="text-xs text-slate-500 mt-1.5">Last sync: {data?.generatedAt ? new Date(data.generatedAt).toLocaleString() : 'N/A'}</p>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5">
+        <div className="rounded-xl border border-slate-200 bg-white p-3.5">
+          <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#64748b' }}>Total Pageviews</p>
+          <p className="text-2xl font-semibold mt-1" style={{ color: '#0f172a' }}>{formatNumber(headline.totalPageviewsLifetime || 0)}</p>
+          <p className="text-xs mt-1" style={{ color: '#64748b' }}>Lifetime</p>
+        </div>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3.5">
+          <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#047857' }}>Today Earnings</p>
+          <p className="text-2xl font-semibold mt-1" style={{ color: '#064e3b' }}>{formatUsd(headline.earningsTodayUsd || 0)}</p>
+          <p className="text-xs mt-1" style={{ color: '#065f46' }}>
+            {headline.earningsSource === 'unavailable'
+              ? 'Bot token not configured'
+              : 'Stars invoice payments today'}
+          </p>
+        </div>
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3.5 col-span-2 lg:col-span-1">
+          <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#4338ca' }}>Lifetime Earnings</p>
+          <p className="text-2xl font-semibold mt-1" style={{ color: '#1e1b4b' }}>{formatUsd(headline.earningsLifetimeUsd || 0)}</p>
+          <p className="text-xs mt-1" style={{ color: '#3730a3' }}>
+            {headline.starsLifetime
+              ? `${headline.starsLifetime.toLocaleString()} ★ · rate $${(headline.starsUsdRate || 0).toFixed(5)}/★`
+              : headline.earningsSource === 'unavailable' ? 'Bot token not configured' : 'All-time Stars revenue'}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5">
+        <KpiCard
+          title="Paid Subs"
+          label="Revenue"
+          last24h={kpis?.paidSubs?.last24h || 0}
+          lifetime={kpis?.paidSubs?.lifetime || 0}
+          points={kpis?.paidSubs?.trend30d || []}
+          tone="bg-amber-500"
+        />
+        <KpiCard
+          title="New Users"
+          label="Acquisition"
+          last24h={kpis?.newUsers?.last24h || 0}
+          lifetime={kpis?.newUsers?.lifetime || 0}
+          points={kpis?.newUsers?.trend30d || []}
+          tone="bg-blue-500"
+        />
+        <KpiCard
+          title="New Groups"
+          label="Supply"
+          last24h={kpis?.newGroups?.last24h || 0}
+          lifetime={kpis?.newGroups?.lifetime || 0}
+          points={kpis?.newGroups?.trend30d || []}
+          tone="bg-emerald-500"
+        />
+        <KpiCard
+          title="Ad Clicks"
+          label="Ads"
+          last24h={kpis?.adClicks?.last24h || 0}
+          lifetime={kpis?.adClicks?.lifetime || 0}
+          points={kpis?.adClicks?.trend30d || []}
+          tone="bg-fuchsia-500"
+        />
+        <KpiCard
+          title="Total Views"
+          label="Traffic"
+          last24h={undefined}
+          lifetime={kpis?.totalViews?.lifetime || 0}
+          points={kpis?.totalViews?.trend30d || []}
+          tone="bg-cyan-500"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-2.5">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-slate-200 bg-white p-3.5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-semibold text-slate-900">Pending Queue</h2>
+            <span className="text-xs bg-slate-100 border border-slate-200 rounded-full px-2.5 py-0.5 text-slate-600">
+              Total: {formatNumber(pending.total || 0)}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Link href="/admin/pending-groups" className="rounded-lg border border-amber-200 bg-amber-50 p-3 hover:bg-amber-100 transition-colors">
+              <p className="text-[11px] text-amber-700">Groups</p>
+              <p className="text-lg font-semibold text-slate-900">{formatNumber(pending.groups || 0)}</p>
+            </Link>
+            <Link href="/admin/pending-bots" className="rounded-lg border border-purple-200 bg-purple-50 p-3 hover:bg-purple-100 transition-colors">
+              <p className="text-[11px] text-purple-700">Bots</p>
+              <p className="text-lg font-semibold text-slate-900">{formatNumber(pending.bots || 0)}</p>
+            </Link>
+            <Link href="/admin/reviews" className="rounded-lg border border-blue-200 bg-blue-50 p-3 hover:bg-blue-100 transition-colors">
+              <p className="text-[11px] text-blue-700">Reviews</p>
+              <p className="text-lg font-semibold text-slate-900">{formatNumber(pending.reviews || 0)}</p>
+            </Link>
+            <Link href="/admin/reports" className="rounded-lg border border-red-200 bg-red-50 p-3 hover:bg-red-100 transition-colors">
+              <p className="text-[11px] text-red-700">Reports</p>
+              <p className="text-lg font-semibold text-slate-900">{formatNumber(pending.reports || 0)}</p>
+            </Link>
+          </div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-slate-200 bg-white p-3.5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-semibold text-slate-900">System Monitoring</h2>
+            <span className="text-xs bg-slate-100 border border-slate-200 rounded-full px-2.5 py-0.5 text-slate-600">
+              DB: {monitoring.dbLatencyMs || 0}ms
+            </span>
+          </div>
+
+          <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1">
+            {(monitoring.alerts || []).map((alert: MonitoringAlert, idx: number) => (
+              <div key={`${alert.title}-${idx}`} className={`rounded-lg border p-3 ${alertStyle(alert.level)}`}>
+                <p className="text-sm font-semibold">{alert.title}</p>
+                <p className="text-xs opacity-95 mt-0.5">{alert.description}</p>
+                {alert.actionUrl ? (
+                  <Link href={alert.actionUrl} className="inline-block mt-1.5 text-xs underline underline-offset-2">
+                    Open section
+                  </Link>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  );
 }

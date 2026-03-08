@@ -16,7 +16,7 @@ export default function AddGroupModal({ categories, countries, onClose, onSucces
   const [groupData, setGroupData] = useState({
     name: '',
     category: 'Adult',
-    country: 'All',
+    country: 'Adult-Telegram',
     telegramLink: '',
     description: '',
     imageFile: null as File | null

@@ -52,6 +52,13 @@ export async function POST(
       );
     }
 
+    if (!group.premiumOnly) {
+      return NextResponse.json(
+        { message: 'Premium notification is only allowed for premium groups' },
+        { status: 400 }
+      );
+    }
+
     // Convert to plain object and ensure image is included
     const groupPlainObject = {
       _id: group._id.toString(),
@@ -62,6 +69,7 @@ export async function POST(
       description: group.description,
       telegramLink: group.telegramLink,
       image: group.image,
+      premiumOnly: !!group.premiumOnly,
       views: group.views || 0
     };
 

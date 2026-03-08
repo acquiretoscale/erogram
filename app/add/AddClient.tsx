@@ -18,7 +18,7 @@ export default function AddClient({ categories, countries }: AddClientProps) {
   const [groupData, setGroupData] = useState({
     name: '',
     category: 'Adult',
-    country: 'All',
+    country: 'Adult-Telegram',
     telegramLink: '',
     description: '',
     imageFile: null as File | null,
@@ -26,7 +26,7 @@ export default function AddClient({ categories, countries }: AddClientProps) {
   const [botData, setBotData] = useState({
     name: '',
     category: 'Adult',
-    country: 'All',
+    country: 'Adult-Telegram',
     telegramLink: '',
     description: '',
     imageFile: null as File | null,
@@ -118,7 +118,7 @@ export default function AddClient({ categories, countries }: AddClientProps) {
         image: imageUrl || PLACEHOLDER_IMAGE_URL,
       });
       setSuccess('group');
-      setGroupData({ name: '', category: 'Adult', country: 'All', telegramLink: '', description: '', imageFile: null });
+      setGroupData({ name: '', category: 'Adult', country: 'Adult-Telegram', telegramLink: '', description: '', imageFile: null });
       setGroupPreview(null);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to submit group');
@@ -161,7 +161,7 @@ export default function AddClient({ categories, countries }: AddClientProps) {
         image: imageUrl || PLACEHOLDER_IMAGE_URL,
       });
       setSuccess('bot');
-      setBotData({ name: '', category: 'Adult', country: 'All', telegramLink: '', description: '', imageFile: null });
+      setBotData({ name: '', category: 'Adult', country: 'Adult-Telegram', telegramLink: '', description: '', imageFile: null });
       setBotPreview(null);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to submit bot');

@@ -188,11 +188,15 @@ function isTextOnlySlot(slot: string): boolean {
   return s === 'navbar-cta' || s === 'join-cta' || s === 'filter-cta';
 }
 
+type SectionTabType = 'overview' | 'slots' | 'buttonsBanners' | 'advertisers' | 'feedAds';
+
 interface AdvertisersTabProps {
   setActiveTab?: (tab: string) => void;
+  initialSection?: SectionTabType;
+  hideSectionTabs?: boolean;
 }
 
-export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {}) {
+export default function AdvertisersTab({ setActiveTab, initialSection = 'overview', hideSectionTabs = false }: AdvertisersTabProps = {}) {
   const [advertisers, setAdvertisers] = useState<AdvertiserRow[]>([]);
   const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
   const [slots, setSlots] = useState<SlotInfo[]>([]);
@@ -241,7 +245,7 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
   const [feedAdsCustomTo, setFeedAdsCustomTo] = useState('');
   const [allAdsFilterSlot, setAllAdsFilterSlot] = useState<string>('all');
   const [managedSlot, setManagedSlot] = useState<string | null>(null);
-  const [sectionTab, setSectionTab] = useState<'overview' | 'slots' | 'buttonsBanners' | 'advertisers' | 'feedAds'>('overview');
+  const [sectionTab, setSectionTab] = useState<SectionTabType>(initialSection);
   // Slots from API = top-banner, homepage-hero, feed, navbar-cta, join-cta, filter-cta
   const displaySlots = slots;
   const [campaignStatusFilter, setCampaignStatusFilter] = useState<'all' | 'live' | 'ended' | 'paused'>('all');
@@ -1151,13 +1155,13 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
             </button>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-2 border-b border-white/10 pb-2">
+        {!hideSectionTabs && <div className="flex flex-wrap items-center gap-2 border-b border-white/10 pb-2">
           <button type="button" onClick={() => setSectionTab('overview')} className={tabClass('overview')}>Overview</button>
           <button type="button" onClick={() => setSectionTab('slots')} className={tabClass('slots')}>By slot</button>
           <button type="button" onClick={() => setSectionTab('buttonsBanners')} className={tabClass('buttonsBanners')}>Buttons & Banners</button>
           <button type="button" onClick={() => setSectionTab('advertisers')} className={tabClass('advertisers')}>Advertisers</button>
           <button type="button" onClick={() => setSectionTab('feedAds')} className={tabClass('feedAds')}>Feed Ads</button>
-        </div>
+        </div>}
       </div>
 
       {/* ─── Overview tab: marketer-first dashboard ─────────────────────────────────────── */}
@@ -2583,17 +2587,20 @@ export default function AdvertisersTab({ setActiveTab }: AdvertisersTabProps = {
                               {variantCount > 0 ? `${activeVariants}/${variantCount} ads` : 'empty'}
                             </span>
                             {variantCount < 4 && (
-                              <button
+                              <div
+                                role="button"
+                                tabIndex={0}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setCampForm({ ...campForm, slot: 'feed', advertiserId: advertisers[0]?._id || '', name: '', creative: '', destinationUrl: '', description: '', category: 'All', country: 'All', buttonText: 'Visit Site', feedTier: group.feedTier, tierSlot: group.tierSlot, position: slotNum, feedPlacement: 'both', videoUrl: '', badgeText: '' } as any);
                                   setEditingCampaign(null);
                                   setView('editCampaign');
                                 }}
-                                className="px-3 py-1 bg-[#b31b1b]/80 hover:bg-[#b31b1b] text-white rounded-lg text-xs font-semibold transition-colors"
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.currentTarget.click(); }}
+                                className="px-3 py-1 bg-[#b31b1b]/80 hover:bg-[#b31b1b] text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                               >
                                 + Add{variantCount > 0 ? ' Variant' : ' Ad'}
-                              </button>
+                              </div>
                             )}
                           </div>
                         </button>

@@ -3,7 +3,7 @@ import connectDB from '@/lib/db/mongodb';
 import { PremiumEvent } from '@/lib/models';
 import { authenticateUser } from '@/lib/auth';
 
-const CLIENT_EVENTS = ['page_view', 'modal_open', 'plan_click'] as const;
+const CLIENT_EVENTS = ['page_view', 'modal_open', 'plan_click', 'crypto_plan_click'] as const;
 
 export async function POST(req: NextRequest) {
   try {

@@ -12,6 +12,12 @@ interface FunnelData {
   payments: number;
   slotsFull: number;
   alreadyPremium: number;
+  starsPlanClicks: number;
+  starsInvoices: number;
+  starsPayments: number;
+  cryptoPlanClicks: number;
+  cryptoInvoices: number;
+  cryptoPayments: number;
 }
 
 interface DailyRow {
@@ -33,6 +39,7 @@ interface PremiumUser {
   premiumPlan?: string;
   premiumSince?: string;
   premiumExpiresAt?: string;
+  paymentMethod?: 'stars' | 'crypto' | null;
   daysLeft?: number | null;
   isExpiringSoon?: boolean;
   bookmarks: number;
@@ -265,7 +272,7 @@ export default function PremiumTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [days, setDays] = useState(30);
-  const [tab, setTab] = useState<'dashboard' | 'stars'>('dashboard');
+  const [tab, setTab] = useState<'dashboard' | 'users' | 'stars'>('dashboard');
 
   const [stars, setStars] = useState<StarsTransactionsData | null>(null);
   const [starsLoading, setStarsLoading] = useState(false);
@@ -472,13 +479,18 @@ export default function PremiumTab() {
           )}
         </div>
         <div className="glass p-5 rounded-2xl border border-white/5">
-          <p className="text-[#666] text-xs uppercase font-bold tracking-wider mb-1">Payments (Received)</p>
+          <p className="text-[#666] text-xs uppercase font-bold tracking-wider mb-1">Payments (Total)</p>
           <p className="text-2xl font-bold text-white">
             {starsMetricsLoading && !starsMetrics ? '…' : paymentsReceived.toLocaleString()}
           </p>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-[10px] text-amber-400 font-bold">{f.starsPayments || 0} Stars</span>
+            <span className="text-[10px] text-white/15">|</span>
+            <span className="text-[10px] text-blue-400 font-bold">{f.cryptoPayments || 0} Crypto</span>
+          </div>
           {conversionRates && (
             <p className="text-[10px] text-white/30 mt-0.5">
-              {conversionRates.overallConversion}% conversion · processed {f.payments.toLocaleString()}
+              {conversionRates.overallConversion}% conversion
             </p>
           )}
         </div>
@@ -509,7 +521,7 @@ export default function PremiumTab() {
 
       {/* Sub-tabs */}
       <div className="flex gap-1 bg-white/5 rounded-xl p-1">
-        {(['dashboard', 'stars'] as const).map(t => (
+        {(['dashboard', 'users', 'stars'] as const).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -519,7 +531,7 @@ export default function PremiumTab() {
                 : 'text-white/30 hover:text-white/60'
             }`}
           >
-            {t === 'dashboard' ? 'Dashboard' : 'Stars / Audit'}
+            {t === 'dashboard' ? 'Dashboard' : t === 'users' ? 'Premium Users' : 'Stars / Audit'}
           </button>
         ))}
       </div>
@@ -548,6 +560,7 @@ export default function PremiumTab() {
                   <tr className="border-b border-white/5">
                     <th className="px-4 py-3 text-left text-[10px] font-bold text-[#666] uppercase tracking-wider">Date</th>
                     <th className="px-4 py-3 text-left text-[10px] font-bold text-[#666] uppercase tracking-wider">Amount</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold text-[#666] uppercase tracking-wider">Method</th>
                     <th className="px-4 py-3 text-left text-[10px] font-bold text-[#666] uppercase tracking-wider">Plan</th>
                     <th className="px-4 py-3 text-left text-[10px] font-bold text-[#666] uppercase tracking-wider">User</th>
                     <th className="px-4 py-3 text-left text-[10px] font-bold text-[#666] uppercase tracking-wider">Status</th>
@@ -558,7 +571,7 @@ export default function PremiumTab() {
                 <tbody>
                   {(starsMetrics?.buyers || []).length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-12 text-center text-white/30 text-sm">
+                      <td colSpan={8} className="px-4 py-12 text-center text-white/30 text-sm">
                         No buyers found for this period.
                       </td>
                     </tr>
@@ -594,6 +607,12 @@ export default function PremiumTab() {
                               {typeof b.usd === 'number' ? fmtUsd(b.usd) : '—'}
                             </div>
                             <div className="text-[10px] text-white/25">{Number(b.amount || 0).toLocaleString()} ★</div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
+                              Stars
+                            </span>
                           </td>
                           <td className="px-4 py-3 text-xs text-white/60 capitalize whitespace-nowrap">{b.plan || '—'}</td>
                           <td className="px-4 py-3">
@@ -659,6 +678,29 @@ export default function PremiumTab() {
                 <FunnelBar label="Pre-Checkouts" value={f.preCheckouts} max={maxFunnel} color="bg-cyan-500" />
                 <FunnelBar label="Payments (Received)" value={paymentsReceived} max={maxFunnel} color="bg-emerald-500" />
               </div>
+              {/* Payment Method Breakdown */}
+              <div className="mt-4 pt-4 border-t border-white/5 space-y-1.5">
+                <p className="text-[10px] text-white/30 uppercase font-bold tracking-wider mb-2">By Payment Method</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg p-2.5" style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.12)' }}>
+                    <p className="text-[9px] text-amber-400/60 uppercase font-bold tracking-wider mb-1">Stars</p>
+                    <div className="space-y-0.5">
+                      <div className="flex justify-between text-[11px]"><span className="text-white/40">Clicks</span><span className="text-amber-400 font-bold">{f.starsPlanClicks || 0}</span></div>
+                      <div className="flex justify-between text-[11px]"><span className="text-white/40">Invoices</span><span className="text-amber-400 font-bold">{f.starsInvoices || 0}</span></div>
+                      <div className="flex justify-between text-[11px]"><span className="text-white/40">Payments</span><span className="text-amber-400 font-bold">{f.starsPayments || 0}</span></div>
+                    </div>
+                  </div>
+                  <div className="rounded-lg p-2.5" style={{ background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.12)' }}>
+                    <p className="text-[9px] text-blue-400/60 uppercase font-bold tracking-wider mb-1">Crypto</p>
+                    <div className="space-y-0.5">
+                      <div className="flex justify-between text-[11px]"><span className="text-white/40">Clicks</span><span className="text-blue-400 font-bold">{f.cryptoPlanClicks || 0}</span></div>
+                      <div className="flex justify-between text-[11px]"><span className="text-white/40">Invoices</span><span className="text-blue-400 font-bold">{f.cryptoInvoices || 0}</span></div>
+                      <div className="flex justify-between text-[11px]"><span className="text-white/40">Payments</span><span className="text-blue-400 font-bold">{f.cryptoPayments || 0}</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {(f.invoiceErrors > 0 || f.slotsFull > 0 || f.alreadyPremium > 0) && (
                 <div className="mt-4 pt-4 border-t border-white/5 space-y-1.5">
                   <p className="text-[10px] text-white/30 uppercase font-bold tracking-wider mb-2">Drop-offs</p>
@@ -722,6 +764,133 @@ export default function PremiumTab() {
                 <h3 className="text-sm font-bold text-white/60 uppercase tracking-wider mb-4">Daily Funnel Activity</h3>
                 <DailyChart daily={data.daily} />
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── PREMIUM USERS TAB ── */}
+      {tab === 'users' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-white/60 uppercase tracking-wider">Premium Members</h3>
+              <p className="text-[#666] text-xs mt-0.5">{data.premiumUsers.length} active premium user{data.premiumUsers.length !== 1 ? 's' : ''}</p>
+            </div>
+            <button
+              onClick={() => fetchData(days)}
+              className="px-3 py-1.5 rounded-lg text-[10px] font-bold bg-white/5 text-white/50 hover:text-white hover:bg-white/10 transition-all"
+            >
+              {loading ? 'Refreshing…' : 'Refresh'}
+            </button>
+          </div>
+
+          {/* Payment method summary */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="glass p-4 rounded-2xl border border-white/5">
+              <p className="text-[#666] text-[10px] uppercase font-bold tracking-wider mb-1">Total Members</p>
+              <p className="text-xl font-bold text-white">{data.premiumUsers.length}</p>
+            </div>
+            <div className="glass p-4 rounded-2xl border border-amber-500/10">
+              <p className="text-amber-400/60 text-[10px] uppercase font-bold tracking-wider mb-1">Paid with Stars</p>
+              <p className="text-xl font-bold text-amber-400">
+                {data.premiumUsers.filter(u => u.paymentMethod === 'stars').length}
+              </p>
+            </div>
+            <div className="glass p-4 rounded-2xl border border-blue-500/10">
+              <p className="text-blue-400/60 text-[10px] uppercase font-bold tracking-wider mb-1">Paid with Crypto</p>
+              <p className="text-xl font-bold text-blue-400">
+                {data.premiumUsers.filter(u => u.paymentMethod === 'crypto').length}
+              </p>
+            </div>
+          </div>
+
+          <div className="glass rounded-2xl border border-white/5 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-white/5">
+                    <th className="px-4 py-3 text-left text-[10px] font-bold text-[#666] uppercase tracking-wider">User</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold text-[#666] uppercase tracking-wider">Plan</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold text-[#666] uppercase tracking-wider">Payment</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold text-[#666] uppercase tracking-wider">Since</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold text-[#666] uppercase tracking-wider">Status</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold text-[#666] uppercase tracking-wider">Bookmarks</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold text-[#666] uppercase tracking-wider">Folders</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.premiumUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-12 text-center text-white/30 text-sm">
+                        No premium users found.
+                      </td>
+                    </tr>
+                  ) : (
+                    data.premiumUsers.map((u) => {
+                      const isLifetime = u.premiumPlan === 'lifetime';
+                      const expired = u.daysLeft !== null && u.daysLeft !== undefined && u.daysLeft <= 0;
+
+                      return (
+                        <tr key={u._id} className="border-b border-white/[0.03] hover:bg-white/[0.02]">
+                          <td className="px-4 py-3">
+                            {u.displayName && <div className="text-sm text-white font-medium">{u.displayName}</div>}
+                            <div className={`${u.displayName ? 'text-[10px] text-white/40' : 'text-xs text-white/60'}`}>{u.username}</div>
+                            <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                              {u.telegramUsername && <span className="text-[10px] text-white/30">@{u.telegramUsername}</span>}
+                              {u.telegramId && <span className="text-[10px] text-white/20 font-mono">#{u.telegramId}</span>}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-white/60 capitalize whitespace-nowrap">{u.premiumPlan || '—'}</td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {u.paymentMethod === 'stars' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
+                                Stars
+                              </span>
+                            ) : u.paymentMethod === 'crypto' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/15 text-blue-400 border border-blue-500/20">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 17.97L4.58 13.62 11.943 24l7.37-10.38-7.372 4.35h.003zM12.056 0L4.69 12.223l7.365 4.354 7.365-4.35L12.056 0z"/></svg>
+                                Crypto
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-white/20">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-[11px] text-white/40 whitespace-nowrap">
+                            {u.premiumSince
+                              ? new Date(u.premiumSince).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                              : '—'}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {isLifetime ? (
+                              <span className="text-[10px] font-bold text-purple-400">Lifetime</span>
+                            ) : expired ? (
+                              <span className="text-[10px] font-bold text-red-400">Expired</span>
+                            ) : u.isExpiringSoon ? (
+                              <span className="text-[10px] font-bold text-orange-400">{u.daysLeft}d left</span>
+                            ) : u.daysLeft !== null && u.daysLeft !== undefined ? (
+                              <span className="text-[10px] font-bold text-emerald-400">{u.daysLeft}d left</span>
+                            ) : (
+                              <span className="text-[10px] text-white/20">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-sm font-bold">
+                            <span className={(u.bookmarks || 0) > 0 ? 'text-white' : 'text-white/20'}>
+                              {(u.bookmarks || 0).toLocaleString()}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm font-bold">
+                            <span className={(u.folders || 0) > 0 ? 'text-white' : 'text-white/20'}>
+                              {(u.folders || 0).toLocaleString()}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

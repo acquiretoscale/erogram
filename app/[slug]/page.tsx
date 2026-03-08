@@ -385,6 +385,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // Try to find a group first
   const group = await getGroup(slug);
   if (group) {
+    // Premium vault groups must never be indexed by search engines
+    if (group.premiumOnly) {
+      return {
+        title: 'Premium Content — Erogram',
+        robots: { index: false, follow: false },
+      };
+    }
+
     const groupUrl = `${BASE_URL}/${group.slug}`;
 
     const category = group.category || 'NSFW';
@@ -587,18 +595,23 @@ export default async function JoinPage({ params }: PageProps) {
 
     return (
       <>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageJsonLd) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
-        />
+        {/* Strip all structured data for premium-only groups to prevent any SEO signal leakage */}
+        {!group.premiumOnly && (
+          <>
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+            />
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageJsonLd) }}
+            />
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+            />
+          </>
+        )}
         <JoinClient entity={group} type="group" similarGroups={similarGroups} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} isDeleted={group.status === 'deleted'} vaultTeaser={vaultTeaser} />
       </>
     );

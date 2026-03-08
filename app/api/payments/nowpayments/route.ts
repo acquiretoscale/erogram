@@ -8,8 +8,8 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
 const NP_BASE = 'https://api.nowpayments.io/v1';
 
 const PLANS = {
-  monthly:  { label: 'Erogram VIP (Monthly)',  description: '30-day unlimited access — Secret Vault, bookmarks & more', price: 12.00,  days: 30   },
-  lifetime: { label: 'Erogram VIP (Lifetime)', description: 'Lifetime access — pay once, own it forever',                price: 89.00, days: null },
+  monthly: { label: 'Erogram VIP (Monthly)', description: '30-day unlimited access — Secret Vault, bookmarks & more', price: 8.99, days: 30 },
+  yearly:  { label: 'Erogram VIP (Yearly)',  description: '1-year unlimited access — Secret Vault, bookmarks & more', price: 49.99, days: 365 },
 } as const;
 
 function logEvent(data: Record<string, any>) {
@@ -72,11 +72,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: data?.message || 'Failed to create crypto invoice.' }, { status: 500 });
     }
 
-    logEvent({ event: 'crypto_invoice_created', userId: user._id, username: user.username, plan, orderId });
+    logEvent({ event: 'crypto_invoice_created', userId: user._id, username: user.username, plan, orderId, paymentMethod: 'crypto' });
     return NextResponse.json({ url: data.invoice_url });
   } catch (err) {
     console.error('NowPayments error:', err);
-    logEvent({ event: 'crypto_invoice_error', userId: user._id, username: user.username, plan, errorMessage: String(err) });
+    logEvent({ event: 'crypto_invoice_error', userId: user._id, username: user.username, plan, errorMessage: String(err), paymentMethod: 'crypto' });
     return NextResponse.json({ message: 'Server error.' }, { status: 500 });
   }
 }

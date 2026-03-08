@@ -86,7 +86,7 @@ export const allCategories = [
 ];
 
 export const allCountries = [
-    'All', 'USA', 'UK', 'Germany', 'France', 'Brazil', 'Russia', 'Japan',
+    'All', 'Adult-Telegram', 'USA', 'UK', 'Germany', 'France', 'Brazil', 'Russia', 'Japan',
     'South Korea', 'Philippines', 'Thailand', 'Spain', 'Mexico', 'Canada',
     'Australia', 'Italy', 'Netherlands', 'Czech Republic', 'China', 'Argentina',
     'South Africa', 'Nigeria', 'Turkey', 'Indonesia', 'Pakistan', 'Bangladesh',

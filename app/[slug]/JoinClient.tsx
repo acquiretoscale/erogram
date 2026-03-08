@@ -772,6 +772,13 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                     {(joinCtaCampaign?.description || joinCtaCampaign?.buttonText) || DEFAULT_JOIN_CTA.description}
                   </a>
                 </div>
+
+                {/* Premium Vault Teaser — below CTA */}
+                {!isPremiumUser && vaultTeaser.length > 0 && (
+                  <div className="mt-8">
+                    <VaultTeaserBlock items={vaultTeaser} />
+                  </div>
+                )}
               </div>
               )}
 
@@ -800,11 +807,6 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                     ))}
                   </div>
                 </div>
-              )}
-
-              {/* Premium Vault Teaser — hidden for premium users */}
-              {!isPremiumUser && vaultTeaser.length > 0 && (
-                <VaultTeaserBlock items={vaultTeaser} />
               )}
 
               {/* Internal Linking / SEO Section */}

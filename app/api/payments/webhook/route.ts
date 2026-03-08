@@ -184,6 +184,7 @@ export async function POST(req: NextRequest) {
           premium: true,
           premiumPlan: plan,
           premiumSince: now,
+          paymentMethod: 'stars',
           lastPaymentChargeId: chargeId,
         };
 
@@ -200,7 +201,7 @@ export async function POST(req: NextRequest) {
         }
 
         await User.findByIdAndUpdate(userId, updateData);
-        logEvent({ event: 'payment_success', userId, plan, chargeId });
+        logEvent({ event: 'payment_success', userId, plan, chargeId, paymentMethod: 'stars' });
       } catch (err) {
         console.error('Failed to process successful payment:', err);
       }

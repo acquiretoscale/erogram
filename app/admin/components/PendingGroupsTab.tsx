@@ -61,18 +61,19 @@ export default function PendingGroupsTab() {
     };
 
     const handleApprovePremium = async (id: string) => {
+        if (!confirm('Approve this group into the Premium Vault?\n\nIt will be:\n• Approved & live immediately\n• Hidden from public listings\n• Not indexed by Google\n• Only accessible to Premium members')) return;
         try {
             const token = localStorage.getItem('token');
             const group = groups.find(g => g._id === id);
             if (!group) return;
 
-            await axios.post(`/api/admin/groups/${id}/premium-notification`, {}, {
+            await axios.put(`/api/admin/groups/${id}`, { ...group, status: 'approved', premiumOnly: true }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
-            alert('✅ Premium notification sent! You can now approve the group when ready.');
+            setGroups(groups.filter(g => g._id !== id));
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to send notification');
+            alert(err.response?.data?.message || 'Failed to approve group to Premium Vault');
         }
     };
 
@@ -149,7 +150,7 @@ export default function PendingGroupsTab() {
                                         onClick={() => handleApprovePremium(group._id)}
                                         className="col-span-2 px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2"
                                     >
-                                        <span>⭐</span> Send to Premium
+                                        <span>⭐</span> Approve → Premium Vault
                                     </button>
                                 </div>
                             </div>

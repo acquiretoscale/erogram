@@ -67,6 +67,11 @@ function getCountryEmoji(country: string) {
 }
 
 async function sendNewGroupTelegramNotification(group: any = {}, sendToPlus: boolean = true) {
+  if (group?.premiumOnly) {
+    console.log('[Telegram Notification] Skipping public notification for premium group:', group.name || 'Unknown');
+    return { success: false, error: 'Premium groups are not allowed in public notifications' };
+  }
+
   // Get environment variables at runtime to ensure they're available
   const botToken = process.env.TELEGRAM_BOT_TOKEN || BOT_TOKEN;
   let channelId = process.env.TELEGRAM_CHANNEL_ID || CHANNEL_ID;
@@ -878,6 +883,7 @@ async function sendPremiumGroupTelegramNotification(group: any = {}) {
   // Get environment variables at runtime to ensure they're available
   const plusBotToken = process.env.EROGRAM_PLUS_TOKEN;
   const plusChannelId = process.env.EROGRAM_PLUS_CHANNEL_ID;
+  const publicChannelId = process.env.TELEGRAM_CHANNEL_ID || CHANNEL_ID;
 
   if (!plusBotToken || !plusChannelId) {
     console.error('[Premium Telegram Notification] Missing Plus channel configuration');
@@ -886,6 +892,13 @@ async function sendPremiumGroupTelegramNotification(group: any = {}) {
 
   // Normalize plusChannelId
   let plusChannelIdStr = String(plusChannelId).trim();
+  const publicChannelIdStr = String(publicChannelId || '').trim();
+
+  // Safety guard: never allow premium direct-link notifications to the public feed channel.
+  if (publicChannelIdStr && plusChannelIdStr === publicChannelIdStr) {
+    console.error('[Premium Telegram Notification] Misconfigured channels: EROGRAM_PLUS_CHANNEL_ID matches TELEGRAM_CHANNEL_ID. Aborting to prevent premium link leak.');
+    return { success: false, error: 'Plus channel must be different from public channel' };
+  }
 
   // Validate
   const isValidPlusChannelId = plusChannelIdStr.startsWith('@') || /^-?\d+$/.test(plusChannelIdStr);

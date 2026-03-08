@@ -205,75 +205,95 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
           )}
 
           {useLightAnimations ? (
-            <div className={`flex flex-col sm:flex-row gap-4 justify-center items-center mb-20 ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.4s' }}>
-              <button
-                onClick={(e) => {
-                  // Prevent popunder/global click listeners from hijacking navigation
-                  e.preventDefault();
-                  e.stopPropagation();
-                  // Defer navigation to next tick to avoid blocked navigation
-                  setTimeout(() => router.push('/groups'), 0);
-                }}
-                className="w-full sm:w-auto px-8 py-4 bg-[#b31b1b] hover-glow text-white rounded-lg text-lg font-semibold transition-all hover:scale-105"
-              >
-                Explore Groups
-              </button>
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setTimeout(() => router.push('/bots'), 0);
-                }}
-                className="w-full sm:w-auto px-8 py-4 glass border border-white/20 text-[#f5f5f5] rounded-lg text-lg font-semibold transition-all hover:bg-white/10 hover:scale-105"
-              >
-                Explore Bots
-              </button>
+            <div className={`flex flex-col items-center gap-4 mb-20 ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.4s' }}>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setTimeout(() => router.push('/groups'), 0);
+                  }}
+                  className="w-full sm:w-auto px-8 py-4 bg-[#b31b1b] hover-glow text-white rounded-lg text-lg font-semibold transition-all hover:scale-105"
+                >
+                  Explore Groups
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setTimeout(() => router.push('/bots'), 0);
+                  }}
+                  className="w-full sm:w-auto px-8 py-4 bg-[#229ED9] hover:bg-[#1e8bc0] text-white rounded-lg text-lg font-semibold transition-all hover:scale-105"
+                >
+                  Explore Bots
+                </button>
+              </div>
               <a
-                href="https://t.me/erogrampro"
+                href="/premium"
                 target="_blank"
-                rel="noopener noreferrer"
-                className="w-full sm:w-auto px-8 py-4 bg-[#229ED9] hover:bg-[#1e8bc0] text-white rounded-lg text-lg font-semibold transition-all hover:scale-105 shadow-[0_0_20px_rgba(34,158,217,0.3)] hover:shadow-[0_0_30px_rgba(34,158,217,0.5)] flex items-center justify-center"
+                rel="noopener nofollow"
+                className="group/prem relative sm:w-auto px-6 py-2.5 rounded-lg text-sm font-bold uppercase tracking-[0.1em] transition-all duration-300 hover:scale-105 inline-flex items-center justify-center gap-2 overflow-hidden"
+                style={{
+                  background: 'linear-gradient(135deg, #d4a94c 0%, #e8c66a 20%, #c9973a 40%, #b8860b 60%, #e8c66a 80%, #d4a94c 100%)',
+                  border: '1px solid rgba(232,198,106,0.6)',
+                  color: '#1a1000',
+                  boxShadow: '0 0 25px rgba(201,151,58,0.3), 0 2px 10px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.15)',
+                }}
               >
-                Official Group
+                <span className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 45%, transparent 50%, rgba(0,0,0,0.1) 100%)', borderRadius: 'inherit' }} />
+                <span className="absolute inset-0 opacity-0 group-hover/prem:opacity-100 transition-opacity duration-500" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 40%, rgba(255,255,255,0.1) 100%)' }} />
+                <svg className="relative drop-shadow-sm" width="13" height="13" viewBox="0 0 24 24" fill="#1a1000"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
+                <span className="relative drop-shadow-sm">Unlock EROGRAM Premium</span>
+                <svg className="relative drop-shadow-sm" width="13" height="13" viewBox="0 0 24 24" fill="#1a1000"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
               </a>
             </div>
           ) : (
             <motion.div
-              className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-20"
+              className="flex flex-col items-center gap-4 mb-20"
               initial={{ opacity: 0, y: 60 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: 'easeOut', delay: 0.4 }}
               style={{ willChange: 'transform, opacity' }}
             >
-              <button
-                onClick={(e) => {
-                  // Prevent popunder/global click listeners from hijacking navigation
-                  e.preventDefault();
-                  e.stopPropagation();
-                  // Defer navigation to next tick to avoid blocked navigation
-                  setTimeout(() => router.push('/groups'), 0);
-                }}
-                className="w-full sm:w-auto px-8 py-4 bg-[#b31b1b] hover-glow text-white rounded-lg text-lg font-semibold transition-all hover:scale-105"
-              >
-                Explore Groups
-              </button>
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setTimeout(() => router.push('/bots'), 0);
-                }}
-                className="w-full sm:w-auto px-8 py-4 glass border border-white/20 text-[#f5f5f5] rounded-lg text-lg font-semibold transition-all hover:bg-white/10 hover:scale-105"
-              >
-                Explore Bots
-              </button>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setTimeout(() => router.push('/groups'), 0);
+                  }}
+                  className="w-full sm:w-auto px-8 py-4 bg-[#b31b1b] hover-glow text-white rounded-lg text-lg font-semibold transition-all hover:scale-105"
+                >
+                  Explore Groups
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setTimeout(() => router.push('/bots'), 0);
+                  }}
+                  className="w-full sm:w-auto px-8 py-4 bg-[#229ED9] hover:bg-[#1e8bc0] text-white rounded-lg text-lg font-semibold transition-all hover:scale-105"
+                >
+                  Explore Bots
+                </button>
+              </div>
               <a
-                href="https://t.me/erogrampro"
+                href="/premium"
                 target="_blank"
-                rel="noopener noreferrer"
-                className="w-full sm:w-auto px-8 py-4 bg-[#229ED9] hover:bg-[#1e8bc0] text-white rounded-lg text-lg font-semibold transition-all hover:scale-105 shadow-[0_0_20px_rgba(34,158,217,0.3)] hover:shadow-[0_0_30px_rgba(34,158,217,0.5)] flex items-center justify-center"
+                rel="noopener nofollow"
+                className="group/prem relative sm:w-auto px-6 py-2.5 rounded-lg text-sm font-bold uppercase tracking-[0.1em] transition-all duration-300 hover:scale-105 inline-flex items-center justify-center gap-2 overflow-hidden"
+                style={{
+                  background: 'linear-gradient(135deg, #d4a94c 0%, #e8c66a 20%, #c9973a 40%, #b8860b 60%, #e8c66a 80%, #d4a94c 100%)',
+                  border: '1px solid rgba(232,198,106,0.6)',
+                  color: '#1a1000',
+                  boxShadow: '0 0 25px rgba(201,151,58,0.3), 0 2px 10px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.15)',
+                }}
               >
-                Official Group
+                <span className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 45%, transparent 50%, rgba(0,0,0,0.1) 100%)', borderRadius: 'inherit' }} />
+                <span className="absolute inset-0 opacity-0 group-hover/prem:opacity-100 transition-opacity duration-500" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 40%, rgba(255,255,255,0.1) 100%)' }} />
+                <svg className="relative drop-shadow-sm" width="13" height="13" viewBox="0 0 24 24" fill="#1a1000"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
+                <span className="relative drop-shadow-sm">Unlock EROGRAM Premium</span>
+                <svg className="relative drop-shadow-sm" width="13" height="13" viewBox="0 0 24 24" fill="#1a1000"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
               </a>
             </motion.div>
           )}

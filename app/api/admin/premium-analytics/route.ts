@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
       premium: true,
       $or: [{ premiumExpiresAt: null }, { premiumExpiresAt: { $gt: new Date() } }],
     })
-      .select('username telegramUsername firstName lastName telegramId premiumPlan premiumSince premiumExpiresAt lastPaymentChargeId')
+      .select('username telegramUsername firstName lastName telegramId premiumPlan premiumSince premiumExpiresAt paymentMethod lastPaymentChargeId')
       .sort({ premiumSince: -1 })
       .lean(),
   ]);
@@ -109,16 +109,23 @@ export async function GET(req: NextRequest) {
     plans[p._id] = p.count;
   }
 
-  // Conversion funnel
+  // Conversion funnel (combined + per-method)
   const funnel = {
     pageViews: (countsMap['page_view'] || 0) + (countsMap['modal_open'] || 0),
-    planClicks: countsMap['plan_click'] || 0,
-    invoicesCreated: countsMap['invoice_created'] || 0,
-    invoiceErrors: countsMap['invoice_error'] || 0,
+    planClicks: (countsMap['plan_click'] || 0) + (countsMap['crypto_plan_click'] || 0),
+    invoicesCreated: (countsMap['invoice_created'] || 0) + (countsMap['crypto_invoice_created'] || 0),
+    invoiceErrors: (countsMap['invoice_error'] || 0) + (countsMap['crypto_invoice_error'] || 0),
     preCheckouts: countsMap['pre_checkout'] || 0,
-    payments: countsMap['payment_success'] || 0,
+    payments: (countsMap['payment_success'] || 0) + (countsMap['crypto_payment_success'] || 0),
     slotsFull: countsMap['slots_full'] || 0,
     alreadyPremium: countsMap['already_premium'] || 0,
+    // Per-method breakdown
+    starsPlanClicks: countsMap['plan_click'] || 0,
+    starsInvoices: countsMap['invoice_created'] || 0,
+    starsPayments: countsMap['payment_success'] || 0,
+    cryptoPlanClicks: countsMap['crypto_plan_click'] || 0,
+    cryptoInvoices: countsMap['crypto_invoice_created'] || 0,
+    cryptoPayments: countsMap['crypto_payment_success'] || 0,
   };
 
   const premiumUsersWithUsage = (premiumUsers as any[]).map((u: any) => {
@@ -126,7 +133,6 @@ export async function GET(req: NextRequest) {
     const expiresAt = u.premiumExpiresAt ? new Date(u.premiumExpiresAt) : null;
     const msLeft = expiresAt ? expiresAt.getTime() - Date.now() : null;
     const daysLeft = msLeft !== null ? Math.ceil(msLeft / 86_400_000) : null;
-    // Build a display name: firstName lastName or fallback to telegramUsername or username
     const nameParts = [u.firstName, u.lastName].filter(Boolean).join(' ');
     return {
       _id: uid,
@@ -137,6 +143,7 @@ export async function GET(req: NextRequest) {
       premiumPlan: u.premiumPlan || null,
       premiumSince: u.premiumSince || null,
       premiumExpiresAt: u.premiumExpiresAt || null,
+      paymentMethod: u.paymentMethod || null,
       daysLeft,
       isExpiringSoon: daysLeft !== null && daysLeft <= 7,
       bookmarks: bookmarksByUser.get(uid) ?? 0,

@@ -142,24 +142,30 @@ export async function PUT(
           description: groupWithImage.description,
           telegramLink: groupWithImage.telegramLink,
           image: actualImage,
+          premiumOnly: !!groupWithImage.premiumOnly,
           views: groupWithImage.views || 0
         };
         
         // Debug: Log what we're sending
         console.log(`[Group Update] Sending notification with image: ${actualImage.substring(0, 50)}${actualImage.length > 50 ? '...' : ''} (length: ${actualImage.length}, isBase64: ${actualImage.startsWith('data:image/')})`);
         
-        const notificationResult = await sendNewGroupTelegramNotification(groupPlainObject, false);
-        if (notificationResult && !notificationResult.success) {
-          console.error('[Group Update] Telegram notification failed:', notificationResult.error);
-          if (notificationResult.details) {
-            console.error('[Group Update] Notification error details:', notificationResult.details);
+        // Only send public Telegram notification and IndexNow for non-premium groups.
+        // Use the persisted DB value to avoid leaks when request payload omits premiumOnly.
+        if (!groupWithImage.premiumOnly) {
+          const notificationResult = await sendNewGroupTelegramNotification(groupPlainObject, false);
+          if (notificationResult && !notificationResult.success) {
+            console.error('[Group Update] Telegram notification failed:', notificationResult.error);
+            if (notificationResult.details) {
+              console.error('[Group Update] Notification error details:', notificationResult.details);
+            }
+          } else if (notificationResult?.success) {
+            console.log('[Group Update] Telegram notification sent successfully');
           }
-        } else if (notificationResult?.success) {
-          console.log('[Group Update] Telegram notification sent successfully');
+          // Submit to IndexNow for public groups only — premium groups must not be indexed
+          pingIndexNow(`https://erogram.pro/${group.slug}`);
+        } else {
+          console.log(`[Group Update] Premium vault group approved — skipping public notification and IndexNow`);
         }
-
-        // Submit to IndexNow
-        pingIndexNow(`https://erogram.pro/${group.slug}`);
       } catch (err) {
         console.error('[Group Update] Failed to send Telegram notification:', err);
         // Don't fail the update if notification fails

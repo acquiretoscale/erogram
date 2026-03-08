@@ -18,19 +18,15 @@ interface NavbarProps {
 }
 
 const BTN = 'text-[13px] px-3.5 py-1.5 rounded-lg font-semibold transition-all whitespace-nowrap';
-const BTN_NAV = `${BTN} text-white/90 bg-white/[0.10] border border-white/[0.14] hover:bg-white/[0.18] hover:text-white`;
+const BTN_NAV = `${BTN} text-white/80 bg-white/[0.07] border border-white/[0.10] hover:bg-white/[0.13] hover:text-white`;
 const BTN_FILLED = `${BTN} text-white`;
 
-/* Pornhub-style: white bg + black text, orange hover */
-const BTN_PH = `${BTN} text-black bg-white border border-white/80 hover:bg-orange-500 hover:text-black hover:border-orange-500`;
-const BTN_PH_LOGIN = `${BTN} text-black bg-orange-500 border border-orange-500 hover:bg-orange-400 hover:border-orange-400`;
-
 const NAV_COLORS: Record<string, string> = {
-  Groups:    BTN_PH_LOGIN,
-  Bots:      BTN_PH_LOGIN,
-  Articles:  BTN_PH_LOGIN,
-  Advertise: BTN_PH_LOGIN,
-  Login:     BTN_PH_LOGIN,
+  Groups:    `${BTN} text-red-400/90 bg-[#b31b1b]/[0.12] border border-[#b31b1b]/25 hover:bg-[#b31b1b]/25 hover:text-red-300`,
+  Bots:      `${BTN} text-sky-400/90 bg-sky-900/[0.15] border border-sky-700/25 hover:bg-sky-900/25 hover:text-sky-300`,
+  Articles:  `${BTN} text-white/75 bg-white/[0.07] border border-white/[0.10] hover:bg-white/[0.13] hover:text-white`,
+  Advertise: `${BTN} text-white/75 bg-white/[0.07] border border-white/[0.10] hover:bg-white/[0.13] hover:text-white`,
+  Login:     `${BTN} text-white/90 bg-white/[0.10] border border-white/[0.18] hover:bg-white/[0.18] hover:text-white`,
 };
 
 export default function Navbar({ username, setUsername, showAddGroup, onAddGroupClick }: NavbarProps) {
@@ -134,7 +130,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
             Add
           </Link>
 
-          {/* Upgrade to Premium */}
+          {/* Unlock Erogram Premium */}
           {!isPremium && (
             <Link
               href="/premium"
@@ -153,13 +149,9 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="relative">
                 <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
               </svg>
-              <span className="relative">Upgrade to Premium</span>
+              <span className="relative">Unlock Erogram Premium</span>
             </Link>
           )}
-
-          <Link href="/contact" className={NAV_COLORS['Advertise'] || BTN_NAV}>
-            Contact
-          </Link>
 
           {/* User */}
           {currentUsername ? (
@@ -295,17 +287,9 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="relative">
                 <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
               </svg>
-              <span className="relative">Upgrade to Premium</span>
+              <span className="relative">Unlock Erogram Premium</span>
             </Link>
           )}
-
-          <Link
-            href="/contact"
-            onClick={() => setIsMenuOpen(false)}
-            className={`block px-4 py-2.5 rounded-lg text-[14px] ${NAV_COLORS['Advertise'] || BTN_NAV}`}
-          >
-            Contact
-          </Link>
 
           <div className="h-px bg-white/[0.06] my-1" />
 

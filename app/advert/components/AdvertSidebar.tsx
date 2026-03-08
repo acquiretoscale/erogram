@@ -4,37 +4,26 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 
-interface AdminSidebarProps {
+interface AdvertSidebarProps {
     onLogout: () => void;
     isOpen: boolean;
     onClose: () => void;
 }
 
 const tabs = [
-    { href: '/admin', name: 'Overview', icon: '📊' },
-    { href: '/admin/groups', name: 'Groups', icon: '👥' },
-    { href: '/admin/bots', name: 'Bots', icon: '🤖' },
-    { href: '/admin/pending-groups', name: 'Pending Groups', icon: '⏳' },
-    { href: '/admin/pending-bots', name: 'Pending Bots', icon: '🤖' },
-    { href: '/admin/vault', name: 'Secret Vault', icon: '🔐' },
-    { href: '/admin/csv-import', name: 'CSV Import', icon: '📤' },
-    { href: '/admin/stories', name: 'Stories', icon: '📖' },
-    { href: '/admin/reviews', name: 'Reviews', icon: '⭐' },
-    { href: '/admin/reports', name: 'Reports', icon: '🚨' },
-    { href: '/admin/articles', name: 'Articles', icon: '📝' },
-    { href: '/admin/cta', name: 'CTA Manager', icon: '🎯' },
-    { href: '/admin/adverts', name: 'Adverts', icon: '📢' },
-    { href: '/admin/advertisers', name: 'Advertisers', icon: '💰' },
-    { href: '/admin/premium', name: 'Premium', icon: '💎' },
-    { href: '/admin/users', name: 'Users', icon: '👤' },
-    { href: '/admin/settings', name: 'Settings', icon: '⚙️' },
+    { href: '/advert', name: 'Overview', icon: '📊' },
+    { href: '/advert/advertisers', name: 'Advertisers', icon: '🏢' },
+    { href: '/advert/campaigns', name: 'Campaigns', icon: '📢' },
+    { href: '/advert/feed-ads', name: 'Feed Ads', icon: '📰' },
+    { href: '/advert/slots', name: 'Ad Slots', icon: '🎯' },
+    { href: '/advert/stories', name: 'Stories', icon: '📖' },
 ];
 
-export default function AdminSidebar({ onLogout, isOpen, onClose }: AdminSidebarProps) {
+export default function AdvertSidebar({ onLogout, isOpen, onClose }: AdvertSidebarProps) {
     const pathname = usePathname();
 
     const isActive = (href: string) => {
-        if (href === '/admin') return pathname === '/admin';
+        if (href === '/advert') return pathname === '/advert';
         return pathname.startsWith(href);
     };
 
@@ -63,8 +52,8 @@ export default function AdminSidebar({ onLogout, isOpen, onClose }: AdminSidebar
             >
                 <div className="p-6 border-b border-white/5 flex justify-between items-center">
                     <div>
-                        <h1 className="text-2xl font-black gradient-text">Admin Panel</h1>
-                        <p className="text-xs text-[#666] mt-1">v2.0.0</p>
+                        <h1 className="text-2xl font-black text-amber-400">Ads Manager</h1>
+                        <p className="text-xs text-[#666] mt-1">Campaign Management</p>
                     </div>
                     <button
                         onClick={onClose}
@@ -82,7 +71,7 @@ export default function AdminSidebar({ onLogout, isOpen, onClose }: AdminSidebar
                             onClick={handleClick}
                             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                                 isActive(tab.href)
-                                    ? 'bg-[#b31b1b] text-white shadow-lg shadow-[#b31b1b]/20'
+                                    ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20'
                                     : 'text-[#999] hover:bg-white/5 hover:text-white'
                             }`}
                         >
@@ -90,6 +79,16 @@ export default function AdminSidebar({ onLogout, isOpen, onClose }: AdminSidebar
                             {tab.name}
                         </Link>
                     ))}
+
+                    <div className="my-3 border-t border-white/10" />
+
+                    <Link
+                        href="/admin"
+                        onClick={handleClick}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-[#b31b1b] hover:bg-[#b31b1b]/10 hover:text-[#c42b2b] transition-all duration-200"
+                    >
+                        <span className="text-lg">🛡️</span> Admin Panel
+                    </Link>
                 </nav>
 
                 <div className="p-4 border-t border-white/5 space-y-2">

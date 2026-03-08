@@ -11,9 +11,6 @@ function trackPremiumEvent(event: string, extra?: Record<string, string | null>)
   fetch('/api/payments/track', { method: 'POST', headers, body: JSON.stringify({ event, source: 'premium_page', ...extra }) }).catch(() => {});
 }
 
-const LAUNCH = new Date('2025-03-01').getTime();
-function daysElapsed() { return Math.floor((Date.now() - LAUNCH) / 86_400_000); }
-function calcLifetimeSlots() { return Math.max(3, 34 - Math.floor(daysElapsed() * 0.6)); }
 
 const TIMER_KEY = 'erogram_premium_timer_expiry';
 function getOrCreateExpiry(): number {
@@ -115,7 +112,6 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [soldOut, setSoldOut] = useState(false);
-  const [lifetimeSlots] = useState<number>(calcLifetimeSlots());
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
@@ -148,11 +144,25 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
 
   useEffect(() => {
     if (!tracked.current) { tracked.current = true; trackPremiumEvent('page_view'); }
-    if (typeof window !== 'undefined') { const p = new URLSearchParams(window.location.search); if (p.get('payment') === 'crypto_success') setAwaitingPayment(true); }
+    const isCryptoReturn = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('payment') === 'crypto_success';
+    if (isCryptoReturn) setAwaitingPayment(true);
     const token = localStorage.getItem('token');
     if (token) {
       setIsLoggedIn(true); setAuthChecked(true); checkPremiumStatus();
-      fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(d => { if (d.authProvider) { setAuthProvider(d.authProvider); if (d.authProvider === 'google') setPayMethod('crypto'); } if (d.isAdmin) setIsAdmin(true); }).catch(() => {});
+      fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(d => { if (d.authProvider) setAuthProvider(d.authProvider); if (d.isAdmin) setIsAdmin(true); }).catch(() => {});
+      // Start polling if user returned from crypto checkout
+      if (isCryptoReturn) {
+        if (pollRef.current) clearInterval(pollRef.current);
+        let attempts = 0;
+        pollRef.current = setInterval(async () => {
+          attempts++;
+          const confirmed = await checkPremiumStatus();
+          if (confirmed || attempts >= 120) {
+            clearInterval(pollRef.current!); pollRef.current = null;
+            if (!confirmed) setAwaitingPayment(false);
+          }
+        }, 5000);
+      }
     } else {
       setAuthChecked(true);
       window.location.href = '/login?redirect=/premium';
@@ -336,7 +346,7 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
         {/* ━━━ UPGRADE CARD — after Inner Circle ━━━ */}
         {(() => {
           const effectiveProvider = adminPreview !== 'none' ? adminPreview : authProvider;
-          const effectivePayMethod = adminPreview === 'google' ? 'crypto' as const : adminPreview === 'telegram' ? payMethod : payMethod;
+          const effectivePayMethod = payMethod;
           return (
         <div
           className="rounded-xl overflow-hidden relative mb-6"
@@ -422,56 +432,114 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
 
             {/* Pricing — logged-in users (or admin preview) */}
             {((isLoggedIn && !isPremium && !soldOut) || adminPreview !== 'none') && (
-              <div>
-                {effectiveProvider === 'telegram' ? (
-                  <div className="flex rounded-lg overflow-hidden mb-3" style={{ border: `1px solid ${G.border}` }}>
-                    <button onClick={() => setPayMethod('stars')} className="flex-1 py-2 text-[11px] font-bold transition-all flex items-center justify-center gap-1" style={effectivePayMethod === 'stars' ? { background: G.gold, color: '#0d0c0a' } : { background: 'rgba(255,255,255,0.02)', color: '#5a4830' }}>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg> Telegram Stars
-                    </button>
-                    <button onClick={() => setPayMethod('crypto')} className="flex-1 py-2 text-[11px] font-bold transition-all flex items-center justify-center gap-1" style={effectivePayMethod === 'crypto' ? { background: '#3b82f6', color: '#fff' } : { background: 'rgba(255,255,255,0.02)', color: '#5a4830' }}>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 17.97L4.58 13.62 11.943 24l7.37-10.38-7.372 4.35h.003zM12.056 0L4.69 12.223l7.365 4.354 7.365-4.35L12.056 0z"/></svg> Crypto (300+)
-                    </button>
-                  </div>
-                ) : effectiveProvider === 'google' ? (
-                  <div className="flex items-center justify-center gap-1.5 mb-3 py-1.5 rounded-lg" style={{ background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.12)' }}>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="#60a5fa"><path d="M11.944 17.97L4.58 13.62 11.943 24l7.37-10.38-7.372 4.35h.003zM12.056 0L4.69 12.223l7.365 4.354 7.365-4.35L12.056 0z"/></svg>
-                    <span className="text-blue-400 text-[10px] font-semibold">Paying with crypto — 300+ coins accepted</span>
-                  </div>
-                ) : null}
+              <div className="rounded-xl p-3 space-y-2.5" style={{ background: '#ffffff', border: '1px solid #e5e7eb', boxShadow: '0 8px 28px rgba(0,0,0,0.12)' }}>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setPayMethod('stars')}
+                    className="flex-1 py-2 text-[11px] font-bold transition-all rounded-lg flex items-center justify-center gap-1.5"
+                    style={effectivePayMethod === 'stars'
+                      ? { background: '#229ED9', color: '#ffffff', boxShadow: '0 2px 6px rgba(34,158,217,0.35)' }
+                      : { background: '#111827', color: '#e5e7eb' }}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
+                    Telegram Stars
+                  </button>
+                  <button
+                    onClick={() => setPayMethod('crypto')}
+                    className="flex-1 py-2 text-[11px] font-bold transition-all rounded-lg flex items-center justify-center gap-1.5"
+                    style={effectivePayMethod === 'crypto'
+                      ? { background: '#F7931A', color: '#ffffff', boxShadow: '0 2px 6px rgba(247,147,26,0.35)' }
+                      : { background: '#111827', color: '#e5e7eb' }}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 17.97L4.58 13.62 11.943 24l7.37-10.38-7.372 4.35h.003zM12.056 0L4.69 12.223l7.365 4.354 7.365-4.35L12.056 0z"/></svg>
+                    Crypto
+                  </button>
+                </div>
 
                 <div className="space-y-2">
                   {/* Monthly */}
-                  <div className="rounded-lg overflow-hidden" style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${G.border}` }}>
-                    <div className="px-3.5 pt-3 pb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-white font-bold text-sm">Monthly</span>
-                        <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded" style={{ background: `${G.gold}18`, color: G.gold, border: `1px solid ${G.gold}20` }}>80% OFF</span>
+                  <div className="rounded-lg px-3 py-3 flex items-center gap-3" style={{ border: '1px solid #e5e7eb' }}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                        <span className="font-black text-gray-900 text-[13px]">Monthly</span>
+                        <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-green-50 text-green-700">
+                          ⏳ {effectivePayMethod === 'stars' ? 'Save 2,400★ ($35.96)' : 'Save $35.96'}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        {effectivePayMethod === 'stars' ? (<><span className="text-white/20 line-through text-[11px]">4,600</span><span className="font-bold text-lg" style={{ color: G.gold }}>920</span><svg width="13" height="13" viewBox="0 0 24 24" fill={G.gold}><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg><span className="text-white/20 text-[11px]">≈ $12</span></>) : (<><span className="font-bold text-lg text-blue-400">$12</span><span className="text-white/25 text-[11px]">/ month</span></>)}
-                      </div>
+                      {effectivePayMethod === 'stars' ? (
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span className="line-through text-[11px]" style={{ color: '#16a34a' }}>3,000</span>
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="#16a34a"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
+                          <span className="font-black text-[20px] leading-none text-gray-900">600</span>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="#111827"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
+                          <span className="text-gray-500 text-[10px]">≈ $8.99/mo</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="line-through text-[11px]" style={{ color: '#16a34a' }}>$44.95</span>
+                          <span className="font-black text-[20px] leading-none text-gray-900">$8.99</span>
+                          <span className="text-gray-500 text-[10px]">/mo</span>
+                        </div>
+                      )}
+                      <p className="text-[9px] mt-1 text-gray-500">One-time payment · No auto-renew</p>
                     </div>
-                    <button onClick={() => effectivePayMethod === 'stars' ? handlePurchase('monthly') : handleCryptoPurchase('monthly')} disabled={!!loading} className="w-full py-2.5 flex items-center justify-center gap-1.5 font-black text-[12px] uppercase tracking-wide transition-all active:scale-[0.98] disabled:opacity-50 hover:opacity-90" style={{ background: effectivePayMethod === 'stars' ? `linear-gradient(135deg, ${G.gold}, #a67c2e)` : '#3b82f6', color: effectivePayMethod === 'stars' ? '#0d0c0a' : '#fff', boxShadow: effectivePayMethod === 'stars' ? `0 4px 20px ${G.gold}30` : '0 4px 20px rgba(59,130,246,0.3)' }}>
-                      {(loading === 'monthly' || loading === 'crypto_monthly') ? (<><svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>{effectivePayMethod === 'stars' ? 'Opening Telegram...' : 'Redirecting...'}</>) : (<>Pay Now — Monthly <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></>)}
+                    <button
+                      onClick={() => effectivePayMethod === 'stars' ? handlePurchase('monthly') : handleCryptoPurchase('monthly')}
+                      disabled={!!loading}
+                      className="shrink-0 px-3.5 py-2.5 rounded-lg font-black text-[11px] uppercase tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 flex items-center gap-1.5 hover:opacity-90"
+                      style={{ background: '#16a34a', whiteSpace: 'nowrap' }}
+                    >
+                      {(loading === 'monthly' || loading === 'crypto_monthly') ? (
+                        <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                      ) : (<>Get Monthly <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></>)}
                     </button>
                   </div>
 
-                  {/* Lifetime */}
-                  <div className="rounded-lg overflow-hidden relative" style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.06), rgba(139,92,246,0.04))', border: '1px solid rgba(168,85,247,0.2)', boxShadow: '0 0 30px rgba(168,85,247,0.06)' }}>
-                    <div className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-purple-500 text-white">BEST VALUE</div>
-                    <div className="px-3.5 pt-3 pb-2">
-                      <span className="text-white font-bold text-sm">Lifetime</span>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        {effectivePayMethod === 'stars' ? (<><span className="text-white/20 line-through text-[11px]">34,250</span><span className="text-purple-400 font-bold text-lg">6,850</span><svg width="13" height="13" viewBox="0 0 24 24" fill="#a855f7"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg><span className="text-white/20 text-[11px]">≈ $89</span></>) : (<><span className="text-purple-400 font-bold text-lg">$89</span><span className="text-white/25 text-[11px]">once, forever</span></>)}
-                      </div>
-                      <div className="flex items-center gap-1 mt-1"><div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse shrink-0" /><span className="text-purple-400/70 text-[9px] font-bold">Only {lifetimeSlots} lifetime spots left</span></div>
+                  {/* Yearly */}
+                  <div className="rounded-lg overflow-hidden" style={{ border: '2px solid #111827' }}>
+                    <div className="flex items-center justify-between px-3 py-1.5" style={{ background: '#111827' }}>
+                      <span className="font-black text-white text-[13px]">Yearly</span>
+                      <span className="text-[8px] font-black tracking-widest text-white uppercase opacity-70">BESTSELLER</span>
                     </div>
-                    <button onClick={() => effectivePayMethod === 'stars' ? handlePurchase('lifetime') : handleCryptoPurchase('lifetime')} disabled={!!loading} className="w-full py-2.5 flex items-center justify-center gap-1.5 font-black text-[12px] uppercase tracking-wide text-white bg-purple-500 hover:bg-purple-400 transition-all active:scale-[0.98] disabled:opacity-50" style={{ boxShadow: '0 4px 20px rgba(168,85,247,0.3)' }}>
-                      {(loading === 'lifetime' || loading === 'crypto_lifetime') ? (<><svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>{effectivePayMethod === 'stars' ? 'Opening Telegram...' : 'Redirecting...'}</>) : (<>Pay Now — Lifetime ♾ <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></>)}
+                    <div className="px-3 py-3 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                        <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-green-50 text-green-700">
+                          ⏳ {effectivePayMethod === 'stars' ? 'Save 13,332★ ($199.96)' : 'Save $199.96'}
+                        </span>
+                      </div>
+                      {effectivePayMethod === 'stars' ? (
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span className="line-through text-[11px]" style={{ color: '#16a34a' }}>16,665</span>
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="#16a34a"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
+                          <span className="font-black text-[20px] leading-none text-gray-900">3,333</span>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="#111827"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
+                          <span className="text-gray-500 text-[10px]">≈ $49.99/yr · $4.17/mo</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="line-through text-[11px]" style={{ color: '#16a34a' }}>$249.95</span>
+                          <span className="font-black text-[20px] leading-none text-gray-900">$49.99</span>
+                          <span className="text-gray-500 text-[10px]">/yr · $4.17/mo</span>
+                        </div>
+                      )}
+                      <p className="text-[9px] mt-1 text-gray-500">One-time payment · No auto-renew</p>
+                    </div>
+                    <button
+                      onClick={() => effectivePayMethod === 'stars' ? handlePurchase('yearly') : handleCryptoPurchase('yearly')}
+                      disabled={!!loading}
+                      className="shrink-0 px-3.5 py-2.5 rounded-lg font-black text-[11px] uppercase tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 flex items-center gap-1.5 hover:opacity-90"
+                      style={{ background: '#16a34a', whiteSpace: 'nowrap' }}
+                    >
+                      {(loading === 'yearly' || loading === 'crypto_yearly') ? (
+                        <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                      ) : (<>Get Yearly <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></>)}
                     </button>
+                    </div>
                   </div>
                 </div>
-                {effectivePayMethod === 'crypto' && <p className="text-center text-[9px] mt-2" style={{ color: '#3a5080' }}>300+ cryptocurrencies accepted · Powered by NowPayments</p>}
+                <p className="text-center text-[10px] text-gray-500">Secure checkout · Instant access · No hidden fees</p>
+                {effectivePayMethod === 'crypto' && <p className="text-center text-[9px] text-gray-500">300+ cryptocurrencies accepted · Powered by NowPayments</p>}
               </div>
             )}
 
