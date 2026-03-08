@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import { User, Group } from '@/lib/models';
-import { sendNewGroupTelegramNotification } from '@/lib/utils/telegramNotify';
+import { sendNewGroupTelegramNotification, sendPremiumGroupTelegramNotification } from '@/lib/utils/telegramNotify';
 import { pingIndexNow } from '@/lib/utils/indexNow';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
@@ -149,10 +149,9 @@ export async function PUT(
         // Debug: Log what we're sending
         console.log(`[Group Update] Sending notification with image: ${actualImage.substring(0, 50)}${actualImage.length > 50 ? '...' : ''} (length: ${actualImage.length}, isBase64: ${actualImage.startsWith('data:image/')})`);
         
-        // Only send public Telegram notification and IndexNow for non-premium groups.
-        // Use the persisted DB value to avoid leaks when request payload omits premiumOnly.
         if (!groupWithImage.premiumOnly) {
-          const notificationResult = await sendNewGroupTelegramNotification(groupPlainObject, false);
+          // Public group: post to Erogram Pro (public) channel + Erogram Plus channel
+          const notificationResult = await sendNewGroupTelegramNotification(groupPlainObject, true);
           if (notificationResult && !notificationResult.success) {
             console.error('[Group Update] Telegram notification failed:', notificationResult.error);
             if (notificationResult.details) {
@@ -161,10 +160,16 @@ export async function PUT(
           } else if (notificationResult?.success) {
             console.log('[Group Update] Telegram notification sent successfully');
           }
-          // Submit to IndexNow for public groups only — premium groups must not be indexed
           pingIndexNow(`https://erogram.pro/${group.slug}`);
         } else {
-          console.log(`[Group Update] Premium vault group approved — skipping public notification and IndexNow`);
+          // Premium group: post ONLY to Erogram Plus channel (never public)
+          console.log(`[Group Update] Premium vault group approved — sending to Plus channel only`);
+          const premiumResult = await sendPremiumGroupTelegramNotification(groupPlainObject);
+          if (premiumResult && !premiumResult.success) {
+            console.error('[Group Update] Premium notification failed:', premiumResult.error);
+          } else if (premiumResult?.success) {
+            console.log('[Group Update] Premium notification sent to Plus channel');
+          }
         }
       } catch (err) {
         console.error('[Group Update] Failed to send Telegram notification:', err);
