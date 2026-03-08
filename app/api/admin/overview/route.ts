@@ -222,24 +222,6 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  if (!process.env.TELEGRAM_BOT_TOKEN || !publicChannel) {
-    monitoringAlerts.push({
-      level: 'warning',
-      title: 'Public Telegram posting not configured',
-      description: 'TELEGRAM_BOT_TOKEN or TELEGRAM_CHANNEL_ID is missing.',
-      actionUrl: '/admin/settings',
-    });
-  }
-
-  if (!process.env.EROGRAM_PLUS_TOKEN || !plusChannel) {
-    monitoringAlerts.push({
-      level: 'warning',
-      title: 'Premium Telegram posting not configured',
-      description: 'EROGRAM_PLUS_TOKEN or EROGRAM_PLUS_CHANNEL_ID is missing.',
-      actionUrl: '/admin/settings',
-    });
-  }
-
   if (publicChannel && plusChannel && publicChannel === plusChannel) {
     monitoringAlerts.push({
       level: 'critical',
