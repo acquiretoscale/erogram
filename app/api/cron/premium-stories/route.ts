@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   return generatePremiumStories();
 }
 
-export async function generatePremiumStories() {
+async function generatePremiumStories() {
   try {
     await connectDB();
 
