@@ -1,90 +1,48 @@
 // ---------------------------------------------------------------------------
-// Flat merged filter options (categories + countries in one alphabetical list).
-// Used in the browse-filter dropdown on the groups page.
-// Each entry carries an internal prefix so the API knows which field to query.
-// ---------------------------------------------------------------------------
-
-export const filterOptions: Array<{ label: string; value: string }> = [
-    { label: 'Adult', value: 'cat:Adult' },
-    { label: 'AI NSFW', value: 'cat:AI NSFW' },
-    { label: 'Amateur', value: 'cat:Amateur' },
-    { label: 'Anal', value: 'cat:Anal' },
-    { label: 'Anime', value: 'cat:Anime' },
-    { label: 'Asian', value: 'cat:Asian' },
-    { label: 'BDSM', value: 'cat:BDSM' },
-    { label: 'Big Ass', value: 'cat:Big Ass' },
-    { label: 'Big Tits', value: 'cat:Big Tits' },
-    { label: 'Blowjob', value: 'cat:Blowjob' },
-    { label: 'Brasil', value: 'country:Brazil' },
-    { label: 'China', value: 'country:China' },
-    { label: 'Colombia', value: 'country:Colombia' },
-    { label: 'Cosplay', value: 'cat:Cosplay' },
-    { label: 'Creampie', value: 'cat:Creampie' },
-    { label: 'Cuckold', value: 'cat:Cuckold' },
-    { label: 'Ebony', value: 'cat:Ebony' },
-    { label: 'Fantasy', value: 'cat:Fantasy' },
-    { label: 'Feet', value: 'cat:Feet' },
-    { label: 'Fetish', value: 'cat:Fetish' },
-    { label: 'Germany', value: 'country:Germany' },
-    { label: 'Hardcore', value: 'cat:Hardcore' },
-    { label: 'Hentai', value: 'cat:Hentai' },
-    { label: 'Japan', value: 'country:Japan' },
-    { label: 'Latina', value: 'cat:Latina' },
-    { label: 'Lesbian', value: 'cat:Lesbian' },
-    { label: 'Masturbation', value: 'cat:Masturbation' },
-    { label: 'MILF', value: 'cat:MILF' },
-    { label: 'Onlyfans', value: 'cat:Onlyfans' },
-    { label: 'Telegram-Porn', value: 'cat:Telegram-Porn' },
-    { label: 'Privacy', value: 'cat:Privacy' },
-    { label: 'Public', value: 'cat:Public' },
-    { label: 'Russian', value: 'cat:Russian' },
-    { label: 'Spain', value: 'country:Spain' },
-    { label: 'Threesome', value: 'cat:Threesome' },
-    { label: 'UK', value: 'country:UK' },
-    { label: 'USA', value: 'country:USA' },
-];
-
-// ---------------------------------------------------------------------------
-// Separate lists for the AddGroupModal (which still needs two dropdowns:
-// one for category and one for country).
+// Unified category list. Countries are now categories too.
+// Used in browse-filter dropdowns, add-group multi-select, etc.
 // ---------------------------------------------------------------------------
 
 export const filterCategories = [
     'Adult', 'AI NSFW', 'Amateur', 'Anal', 'Anime',
-    'Asian', 'BDSM', 'Big Ass', 'Big Tits', 'Blowjob', 'Cosplay',
-    'Creampie', 'Cuckold', 'Ebony', 'Fantasy', 'Feet', 'Fetish',
-    'Hardcore', 'Hentai', 'Latina', 'Lesbian', 'Masturbation', 'MILF',
-    'Onlyfans', 'Privacy', 'Public', 'Russian', 'Telegram-Porn', 'Threesome',
+    'Asian', 'BDSM', 'Big Ass', 'Big Tits', 'Black', 'Blonde', 'Blowjob',
+    'Brazil', 'Brunette', 'China', 'Colombia', 'Cosplay', 'Creampie',
+    'Cuckold', 'Ebony', 'Fantasy', 'Feet', 'Fetish', 'Free-use',
+    'Germany', 'Hardcore', 'Hentai', 'Japan',
+    'Latina', 'Lesbian', 'Masturbation', 'MILF',
+    'Onlyfans', 'Petite', 'Privacy', 'Public', 'Red Hair', 'Russian',
+    'Spain', 'Telegram-Porn', 'Threesome', 'UK', 'USA',
 ];
 
-export const filterCountries = [
-    'All', 'USA', 'UK', 'Russia', 'Spain', 'Japan',
-    'Germany', 'Brazil', 'China', 'Colombia',
-];
+export const filterOptions: Array<{ label: string; value: string }> =
+    filterCategories.map((c) => ({ label: c, value: c }));
 
 // ---------------------------------------------------------------------------
-// Full arrays – kept for SEO backward-compatibility.
+// Full list — kept for SEO backward-compatibility.
 // generateStaticParams / sitemap / best-telegram-groups routes use these
 // so that every previously-indexed URL still resolves (no 404s).
 // ---------------------------------------------------------------------------
 
 export const allCategories = [
     'All', 'Adult', 'Adult Chat', 'AI NSFW', 'Amateur', 'Anal', 'Anime',
-    'Asia', 'Asian', 'BDSM', 'BDSM Lite', 'Big Ass', 'Big Tits', 'Blowjob',
-    'Celebrity Lookalike', 'Cosplay', 'Costume', 'Creampie', 'Cuckold',
+    'Asia', 'Asian', 'BDSM', 'BDSM Lite', 'Big Ass', 'Big Tits', 'Black', 'Blonde', 'Blowjob',
+    'Brazil', 'Brunette', 'Celebrity Lookalike', 'China', 'Colombia',
+    'Cosplay', 'Costume', 'Creampie', 'Cuckold',
     'Domination', 'Double Penetration', 'Ebony', 'Erotic Horror',
-    'Fantasy', 'Feet', 'Fetish', 'Furry', 'Gangbang', 'Gay', 'Glasses',
-    'Group', 'Hair Play', 'Hardcore', 'Hentai', 'Interracial',
-    'Latex', 'Latina', 'Leaked', 'Lesbian', 'Lesbian Tribbing', 'LGBTQ+',
+    'Fantasy', 'Feet', 'Fetish', 'Free-use', 'Furry', 'Gangbang', 'Gay',
+    'Germany', 'Glasses', 'Group',
+    'Hair Play', 'Hardcore', 'Hentai', 'Interracial',
+    'Japan', 'Latex', 'Latina', 'Leaked', 'Lesbian', 'Lesbian Tribbing', 'LGBTQ+',
     'Masturbation', 'Mature', 'Medical', 'MILF', 'Mind Control',
     'Office', 'Onlyfans', 'Oral', 'Outdoor',
-    'Pet Play', 'Porn-Telegram', 'POV', 'Privacy', 'Public', 'Telegram-Porn',
-    'Roleplay', 'Romantic', 'Russian',
-    'SFW', 'Spanking', 'Squirting', 'Steampunk', 'Submission',
-    'Taboo', 'Tease & Denial', 'Threesome', 'Tickling', 'Trans',
-    'Uniforms', 'Vintage', 'Voyeur',
+    'Pet Play', 'Petite', 'Porn-Telegram', 'POV', 'Privacy', 'Public',
+    'Red Hair', 'Roleplay', 'Romantic', 'Russian',
+    'SFW', 'Spain', 'Spanking', 'Squirting', 'Steampunk', 'Submission',
+    'Taboo', 'Tease & Denial', 'Telegram-Porn', 'Threesome', 'Tickling', 'Trans',
+    'UK', 'Uniforms', 'USA', 'Vintage', 'Voyeur',
 ];
 
+// Legacy country list — kept ONLY for SEO backward-compat of /country/[slug] routes.
 export const allCountries = [
     'All', 'Adult-Telegram', 'USA', 'UK', 'Germany', 'France', 'Brazil', 'Russia', 'Japan',
     'South Korea', 'Philippines', 'Thailand', 'Spain', 'Mexico', 'Canada',
@@ -103,6 +61,7 @@ export const allCountries = [
     'Mongolia', 'Taiwan', 'Hong Kong', 'Macau', 'Kazakhstan',
 ];
 
-// Backward-compat aliases used by many existing imports
+// Backward-compat aliases
 export const categories = allCategories;
 export const countries = allCountries;
+export const filterCountries = allCountries;

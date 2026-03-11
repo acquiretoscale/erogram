@@ -437,7 +437,7 @@ function CampaignTotal({ cart, onRemove }: { cart: Map<string, CartItem>; onRemo
 </div>
 
 <div style="margin-top:40px;padding-top:20px;border-top:1px solid #eee;text-align:center">
-  <p style="font-size:11px;font-weight:700;color:#1a1a1a;margin-bottom:4px">Contact: adilmaf.agency@gmail.com &nbsp;/&nbsp; Telegram: @erogramDOTpro</p>
+  <p style="font-size:11px;font-weight:700;color:#1a1a1a;margin-bottom:4px">Contact: erogrampro@gmail.com &nbsp;/&nbsp; Telegram: @erogramDOTpro</p>
   <p style="font-size:10px;color:#aaa;margin-top:8px">Multi-month bookings unlock up to 30% discount. Prices are in USD. This quote is informational — final pricing confirmed upon order submission at erogram.pro/advertise</p>
 </div>
 

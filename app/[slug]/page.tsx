@@ -25,7 +25,7 @@ async function getVaultTeaser() {
     await connectDB();
     let groups = await Group.find({ showOnVaultTeaser: true, premiumOnly: true, status: 'approved' })
       .sort({ vaultTeaserOrder: 1 })
-      .select('name image category country memberCount vaultTeaserOrder vaultCategories')
+      .select('name image category categories country memberCount vaultTeaserOrder vaultCategories')
       .lean();
 
     if (groups.length > 12) {
@@ -37,7 +37,7 @@ async function getVaultTeaser() {
       groups = await Group.find({ premiumOnly: true, status: 'approved' })
         .sort({ createdAt: -1 })
         .limit(12)
-        .select('name image category country memberCount vaultCategories')
+        .select('name image category categories country memberCount vaultCategories')
         .lean();
     }
 
@@ -64,6 +64,7 @@ type SimilarGroup = {
   name: string;
   slug: string;
   category: string;
+  categories: string[];
   country: string;
   description: string;
   image: string;
@@ -122,11 +123,15 @@ async function getGroup(slug: string) {
 
     const isPremium = (group as any).premiumOnly === true;
 
+    const rawCats = (group as any).categories;
+    const categories = rawCats?.length ? rawCats : [(group as any).category, (group as any).country].filter(Boolean);
+
     const result = {
       _id: (group as any)._id.toString(),
       name: (group as any).name,
       slug: (group as any).slug,
       category: (group as any).category,
+      categories,
       country: (group as any).country,
       telegramLink: isPremium ? '' : (group as any).telegramLink,
       description: (group as any).description,
@@ -198,12 +203,15 @@ async function getBot(slug: string) {
       .select('authorName content rating createdAt')
       .lean();
 
-    // Build result object
+    const rawBotCats = (bot as any).categories;
+    const botCategories = rawBotCats?.length ? rawBotCats : [(bot as any).category, (bot as any).country].filter(Boolean);
+
     const result = {
       _id: (bot as any)._id.toString(),
       name: (bot as any).name,
       slug: (bot as any).slug,
       category: (bot as any).category,
+      categories: botCategories,
       country: (bot as any).country,
       telegramLink: (bot as any).telegramLink,
       description: (bot as any).description,
@@ -246,7 +254,7 @@ async function getRandomSimilarGroups(currentGroupId: string, category?: string)
     };
 
     if (category) {
-      matchStage.category = category;
+      matchStage.$or = [{ categories: category }, { category: category }];
     }
 
     let groups = await Group.aggregate([
@@ -258,6 +266,7 @@ async function getRandomSimilarGroups(currentGroupId: string, category?: string)
           name: 1,
           slug: 1,
           category: 1,
+          categories: 1,
           country: 1,
           description: 1,
           image: 1,
@@ -285,6 +294,7 @@ async function getRandomSimilarGroups(currentGroupId: string, category?: string)
             name: 1,
             slug: 1,
             category: 1,
+            categories: 1,
             country: 1,
             description: 1,
             image: 1,
@@ -295,15 +305,19 @@ async function getRandomSimilarGroups(currentGroupId: string, category?: string)
       groups = [...groups, ...randomGroups];
     }
 
-    return groups.map((g: any) => ({
-      _id: g._id.toString(),
-      name: String(g.name || '').slice(0, 150),
-      slug: String(g.slug || '').slice(0, 100),
-      category: String(g.category || '').slice(0, 50),
-      country: String(g.country || '').slice(0, 50),
-      description: String(g.description || '').slice(0, 220),
-      image: safeImageUrl(g.image, PLACEHOLDER_REL),
-    }));
+    return groups.map((g: any) => {
+      const cats = g.categories?.length ? g.categories : [g.category, g.country].filter(Boolean);
+      return {
+        _id: g._id.toString(),
+        name: String(g.name || '').slice(0, 150),
+        slug: String(g.slug || '').slice(0, 100),
+        category: String(g.category || '').slice(0, 50),
+        categories: cats,
+        country: String(g.country || '').slice(0, 50),
+        description: String(g.description || '').slice(0, 220),
+        image: safeImageUrl(g.image, PLACEHOLDER_REL),
+      };
+    });
   } catch (error: any) {
     console.error('Error fetching similar groups:', error);
     return [];
@@ -331,6 +345,7 @@ async function getRandomSimilarBots(currentBotId: string): Promise<SimilarGroup[
           name: 1,
           slug: 1,
           category: 1,
+          categories: 1,
           country: 1,
           description: 1,
           image: 1,
@@ -338,15 +353,19 @@ async function getRandomSimilarBots(currentBotId: string): Promise<SimilarGroup[
       },
     ]);
 
-    return bots.map((b: any) => ({
-      _id: b._id.toString(),
-      name: String(b.name || '').slice(0, 150),
-      slug: String(b.slug || '').slice(0, 100),
-      category: String(b.category || '').slice(0, 50),
-      country: String(b.country || '').slice(0, 50),
-      description: String(b.description || '').slice(0, 220),
-      image: safeImageUrl(b.image, PLACEHOLDER_REL),
-    }));
+    return bots.map((b: any) => {
+      const cats = b.categories?.length ? b.categories : [b.category, b.country].filter(Boolean);
+      return {
+        _id: b._id.toString(),
+        name: String(b.name || '').slice(0, 150),
+        slug: String(b.slug || '').slice(0, 100),
+        category: String(b.category || '').slice(0, 50),
+        categories: cats,
+        country: String(b.country || '').slice(0, 50),
+        description: String(b.description || '').slice(0, 220),
+        image: safeImageUrl(b.image, PLACEHOLDER_REL),
+      };
+    });
   } catch (error: any) {
     console.error('Error fetching similar bots:', error);
     return [];
@@ -404,8 +423,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     let finalDescription = baseDescription;
     if (finalDescription.length < 150) {
       const suffixes = [
-        `${memberInfo ? ` A verified community${memberInfo}.` : ''}`,
+        memberInfo ? ` A verified community${memberInfo}.` : '',
         ` Browse reviews, join the conversation, and connect with like-minded adults on Erogram.pro — the largest NSFW Telegram directory.`,
+        ` Discover and join thousands of verified adult Telegram communities updated daily.`,
       ];
       for (const s of suffixes) {
         if (finalDescription.length >= 150) break;
@@ -421,7 +441,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       // Keep page titles clean to avoid duplicates like "... | Erogram.pro | Erogram".
       title: `${group.name} - Join NSFW Telegram Group`,
       description: finalDescription,
-      keywords: `NSFW telegram group, ${group.name}, adult telegram community, ${group.category || 'NSFW'}, ${group.country || 'International'}, telegram chat, erotic groups, adult messaging`,
+      keywords: `NSFW telegram group, ${group.name}, adult telegram community, ${(group.categories || [group.category, group.country].filter(Boolean)).join(', ')}, telegram chat, erotic groups, adult messaging`,
       other: {
         rating: 'adult',
       },
@@ -463,7 +483,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
     let finalDescription = baseDescription;
     if (finalDescription.length < 150) {
-      finalDescription += ` Explore features, read user reviews, and start chatting on Erogram.pro — the largest directory of NSFW Telegram bots and AI companions.`;
+      const suffixes = [
+        ` Explore features, read user reviews, and start chatting on Erogram.pro — the largest directory of NSFW Telegram bots and AI companions.`,
+        ` Discover thousands of verified Telegram bots and AI companions updated daily.`,
+      ];
+      for (const s of suffixes) {
+        if (finalDescription.length >= 150) break;
+        finalDescription += s;
+      }
     }
     if (finalDescription.length > 160) {
       finalDescription = finalDescription.slice(0, 157) + '...';
@@ -472,7 +499,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return {
       title: `${bot.name} - Use NSFW Telegram Bot`,
       description: finalDescription,
-      keywords: `NSFW telegram bot, ${bot.name}, adult telegram bot, ${bot.category || 'NSFW'}, telegram bot, erotic bots, adult bot`,
+      keywords: `NSFW telegram bot, ${bot.name}, adult telegram bot, ${(bot.categories || [bot.category, bot.country].filter(Boolean)).join(', ')}, telegram bot, erotic bots, adult bot`,
       alternates: {
         canonical: botUrl,
       },

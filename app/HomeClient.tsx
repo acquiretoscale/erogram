@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -57,13 +57,97 @@ interface CampaignData {
   slot: string;
 }
 
+interface SiteStats {
+  groupCount: number;
+  botCount: number;
+  totalMembers: number;
+  totalViews: number;
+}
+
 interface HomeClientProps {
   featuredArticles: Article[];
   heroCampaigns?: CampaignData[];
   newGroups?: NewGroup[];
+  stats?: SiteStats;
 }
 
-export default function HomeClient({ featuredArticles, heroCampaigns = [], newGroups = [] }: HomeClientProps) {
+const GROUP_BASE = 4_000;
+const BOT_BASE = 100;
+const MEMBER_BASE = 10_000;
+
+function useCountUp(target: number, duration = 1800) {
+  const [value, setValue] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+  const started = useRef(false);
+
+  useEffect(() => {
+    if (!ref.current || started.current || target <= 0) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !started.current) {
+          started.current = true;
+          const start = performance.now();
+          const tick = (now: number) => {
+            const elapsed = now - start;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            setValue(Math.round(eased * target));
+            if (progress < 1) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.2 },
+    );
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [target, duration]);
+
+  return { value, ref };
+}
+
+function LiveStatCard({ target, label, icon }: { target: number; label: string; icon: string }) {
+  const { value, ref } = useCountUp(target);
+  const [display, setDisplay] = useState(target);
+
+  useEffect(() => {
+    if (value < target) {
+      setDisplay(value);
+      return;
+    }
+    setDisplay(target);
+    const interval = setInterval(() => {
+      setDisplay((prev) => {
+        const drift = Math.random() < 0.5 ? 1 : -1;
+        return Math.max(target - 2, prev + drift);
+      });
+    }, 3000 + Math.random() * 4000);
+    return () => clearInterval(interval);
+  }, [value, target]);
+
+  return (
+    <div
+      ref={ref}
+      className="glass rounded-xl sm:rounded-2xl px-3 py-3 sm:p-5 text-center hover-glow transition-all duration-300 border-white/5 bg-white/[0.02]"
+    >
+      <div className="text-lg sm:text-2xl mb-0.5 sm:mb-1.5">{icon}</div>
+      <div className="text-[17px] sm:text-2xl md:text-3xl font-bold text-white mb-0.5 tracking-tight tabular-nums leading-tight">
+        {display.toLocaleString('en-US')}
+      </div>
+      <div className="flex items-center justify-center gap-1 sm:gap-1.5 text-white/40 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">
+        <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-green-500" />
+        </span>
+        {label}
+      </div>
+    </div>
+  );
+}
+
+export default function HomeClient({ featuredArticles, heroCampaigns = [], newGroups = [], stats }: HomeClientProps) {
   const router = useRouter();
   const [username, setUsername] = useState<string | null>(null);
   const [useLightAnimations, setUseLightAnimations] = useState(false);
@@ -137,7 +221,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
       <Navbar username={username} setUsername={setUsername} />
 
       {/* Hero Section */}
-      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-20 sm:pt-28 pb-20">
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-16 sm:pt-28 pb-20">
         {/* Homepage Hero Banner – same style as header horizontal ads (Groups/Bots/Articles): 900×250, no crop, no label */}
         {heroCampaigns.length > 0 && (
           <div className="w-full mb-8">
@@ -148,11 +232,11 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
         <div className="text-center max-w-4xl mx-auto">
           {useLightAnimations ? (
             <>
-              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full glass border-white/10 bg-white/5 mb-8 ${animationClasses.fadeInUp}`}>
+              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full glass border-white/10 bg-white/5 mb-4 sm:mb-8 ${animationClasses.fadeInUp}`}>
                 <span className="w-2 h-2 rounded-full bg-[#ff3366] animate-pulse"></span>
                 <span className="text-sm font-medium text-white/80">The #1 Verified NSFW Directory</span>
               </div>
-              <h1 className={`text-4xl sm:text-5xl md:text-6xl font-black mb-8 leading-tight tracking-tight ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.1s' }}>
+              <h1 className={`text-3xl sm:text-5xl md:text-6xl font-black mb-4 sm:mb-8 leading-tight tracking-tight ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.1s' }}>
                 Discover Best <span className="gradient-text">NSFW</span>
                 <br />
                 <span className="text-[#f5f5f5]">Telegram Groups</span>
@@ -164,13 +248,13 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, ease: 'easeOut' }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border-white/10 bg-white/5 mb-8"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border-white/10 bg-white/5 mb-4 sm:mb-8"
               >
                 <span className="w-2 h-2 rounded-full bg-[#ff3366] animate-pulse"></span>
                 <span className="text-sm font-medium text-white/80">The #1 Verified NSFW Directory</span>
               </motion.div>
               <motion.h1
-                className="text-4xl sm:text-5xl md:text-6xl font-black mb-8 leading-tight tracking-tight"
+                className="text-3xl sm:text-5xl md:text-6xl font-black mb-4 sm:mb-8 leading-tight tracking-tight"
                 initial={{ opacity: 0, y: 40 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, ease: [0.2, 0.8, 0.2, 1], delay: 0.1 }}
@@ -184,170 +268,87 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
           )}
 
           {useLightAnimations ? (
-            <p className={`text-lg sm:text-xl md:text-2xl text-[#999] mb-12 max-w-3xl mx-auto px-4 leading-relaxed ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.2s' }}>
-              Dive into a world of <span className="text-white font-medium">premium adult communities</span> and <span className="text-white font-medium">interactive AI</span>.
+            <p className={`text-base sm:text-xl md:text-2xl text-[#999] mb-6 sm:mb-10 max-w-3xl mx-auto px-4 leading-relaxed ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.2s' }}>
+              The #1 directory for adult Telegram groups. <span className="text-white font-medium">10,000+ verified</span> best 2026 communities across dozens of categories.
               <br className="hidden sm:block" />
-              Connect, explore, and indulge — <span className="text-white/80">safely and anonymously</span>.
+              Explore and indulge — <span className="text-white/80">safely and anonymously</span>.
             </p>
           ) : (
             <motion.p
-              className="text-lg sm:text-xl md:text-2xl text-[#999] mb-12 max-w-3xl mx-auto px-4 leading-relaxed"
+              className="text-base sm:text-xl md:text-2xl text-[#999] mb-6 sm:mb-10 max-w-3xl mx-auto px-4 leading-relaxed"
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, ease: [0.2, 0.8, 0.2, 1], delay: 0.2 }}
               style={{ willChange: 'transform, opacity' }}
             >
-              Dive into a world of <span className="text-white font-medium">premium adult communities</span> and <span className="text-white font-medium">interactive AI</span>.
+              The #1 directory for adult Telegram groups. <span className="text-white font-medium">10,000+ verified</span> best 2026 communities across dozens of categories.
               <br className="hidden sm:block" />
-              Connect, explore, and indulge — <span className="text-white/80">safely and anonymously</span>.
+              Explore and indulge — <span className="text-white/80">safely and anonymously</span>.
             </motion.p>
           )}
 
           {useLightAnimations ? (
-            <div className={`flex flex-col items-center gap-4 mb-20 ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.4s' }}>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full">
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setTimeout(() => router.push('/groups'), 0);
-                  }}
-                  className="w-full sm:w-auto px-8 py-4 bg-[#b31b1b] hover-glow text-white rounded-lg text-lg font-semibold transition-all hover:scale-105"
-                >
-                  Explore Groups
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setTimeout(() => router.push('/bots'), 0);
-                  }}
-                  className="w-full sm:w-auto px-8 py-4 bg-[#229ED9] hover:bg-[#1e8bc0] text-white rounded-lg text-lg font-semibold transition-all hover:scale-105"
-                >
-                  Explore Bots
-                </button>
-              </div>
-              <a
-                href="/premium"
-                target="_blank"
-                rel="noopener nofollow"
-                className="group/prem relative sm:w-auto px-6 py-2.5 rounded-lg text-sm font-bold uppercase tracking-[0.1em] transition-all duration-300 hover:scale-105 inline-flex items-center justify-center gap-2 overflow-hidden"
-                style={{
-                  background: 'linear-gradient(135deg, #d4a94c 0%, #e8c66a 20%, #c9973a 40%, #b8860b 60%, #e8c66a 80%, #d4a94c 100%)',
-                  border: '1px solid rgba(232,198,106,0.6)',
-                  color: '#1a1000',
-                  boxShadow: '0 0 25px rgba(201,151,58,0.3), 0 2px 10px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.15)',
-                }}
+            <div className={`flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center w-full mb-6 sm:mb-8 ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.4s' }}>
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push('/groups'), 0); }}
+                className="w-full sm:w-auto px-8 py-4 bg-[#b31b1b] hover-glow text-white rounded-lg text-lg font-semibold transition-all hover:scale-105"
               >
-                <span className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 45%, transparent 50%, rgba(0,0,0,0.1) 100%)', borderRadius: 'inherit' }} />
-                <span className="absolute inset-0 opacity-0 group-hover/prem:opacity-100 transition-opacity duration-500" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 40%, rgba(255,255,255,0.1) 100%)' }} />
-                <svg className="relative drop-shadow-sm" width="13" height="13" viewBox="0 0 24 24" fill="#1a1000"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                <span className="relative drop-shadow-sm">Unlock EROGRAM Premium</span>
-                <svg className="relative drop-shadow-sm" width="13" height="13" viewBox="0 0 24 24" fill="#1a1000"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-              </a>
+                Explore Groups
+              </button>
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push('/bots'), 0); }}
+                className="w-full sm:w-auto px-8 py-4 bg-[#229ED9] hover:bg-[#1e8bc0] text-white rounded-lg text-lg font-semibold transition-all hover:scale-105"
+              >
+                Explore Bots
+              </button>
             </div>
           ) : (
             <motion.div
-              className="flex flex-col items-center gap-4 mb-20"
+              className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center w-full mb-6 sm:mb-8"
               initial={{ opacity: 0, y: 60 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: 'easeOut', delay: 0.4 }}
               style={{ willChange: 'transform, opacity' }}
             >
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full">
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setTimeout(() => router.push('/groups'), 0);
-                  }}
-                  className="w-full sm:w-auto px-8 py-4 bg-[#b31b1b] hover-glow text-white rounded-lg text-lg font-semibold transition-all hover:scale-105"
-                >
-                  Explore Groups
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setTimeout(() => router.push('/bots'), 0);
-                  }}
-                  className="w-full sm:w-auto px-8 py-4 bg-[#229ED9] hover:bg-[#1e8bc0] text-white rounded-lg text-lg font-semibold transition-all hover:scale-105"
-                >
-                  Explore Bots
-                </button>
-              </div>
-              <a
-                href="/premium"
-                target="_blank"
-                rel="noopener nofollow"
-                className="group/prem relative sm:w-auto px-6 py-2.5 rounded-lg text-sm font-bold uppercase tracking-[0.1em] transition-all duration-300 hover:scale-105 inline-flex items-center justify-center gap-2 overflow-hidden"
-                style={{
-                  background: 'linear-gradient(135deg, #d4a94c 0%, #e8c66a 20%, #c9973a 40%, #b8860b 60%, #e8c66a 80%, #d4a94c 100%)',
-                  border: '1px solid rgba(232,198,106,0.6)',
-                  color: '#1a1000',
-                  boxShadow: '0 0 25px rgba(201,151,58,0.3), 0 2px 10px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.15)',
-                }}
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push('/groups'), 0); }}
+                className="w-full sm:w-auto px-8 py-4 bg-[#b31b1b] hover-glow text-white rounded-lg text-lg font-semibold transition-all hover:scale-105"
               >
-                <span className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 45%, transparent 50%, rgba(0,0,0,0.1) 100%)', borderRadius: 'inherit' }} />
-                <span className="absolute inset-0 opacity-0 group-hover/prem:opacity-100 transition-opacity duration-500" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 40%, rgba(255,255,255,0.1) 100%)' }} />
-                <svg className="relative drop-shadow-sm" width="13" height="13" viewBox="0 0 24 24" fill="#1a1000"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                <span className="relative drop-shadow-sm">Unlock EROGRAM Premium</span>
-                <svg className="relative drop-shadow-sm" width="13" height="13" viewBox="0 0 24 24" fill="#1a1000"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-              </a>
+                Explore Groups
+              </button>
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push('/bots'), 0); }}
+                className="w-full sm:w-auto px-8 py-4 bg-[#229ED9] hover:bg-[#1e8bc0] text-white rounded-lg text-lg font-semibold transition-all hover:scale-105"
+              >
+                Explore Bots
+              </button>
+            </motion.div>
+          )}
+
+          {/* Stats — live counters, tight under CTA */}
+          {useLightAnimations ? (
+            <div className={`grid grid-cols-4 gap-2 sm:gap-4 max-w-3xl mx-auto ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.5s' }}>
+              <LiveStatCard target={GROUP_BASE + (stats?.groupCount ?? 0)} label="Groups" icon="🔥" />
+              <LiveStatCard target={BOT_BASE + (stats?.botCount ?? 0)} label="AI Bots" icon="🤖" />
+              <LiveStatCard target={MEMBER_BASE + (stats?.totalMembers ?? 0)} label="Members" icon="👥" />
+              <LiveStatCard target={stats?.totalViews ?? 0} label="Views" icon="👁️" />
+            </div>
+          ) : (
+            <motion.div
+              className="grid grid-cols-4 gap-2 sm:gap-4 max-w-3xl mx-auto"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: 'easeOut', delay: 0.5 }}
+              style={{ willChange: 'transform, opacity' }}
+            >
+              <LiveStatCard target={GROUP_BASE + (stats?.groupCount ?? 0)} label="Groups" icon="🔥" />
+              <LiveStatCard target={BOT_BASE + (stats?.botCount ?? 0)} label="AI Bots" icon="🤖" />
+              <LiveStatCard target={MEMBER_BASE + (stats?.totalMembers ?? 0)} label="Members" icon="👥" />
+              <LiveStatCard target={stats?.totalViews ?? 0} label="Views" icon="👁️" />
             </motion.div>
           )}
 
         </div>
-
-        {/* Stats Section */}
-        {/* Stats Section */}
-        {useLightAnimations ? (
-          <div className={`grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mt-20 sm:mt-32 max-w-6xl mx-auto px-4 ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.6s' }}>
-            {[
-              { number: '10K+', label: 'Active Groups', icon: '🔥' },
-              { number: '500+', label: 'AI Bots', icon: '🤖' },
-              { number: '500K+', label: 'Members', icon: '👥' },
-              { number: '150+', label: 'Countries', icon: '🌍' },
-            ].map((stat, idx) => (
-              <div
-                key={idx}
-                className="glass rounded-2xl p-6 text-center hover-glow hover:-translate-y-1 transition-all duration-300 border-white/5 bg-white/[0.02]"
-              >
-                <div className="text-2xl mb-2">{stat.icon}</div>
-                <div className="text-3xl sm:text-4xl font-bold text-white mb-1 tracking-tight">
-                  {stat.number}
-                </div>
-                <div className="text-white/40 text-sm font-medium uppercase tracking-wider">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <motion.div
-            className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mt-20 sm:mt-32 max-w-6xl mx-auto px-4"
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: [0.2, 0.8, 0.2, 1], delay: 0.6 }}
-            style={{ willChange: 'transform, opacity' }}
-          >
-            {[
-              { number: '10K+', label: 'Active Groups', icon: '🔥' },
-              { number: '500+', label: 'AI Bots', icon: '🤖' },
-              { number: '500K+', label: 'Members', icon: '👥' },
-              { number: '150+', label: 'Countries', icon: '🌍' },
-            ].map((stat, idx) => (
-              <div
-                key={idx}
-                className="glass rounded-2xl p-6 text-center hover-glow hover:-translate-y-1 transition-all duration-300 border-white/5 bg-white/[0.02]"
-              >
-                <div className="text-2xl mb-2">{stat.icon}</div>
-                <div className="text-3xl sm:text-4xl font-bold text-white mb-1 tracking-tight">
-                  {stat.number}
-                </div>
-                <div className="text-white/40 text-sm font-medium uppercase tracking-wider">{stat.label}</div>
-              </div>
-            ))}
-          </motion.div>
-        )}
 
         {/* Features Section */}
         {/* Features Section */}

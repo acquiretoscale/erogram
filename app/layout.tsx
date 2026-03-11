@@ -18,8 +18,8 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
 
 export const metadata: Metadata = {
   title: {
-    default: "erogram.pro – Telegram Groups & Channels Directory",
-    template: "%s – erogram.pro"
+    default: "Erogram | Best NSFW Telegram Groups & Channels Directory 2026",
+    template: "%s | Erogram"
   },
   description: "Find and explore the best Telegram groups from around the world. Connect with communities that match your interests.",
   keywords: "telegram groups, telegram channels, communities, messaging, NSFW telegram groups",
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   },
   metadataBase: new URL(siteUrl),
   openGraph: {
-    title: "erogram.pro – Telegram Groups & Channels Directory",
+    title: "Erogram | Best NSFW Telegram Groups & Channels Directory 2026",
     description: "Find and explore the best Telegram groups from around the world. Connect with communities that match your interests.",
     type: "website",
     siteName: "Erogram",
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "erogram.pro – Telegram Groups & Channels Directory",
+    title: "Erogram | Best NSFW Telegram Groups & Channels Directory 2026",
     description: "Find and explore the best Telegram groups from around the world.",
   },
   robots: {
@@ -54,6 +54,7 @@ export const metadata: Metadata = {
   },
   other: {
     rating: 'adult',
+    'RATING': 'RTA-5042-1996-1400-1577-RTA',
   },
 };
 
@@ -116,16 +117,6 @@ export default function RootLayout({
           `}
         </Script>
 
-        {/* Microsoft Clarity — lazyOnload: loads after page is fully interactive */}
-        <Script id="clarity" strategy="lazyOnload">
-          {`
-            (function(c,l,a,r,i,t,y){
-              c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-              t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i+"?ref=bwt";
-              y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-            })(window, document, "clarity", "script", "u6pq8y3hqz");
-          `}
-        </Script>
         <LayoutWrapper>
           {children}
         </LayoutWrapper>

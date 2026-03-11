@@ -62,7 +62,7 @@ export default function TopBannerTwoSlots({
                 key={c._id}
                 href={c.destinationUrl}
                 target="_blank"
-                rel="noopener noreferrer"
+                rel="sponsored noopener noreferrer"
                 onClick={(e) => { e.preventDefault(); openUrl(c.destinationUrl); }}
                 style={{
                   flex: 1,
@@ -90,7 +90,7 @@ export default function TopBannerTwoSlots({
                 key={c._id}
                 href={c.destinationUrl}
                 target="_blank"
-                rel="noopener noreferrer"
+                rel="sponsored noopener noreferrer"
                 onClick={(e) => { e.preventDefault(); openUrl(c.destinationUrl); }}
                 style={{
                   flex: 1,
@@ -119,7 +119,7 @@ export default function TopBannerTwoSlots({
           <a
             href={allBanners[0].destinationUrl}
             target="_blank"
-            rel="noopener noreferrer"
+            rel="sponsored noopener noreferrer"
             onClick={(e) => { e.preventDefault(); openUrl(allBanners[0].destinationUrl); }}
             style={{
               display: 'block',
@@ -154,7 +154,7 @@ export default function TopBannerTwoSlots({
                 key={c._id}
                 href={c.destinationUrl}
                 target="_blank"
-                rel="noopener noreferrer"
+                rel="sponsored noopener noreferrer"
                 onClick={(e) => { e.preventDefault(); openUrl(c.destinationUrl); }}
                 style={{
                   flex: '1 1 0',

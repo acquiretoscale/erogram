@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import Footer from '@/components/Footer';
 import AdvertiseStats from './AdvertiseStats';
 import HeroSection from './HeroSection';
 import AudienceDevices from './AudienceDevices';
@@ -162,13 +163,7 @@ export default function MediaKitClient() {
 
         </main>
 
-        {/* Footer */}
-        <footer className="relative z-10 border-t border-[#333] py-6">
-          <div className="max-w-5xl mx-auto px-4 sm:px-8 flex items-center justify-between text-xs text-[#999]">
-            <span>Erogram.pro &copy; {new Date().getFullYear()}</span>
-            <span>This document is confidential and intended for advertising partners only.</span>
-          </div>
-        </footer>
+        <Footer />
       </div>
   );
 }

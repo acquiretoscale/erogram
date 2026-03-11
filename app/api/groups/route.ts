@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
       })
         .sort({ weeklyClicks: -1, views: -1 })
         .limit(POOL_SIZE)
-        .select('name slug category country description image telegramLink clickCount views memberCount verified weeklyClicks')
+        .select('name slug category country categories description image telegramLink clickCount views memberCount verified weeklyClicks')
         .lean();
 
       // Weighted random pick: higher weeklyClicks = higher chance, but not deterministic
@@ -99,24 +99,28 @@ export async function GET(req: NextRequest) {
         : new URL(req.url).origin;
 
       return NextResponse.json({
-        groups: topGroups.map((g: any) => ({
-          _id: g._id.toString(),
-          name: (g.name || '').slice(0, 150),
-          slug: (g.slug || '').slice(0, 100),
-          category: (g.category || '').slice(0, 50),
-          country: (g.country || '').slice(0, 50),
-          description: (g.description || '').slice(0, 150),
-          image: resolveImageUrl(g.image, origin),
-          telegramLink: (g.telegramLink || '').slice(0, 150),
-          isAdvertisement: false,
-          advertisementUrl: null,
-          pinned: false,
-          clickCount: g.clickCount || 0,
-          views: g.views || 0,
-          memberCount: g.memberCount || 0,
-          verified: g.verified || false,
-          weeklyClicks: g.weeklyClicks || 0,
-        })),
+        groups: topGroups.map((g: any) => {
+          const cats = g.categories?.length ? g.categories : [g.category, g.country].filter(Boolean);
+          return {
+            _id: g._id.toString(),
+            name: (g.name || '').slice(0, 150),
+            slug: (g.slug || '').slice(0, 100),
+            category: (g.category || '').slice(0, 50),
+            country: (g.country || '').slice(0, 50),
+            categories: cats,
+            description: (g.description || '').slice(0, 150),
+            image: resolveImageUrl(g.image, origin),
+            telegramLink: (g.telegramLink || '').slice(0, 150),
+            isAdvertisement: false,
+            advertisementUrl: null,
+            pinned: false,
+            clickCount: g.clickCount || 0,
+            views: g.views || 0,
+            memberCount: g.memberCount || 0,
+            verified: g.verified || false,
+            weeklyClicks: g.weeklyClicks || 0,
+          };
+        }),
       });
     }
 
@@ -125,22 +129,32 @@ export async function GET(req: NextRequest) {
     let query: any = { status: 'approved', isAdvertisement: { $ne: true }, premiumOnly: { $ne: true } };
     let sortCriteria: any = { pinned: -1, createdAt: -1 };
 
-    // Add search filter if search query provided
+    const andConditions: any[] = [];
+
     if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
-      ];
+      andConditions.push({
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+        ],
+      });
     }
 
-    // Add category filter if provided and not 'All'
+    // Unified category filter — queries the new `categories` array with fallback to legacy fields
     if (category && category !== 'All') {
-      query.category = category;
+      andConditions.push({
+        $or: [{ categories: category }, { category: category }, { country: category }],
+      });
     }
 
-    // Add country filter if provided and not 'All'
     if (country && country !== 'All') {
-      query.country = country;
+      andConditions.push({
+        $or: [{ categories: country }, { country: country }],
+      });
+    }
+
+    if (andConditions.length) {
+      query.$and = andConditions;
     }
 
     if (sortBy === 'views') {
@@ -215,6 +229,7 @@ export async function GET(req: NextRequest) {
             slug: 1,
             category: 1,
             country: 1,
+            categories: 1,
             description: 1,
             image: 1,
             telegramLink: 1,
@@ -327,12 +342,14 @@ export async function GET(req: NextRequest) {
     const sanitized = groups.map((g: any) => {
       const stats = reviewStatsMap.get(g._id.toString()) || { reviewCount: 0, averageRating: 0 };
       const imageUrl = resolveImageUrl(g.image, origin || '');
+      const cats = g.categories?.length ? g.categories : [g.category, g.country].filter(Boolean);
       return {
         _id: g._id.toString(),
         name: g.name,
         slug: g.slug,
         category: g.category,
         country: g.country,
+        categories: cats,
         description: g.description?.slice(0, 300) || '',
         image: imageUrl,
         telegramLink: g.telegramLink,
@@ -376,10 +393,13 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { name, category, country, telegramLink, description, image } = body;
+    const categoriesArr: string[] = Array.isArray(body.categories)
+      ? body.categories.slice(0, 3)
+      : category ? [category] : [];
 
-    if (!name || !category || !telegramLink || !description) {
+    if (!name || categoriesArr.length === 0 || !telegramLink || !description) {
       return NextResponse.json(
-        { message: 'Name, category, Telegram link and description are required' },
+        { message: 'Name, at least one category, Telegram link and description are required' },
         { status: 400 }
       );
     }
@@ -395,8 +415,6 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-
-    const countryValue = country || 'All';
 
     const baseSlug = slugify(name);
     let slug = baseSlug;
@@ -428,8 +446,9 @@ export async function POST(req: NextRequest) {
     const doc: Record<string, unknown> = {
       name,
       slug,
-      category,
-      country: countryValue,
+      categories: categoriesArr,
+      category: categoriesArr[0] || '',
+      country: '',
       telegramLink,
       description,
       image: finalImage,

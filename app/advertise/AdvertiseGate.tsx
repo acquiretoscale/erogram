@@ -119,7 +119,7 @@ export default function AdvertiseGate({ children }: AdvertiseGateProps) {
 
         <p className="text-center text-[#999] text-xs mt-6">
           Don&apos;t have access? Contact{' '}
-          <a href="mailto:adilmaf.agency@gmail.com" className="text-[#b31b1b] hover:text-[#ff3366] transition-colors">
+          <a href="mailto:erogrampro@gmail.com" className="text-[#b31b1b] hover:text-[#ff3366] transition-colors">
             our team
           </a>
         </p>

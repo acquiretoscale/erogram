@@ -7,16 +7,14 @@ import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 
 interface AddGroupModalProps {
   categories: string[];
-  countries: string[];
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export default function AddGroupModal({ categories, countries, onClose, onSuccess }: AddGroupModalProps) {
+export default function AddGroupModal({ categories, onClose, onSuccess }: AddGroupModalProps) {
   const [groupData, setGroupData] = useState({
     name: '',
-    category: 'Adult',
-    country: 'Adult-Telegram',
+    categories: ['Adult'] as string[],
     telegramLink: '',
     description: '',
     imageFile: null as File | null
@@ -25,7 +23,6 @@ export default function AddGroupModal({ categories, countries, onClose, onSucces
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // Convert uploaded image to WebP format for better compression
   const convertToWebP = async (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const canvas = document.createElement('canvas');
@@ -33,14 +30,9 @@ export default function AddGroupModal({ categories, countries, onClose, onSucces
       const img = new Image();
 
       img.onload = () => {
-        // Set canvas dimensions to match image
         canvas.width = img.width;
         canvas.height = img.height;
-
-        // Draw image to canvas
         ctx?.drawImage(img, 0, 0);
-
-        // Convert to WebP blob
         canvas.toBlob((blob) => {
           if (blob) {
             const reader = new FileReader();
@@ -50,7 +42,7 @@ export default function AddGroupModal({ categories, countries, onClose, onSucces
           } else {
             reject(new Error('Failed to convert to WebP'));
           }
-        }, 'image/webp', 0.8); // 80% quality for good compression vs quality balance
+        }, 'image/webp', 0.8);
       };
 
       img.onerror = reject;
@@ -68,6 +60,18 @@ export default function AddGroupModal({ categories, countries, onClose, onSucces
     }
   };
 
+  const toggleCategory = (cat: string) => {
+    setGroupData(prev => {
+      const has = prev.categories.includes(cat);
+      if (has) {
+        const next = prev.categories.filter(c => c !== cat);
+        return { ...prev, categories: next.length ? next : prev.categories };
+      }
+      if (prev.categories.length >= 3) return prev;
+      return { ...prev, categories: [...prev.categories, cat] };
+    });
+  };
+
   const handleSubmit = async () => {
     setError('');
     setIsSubmitting(true);
@@ -80,9 +84,8 @@ export default function AddGroupModal({ categories, countries, onClose, onSucces
         return;
       }
 
-      // Validation (country optional)
-      if (!groupData.name || !groupData.category || !groupData.telegramLink || !groupData.description) {
-        setError('Name, category, Telegram link and description are required');
+      if (!groupData.name || groupData.categories.length === 0 || !groupData.telegramLink || !groupData.description) {
+        setError('Name, at least 1 category, Telegram link and description are required');
         setIsSubmitting(false);
         return;
       }
@@ -99,35 +102,28 @@ export default function AddGroupModal({ categories, countries, onClose, onSucces
         return;
       }
 
-      // Convert image to WebP base64 if uploaded
       let imageUrl = null;
       if (groupData.imageFile) {
         try {
           imageUrl = await convertToWebP(groupData.imageFile);
-          console.log('[Group Create] Image converted to WebP base64, length:', imageUrl?.length || 0);
-        } catch (error) {
-          console.error('[Group Create] WebP conversion failed, falling back to original format:', error);
-          // Fallback to original format if WebP conversion fails
+        } catch {
           imageUrl = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = (e) => resolve(e.target?.result as string);
             reader.onerror = reject;
             reader.readAsDataURL(groupData.imageFile!);
           });
-          console.log('[Group Create] Fallback: Image converted to base64, length:', imageUrl?.length || 0);
         }
       }
 
-      // Submit group - exclude imageFile from the payload
-      const { imageFile, ...groupPayload } = groupData;
+      const { imageFile, ...rest } = groupData;
       const res = await axios.post('/api/groups', {
-        ...groupPayload,
+        ...rest,
+        category: rest.categories[0],
         image: imageUrl || PLACEHOLDER_IMAGE_URL
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-
-      console.log('[Group Create] Group created, response:', res.data?._id);
 
       if (res.data) {
         onSuccess();
@@ -146,7 +142,6 @@ export default function AddGroupModal({ categories, countries, onClose, onSucces
         animate={{ opacity: 1, scale: 1 }}
         className="glass rounded-3xl shadow-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-white/10"
       >
-        {/* Animated Background */}
         <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-5 rounded-3xl"></div>
 
         <div className="relative">
@@ -205,38 +200,33 @@ export default function AddGroupModal({ categories, countries, onClose, onSucces
               />
             </div>
 
-            {/* Category and Country */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="glass rounded-2xl p-6 border border-white/10">
-                <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
-                  <span className="mr-2">📂</span>
-                  Category *
-                </label>
-                <select
-                  value={groupData.category}
-                  onChange={(e) => setGroupData({ ...groupData, category: e.target.value })}
-                  className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none"
-                >
-                  {categories.map(category => (
-                    <option key={category} value={category}>{category}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="glass rounded-2xl p-6 border border-white/10">
-                <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
-                  <span className="mr-2">🌍</span>
-                  Country/Language (optional)
-                </label>
-                <select
-                  value={groupData.country}
-                  onChange={(e) => setGroupData({ ...groupData, country: e.target.value })}
-                  className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none"
-                >
-                  {countries.map(country => (
-                    <option key={country} value={country}>{country}</option>
-                  ))}
-                </select>
+            {/* Categories (multi-select, up to 3) */}
+            <div className="glass rounded-2xl p-6 border border-white/10">
+              <label className="block text-sm font-bold text-[#f5f5f5] mb-1 flex items-center">
+                <span className="mr-2">📂</span>
+                Categories * <span className="text-xs text-white/40 ml-2">(pick up to 3)</span>
+              </label>
+              <p className="text-[10px] text-white/30 mb-3">
+                {groupData.categories.length}/3 selected
+              </p>
+              <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pr-1">
+                {categories.map(cat => {
+                  const selected = groupData.categories.includes(cat);
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => toggleCategory(cat)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+                        selected
+                          ? 'bg-[#b31b1b]/80 border-[#b31b1b] text-white'
+                          : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white/80'
+                      } ${!selected && groupData.categories.length >= 3 ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    >
+                      {cat}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

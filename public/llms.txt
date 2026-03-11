@@ -1,0 +1,46 @@
+# Erogram
+
+> Erogram.pro is the #1 verified directory for discovering NSFW Telegram groups, channels, and AI companion bots. Updated daily with new community submissions.
+
+## Sections
+
+- [Groups Directory](https://erogram.pro/groups): Browse thousands of NSFW Telegram groups by category, country, and popularity
+- [Bots Directory](https://erogram.pro/bots): Discover AI companion bots and interactive Telegram bots
+- [Top Lists](https://erogram.pro/best-telegram-groups): Curated best-of lists by category (Lesbian, Hentai, Amateur, Asian, MILF, BDSM, Cosplay, and more)
+- [Articles & Guides](https://erogram.pro/articles): In-depth articles about Telegram communities, safety tips, and platform guides
+- [Submit a Group or Bot](https://erogram.pro/add): Community submissions — users can add their own Telegram group or bot
+
+## Key Facts
+
+- 10,000+ active Telegram groups listed
+- 500+ AI and interactive bots
+- 150+ countries represented
+- All listings are verified and moderated
+- Free to browse — no account required
+- Content is rated RTA (Restricted To Adults)
+
+## Categories
+
+Groups and bots are organized into categories including: Amateur, Anal, Asian, BDSM, Big Ass, Cosplay, Dating, Gay, Hentai, Lesbian, MILF, Onlyfans, Roleplay, Threesome, and many more.
+
+## How It Works
+
+1. Users browse or search for groups/bots by category, country, or keyword
+2. Each listing shows a description, member count, category, and country
+3. Clicking "Join" redirects the user to the Telegram app to join the group or start the bot
+4. Users can submit their own groups/bots for review and approval
+
+## Technical Details
+
+- Built with Next.js (server-side rendered for fast page loads)
+- Pages are updated via ISR (Incremental Static Regeneration)
+- Sitemap: https://erogram.pro/sitemap.xml
+
+## Contact
+
+- Email: erogrampro@gmail.com
+- Telegram: https://t.me/erogrampro
+
+## Optional
+
+- [Full site documentation for LLMs](https://erogram.pro/llms-full.txt)

@@ -20,6 +20,7 @@ export default function GroupsTab() {
         description: '',
         category: 'All',
         country: 'All',
+        categories: [] as string[],
         telegramLink: '',
         image: '',
         status: 'pending' as 'pending' | 'approved' | 'rejected',
@@ -82,11 +83,15 @@ export default function GroupsTab() {
 
     const handleEdit = (group: any) => {
         setEditingGroup(group);
+        const cats = group.categories?.length
+            ? group.categories
+            : [group.category, group.country].filter((c: string) => c && c !== 'All' && c !== 'Adult-Telegram');
         setGroupData({
             name: group.name || '',
             description: group.description || '',
             category: group.category || 'All',
             country: group.country || 'All',
+            categories: cats,
             telegramLink: group.telegramLink || '',
             image: group.image || '',
             status: group.status || 'pending',
@@ -115,7 +120,11 @@ export default function GroupsTab() {
             const token = localStorage.getItem('token');
 
             if (editingGroup) {
-                await axios.put(`/api/admin/groups/${editingGroup._id}`, groupData, {
+                await axios.put(`/api/admin/groups/${editingGroup._id}`, {
+                    ...groupData,
+                    categories: groupData.categories,
+                    category: groupData.categories[0] || groupData.category,
+                }, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
             } else {
@@ -642,9 +651,10 @@ export default function GroupsTab() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="flex flex-col gap-1">
-                                                    <span className="text-sm text-gray-300">{group.category}</span>
-                                                    <span className="text-xs text-[#666]">{group.country}</span>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {(group.categories?.length ? group.categories : [group.category, group.country].filter((c: string) => c && c !== 'All')).map((cat: string) => (
+                                                        <span key={cat} className="text-[10px] bg-white/5 text-gray-300 px-1.5 py-0.5 rounded">{cat}</span>
+                                                    ))}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
@@ -776,30 +786,29 @@ export default function GroupsTab() {
                                         />
                                     </div>
 
-                                    <div>
-                                        <label className="block text-xs font-bold text-[#666] uppercase mb-2">Category</label>
-                                        <select
-                                            value={groupData.category}
-                                            onChange={(e) => setGroupData({ ...groupData, category: e.target.value })}
-                                            className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] outline-none appearance-none"
-                                        >
-                                            {categories.map((cat) => (
-                                                <option key={cat} value={cat}>{cat}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-bold text-[#666] uppercase mb-2">Country</label>
-                                        <select
-                                            value={groupData.country}
-                                            onChange={(e) => setGroupData({ ...groupData, country: e.target.value })}
-                                            className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] outline-none appearance-none"
-                                        >
-                                            {countries.map((country) => (
-                                                <option key={country} value={country}>{country}</option>
-                                            ))}
-                                        </select>
+                                    <div className="col-span-2">
+                                        <label className="block text-xs font-bold text-[#666] uppercase mb-2">Categories (up to 3) — {groupData.categories.length}/3</label>
+                                        <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto p-3 bg-[#1a1a1a] border border-white/10 rounded-xl">
+                                            {categories.filter(c => c !== 'All').map((cat) => {
+                                                const sel = groupData.categories.includes(cat);
+                                                return (
+                                                    <button
+                                                        key={cat}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setGroupData(prev => {
+                                                                if (sel) return { ...prev, categories: prev.categories.filter(c => c !== cat) };
+                                                                if (prev.categories.length >= 3) return prev;
+                                                                return { ...prev, categories: [...prev.categories, cat] };
+                                                            });
+                                                        }}
+                                                        className={`px-2 py-1 rounded text-[11px] font-medium border transition-all ${sel ? 'bg-[#b31b1b]/80 border-[#b31b1b] text-white' : 'bg-white/5 border-white/10 text-white/50 hover:text-white/80'} ${!sel && groupData.categories.length >= 3 ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                                    >
+                                                        {cat}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
 
                                     <div className="col-span-2">

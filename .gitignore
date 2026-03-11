@@ -37,6 +37,7 @@ yarn-error.log*
 
 # local Mongo dump files
 lib/mongo_full/
+db-backup-*/
 
 # vercel
 .vercel

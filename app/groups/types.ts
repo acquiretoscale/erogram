@@ -4,6 +4,7 @@ export interface Group {
     slug: string;
     category: string;
     country: string;
+    categories?: string[];
     description: string;
     image: string;
     telegramLink?: string;

@@ -7,7 +7,7 @@ import axios from 'axios';
 import dynamic from 'next/dynamic';
 import Navbar from '@/components/Navbar';
 import HeaderBanner from '@/components/HeaderBanner';
-import { filterOptions, filterCategories, filterCountries } from './constants';
+import { filterOptions, filterCategories } from './constants';
 import { Group, FeedCampaign, StoryCategory } from './types';
 import GroupCard from './GroupCard';
 import AdvertCard from './AdvertCard';
@@ -69,7 +69,7 @@ function VaultTeaserSection({ items }: { items: VaultTeaserItem[]; catOrder?: st
         <div className="relative grid grid-cols-2 gap-1.5">
           {items.map(g => {
             const fmt = fmtNum(g.memberCount);
-            const cats = g.vaultCategories && g.vaultCategories.length > 0 ? g.vaultCategories : [g.category];
+            const cats = g.vaultCategories && g.vaultCategories.length > 0 ? g.vaultCategories : ((g as any).categories?.length ? (g as any).categories : [g.category]);
             return (
               <div
                 key={g._id}
@@ -131,8 +131,7 @@ interface GroupsClientProps {
 export default function GroupsClient({ initialGroups, feedCampaigns = [], initialCountry, initialIsMobile = false, initialIsTelegram = false, topBannerCampaigns = [], storyData = [], vaultTeaser = [], vaultCatOrder = [] }: GroupsClientProps) {
   const STORY_SEEN_KEY = 'erogram:stories:seen:v1';
   const [username, setUsername] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [selectedCountry, setSelectedCountry] = useState(initialCountry || 'All');
+  const [selectedCategory, setSelectedCategory] = useState(initialCountry || 'All');
   const [selectedSort, setSelectedSort] = useState('random');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -358,7 +357,6 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
         const currentFilters = {
           category: selectedCategory,
-          country: selectedCountry,
           sort: selectedSort,
           search: searchQuery
         };
@@ -392,7 +390,6 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
         scrollY: window.scrollY,
         filters: {
           category: selectedCategory,
-          country: selectedCountry,
           sort: selectedSort,
           search: searchQuery
         },
@@ -403,7 +400,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
     // Save on unmount
     return () => saveState();
-  }, [regularGroups, skip, hasMore, selectedCategory, selectedCountry, selectedSort, searchQuery]);
+  }, [regularGroups, skip, hasMore, selectedCategory, selectedSort, searchQuery]);
 
   // Save scroll position periodically while scrolling
   useEffect(() => {
@@ -444,8 +441,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
         isFirstLoad.current &&
         selectedSort === 'random' &&
         !debouncedSearchQuery &&
-        selectedCategory === 'All' &&
-        selectedCountry === (initialCountry || 'All') &&
+        selectedCategory === (initialCountry || 'All') &&
         regularGroups.length > 0
       ) {
         isFirstLoad.current = false;
@@ -458,8 +454,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
       try {
         const searchParam = debouncedSearchQuery ? `&search=${encodeURIComponent(debouncedSearchQuery)}` : '';
         const categoryParam = selectedCategory !== 'All' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
-        const countryParam = selectedCountry !== 'All' ? `&country=${encodeURIComponent(selectedCountry)}` : '';
-        const response = await fetch(`/api/groups?skip=0&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${countryParam}`, { cache: 'no-store' });
+        const response = await fetch(`/api/groups?skip=0&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}`, { cache: 'no-store' });
         const data = await response.json();
         if (!response.ok || !Array.isArray(data.groups)) {
           setGroupsLoadError(true);
@@ -491,7 +486,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
     fetchGroups();
     lastVisibleIndexRef.current = -1;
-  }, [selectedSort, debouncedSearchQuery, selectedCategory, selectedCountry]);
+  }, [selectedSort, debouncedSearchQuery, selectedCategory]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -503,8 +498,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
         setLoading(true);
         const searchParam = debouncedSearchQuery ? `&search=${encodeURIComponent(debouncedSearchQuery)}` : '';
         const categoryParam = selectedCategory !== 'All' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
-        const countryParam = selectedCountry !== 'All' ? `&country=${encodeURIComponent(selectedCountry)}` : '';
-        fetch(`/api/groups?skip=${skip}&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${countryParam}`)
+        fetch(`/api/groups?skip=${skip}&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}`)
           .then(res => res.json())
           .then(data => {
             if (data.groups && data.groups.length > 0) {
@@ -527,29 +521,16 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [skip, loading, hasMore, selectedSort, debouncedSearchQuery, selectedCategory, selectedCountry]);
+  }, [skip, loading, hasMore, selectedSort, debouncedSearchQuery, selectedCategory]);
 
   const displayGroups = useMemo(() => {
     return [...pinnedGroups.slice(0, 2), ...regularGroups];
   }, [pinnedGroups, regularGroups]);
 
-  const filterValue = useMemo(() => {
-    if (selectedCategory !== 'All') return `cat:${selectedCategory}`;
-    if (selectedCountry !== 'All') return `country:${selectedCountry}`;
-    return 'All';
-  }, [selectedCategory, selectedCountry]);
+  const filterValue = selectedCategory;
 
   const handleFilterChange = (value: string) => {
-    if (value === 'All') {
-      setSelectedCategory('All');
-      setSelectedCountry('All');
-    } else if (value.startsWith('cat:')) {
-      setSelectedCategory(value.slice(4));
-      setSelectedCountry('All');
-    } else if (value.startsWith('country:')) {
-      setSelectedCategory('All');
-      setSelectedCountry(value.slice(8));
-    }
+    setSelectedCategory(value || 'All');
   };
 
   // Split feed campaigns by tier:
@@ -877,7 +858,6 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
       {showAddGroupModal && (
         <AddGroupModal
           categories={filterCategories}
-          countries={filterCountries}
           onClose={() => setShowAddGroupModal(false)}
           onSuccess={() => {
             setShowAddGroupModal(false);

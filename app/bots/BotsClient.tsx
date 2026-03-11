@@ -16,47 +16,7 @@ import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 
 
 
-const categories = [
-  'All', 'Amateur', 'Anal', 'Asian', 'BDSM', 'Big Ass', 'Big Tits', 'Blowjob',
-  'Creampie', 'Cuckold', 'Ebony', 'Fetish', 'Gangbang', 'Gay', 'Group',
-  'Hardcore', 'Interracial', 'Latina', 'Lesbian', 'MILF', 'Public', 'Roleplay',
-  'Romantic', 'Teen (18+)', 'Threesome', 'Trans', 'Voyeur', 'LGBTQ+', 'Fantasy',
-  'Adult Chat', 'Cosplay', 'Cosplay - Anime', 'Cosplay - Video Games',
-  'Cosplay - Movies/TV', 'Cosplay - Comics', 'Feet', 'SFW', 'POV', 'Mature',
-  'Vintage', 'BDSM Lite', 'Medical', 'Erotic Horror', 'Office', 'Outdoor',
-  'Celebrity Lookalike', 'Roleplay - Teacher/Student', 'Roleplay - Nurse/Doctor',
-  'Costume', 'Taboo', 'Tickling', 'Uniforms',
-  'Cosplay - Fantasy', 'Furry', 'Pet Play', 'Double Penetration', 'Mind Control',
-  'Submission', 'Domination', 'Glasses', 'Hair Play', 'Oral', 'Lesbian Tribbing',
-  'Masturbation', 'Latex', 'Squirting', 'Spanking', 'Tease & Denial',
-  'Cosplay - Sci-Fi', 'Steampunk',
-  'Hentai', 'Anime', 'Hentai - Loli', 'Hentai - Shota', 'Hentai - Yaoi', 'Hentai - Yuri',
-  'Hentai - Tentacle', 'Hentai - Monster', 'Hentai - Futanari', 'Hentai - Incest',
-  'Hentai - Noncon', 'Hentai - Beast', 'Hentai - Ecchi', 'Anime Porn', 'Hentai - BDSM',
-  'Hentai - Schoolgirl', 'Hentai - Magical Girl', 'Hentai - Mecha', 'Hentai - Trap',
-  'Hentai - Ahegao', 'Hentai - Bondage', 'Hentai - Gangbang', 'Hentai - Milf',
-  'Hentai - Lolicon', 'Hentai - Shotacon', 'Anime Fetish', 'Hentai - Public',
-  'Hentai - Mind Break', 'Hentai - Domination', 'Hentai - Submission',
-  'Anime Cosplay Sex', 'Hentai - Pet Play', 'Hentai - Furry', 'Hentai - Monster Girl',
-];
-
-const countries = [
-  'All', 'USA', 'UK', 'Germany', 'France', 'Brazil', 'India', 'Russia', 'Japan',
-  'South Korea', 'Philippines', 'Thailand', 'Spain', 'Mexico', 'Canada',
-  'Australia', 'Italy', 'Netherlands', 'Czech Republic', 'China', 'Argentina',
-  'South Africa', 'Nigeria', 'Turkey', 'Indonesia', 'Pakistan', 'Bangladesh',
-  'Vietnam', 'Malaysia', 'Singapore', 'New Zealand', 'Sweden', 'Norway', 'Denmark',
-  'Finland', 'Poland', 'Ukraine', 'Egypt', 'Saudi Arabia', 'United Arab Emirates',
-  'Israel', 'Iran', 'Iraq', 'Algeria', 'Morocco', 'Ethiopia', 'Kenya', 'Ghana',
-  'Colombia', 'Chile', 'Peru', 'Venezuela', 'Ecuador', 'Bolivia', 'Paraguay',
-  'Uruguay', 'Costa Rica', 'Panama', 'Dominican Republic', 'Cuba', 'Portugal',
-  'Belgium', 'Switzerland', 'Austria', 'Greece', 'Ireland', 'Hungary', 'Romania',
-  'Bulgaria', 'Croatia', 'Serbia', 'Slovakia', 'Slovenia', 'Lithuania', 'Latvia',
-  'Estonia', 'Iceland', 'Luxembourg', 'Malta', 'Cyprus', 'Qatar', 'Kuwait',
-  'Oman', 'Bahrain', 'Jordan', 'Lebanon', 'Syria', 'Yemen', 'Afghanistan',
-  'Sri Lanka', 'Nepal', 'Bhutan', 'Maldives', 'Myanmar', 'Cambodia', 'Laos',
-  'Mongolia', 'Taiwan', 'Hong Kong', 'Macau', 'Kazakhstan',
-];
+import { categories } from './constants';
 
 // Bot and Advert interfaces
 
@@ -251,16 +211,19 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
     return () => window.removeEventListener('scroll', handleScroll);
   }, [skip, loading, hasMore, selectedSort, debouncedSearchQuery]);
 
-  // Memoize filtered bots by category (search is handled server-side)
   const filteredBots = useMemo(() => {
     return regularBots.filter((bot) => {
-      return selectedCategory === 'All' || bot.category === selectedCategory;
+      if (selectedCategory === 'All') return true;
+      const cats = (bot as any).categories?.length ? (bot as any).categories : [bot.category, bot.country].filter(Boolean);
+      return cats.includes(selectedCategory);
     });
   }, [regularBots, selectedCategory]);
 
   const filteredPinnedBots = useMemo(() => {
     return pinnedBots.filter((bot) => {
-      return selectedCategory === 'All' || bot.category === selectedCategory;
+      if (selectedCategory === 'All') return true;
+      const cats = (bot as any).categories?.length ? (bot as any).categories : [bot.category, bot.country].filter(Boolean);
+      return cats.includes(selectedCategory);
     });
   }, [pinnedBots, selectedCategory]);
 
@@ -570,7 +533,6 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
       {showAddBotModal && (
         <AddBotModal
           categories={categories}
-          countries={countries}
           onClose={() => setShowAddBotModal(false)}
           onSuccess={() => {
             setShowAddBotModal(false);
@@ -717,12 +679,11 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
 
           {/* Tags */}
           <div className="flex flex-wrap gap-2 mb-4">
-            <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-gray-300 text-xs font-medium hover:bg-white/10 transition-colors">
-              {bot.category}
-            </span>
-            <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-gray-300 text-xs font-medium hover:bg-white/10 transition-colors">
-              {bot.country}
-            </span>
+            {((bot as any).categories?.length ? (bot as any).categories : [bot.category, bot.country].filter(Boolean)).map((tag: string) => (
+              <span key={tag} className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-gray-300 text-xs font-medium hover:bg-white/10 transition-colors">
+                {tag}
+              </span>
+            ))}
           </div>
 
           {/* Description */}
@@ -739,7 +700,7 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
                 ? `/redirect.html?url=${encodeURIComponent(bot.advertisementUrl)}&bot=${bot._id}`
                 : `/${bot.slug}`}
               target="_blank"
-              rel="noopener noreferrer"
+              rel={bot.isAdvertisement ? "sponsored noopener noreferrer" : "noopener noreferrer"}
               onClick={() => {
                 if (!bot.isAdvertisement) {
                   try {
@@ -929,11 +890,10 @@ const BotAdvertCard = React.memo(function BotAdvertCard({ advert, isIndex = 0, i
 
 
 
-function AddBotModal({ categories, countries, onClose, onSuccess }: { categories: string[]; countries: string[]; onClose: () => void; onSuccess: () => void }) {
+function AddBotModal({ categories, onClose, onSuccess }: { categories: string[]; onClose: () => void; onSuccess: () => void }) {
   const [botData, setBotData] = useState({
     name: '',
-    category: 'All',
-    country: 'All',
+    categories: ['Amateur'] as string[],
     telegramLink: '',
     description: '',
     imageFile: null as File | null
@@ -952,6 +912,18 @@ function AddBotModal({ categories, countries, onClose, onSuccess }: { categories
     }
   };
 
+  const toggleCategory = (cat: string) => {
+    setBotData(prev => {
+      const has = prev.categories.includes(cat);
+      if (has) {
+        const next = prev.categories.filter(c => c !== cat);
+        return { ...prev, categories: next.length ? next : prev.categories };
+      }
+      if (prev.categories.length >= 3) return prev;
+      return { ...prev, categories: [...prev.categories, cat] };
+    });
+  };
+
   const handleSubmit = async () => {
     setError('');
     setIsSubmitting(true);
@@ -964,9 +936,8 @@ function AddBotModal({ categories, countries, onClose, onSuccess }: { categories
         return;
       }
 
-      // Validation (country optional)
-      if (!botData.name || !botData.category || !botData.telegramLink || !botData.description) {
-        setError('Name, category, Telegram link and description are required');
+      if (!botData.name || botData.categories.length === 0 || !botData.telegramLink || !botData.description) {
+        setError('Name, at least 1 category, Telegram link and description are required');
         setIsSubmitting(false);
         return;
       }
@@ -983,7 +954,6 @@ function AddBotModal({ categories, countries, onClose, onSuccess }: { categories
         return;
       }
 
-      // Convert image to base64 if uploaded
       let imageUrl = null;
       if (botData.imageFile) {
         imageUrl = await new Promise<string>((resolve, reject) => {
@@ -994,9 +964,10 @@ function AddBotModal({ categories, countries, onClose, onSuccess }: { categories
         });
       }
 
-      // Submit bot
+      const { imageFile, ...rest } = botData;
       const res = await axios.post('/api/bots', {
-        ...botData,
+        ...rest,
+        category: rest.categories[0],
         image: imageUrl || 'PLACEHOLDER_IMAGE_URL'
       }, {
         headers: { Authorization: `Bearer ${token}` }
@@ -1020,7 +991,6 @@ function AddBotModal({ categories, countries, onClose, onSuccess }: { categories
         className="glass rounded-3xl shadow-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-white/10"
         style={{ willChange: 'transform, opacity' }}
       >
-        {/* Animated Background */}
         <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-5 rounded-3xl"></div>
 
         <div className="relative">
@@ -1079,38 +1049,33 @@ function AddBotModal({ categories, countries, onClose, onSuccess }: { categories
               />
             </div>
 
-            {/* Category and Country */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="glass rounded-2xl p-6 border border-white/10">
-                <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
-                  <span className="mr-2">📂</span>
-                  Category *
-                </label>
-                <select
-                  value={botData.category}
-                  onChange={(e) => setBotData({ ...botData, category: e.target.value })}
-                  className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none"
-                >
-                  {categories.map(category => (
-                    <option key={category} value={category}>{category}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="glass rounded-2xl p-6 border border-white/10">
-                <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
-                  <span className="mr-2">🌍</span>
-                  Country/Language (optional)
-                </label>
-                <select
-                  value={botData.country}
-                  onChange={(e) => setBotData({ ...botData, country: e.target.value })}
-                  className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none"
-                >
-                  {countries.map(country => (
-                    <option key={country} value={country}>{country}</option>
-                  ))}
-                </select>
+            {/* Categories (multi-select, up to 3) */}
+            <div className="glass rounded-2xl p-6 border border-white/10">
+              <label className="block text-sm font-bold text-[#f5f5f5] mb-1 flex items-center">
+                <span className="mr-2">📂</span>
+                Categories * <span className="text-xs text-white/40 ml-2">(pick up to 3)</span>
+              </label>
+              <p className="text-[10px] text-white/30 mb-3">
+                {botData.categories.length}/3 selected
+              </p>
+              <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pr-1">
+                {categories.filter(c => c !== 'All').map(cat => {
+                  const selected = botData.categories.includes(cat);
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => toggleCategory(cat)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+                        selected
+                          ? 'bg-[#b31b1b]/80 border-[#b31b1b] text-white'
+                          : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white/80'
+                      } ${!selected && botData.categories.length >= 3 ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    >
+                      {cat}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

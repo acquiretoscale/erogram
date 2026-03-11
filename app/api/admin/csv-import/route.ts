@@ -131,11 +131,15 @@ export async function POST(req: NextRequest) {
       return cat;
     };
 
-    const documents = newRows.map((row) => ({
+    const documents = newRows.map((row) => {
+      const cat = normalizeCat((row.category || '').trim() || fallbackCategory || 'Adult');
+      const ctry = (row.country || '').trim() || fallbackCountry || 'All';
+      return {
       name: (row.name || '').trim(),
       slug: getUniqueSlug(row.name),
-      category: normalizeCat((row.category || '').trim() || fallbackCategory || 'Adult'),
-      country: (row.country || '').trim() || fallbackCountry || 'All',
+      category: cat,
+      country: ctry,
+      categories: [cat, ctry].filter(c => c && c !== 'All' && c !== 'Adult-Telegram'),
       telegramLink: row.telegramLink.trim(),
       description: (row.description || '').trim() || `Join ${(row.name || '').trim()} on Telegram`,
       image: '/assets/image.jpg',
@@ -148,7 +152,8 @@ export async function POST(req: NextRequest) {
       clickCount: 0,
       pinned: false,
       verified: false,
-    }));
+    };
+    });
 
     const created = await Group.insertMany(documents, { ordered: false });
 
@@ -167,6 +172,7 @@ export async function POST(req: NextRequest) {
         name: g.name,
         slug: g.slug,
         category: g.category,
+        categories: g.categories || [],
         country: g.country,
         description: g.description,
         memberCount: g.memberCount,

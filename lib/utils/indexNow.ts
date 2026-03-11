@@ -1,22 +1,51 @@
 const INDEXNOW_KEY = 'f8f91525268a439b8ae6ce03d362f9bc';
 const INDEXNOW_HOST = 'erogram.pro';
+const SITEMAP_URL = `https://${INDEXNOW_HOST}/sitemap.xml`;
 
 /**
- * Submit a single URL to IndexNow (streaming mode).
- * Preferred by Bing over batch submissions — call this each time a page changes.
+ * Ping Google to re-fetch the sitemap (free, no auth required).
+ */
+async function pingGoogleSitemap() {
+  try {
+    const res = await fetch(`https://www.google.com/ping?sitemap=${encodeURIComponent(SITEMAP_URL)}`);
+    if (res.ok) {
+      console.log('[SEO] Google sitemap ping OK');
+    } else {
+      console.error('[SEO] Google sitemap ping failed:', res.status);
+    }
+  } catch (err) {
+    console.error('[SEO] Google sitemap ping error:', err);
+  }
+}
+
+/**
+ * Submit a single URL to IndexNow (Bing + Yandex + Naver).
+ * Also pings Google's sitemap endpoint so it re-crawls faster.
  */
 export async function pingIndexNow(url: string) {
   if (!url) return;
-  try {
-    const endpoint = `https://www.bing.com/indexnow?url=${encodeURIComponent(url)}&key=${INDEXNOW_KEY}`;
-    const res = await fetch(endpoint, { method: 'GET' });
-    if (res.ok || res.status === 202) {
-      console.log('IndexNow pinged:', url);
-    } else {
-      console.error('IndexNow ping failed:', res.status, url);
-    }
-  } catch (err) {
-    console.error('IndexNow ping error:', err);
+
+  const engines = [
+    { name: 'Bing', endpoint: `https://www.bing.com/indexnow?url=${encodeURIComponent(url)}&key=${INDEXNOW_KEY}` },
+    { name: 'Yandex', endpoint: `https://yandex.com/indexnow?url=${encodeURIComponent(url)}&key=${INDEXNOW_KEY}` },
+    { name: 'Naver', endpoint: `https://searchadvisor.naver.com/indexnow?url=${encodeURIComponent(url)}&key=${INDEXNOW_KEY}` },
+  ];
+
+  const results = await Promise.allSettled([
+    ...engines.map(async ({ name, endpoint }) => {
+      const res = await fetch(endpoint, { method: 'GET' });
+      if (res.ok || res.status === 202) {
+        console.log(`[SEO] IndexNow ${name} pinged:`, url);
+      } else {
+        console.error(`[SEO] IndexNow ${name} failed:`, res.status, url);
+      }
+    }),
+    pingGoogleSitemap(),
+  ]);
+
+  const failures = results.filter(r => r.status === 'rejected');
+  if (failures.length) {
+    console.error(`[SEO] ${failures.length} ping(s) errored`);
   }
 }
 
@@ -33,21 +62,28 @@ export async function submitToIndexNow(urls: string[]) {
     urlList: urls,
   };
 
-  try {
-    const response = await fetch('https://www.bing.com/indexnow', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8',
-      },
-      body: JSON.stringify(data),
-    });
+  const engines = [
+    { name: 'Bing', url: 'https://www.bing.com/indexnow' },
+    { name: 'Yandex', url: 'https://yandex.com/indexnow' },
+  ];
 
-    if (response.ok) {
-      console.log('IndexNow batch submitted:', urls.length, 'URLs');
-    } else {
-      console.error('IndexNow batch failed:', response.status, await response.text());
-    }
-  } catch (error) {
-    console.error('IndexNow batch error:', error);
-  }
+  await Promise.allSettled([
+    ...engines.map(async ({ name, url }) => {
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json; charset=utf-8' },
+          body: JSON.stringify(data),
+        });
+        if (res.ok) {
+          console.log(`[SEO] IndexNow batch ${name}:`, urls.length, 'URLs');
+        } else {
+          console.error(`[SEO] IndexNow batch ${name} failed:`, res.status);
+        }
+      } catch (error) {
+        console.error(`[SEO] IndexNow batch ${name} error:`, error);
+      }
+    }),
+    pingGoogleSitemap(),
+  ]);
 }

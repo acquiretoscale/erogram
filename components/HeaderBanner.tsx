@@ -34,7 +34,7 @@ export default function HeaderBanner({ campaigns = [], className = '' }: HeaderB
       <a
         href={href}
         target="_blank"
-        rel="noopener noreferrer"
+        rel="sponsored noopener noreferrer"
         onClick={(e) => {
           e.preventDefault();
           window.open(href, '_blank', 'noopener,noreferrer');

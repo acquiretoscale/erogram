@@ -22,6 +22,7 @@ export default function BotsTab() {
         description: '',
         category: 'All',
         country: 'All',
+        categories: [] as string[],
         telegramLink: '',
         image: '',
         status: 'pending' as 'pending' | 'approved' | 'rejected',
@@ -116,11 +117,15 @@ export default function BotsTab() {
 
     const handleEdit = (bot: any) => {
         setEditingBot(bot);
+        const cats = bot.categories?.length
+            ? bot.categories
+            : [bot.category, bot.country].filter((c: string) => c && c !== 'All');
         setBotData({
             name: bot.name || '',
             description: bot.description || '',
             category: bot.category || 'All',
             country: bot.country || 'All',
+            categories: cats,
             telegramLink: bot.telegramLink || '',
             image: bot.image || '',
             status: bot.status || 'pending',
@@ -144,7 +149,11 @@ export default function BotsTab() {
         try {
             const token = localStorage.getItem('token');
             if (editingBot) {
-                await axios.put(`/api/admin/bots/${editingBot._id}`, botData, {
+                await axios.put(`/api/admin/bots/${editingBot._id}`, {
+                    ...botData,
+                    categories: botData.categories,
+                    category: botData.categories[0] || botData.category,
+                }, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
             } else {
@@ -288,7 +297,7 @@ export default function BotsTab() {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-3 py-1.5 text-[#777]">{bot.category}{bot.country && bot.country !== 'All' ? ` · ${bot.country}` : ''}</td>
+                                            <td className="px-3 py-1.5 text-[#777]">{(bot.categories?.length ? bot.categories : [bot.category, bot.country].filter((c: string) => c && c !== 'All')).join(' · ')}</td>
                                             <td className="px-3 py-1.5">
                                                 <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${bot.status === 'approved' ? 'bg-green-500/20 text-green-400' : bot.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>{bot.status}</span>
                                             </td>
@@ -355,17 +364,29 @@ export default function BotsTab() {
                                         <label className="block text-xs font-bold text-[#666] uppercase mb-2">Description</label>
                                         <textarea value={botData.description} onChange={(e) => setBotData({ ...botData, description: e.target.value })} rows={4} className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] outline-none resize-none" />
                                     </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-[#666] uppercase mb-2">Category</label>
-                                        <select value={botData.category} onChange={(e) => setBotData({ ...botData, category: e.target.value })} className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] outline-none appearance-none">
-                                            {categories.map((cat) => (<option key={cat} value={cat}>{cat}</option>))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-[#666] uppercase mb-2">Country</label>
-                                        <select value={botData.country} onChange={(e) => setBotData({ ...botData, country: e.target.value })} className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] outline-none appearance-none">
-                                            {countries.map((country) => (<option key={country} value={country}>{country}</option>))}
-                                        </select>
+                                    <div className="col-span-2">
+                                        <label className="block text-xs font-bold text-[#666] uppercase mb-2">Categories (up to 3) — {botData.categories.length}/3</label>
+                                        <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto p-3 bg-[#1a1a1a] border border-white/10 rounded-xl">
+                                            {categories.filter(c => c !== 'All').map((cat) => {
+                                                const sel = botData.categories.includes(cat);
+                                                return (
+                                                    <button
+                                                        key={cat}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setBotData(prev => {
+                                                                if (sel) return { ...prev, categories: prev.categories.filter(c => c !== cat) };
+                                                                if (prev.categories.length >= 3) return prev;
+                                                                return { ...prev, categories: [...prev.categories, cat] };
+                                                            });
+                                                        }}
+                                                        className={`px-2 py-1 rounded text-[11px] font-medium border transition-all ${sel ? 'bg-[#b31b1b]/80 border-[#b31b1b] text-white' : 'bg-white/5 border-white/10 text-white/50 hover:text-white/80'} ${!sel && botData.categories.length >= 3 ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                                    >
+                                                        {cat}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
                                     <div className="col-span-2">
                                         <label className="block text-xs font-bold text-[#666] uppercase mb-2">Telegram Link</label>

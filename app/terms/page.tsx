@@ -118,7 +118,7 @@ export default function TermsPage() {
           <section className="mb-8">
             <h2 className="text-2xl font-bold mb-4 text-[#f5f5f5]">12. Contact Information</h2>
             <p className="text-[#999] leading-relaxed">
-              For questions, email <a href="mailto:contact@eroverse.space" className="text-[#b31b1b] hover:underline">contact@eroverse.space</a>.
+              For questions, email <a href="mailto:erogrampro@gmail.com" className="text-[#b31b1b] hover:underline">erogrampro@gmail.com</a>.
             </p>
           </section>
         </div>

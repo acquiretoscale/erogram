@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import { User, Bot } from '@/lib/models';
 import { sendNewBotTelegramNotification } from '@/lib/utils/telegramNotify';
+import { pingIndexNow } from '@/lib/utils/indexNow';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -61,14 +62,14 @@ export async function PUT(
     await bot.save();
     console.log('Bot updated successfully:', bot._id, 'pinned:', bot.pinned);
     
-    // Send Telegram notification if status changed from pending to approved
+    // Send Telegram notification + ping search engines if newly approved
     if (oldStatus === 'pending' && bot.status === 'approved') {
       try {
         await sendNewBotTelegramNotification(bot);
       } catch (err) {
         console.error('Failed to send Telegram notification:', err);
-        // Don't fail the request if notification fails
       }
+      pingIndexNow(`https://erogram.pro/${bot.slug}`);
     }
     
     return NextResponse.json(bot);

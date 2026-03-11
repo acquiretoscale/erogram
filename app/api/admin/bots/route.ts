@@ -44,6 +44,7 @@ export async function GET(req: NextRequest) {
       query = {
         $or: [
           { name: { $regex: search, $options: 'i' } },
+          { categories: { $regex: search, $options: 'i' } },
           { category: { $regex: search, $options: 'i' } },
           { country: { $regex: search, $options: 'i' } }
         ]

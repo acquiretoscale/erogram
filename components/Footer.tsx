@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { RtaBadge } from './AgeGate';
 
 export default function Footer() {
     const fadeInUp = {
@@ -106,8 +107,9 @@ export default function Footer() {
                 {/* Bottom Bar */}
                 <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-center items-center gap-4">
                     <div className="text-[#666] text-sm">
-                        © {new Date().getUTCFullYear()} erogram. All rights reserved.
+                        © Erogram.pro {new Date().getUTCFullYear()}
                     </div>
+                    <RtaBadge size="lg" />
                 </div>
             </div>
         </motion.footer>

@@ -36,7 +36,7 @@ export async function generateMetadata(
 
   const description = page === 1
     ? 'Browse and discover the best NSFW Telegram groups on Erogram.pro. Find verified adult communities by category, country, and interests. Updated daily with new groups.'
-    : `Browse NSFW Telegram groups — page ${page}. Discover verified adult communities sorted by popularity. Find groups by category, country, and interests on Erogram.pro.`;
+    : `Browse NSFW Telegram groups — page ${page}. Discover thousands of verified adult communities sorted by popularity. Find groups by category, country, and interests on Erogram.pro.`;
 
   return {
     title,
@@ -70,15 +70,19 @@ async function getPaginatedGroups(page: number) {
   return {
     total,
     totalPages,
-    groups: groups.map((g: any) => ({
-      _id: g._id.toString(),
-      name: String(g.name || '').slice(0, 150),
-      slug: String(g.slug || '').slice(0, 100),
-      category: String(g.category || '').slice(0, 50),
-      country: String(g.country || '').slice(0, 50),
-      description: String(g.description || '').slice(0, 160),
-      pinned: Boolean(g.pinned),
-    })),
+    groups: groups.map((g: any) => {
+      const cats = g.categories?.length ? g.categories : [g.category, g.country].filter(Boolean);
+      return {
+        _id: g._id.toString(),
+        name: String(g.name || '').slice(0, 150),
+        slug: String(g.slug || '').slice(0, 100),
+        category: String(g.category || '').slice(0, 50),
+        categories: cats,
+        country: String(g.country || '').slice(0, 50),
+        description: String(g.description || '').slice(0, 160),
+        pinned: Boolean(g.pinned),
+      };
+    }),
   };
 }
 

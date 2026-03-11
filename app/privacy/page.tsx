@@ -42,8 +42,19 @@ export default function PrivacyPage() {
 
             <h3 className="text-xl font-semibold mb-3 text-[#f5f5f5]">Cookies and Tracking Technologies</h3>
             <p className="text-[#999] leading-relaxed mb-4">
-              We use cookies for consent management (via TCF for GDPR compliance) and session management. You can manage cookies in your browser settings.
+              We use cookies for consent management and session management. You can manage or disable cookies in your browser settings at any time. We ask for your consent before placing analytics cookies.
             </p>
+            <h3 className="text-xl font-semibold mb-3 text-[#f5f5f5]">Analytics Services</h3>
+            <p className="text-[#999] leading-relaxed mb-2">
+              We use the following third-party analytics tools to understand how visitors interact with our website:
+            </p>
+            <ul className="text-[#999] leading-relaxed space-y-2 mb-4">
+              <li>
+                <strong className="text-[#f5f5f5]">Google Analytics 4 (GA4)</strong> — provided by Google LLC. GA4 collects anonymized usage data such as pages visited, session duration, and device type. Data may be transferred to and stored on Google servers in the United States. You can opt out via the{' '}
+                <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener noreferrer" className="text-[#b31b1b] hover:underline">Google Analytics Opt-out Browser Add-on</a>.
+                Google&apos;s privacy policy: <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-[#b31b1b] hover:underline">policies.google.com/privacy</a>.
+              </li>
+            </ul>
 
             <h3 className="text-xl font-semibold mb-3 text-[#f5f5f5]">User-Generated Content</h3>
             <p className="text-[#999] leading-relaxed">
@@ -67,9 +78,9 @@ export default function PrivacyPage() {
               We do not sell your personal data. We may share information with:
             </p>
             <ul className="text-[#999] leading-relaxed space-y-2">
-              <li>Third-party service providers (e.g., Telegram for authentication).</li>
+              <li>Third-party service providers (e.g., Telegram for authentication, Google for analytics).</li>
               <li>Law enforcement if required by law or to protect our rights.</li>
-              <li>In aggregated, anonymized form for analytics.</li>
+              <li>In aggregated, anonymized form for analytics purposes.</li>
             </ul>
           </section>
 
@@ -98,7 +109,7 @@ export default function PrivacyPage() {
               <li>Object to data use for marketing.</li>
             </ul>
             <p className="text-[#999] leading-relaxed">
-              Contact us at <a href="mailto:contact@eroverse.space" className="text-[#b31b1b] hover:underline">contact@eroverse.space</a> to exercise rights.
+              Contact us at <a href="mailto:erogrampro@gmail.com" className="text-[#b31b1b] hover:underline">erogrampro@gmail.com</a> to exercise rights.
             </p>
           </section>
 
@@ -126,7 +137,7 @@ export default function PrivacyPage() {
           <section className="mb-8">
             <h2 className="text-2xl font-bold mb-4 text-[#f5f5f5]">11. Contact Us</h2>
             <p className="text-[#999] leading-relaxed">
-              For questions or to exercise your rights, email <a href="mailto:contact@eroverse.space" className="text-[#b31b1b] hover:underline">contact@eroverse.space</a>.
+              For questions or to exercise your rights, email <a href="mailto:erogrampro@gmail.com" className="text-[#b31b1b] hover:underline">erogrampro@gmail.com</a>.
             </p>
           </section>
         </div>

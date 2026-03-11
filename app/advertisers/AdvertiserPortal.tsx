@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import Footer from '@/components/Footer';
 
 const STORAGE_KEY = 'erogram_advertiser_token';
 const ADVERTISER_KEY = 'erogram_advertiser_data';
@@ -221,7 +222,7 @@ function LoginGate({ onLogin }: { onLogin: (token: string, advertiser: Advertise
 
         <p className="text-center text-gray-600 text-xs mt-6">
           Need an advertiser account? Contact{' '}
-          <a href="mailto:adilmaf.agency@gmail.com" className="text-amber-500/80 hover:text-amber-400 transition-colors">
+          <a href="mailto:erogrampro@gmail.com" className="text-amber-500/80 hover:text-amber-400 transition-colors">
             our team
           </a>
         </p>
@@ -598,13 +599,7 @@ function Dashboard({ token, advertiser, onLogout }: { token: string; advertiser:
         </AnimatePresence>
       </main>
 
-      {/* Footer */}
-      <footer className="relative z-10 border-t border-white/[0.06] py-6 mt-12">
-        <div className="max-w-6xl mx-auto px-4 sm:px-8 flex items-center justify-between text-xs text-gray-600">
-          <span>Erogram.pro &copy; {new Date().getFullYear()}</span>
-          <span>Advertiser data is confidential.</span>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

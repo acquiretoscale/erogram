@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import HeaderBanner from '@/components/HeaderBanner';
+import Footer from '@/components/Footer';
 
 interface Article {
   _id: string;
@@ -208,19 +209,7 @@ export default function ArticlesListing({ initialArticles = [], topBannerCampaig
         </motion.section>
       </motion.main>
 
-      <motion.footer variants={fadeInUp} className="relative z-10 border-t border-[#333] mt-32 py-12" role="contentinfo">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="text-[#999] text-sm mb-4 md:mb-0">© {new Date().getFullYear()} erogram. All rights reserved.</div>
-            <div className="text-sm text-[#999]">
-              Site managed by{' '}
-              <a href="https://eroverse.space" target="_blank" rel="noopener noreferrer" className="text-[#b31b1b] hover:text-[#c42b2b] underline transition-colors">
-                eroverse.space
-              </a>
-            </div>
-          </div>
-        </div>
-      </motion.footer>
+      <Footer />
     </div>
   );
 }

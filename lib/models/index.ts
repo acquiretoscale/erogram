@@ -52,8 +52,9 @@ export const groupSchema = new Schema(
   {
     name: { type: String, required: true },
     slug: { type: String, required: true, unique: true },
-    category: { type: String, required: true },
-    country: { type: String, required: true },
+    category: { type: String, default: '' },
+    country: { type: String, default: '' },
+    categories: { type: [String], default: [] },
     telegramLink: {
       type: String,
       required: function () {
@@ -114,6 +115,7 @@ export const groupSchema = new Schema(
 groupSchema.index({ status: 1, scheduledPublishAt: 1 });
 groupSchema.index({ premiumOnly: 1, status: 1 });
 groupSchema.index({ showOnVaultTeaser: 1, vaultTeaserOrder: 1 });
+groupSchema.index({ categories: 1, status: 1 });
 
 // Post/Comment Schema
 export const postSchema = new Schema(
@@ -232,8 +234,9 @@ export const botSchema = new Schema(
   {
     name: { type: String, required: true },
     slug: { type: String, required: true, unique: true },
-    category: { type: String, required: true },
-    country: { type: String, required: true },
+    category: { type: String, default: '' },
+    country: { type: String, default: '' },
+    categories: { type: [String], default: [] },
     telegramLink: {
       type: String,
       required: function () {
@@ -273,6 +276,8 @@ export const botSchema = new Schema(
   },
   { timestamps: true }
 );
+
+botSchema.index({ categories: 1, status: 1 });
 
 // Category Schema
 export const categorySchema = new Schema(

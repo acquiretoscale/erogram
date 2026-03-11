@@ -3,7 +3,7 @@ import HomeClient from './HomeClient';
 import connectDB from '@/lib/db/mongodb';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { getActiveCampaigns } from '@/lib/actions/campaigns';
-import { Article, User, Group } from '@/lib/models';
+import { Article, User, Group, Bot } from '@/lib/models';
 
 export const revalidate = 300;
 
@@ -54,14 +54,14 @@ async function getFeaturedArticles(limit: number = 6) {
 }
 
 export const metadata: Metadata = {
-  title: 'erogram.pro – Telegram Groups & Channels Directory',
+  title: 'Erogram | Best NSFW Telegram Groups & Channels Directory 2026',
   description: 'Explore thousands of NSFW Telegram groups, channels, and AI companion bots. Connect with like-minded adults in curated communities for dating, chat, gaming, and more. Safe, verified, and updated daily.',
   keywords: 'NSFW telegram groups, adult telegram communities, NSFW channels, adult chat groups, telegram dating groups, erotic telegram groups, adult messaging, NSFW telegram bots, AI companion bots, adult chat bots',
   alternates: {
     canonical: siteUrl,
   },
   openGraph: {
-    title: 'erogram.pro – Telegram Groups & Channels Directory',
+    title: 'Erogram | Best NSFW Telegram Groups & Channels Directory 2026',
     description: 'Explore thousands of NSFW Telegram groups, channels, and AI companion bots. Connect with like-minded adults in curated communities for dating, chat, gaming, and more.',
     type: 'website',
     siteName: 'Erogram',
@@ -77,7 +77,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'erogram.pro – Telegram Groups & Channels Directory',
+    title: 'Erogram | Best NSFW Telegram Groups & Channels Directory 2026',
     description: 'Explore thousands of NSFW Telegram groups, channels, and AI companion bots. Connect with like-minded adults in curated communities.',
     images: [(process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${siteUrl}/assets/placeholder-no-image.png`)],
   },
@@ -113,11 +113,40 @@ async function getNewGroups(limit: number = 8) {
   }
 }
 
+async function getStats() {
+  try {
+    await connectDB();
+    const [groupCount, botCount, userCount, groupViewsAgg, botViewsAgg] = await Promise.all([
+      Group.countDocuments({ status: 'approved', isAdvertisement: { $ne: true } }),
+      Bot.countDocuments({ status: 'approved', isAdvertisement: { $ne: true } }),
+      User.countDocuments({}),
+      Group.aggregate([
+        { $match: { status: 'approved' } },
+        { $group: { _id: null, total: { $sum: '$views' } } },
+      ]),
+      Bot.aggregate([
+        { $match: { status: 'approved' } },
+        { $group: { _id: null, total: { $sum: '$views' } } },
+      ]),
+    ]);
+    return {
+      groupCount: groupCount || 0,
+      botCount: botCount || 0,
+      totalMembers: userCount || 0,
+      totalViews: (groupViewsAgg[0]?.total || 0) + (botViewsAgg[0]?.total || 0),
+    };
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    return { groupCount: 0, botCount: 0, totalMembers: 0, totalViews: 0 };
+  }
+}
+
 export default async function Home() {
-  const [featuredArticles, heroCampaigns, newGroups] = await Promise.all([
+  const [featuredArticles, heroCampaigns, newGroups, stats] = await Promise.all([
     getFeaturedArticles(6),
     getActiveCampaigns('homepage-hero'),
     getNewGroups(8),
+    getStats(),
   ]);
 
   const jsonLd = {
@@ -208,7 +237,7 @@ export default async function Home() {
         }}
       />
       <ErrorBoundary>
-        <HomeClient featuredArticles={featuredArticles} heroCampaigns={heroCampaigns} newGroups={newGroups} />
+        <HomeClient featuredArticles={featuredArticles} heroCampaigns={heroCampaigns} newGroups={newGroups} stats={stats} />
       </ErrorBoundary>
     </>
   );

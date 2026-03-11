@@ -82,7 +82,7 @@ const FilterBanner: React.FC = () => {
           <a
             href={banner.url}
             target="_blank"
-            rel="noopener noreferrer"
+            rel="sponsored noopener noreferrer"
             className="block w-full text-center px-4 py-2 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white rounded-lg transition-colors font-semibold"
           >
             {banner.buttonText || 'Visit Site'}

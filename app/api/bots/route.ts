@@ -47,22 +47,31 @@ export async function GET(req: NextRequest) {
     let query: any = { status: 'approved' };
     let sortCriteria: any = { pinned: -1, createdAt: -1 };
 
-    // Add search filter if search query provided
+    const andConditions: any[] = [];
+
     if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
-      ];
+      andConditions.push({
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+        ],
+      });
     }
 
-    // Add category filter if provided and not 'All'
     if (category && category !== 'All') {
-      query.category = category;
+      andConditions.push({
+        $or: [{ categories: category }, { category: category }, { country: category }],
+      });
     }
 
-    // Add country filter if provided and not 'All'
     if (country && country !== 'All') {
-      query.country = country;
+      andConditions.push({
+        $or: [{ categories: country }, { country: country }],
+      });
+    }
+
+    if (andConditions.length) {
+      query.$and = andConditions;
     }
 
     const topBotParam = searchParams.get('topBot');
@@ -111,6 +120,7 @@ export async function GET(req: NextRequest) {
             slug: 1,
             category: 1,
             country: 1,
+            categories: 1,
             description: 1,
             image: 1,
             telegramLink: 1,
@@ -148,12 +158,15 @@ export async function GET(req: NextRequest) {
         .lean();
     }
 
-    const sanitized = bots.map((b: any) => ({
+    const sanitized = bots.map((b: any) => {
+      const cats = b.categories?.length ? b.categories : [b.category, b.country].filter(Boolean);
+      return {
       _id: b._id.toString(),
       name: b.name,
       slug: b.slug,
       category: b.category,
       country: b.country,
+      categories: cats,
       description: b.description?.slice(0, 300) || '',
       image: b.image || (process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png'),
       telegramLink: b.telegramLink,
@@ -170,7 +183,8 @@ export async function GET(req: NextRequest) {
           showNicknameUnderGroups: b.createdBy.showNicknameUnderGroups,
         }
         : null,
-    }));
+    };
+    });
 
     return NextResponse.json({
       bots: sanitized,
@@ -192,10 +206,13 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { name, category, country, telegramLink, description, image } = body;
+    const categoriesArr: string[] = Array.isArray(body.categories)
+      ? body.categories.slice(0, 3)
+      : category ? [category] : [];
 
-    if (!name || !category || !telegramLink || !description) {
+    if (!name || categoriesArr.length === 0 || !telegramLink || !description) {
       return NextResponse.json(
-        { message: 'Name, category, Telegram link and description are required' },
+        { message: 'Name, at least one category, Telegram link and description are required' },
         { status: 400 }
       );
     }
@@ -211,8 +228,6 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-
-    const countryValue = country || 'All';
 
     const baseSlug = slugify(name);
     let slug = baseSlug;
@@ -244,8 +259,9 @@ export async function POST(req: NextRequest) {
     const doc: Record<string, unknown> = {
       name,
       slug,
-      category,
-      country: countryValue,
+      categories: categoriesArr,
+      category: categoriesArr[0] || '',
+      country: '',
       telegramLink,
       description,
       image: finalImage,

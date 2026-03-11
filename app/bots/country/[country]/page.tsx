@@ -230,7 +230,7 @@ async function getBotsByCountry(country: string) {
 
     // Special case: "All" means no country filter.
     if (normalizedCountry && normalizedCountry !== 'All') {
-      match.country = normalizedCountry;
+      match.$or = [{ categories: normalizedCountry }, { country: normalizedCountry }];
     }
 
     // Use random sampling for better discovery experience
@@ -257,6 +257,7 @@ async function getBotsByCountry(country: string) {
           name: 1,
           slug: 1,
           category: 1,
+          categories: 1,
           country: 1,
           description: 1,
           telegramLink: 1,
@@ -273,11 +274,14 @@ async function getBotsByCountry(country: string) {
     ]);
 
     // Sanitize and limit all fields to prevent maxSize errors
-    return bots.map((bot: any) => ({
+    return bots.map((bot: any) => {
+      const cats = bot.categories?.length ? bot.categories : [bot.category, bot.country].filter(Boolean);
+      return {
       _id: bot._id.toString(),
       name: (bot.name || '').slice(0, 150),
       slug: (bot.slug || '').slice(0, 100),
       category: (bot.category || '').slice(0, 50),
+      categories: cats,
       country: (bot.country || '').slice(0, 50),
       description: (bot.description || '').slice(0, 150) || '',
       image: process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png',
@@ -290,7 +294,8 @@ async function getBotsByCountry(country: string) {
         username: bot.createdBy.username,
         showNicknameUnderGroups: bot.createdBy.showNicknameUnderGroups
       } : null,
-    }));
+    };
+    });
   } catch (error) {
     console.error('Error fetching bots by country:', error);
     return [];

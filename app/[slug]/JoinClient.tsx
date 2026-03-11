@@ -765,7 +765,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                   <a
                     href={joinCtaCampaign?.destinationUrl ?? DEFAULT_JOIN_CTA.destinationUrl}
                     target="_blank"
-                    rel="noopener noreferrer"
+                    rel="sponsored noopener noreferrer"
                     onClick={() => joinCtaCampaign?._id && trackCampaignClick(joinCtaCampaign._id)}
                     className="block w-full text-center bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 hover:from-purple-500 hover:via-pink-500 hover:to-rose-500 text-white font-bold py-4 rounded-2xl text-lg shadow-lg shadow-purple-900/20 transition-all transform hover:-translate-y-0.5"
                   >

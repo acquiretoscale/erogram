@@ -130,7 +130,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
           <a
             href={navbarCta?.destinationUrl ?? DEFAULT_NAVBAR_CTA.destinationUrl}
             target="_blank"
-            rel="noopener noreferrer"
+            rel="sponsored noopener noreferrer"
             onClick={() => { if (navbarCta?._id) fetch('/api/campaigns/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campaignId: navbarCta._id, placement: 'navbar-cta' }) }).catch(() => {}); }}
             className={`${BTN} text-white bg-pink-600 hover:bg-pink-500 shadow-sm shadow-pink-600/20`}
           >
@@ -196,6 +196,12 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                       )}
                     </div>
                     <div className="py-1">
+                      {isAdminUser && (
+                        <Link href="/admin" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-amber-400 hover:text-amber-300 hover:bg-amber-500/5 transition font-semibold">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                          Admin Panel
+                        </Link>
+                      )}
                       <Link href="/profile" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-white/70 hover:text-white hover:bg-white/5 transition">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>
                         Profile
@@ -279,7 +285,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
           <a
             href={navbarCta?.destinationUrl ?? DEFAULT_NAVBAR_CTA.destinationUrl}
             target="_blank"
-            rel="noopener noreferrer"
+            rel="sponsored noopener noreferrer"
             onClick={() => {
               if (navbarCta?._id) fetch('/api/campaigns/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campaignId: navbarCta._id, placement: 'navbar-cta' }) }).catch(() => {});
               setIsMenuOpen(false);
@@ -332,6 +338,12 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                 {currentUsername}
                 {isPremium && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20">VIP</span>}
               </div>
+              {isAdminUser && (
+                <Link href="/admin" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-[14px] font-semibold text-amber-400 bg-amber-500/[0.08] border border-amber-500/20 hover:bg-amber-500/[0.14] transition">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                  Admin Panel
+                </Link>
+              )}
               <Link href="/profile" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 rounded-lg text-[14px] text-white/70 hover:text-white hover:bg-white/5 transition">
                 Profile
               </Link>

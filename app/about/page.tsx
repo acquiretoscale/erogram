@@ -193,8 +193,8 @@ export default function About() {
             </p>
             <div className="flex items-center gap-3 text-[#999]">
               <span className="text-2xl">📧</span>
-              <a href="mailto:contact@eroverse.space" className="text-[#b31b1b] hover:underline text-lg">
-                contact@eroverse.space
+              <a href="mailto:erogrampro@gmail.com" className="text-[#b31b1b] hover:underline text-lg">
+                erogrampro@gmail.com
               </a>
             </div>
           </motion.div>

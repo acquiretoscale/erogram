@@ -1,8 +1,10 @@
+// Unified category list for bots (countries merged in as categories)
 export const categories = [
-    'All', 'Amateur', 'Anal', 'Asian', 'BDSM', 'Big Ass', 'Big Tits', 'Blowjob',
-    'Creampie', 'Cuckold', 'Ebony', 'Fetish', 'Gangbang', 'Gay', 'Group',
-    'Hardcore', 'Interracial', 'Latina', 'Lesbian', 'MILF', 'Public', 'Roleplay',
-    'Romantic', 'Teen (18+)', 'Threesome', 'Trans', 'Voyeur', 'LGBTQ+', 'Fantasy',
+    'All', 'Amateur', 'Anal', 'Asian', 'BDSM', 'Big Ass', 'Big Tits', 'Black', 'Blonde', 'Blowjob',
+    'Brazil', 'Brunette', 'China', 'Colombia',
+    'Creampie', 'Cuckold', 'Ebony', 'Fetish', 'Gangbang', 'Gay', 'Germany', 'Group',
+    'Hardcore', 'Interracial', 'Japan', 'Latina', 'Lesbian', 'MILF', 'Petite', 'Public', 'Red Hair', 'Roleplay',
+    'Romantic', 'Teen (18+)', 'Threesome', 'Trans', 'UK', 'USA', 'Voyeur', 'LGBTQ+', 'Fantasy',
     'Adult Chat', 'Cosplay', 'Cosplay - Anime', 'Cosplay - Video Games',
     'Cosplay - Movies/TV', 'Cosplay - Comics', 'Feet', 'SFW', 'POV', 'Mature',
     'Vintage', 'BDSM Lite', 'Medical', 'Erotic Horror', 'Office', 'Outdoor',
@@ -20,8 +22,10 @@ export const categories = [
     'Hentai - Lolicon', 'Hentai - Shotacon', 'Anime Fetish', 'Hentai - Public',
     'Hentai - Mind Break', 'Hentai - Domination', 'Hentai - Submission',
     'Anime Cosplay Sex', 'Hentai - Pet Play', 'Hentai - Furry', 'Hentai - Monster Girl',
+    'Russia', 'Spain',
 ];
 
+// Legacy backward-compat alias
 export const countries = [
     'All', 'USA', 'UK', 'Germany', 'France', 'Brazil', 'Russia', 'Japan',
     'South Korea', 'Philippines', 'Thailand', 'Spain', 'Mexico', 'Canada',

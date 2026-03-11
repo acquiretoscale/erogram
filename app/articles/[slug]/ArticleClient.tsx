@@ -7,6 +7,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Navbar from '@/components/Navbar';
 import HeaderBanner from '@/components/HeaderBanner';
+import Footer from '@/components/Footer';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 
 interface Article {
@@ -481,14 +482,7 @@ export default function ArticleClient({ article, relatedArticles = [], topGroups
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-white/10 bg-[#050505] py-12 mt-20">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <p className="text-gray-500">
-            © {new Date().getFullYear()} Erogram. All rights reserved.
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

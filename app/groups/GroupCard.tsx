@@ -163,12 +163,11 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
 
                     {/* Tags */}
                     <div className="flex flex-wrap gap-1 sm:gap-2 mb-2 sm:mb-4">
-                        <span className="px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg bg-white/5 border border-white/5 text-gray-300 text-[10px] sm:text-xs font-medium">
-                            {group.category}
-                        </span>
-                        <span className="px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg bg-white/5 border border-white/5 text-gray-300 text-[10px] sm:text-xs font-medium">
-                            {group.country}
-                        </span>
+                        {(group.categories?.length ? group.categories : [group.category, group.country].filter(Boolean)).map((tag) => (
+                            <span key={tag} className="px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg bg-white/5 border border-white/5 text-gray-300 text-[10px] sm:text-xs font-medium">
+                                {tag}
+                            </span>
+                        ))}
                     </div>
 
                     {/* Description */}
@@ -218,7 +217,7 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                                 ? `/redirect.html?url=${encodeURIComponent(group.advertisementUrl)}&group=${group._id}`
                                 : `/${group.slug}`}
                             target="_blank"
-                            rel="noopener noreferrer"
+                            rel={group.isAdvertisement ? "sponsored noopener noreferrer" : "noopener noreferrer"}
                             className={`group/btn relative flex items-center justify-center w-full overflow-hidden rounded-xl py-2.5 sm:py-3.5 px-3 sm:px-4 font-black text-white shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${isFeatured
                                 ? 'bg-gradient-to-r from-yellow-500 to-red-600 hover:shadow-orange-500/40'
                                 : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-blue-500/40'
