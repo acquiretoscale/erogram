@@ -250,8 +250,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   // Fetch pinned groups that match current filters
   useEffect(() => {
     const categoryParam = selectedCategory !== 'All' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
-    const countryParam = selectedCountry !== 'All' ? `&country=${encodeURIComponent(selectedCountry)}` : '';
-    fetch(`/api/groups?limit=1000${categoryParam}${countryParam}`)
+    fetch(`/api/groups?limit=1000${categoryParam}`)
       .then(res => res.json())
       .then(data => {
         if (data.groups) {
@@ -260,7 +259,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
         }
       })
       .catch(err => console.error('Failed to fetch pinned groups:', err));
-  }, [selectedCategory, selectedCountry]);
+  }, [selectedCategory]);
 
 
 
