@@ -84,7 +84,7 @@ function VaultPreview({ items }: { items: VaultTeaserItem[] }) {
                     <span className="text-white">{g.name.slice(0, 4)}</span><span style={{ filter: 'blur(4px)', color: '#fff' }}>{g.name.slice(4) || '····'}</span>
                   </div>
                   <div className="flex items-center gap-1 flex-wrap">
-                    {cats.map((c, i) => (
+                    {cats.map((c: string, i: number) => (
                       <span key={c} className="text-[7px] font-black uppercase tracking-[0.06em] px-1 py-0.5 rounded shrink-0" style={{ background: i === 0 ? '#1a1408' : '#12100a', border: `1px solid ${G.gold}22`, color: i === 0 ? G.gold : G.goldDim }}>{c}</span>
                     ))}
                     {g.country && <span className="text-[8px] font-semibold truncate" style={{ color: '#5a4830' }}>{g.country}</span>}
