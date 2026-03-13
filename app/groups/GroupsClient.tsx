@@ -14,7 +14,7 @@ import AdvertCard from './AdvertCard';
 import VirtualizedGroupGrid from './VirtualizedGroupGrid';
 import GroupCardSkeleton from './GroupCardSkeleton';
 import StoryBar from './StoryBar';
-import { useTranslation, useLocalePath } from '@/lib/i18n';
+import { useTranslation, useLocalePath, useLocale } from '@/lib/i18n';
 // Lazy load modals to reduce initial bundle size
 const ReviewModal = dynamic(() => import('./ReviewModal'), {
   loading: () => <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50"><div className="text-white">Loading...</div></div>
@@ -141,6 +141,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   const [seenStoryMap, setSeenStoryMap] = useState<Record<string, string>>({});
   const { t } = useTranslation();
   const lp = useLocalePath();
+  const { locale } = useLocale();
 
   const markStoryCategorySeen = (slug?: string) => {
     if (!slug || typeof window === 'undefined') return;
@@ -200,19 +201,19 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
     setTopGroupsLoading(true);
     setFeaturedLoading(true);
 
-    fetch('/api/groups?boosted=true')
+    fetch(`/api/groups?boosted=true&locale=${locale}`)
       .then(res => res.json())
       .then(data => {
         const boosted = data.groups?.[0] || null;
         setBoostedGroup(boosted);
-        return fetch('/api/groups?topGroup=true&limit=4');
+        return fetch(`/api/groups?topGroup=true&limit=4&locale=${locale}`);
       })
       .then(res => res.json())
       .then(data => { if (data.groups) setTopGroups(data.groups); })
       .catch(err => console.error('Failed to fetch top groups:', err))
       .finally(() => setTopGroupsLoading(false));
 
-    fetch('/api/groups?featured=true&limit=8')
+    fetch(`/api/groups?featured=true&limit=8&locale=${locale}`)
       .then(res => res.json())
       .then(data => { if (data.groups) setFeaturedGroups(data.groups); })
       .catch(err => console.error('Failed to fetch featured groups:', err))
@@ -461,7 +462,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
         const searchParam = debouncedSearchQuery ? `&search=${encodeURIComponent(debouncedSearchQuery)}` : '';
         const categoryParam = selectedCategory !== 'All' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
         const subcategoryParam = selectedSubcategory !== 'All' ? `&subcategory=${encodeURIComponent(selectedSubcategory)}` : '';
-        const response = await fetch(`/api/groups?skip=0&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${subcategoryParam}`, { cache: 'no-store' });
+        const response = await fetch(`/api/groups?skip=0&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${subcategoryParam}&locale=${locale}`, { cache: 'no-store' });
         const data = await response.json();
         if (!response.ok || !Array.isArray(data.groups)) {
           setGroupsLoadError(true);
@@ -505,7 +506,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
         const searchParam = debouncedSearchQuery ? `&search=${encodeURIComponent(debouncedSearchQuery)}` : '';
         const categoryParam = selectedCategory !== 'All' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
         const subcategoryParam = selectedSubcategory !== 'All' ? `&subcategory=${encodeURIComponent(selectedSubcategory)}` : '';
-        fetch(`/api/groups?skip=${skip}&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${subcategoryParam}`)
+        fetch(`/api/groups?skip=${skip}&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${subcategoryParam}&locale=${locale}`)
           .then(res => res.json())
           .then(data => {
             if (data.groups && data.groups.length > 0) {

@@ -44,6 +44,12 @@ async function authenticate(req: NextRequest) {
   }
 }
 
+function localizedDesc(g: any, locale: string): string {
+  if (locale === 'de' && g.description_de) return g.description_de;
+  if (locale === 'es' && g.description_es) return g.description_es;
+  return g.description || '';
+}
+
 export async function GET(req: NextRequest) {
   try {
     await connectDB();
@@ -59,6 +65,7 @@ export async function GET(req: NextRequest) {
     const topGroup = searchParams.get('topGroup') === 'true';
     const featuredParam = searchParams.get('featured') === 'true';
     const boostedParam = searchParams.get('boosted') === 'true';
+    const locale = req.headers.get('x-locale') || searchParams.get('locale') || 'en';
 
     // Fast path: featured groups (non-boosted, ordered by featuredOrder)
     if (featuredParam) {
@@ -76,7 +83,7 @@ export async function GET(req: NextRequest) {
       })
         .sort({ featuredOrder: 1, featuredAt: -1 })
         .limit(limit)
-        .select('name slug category country categories description image telegramLink clickCount views memberCount verified featured featuredOrder boosted')
+        .select('name slug category country categories description description_de description_es image telegramLink clickCount views memberCount verified featured featuredOrder boosted')
         .lean();
 
       const origin = req.headers.get('x-forwarded-host')
@@ -93,7 +100,7 @@ export async function GET(req: NextRequest) {
             category: (g.category || '').slice(0, 50),
             country: (g.country || '').slice(0, 50),
             categories: cats,
-            description: (g.description || '').slice(0, 150),
+            description: localizedDesc(g, locale).slice(0, 150),
             image: resolveImageUrl(g.image, origin),
             telegramLink: (g.telegramLink || '').slice(0, 150),
             isAdvertisement: false,
@@ -126,7 +133,7 @@ export async function GET(req: NextRequest) {
       })
         .sort({ boostExpiresAt: 1 })
         .limit(1)
-        .select('name slug category country categories description image telegramLink clickCount views memberCount verified featured boosted boostExpiresAt weeklyClicks')
+        .select('name slug category country categories description description_de description_es image telegramLink clickCount views memberCount verified featured boosted boostExpiresAt weeklyClicks')
         .lean();
 
       const origin = req.headers.get('x-forwarded-host')
@@ -143,7 +150,7 @@ export async function GET(req: NextRequest) {
             category: (g.category || '').slice(0, 50),
             country: (g.country || '').slice(0, 50),
             categories: cats,
-            description: (g.description || '').slice(0, 150),
+            description: localizedDesc(g, locale).slice(0, 150),
             image: resolveImageUrl(g.image, origin),
             telegramLink: (g.telegramLink || '').slice(0, 150),
             isAdvertisement: false,
@@ -188,7 +195,7 @@ export async function GET(req: NextRequest) {
       })
         .sort({ weeklyClicks: -1, views: -1 })
         .limit(POOL_SIZE)
-        .select('name slug category country categories description image telegramLink clickCount views memberCount verified weeklyClicks')
+        .select('name slug category country categories description description_de description_es image telegramLink clickCount views memberCount verified weeklyClicks')
         .lean();
 
       // Weighted random pick: higher weeklyClicks = higher chance, but not deterministic
@@ -213,7 +220,7 @@ export async function GET(req: NextRequest) {
             category: (g.category || '').slice(0, 50),
             country: (g.country || '').slice(0, 50),
             categories: cats,
-            description: (g.description || '').slice(0, 150),
+            description: localizedDesc(g, locale).slice(0, 150),
             image: resolveImageUrl(g.image, origin),
             telegramLink: (g.telegramLink || '').slice(0, 150),
             isAdvertisement: false,
@@ -342,6 +349,8 @@ export async function GET(req: NextRequest) {
             country: 1,
             categories: 1,
             description: 1,
+            description_de: 1,
+            description_es: 1,
             image: 1,
             telegramLink: 1,
             isAdvertisement: 1,
@@ -456,7 +465,7 @@ export async function GET(req: NextRequest) {
         category: g.category,
         country: g.country,
         categories: cats,
-        description: g.description?.slice(0, 300) || '',
+        description: localizedDesc(g, locale).slice(0, 300),
         image: imageUrl,
         telegramLink: g.telegramLink,
         isAdvertisement: g.isAdvertisement || false,

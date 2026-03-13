@@ -72,7 +72,7 @@ type SimilarGroup = {
   image: string;
 };
 
-async function getGroup(slug: string) {
+async function getGroup(slug: string, locale: string = 'en') {
   try {
     await connectDB();
 
@@ -128,6 +128,9 @@ async function getGroup(slug: string) {
     const rawCats = (group as any).categories;
     const categories = rawCats?.length ? rawCats : [(group as any).category, (group as any).country].filter(Boolean);
 
+    const descField = locale === 'de' ? 'description_de' : locale === 'es' ? 'description_es' : '';
+    const localizedDesc = descField && (group as any)[descField] ? (group as any)[descField] : (group as any).description;
+
     const result = {
       _id: (group as any)._id.toString(),
       name: (group as any).name,
@@ -136,7 +139,7 @@ async function getGroup(slug: string) {
       categories,
       country: (group as any).country,
       telegramLink: isPremium ? '' : (group as any).telegramLink,
-      description: (group as any).description,
+      description: localizedDesc,
       image: safeImageUrl((group as any).image, PLACEHOLDER_REL),
       views: (group as any).views || 0,
       memberCount: (group as any).memberCount || 0,
@@ -163,7 +166,7 @@ async function getGroup(slug: string) {
   }
 }
 
-async function getBot(slug: string) {
+async function getBot(slug: string, locale: string = 'en') {
   try {
     await connectDB();
 
@@ -208,6 +211,9 @@ async function getBot(slug: string) {
     const rawBotCats = (bot as any).categories;
     const botCategories = rawBotCats?.length ? rawBotCats : [(bot as any).category, (bot as any).country].filter(Boolean);
 
+    const botDescField = locale === 'de' ? 'description_de' : locale === 'es' ? 'description_es' : '';
+    const localizedBotDesc = botDescField && (bot as any)[botDescField] ? (bot as any)[botDescField] : (bot as any).description;
+
     const result = {
       _id: (bot as any)._id.toString(),
       name: (bot as any).name,
@@ -216,7 +222,7 @@ async function getBot(slug: string) {
       categories: botCategories,
       country: (bot as any).country,
       telegramLink: (bot as any).telegramLink,
-      description: (bot as any).description,
+      description: localizedBotDesc,
       image: safeImageUrl((bot as any).image, PLACEHOLDER_REL),
       views: (bot as any).views || 0,
       clickCount: (bot as any).clickCount || 0,
@@ -403,9 +409,10 @@ async function getGroupReviewStats(groupId: string) {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const pathname = await getPathname();
+  const locale = await getLocale();
 
   // Try to find a group first
-  const group = await getGroup(slug);
+  const group = await getGroup(slug, locale);
   if (group) {
     if (group.premiumOnly) {
       return {
@@ -478,7 +485,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   // If no group found, try to find a bot
-  const bot = await getBot(slug);
+  const bot = await getBot(slug, locale);
   if (bot) {
     const botUrl = `${BASE_URL}${pathname}`;
 
@@ -547,9 +554,10 @@ export default async function JoinPage({ params }: PageProps) {
   const { isMobile, isTelegram } = detectDeviceFromUserAgent(ua);
 
   const { slug } = await params;
+  const locale = await getLocale();
 
   // Try to find a group first
-  const group = await getGroup(slug);
+  const group = await getGroup(slug, locale);
   if (group) {
     const similarGroups = await getRandomSimilarGroups(group._id, group.category);
     const reviewStats = await getGroupReviewStats(group._id);
@@ -653,7 +661,7 @@ export default async function JoinPage({ params }: PageProps) {
   }
 
   // If no group found, try to find a bot
-  const bot = await getBot(slug);
+  const bot = await getBot(slug, locale);
   if (bot) {
     const pageUrl = `${BASE_URL}/${bot.slug}`;
     const breadcrumbJsonLd = {

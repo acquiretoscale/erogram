@@ -48,7 +48,7 @@ export async function generateMetadata(): Promise<Metadata> {
 // Always fetch fresh data so new banner/feed campaigns show immediately after admin adds them
 export const dynamic = 'force-dynamic';
 
-async function getGroups(limit: number, isMobile: boolean = false) {
+async function getGroups(limit: number, isMobile: boolean = false, locale: string = 'en') {
   try {
     await connectDB();
 
@@ -102,7 +102,9 @@ async function getGroups(limit: number, isMobile: boolean = false) {
           slug: 1,
           category: 1,
           country: 1,
-          description: isMobile ? { $substr: ['$description', 0, 100] } : 1, // Shorter descriptions on mobile
+          description: isMobile ? { $substr: ['$description', 0, 100] } : 1,
+          description_de: 1,
+          description_es: 1,
           telegramLink: 1,
           isAdvertisement: 1,
           advertisementUrl: 1,
@@ -132,7 +134,7 @@ async function getGroups(limit: number, isMobile: boolean = false) {
       slug: (group.slug || '').slice(0, 100), // Limit slug
       category: (group.category || '').slice(0, 50), // Limit category length
       country: (group.country || '').slice(0, 50), // Limit country length
-      description: (group.description || '').slice(0, 150) || '', // Further limit description
+      description: (() => { const df = locale === 'de' ? 'description_de' : locale === 'es' ? 'description_es' : ''; return ((df && group[df]) ? group[df] : (group.description || '')).slice(0, 150); })(),
       image: (group.image && typeof group.image === 'string' && group.image.startsWith('https://')) ? group.image : (process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png'),
       telegramLink: (group.telegramLink || '').slice(0, 150), // Limit URL length
       isAdvertisement: group.isAdvertisement || false,
@@ -162,7 +164,9 @@ function sanitizeImg(url: unknown): string {
   return PLACEHOLDER;
 }
 
-function mapGroup(g: any) {
+function mapGroup(g: any, locale: string = 'en') {
+  const descField = locale === 'de' ? 'description_de' : locale === 'es' ? 'description_es' : '';
+  const desc = (descField && g[descField]) ? g[descField] : (g.description || '');
   return {
     _id: g._id.toString(),
     name: (g.name || '').slice(0, 100),
@@ -171,7 +175,7 @@ function mapGroup(g: any) {
     videoUrl: (g.videoUrl && typeof g.videoUrl === 'string' && g.videoUrl.startsWith('https://')) ? g.videoUrl : undefined,
     category: g.category || '',
     country: g.country || '',
-    description: (g.description || '').slice(0, 80),
+    description: desc.slice(0, 80),
     createdAt: g.createdAt ? new Date(g.createdAt).toISOString() : undefined,
     memberCount: typeof g.memberCount === 'number' ? g.memberCount : 0,
   };
@@ -182,7 +186,7 @@ function pickRandom<T>(arr: T[], n: number): T[] {
   return shuffled.slice(0, n);
 }
 
-async function getStoryData(categories: StoryCategoryConfig[]): Promise<StoryCategory[]> {
+async function getStoryData(categories: StoryCategoryConfig[], locale: string = 'en'): Promise<StoryCategory[]> {
   try {
     await connectDB();
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -203,7 +207,7 @@ async function getStoryData(categories: StoryCategoryConfig[]): Promise<StoryCat
             })
               .sort({ createdAt: -1 })
               .limit(limit)
-              .select('name slug image videoUrl category country description createdAt memberCount')
+              .select('name slug image videoUrl category country description description_de description_es createdAt memberCount')
               .lean(),
             StorySlideContent.find({
               categorySlug: cat.slug,
@@ -220,7 +224,7 @@ async function getStoryData(categories: StoryCategoryConfig[]): Promise<StoryCat
             finalGroups = await Group.find({ status: 'approved', isAdvertisement: { $ne: true }, premiumOnly: { $ne: true }, hideFromStories: { $ne: true } })
               .sort({ createdAt: -1 })
               .limit(3)
-              .select('name slug image videoUrl category country description createdAt memberCount')
+              .select('name slug image videoUrl category country description description_de description_es createdAt memberCount')
               .lean();
           }
 
@@ -240,7 +244,7 @@ async function getStoryData(categories: StoryCategoryConfig[]): Promise<StoryCat
             slug: cat.slug, label: cat.label, profileImage: cat.profileImage || '',
             hasNewContent, verified: cat.verified, ctaText: cat.ctaText, ctaUrl: cat.ctaUrl,
             r2Folder: cat.r2Folder, storyType: 'erogram',
-            groups: finalGroups.map(mapGroup),
+            groups: finalGroups.map(g => mapGroup(g, locale)),
             mediaSlides,
           };
         }
@@ -405,9 +409,10 @@ async function getVaultTeaser() {
 export default async function GroupsPage() {
   const ua = (await headers()).get('user-agent');
   const { isMobile, isTelegram } = detectDeviceFromUserAgent(ua);
+  const locale = await getLocale();
 
   // Render a small, SEO-safe first page
-  const groups = await getGroups(12, isMobile);
+  const groups = await getGroups(12, isMobile, locale);
 
   // Check if stories are enabled
   await connectDB();
@@ -422,7 +427,7 @@ export default async function GroupsPage() {
   const [topBannerCampaigns, feedCampaigns, storyData, vaultData] = await Promise.all([
     getActiveCampaigns('top-banner'),
     getActiveFeedCampaigns('groups'),
-    storiesEnabled ? getStoryData(storyConfig) : Promise.resolve([] as StoryCategory[]),
+    storiesEnabled ? getStoryData(storyConfig, locale) : Promise.resolve([] as StoryCategory[]),
     getVaultTeaser(),
   ]);
 
