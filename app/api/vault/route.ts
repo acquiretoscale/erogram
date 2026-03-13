@@ -104,7 +104,7 @@ export async function GET(req: NextRequest) {
         { $match: baseQuery },
         { $project: { cats: { $ifNull: ['$categories', ['$category']] } } },
         { $unwind: '$cats' },
-        { $match: { cats: { $ne: null, $ne: '' } } },
+        { $match: { cats: { $nin: [null, ''] } } },
         { $group: { _id: '$cats', count: { $sum: 1 } } },
         { $match: { count: { $gte: 10 } } },
         { $sort: { count: -1 } },

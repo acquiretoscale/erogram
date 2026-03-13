@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
       // Toggle off — remove vote
       await existing.deleteOne();
       await Group.findByIdAndUpdate(groupId, { $inc: { [vote === 'like' ? 'likes' : 'dislikes']: -1 } });
-      const g = await Group.findById(groupId).select('likes dislikes').lean();
+      const g = await Group.findById(groupId).select('likes dislikes').lean() as any;
       return NextResponse.json({ likes: g?.likes || 0, dislikes: g?.dislikes || 0, userVote: null });
     }
     // Switching vote
@@ -35,14 +35,14 @@ export async function POST(req: NextRequest) {
     existing.vote = vote;
     await existing.save();
     await Group.findByIdAndUpdate(groupId, { $inc: { [oldField]: -1, [newField]: 1 } });
-    const g = await Group.findById(groupId).select('likes dislikes').lean();
+    const g = await Group.findById(groupId).select('likes dislikes').lean() as any;
     return NextResponse.json({ likes: g?.likes || 0, dislikes: g?.dislikes || 0, userVote: vote });
   }
 
   // New vote
   await Vote.create({ userId: user._id, groupId, vote });
   await Group.findByIdAndUpdate(groupId, { $inc: { [vote === 'like' ? 'likes' : 'dislikes']: 1 } });
-  const g = await Group.findById(groupId).select('likes dislikes').lean();
+  const g = await Group.findById(groupId).select('likes dislikes').lean() as any;
   return NextResponse.json({ likes: g?.likes || 0, dislikes: g?.dislikes || 0, userVote: vote });
 }
 

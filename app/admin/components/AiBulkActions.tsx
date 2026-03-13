@@ -146,7 +146,7 @@ export default function AiBulkActions({ selectedIds, groups, onGroupsUpdated, co
 
     const taskId = `ai-${action}-${Date.now()}`;
     const labels: Record<string, string> = { categorize: 'Categorizing', rewrite: 'Writing Descriptions', de: 'Translating DE', es: 'Translating ES' };
-    addTask({ id: taskId, label: labels[action], done: 0, total: ids.length, status: 'running' });
+    addTask(taskId, labels[action] || action, ids.length);
 
     try {
       let run: { results: Record<string, string>; errors: Array<{ groupId: string; error: string }> };
@@ -173,7 +173,7 @@ export default function AiBulkActions({ selectedIds, groups, onGroupsUpdated, co
         onGroupsUpdated(updates);
       }
 
-      updateTask(taskId, { done: ids.length, status: 'running' });
+      updateTask(taskId, ids.length);
       finishTask(taskId);
 
       const errCount = run.errors.length;
