@@ -68,7 +68,7 @@ export default function GroupsHub() {
         {key === 'queue' && <QueueTab />}
         {key === 'vault' && (
           <Suspense fallback={<TabLoader />}>
-            <VaultTab isActive={activeTab === 'vault'} />
+            <VaultTab />
           </Suspense>
         )}
         {key === 'translations' && <TranslationsTab />}

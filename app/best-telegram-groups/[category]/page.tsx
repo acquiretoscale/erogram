@@ -119,6 +119,7 @@ export default async function BestGroupsPage({ params }: PageProps) {
                 $match: {
                     status: 'approved',
                     isAdvertisement: false,
+                    premiumOnly: { $ne: true },
                     category: { $ne: realCategory }
                 }
             },
@@ -147,7 +148,7 @@ export default async function BestGroupsPage({ params }: PageProps) {
                             : `${dict.bestGroups.theBestFallback.split('{category}')[0]}`}<span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">{realCategory}</span>{dict.bestGroups.theBest.split('{category}')[1] || ''}
                     </h1>
                     <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-                        {dict.bestGroups.categoryDesc.replace('{category}', realCategory).replace('{year}', String(year))}
+                        {dict.bestGroups.lookingFor.replace('{category}', realCategory).replace('{year}', String(year))}
                     </p>
                 </header>
 

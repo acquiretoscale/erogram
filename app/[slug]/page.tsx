@@ -25,7 +25,7 @@ function safeImageUrl(img: unknown, fallback: string): string {
 async function getVaultTeaser() {
   try {
     await connectDB();
-    let groups = await Group.find({ showOnVaultTeaser: true, premiumOnly: true, status: 'approved' })
+    let groups = await Group.find({ showOnVaultTeaser: true, premiumOnly: true, status: 'approved', image: { $nin: [null, ''] }, memberCount: { $gte: 80000 } })
       .sort({ vaultTeaserOrder: 1 })
       .select('name image category categories country memberCount vaultTeaserOrder vaultCategories')
       .lean();
@@ -36,8 +36,8 @@ async function getVaultTeaser() {
     }
 
     if (groups.length === 0) {
-      groups = await Group.find({ premiumOnly: true, status: 'approved' })
-        .sort({ createdAt: -1 })
+      groups = await Group.find({ premiumOnly: true, status: 'approved', image: { $nin: [null, ''] }, memberCount: { $gte: 80000 } })
+        .sort({ memberCount: -1 })
         .limit(12)
         .select('name image category categories country memberCount vaultCategories')
         .lean();

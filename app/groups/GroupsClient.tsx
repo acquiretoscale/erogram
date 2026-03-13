@@ -41,69 +41,66 @@ interface VaultTeaserItem {
 }
 
 function VaultTeaserSection({ items }: { items: VaultTeaserItem[]; catOrder?: string[] }) {
-  const { t } = useTranslation();
   const lp = useLocalePath();
-  const fmtNum = (n: number) => n >= 1_000_000 ? (n/1_000_000).toFixed(1)+'M' : n >= 1_000 ? (n/1_000).toFixed(n>=10_000?0:1)+'K' : n > 0 ? String(n) : null;
+  const fmtNum = (n: number) => n >= 1_000_000 ? (n/1_000_000).toFixed(1)+'M' : n >= 1_000 ? (n/1_000).toFixed(n>=10_000?0:1)+'K' : '';
+
+  if (!items.length) return null;
 
   return (
-    <Link href={lp('/premium')} target="_blank" className="block mb-8 group cursor-pointer">
-      <div className="text-center mb-4">
-        <span
-          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.25em] mb-3"
-          style={{ background: 'rgba(201,151,58,0.08)', border: '1px solid rgba(201,151,58,0.2)', color: '#b8964e' }}
-        >
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-          </svg>
-          {t('groups.vaultBadge')}
-        </span>
-        <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-          {t('groups.vaultTitle1')} <span style={{ background: 'linear-gradient(135deg, #c9973a, #e8ba5a)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t('groups.vaultTitle2')}</span>
-        </h2>
-        <p className="text-white/30 text-xs mt-1">{t('groups.vaultDesc')}</p>
-      </div>
-
+    <Link href={lp('/premiumvault')} className="block mb-8 group cursor-pointer">
       <div
-        className="relative rounded-2xl overflow-hidden p-3 sm:p-4 transition-all group-hover:scale-[1.01]"
-        style={{ background: 'linear-gradient(160deg, #0f0d09 0%, #110e08 60%, #0d0b07 100%)', border: '1px solid #2a1f0e' }}
+        className="relative rounded-2xl overflow-hidden px-5 py-4 transition-all group-hover:scale-[1.01]"
+        style={{ background: 'linear-gradient(135deg, #111009 0%, #140f07 60%, #0e0d0b 100%)', border: '1px solid #2e2010' }}
       >
-        <div className="absolute top-0 right-0 w-56 h-56 blur-3xl opacity-[0.06] rounded-full pointer-events-none" style={{ background: 'radial-gradient(ellipse, #c9973a 0%, transparent 60%)' }} />
+        <div className="absolute top-0 right-0 w-56 h-56 blur-3xl opacity-[0.12] rounded-full pointer-events-none" style={{ background: 'radial-gradient(ellipse, #c9973a 0%, transparent 60%)' }} />
+        <div className="absolute bottom-0 left-0 w-40 h-40 blur-3xl opacity-[0.07] rounded-full pointer-events-none" style={{ background: 'radial-gradient(ellipse, #c9973a 0%, transparent 60%)' }} />
 
-        <div className="relative grid grid-cols-2 gap-1.5">
-          {items.map(g => {
-            const fmt = fmtNum(g.memberCount);
-            const cats = g.vaultCategories && g.vaultCategories.length > 0 ? g.vaultCategories : ((g as any).categories?.length ? (g as any).categories : [g.category]);
-            return (
-              <div
-                key={g._id}
-                className="relative rounded-lg flex items-center gap-2 px-2 py-1.5 select-none"
-                style={{ background: 'linear-gradient(135deg, #120f09 0%, #150f08 100%)', border: '1px solid #2a1f0e' }}
-              >
-                <div className="absolute left-0 top-0 bottom-0 w-px" style={{ background: 'linear-gradient(180deg, transparent, #c9973a44, transparent)' }} />
-                <div className="shrink-0 w-8 h-8 rounded-md overflow-hidden" style={{ border: '1px solid #2e2010' }}>
-                  <img src={g.image || '/assets/placeholder-no-image.png'} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-[10px] truncate leading-tight mb-0.5 select-none pointer-events-none" aria-hidden="true">
-                    <span className="text-white">{g.name.slice(0, 4)}</span><span style={{ filter: 'blur(4px)', color: '#fff' }}>{g.name.slice(4) || '····'}</span>
-                  </div>
-                  <div className="flex items-center gap-1 flex-wrap">
-                    {cats.map((c: string, i: number) => (
-                      <span key={c} className="text-[7px] font-black uppercase tracking-[0.06em] px-1 py-0.5 rounded shrink-0" style={{ background: i === 0 ? '#1a1408' : '#12100a', border: '1px solid #c9973a22', color: i === 0 ? '#c9973a' : '#7a6040' }}>{c}</span>
-                    ))}
-                    {g.country && <span className="text-[8px] font-semibold truncate" style={{ color: '#5a4830' }}>{g.country}</span>}
-                    {fmt && <span className="text-[8px] font-semibold shrink-0" style={{ color: '#4a3820' }}>· {fmt}</span>}
-                  </div>
-                </div>
-                <svg className="shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#c9973a55" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                </svg>
+        <div className="relative">
+          <div className="mb-2">
+            <div className="flex items-center gap-1.5 mb-1">
+              <div className="flex gap-0.5">
+                {[1,2,3,4,5].map(i => <svg key={i} width="12" height="12" viewBox="0 0 24 24" fill="#b8964e"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>)}
               </div>
-            );
-          })}
-        </div>
+              <span className="text-[8px] font-black uppercase tracking-[0.3em]" style={{ color: '#b8964e' }}>Private Vault · Members Only</span>
+            </div>
+            <h2 className="text-sm font-black text-white tracking-tight">Unlock Instantly Thousands of Curated NSFW Groups</h2>
+          </div>
 
-        <div className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none" style={{ background: 'linear-gradient(to bottom, transparent, #0f0d09)' }} />
+          <div className="grid grid-cols-4 gap-2 mb-3">
+            {items.slice(0, 4).map(g => {
+              const cats = g.vaultCategories && g.vaultCategories.length > 0 ? g.vaultCategories : [g.category];
+              const topCat = cats[2] || cats[1] || cats[0] || '';
+              return (
+                <div
+                  key={g._id}
+                  className="rounded-xl overflow-hidden relative"
+                  style={{ aspectRatio: '1', border: '2px solid #c9973a33', boxShadow: '0 4px 20px #c9973a0a' }}
+                >
+                  <img src={g.image || '/assets/placeholder-no-image.png'} alt="" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
+                  <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 30%, #0a0908dd 75%, #0a0908 100%)' }} />
+                  <div className="absolute bottom-0 left-0 right-0 p-1.5">
+                    <p className="text-[10px] font-bold text-white leading-tight truncate">
+                      {(g.name || '').slice(0, 4)}<span style={{ filter: 'blur(4px)', opacity: 0.4, color: '#fff', userSelect: 'none' as const }}>{(g.name || '██████').slice(4) || '██████'}</span>
+                    </p>
+                    {g.memberCount ? (
+                      <p className="text-[11px] font-black leading-none" style={{ color: '#c9973a' }}>
+                        {fmtNum(g.memberCount)} <span className="text-[9px] font-bold" style={{ color: '#7a6040' }}>subs</span>
+                        {topCat && <span className="text-[9px] font-bold" style={{ color: '#7a604088' }}> · {topCat}</span>}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex gap-1.5 flex-wrap">
+            {['Amateur', 'Onlyfans', 'NSFW-Telegram', 'Russian', 'Hentai', 'Feet', 'BDSM', 'MILF', 'Latina', 'Fetish', 'Asian', 'Cosplay', 'Lesbian', 'Onlyfans Leaks'].map(cat => (
+              <span key={cat} className="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide" style={{ background: '#0d0c0a', border: '1px solid #2e2010', color: '#7a6040' }}>{cat}</span>
+            ))}
+            <span className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wide" style={{ background: 'linear-gradient(135deg, #1f1709, #241b0c)', border: '1px solid #c9973a33', color: '#c9973a' }}>&amp; MUCH MORE</span>
+          </div>
+        </div>
       </div>
 
       <div className="mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl font-black text-sm transition-all group-hover:scale-[1.02]"
@@ -111,10 +108,9 @@ function VaultTeaserSection({ items }: { items: VaultTeaserItem[]; catOrder?: st
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
         </svg>
-        {t('groups.vaultCta')}
+        Unlock Premium Access
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       </div>
-      <p className="mt-2 text-center text-[10px]" style={{ color: '#4a3820' }}>{t('groups.vaultFooter')}</p>
     </Link>
   );
 }

@@ -580,7 +580,7 @@ export const premiumEventSchema = new Schema(
     },
     userId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
     username: { type: String, default: null },
-    plan: { type: String, enum: ['monthly', 'yearly', 'lifetime', null], default: null },
+    plan: { type: String, enum: ['monthly', 'quarterly', 'yearly', 'lifetime', null], default: null },
     source: { type: String, enum: ['premium_page', 'upgrade_modal', 'server'], default: null },
     paymentMethod: { type: String, enum: ['stars', 'crypto', null], default: null },
     reason: { type: String, default: null },

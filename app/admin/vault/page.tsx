@@ -40,7 +40,8 @@ const ALL_CATEGORIES = [
   'Spain', 'Telegram-Porn', 'Threesome', 'UK', 'Ukraine', 'USA', 'Vietnam',
 ];
 
-export default function AdminVaultPage({ isActive }: { isActive?: boolean }) {
+export default function AdminVaultPage() {
+  const isActive = true;
   const [groups, setGroups] = useState<VaultGroup[]>([]);
   const [catConfig, setCatConfig] = useState<CategoryConfig[]>([]);
   const [loading, setLoading] = useState(true);

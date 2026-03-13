@@ -152,6 +152,8 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
               { label: 'Lesbian', href: '/best-telegram-groups/lesbian' },
               { label: 'China', href: '/best-telegram-groups/china' },
               { label: 'Cosplay', href: '/best-telegram-groups/cosplay' },
+              { label: 'Blowjob', href: '/best-telegram-groups/blowjob' },
+              { label: 'Colombia', href: '/best-telegram-groups/colombia' },
             ].map(({ label, href }) => (
               <Link
                 key={href}
@@ -168,15 +170,14 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
             ))}
             <Link
               href="/premiumvault"
-              className="px-2.5 py-[3px] text-[9px] font-black rounded-full transition-all duration-200 whitespace-nowrap hover:scale-105 inline-flex items-center gap-1"
+              className="px-3 py-1.5 text-[10px] font-black rounded-full transition-all duration-200 whitespace-nowrap hover:opacity-90 inline-flex items-center gap-1"
               style={{
-                background: 'linear-gradient(135deg, #c9973a, #e8ba5a, #c9973a)',
+                background: 'linear-gradient(135deg, #c9973a, #e8ba5a)',
                 color: '#0d0c0a',
-                border: '1px solid rgba(232,186,90,0.5)',
+                boxShadow: '0 0 10px rgba(201,151,58,0.35)',
               }}
             >
-              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              EROGRAM PREMIUM
+              ⭐ EROGRAM PREMIUM
             </Link>
         </div>
       </nav>

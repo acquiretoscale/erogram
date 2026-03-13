@@ -955,6 +955,38 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                     )}
                   </Link>
                 ))}
+                {vaultTeaser.filter(g => g.image && g.memberCount >= 80000).slice(0, 3).map((g) => {
+                  const fmtSubs = (n: number) => n >= 1_000_000 ? (n/1_000_000).toFixed(1)+'M' : n >= 1_000 ? (n/1_000).toFixed(n>=10_000?0:1)+'K' : String(n);
+                  return (
+                  <Link
+                    key={`vault-${g._id}`}
+                    href="/premiumvault"
+                    className="group rounded-2xl p-5 border border-amber-500/20 hover:border-amber-500/40 transition-all hover:-translate-y-1 hover:shadow-xl"
+                    style={{ background: 'linear-gradient(135deg, #1a1408, #151210)' }}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 relative" style={{ border: '2px solid rgba(201,151,58,0.3)' }}>
+                        <Image src={g.image || PLACEHOLDER_IMAGE_URL} alt="" fill className="object-cover" onError={(e) => { (e.target as HTMLImageElement).src = PLACEHOLDER_IMAGE_URL; }} />
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c9973a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-bold truncate">
+                          <span className="text-white">{g.name.slice(0, 4)}</span><span style={{ filter: 'blur(5px)', color: '#fff', userSelect: 'none' }}>{g.name.slice(4) || '██████'}</span>
+                        </h3>
+                        <p className="text-[11px] font-black mt-1" style={{ color: '#c9973a' }}>{fmtSubs(g.memberCount)} <span className="text-[9px] font-bold" style={{ color: '#7a6040' }}>subscribers</span></p>
+                        <div className="flex gap-2 mt-1.5 flex-wrap">
+                          {(g.vaultCategories?.length ? g.vaultCategories : [g.category]).filter(Boolean).slice(0, 2).map((c: string) => (
+                            <span key={c} className="text-[10px] px-2 py-0.5 rounded font-bold" style={{ background: 'rgba(201,151,58,0.1)', border: '1px solid rgba(201,151,58,0.2)', color: '#c9973a' }}>{c}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <p className="mt-3 text-[11px] font-bold" style={{ color: '#c9973a' }}>⭐ Premium Only — Unlock Access</p>
+                  </Link>
+                  );
+                })}
               </div>
 
               <div className="mt-8 text-center sm:hidden">
