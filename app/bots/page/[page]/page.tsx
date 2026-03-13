@@ -146,7 +146,7 @@ export default async function BotsPaginatedPage(
                 )}
               </div>
               <p className="text-sm text-[#999] mt-2">
-                {b.category} • {b.country}
+                {b.category}
               </p>
               {b.description && (
                 <p className="text-sm text-gray-300 mt-3 line-clamp-3">{b.description}</p>

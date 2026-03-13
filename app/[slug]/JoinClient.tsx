@@ -10,6 +10,7 @@ import HeaderBanner from '@/components/HeaderBanner';
 import BookmarkButton from '@/components/BookmarkButton';
 import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
+import { useTranslation, useLocalePath } from '@/lib/i18n';
 
 interface Entity {
   _id: string;
@@ -189,6 +190,8 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
   const [userInteracted, setUserInteracted] = useState(false);
   const [adsReady, setAdsReady] = useState(false);
   const clickTrackedRef = useRef(false);
+  const { t } = useTranslation();
+  const lp = useLocalePath();
 
   const [authChecked, setAuthChecked] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -514,12 +517,12 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
       <div className="relative z-10 px-4 sm:px-6 py-4 border-b border-white/5 bg-[#0a0a0a]/50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto">
           <nav className="flex items-center text-sm text-gray-400">
-            <Link href="/" className="hover:text-white transition-colors flex items-center gap-1">
-              <span>🏠</span> <span className="hidden sm:inline">Home</span>
+            <Link href={lp('/')} className="hover:text-white transition-colors flex items-center gap-1">
+              <span>🏠</span> <span className="hidden sm:inline">{t('slug.home')}</span>
             </Link>
             <span className="mx-2 text-gray-600">/</span>
-            <Link href={type === 'group' ? '/groups' : '/bots'} className="hover:text-white transition-colors flex items-center gap-1">
-              <span>{type === 'group' ? '👥' : '🤖'}</span> <span className="hidden sm:inline">{type === 'group' ? 'Groups' : 'Bots'}</span>
+            <Link href={lp(type === 'group' ? '/groups' : '/bots')} className="hover:text-white transition-colors flex items-center gap-1">
+              <span>{type === 'group' ? '👥' : '🤖'}</span> <span className="hidden sm:inline">{type === 'group' ? t('nav.groups') : t('nav.bots')}</span>
             </Link>
             <span className="mx-2 text-gray-600">/</span>
             <span className="text-white font-medium truncate max-w-[150px] sm:max-w-xs">{entity.name}</span>
@@ -545,34 +548,34 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
               <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="white"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM12 17c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"/></svg>
               </div>
-              <h2 className="text-2xl font-black text-white mb-3">Premium Content</h2>
+              <h2 className="text-2xl font-black text-white mb-3">{t('slug.premiumContent')}</h2>
               <p className="text-gray-400 mb-2">
-                <span className="font-bold text-white">{entity.name}</span> is part of the <span className="text-amber-400 font-bold">Erogram Private Vault</span>.
+                <span className="font-bold text-white">{entity.name}</span> {t('slug.partOfVault')}
               </p>
               <p className="text-gray-500 text-sm mb-8">
-                Unlock hundreds of hand-picked, exclusive Telegram groups available only to Erogram Premium members.
+                {t('slug.unlockVault')}
               </p>
               {!isLoggedIn ? (
                 <div className="space-y-3">
                   <a
-                    href="/login"
+                    href={lp('/login')}
                     className="block w-full px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold rounded-2xl shadow-lg hover:scale-105 transition-all text-lg"
                   >
-                    Log in with Telegram
+                    {t('slug.loginTelegram')}
                   </a>
-                  <p className="text-gray-500 text-xs">Already a Premium member? Log in to access this content.</p>
+                  <p className="text-gray-500 text-xs">{t('slug.alreadyPremium')}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   <a
-                    href="/premium"
+                    href={lp('/premium')}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="block w-full px-8 py-4 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white font-black rounded-2xl shadow-lg shadow-amber-500/20 hover:scale-105 transition-all text-lg"
                   >
-                    Upgrade to Erogram Premium
+                    {t('slug.upgradePremium')}
                   </a>
-                  <p className="text-gray-500 text-xs">Get unlimited access to our Private Vault and more.</p>
+                  <p className="text-gray-500 text-xs">{t('slug.unlimitedAccess')}</p>
                 </div>
               )}
             </div>
@@ -586,8 +589,8 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
           <div className="mb-8 p-5 bg-red-900/30 border border-red-500/40 rounded-2xl flex items-center gap-4">
             <span className="text-3xl flex-shrink-0">🚫</span>
             <div>
-              <h3 className="text-lg font-bold text-red-300">This group has been removed</h3>
-              <p className="text-sm text-red-200/70 mt-1">This community is no longer available on Erogram. Browse other groups to find similar communities.</p>
+              <h3 className="text-lg font-bold text-red-300">{t('slug.removed')}</h3>
+              <p className="text-sm text-red-200/70 mt-1">{t('slug.removedDesc')}</p>
             </div>
           </div>
         )}
@@ -613,14 +616,14 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                 />
                 {/* Verified Badge Overlay */}
                 <div className="absolute top-3 right-3 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-md shadow-lg flex items-center gap-1">
-                  <span>✓</span> Verified
+                  <span>✓</span> {t('common.verified')}
                 </div>
                 {/* Premium Badge Overlay */}
                 {isPremiumGated && (
                   <div className="absolute bottom-3 left-3 right-3 flex justify-center">
                     <div className="px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-600 to-orange-500 text-white text-xs font-black tracking-wider shadow-lg shadow-amber-500/30 flex items-center gap-1.5">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                      PREMIUM EXCLUSIVE
+                      {t('slug.premiumExclusive')}
                     </div>
                   </div>
                 )}
@@ -628,32 +631,32 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
 
               {/* Quick Info Grid */}
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-[#1a1a1a] p-3 rounded-xl border border-white/5 text-center">
-                  <div className="text-xs text-gray-500 uppercase tracking-wider font-bold mb-1">Category</div>
-                  <div className="font-semibold text-white truncate">{entity.category}</div>
+                <div className="bg-[#1a1a1a] p-3 rounded-xl border border-white/5 text-center overflow-hidden">
+                  <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-1">{t('slug.pageViews')}</div>
+                  <div className="text-xs font-semibold text-white tabular-nums truncate">{(entity.views || 0).toLocaleString()}</div>
                 </div>
-                <div className="bg-[#1a1a1a] p-3 rounded-xl border border-white/5 text-center">
-                  <div className="text-xs text-gray-500 uppercase tracking-wider font-bold mb-1">Country</div>
-                  <div className="font-semibold text-white truncate">{entity.country}</div>
-                </div>
-                <div className="bg-[#1a1a1a] p-3 rounded-xl border border-white/5 text-center">
-                  <div className="text-xs text-gray-500 uppercase tracking-wider font-bold mb-1">
-                    {entity.memberCount && entity.memberCount > 0 ? 'Members' : 'Status'}
+                <div className="bg-[#1a1a1a] p-3 rounded-xl border border-white/5 text-center overflow-hidden">
+                  <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-1">
+                    {entity.memberCount && entity.memberCount > 0 ? t('common.members') : t('common.status')}
                   </div>
-                  <div className={`font-semibold truncate ${entity.memberCount && entity.memberCount > 0 ? 'text-white' : 'text-green-400 flex items-center justify-center gap-2'}`}>
+                  <div className={`text-xs font-semibold tabular-nums truncate ${entity.memberCount && entity.memberCount > 0 ? 'text-white' : 'text-green-400 flex items-center justify-center gap-2'}`}>
                     {entity.memberCount && entity.memberCount > 0 ? (
                       entity.memberCount.toLocaleString()
                     ) : (
                       <>
                         <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                        Active
+                        {t('common.active')}
                       </>
                     )}
                   </div>
                 </div>
-                <div className="bg-[#1a1a1a] p-3 rounded-xl border border-white/5 text-center">
-                  <div className="text-xs text-gray-500 uppercase tracking-wider font-bold mb-1">Views</div>
-                  <div className="font-semibold text-white truncate">{(entity.views || 0).toLocaleString()}</div>
+                <div className="bg-[#1a1a1a] p-3 rounded-xl border border-white/5 text-center overflow-hidden">
+                  <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-1">{t('common.category')}</div>
+                  <div className="text-xs font-semibold text-white truncate">{entity.category}</div>
+                </div>
+                <div className="bg-[#1a1a1a] p-3 rounded-xl border border-white/5 text-center overflow-hidden">
+                  <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-1">{t('common.country')}</div>
+                  <div className="text-xs font-semibold text-white truncate">{entity.country}</div>
                 </div>
               </div>
             </motion.div>
@@ -682,14 +685,14 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
 
               {/* Tags Row */}
               <div className="flex flex-wrap gap-3 mb-8">
-                <Link href={`/best-telegram-groups/${entity.category.toLowerCase()}`} className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors">
+                <Link href={lp(`/best-telegram-groups/${entity.category.toLowerCase()}`)} className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors">
                   #{entity.category}
                 </Link>
-                <Link href={`/best-telegram-groups/country/${entity.country.toLowerCase()}`} className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors">
+                <Link href={lp(`/best-telegram-groups/country/${entity.country.toLowerCase()}`)} className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors">
                   #{entity.country}
                 </Link>
                 <span className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm text-gray-300">
-                  Telegram {type === 'group' ? 'Group' : 'Bot'}
+                  {type === 'group' ? t('slug.telegramGroup') : t('slug.telegramBot')}
                 </span>
               </div>
 
@@ -705,8 +708,8 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
               <div className="bg-[#151515] rounded-3xl p-6 sm:p-8 border border-white/10 shadow-xl mb-12 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-600/10 to-purple-600/10 blur-3xl rounded-full pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
 
-                <h2 className="text-2xl font-bold text-white relative z-10 mb-2">Ready to join?</h2>
-                <p className="text-gray-400 mb-6 relative z-10">Click the button below to access this community on Telegram.</p>
+                <h2 className="text-2xl font-bold text-white relative z-10 mb-2">{t('slug.readyToJoin')}</h2>
+                <p className="text-gray-400 mb-6 relative z-10">{t('slug.clickToAccess')}</p>
 
                 {!userInteracted ? (
                   <button
@@ -716,7 +719,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                     <div className="relative w-full bg-[#111] rounded-[14px] px-8 py-5 transition-all group-hover:bg-transparent">
                       <div className="flex items-center justify-center gap-3">
                         <span className="text-2xl">🚀</span>
-                        <span className="text-xl font-bold text-white">Join Channel Now</span>
+                        <span className="text-xl font-bold text-white">{t('slug.joinChannelNow')}</span>
                       </div>
                     </div>
                   </button>
@@ -725,7 +728,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                     <div className="flex flex-col items-center justify-center gap-3">
                       <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                       <div className="text-lg font-medium text-white">
-                        {isRedirecting ? 'Opening Telegram...' : `Redirecting in ${countdown}s...`}
+                        {isRedirecting ? t('slug.openingTelegram') : t('slug.redirectingIn').replace('{seconds}', String(countdown))}
                       </div>
                     </div>
                   </div>
@@ -752,16 +755,16 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                         }}
                         className="block w-full text-center bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-5 rounded-2xl text-xl shadow-lg shadow-blue-900/20 transition-all transform hover:-translate-y-0.5"
                       >
-                        Open in Telegram
+                        {t('slug.openInTelegram')}
                       </a>
                     )}
                     <p className="text-center text-sm text-gray-500 mt-2">
-                      If you are not redirected automatically, click the button above.
+                      {t('slug.notRedirected')}
                     </p>
                   </div>
                 )}
 
-                <div className="mt-6 border-t border-white/5 pt-6">
+                <div className="mt-6 border-t border-white/5 pt-6 space-y-3">
                   <a
                     href={joinCtaCampaign?.destinationUrl ?? DEFAULT_JOIN_CTA.destinationUrl}
                     target="_blank"
@@ -771,6 +774,26 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                   >
                     {(joinCtaCampaign?.description || joinCtaCampaign?.buttonText) || DEFAULT_JOIN_CTA.description}
                   </a>
+                  <Link
+                    href="/premiumvault"
+                    className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl text-lg font-black uppercase tracking-wide transition-all hover:scale-[1.02] hover:shadow-lg"
+                    style={{
+                      background: 'linear-gradient(135deg, #d4a94c 0%, #e8c66a 20%, #c9973a 40%, #b8860b 60%, #e8c66a 80%, #d4a94c 100%)',
+                      border: '1.5px solid rgba(232,198,106,0.5)',
+                      color: '#1a1000',
+                      boxShadow: '0 0 25px rgba(201,151,58,0.3), 0 3px 12px rgba(0,0,0,0.2)',
+                    }}
+                  >
+                    <div className="flex flex-col items-center">
+                      <div className="flex items-center gap-2">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        <span>EROGRAM PREMIUM</span>
+                      </div>
+                      <span className="text-[12px] font-semibold tracking-normal normal-case opacity-75">Unlock thousands of curated Telegram groups</span>
+                    </div>
+                  </Link>
                 </div>
 
                 {/* Premium Vault Teaser — below CTA */}
@@ -786,7 +809,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
               {entity.reviews && entity.reviews.length > 0 && (
                 <div className="mb-12">
                   <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-                    <span>⭐</span> User Reviews
+                    <span>⭐</span> {t('slug.userReviews')}
                   </h3>
                   <div className="space-y-4">
                     {entity.reviews.map((review) => (
@@ -811,24 +834,24 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
 
               {/* Internal Linking / SEO Section */}
               <div className="border-t border-white/10 pt-10 mb-12">
-                <h3 className="text-xl font-bold text-white mb-6">Explore More Categories</h3>
+                <h3 className="text-xl font-bold text-white mb-6">{t('slug.exploreMore')}</h3>
                 <div className="flex flex-wrap gap-3">
-                  {['OnlyFans', 'Hentai', 'Leaked', 'Amateur', 'Asian'].map(cat => (
+                  {['OnlyFans', 'Anime', 'Leaked', 'Amateur', 'Asian'].map(cat => (
                     <Link
                       key={cat}
-                      href={`/best-telegram-groups/${cat.toLowerCase()}`}
+                      href={lp(`/best-telegram-groups/${cat.toLowerCase()}`)}
                       className="px-4 py-2 rounded-lg bg-[#1a1a1a] border border-white/5 text-gray-400 hover:text-white hover:border-white/20 transition-all text-sm font-medium"
                     >
-                      Best {cat} Groups
+                      {t('slug.bestCatGroups').replace('{category}', cat)}
                     </Link>
                   ))}
                   {['USA', 'UK', 'India', 'Germany', 'Brazil'].map(country => (
                     <Link
                       key={country}
-                      href={`/best-telegram-groups/country/${country.toLowerCase()}`}
+                      href={lp(`/best-telegram-groups/country/${country.toLowerCase()}`)}
                       className="px-4 py-2 rounded-lg bg-[#1a1a1a] border border-white/5 text-gray-400 hover:text-white hover:border-white/20 transition-all text-sm font-medium"
                     >
-                      Best {country} Groups
+                      {t('slug.bestCountryGroups').replace('{country}', country)}
                     </Link>
                   ))}
                 </div>
@@ -837,39 +860,39 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
               {/* FAQ Section */}
               <div className="mb-12">
                 <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-                  <span>❓</span> Frequently Asked Questions
-                </h3>
+                    <span>❓</span> {t('slug.faqTitle')}
+                  </h3>
                 <div className="space-y-4">
                   <div className="bg-[#151515] rounded-2xl border border-white/5 overflow-hidden">
                     <details className="group">
                       <summary className="flex items-center justify-between p-5 cursor-pointer list-none">
-                        <span className="font-bold text-white">Is this group verified?</span>
+                        <span className="font-bold text-white">{t('slug.faqVerifiedQ')}</span>
                         <span className="transition-transform group-open:rotate-180">▼</span>
                       </summary>
                       <div className="px-5 pb-5 text-gray-400 text-sm leading-relaxed border-t border-white/5 pt-4">
-                        Yes, absolutely. All groups listed on Erogram are manually verified by our staff to ensure they are active, safe, and match their description. We prioritize quality and user safety above all else.
+                        {t('slug.faqVerifiedA')}
                       </div>
                     </details>
                   </div>
                   <div className="bg-[#151515] rounded-2xl border border-white/5 overflow-hidden">
                     <details className="group">
                       <summary className="flex items-center justify-between p-5 cursor-pointer list-none">
-                        <span className="font-bold text-white">How do I join this group?</span>
+                        <span className="font-bold text-white">{t('slug.faqJoinQ')}</span>
                         <span className="transition-transform group-open:rotate-180">▼</span>
                       </summary>
                       <div className="px-5 pb-5 text-gray-400 text-sm leading-relaxed border-t border-white/5 pt-4">
-                        Simply click the "Join Channel Now" button above. You may need to wait a few seconds for the secure link to generate. Once ready, you'll be redirected to Telegram to join the community.
+                        {t('slug.faqJoinA')}
                       </div>
                     </details>
                   </div>
                   <div className="bg-[#151515] rounded-2xl border border-white/5 overflow-hidden">
                     <details className="group">
                       <summary className="flex items-center justify-between p-5 cursor-pointer list-none">
-                        <span className="font-bold text-white">Is it free to join?</span>
+                        <span className="font-bold text-white">{t('slug.faqFreeQ')}</span>
                         <span className="transition-transform group-open:rotate-180">▼</span>
                       </summary>
                       <div className="px-5 pb-5 text-gray-400 text-sm leading-relaxed border-t border-white/5 pt-4">
-                        Most groups on our platform are free to join. Some premium communities may require a subscription, but this is clearly stated within the group itself.
+                        {t('slug.faqFreeA')}
                       </div>
                     </details>
                   </div>
@@ -892,11 +915,11 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
             >
               <div className="flex items-center justify-between mb-10">
                 <div>
-                  <h2 className="text-3xl font-black text-white mb-2">Similar Communities</h2>
-                  <p className="text-gray-400">More groups you might be interested in</p>
+                  <h2 className="text-3xl font-black text-white mb-2">{t('slug.similarCommunities')}</h2>
+                  <p className="text-gray-400">{t('slug.similarDesc')}</p>
                 </div>
-                <Link href="/groups" className="hidden sm:inline-block px-6 py-2 rounded-full border border-white/10 text-white hover:bg-white/5 transition-colors font-medium">
-                  View All
+                <Link href={lp('/groups')} className="hidden sm:inline-block px-6 py-2 rounded-full border border-white/10 text-white hover:bg-white/5 transition-colors font-medium">
+                  {t('slug.viewAll')}
                 </Link>
               </div>
 
@@ -904,7 +927,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                 {similarGroups.slice(0, 6).map((g) => (
                   <Link
                     key={g._id}
-                    href={`/${g.slug}`}
+                    href={lp(`/${g.slug}`)}
                     className="group bg-[#151515] rounded-2xl p-5 border border-white/5 hover:border-white/20 transition-all hover:-translate-y-1 hover:shadow-xl"
                   >
                     <div className="flex items-start gap-4">
@@ -935,8 +958,8 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
               </div>
 
               <div className="mt-8 text-center sm:hidden">
-                <Link href="/groups" className="inline-block px-8 py-3 rounded-full border border-white/10 text-white hover:bg-white/5 transition-colors font-medium">
-                  View All Groups
+                <Link href={lp('/groups')} className="inline-block px-8 py-3 rounded-full border border-white/10 text-white hover:bg-white/5 transition-colors font-medium">
+                  {t('slug.viewAllGroups')}
                 </Link>
               </div>
             </motion.div>

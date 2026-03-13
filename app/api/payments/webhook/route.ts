@@ -3,6 +3,7 @@ import connectDB from '@/lib/db/mongodb';
 import { User, PremiumEvent } from '@/lib/models';
 import { MAX_PREMIUM_SLOTS } from '@/lib/auth';
 import { notifyAdminsOfSale } from '@/lib/utils/notifyAdmins';
+import { getPremiumPricing } from '@/lib/premiumPricing';
 
 function logEvent(data: Record<string, any>) {
   PremiumEvent.create({ source: 'server', ...data }).catch(() => {});
@@ -45,7 +46,7 @@ async function getStarTransactions(limit: number) {
   return await res.json();
 }
 
-const VALID_PLANS = new Set(['monthly', 'yearly', 'lifetime']);
+const VALID_PLANS = new Set(['monthly', 'quarterly', 'yearly', 'lifetime']);
 
 export async function POST(req: NextRequest) {
   try {
@@ -191,13 +192,12 @@ export async function POST(req: NextRequest) {
 
         if (plan === 'lifetime') {
           updateData.premiumExpiresAt = null;
-        } else if (plan === 'yearly') {
-          const expiresAt = new Date(now);
-          expiresAt.setDate(expiresAt.getDate() + 365);
-          updateData.premiumExpiresAt = expiresAt;
         } else {
+          const pricing = await getPremiumPricing();
+          const planConfig = plan === 'yearly' ? pricing.yearly : plan === 'quarterly' ? pricing.quarterly : pricing.monthly;
+          const planDays = planConfig.days;
           const expiresAt = new Date(now);
-          expiresAt.setDate(expiresAt.getDate() + 30);
+          expiresAt.setDate(expiresAt.getDate() + planDays);
           updateData.premiumExpiresAt = expiresAt;
         }
 

@@ -7,7 +7,13 @@ const nextConfig: NextConfig = {
   compress: true, // Enable gzip compression
   ...(port && port !== '3000' ? { distDir: `.next-${port}` } : {}),
 
+  reactStrictMode: false,
+
   experimental: {
+    staleTimes: {
+      dynamic: 0,
+      static: 30,
+    },
     optimizePackageImports: ['framer-motion', 'axios', '@types/*'],
   },
 

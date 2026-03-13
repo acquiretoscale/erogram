@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { compressImage } from '@/lib/utils/compressImage';
@@ -9,8 +9,23 @@ import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 
 type SortKey = 'name' | 'clicks24h' | 'clicks7d' | 'clicks' | 'created' | 'status' | 'category';
 type StatusFilter = 'all' | 'approved' | 'pending' | 'rejected';
+type TranslateLang = 'de' | 'es';
 
-export default function BotsTab() {
+const TRANSLATE_PROMPT = (lang: string) => `You are a native ${lang} speaker writing for Erogram.pro — an adult NSFW Telegram bots directory.
+
+Rules:
+- DO NOT translate word-for-word. Rewrite naturally in ${lang} as a native speaker would phrase it
+- Use everyday slang, tone, and vocabulary that ${lang}-speaking adults use when discussing NSFW content online
+- Write like a real person — casual, direct, sex-positive. Adult industry directory, not corporate
+- Each description must be 100+ characters — expand thin descriptions using niche knowledge
+- NO filler words. Talk about the NICHE specifically using terms native ${lang} speakers search for
+- Preserve brand names: Erogram, Telegram
+- If bot name is non-Latin, keep original script AND add [English meaning]
+- Prioritize how a ${lang} speaker would naturally search for and describe this content
+- Format: [N] translated_text
+- Return ONLY translations in [N] format, no explanations`;
+
+export default function AdminBotsPanel() {
     const [bots, setBots] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
@@ -31,6 +46,14 @@ export default function BotsTab() {
         showVerified: false,
     });
     const [isSaving, setIsSaving] = useState(false);
+
+    // Translation state
+    const [translateLang, setTranslateLang] = useState<TranslateLang>('de');
+    const [translating, setTranslating] = useState(false);
+    const [translateProgress, setTranslateProgress] = useState({ done: 0, total: 0 });
+    const [translateDone, setTranslateDone] = useState(0);
+    const translateAbortRef = useRef(false);
+    const [botAiModel, setBotAiModel] = useState<'qwen' | 'deepseek' | 'both'>('qwen');
 
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -213,6 +236,69 @@ export default function BotsTab() {
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     };
 
+    const untranslatedBots = useMemo(() => {
+        const field = translateLang === 'de' ? 'description_de' : 'description_es';
+        return bots.filter(b => b.status === 'approved' && (!b[field] || b[field].trim() === ''));
+    }, [bots, translateLang]);
+
+    const translateBots = async () => {
+        const field = translateLang === 'de' ? 'description_de' : 'description_es';
+        const lang = translateLang === 'de' ? 'German' : 'Spanish';
+        const toTranslate = untranslatedBots;
+        if (toTranslate.length === 0) return;
+
+        setTranslating(true);
+        translateAbortRef.current = false;
+        setTranslateProgress({ done: 0, total: toTranslate.length });
+        setTranslateDone(0);
+
+        const CHUNK = 8;
+        const token = localStorage.getItem('token');
+        let totalDone = 0;
+        let chunkIdx = 0;
+
+        for (let i = 0; i < toTranslate.length; i += CHUNK) {
+            if (translateAbortRef.current) break;
+            const chunk = toTranslate.slice(i, i + CHUNK);
+            const chunkModel: 'qwen' | 'deepseek' = botAiModel === 'both'
+                ? (chunkIdx % 2 === 0 ? 'qwen' : 'deepseek')
+                : botAiModel;
+            chunkIdx++;
+            try {
+                const res = await axios.post('/api/admin/translate', {
+                    groupIds: chunk.map((b: any) => b._id),
+                    targetLanguage: translateLang,
+                    targetField: field,
+                    systemPrompt: TRANSLATE_PROMPT(lang),
+                    userPromptTemplate: `Translate these bot descriptions to ${lang}. Each line has [index] and description info.\n\n{{groups}}`,
+                    mode: 'translate',
+                    dryRun: false,
+                    collection: 'bots',
+                    aiModel: chunkModel,
+                }, { headers: { Authorization: `Bearer ${token}` } });
+
+                const results = res.data?.results || {};
+                const cnt = Object.keys(results).length;
+                totalDone += cnt;
+                setTranslateDone(totalDone);
+                setTranslateProgress({ done: Math.min(i + CHUNK, toTranslate.length), total: toTranslate.length });
+
+                setBots(prev => prev.map(b => {
+                    const val = results[b._id];
+                    if (!val) return b;
+                    return { ...b, [field]: val };
+                }));
+            } catch (err: any) {
+                console.error('Translate chunk error:', err);
+            }
+            if (translateAbortRef.current) break;
+        }
+
+        setTranslating(false);
+    };
+
+    const handleStopTranslate = () => { translateAbortRef.current = true; };
+
     return (
         <div className="space-y-3">
             {/* Compact header: title + KPIs inline */}
@@ -258,6 +344,56 @@ export default function BotsTab() {
                 </select>
             </div>
 
+            {/* Translation Bar — always visible above the table */}
+            <div className="glass rounded-xl border border-white/5 p-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-xs font-bold text-white whitespace-nowrap">Translate</span>
+                    <div className="flex gap-1">
+                        {(['de', 'es'] as TranslateLang[]).map(l => (
+                            <button key={l} onClick={() => setTranslateLang(l)}
+                                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${translateLang === l ? 'bg-purple-600 text-white' : 'bg-white/5 text-[#999] hover:text-white'}`}>
+                                {l === 'de' ? '🇩🇪 DE' : '🇪🇸 ES'}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex rounded-lg overflow-hidden border border-white/10">
+                        {([{ k: 'qwen' as const, l: 'Qwen' }, { k: 'deepseek' as const, l: 'DeepSeek' }, { k: 'both' as const, l: 'Both' }]).map(m => (
+                            <button key={m.k} onClick={() => setBotAiModel(m.k)} className={`px-2 py-1 text-[10px] font-bold transition-colors ${botAiModel === m.k ? (m.k === 'qwen' ? 'bg-blue-600 text-white' : m.k === 'deepseek' ? 'bg-emerald-600 text-white' : 'bg-purple-600 text-white') : 'bg-white/5 text-[#666] hover:text-white'}`}>{m.l}</button>
+                        ))}
+                    </div>
+                    <div className="flex gap-3 text-[10px] text-[#666]">
+                        <span>🇩🇪 <span className={bots.filter(b => b.status === 'approved' && b.description_de).length > 0 ? 'text-green-400' : 'text-red-400'}>
+                            {bots.filter(b => b.status === 'approved' && b.description_de).length}/{bots.filter(b => b.status === 'approved').length}
+                        </span></span>
+                        <span>🇪🇸 <span className={bots.filter(b => b.status === 'approved' && b.description_es).length > 0 ? 'text-green-400' : 'text-red-400'}>
+                            {bots.filter(b => b.status === 'approved' && b.description_es).length}/{bots.filter(b => b.status === 'approved').length}
+                        </span></span>
+                    </div>
+                    <div className="ml-auto flex items-center gap-2">
+                        {translating && (
+                            <button onClick={handleStopTranslate} className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-red-600/80 text-white hover:bg-red-500 transition-colors">
+                                Stop
+                            </button>
+                        )}
+                        <button
+                            onClick={translateBots}
+                            disabled={translating || untranslatedBots.length === 0}
+                            className="px-3 py-1 rounded-lg text-[10px] font-bold bg-purple-600 text-white hover:bg-purple-500 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                            {translating
+                                ? `${translateProgress.done}/${translateProgress.total} (${translateDone} done)`
+                                : `Translate ${untranslatedBots.length} → ${translateLang.toUpperCase()}`}
+                        </button>
+                    </div>
+                </div>
+                {translating && (
+                    <div className="w-full bg-white/5 rounded-full h-1 overflow-hidden mt-2">
+                        <div className="bg-purple-500 h-full rounded-full transition-all duration-300"
+                            style={{ width: `${translateProgress.total > 0 ? (translateProgress.done / translateProgress.total * 100) : 0}%` }} />
+                    </div>
+                )}
+            </div>
+
             {/* Table */}
             <div className="glass rounded-xl border border-white/5 overflow-hidden">
                 {isLoading ? (
@@ -287,12 +423,16 @@ export default function BotsTab() {
                                             <td className="px-3 py-1.5">
                                                 <div className="flex items-center gap-2">
                                                     <img src={bot.image || PLACEHOLDER_IMAGE_URL} alt="" className="w-7 h-7 rounded object-cover flex-shrink-0" onError={(e) => { (e.target as HTMLImageElement).src = PLACEHOLDER_IMAGE_URL; }} />
-                                                    <div className="min-w-0">
+                                                        <div className="min-w-0">
                                                         <div className="text-white font-medium truncate max-w-[180px] leading-tight flex items-center gap-1">
                                                             {bot.name}
                                                             {bot.pinned && <span className="text-[8px] bg-yellow-500/20 text-yellow-500 px-1 rounded">PIN</span>}
                                                             {bot.topBot && <span className="text-[8px] bg-amber-500/20 text-amber-400 px-1 rounded">🏆</span>}
                                                             {bot.showVerified && <span className="text-blue-500">✓</span>}
+                                                        </div>
+                                                        <div className="flex gap-1 mt-0.5">
+                                                            {bot.description_de && <span className="text-[8px] bg-purple-500/20 text-purple-400 px-1 rounded">DE</span>}
+                                                            {bot.description_es && <span className="text-[8px] bg-purple-500/20 text-purple-400 px-1 rounded">ES</span>}
                                                         </div>
                                                     </div>
                                                 </div>

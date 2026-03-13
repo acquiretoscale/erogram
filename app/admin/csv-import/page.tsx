@@ -1,3 +1,8 @@
 'use client';
-import CsvImportTab from '../components/CsvImportTab';
-export default function CsvImportPage() { return <CsvImportTab />; }
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+export default function CsvImportPage() {
+  const router = useRouter();
+  useEffect(() => { router.replace('/admin/groups?tab=import'); }, [router]);
+  return null;
+}

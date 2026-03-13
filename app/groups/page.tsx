@@ -10,30 +10,40 @@ import { getActiveCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campai
 import { getStoryCategories, DEFAULT_STORY_CATEGORIES, type StoryCategoryConfig } from '@/lib/actions/siteConfig';
 import { listR2Files } from '@/lib/r2';
 import type { StoryCategory, StoryMediaSlide } from './types';
+import { getLocale, getPathname } from '@/lib/i18n/server';
+import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
 
-const baseUrl = 'https://erogram.pro';
+const canonicalBase = 'https://erogram.pro';
 
-export const metadata: Metadata = {
-  title: 'Discover NSFW Telegram Groups - Browse Thousands of Communities',
-  description: 'Browse and discover thousands of NSFW Telegram groups. Find communities by category, country, and interests. Join the best adult Telegram groups today.',
-  keywords: 'NSFW telegram groups, adult telegram groups, telegram communities, adult chat groups, NSFW communities',
-  alternates: {
-    canonical: `${baseUrl}/groups`,
-  },
-  openGraph: {
-    title: 'Discover NSFW Telegram Groups - Browse Thousands of Communities',
-    description: 'Browse and discover thousands of NSFW Telegram groups. Find communities by category, country, and interests.',
-    type: 'website',
-    url: `${baseUrl}/groups`,
-    images: [{ url: `${baseUrl}/assets/og-default.png`, width: 512, height: 512, alt: 'Erogram - Telegram Groups' }],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Discover NSFW Telegram Groups - Browse Thousands of Communities',
-    description: 'Browse and discover thousands of NSFW Telegram groups. Find communities by category, country, and interests.',
-    images: [`${baseUrl}/assets/og-default.png`],
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const pathname = await getPathname();
+  const dict = await getDictionary(locale);
+
+  return {
+    title: dict.meta.groupsTitle,
+    description: dict.meta.groupsDesc,
+    alternates: {
+      canonical: `${canonicalBase}${pathname === '/' ? '' : pathname}`,
+      languages: Object.fromEntries(
+        LOCALES.map(l => [l, `${canonicalBase}${localePath('/groups', l)}`])
+      ),
+    },
+    openGraph: {
+      title: dict.meta.groupsTitle,
+      description: dict.meta.groupsDesc,
+      type: 'website',
+      url: `${canonicalBase}${pathname}`,
+      images: [{ url: `${canonicalBase}/assets/og-default.png`, width: 512, height: 512, alt: 'Erogram - Telegram Groups' }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: dict.meta.groupsTitle,
+      description: dict.meta.groupsDesc,
+      images: [`${canonicalBase}/assets/og-default.png`],
+    },
+  };
+}
 
 // Always fetch fresh data so new banner/feed campaigns show immediately after admin adds them
 export const dynamic = 'force-dynamic';

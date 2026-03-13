@@ -3,8 +3,12 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { RtaBadge } from './AgeGate';
+import { useTranslation, useLocalePath } from '@/lib/i18n/client';
 
 export default function Footer() {
+    const { t } = useTranslation();
+    const lp = useLocalePath();
+
     const fadeInUp = {
         initial: { opacity: 0, y: 60 },
         animate: { opacity: 1, y: 0 },
@@ -24,15 +28,15 @@ export default function Footer() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 mb-16">
                     {/* Brand Column */}
                     <div className="space-y-6">
-                        <Link href="/" className="block">
+                        <Link href={lp('/')} className="block">
                             <span className="text-2xl font-black tracking-tighter text-white">
                                 ero<span className="text-[#b31b1b]">gram</span>
                             </span>
                         </Link>
                         <p className="text-[#999] leading-relaxed">
-                            The #1 Verified NSFW Directory.
+                            {t('footer.tagline', 'The #1 Verified NSFW Directory.')}
                             <br />
-                            Connect, explore, and indulge — safely and anonymously.
+                            {t('footer.taglineSub', 'Connect, explore, and indulge — safely and anonymously.')}
                         </p>
                         <div className="flex items-center gap-4">
                             <a
@@ -51,26 +55,26 @@ export default function Footer() {
 
                     {/* Discover Column */}
                     <div>
-                        <h3 className="text-white font-bold mb-6">Discover</h3>
+                        <h3 className="text-white font-bold mb-6">{t('footer.discover', 'Discover')}</h3>
                         <ul className="space-y-4">
                             <li>
-                                <Link href="/groups" className="text-[#999] hover:text-[#b31b1b] transition-colors">
-                                    Telegram Groups
+                                <Link href={lp('/groups')} className="text-[#999] hover:text-[#b31b1b] transition-colors">
+                                    {t('footer.telegramGroups', 'Telegram Groups')}
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/bots" className="text-[#999] hover:text-[#b31b1b] transition-colors">
-                                    AI Bots
+                                <Link href={lp('/bots')} className="text-[#999] hover:text-[#b31b1b] transition-colors">
+                                    {t('footer.aiBots', 'AI Bots')}
                                 </Link>
                             </li>
                             <li>
                                 <Link href="/articles" className="text-[#999] hover:text-[#b31b1b] transition-colors">
-                                    Articles & Guides
+                                    {t('footer.articlesGuides', 'Articles & Guides')}
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/best-telegram-groups/" className="text-[#999] hover:text-[#b31b1b] transition-colors">
-                                    Top Lists
+                                <Link href={lp('/best-telegram-groups/')} className="text-[#999] hover:text-[#b31b1b] transition-colors">
+                                    {t('footer.topLists', 'Top Lists')}
                                 </Link>
                             </li>
                         </ul>
@@ -78,26 +82,26 @@ export default function Footer() {
 
                     {/* Support Column */}
                     <div>
-                        <h3 className="text-white font-bold mb-6">Support</h3>
+                        <h3 className="text-white font-bold mb-6">{t('footer.support', 'Support')}</h3>
                         <ul className="space-y-4">
                             <li>
-                                <Link href="/about" className="text-[#999] hover:text-[#b31b1b] transition-colors">
-                                    About Us
+                                <Link href={lp('/about')} className="text-[#999] hover:text-[#b31b1b] transition-colors">
+                                    {t('footer.aboutUs', 'About Us')}
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/privacy" className="text-[#999] hover:text-[#b31b1b] transition-colors">
-                                    Privacy Policy
+                                <Link href={lp('/privacy')} className="text-[#999] hover:text-[#b31b1b] transition-colors">
+                                    {t('footer.privacyPolicy', 'Privacy Policy')}
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/terms" className="text-[#999] hover:text-[#b31b1b] transition-colors">
-                                    Terms of Service
+                                <Link href={lp('/terms')} className="text-[#999] hover:text-[#b31b1b] transition-colors">
+                                    {t('footer.termsOfService', 'Terms of Service')}
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/contact" className="text-[#999] hover:text-[#b31b1b] transition-colors">
-                                    Contact
+                                <Link href={lp('/contact')} className="text-[#999] hover:text-[#b31b1b] transition-colors">
+                                    {t('footer.contact', 'Contact')}
                                 </Link>
                             </li>
                         </ul>

@@ -272,7 +272,7 @@ export default function PremiumTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [days, setDays] = useState(30);
-  const [tab, setTab] = useState<'dashboard' | 'users' | 'stars'>('dashboard');
+  const [tab, setTab] = useState<'dashboard' | 'users' | 'stars' | 'pricing'>('dashboard');
 
   const [stars, setStars] = useState<StarsTransactionsData | null>(null);
   const [starsLoading, setStarsLoading] = useState(false);
@@ -289,6 +289,48 @@ export default function PremiumTab() {
   const [starsMetrics, setStarsMetrics] = useState<StarsMetricsData | null>(null);
   const [starsMetricsLoading, setStarsMetricsLoading] = useState(false);
   const [starsMetricsError, setStarsMetricsError] = useState('');
+
+  const [pricingConfig, setPricingConfig] = useState<any>(null);
+  const [pricingLoading, setPricingLoading] = useState(false);
+  const [pricingSaving, setPricingSaving] = useState(false);
+  const [pricingMsg, setPricingMsg] = useState('');
+
+  const fetchPricing = async () => {
+    setPricingLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get('/api/admin/premium-config', { headers: { Authorization: `Bearer ${token}` } });
+      setPricingConfig(res.data);
+    } catch { /* use defaults */ }
+    finally { setPricingLoading(false); }
+  };
+
+  const savePricing = async () => {
+    if (!pricingConfig) return;
+    setPricingSaving(true); setPricingMsg('');
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put('/api/admin/premium-config', pricingConfig, { headers: { Authorization: `Bearer ${token}` } });
+      setPricingMsg('Saved successfully');
+      setTimeout(() => setPricingMsg(''), 3000);
+    } catch (err: any) {
+      setPricingMsg(err?.response?.data?.message || 'Failed to save');
+    } finally { setPricingSaving(false); }
+  };
+
+  const updatePricingField = (path: string, value: any) => {
+    setPricingConfig((prev: any) => {
+      if (!prev) return prev;
+      const parts = path.split('.');
+      const next = { ...prev };
+      if (parts.length === 1) {
+        next[parts[0]] = value;
+      } else {
+        next[parts[0]] = { ...next[parts[0]], [parts[1]]: value };
+      }
+      return next;
+    });
+  };
 
   const fetchData = async (period: number) => {
     try {
@@ -521,17 +563,17 @@ export default function PremiumTab() {
 
       {/* Sub-tabs */}
       <div className="flex gap-1 bg-white/5 rounded-xl p-1">
-        {(['dashboard', 'users', 'stars'] as const).map(t => (
+        {(['dashboard', 'users', 'stars', 'pricing'] as const).map(t => (
           <button
             key={t}
-            onClick={() => setTab(t)}
+            onClick={() => { setTab(t); if (t === 'pricing' && !pricingConfig) fetchPricing(); }}
             className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
               tab === t
                 ? 'bg-amber-500/20 text-amber-300'
                 : 'text-white/30 hover:text-white/60'
             }`}
           >
-            {t === 'dashboard' ? 'Dashboard' : t === 'users' ? 'Premium Users' : 'Stars / Audit'}
+            {t === 'dashboard' ? 'Dashboard' : t === 'users' ? 'Premium Users' : t === 'stars' ? 'Stars / Audit' : 'Pricing & Offer'}
           </button>
         ))}
       </div>
@@ -1140,6 +1182,126 @@ export default function PremiumTab() {
                       )}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── PRICING & OFFER TAB ── */}
+      {tab === 'pricing' && (
+        <div className="space-y-6">
+          {pricingLoading ? (
+            <div className="flex items-center justify-center h-40">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-amber-500" />
+            </div>
+          ) : !pricingConfig ? (
+            <div className="p-6 text-center text-white/40">
+              <button onClick={fetchPricing} className="px-4 py-2 rounded-lg bg-white/10 text-white/70 hover:text-white transition-all">
+                Load Pricing Config
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-bold text-white">Pricing & Offer Editor</h3>
+                  <p className="text-[#666] text-xs mt-1">Changes apply immediately to the premium page and payment flows.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  {pricingMsg && (
+                    <span className={`text-xs font-bold ${pricingMsg.includes('success') ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {pricingMsg}
+                    </span>
+                  )}
+                  <button
+                    onClick={savePricing}
+                    disabled={pricingSaving}
+                    className="px-5 py-2.5 rounded-lg font-bold text-sm bg-emerald-500 text-white hover:bg-emerald-400 disabled:opacity-50 transition-all"
+                  >
+                    {pricingSaving ? 'Saving…' : 'Save Changes'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Offer Banner */}
+              <div className="glass p-6 rounded-2xl border border-white/5">
+                <h4 className="text-sm font-bold text-white/60 uppercase tracking-wider mb-4">Offer Banner</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] text-white/40 uppercase font-bold tracking-wider block mb-1.5">Badge Text</label>
+                    <input
+                      type="text"
+                      value={pricingConfig.offerBadge || ''}
+                      onChange={e => updatePricingField('offerBadge', e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:border-amber-500/50 focus:outline-none transition-all"
+                      placeholder="e.g. 80% OFF"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-white/40 uppercase font-bold tracking-wider block mb-1.5">Subtext</label>
+                    <input
+                      type="text"
+                      value={pricingConfig.offerText || ''}
+                      onChange={e => updatePricingField('offerText', e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:border-amber-500/50 focus:outline-none transition-all"
+                      placeholder="e.g. Launch price ends soon"
+                    />
+                  </div>
+                </div>
+                <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/5">
+                  <p className="text-[10px] text-white/30 uppercase font-bold tracking-wider mb-2">Preview</p>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-1 rounded-md text-[11px] font-black uppercase tracking-wide bg-red-600 text-white">{pricingConfig.offerBadge || '—'}</span>
+                    <span className="text-[11px] font-bold text-white/60">{pricingConfig.offerText || '—'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Plan editor — reusable block */}
+              {(['monthly', 'quarterly', 'yearly'] as const).map(planKey => {
+                const titles: Record<string, string> = { monthly: '1 Month Plan', quarterly: '3 Months Plan', yearly: '1 Year Plan' };
+                return (
+                <div key={planKey} className="glass p-6 rounded-2xl border border-white/5">
+                  <h4 className="text-sm font-bold text-white/60 uppercase tracking-wider mb-4">{titles[planKey]}</h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-[10px] text-white/40 uppercase font-bold tracking-wider block mb-1.5">Price (USD)</label>
+                      <input type="number" step="0.01" value={pricingConfig[planKey]?.priceUsd ?? ''} onChange={e => updatePricingField(`${planKey}.priceUsd`, parseFloat(e.target.value) || 0)} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:border-amber-500/50 focus:outline-none transition-all" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-white/40 uppercase font-bold tracking-wider block mb-1.5">Duration (days)</label>
+                      <input type="number" value={pricingConfig[planKey]?.days ?? ''} onChange={e => updatePricingField(`${planKey}.days`, parseInt(e.target.value) || 0)} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:border-amber-500/50 focus:outline-none transition-all" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-white/40 uppercase font-bold tracking-wider block mb-1.5">Label</label>
+                      <input type="text" value={pricingConfig[planKey]?.label ?? ''} onChange={e => updatePricingField(`${planKey}.label`, e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:border-amber-500/50 focus:outline-none transition-all" />
+                    </div>
+                    <div className="col-span-2 sm:col-span-3">
+                      <label className="text-[10px] text-white/40 uppercase font-bold tracking-wider block mb-1.5">Description</label>
+                      <input type="text" value={pricingConfig[planKey]?.description ?? ''} onChange={e => updatePricingField(`${planKey}.description`, e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:border-amber-500/50 focus:outline-none transition-all" />
+                    </div>
+                  </div>
+                </div>
+                );
+              })}
+
+              {/* Quick Reference */}
+              <div className="glass p-5 rounded-2xl border border-white/5">
+                <h4 className="text-sm font-bold text-white/60 uppercase tracking-wider mb-3">Quick Reference</h4>
+                <p className="text-[10px] text-white/30 mb-3">Stars amounts are computed live from the USD price using Telegram&apos;s current Stars rate.</p>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  {(['monthly', 'quarterly', 'yearly'] as const).map(k => {
+                    const labels: Record<string, string> = { monthly: '1 Month', quarterly: '3 Months', yearly: '1 Year' };
+                    return (
+                      <div key={k}>
+                        <p className="text-[10px] text-white/30 uppercase font-bold mb-1">{labels[k]}</p>
+                        <p className="text-lg font-bold text-white">${pricingConfig[k]?.priceUsd}</p>
+                        <p className="text-[10px] text-white/20">{pricingConfig[k]?.days} days</p>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </>

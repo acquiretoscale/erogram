@@ -38,10 +38,8 @@ export default function AgeGate() {
   useEffect(() => {
     try {
       if (localStorage.getItem('age_verified')) return;
-      // TODO: restore referrer check before deploying to production
-      // const ref = document.referrer;
-      // if (ref && isSearchReferrer(ref)) setVisible(true);
-      setVisible(true);
+      const ref = document.referrer;
+      if (ref && isSearchReferrer(ref)) setVisible(true);
     } catch {
       // localStorage blocked — skip gate
     }
@@ -64,7 +62,7 @@ export default function AgeGate() {
       aria-modal="true"
       aria-label="Age verification"
       className="fixed inset-0 z-[99999] flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }}
+      style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
     >
       <div className="w-full max-w-sm bg-white rounded-2xl overflow-hidden shadow-2xl border border-black/10">
         <div className="px-5 pt-5 pb-1">

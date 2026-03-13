@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import AiBulkActions from '../components/AiBulkActions';
 
 interface VaultGroup {
   _id: string;
@@ -8,13 +9,18 @@ interface VaultGroup {
   slug: string;
   image: string;
   category: string;
+  categories?: string[];
   country: string;
   description: string;
+  description_de?: string;
+  description_es?: string;
   memberCount: number;
   showOnVaultTeaser: boolean;
   vaultTeaserOrder: number;
   vaultCategories: string[];
   telegramLink?: string;
+  createdAt?: string;
+  status?: string;
 }
 
 interface CategoryConfig {
@@ -23,7 +29,18 @@ interface CategoryConfig {
   order: number;
 }
 
-export default function AdminVaultPage() {
+const ALL_CATEGORIES = [
+  'Adult', 'AI NSFW', 'Amateur', 'Anal', 'Anime', 'Argentina',
+  'Asian', 'BDSM', 'Big Ass', 'Big Tits', 'Black', 'Blonde', 'Blowjob',
+  'Brazil', 'Brunette', 'China', 'Colombia', 'Cosplay', 'Creampie',
+  'Cuckold', 'Ebony', 'Fantasy', 'Feet', 'Fetish', 'France', 'Free-use',
+  'Germany', 'Hardcore', 'Italy',
+  'Japan', 'Latina', 'Lesbian', 'Masturbation', 'Mexico', 'MILF',
+  'NSFW-Telegram', 'Onlyfans', 'Onlyfans Leaks', 'Petite', 'Philippines', 'Privacy', 'Public', 'Red Hair', 'Russian',
+  'Spain', 'Telegram-Porn', 'Threesome', 'UK', 'Ukraine', 'USA', 'Vietnam',
+];
+
+export default function AdminVaultPage({ isActive }: { isActive?: boolean }) {
   const [groups, setGroups] = useState<VaultGroup[]>([]);
   const [catConfig, setCatConfig] = useState<CategoryConfig[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,6 +49,13 @@ export default function AdminVaultPage() {
   const [editGroup, setEditGroup] = useState<VaultGroup | null>(null);
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<'groups' | 'categories'>('groups');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [perPage, setPerPage] = useState(50);
+  const [page, setPage] = useState(0);
+  const [showFeatured, setShowFeatured] = useState(false);
+  const [inlineCatEdit, setInlineCatEdit] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'default' | 'newest' | 'oldest' | 'members' | 'name'>('default');
+  const lastCheckedRef = useRef<number | null>(null);
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
 
@@ -43,23 +67,53 @@ export default function AdminVaultPage() {
     try {
       const params = new URLSearchParams();
       if (search) params.set('search', search);
-      if (filterCat !== 'All') params.set('category', filterCat);
       const res = await fetch(`/api/admin/vault?${params}`, { headers });
       const data = await res.json();
       setGroups(data.groups || []);
       if (data.vaultTeaserCategories?.length) setCatConfig(data.vaultTeaserCategories);
       else {
         const cats = new Set<string>();
-        (data.groups || []).forEach((g: VaultGroup) => { if (g.category) cats.add(g.category); });
+        (data.groups || []).forEach((g: VaultGroup) => {
+          if (g.category) cats.add(g.category);
+          g.categories?.forEach(c => { if (c) cats.add(c); });
+        });
         setCatConfig(Array.from(cats).map((name, i) => ({ name, visible: true, order: i })));
       }
     } catch { /* silent */ }
     setLoading(false);
-  }, [search, filterCat]);
+  }, [search]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const allCategories = [...new Set(groups.map(g => g.category).filter(Boolean))];
+  useEffect(() => {
+    if (isActive) fetchData();
+  }, [isActive]);
+
+  const allCategories = useMemo(() => {
+    const catCounts = new Map<string, number>();
+    groups.forEach(g => {
+      const cats = g.categories?.length ? g.categories : (g.category ? [g.category] : []);
+      cats.forEach(c => { if (c) catCounts.set(c, (catCounts.get(c) || 0) + 1); });
+    });
+    return [...catCounts.entries()].sort((a, b) => b[1] - a[1]);
+  }, [groups]);
+
+  const filteredGroups = useMemo(() => {
+    const hasImg = (g: VaultGroup) => g.image && g.image !== '/assets/image.jpg' && g.image !== '/assets/placeholder-no-image.png';
+    const list = filterCat === 'All'
+      ? groups
+      : groups.filter(g => {
+          const cats = g.categories?.length ? g.categories : (g.category ? [g.category] : []);
+          return cats.some(c => c?.toLowerCase() === filterCat.toLowerCase());
+        });
+    return [...list].sort((a, b) => {
+      if (sortBy === 'newest') return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      if (sortBy === 'oldest') return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+      if (sortBy === 'members') return (b.memberCount || 0) - (a.memberCount || 0);
+      if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
+      return (hasImg(b) ? 1 : 0) - (hasImg(a) ? 1 : 0);
+    });
+  }, [groups, filterCat, sortBy]);
 
   const toggleTeaser = async (g: VaultGroup) => {
     const next = !g.showOnVaultTeaser;
@@ -71,6 +125,7 @@ export default function AdminVaultPage() {
   const [newCat, setNewCat] = useState('');
   const [fetchingPhoto, setFetchingPhoto] = useState<string | null>(null);
   const [bulkFetching, setBulkFetching] = useState(false);
+  const [fetchingUsers, setFetchingUsers] = useState(false);
 
   const fetchPhotoFromTelegram = async (groupId: string, force = false) => {
     setFetchingPhoto(groupId);
@@ -104,10 +159,60 @@ export default function AdminVaultPage() {
     setBulkFetching(false);
   };
 
+  const fetchAllMissingUsers = async () => {
+    const target = selectedIds.size > 0
+      ? groups.filter(g => selectedIds.has(g._id) && (g.memberCount || 0) === 0)
+      : groups.filter(g => (g.memberCount || 0) === 0);
+    if (target.length === 0) { alert('All groups already have member counts.'); return; }
+    setFetchingUsers(true);
+    let totalSuccess = 0;
+    for (let i = 0; i < target.length; i += 10) {
+      const batch = target.slice(i, i + 10).map(g => g._id);
+      try {
+        const res = await fetch('/api/admin/csv-import/fetch-users', { method: 'POST', headers, body: JSON.stringify({ groupIds: batch }) });
+        const data = await res.json();
+        (data.results || []).forEach((r: any) => {
+          if (r.status === 'success' && r.memberCount) {
+            totalSuccess++;
+            setGroups(prev => prev.map(g => g._id === r.id ? { ...g, memberCount: r.memberCount } : g));
+          }
+        });
+      } catch { /* silent */ }
+      if (i + 10 < target.length) await new Promise(r => setTimeout(r, 1500));
+    }
+    setFetchingUsers(false);
+    alert(`Done! Fetched member counts for ${totalSuccess} of ${target.length} groups.`);
+  };
+
   const deleteFromVault = async (g: VaultGroup) => {
     if (!confirm(`Remove "${g.name}" from the Secret Vault? It will become a regular public group.`)) return;
     setGroups(prev => prev.filter(x => x._id !== g._id));
     await fetch('/api/admin/vault', { method: 'DELETE', headers, body: JSON.stringify({ groupId: g._id }) });
+  };
+
+  const approveGroup = async (g: VaultGroup) => {
+    try {
+      await fetch(`/api/admin/groups/${g._id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ status: 'approved', premiumOnly: true }),
+      });
+      setGroups(prev => prev.map(x => x._id === g._id ? { ...x, status: 'approved' } : x));
+    } catch { /* silent */ }
+  };
+
+  const bulkApproveAll = async () => {
+    const pending = groups.filter(g => g.status !== 'approved');
+    if (pending.length === 0) return;
+    if (!confirm(`Approve ${pending.length} pending vault groups?`)) return;
+    for (const g of pending) {
+      await fetch(`/api/admin/groups/${g._id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ status: 'approved', premiumOnly: true }),
+      });
+    }
+    setGroups(prev => prev.map(g => ({ ...g, status: 'approved' })));
   };
 
   const handleImageUpload = async (file: File) => {
@@ -144,6 +249,7 @@ export default function AdminVaultPage() {
         groupId: editGroup._id,
         name: editGroup.name,
         category: editGroup.category,
+        categories: editGroup.categories,
         country: editGroup.country,
         image: editGroup.image,
         description: editGroup.description,
@@ -155,6 +261,17 @@ export default function AdminVaultPage() {
     setGroups(prev => prev.map(x => x._id === editGroup._id ? editGroup : x));
     setEditGroup(null);
     setSaving(false);
+  };
+
+  const saveInlineCats = async (groupId: string, newCats: string[]) => {
+    const capped = newCats.slice(0, 3);
+    try {
+      await fetch(`/api/admin/groups/${groupId}`, {
+        method: 'PUT', headers,
+        body: JSON.stringify({ categories: capped, category: capped[0] || '' }),
+      });
+      setGroups(prev => prev.map(g => g._id === groupId ? { ...g, categories: capped, category: capped[0] || g.category } : g));
+    } catch { /* silent */ }
   };
 
   // Teaser groups sorted by order
@@ -234,50 +351,82 @@ export default function AdminVaultPage() {
       {tab === 'groups' && (
         <>
           {/* Filters */}
-          <div className="flex gap-2 mb-4 flex-wrap">
+          <div className="flex gap-2 mb-3 flex-wrap">
             <input
               type="text" placeholder="Search groups..." value={search}
               onChange={e => setSearch(e.target.value)}
               className="flex-1 min-w-[200px] px-3 py-2 rounded-lg bg-[#1a1a1a] border border-white/10 text-white text-sm outline-none"
             />
             <select
-              value={filterCat} onChange={e => setFilterCat(e.target.value)}
+              value={filterCat} onChange={e => { setFilterCat(e.target.value); setPage(0); }}
               className="px-3 py-2 rounded-lg bg-[#1a1a1a] border border-white/10 text-white text-sm outline-none"
             >
-              <option value="All">All Categories</option>
-              {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
+              <option value="All">All Categories ({groups.length})</option>
+              {allCategories.map(([cat, count]) => <option key={cat} value={cat}>{cat} ({count})</option>)}
+            </select>
+            <select
+              value={sortBy} onChange={e => { setSortBy(e.target.value as any); setPage(0); }}
+              className="px-3 py-2 rounded-lg bg-[#1a1a1a] border border-white/10 text-white text-sm outline-none"
+            >
+              <option value="default">Sort: Images first</option>
+              <option value="newest">Sort: Newest first</option>
+              <option value="oldest">Sort: Oldest first</option>
+              <option value="members">Sort: Most members</option>
+              <option value="name">Sort: A → Z</option>
             </select>
           </div>
+          {/* Quick category filters */}
+          <div className="flex gap-1 mb-4 flex-wrap">
+            <button
+              onClick={() => { setFilterCat('All'); setPage(0); }}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${filterCat === 'All' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-white/5 border border-white/10 text-[#666] hover:text-white'}`}
+            >All ({groups.length})</button>
+            {allCategories.slice(0, 30).map(([cat, count]) => (
+              <button
+                key={cat}
+                onClick={() => { setFilterCat(filterCat === cat ? 'All' : cat); setPage(0); }}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${filterCat === cat ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-white/5 border border-white/10 text-[#666] hover:text-white'}`}
+              >{cat} <span className="opacity-50">({count})</span></button>
+            ))}
+          </div>
 
-          {/* Teaser preview */}
+          {/* Featured / Teaser — collapsible */}
           {teaserCount > 0 && (
-            <div className="mb-6 p-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.03]">
-              <h3 className="text-sm font-bold text-amber-400 mb-3">Featured Groups — drag to reorder ({teaserCount} total{teaserCount > 12 ? ', 12 shown randomly' : ''})</h3>
-              <div className="space-y-1">
-                {teaserGroups.map((g, idx) => (
-                  <div
-                    key={g._id}
-                    draggable
-                    onDragStart={() => handleDragStart(idx)}
-                    onDragEnter={() => handleDragEnter(idx)}
-                    onDragEnd={handleDragEnd}
-                    onDragOver={e => e.preventDefault()}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#111] border border-white/5 cursor-grab active:cursor-grabbing hover:border-amber-500/30 transition-all"
-                  >
-                    <span className="text-white/20 text-xs font-mono w-5 text-right">{idx + 1}</span>
-                    <span className="text-white/30 cursor-grab">&#9776;</span>
-                    <img src={g.image || '/assets/placeholder-no-image.png'} alt="" className="w-7 h-7 rounded object-cover" />
-                    <span className="text-white text-sm font-semibold truncate flex-1">{g.name}</span>
-                    <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400">{g.category}</span>
-                    <button onClick={() => toggleTeaser(g)} className="text-red-400 text-xs hover:text-red-300">Remove</button>
-                  </div>
-                ))}
-              </div>
+            <div className="mb-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.03] overflow-hidden">
+              <button
+                onClick={() => setShowFeatured(!showFeatured)}
+                className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-amber-500/[0.05] transition-colors"
+              >
+                <span className="text-sm font-bold text-amber-400">Featured ({teaserCount}){teaserCount > 12 ? ' · 12 shown randomly' : ''}</span>
+                <span className="text-amber-400/60 text-xs">{showFeatured ? '▲ Collapse' : '▼ Expand'}</span>
+              </button>
+              {showFeatured && (
+                <div className="px-4 pb-3 space-y-1">
+                  {teaserGroups.map((g, idx) => (
+                    <div
+                      key={g._id}
+                      draggable
+                      onDragStart={() => handleDragStart(idx)}
+                      onDragEnter={() => handleDragEnter(idx)}
+                      onDragEnd={handleDragEnd}
+                      onDragOver={e => e.preventDefault()}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#111] border border-white/5 cursor-grab active:cursor-grabbing hover:border-amber-500/30 transition-all"
+                    >
+                      <span className="text-white/20 text-xs font-mono w-5 text-right">{idx + 1}</span>
+                      <span className="text-white/30 cursor-grab">&#9776;</span>
+                      <img src={g.image || '/assets/placeholder-no-image.png'} alt="" className="w-6 h-6 rounded object-cover" />
+                      <span className="text-white text-sm font-semibold truncate flex-1">{g.name}</span>
+                      <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400">{g.category}</span>
+                      <button onClick={() => toggleTeaser(g)} className="text-red-400 text-xs hover:text-red-300">Remove</button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
           {/* Bulk actions */}
-          <div className="flex gap-2 mb-3">
+          <div className="flex gap-2 mb-3 flex-wrap items-center">
             <button
               onClick={fetchAllMissingPhotos}
               disabled={bulkFetching}
@@ -285,17 +434,184 @@ export default function AdminVaultPage() {
             >
               {bulkFetching ? 'Fetching photos...' : 'Fetch All Missing Photos from Telegram'}
             </button>
+            <button
+              onClick={fetchAllMissingUsers}
+              disabled={fetchingUsers}
+              className="px-4 py-2 rounded-lg text-xs font-bold bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 transition-all disabled:opacity-50"
+            >
+              {fetchingUsers ? 'Fetching users...' : `Fetch Users (${groups.filter(g => (g.memberCount || 0) === 0).length} missing)`}
+            </button>
+            {filteredGroups.some(g => g.status === 'pending') && (
+              <button
+                onClick={bulkApproveAll}
+                className="px-4 py-2 rounded-lg text-xs font-bold bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-all"
+              >
+                Approve All Pending ({filteredGroups.filter(g => g.status === 'pending').length})
+              </button>
+            )}
+            {filteredGroups.length > 0 && (
+              <>
+                <button
+                  onClick={() => {
+                    const allIds = filteredGroups.map(g => g._id);
+                    setSelectedIds(prev => prev.size === allIds.length ? new Set() : new Set(allIds));
+                  }}
+                  className="px-3 py-2 rounded-lg text-xs font-bold bg-white/5 text-[#999] hover:text-white transition-colors"
+                >
+                  {selectedIds.size === filteredGroups.length ? 'Deselect All' : `Select All (${filteredGroups.length})`}
+                </button>
+                {selectedIds.size > 0 && (
+                  <button
+                    onClick={() => setSelectedIds(new Set())}
+                    className="px-3 py-2 rounded-lg text-xs font-bold bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+                  >
+                    Clear Selection ({selectedIds.size})
+                  </button>
+                )}
+              </>
+            )}
           </div>
+
+          {/* Smart filter / select */}
+          <div className="flex gap-1.5 mb-3 flex-wrap items-center">
+            <span className="text-[10px] font-bold text-[#666] uppercase mr-1">Quick select:</span>
+            <button
+              onClick={() => { const ids = filteredGroups.filter(g => (g.categories?.length || 0) < 3).map(g => g._id); setSelectedIds(new Set(ids)); }}
+              className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 transition-colors"
+            >&lt;3 Cats ({filteredGroups.filter(g => (g.categories?.length || 0) < 3).length})</button>
+            <button
+              onClick={() => { const ids = filteredGroups.filter(g => (g.categories?.length || 0) < 2).map(g => g._id); setSelectedIds(new Set(ids)); }}
+              className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
+            >&lt;2 Cats ({filteredGroups.filter(g => (g.categories?.length || 0) < 2).length})</button>
+            <button
+              onClick={() => { const ids = filteredGroups.filter(g => !g.description || g.description.length < 20).map(g => g._id); setSelectedIds(new Set(ids)); }}
+              className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-orange-500/10 border border-orange-500/20 text-orange-400 hover:bg-orange-500/20 transition-colors"
+            >No Desc ({filteredGroups.filter(g => !g.description || g.description.length < 20).length})</button>
+            <button
+              onClick={() => { const ids = filteredGroups.filter(g => !g.description_de).map(g => g._id); setSelectedIds(new Set(ids)); }}
+              className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-green-500/10 border border-green-500/20 text-green-400 hover:bg-green-500/20 transition-colors"
+            >No DE ({filteredGroups.filter(g => !g.description_de).length})</button>
+            <button
+              onClick={() => { const ids = filteredGroups.filter(g => !g.description_es).map(g => g._id); setSelectedIds(new Set(ids)); }}
+              className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/20 transition-colors"
+            >No ES ({filteredGroups.filter(g => !g.description_es).length})</button>
+            <button
+              onClick={() => { const ids = filteredGroups.filter(g => (g.memberCount || 0) >= 1000).map(g => g._id); setSelectedIds(new Set(ids)); }}
+              className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 transition-colors"
+            >1K+ ({filteredGroups.filter(g => (g.memberCount || 0) >= 1000).length})</button>
+          </div>
+
+          {/* AI Bulk Actions — always visible */}
+          <div className="mb-3 p-3 rounded-xl bg-white/5 border border-white/10">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs font-bold text-amber-400">AI Actions</span>
+              {selectedIds.size > 0 ? (
+                <>
+                  <span className="text-sm font-bold text-white">{selectedIds.size} selected</span>
+                  <button onClick={() => setSelectedIds(new Set())} className="text-xs text-[#666] hover:text-white transition-colors">Clear</button>
+                </>
+              ) : (
+                <span className="text-xs text-[#666]">Select groups below to use AI actions</span>
+              )}
+            </div>
+            <AiBulkActions
+              selectedIds={selectedIds}
+              groups={groups}
+              compact
+              onGroupsUpdated={(updates) => {
+                setGroups(prev => prev.map(g => {
+                  const u = updates.find(u => u._id === g._id);
+                  return u ? { ...g, ...u.changes } : g;
+                }));
+              }}
+            />
+          </div>
+
+          {/* Pagination controls */}
+          {(() => {
+            const pageGroups = filteredGroups.slice(page * perPage, (page + 1) * perPage);
+            const allPageSelected = pageGroups.length > 0 && pageGroups.every(g => selectedIds.has(g._id));
+            const totalPages = Math.max(1, Math.ceil(filteredGroups.length / perPage));
+            return (
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <input
+                  type="checkbox"
+                  checked={allPageSelected}
+                  onChange={() => {
+                    setSelectedIds(prev => {
+                      const next = new Set(prev);
+                      if (allPageSelected) pageGroups.forEach(g => next.delete(g._id));
+                      else pageGroups.forEach(g => next.add(g._id));
+                      return next;
+                    });
+                  }}
+                  className="accent-amber-500"
+                  title="Toggle page selection"
+                />
+                <span className="text-xs text-[#666]">Show:</span>
+                {[50, 100].map(n => (
+                  <button key={n} onClick={() => { setPerPage(n); setPage(0); }}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${perPage === n ? 'bg-amber-500/20 text-amber-400' : 'bg-white/5 text-[#666] hover:text-white'}`}
+                  >{n}</button>
+                ))}
+                <button onClick={() => { setPerPage(999999); setPage(0); }}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${perPage >= 999999 ? 'bg-amber-500/20 text-amber-400' : 'bg-white/5 text-[#666] hover:text-white'}`}
+                >All</button>
+                {selectedIds.size > 0 && (
+                  <span className="text-xs font-bold text-amber-400 ml-1">{selectedIds.size} selected</span>
+                )}
+                <span className="text-xs text-[#666] ml-auto">
+                  {filteredGroups.length > 0 ? Math.min(page * perPage + 1, filteredGroups.length) : 0}–{Math.min((page + 1) * perPage, filteredGroups.length)} of {filteredGroups.length}{filterCat !== 'All' ? ` in "${filterCat}"` : ''}
+                </span>
+                {perPage < filteredGroups.length && (
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => setPage(0)} disabled={page === 0} className="px-2 py-1 rounded text-[10px] font-bold bg-white/5 text-[#666] disabled:opacity-30 hover:text-white">«</button>
+                    <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} className="px-2 py-1 rounded text-[10px] font-bold bg-white/5 text-[#666] disabled:opacity-30 hover:text-white">‹</button>
+                    <span className="text-xs text-white font-bold px-2">{page + 1}/{totalPages}</span>
+                    <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={(page + 1) * perPage >= filteredGroups.length} className="px-2 py-1 rounded text-[10px] font-bold bg-white/5 text-[#666] disabled:opacity-30 hover:text-white">›</button>
+                    <button onClick={() => setPage(totalPages - 1)} disabled={(page + 1) * perPage >= filteredGroups.length} className="px-2 py-1 rounded text-[10px] font-bold bg-white/5 text-[#666] disabled:opacity-30 hover:text-white">»</button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Groups table */}
           {loading ? (
             <div className="text-center py-12 text-white/40">Loading vault groups...</div>
+          ) : filteredGroups.length === 0 ? (
+            <div className="text-center py-12 text-white/30">No groups in "{filterCat}"</div>
           ) : (
             <div className="space-y-1">
-              {groups.map(g => {
+              {filteredGroups.slice(page * perPage, (page + 1) * perPage).map((g, visIdx) => {
+                const globalIdx = page * perPage + visIdx;
                 const isMissingImg = !g.image || g.image === '/assets/image.jpg' || g.image === '/assets/placeholder-no-image.png';
+                const descSnippet = g.description ? (g.description.length > 80 ? g.description.slice(0, 80) + '…' : g.description) : '';
                 return (
-                  <div key={g._id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#111] border border-white/5 hover:border-white/10 transition-all">
+                  <div key={g._id} className="flex items-start gap-3 px-3 py-2.5 rounded-lg bg-[#111] border border-white/5 hover:border-white/10 transition-all">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(g._id)}
+                      onChange={(e) => {
+                        const shiftKey = (e.nativeEvent as MouseEvent).shiftKey;
+                        setSelectedIds(prev => {
+                          const next = new Set(prev);
+                          if (shiftKey && lastCheckedRef.current !== null) {
+                            const start = Math.min(lastCheckedRef.current, globalIdx);
+                            const end = Math.max(lastCheckedRef.current, globalIdx);
+                            for (let k = start; k <= end; k++) {
+                              if (filteredGroups[k]) next.add(filteredGroups[k]._id);
+                            }
+                          } else {
+                            if (next.has(g._id)) next.delete(g._id);
+                            else next.add(g._id);
+                          }
+                          return next;
+                        });
+                        lastCheckedRef.current = globalIdx;
+                      }}
+                      className="accent-amber-500 shrink-0 mt-1"
+                    />
                     <div className="relative shrink-0">
                       <img src={g.image || '/assets/placeholder-no-image.png'} alt="" className={`w-10 h-10 rounded-lg object-cover ${isMissingImg ? 'opacity-40' : ''}`} />
                       {isMissingImg && <div className="absolute inset-0 flex items-center justify-center"><span className="text-[8px] text-red-400 font-bold">No img</span></div>}
@@ -303,6 +619,7 @@ export default function AdminVaultPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-white text-sm font-semibold truncate">{g.name}</span>
+                        {g.status === 'pending' && <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400 shrink-0">Pending</span>}
                         <a href={`/${g.slug}`} target="_blank" rel="noopener noreferrer" className="text-blue-400/60 hover:text-blue-400 transition-colors shrink-0" title="View on site">
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                         </a>
@@ -312,42 +629,97 @@ export default function AdminVaultPage() {
                           </a>
                         )}
                       </div>
-                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400">{g.category}</span>
-                        {(g.vaultCategories || []).filter(c => c !== g.category).map(c => (
-                          <span key={c} className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-white/5 text-white/40">{c}</span>
+                      <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                        {(g.categories?.length ? g.categories : [g.category]).filter(Boolean).map((cat, i) => (
+                          <span
+                            key={i}
+                            className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 cursor-pointer hover:bg-red-500/20 hover:text-red-400 transition-colors group/cat"
+                            style={{ opacity: i === 0 ? 1 : 0.6 }}
+                            title={`Click to remove "${cat}"`}
+                            onClick={() => {
+                              const current = (g.categories?.length ? g.categories : [g.category]).filter(Boolean);
+                              const updated = current.filter(c => c !== cat);
+                              saveInlineCats(g._id, updated);
+                            }}
+                          >{cat} <span className="opacity-0 group-hover/cat:opacity-100 ml-0.5">✕</span></span>
                         ))}
-                        {g.country && <span className="text-[10px] text-white/30">{g.country}</span>}
-                        <span className="text-[10px] text-white/20">{g.memberCount?.toLocaleString()} members</span>
+                        {((g.categories?.length || 0) < 3) && (
+                          inlineCatEdit === g._id ? (
+                            <select
+                              autoFocus
+                              className="text-[9px] font-bold rounded bg-[#111] border border-amber-500/30 text-amber-400 outline-none px-1 py-0.5"
+                              value=""
+                              onChange={e => {
+                                if (!e.target.value) return;
+                                const current = (g.categories?.length ? g.categories : [g.category]).filter(Boolean);
+                                if (!current.includes(e.target.value)) {
+                                  saveInlineCats(g._id, [...current, e.target.value]);
+                                }
+                                setInlineCatEdit(null);
+                              }}
+                              onBlur={() => setInlineCatEdit(null)}
+                            >
+                              <option value="">+ Add...</option>
+                              {ALL_CATEGORIES.filter(c => !(g.categories?.length ? g.categories : [g.category]).includes(c)).map(c => (
+                                <option key={c} value={c}>{c}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <button
+                              onClick={() => setInlineCatEdit(g._id)}
+                              className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-white/5 text-white/30 hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
+                              title="Add category"
+                            >+</button>
+                          )
+                        )}
+                        {g.country && <span className="text-[10px] text-white/30 ml-1">{g.country}</span>}
+                        <span className={`text-[10px] font-medium ${(g.memberCount || 0) === 0 ? 'text-red-400/60' : (g.memberCount || 0) < 50 ? 'text-red-400' : (g.memberCount || 0) < 500 ? 'text-yellow-400' : 'text-white/30'}`}>{(g.memberCount || 0) > 0 ? `${g.memberCount.toLocaleString()} members` : '0 members'}</span>
+                        {g.createdAt && <span className="text-[9px] text-white/20">{new Date(g.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>}
+                        {g.description_de && <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-green-500/10 text-green-400">DE</span>}
+                        {g.description_es && <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-orange-500/10 text-orange-400">ES</span>}
                       </div>
+                      {descSnippet && (
+                        <p className="text-[11px] text-white/25 mt-1 leading-tight truncate">{descSnippet}</p>
+                      )}
                     </div>
-                    <button
-                      onClick={() => fetchPhotoFromTelegram(g._id, true)}
-                      disabled={fetchingPhoto === g._id}
-                      className="px-2 py-1.5 rounded-lg text-[10px] font-bold bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all disabled:opacity-50 shrink-0"
-                      title="Fetch photo from Telegram"
-                    >
-                      {fetchingPhoto === g._id ? '...' : '📷'}
-                    </button>
-                    <button
-                      onClick={() => toggleTeaser(g)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
-                        g.showOnVaultTeaser
-                          ? 'bg-amber-500 text-black hover:bg-amber-400'
-                          : 'bg-white/5 text-white/60 hover:bg-white/10'
-                      }`}
-                    >
-                      {g.showOnVaultTeaser ? 'On Teaser' : 'Add to Teaser'}
-                    </button>
-                    <button
-                      onClick={() => setEditGroup({ ...g, vaultCategories: g.vaultCategories || [] })}
-                      className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 text-white/60 hover:bg-white/10 transition-all shrink-0"
-                    >Edit</button>
-                    <button
-                      onClick={() => deleteFromVault(g)}
-                      className="px-2 py-1.5 rounded-lg text-[10px] font-bold bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all shrink-0"
-                      title="Remove from vault"
-                    >&#x1F5D1;</button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => fetchPhotoFromTelegram(g._id, true)}
+                        disabled={fetchingPhoto === g._id}
+                        className="px-2 py-1.5 rounded-lg text-[10px] font-bold bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all disabled:opacity-50"
+                        title="Fetch photo from Telegram"
+                      >
+                        {fetchingPhoto === g._id ? '...' : '📷'}
+                      </button>
+                      <button
+                        onClick={() => toggleTeaser(g)}
+                        className={`px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                          g.showOnVaultTeaser
+                            ? 'bg-amber-500 text-black hover:bg-amber-400'
+                            : 'bg-white/5 text-white/60 hover:bg-white/10'
+                        }`}
+                        title={g.showOnVaultTeaser ? 'On Teaser' : 'Add to Teaser'}
+                      >
+                        {g.showOnVaultTeaser ? '★' : '☆'}
+                      </button>
+                      {g.status === 'pending' && (
+                        <button
+                          onClick={() => approveGroup(g)}
+                          className="px-2 py-1.5 rounded-lg text-[10px] font-bold bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-all"
+                          title="Approve"
+                        >✓</button>
+                      )}
+                      <button
+                        onClick={() => setEditGroup({ ...g, vaultCategories: g.vaultCategories || [] })}
+                        className="px-2 py-1.5 rounded-lg text-[10px] font-bold bg-white/5 text-white/60 hover:bg-white/10 transition-all"
+                        title="Edit"
+                      >✎</button>
+                      <button
+                        onClick={() => deleteFromVault(g)}
+                        className="px-2 py-1.5 rounded-lg text-[10px] font-bold bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all"
+                        title="Remove from vault"
+                      >✕</button>
+                    </div>
                   </div>
                 );
               })}
@@ -375,7 +747,10 @@ export default function AdminVaultPage() {
                 <span className="text-white/30 cursor-grab text-lg">&#9776;</span>
                 <span className="text-xs font-mono text-white/20 w-5">{idx + 1}</span>
                 <span className="text-white font-bold text-sm flex-1">{cat.name}</span>
-                <span className="text-[10px] text-white/30">{groups.filter(g => g.category === cat.name).length} groups</span>
+                <span className="text-[10px] text-white/30">{groups.filter(g => {
+                  const cats = g.categories?.length ? g.categories : (g.category ? [g.category] : []);
+                  return cats.includes(cat.name);
+                }).length} groups</span>
                 <button
                   onClick={() => toggleCatVisible(cat.name)}
                   className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
@@ -391,7 +766,8 @@ export default function AdminVaultPage() {
           {/* Add missing categories */}
           {(() => {
             const configured = new Set(catConfig.map(c => c.name));
-            const missing = allCategories.filter(c => !configured.has(c));
+            const catNames = allCategories.map(([c]) => c);
+            const missing = catNames.filter(c => !configured.has(c));
             if (missing.length === 0) return null;
             return (
               <div className="mt-4 p-3 rounded-lg border border-dashed border-white/10">
@@ -452,6 +828,33 @@ export default function AdminVaultPage() {
                 </div>
               </div>
 
+              {/* Group Categories (AI-assigned, up to 3) */}
+              <div>
+                <label className="text-xs text-white/50 font-semibold mb-1 block">Categories (up to 3)</label>
+                <div className="flex gap-1.5 flex-wrap mb-2">
+                  {(editGroup.categories || []).map(cat => (
+                    <span key={cat} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold bg-purple-500/20 text-purple-400">
+                      {cat}
+                      <button onClick={() => setEditGroup({ ...editGroup, categories: (editGroup.categories || []).filter(c => c !== cat) })} className="text-purple-400/60 hover:text-red-400 ml-0.5">&times;</button>
+                    </span>
+                  ))}
+                  {(editGroup.categories || []).length === 0 && (
+                    <span className="text-xs text-white/20">No categories assigned</span>
+                  )}
+                </div>
+                {(editGroup.categories || []).length < 3 && (
+                  <div className="flex gap-1 flex-wrap">
+                    {allCategories.map(([c]) => c).filter(c => !(editGroup.categories || []).includes(c)).slice(0, 20).map(c => (
+                      <button
+                        key={c}
+                        onClick={() => setEditGroup({ ...editGroup, categories: [...(editGroup.categories || []), c].slice(0, 3) })}
+                        className="px-2 py-0.5 rounded text-[10px] font-bold bg-white/5 text-white/40 hover:bg-purple-500/20 hover:text-purple-400 transition-all"
+                      >+ {c}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Vault Categories (multi, up to 4) */}
               <div>
                 <label className="text-xs text-white/50 font-semibold mb-1 block">Vault Categories (up to 4 — appears in these sections on the teaser)</label>
@@ -480,7 +883,7 @@ export default function AdminVaultPage() {
                 )}
                 {/* Quick-add from existing categories */}
                 <div className="flex gap-1 flex-wrap mt-2">
-                  {allCategories.filter(c => !(editGroup.vaultCategories || []).includes(c) && (editGroup.vaultCategories || []).length < 4).map(c => (
+                  {allCategories.map(([c]) => c).filter(c => !(editGroup.vaultCategories || []).includes(c) && (editGroup.vaultCategories || []).length < 4).map(c => (
                     <button
                       key={c}
                       onClick={() => setEditGroup({ ...editGroup, vaultCategories: [...(editGroup.vaultCategories || []), c] })}

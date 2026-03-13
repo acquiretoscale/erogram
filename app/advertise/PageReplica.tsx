@@ -53,7 +53,7 @@ const TIER_STYLES = {
   bronze:   { border: 'border-orange-500/55', glow: 'shadow-[0_0_20px_rgba(234,88,12,0.28)]', badge: 'bg-gradient-to-r from-orange-500 to-amber-500 text-white', panel: 'bg-gradient-to-br from-orange-500/12 to-amber-500/10', ring: 'ring-orange-400/40', fill: 'bg-gradient-to-br from-orange-500/20 via-amber-500/10 to-yellow-500/5', fillBorder: 'border-orange-500/35' },
 };
 
-const CATEGORIES = ['All', 'Anal', 'Oral', 'MILF', 'BBC', 'Hentai', 'Asian', 'Latina', 'Cosplay'];
+const CATEGORIES = ['All', 'Anal', 'Oral', 'MILF', 'BBC', 'Anime', 'Asian', 'Latina', 'Cosplay'];
 
 const PAGE_DESCRIPTIONS: Record<PageView, { title: string; subtitle: string; body: React.ReactNode; accent: string; accentBorder: string; accentBg: string; icon: string }> = {
   listing: {

@@ -11,6 +11,7 @@ import BotCardSkeleton from './BotCardSkeleton';
 import AdvertCard from '../groups/AdvertCard';
 import type { FeedCampaign } from '../groups/types';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
+import { useTranslation, useLocalePath } from '@/lib/i18n';
 // Removed react-window import as virtualization is no longer used
 
 
@@ -69,6 +70,7 @@ interface BotsClientProps {
 export default function BotsClient({ initialBots, initialAdverts, feedCampaigns = [], initialIsMobile, initialIsTelegram, initialCountry, topBannerCampaigns = [] }: BotsClientProps) {
   const [username, setUsername] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedSubcategory, setSelectedSubcategory] = useState('All');
   const [selectedSort, setSelectedSort] = useState('random');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -79,6 +81,8 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const isFirstLoad = useRef(true);
+  const { t } = useTranslation();
+  const lp = useLocalePath();
 
   useEffect(() => {
     // Get username from localStorage on mount
@@ -144,6 +148,7 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
         selectedSort === 'random' &&
         !debouncedSearchQuery &&
         selectedCategory === 'All' &&
+        selectedSubcategory === 'All' &&
         bots.length > 0
       ) {
         isFirstLoad.current = false;
@@ -155,7 +160,8 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
       try {
         const searchParam = debouncedSearchQuery ? `&search=${encodeURIComponent(debouncedSearchQuery)}` : '';
         const categoryParam = selectedCategory !== 'All' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
-        const response = await fetch(`/api/bots?skip=0&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}`, { cache: 'no-store' });
+        const subcategoryParam = selectedSubcategory !== 'All' ? `&subcategory=${encodeURIComponent(selectedSubcategory)}` : '';
+        const response = await fetch(`/api/bots?skip=0&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${subcategoryParam}`, { cache: 'no-store' });
         const data = await response.json();
         const regular = data.bots.filter((b: Bot) => !b.pinned);
         if (regular && regular.length > 0) {
@@ -175,7 +181,7 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
     };
 
     fetchBots();
-  }, [selectedSort, debouncedSearchQuery]);
+  }, [selectedSort, debouncedSearchQuery, selectedCategory, selectedSubcategory]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -186,11 +192,12 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
       ) {
         setLoading(true);
         const searchParam = debouncedSearchQuery ? `&search=${encodeURIComponent(debouncedSearchQuery)}` : '';
-        fetch(`/api/bots?skip=${skip}&limit=12&sortBy=${selectedSort}${searchParam}`)
+        const categoryParam = selectedCategory !== 'All' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
+        const subcategoryParam = selectedSubcategory !== 'All' ? `&subcategory=${encodeURIComponent(selectedSubcategory)}` : '';
+        fetch(`/api/bots?skip=${skip}&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${subcategoryParam}`)
           .then(res => res.json())
           .then(data => {
             if (data.bots && data.bots.length > 0) {
-              // Filter out duplicates by checking _id to prevent duplicate keys
               setBots(prev => {
                 const existingIds = new Set(prev.map(b => b._id));
                 const newBots = data.bots.filter((b: Bot) => !existingIds.has(b._id) && !b.pinned);
@@ -209,7 +216,7 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [skip, loading, hasMore, selectedSort, debouncedSearchQuery]);
+  }, [skip, loading, hasMore, selectedSort, debouncedSearchQuery, selectedCategory, selectedSubcategory]);
 
   const filteredBots = useMemo(() => {
     return regularBots.filter((bot) => {
@@ -342,7 +349,7 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
               className="w-full px-4 py-3 bg-[#b31b1b] hover:bg-[#c42b2b] text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
             >
               <span className="text-xl">🔍</span>
-              {showFilters ? 'Hide Filters' : 'Show Filters'}
+              {showFilters ? t('bots.hideFilters') : t('bots.showFilters')}
             </button>
           </div>
 
@@ -351,15 +358,15 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
             <div className="glass rounded-2xl p-6 backdrop-blur-lg border border-white/10">
               {/* Header */}
               <div className="text-center mb-8">
-                <h2 className="text-2xl font-black text-[#f5f5f5] mb-2">🔍 Filters</h2>
-                <p className="text-[#999] text-sm">Find your perfect bot</p>
+                <h2 className="text-2xl font-black text-[#f5f5f5] mb-2">🔍 {t('bots.filters')}</h2>
+                <p className="text-[#999] text-sm">{t('bots.findPerfect')}</p>
               </div>
 
               {/* Category Filter */}
               <div className="mb-6">
                 <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
                   <span className="mr-2">📂</span>
-                  Category
+                  {t('common.category')}
                 </label>
                 <select
                   value={selectedCategory}
@@ -374,21 +381,40 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
                 </select>
               </div>
 
+              {/* Subcategory Filter */}
+              <div className="mb-6">
+                <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
+                  <span className="mr-2">🏷️</span>
+                  {t('common.subcategory')}
+                </label>
+                <select
+                  value={selectedSubcategory}
+                  onChange={(e) => setSelectedSubcategory(e.target.value)}
+                  className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none transition-all"
+                >
+                  {categories.map((cat) => (
+                    <option key={`sub-${cat}`} value={cat} className="bg-[#222]">
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Sort By */}
               <div className="mb-6">
                 <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
                   <span className="mr-2">📊</span>
-                  Sort By
+                  {t('bots.sortBy')}
                 </label>
                 <select
                   value={selectedSort}
                   onChange={(e) => setSelectedSort(e.target.value)}
                   className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none transition-all"
                 >
-                  <option value="newest" className="bg-[#222]">🆕 Newest First</option>
-                  <option value="random" className="bg-[#222]">🎲 Random Discovery</option>
-                  <option value="popular" className="bg-[#222]">🔥 Most Popular</option>
-                  <option value="oldest" className="bg-[#222]">📅 Oldest First</option>
+                  <option value="newest" className="bg-[#222]">🆕 {t('bots.newestFirst')}</option>
+                  <option value="random" className="bg-[#222]">🎲 {t('bots.randomDiscovery')}</option>
+                  <option value="popular" className="bg-[#222]">🔥 {t('bots.mostPopular')}</option>
+                  <option value="oldest" className="bg-[#222]">📅 {t('bots.oldestFirst')}</option>
                 </select>
               </div>
 
@@ -396,13 +422,13 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
               <div className="mb-6">
                 <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
                   <span className="mr-2">🔍</span>
-                  Search Bots
+                  {t('bots.searchBots')}
                 </label>
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by name..."
+                  placeholder={t('bots.searchByName')}
                   className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] placeholder:text-gray-500 focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none transition-all"
                 />
               </div>
@@ -428,7 +454,7 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
                     style={{ willChange: 'transform, opacity' }}
                   >
                     <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#f5f5f5] mb-3 sm:mb-4 drop-shadow-2xl">
-                      🏆 Top Bots
+                      🏆 {t('bots.topBots')}
                     </h2>
                     <div className="h-1 w-24 sm:w-32 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 mx-auto rounded-full animate-pulse"></div>
                   </motion.div>
@@ -439,7 +465,7 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
                     className="text-[#999] mt-3 sm:mt-4 text-base sm:text-lg px-4"
                     style={{ willChange: 'opacity' }}
                   >
-                    Most popular bots by usage
+                    {t('bots.topBotsDesc')}
                   </motion.p>
                 </div>
 
@@ -468,7 +494,7 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
                           </div>
                           {(bot.clickCount || 0) > 0 && (
                             <div className="absolute -top-1 sm:-top-2 -right-1 sm:-right-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full shadow-lg z-20 border border-white/20 max-w-[60px] sm:max-w-none truncate">
-                              <span className="hidden sm:inline">{bot.clickCount} Uses</span>
+                              <span className="hidden sm:inline">{bot.clickCount} {t('common.uses')}</span>
                               <span className="sm:hidden">{bot.clickCount}</span>
                             </div>
                           )}
@@ -495,17 +521,17 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
             <div className="relative">
               <div className="text-center mb-12">
                 <h1 className="text-3xl md:text-4xl font-black text-[#f5f5f5] mb-4">
-                  Discover NSFW Telegram Bots
+                  {t('bots.title')}
                 </h1>
                 <p className="text-[#999] text-lg">
-                  Discover amazing bots
+                  {t('bots.subtitle')}
                 </p>
               </div>
 
               {displayBots.length === 0 ? (
                 <div className="text-center py-20">
                   <div className="text-6xl mb-4">😔</div>
-                  <p className="text-[#999] text-xl">No bots found</p>
+                  <p className="text-[#999] text-xl">{t('bots.noBotsFound')}</p>
                 </div>
               ) : (
                 <div className="relative">
@@ -521,7 +547,7 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
 
               {loading && (
                 <div className="text-center py-6 text-gray-400">
-                  Loading more bots...
+                  {t('bots.loadingMore')}
                 </div>
               )}
             </div>
@@ -546,6 +572,7 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
 }
 
 const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex = 0 }: { bot: Bot; isFeatured?: boolean; isIndex: number }) {
+  const { t } = useTranslation();
   const [isHovered, setIsHovered] = useState(false);
   const [imageSrc, setImageSrc] = useState(bot.image || 'PLACEHOLDER_IMAGE_URL');
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -634,12 +661,12 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
           <div className="absolute top-3 left-3 flex gap-2">
             {isFeatured && (
               <div className="bg-yellow-500 text-black text-[10px] font-black px-2 py-1 rounded-md shadow-lg uppercase tracking-wider flex items-center gap-1">
-                <span>⭐</span> Featured
+                <span>⭐</span> {t('common.featured')}
               </div>
             )}
             {bot.pinned && !isFeatured && (
               <div className="bg-blue-500 text-white text-[10px] font-black px-2 py-1 rounded-md shadow-lg uppercase tracking-wider flex items-center gap-1">
-                <span>📌</span> Pinned
+                <span>📌</span> {t('common.pinned')}
               </div>
             )}
           </div>
@@ -679,7 +706,7 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
 
           {/* Tags */}
           <div className="flex flex-wrap gap-2 mb-4">
-            {((bot as any).categories?.length ? (bot as any).categories : [bot.category, bot.country].filter(Boolean)).map((tag: string) => (
+            {((bot as any).categories?.length ? (bot as any).categories : [bot.category].filter(Boolean)).map((tag: string) => (
               <span key={tag} className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-gray-300 text-xs font-medium hover:bg-white/10 transition-colors">
                 {tag}
               </span>
@@ -723,11 +750,11 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
               <span className="relative flex items-center justify-center gap-2 text-sm uppercase tracking-wider">
                 {bot.isAdvertisement ? (
                   <>
-                    <span>🔗</span> Visit Link
+                    <span>🔗</span> {t('bots.visitLink')}
                   </>
                 ) : (
                   <>
-                    <span className="text-lg">🤖</span> Use Bot
+                    <span className="text-lg">🤖</span> {t('bots.useBot')}
                   </>
                 )}
               </span>
@@ -810,6 +837,7 @@ const VirtualizedBotGrid = React.memo(function VirtualizedBotGrid({ bots, advert
 });
 
 const BotAdvertCard = React.memo(function BotAdvertCard({ advert, isIndex = 0, isMobile, isTelegram }: { advert: Advert; isIndex?: number; isMobile: boolean; isTelegram: boolean }) {
+  const { t } = useTranslation();
   const [isHovered, setIsHovered] = useState(false);
 
   const handleClick = async () => {
@@ -839,7 +867,7 @@ const BotAdvertCard = React.memo(function BotAdvertCard({ advert, isIndex = 0, i
       <div className={`glass rounded-2xl overflow-hidden h-full flex flex-col backdrop-blur-lg border border-orange-500/50 hover:border-orange-500 transition-all duration-300 ${isHovered ? 'hover-glow' : ''} relative`}>
         {/* Advert Badge */}
         <div className="absolute top-4 right-4 z-10 bg-gradient-to-r from-orange-500 to-red-500 text-white font-black px-3 py-1 rounded-full text-xs">
-          📢 AD
+          📢 {t('common.ad')}
         </div>
 
         {/* Advert Image */}
@@ -863,9 +891,6 @@ const BotAdvertCard = React.memo(function BotAdvertCard({ advert, isIndex = 0, i
             <span className="px-3 py-1 rounded-full bg-red-500 text-white text-xs font-semibold">
               🏷️ {advert.category}
             </span>
-            <span className="px-3 py-1 rounded-full bg-green-500 text-white text-xs font-semibold">
-              🌍 {advert.country}
-            </span>
           </div>
 
           {/* Description */}
@@ -880,7 +905,7 @@ const BotAdvertCard = React.memo(function BotAdvertCard({ advert, isIndex = 0, i
             onClick={handleClick}
             className="block w-full text-center font-bold py-3 px-4 rounded-xl transition-all duration-300 bg-gradient-to-r from-orange-500 to-red-600 text-white hover:from-orange-600 hover:to-red-700 hover:scale-105"
           >
-            🔗 Visit Site
+            🔗 {t('bots.visitSite')}
           </button>
         </div>
       </div>
@@ -891,6 +916,7 @@ const BotAdvertCard = React.memo(function BotAdvertCard({ advert, isIndex = 0, i
 
 
 function AddBotModal({ categories, onClose, onSuccess }: { categories: string[]; onClose: () => void; onSuccess: () => void }) {
+  const { t } = useTranslation();
   const [botData, setBotData] = useState({
     name: '',
     categories: ['Amateur'] as string[],
@@ -931,25 +957,25 @@ function AddBotModal({ categories, onClose, onSuccess }: { categories: string[];
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        setError('Please login first');
+        setError(t('bots.loginFirst'));
         setIsSubmitting(false);
         return;
       }
 
       if (!botData.name || botData.categories.length === 0 || !botData.telegramLink || !botData.description) {
-        setError('Name, at least 1 category, Telegram link and description are required');
+        setError(t('bots.nameRequired'));
         setIsSubmitting(false);
         return;
       }
 
       if (botData.description.length < 30) {
-        setError('Description must be at least 30 characters');
+        setError(t('bots.descMin30'));
         setIsSubmitting(false);
         return;
       }
 
       if (!botData.telegramLink.startsWith('https://t.me/')) {
-        setError('Telegram link must start with https://t.me/');
+        setError(t('bots.linkMustStart'));
         setIsSubmitting(false);
         return;
       }
@@ -977,7 +1003,7 @@ function AddBotModal({ categories, onClose, onSuccess }: { categories: string[];
         onSuccess();
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create bot');
+      setError(err.response?.data?.message || t('bots.failedCreate'));
     } finally {
       setIsSubmitting(false);
     }
@@ -1000,9 +1026,9 @@ function AddBotModal({ categories, onClose, onSuccess }: { categories: string[];
 
           <div className="text-center mb-8">
             <h2 className="text-4xl font-black gradient-text mb-2">
-              ✨ Create New Bot
+              ✨ {t('bots.createTitle')}
             </h2>
-            <p className="text-[#999] text-lg">Share your amazing bot with the world!</p>
+            <p className="text-[#999] text-lg">{t('bots.createDesc')}</p>
           </div>
 
           {error && (
@@ -1017,7 +1043,7 @@ function AddBotModal({ categories, onClose, onSuccess }: { categories: string[];
             <div className="glass rounded-2xl p-6 border border-white/10">
               <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
                 <span className="mr-2">📸</span>
-                Bot Image
+                {t('bots.botImage')}
               </label>
               <div className="relative">
                 <input
@@ -1038,14 +1064,14 @@ function AddBotModal({ categories, onClose, onSuccess }: { categories: string[];
             <div className="glass rounded-2xl p-6 border border-white/10">
               <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
                 <span className="mr-2">🏷️</span>
-                Bot Name *
+                {t('bots.botName')} *
               </label>
               <input
                 type="text"
                 value={botData.name}
                 onChange={(e) => setBotData({ ...botData, name: e.target.value })}
                 className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] placeholder:text-gray-500 focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none"
-                placeholder="Enter an amazing bot name..."
+                placeholder={t('bots.enterBotName')}
               />
             </div>
 
@@ -1053,10 +1079,10 @@ function AddBotModal({ categories, onClose, onSuccess }: { categories: string[];
             <div className="glass rounded-2xl p-6 border border-white/10">
               <label className="block text-sm font-bold text-[#f5f5f5] mb-1 flex items-center">
                 <span className="mr-2">📂</span>
-                Categories * <span className="text-xs text-white/40 ml-2">(pick up to 3)</span>
+                {t('bots.categories')} * <span className="text-xs text-white/40 ml-2">({t('bots.pickUpTo3')})</span>
               </label>
               <p className="text-[10px] text-white/30 mb-3">
-                {botData.categories.length}/3 selected
+                {botData.categories.length}/3 {t('bots.selected')}
               </p>
               <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pr-1">
                 {categories.filter(c => c !== 'All').map(cat => {
@@ -1083,7 +1109,7 @@ function AddBotModal({ categories, onClose, onSuccess }: { categories: string[];
             <div className="glass rounded-2xl p-6 border border-white/10">
               <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
                 <span className="mr-2">📱</span>
-                Telegram Link *
+                {t('bots.telegramLink')} *
               </label>
               <input
                 type="url"
@@ -1098,16 +1124,16 @@ function AddBotModal({ categories, onClose, onSuccess }: { categories: string[];
             <div className="glass rounded-2xl p-6 border border-white/10">
               <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
                 <span className="mr-2">📝</span>
-                Description * (min 30 chars)
+                {t('bots.description')} * ({t('bots.minChars')})
               </label>
               <textarea
                 value={botData.description}
                 onChange={(e) => setBotData({ ...botData, description: e.target.value })}
                 className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] placeholder:text-gray-500 focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none resize-none"
-                placeholder="Tell us about your amazing bot..."
+                placeholder={t('bots.tellAboutBot')}
                 rows={4}
               />
-              <p className="text-xs text-gray-500 mt-2">{botData.description.length}/30 characters</p>
+              <p className="text-xs text-gray-500 mt-2">{botData.description.length}/30 {t('bots.characters')}</p>
             </div>
 
             {/* Submit Button */}
@@ -1119,7 +1145,7 @@ function AddBotModal({ categories, onClose, onSuccess }: { categories: string[];
                 whileTap={{ scale: 0.98 }}
                 className="w-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white font-bold py-4 px-6 rounded-xl hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 transition-all text-lg disabled:opacity-50 disabled:cursor-not-allowed hover-glow"
               >
-                {isSubmitting ? '⏳ Submitting...' : '✨ Create Amazing Bot ✨'}
+                {isSubmitting ? '⏳ ' + t('bots.submitting') : '✨ ' + t('bots.createBot') + ' ✨'}
               </motion.button>
             </div>
           </div>

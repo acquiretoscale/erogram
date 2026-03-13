@@ -163,7 +163,7 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
 
                     {/* Tags */}
                     <div className="flex flex-wrap gap-1 sm:gap-2 mb-2 sm:mb-4">
-                        {(group.categories?.length ? group.categories : [group.category, group.country].filter(Boolean)).map((tag) => (
+                        {(group.categories?.length ? group.categories : [group.category].filter(Boolean)).map((tag) => (
                             <span key={tag} className="px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg bg-white/5 border border-white/5 text-gray-300 text-[10px] sm:text-xs font-medium">
                                 {tag}
                             </span>

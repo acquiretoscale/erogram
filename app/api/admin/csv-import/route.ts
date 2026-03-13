@@ -125,14 +125,61 @@ export async function POST(req: NextRequest) {
       return slug;
     }
 
-    const normalizeCat = (cat: string) => {
-      const l = cat.toLowerCase();
-      if (l === 'porn' || l === 'porn-telegram' || l === 'telegram porn' || l === 'porn telegram') return 'Telegram-Porn';
-      return cat;
+    const VALID_CATEGORIES = new Set([
+      'AI NSFW', 'Amateur', 'Anal', 'Anime', 'Argentina',
+      'Asian', 'BDSM', 'Big Ass', 'Big Tits', 'Black', 'Blonde', 'Blowjob',
+      'Brazil', 'Brunette', 'China', 'Colombia', 'Cosplay', 'Creampie',
+      'Cuckold', 'Ebony', 'Fantasy', 'Feet', 'Fetish', 'France', 'Free-use',
+      'Germany', 'Hardcore', 'Hentai', 'Italy',
+      'Japan', 'Latina', 'Lesbian', 'Masturbation', 'Mexico', 'MILF',
+      'NSFW-Telegram', 'Onlyfans', 'Onlyfans Leaks', 'Petite', 'Philippines',
+      'Privacy', 'Public', 'Red Hair', 'Russian',
+      'Spain', 'Telegram-Porn', 'Threesome', 'UK', 'Ukraine', 'USA', 'Vietnam',
+      'Adult', 'Webcam', 'Femdom', 'Turkey', 'India', 'Ethiopia',
+    ]);
+
+    const CATEGORY_MAP: Record<string, string> = {
+      'lesbicas': 'Lesbian', 'lésbicas': 'Lesbian', 'lesbica': 'Lesbian',
+      'nudes-telegram': 'NSFW-Telegram', 'nudes': 'Amateur',
+      'porno-amador': 'Amateur', 'amador': 'Amateur',
+      'telegram-porno': 'Telegram-Porn', 'telegram-sexo': 'Telegram-Porn',
+      'onlyfans-telegram': 'Onlyfans',
+      'porn': 'Telegram-Porn', 'porn-telegram': 'Telegram-Porn',
+      'telegram porn': 'Telegram-Porn', 'porn telegram': 'Telegram-Porn',
+      'sexo': 'Telegram-Porn', 'xxx': 'Hardcore',
+      'asiática': 'Asian', 'asiatica': 'Asian',
+      'negra': 'Ebony', 'morena': 'Brunette', 'loira': 'Blonde', 'ruiva': 'Red Hair',
+      'milf': 'MILF', 'anime': 'Anime', 'hentai': 'Hentai',
+      'cosplay': 'Cosplay', 'fetiche': 'Fetish', 'fetish': 'Fetish',
+      'anal': 'Anal', 'bdsm': 'BDSM', 'latina': 'Latina',
+      'brasil': 'Brazil', 'brazileira': 'Brazil', 'brasileira': 'Brazil',
+      'colombia': 'Colombia', 'argentina': 'Argentina', 'mexico': 'Mexico',
+      'alemanha': 'Germany', 'frança': 'France', 'espanha': 'Spain',
+      'rusia': 'Russian', 'rusa': 'Russian', 'russa': 'Russian',
+      'japão': 'Japan', 'japao': 'Japan',
+      'webcam': 'Webcam', 'masturbação': 'Masturbation', 'masturbacao': 'Masturbation',
+      'grande bunda': 'Big Ass', 'peitos grandes': 'Big Tits',
+      'pés': 'Feet', 'pes': 'Feet',
+      'cuckold': 'Cuckold', 'cornudo': 'Cuckold',
+      'threesome': 'Threesome', 'menage': 'Threesome',
+      'adulto': 'NSFW-Telegram', 'adult': 'NSFW-Telegram',
+      'nsfw': 'NSFW-Telegram',
+    };
+
+    const validCatLower = new Map<string, string>();
+    for (const c of VALID_CATEGORIES) validCatLower.set(c.toLowerCase(), c);
+
+    const normalizeCat = (cat: string): string => {
+      if (VALID_CATEGORIES.has(cat)) return cat;
+      const lower = cat.toLowerCase().trim();
+      if (validCatLower.has(lower)) return validCatLower.get(lower)!;
+      if (CATEGORY_MAP[lower]) return CATEGORY_MAP[lower];
+      console.log(`[CSV Import] Unknown category "${cat}" → falling back to NSFW-Telegram`);
+      return 'NSFW-Telegram';
     };
 
     const documents = newRows.map((row) => {
-      const cat = normalizeCat((row.category || '').trim() || fallbackCategory || 'Adult');
+      const cat = normalizeCat((row.category || '').trim() || fallbackCategory || 'NSFW-Telegram');
       const ctry = (row.country || '').trim() || fallbackCountry || 'All';
       return {
       name: (row.name || '').trim(),

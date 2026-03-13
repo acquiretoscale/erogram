@@ -30,7 +30,7 @@ export const userSchema = new Schema(
     showTelegramHandle: { type: Boolean, default: true },
     showNicknameUnderGroups: { type: Boolean, default: true },
     premium: { type: Boolean, default: false },
-    premiumPlan: { type: String, enum: ['monthly', 'yearly', 'lifetime', null], default: null },
+    premiumPlan: { type: String, enum: ['monthly', 'quarterly', 'yearly', 'lifetime', null], default: null },
     premiumSince: { type: Date, default: null },
     premiumExpiresAt: { type: Date, default: null },
     paymentMethod: { type: String, enum: ['stars', 'crypto', null], default: null },
@@ -69,6 +69,8 @@ export const groupSchema = new Schema(
       },
     },
     description: { type: String, required: true },
+    description_de: { type: String, default: '' },
+    description_es: { type: String, default: '' },
     image: {
       type: String,
       required: [true, 'Group image is required'],
@@ -82,6 +84,12 @@ export const groupSchema = new Schema(
     reviewedAt: { type: Date },
     createdAt: { type: Date, default: Date.now },
     pinned: { type: Boolean, default: false },
+    featured: { type: Boolean, default: false },
+    featuredOrder: { type: Number, default: 999 },
+    featuredAt: { type: Date, default: null },
+    boosted: { type: Boolean, default: false },
+    boostExpiresAt: { type: Date, default: null },
+    boostDuration: { type: String, enum: ['1d', '7d', '14d', '30d', null], default: null },
     // CSV bulk-import scheduling fields
     scheduledPublishAt: { type: Date, default: null },
     importBatchId: { type: String, default: null },
@@ -108,6 +116,8 @@ export const groupSchema = new Schema(
     vaultCategories: { type: [String], default: [] },
     hideFromStories: { type: Boolean, default: false },
     storyViews: { type: Number, default: 0 },
+    likes: { type: Number, default: 0 },
+    dislikes: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
@@ -116,6 +126,8 @@ groupSchema.index({ status: 1, scheduledPublishAt: 1 });
 groupSchema.index({ premiumOnly: 1, status: 1 });
 groupSchema.index({ showOnVaultTeaser: 1, vaultTeaserOrder: 1 });
 groupSchema.index({ categories: 1, status: 1 });
+groupSchema.index({ featured: 1, featuredOrder: 1 });
+groupSchema.index({ boosted: 1, boostExpiresAt: 1 });
 
 // Post/Comment Schema
 export const postSchema = new Schema(
@@ -251,6 +263,8 @@ export const botSchema = new Schema(
       },
     },
     description: { type: String, required: true },
+    description_de: { type: String, default: '' },
+    description_es: { type: String, default: '' },
     image: {
       type: String,
       required: [true, 'Bot image is required'],
@@ -633,7 +647,39 @@ export const adminPushSubscriptionSchema = new Schema(
   { timestamps: true }
 );
 
+// Premium pricing config (singleton — one document with key='default')
+const planSubSchema = {
+  priceUsd: { type: Number, required: true },
+  days: { type: Number, required: true },
+  label: { type: String, required: true },
+  description: { type: String, default: '' },
+};
+const premiumConfigSchema = new Schema(
+  {
+    key: { type: String, default: 'default', unique: true },
+    monthly: { ...planSubSchema, priceUsd: { type: Number, default: 12.97 }, days: { type: Number, default: 30 }, label: { type: String, default: 'Erogram VIP (1 Month)' }, description: { type: String, default: '30-day unlimited access — Secret Vault, bookmarks & more' } },
+    quarterly: { ...planSubSchema, priceUsd: { type: Number, default: 19.97 }, days: { type: Number, default: 90 }, label: { type: String, default: 'Erogram VIP (3 Months)' }, description: { type: String, default: '3-month unlimited access — Secret Vault, bookmarks & more' } },
+    yearly: { ...planSubSchema, priceUsd: { type: Number, default: 29 }, days: { type: Number, default: 365 }, label: { type: String, default: 'Erogram VIP (1 Year)' }, description: { type: String, default: '1-year unlimited access — Secret Vault, bookmarks & more' } },
+    offerBadge: { type: String, default: '80% OFF' },
+    offerText: { type: String, default: 'Launch price ends soon' },
+  },
+  { timestamps: true }
+);
+
+// Vote Schema (like/dislike on vault groups)
+const voteSchema = new Schema(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    groupId: { type: Schema.Types.ObjectId, ref: 'Group', required: true },
+    vote: { type: String, enum: ['like', 'dislike'], required: true },
+  },
+  { timestamps: true }
+);
+voteSchema.index({ userId: 1, groupId: 1 }, { unique: true });
+voteSchema.index({ groupId: 1 });
+
 // Export models
+export const Vote = models.Vote || model('Vote', voteSchema);
 export const User = models.User || model('User', userSchema);
 export const Group = models.Group || model('Group', groupSchema);
 export const Bot = models.Bot || model('Bot', botSchema);
@@ -660,3 +706,4 @@ export const StarsRate = models.StarsRate || model('StarsRate', starsRateSchema)
 export const Bookmark = models.Bookmark || model('Bookmark', bookmarkSchema);
 export const BookmarkFolder = models.BookmarkFolder || model('BookmarkFolder', bookmarkFolderSchema);
 export const AdminPushSubscription = models.AdminPushSubscription || model('AdminPushSubscription', adminPushSubscriptionSchema);
+export const PremiumConfig = models.PremiumConfig || model('PremiumConfig', premiumConfigSchema);

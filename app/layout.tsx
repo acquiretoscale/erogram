@@ -3,6 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import LayoutWrapper from "@/components/LayoutWrapper";
+import { getLocale, getPathname } from "@/lib/i18n/server";
+import { getDictionary, LocaleProvider } from "@/lib/i18n";
+import { LOCALES, localePath, LOCALE_HREFLANG, DEFAULT_LOCALE } from "@/lib/i18n/config";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,56 +18,78 @@ const geistMono = Geist_Mono({
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
+const canonicalBase = 'https://erogram.pro';
 
-export const metadata: Metadata = {
-  title: {
-    default: "Erogram | Best NSFW Telegram Groups & Channels Directory 2026",
-    template: "%s | Erogram"
-  },
-  description: "Find and explore the best Telegram groups from around the world. Connect with communities that match your interests.",
-  keywords: "telegram groups, telegram channels, communities, messaging, NSFW telegram groups",
-  icons: {
-    // Force the correct App Router favicon filename, and add a cache-busting query.
-    icon: '/favicon.ico?v=2',
-    shortcut: '/favicon.ico?v=2',
-  },
-  metadataBase: new URL(siteUrl),
-  openGraph: {
-    title: "Erogram | Best NSFW Telegram Groups & Channels Directory 2026",
-    description: "Find and explore the best Telegram groups from around the world. Connect with communities that match your interests.",
-    type: "website",
-    siteName: "Erogram",
-    url: siteUrl,
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Erogram | Best NSFW Telegram Groups & Channels Directory 2026",
-    description: "Find and explore the best Telegram groups from around the world.",
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const pathname = await getPathname();
+  const dict = await getDictionary(locale);
+  const m = dict.meta || {};
+
+  const title = m.homeTitle || "Erogram | Best NSFW Telegram Groups & Channels Directory 2026";
+  const description = m.homeDesc || "Find and explore the best Telegram groups from around the world. Connect with communities that match your interests.";
+
+  // Self-referencing canonical — each locale owns its own URL
+  const canonical = `${canonicalBase}${pathname === '/' ? '' : pathname}` || canonicalBase;
+
+  return {
+    title: { default: title, template: "%s | Erogram" },
+    description,
+    keywords: "telegram groups, telegram channels, communities, messaging, NSFW telegram groups",
+    icons: { icon: '/favicon.ico?v=2', shortcut: '/favicon.ico?v=2' },
+    metadataBase: new URL(siteUrl),
+    alternates: {
+      canonical,
+      languages: Object.fromEntries(
+        LOCALES.map(loc => [
+          LOCALE_HREFLANG[loc],
+          `${canonicalBase}${localePath(
+            locale !== DEFAULT_LOCALE ? pathname.replace(new RegExp(`^/${locale}`), '') || '/' : pathname,
+            loc
+          )}`,
+        ])
+      ),
+    },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      siteName: "Erogram",
+      url: canonical,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+    robots: {
       index: true,
       follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
     },
-  },
-  other: {
-    rating: 'adult',
-    'RATING': 'RTA-5042-1996-1400-1577-RTA',
-  },
-};
+    other: {
+      rating: 'adult',
+      'RATING': 'RTA-5042-1996-1400-1577-RTA',
+    },
+  };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+  const dict = await getDictionary(locale);
+
   return (
-    <html lang="en">
+    <html lang={LOCALE_HREFLANG[locale]}>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#111111" />
@@ -117,9 +142,11 @@ export default function RootLayout({
           `}
         </Script>
 
-        <LayoutWrapper>
-          {children}
-        </LayoutWrapper>
+        <LocaleProvider locale={locale} dict={dict}>
+          <LayoutWrapper>
+            {children}
+          </LayoutWrapper>
+        </LocaleProvider>
       </body>
     </html>
   );

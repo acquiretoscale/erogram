@@ -4,14 +4,14 @@
 // ---------------------------------------------------------------------------
 
 export const filterCategories = [
-    'Adult', 'AI NSFW', 'Amateur', 'Anal', 'Anime',
+    'AI NSFW', 'Amateur', 'Anal', 'Anime', 'Argentina',
     'Asian', 'BDSM', 'Big Ass', 'Big Tits', 'Black', 'Blonde', 'Blowjob',
     'Brazil', 'Brunette', 'China', 'Colombia', 'Cosplay', 'Creampie',
-    'Cuckold', 'Ebony', 'Fantasy', 'Feet', 'Fetish', 'Free-use',
-    'Germany', 'Hardcore', 'Hentai', 'Japan',
-    'Latina', 'Lesbian', 'Masturbation', 'MILF',
-    'Onlyfans', 'Petite', 'Privacy', 'Public', 'Red Hair', 'Russian',
-    'Spain', 'Telegram-Porn', 'Threesome', 'UK', 'USA',
+    'Cuckold', 'Ebony', 'Fantasy', 'Feet', 'Fetish', 'France', 'Free-use',
+    'Germany', 'Hardcore', 'Italy',
+    'Japan', 'Latina', 'Lesbian', 'Masturbation', 'Mexico', 'MILF',
+    'NSFW-Telegram', 'Onlyfans', 'Onlyfans Leaks', 'Petite', 'Philippines', 'Privacy', 'Public', 'Red Hair', 'Russian',
+    'Spain', 'Telegram-Porn', 'Threesome', 'UK', 'Ukraine', 'USA', 'Vietnam',
 ];
 
 export const filterOptions: Array<{ label: string; value: string }> =
@@ -24,22 +24,22 @@ export const filterOptions: Array<{ label: string; value: string }> =
 // ---------------------------------------------------------------------------
 
 export const allCategories = [
-    'All', 'Adult', 'Adult Chat', 'AI NSFW', 'Amateur', 'Anal', 'Anime',
+    'All', 'Adult', 'Adult Chat', 'AI NSFW', 'Amateur', 'Anal', 'Anime', 'Argentina',
     'Asia', 'Asian', 'BDSM', 'BDSM Lite', 'Big Ass', 'Big Tits', 'Black', 'Blonde', 'Blowjob',
     'Brazil', 'Brunette', 'Celebrity Lookalike', 'China', 'Colombia',
     'Cosplay', 'Costume', 'Creampie', 'Cuckold',
     'Domination', 'Double Penetration', 'Ebony', 'Erotic Horror',
-    'Fantasy', 'Feet', 'Fetish', 'Free-use', 'Furry', 'Gangbang', 'Gay',
+    'Fantasy', 'Feet', 'Fetish', 'France', 'Free-use', 'Furry', 'Gangbang', 'Gay',
     'Germany', 'Glasses', 'Group',
-    'Hair Play', 'Hardcore', 'Hentai', 'Interracial',
+    'Hair Play', 'Hardcore', 'Hentai', 'Interracial', 'Italy',
     'Japan', 'Latex', 'Latina', 'Leaked', 'Lesbian', 'Lesbian Tribbing', 'LGBTQ+',
-    'Masturbation', 'Mature', 'Medical', 'MILF', 'Mind Control',
-    'Office', 'Onlyfans', 'Oral', 'Outdoor',
-    'Pet Play', 'Petite', 'Porn-Telegram', 'POV', 'Privacy', 'Public',
+    'Masturbation', 'Mature', 'Medical', 'Mexico', 'MILF', 'Mind Control',
+    'NSFW-Telegram', 'Office', 'Onlyfans', 'Onlyfans Leaks', 'Oral', 'Outdoor',
+    'Pet Play', 'Petite', 'Philippines', 'Porn-Telegram', 'POV', 'Privacy', 'Public',
     'Red Hair', 'Roleplay', 'Romantic', 'Russian',
     'SFW', 'Spain', 'Spanking', 'Squirting', 'Steampunk', 'Submission',
     'Taboo', 'Tease & Denial', 'Telegram-Porn', 'Threesome', 'Tickling', 'Trans',
-    'UK', 'Uniforms', 'USA', 'Vintage', 'Voyeur',
+    'UK', 'Ukraine', 'Uniforms', 'USA', 'Vietnam', 'Vintage', 'Voyeur',
 ];
 
 // Legacy country list — kept ONLY for SEO backward-compat of /country/[slug] routes.

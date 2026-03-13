@@ -14,7 +14,7 @@ interface AddGroupModalProps {
 export default function AddGroupModal({ categories, onClose, onSuccess }: AddGroupModalProps) {
   const [groupData, setGroupData] = useState({
     name: '',
-    categories: ['Adult'] as string[],
+    categories: ['NSFW-Telegram'] as string[],
     telegramLink: '',
     description: '',
     imageFile: null as File | null

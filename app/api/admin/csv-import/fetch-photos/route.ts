@@ -6,10 +6,9 @@ import { User, Group } from '@/lib/models';
 import { uploadToR2, isR2Configured } from '@/lib/r2';
 import { slugify } from '@/lib/utils/slugify';
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 async function authenticate(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
@@ -24,54 +23,93 @@ async function authenticate(req: NextRequest) {
 }
 
 function extractUsername(telegramLink: string): string | null {
-  const match = telegramLink.match(/t\.me\/\+?([a-zA-Z0-9_]+)/);
+  if (!telegramLink) return null;
+  if (/t\.me\/\+/.test(telegramLink) || /t\.me\/joinchat\//i.test(telegramLink)) return null;
+
+  const match = telegramLink.match(/t\.me\/([a-zA-Z][a-zA-Z0-9_]{3,})/);
   if (!match) return null;
+
   const username = match[1];
-  if (username.startsWith('+')) return null;
+  const reserved = ['joinchat', 'addstickers', 'addtheme', 'proxy', 'socks', 'setlanguage', 'share'];
+  if (reserved.includes(username.toLowerCase())) return null;
+
   return username;
 }
 
-async function fetchTelegramPhoto(username: string): Promise<Buffer | null> {
-  if (!BOT_TOKEN) return null;
-
-  const chatRes = await fetch(
-    `https://api.telegram.org/bot${BOT_TOKEN}/getChat?chat_id=@${username}`,
-    { signal: AbortSignal.timeout(10000) }
-  );
-  const chatData = await chatRes.json();
-
-  if (!chatData.ok || !chatData.result?.photo) return null;
-
-  const fileId = chatData.result.photo.big_file_id || chatData.result.photo.small_file_id;
-  if (!fileId) return null;
-
-  const fileRes = await fetch(
-    `https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`,
-    { signal: AbortSignal.timeout(10000) }
-  );
-  const fileData = await fileRes.json();
-
-  if (!fileData.ok || !fileData.result?.file_path) return null;
-
-  const photoRes = await fetch(
-    `https://api.telegram.org/file/bot${BOT_TOKEN}/${fileData.result.file_path}`,
-    { signal: AbortSignal.timeout(15000) }
-  );
-
-  if (!photoRes.ok) return null;
-
-  return Buffer.from(await photoRes.arrayBuffer());
-}
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 /**
- * POST /api/admin/csv-import/fetch-photos
- *
- * Fetches Telegram profile photos for groups missing images.
- * Extracts username from telegramLink, calls Telegram Bot API,
- * compresses with sharp, uploads to R2.
- *
- * Body: { groupIds: string[] }  (max 5 per call to stay within timeouts)
+ * Scrape the public t.me/{username} page and extract the og:image URL.
+ * This avoids the Telegram Bot API entirely — no rate limits, no bot token needed.
  */
+async function scrapeProfilePhoto(username: string): Promise<string | null> {
+  const url = `https://t.me/${username}`;
+  const res = await fetch(url, {
+    signal: AbortSignal.timeout(12000),
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+      'Accept': 'text/html',
+      'Accept-Language': 'en-US,en;q=0.9',
+    },
+  });
+
+  if (!res.ok) {
+    console.log(`[Fetch Photo] t.me/${username} returned ${res.status}`);
+    return null;
+  }
+
+  const html = await res.text();
+
+  // Extract og:image from <meta property="og:image" content="...">
+  const ogMatch = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i)
+    || html.match(/<meta\s+content=["']([^"']+)["']\s+property=["']og:image["']/i);
+
+  if (!ogMatch || !ogMatch[1]) {
+    console.log(`[Fetch Photo] No og:image found for @${username}`);
+    return null;
+  }
+
+  const imageUrl = ogMatch[1];
+
+  // Telegram's default placeholder (no profile picture set)
+  if (imageUrl.includes('telegram-peer-photo-size') === false && imageUrl.includes('cdn') === false && !imageUrl.startsWith('https://cdn')) {
+    // Check for known default/placeholder patterns
+    if (imageUrl.includes('placeholder') || imageUrl.length < 20) {
+      console.log(`[Fetch Photo] @${username} has default avatar (no custom photo)`);
+      return null;
+    }
+  }
+
+  return imageUrl;
+}
+
+async function downloadImage(imageUrl: string): Promise<Buffer | null> {
+  try {
+    const res = await fetch(imageUrl, {
+      signal: AbortSignal.timeout(15000),
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+      },
+    });
+
+    if (!res.ok) {
+      console.log(`[Fetch Photo] Image download failed: ${res.status} for ${imageUrl}`);
+      return null;
+    }
+
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.startsWith('image/')) {
+      console.log(`[Fetch Photo] Not an image: ${contentType}`);
+      return null;
+    }
+
+    return Buffer.from(await res.arrayBuffer());
+  } catch (err: any) {
+    console.log(`[Fetch Photo] Image download error: ${err.message}`);
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
@@ -79,10 +117,6 @@ export async function POST(req: NextRequest) {
     const admin = await authenticate(req);
     if (!admin) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-
-    if (!BOT_TOKEN) {
-      return NextResponse.json({ message: 'TELEGRAM_BOT_TOKEN not configured' }, { status: 503 });
     }
 
     if (!isR2Configured()) {
@@ -97,7 +131,8 @@ export async function POST(req: NextRequest) {
     const idsToProcess = groupIds.slice(0, 5);
     const results: { id: string; status: 'success' | 'failed' | 'skipped'; url?: string; error?: string }[] = [];
 
-    for (const id of idsToProcess) {
+    for (let idx = 0; idx < idsToProcess.length; idx++) {
+      const id = idsToProcess[idx];
       try {
         const group = await Group.findById(id);
         if (!group) { results.push({ id, status: 'skipped', error: 'Not found' }); continue; }
@@ -108,10 +143,24 @@ export async function POST(req: NextRequest) {
         }
 
         const username = extractUsername(group.telegramLink || '');
-        if (!username) { results.push({ id, status: 'skipped', error: 'No valid username in link' }); continue; }
+        if (!username) {
+          results.push({ id, status: 'skipped', error: `Private/invalid link: ${group.telegramLink}` });
+          continue;
+        }
 
-        const photoBuffer = await fetchTelegramPhoto(username);
-        if (!photoBuffer) { results.push({ id, status: 'failed', error: 'No photo on Telegram' }); continue; }
+        if (idx > 0) await sleep(500);
+
+        const imageUrl = await scrapeProfilePhoto(username);
+        if (!imageUrl) {
+          results.push({ id, status: 'failed', error: `No photo for @${username}` });
+          continue;
+        }
+
+        const photoBuffer = await downloadImage(imageUrl);
+        if (!photoBuffer) {
+          results.push({ id, status: 'failed', error: `Could not download photo for @${username}` });
+          continue;
+        }
 
         let compressed = await sharp(photoBuffer)
           .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
@@ -134,9 +183,9 @@ export async function POST(req: NextRequest) {
         await Group.findByIdAndUpdate(id, { image: url, sourceImageUrl: null });
 
         results.push({ id, status: 'success', url });
-        console.log(`[Fetch Photo] Got Telegram photo for "${group.name}" (@${username})`);
+        console.log(`[Fetch Photo] ✓ Got photo for "${group.name}" (@${username})`);
       } catch (err: any) {
-        console.error(`[Fetch Photo] Failed for ${id}:`, err.message);
+        console.error(`[Fetch Photo] ✗ Failed for ${id}:`, err.message);
         results.push({ id, status: 'failed', error: err.message });
       }
     }

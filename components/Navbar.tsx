@@ -3,6 +3,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useTranslation, useLocalePath, useLocale } from '@/lib/i18n/client';
+import { LOCALES, type Locale, localePath as buildLocalePath } from '@/lib/i18n/config';
 
 
 const DEFAULT_NAVBAR_CTA = {
@@ -29,8 +31,15 @@ const NAV_COLORS: Record<string, string> = {
   Login:     `${BTN} text-white/90 bg-white/[0.10] border border-white/[0.18] hover:bg-white/[0.18] hover:text-white`,
 };
 
+const LOCALE_FLAGS: Record<Locale, string> = { en: '🇺🇸', de: '🇩🇪', es: '🇪🇸' };
+
 export default function Navbar({ username, setUsername, showAddGroup, onAddGroupClick }: NavbarProps) {
+  const { t } = useTranslation();
+  const lp = useLocalePath();
+  const { locale } = useLocale();
   const [mounted, setMounted] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
+  const langRef = useRef<HTMLDivElement>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -78,6 +87,15 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
   }, [isUserMenuOpen, mounted]);
 
   useEffect(() => {
+    if (!langOpen || !mounted) return;
+    const handler = (e: MouseEvent) => {
+      if (langRef.current && !langRef.current.contains(e.target as Node)) setLangOpen(false);
+    };
+    const t = setTimeout(() => document.addEventListener('mousedown', handler, true), 100);
+    return () => { clearTimeout(t); document.removeEventListener('mousedown', handler, true); };
+  }, [langOpen, mounted]);
+
+  useEffect(() => {
     if (!mounted) return;
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -101,9 +119,9 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
   };
 
   const navLinks = [
-    { href: '/groups', label: 'Groups' },
-    { href: '/bots', label: 'Bots' },
-    { href: '/articles', label: 'Articles' },
+    { href: lp('/groups'), label: t('nav.groups', 'Groups'), colorKey: 'Groups' },
+    { href: lp('/bots'), label: t('nav.bots', 'Bots'), colorKey: 'Bots' },
+    { href: '/articles', label: t('nav.articles', 'Articles'), colorKey: 'Articles' },
   ];
 
   return (
@@ -122,7 +140,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
         {/* Desktop */}
         <div className="hidden md:flex items-center gap-1.5 lg:gap-2">
           {navLinks.map(link => (
-            <Link key={link.href} href={link.href} className={NAV_COLORS[link.label] || BTN_NAV}>
+            <Link key={link.href} href={link.href} className={NAV_COLORS[link.colorKey] || BTN_NAV}>
               {link.label}
             </Link>
           ))}
@@ -137,17 +155,16 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
             {(navbarCta?.description || navbarCta?.buttonText) || DEFAULT_NAVBAR_CTA.description}
           </a>
 
-          <Link href="/add" className={`${BTN_NAV} !text-[#4ab3f4] !bg-[#0088cc]/[0.10] !border-[#0088cc]/25 hover:!bg-[#0088cc]/[0.18] inline-flex items-center gap-1`}>
+          <Link href={lp('/add')} className={`${BTN_NAV} !text-[#4ab3f4] !bg-[#0088cc]/[0.10] !border-[#0088cc]/25 hover:!bg-[#0088cc]/[0.18] inline-flex items-center gap-1`}>
             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
-            Add
+            {t('nav.add', 'Add')}
           </Link>
 
-          {/* Unlock Erogram Premium */}
+          {/* Erogram Premium */}
           {!isPremium && (
             <Link
-              href="/premium"
-              target="_blank"
-              className="relative overflow-hidden text-[13px] px-4 py-1.5 rounded-lg font-black tracking-wide whitespace-nowrap inline-flex items-center gap-1.5 transition-all hover:scale-105 hover:shadow-lg hover:shadow-amber-500/30"
+              href="/premiumvault"
+              className="relative overflow-hidden text-[12px] px-3 py-1.5 rounded-lg font-bold tracking-wide whitespace-nowrap inline-flex items-center gap-1 transition-all hover:scale-[1.03]"
               style={{
                 background: 'linear-gradient(135deg, #c9973a 0%, #e8ba5a 40%, #c9973a 60%, #a67c2e 100%)',
                 color: '#0d0c0a',
@@ -158,12 +175,51 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
               <span className="absolute inset-0 overflow-hidden rounded-lg pointer-events-none">
                 <span className="absolute inset-0 -translate-x-full animate-[shimmer_2.5s_ease-in-out_infinite]" style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 50%, transparent 100%)' }} />
               </span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="relative">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="relative">
                 <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
               </svg>
-              <span className="relative">Unlock Erogram Premium</span>
+              <span className="relative">Premium</span>
             </Link>
           )}
+
+          {/* Language Switcher */}
+          <div className="relative" ref={langRef}>
+            <button
+              onClick={() => setLangOpen(!langOpen)}
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-sm hover:bg-white/10 transition-colors"
+              aria-label="Change language"
+            >
+              <span className="text-base leading-none">{LOCALE_FLAGS[locale]}</span>
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`text-white/50 transition-transform ${langOpen ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <AnimatePresence>
+              {mounted && langOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.12 }}
+                  className="absolute right-0 mt-1 w-32 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden py-1"
+                >
+                  {LOCALES.map(l => {
+                    const currentPath = typeof window !== 'undefined' ? window.location.pathname.replace(/^\/(de|es)/, '') || '/' : '/';
+                    const href = buildLocalePath(currentPath, l);
+                    return (
+                      <a
+                        key={l}
+                        href={href}
+                        onClick={() => setLangOpen(false)}
+                        className={`flex items-center gap-2.5 px-3.5 py-2 text-[13px] transition-colors ${locale === l ? 'text-white bg-white/5 font-medium' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
+                      >
+                        <span className="text-base leading-none">{LOCALE_FLAGS[l]}</span>
+                        {l === 'en' ? 'English' : l === 'de' ? 'Deutsch' : 'Español'}
+                      </a>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* User */}
           {currentUsername ? (
@@ -199,16 +255,16 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                       {isAdminUser && (
                         <Link href="/admin" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-amber-400 hover:text-amber-300 hover:bg-amber-500/5 transition font-semibold">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-                          Admin Panel
+                          {t('nav.adminPanel', 'Admin Panel')}
                         </Link>
                       )}
-                      <Link href="/profile" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-white/70 hover:text-white hover:bg-white/5 transition">
+                      <Link href={lp('/profile')} onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-white/70 hover:text-white hover:bg-white/5 transition">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>
-                        Profile
+                        {t('nav.profile', 'Profile')}
                       </Link>
-                      <Link href="/profile?tab=saved" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-white/70 hover:text-white hover:bg-white/5 transition">
+                      <Link href={`${lp('/profile')}?tab=saved`} onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-white/70 hover:text-white hover:bg-white/5 transition">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
-                        Saved
+                        {t('nav.saved', 'Saved')}
                       </Link>
                       {(isPremium || isAdminUser) && !isAppInstalled && (
                         <button
@@ -225,7 +281,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                           className="w-full flex items-center gap-2.5 px-4 py-2 text-[13px] text-white/70 hover:text-white hover:bg-white/5 transition text-left"
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                          Download App
+                          {t('nav.downloadApp', 'Download App')}
                         </button>
                       )}
                       <div className="border-t border-white/5 mt-1 pt-1">
@@ -234,7 +290,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                           className="w-full flex items-center gap-2.5 px-4 py-2 text-[13px] text-white/40 hover:text-red-400 hover:bg-red-500/5 transition text-left"
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-                          Logout
+                          {t('nav.logout', 'Logout')}
                         </button>
                       </div>
                     </div>
@@ -244,23 +300,64 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
             </div>
           ) : (
             <span suppressHydrationWarning>
-              <Link href="/login" className={NAV_COLORS['Login'] || BTN_NAV}>
-                Login
+              <Link href={lp('/login')} className={NAV_COLORS['Login'] || BTN_NAV}>
+                {t('nav.login', 'Login')}
               </Link>
             </span>
           )}
         </div>
 
-        {/* Mobile Burger */}
-        <button
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          className="md:hidden flex flex-col gap-1.5 w-8 h-8 items-center justify-center"
-          aria-label="Toggle menu"
-        >
-          <motion.span className="w-5 h-0.5 bg-white/70 rounded-full" animate={{ rotate: isMenuOpen ? 45 : 0, y: isMenuOpen ? 6 : 0 }} transition={{ duration: 0.2 }} />
-          <motion.span className="w-5 h-0.5 bg-white/70 rounded-full" animate={{ opacity: isMenuOpen ? 0 : 1 }} transition={{ duration: 0.2 }} />
-          <motion.span className="w-5 h-0.5 bg-white/70 rounded-full" animate={{ rotate: isMenuOpen ? -45 : 0, y: isMenuOpen ? -6 : 0 }} transition={{ duration: 0.2 }} />
-        </button>
+        {/* Mobile: flag + burger */}
+        <div className="md:hidden flex items-center gap-2">
+          {/* Mobile flag switcher - always visible */}
+          <div className="relative" ref={langRef}>
+            <button
+              onClick={() => setLangOpen(!langOpen)}
+              className="flex items-center gap-0.5 px-1.5 py-1 rounded-lg hover:bg-white/10 transition-colors"
+              aria-label="Change language"
+            >
+              <span className="text-lg leading-none">{LOCALE_FLAGS[locale]}</span>
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`text-white/50 transition-transform ${langOpen ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <AnimatePresence>
+              {mounted && langOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.12 }}
+                  className="absolute right-0 mt-1 w-32 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden py-1"
+                >
+                  {LOCALES.map(l => {
+                    const currentPath = typeof window !== 'undefined' ? window.location.pathname.replace(/^\/(de|es)/, '') || '/' : '/';
+                    const href = buildLocalePath(currentPath, l);
+                    return (
+                      <a
+                        key={l}
+                        href={href}
+                        onClick={() => setLangOpen(false)}
+                        className={`flex items-center gap-2.5 px-3.5 py-2 text-[13px] transition-colors ${locale === l ? 'text-white bg-white/5 font-medium' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
+                      >
+                        <span className="text-base leading-none">{LOCALE_FLAGS[l]}</span>
+                        {l === 'en' ? 'English' : l === 'de' ? 'Deutsch' : 'Español'}
+                      </a>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="flex flex-col gap-1.5 w-8 h-8 items-center justify-center"
+            aria-label="Toggle menu"
+          >
+            <motion.span className="w-5 h-0.5 bg-white/70 rounded-full" animate={{ rotate: isMenuOpen ? 45 : 0, y: isMenuOpen ? 6 : 0 }} transition={{ duration: 0.2 }} />
+            <motion.span className="w-5 h-0.5 bg-white/70 rounded-full" animate={{ opacity: isMenuOpen ? 0 : 1 }} transition={{ duration: 0.2 }} />
+            <motion.span className="w-5 h-0.5 bg-white/70 rounded-full" animate={{ rotate: isMenuOpen ? -45 : 0, y: isMenuOpen ? -6 : 0 }} transition={{ duration: 0.2 }} />
+          </button>
+        </div>
       </div>
 
       {/* Mobile Menu */}
@@ -276,7 +373,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
               key={link.href}
               href={link.href}
               onClick={() => setIsMenuOpen(false)}
-              className={`block px-4 py-2.5 rounded-lg text-[14px] ${NAV_COLORS[link.label] || BTN_NAV}`}
+              className={`block px-4 py-2.5 rounded-lg text-[14px] ${NAV_COLORS[link.colorKey] || BTN_NAV}`}
             >
               {link.label}
             </Link>
@@ -296,18 +393,17 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
           </a>
 
           <Link
-            href="/add"
+            href={lp('/add')}
             onClick={() => setIsMenuOpen(false)}
             className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg text-[14px] font-semibold text-[#4ab3f4] bg-[#0088cc]/[0.10] border border-[#0088cc]/25 hover:bg-[#0088cc]/[0.18] transition"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
-            Add Group or Bot
+            {t('nav.addGroupOrBot', 'Add Group or Bot')}
           </Link>
 
           {!isPremium && (
             <Link
-              href="/premium"
-              target="_blank"
+              href="/premiumvault"
               onClick={() => setIsMenuOpen(false)}
               className="relative overflow-hidden flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg text-[14px] font-black tracking-wide transition-all"
               style={{
@@ -323,9 +419,28 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="relative">
                 <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
               </svg>
-              <span className="relative">Unlock Erogram Premium</span>
+              <span className="relative">EROGRAM PREMIUM</span>
             </Link>
           )}
+
+          {/* Mobile Language Switcher */}
+          <div className="flex items-center gap-1.5 px-2 py-1">
+            {LOCALES.map(l => {
+              const currentPath = typeof window !== 'undefined' ? window.location.pathname.replace(/^\/(de|es)/, '') || '/' : '/';
+              const href = buildLocalePath(currentPath, l);
+              return (
+                <a
+                  key={l}
+                  href={href}
+                  onClick={() => setIsMenuOpen(false)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${locale === l ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white hover:bg-white/5'}`}
+                >
+                  <span className="text-base leading-none">{LOCALE_FLAGS[l]}</span>
+                  {l === 'en' ? 'EN' : l === 'de' ? 'DE' : 'ES'}
+                </a>
+              );
+            })}
+          </div>
 
           <div className="h-px bg-white/[0.06] my-1" />
 
@@ -341,14 +456,14 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
               {isAdminUser && (
                 <Link href="/admin" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-[14px] font-semibold text-amber-400 bg-amber-500/[0.08] border border-amber-500/20 hover:bg-amber-500/[0.14] transition">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-                  Admin Panel
+                  {t('nav.adminPanel', 'Admin Panel')}
                 </Link>
               )}
-              <Link href="/profile" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 rounded-lg text-[14px] text-white/70 hover:text-white hover:bg-white/5 transition">
-                Profile
+              <Link href={lp('/profile')} onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 rounded-lg text-[14px] text-white/70 hover:text-white hover:bg-white/5 transition">
+                {t('nav.profile', 'Profile')}
               </Link>
-              <Link href="/profile?tab=saved" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 rounded-lg text-[14px] text-white/70 hover:text-white hover:bg-white/5 transition">
-                Saved
+              <Link href={`${lp('/profile')}?tab=saved`} onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 rounded-lg text-[14px] text-white/70 hover:text-white hover:bg-white/5 transition">
+                {t('nav.saved', 'Saved')}
               </Link>
               {(isPremium || isAdminUser) && !isAppInstalled && (
                 <button
@@ -365,23 +480,23 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                   className="w-full px-4 py-2 rounded-lg text-[14px] text-white/70 hover:text-white hover:bg-white/5 transition text-left flex items-center gap-2"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                  Download App
+                  {t('nav.downloadApp', 'Download App')}
                 </button>
               )}
               <button
                 onClick={handleLogout}
                 className="w-full px-4 py-2 rounded-lg text-[14px] text-white/40 hover:text-red-400 hover:bg-red-500/5 transition text-left"
               >
-                Logout
+                {t('nav.logout', 'Logout')}
               </button>
             </div>
           ) : (
             <Link
-              href="/login"
+              href={lp('/login')}
               onClick={() => setIsMenuOpen(false)}
               className={`block text-center px-4 py-2.5 rounded-lg text-[14px] ${NAV_COLORS['Login'] || BTN_NAV}`}
             >
-              Login
+              {t('nav.login', 'Login')}
             </Link>
           )}
         </div>

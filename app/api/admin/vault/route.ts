@@ -28,18 +28,22 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get('search') || '';
     const category = searchParams.get('category') || '';
 
-    const query: any = { premiumOnly: true, status: 'approved' };
+    const query: any = { premiumOnly: true, status: { $in: ['approved', 'pending'] } };
+    const conditions: any[] = [];
     if (search) {
-      query.$or = [
+      conditions.push({ $or: [
         { name: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
-      ];
+      ]});
     }
-    if (category && category !== 'All') query.category = category;
+    if (category && category !== 'All') {
+      conditions.push({ $or: [{ categories: category }, { category: category }] });
+    }
+    if (conditions.length > 0) query.$and = conditions;
 
     const groups = await Group.find(query)
       .sort({ vaultTeaserOrder: 1, createdAt: -1 })
-      .select('name slug image category country description memberCount showOnVaultTeaser vaultTeaserOrder vaultCategories telegramLink createdAt')
+      .select('name slug image category categories country description description_de description_es memberCount showOnVaultTeaser vaultTeaserOrder vaultCategories telegramLink createdAt status')
       .lean();
 
     const config = await SiteConfig.findOne({});
@@ -74,6 +78,7 @@ export async function PUT(req: NextRequest) {
       if (body.image !== undefined) updates.image = body.image;
       if (body.name !== undefined) updates.name = body.name;
       if (body.description !== undefined) updates.description = body.description;
+      if (body.categories !== undefined) updates.categories = body.categories;
       if (body.vaultCategories !== undefined) updates.vaultCategories = body.vaultCategories;
 
       await Group.findByIdAndUpdate(body.groupId, updates);

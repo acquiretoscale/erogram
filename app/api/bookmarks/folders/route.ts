@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   const user = await authenticateUser(req);
   if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-  if (!user.premium) {
+  if (!user.premium && !user.isAdmin) {
     return NextResponse.json({ message: 'Premium required to create folders', upgrade: true }, { status: 403 });
   }
 

@@ -1,3 +1,8 @@
 'use client';
-import PendingGroupsTab from '../components/PendingGroupsTab';
-export default function PendingGroupsPage() { return <PendingGroupsTab />; }
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+export default function PendingGroupsPage() {
+  const router = useRouter();
+  useEffect(() => { router.replace('/admin/groups?tab=pending'); }, [router]);
+  return null;
+}

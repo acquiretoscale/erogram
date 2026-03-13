@@ -54,8 +54,113 @@ export async function GET(req: NextRequest) {
     const sortBy = searchParams.get('sortBy') || 'default';
     const search = searchParams.get('search') || '';
     const category = searchParams.get('category') || '';
+    const subcategory = searchParams.get('subcategory') || '';
     const country = searchParams.get('country') || '';
     const topGroup = searchParams.get('topGroup') === 'true';
+    const featuredParam = searchParams.get('featured') === 'true';
+    const boostedParam = searchParams.get('boosted') === 'true';
+
+    // Fast path: featured groups (non-boosted, ordered by featuredOrder)
+    if (featuredParam) {
+      const now = new Date();
+      await Group.updateMany(
+        { boosted: true, boostExpiresAt: { $lte: now } },
+        { $set: { boosted: false, boostExpiresAt: null, boostDuration: null } }
+      );
+
+      const featuredGroups = await Group.find({
+        status: 'approved',
+        featured: true,
+        boosted: { $ne: true },
+        premiumOnly: { $ne: true },
+      })
+        .sort({ featuredOrder: 1, featuredAt: -1 })
+        .limit(limit)
+        .select('name slug category country categories description image telegramLink clickCount views memberCount verified featured featuredOrder boosted')
+        .lean();
+
+      const origin = req.headers.get('x-forwarded-host')
+        ? `https://${req.headers.get('x-forwarded-host')}`
+        : new URL(req.url).origin;
+
+      return NextResponse.json({
+        groups: featuredGroups.map((g: any) => {
+          const cats = g.categories?.length ? g.categories : [g.category, g.country].filter(Boolean);
+          return {
+            _id: g._id.toString(),
+            name: (g.name || '').slice(0, 150),
+            slug: (g.slug || '').slice(0, 100),
+            category: (g.category || '').slice(0, 50),
+            country: (g.country || '').slice(0, 50),
+            categories: cats,
+            description: (g.description || '').slice(0, 150),
+            image: resolveImageUrl(g.image, origin),
+            telegramLink: (g.telegramLink || '').slice(0, 150),
+            isAdvertisement: false,
+            advertisementUrl: null,
+            pinned: false,
+            featured: true,
+            clickCount: g.clickCount || 0,
+            views: g.views || 0,
+            memberCount: g.memberCount || 0,
+            verified: g.verified || false,
+          };
+        }),
+      });
+    }
+
+    // Fast path: boosted group (featured group promoted to Top Groups spot 1)
+    if (boostedParam) {
+      const now = new Date();
+      await Group.updateMany(
+        { boosted: true, boostExpiresAt: { $lte: now } },
+        { $set: { boosted: false, boostExpiresAt: null, boostDuration: null } }
+      );
+
+      const boostedGroups = await Group.find({
+        status: 'approved',
+        featured: true,
+        boosted: true,
+        boostExpiresAt: { $gt: now },
+        premiumOnly: { $ne: true },
+      })
+        .sort({ boostExpiresAt: 1 })
+        .limit(1)
+        .select('name slug category country categories description image telegramLink clickCount views memberCount verified featured boosted boostExpiresAt weeklyClicks')
+        .lean();
+
+      const origin = req.headers.get('x-forwarded-host')
+        ? `https://${req.headers.get('x-forwarded-host')}`
+        : new URL(req.url).origin;
+
+      return NextResponse.json({
+        groups: boostedGroups.map((g: any) => {
+          const cats = g.categories?.length ? g.categories : [g.category, g.country].filter(Boolean);
+          return {
+            _id: g._id.toString(),
+            name: (g.name || '').slice(0, 150),
+            slug: (g.slug || '').slice(0, 100),
+            category: (g.category || '').slice(0, 50),
+            country: (g.country || '').slice(0, 50),
+            categories: cats,
+            description: (g.description || '').slice(0, 150),
+            image: resolveImageUrl(g.image, origin),
+            telegramLink: (g.telegramLink || '').slice(0, 150),
+            isAdvertisement: false,
+            advertisementUrl: null,
+            pinned: false,
+            featured: true,
+            boosted: true,
+            boostExpiresAt: g.boostExpiresAt,
+            clickCount: g.clickCount || 0,
+            views: g.views || 0,
+            memberCount: g.memberCount || 0,
+            verified: g.verified || false,
+            weeklyClicks: g.weeklyClicks || 0,
+          };
+        }),
+      });
+    }
 
     // Fast path: top groups by recent clicks
     // Fetches a larger candidate pool then randomly picks `limit` for variety.
@@ -127,7 +232,7 @@ export async function GET(req: NextRequest) {
     // Exclude image field to prevent maxSize errors - images loaded lazily via API.
     // Exclude Group-based adverts so in-feed ads come only from Campaigns (Advertisers).
     let query: any = { status: 'approved', isAdvertisement: { $ne: true }, premiumOnly: { $ne: true } };
-    let sortCriteria: any = { pinned: -1, createdAt: -1 };
+    let sortCriteria: any = { createdAt: -1 };
 
     const andConditions: any[] = [];
 
@@ -144,6 +249,12 @@ export async function GET(req: NextRequest) {
     if (category && category !== 'All') {
       andConditions.push({
         $or: [{ categories: category }, { category: category }, { country: category }],
+      });
+    }
+
+    if (subcategory && subcategory !== 'All') {
+      andConditions.push({
+        $or: [{ categories: subcategory }, { category: subcategory }],
       });
     }
 
@@ -191,11 +302,11 @@ export async function GET(req: NextRequest) {
       sortCriteria = { weeklyViews: -1 };
       console.log('[API] Top groups query:', JSON.stringify(query));
     } else if (sortBy === 'newest') {
-      sortCriteria = { pinned: -1, createdAt: -1 };
+      sortCriteria = { createdAt: -1 };
     } else if (sortBy === 'oldest') {
-      sortCriteria = { pinned: -1, createdAt: 1 };
+      sortCriteria = { createdAt: 1 };
     } else if (sortBy === 'popular') {
-      sortCriteria = { pinned: -1, views: -1, createdAt: -1 };
+      sortCriteria = { views: -1, createdAt: -1 };
     } else if (sortBy === 'random') {
       // For random discovery, we'll handle this with aggregation below
       // Keep existing query (already has status: 'approved' and search if provided)
@@ -250,12 +361,7 @@ export async function GET(req: NextRequest) {
 
       const sampledGroups = await Group.aggregate(pipeline);
 
-      // Sort to put pinned groups first, then take the slice we need
-      sampledGroups.sort((a: any, b: any) => {
-        if (a.pinned && !b.pinned) return -1;
-        if (!a.pinned && b.pinned) return 1;
-        return 0; // Keep random order for non-pinned
-      });
+      // Keep random order (pinned no longer promoted in main grid)
 
       groups = sampledGroups.slice(skip, skip + limit);
 

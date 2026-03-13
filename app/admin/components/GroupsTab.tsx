@@ -6,6 +6,7 @@ import axios from 'axios';
 import { compressImage } from '@/lib/utils/compressImage';
 import { categories, countries } from '@/app/groups/constants';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
+import AiBulkActions from './AiBulkActions';
 
 export default function GroupsTab() {
     const [groups, setGroups] = useState<any[]>([]);
@@ -24,7 +25,6 @@ export default function GroupsTab() {
         telegramLink: '',
         image: '',
         status: 'pending' as 'pending' | 'approved' | 'rejected',
-        pinned: false,
         verified: false,
         advertiserId: '' as string,
         showVerified: false,
@@ -37,10 +37,10 @@ export default function GroupsTab() {
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 10;
+    const [itemsPerPage, setItemsPerPage] = useState(10);
 
     // Sort: column key and direction
-    type SortKey = 'name' | 'category' | 'status' | 'views' | 'recent' | 'clicks' | 'recentClicks' | 'country' | 'dateAdded';
+    type SortKey = 'name' | 'category' | 'status' | 'views' | 'recent' | 'clicks' | 'recentClicks' | 'country' | 'dateAdded' | 'members';
     const [sortBy, setSortBy] = useState<SortKey>('dateAdded');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
@@ -52,6 +52,10 @@ export default function GroupsTab() {
     // Fetch Telegram photos
     const [fetchingPhotos, setFetchingPhotos] = useState(false);
     const [photoProgress, setPhotoProgress] = useState<{ done: number; total: number; success: number } | null>(null);
+
+    // Fetch member counts
+    const [fetchingUsers, setFetchingUsers] = useState(false);
+    const [usersProgress, setUsersProgress] = useState<{ done: number; total: number; success: number } | null>(null);
 
     useEffect(() => {
         fetchGroups();
@@ -95,7 +99,6 @@ export default function GroupsTab() {
             telegramLink: group.telegramLink || '',
             image: group.image || '',
             status: group.status || 'pending',
-            pinned: group.pinned || false,
             verified: group.verified || false,
             advertiserId: group.advertiserId || '',
             showVerified: group.showVerified ?? false,
@@ -234,6 +237,9 @@ export default function GroupsTab() {
         } else if (sortBy === 'recentClicks') {
             aVal = getRecentClicks(a);
             bVal = getRecentClicks(b);
+        } else if (sortBy === 'members') {
+            aVal = a.memberCount ?? 0;
+            bVal = b.memberCount ?? 0;
         } else if (sortBy === 'country') {
             aVal = (a.country || '').toLowerCase();
             bVal = (b.country || '').toLowerCase();
@@ -323,7 +329,7 @@ export default function GroupsTab() {
             try {
                 await axios.put(
                     `/api/admin/groups/${id}`,
-                    { premiumOnly: value },
+                    value ? { premiumOnly: true, status: 'approved' } : { premiumOnly: false },
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
                 done++;
@@ -369,8 +375,8 @@ export default function GroupsTab() {
         const token = localStorage.getItem('token');
         let totalSuccess = 0;
 
-        for (let i = 0; i < target.length; i += 5) {
-            const batch = target.slice(i, i + 5).map(g => g._id);
+        for (let i = 0; i < target.length; i += 8) {
+            const batch = target.slice(i, i + 8).map(g => g._id);
             try {
                 const res = await axios.post('/api/admin/csv-import/fetch-photos', { groupIds: batch }, {
                     headers: { Authorization: `Bearer ${token}` },
@@ -383,7 +389,8 @@ export default function GroupsTab() {
                     }
                 }
             } catch { /* continue */ }
-            setPhotoProgress({ done: Math.min(i + 5, target.length), total: target.length, success: totalSuccess });
+            setPhotoProgress({ done: Math.min(i + 8, target.length), total: target.length, success: totalSuccess });
+            if (i + 8 < target.length) await new Promise(r => setTimeout(r, 1500));
         }
 
         setFetchingPhotos(false);
@@ -391,11 +398,50 @@ export default function GroupsTab() {
         alert(`Done! Fetched ${totalSuccess} of ${target.length} images from Telegram.`);
     };
 
+    const fetchTelegramUsers = async () => {
+        const target = selectedIds.size > 0
+            ? groups.filter(g => selectedIds.has(g._id) && (g.memberCount || 0) === 0)
+            : filteredGroups.filter(g => (g.memberCount || 0) === 0);
+
+        if (target.length === 0) {
+            alert('No groups with 0 members in the current selection/filter.');
+            return;
+        }
+
+        if (!confirm(`Fetch member counts for ${target.length} group(s)?`)) return;
+
+        setFetchingUsers(true);
+        setUsersProgress({ done: 0, total: target.length, success: 0 });
+        const token = localStorage.getItem('token');
+        let totalSuccess = 0;
+
+        for (let i = 0; i < target.length; i += 10) {
+            const batch = target.slice(i, i + 10).map(g => g._id);
+            try {
+                const res = await axios.post('/api/admin/csv-import/fetch-users', { groupIds: batch }, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                const results = res.data?.results || [];
+                for (const r of results) {
+                    if (r.status === 'success' && r.memberCount) {
+                        totalSuccess++;
+                        setGroups(prev => prev.map(g => g._id === r.id ? { ...g, memberCount: r.memberCount } : g));
+                    }
+                }
+            } catch { /* continue */ }
+            setUsersProgress({ done: Math.min(i + 10, target.length), total: target.length, success: totalSuccess });
+            if (i + 10 < target.length) await new Promise(r => setTimeout(r, 1500));
+        }
+
+        setFetchingUsers(false);
+        setUsersProgress(null);
+        alert(`Done! Fetched member counts for ${totalSuccess} of ${target.length} groups.`);
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-black text-white mb-1">Groups</h1>
                     <p className="text-[#999] text-sm">Manage {groups.length} total groups</p>
                 </div>
                 <div className="flex gap-3 w-full md:w-auto flex-wrap">
@@ -450,6 +496,24 @@ export default function GroupsTab() {
                             </>
                         )}
                     </button>
+                    <button
+                        onClick={fetchTelegramUsers}
+                        disabled={fetchingUsers}
+                        className="px-3 py-2 bg-cyan-500/15 border border-cyan-500/25 text-cyan-400 rounded-xl text-sm font-medium hover:bg-cyan-500/25 disabled:opacity-50 transition-all flex items-center gap-2 whitespace-nowrap"
+                        title={selectedIds.size > 0 ? `Fetch member counts for ${selectedIds.size} selected groups` : 'Fetch missing member counts'}
+                    >
+                        {fetchingUsers ? (
+                            <>
+                                <div className="w-3.5 h-3.5 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
+                                {usersProgress ? `${usersProgress.done}/${usersProgress.total}` : 'Fetching...'}
+                            </>
+                        ) : (
+                            <>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                                Fetch Users
+                            </>
+                        )}
+                    </button>
                 </div>
             </div>
 
@@ -464,6 +528,21 @@ export default function GroupsTab() {
                     </div>
                     <span className="text-xs text-[#4ab3f4] font-medium whitespace-nowrap">
                         {photoProgress.done}/{photoProgress.total} — {photoProgress.success} fetched
+                    </span>
+                </div>
+            )}
+
+            {/* Users fetch progress bar */}
+            {fetchingUsers && usersProgress && (
+                <div className="rounded-xl bg-cyan-500/10 border border-cyan-500/20 p-3 flex items-center gap-3">
+                    <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-cyan-500 rounded-full transition-all duration-300"
+                            style={{ width: `${(usersProgress.done / usersProgress.total) * 100}%` }}
+                        />
+                    </div>
+                    <span className="text-xs text-cyan-400 font-medium whitespace-nowrap">
+                        {usersProgress.done}/{usersProgress.total} — {usersProgress.success} fetched
                     </span>
                 </div>
             )}
@@ -522,6 +601,13 @@ export default function GroupsTab() {
                                 >
                                     {fetchingPhotos ? 'Fetching...' : 'Fetch Images'}
                                 </button>
+                                <button
+                                    onClick={fetchTelegramUsers}
+                                    disabled={fetchingUsers}
+                                    className="px-3 py-1.5 bg-cyan-500/20 text-cyan-400 rounded-lg text-sm font-medium hover:bg-cyan-500/30 disabled:opacity-50 transition-colors"
+                                >
+                                    {fetchingUsers ? 'Fetching...' : 'Fetch Users'}
+                                </button>
                                 <span className="w-px h-5 bg-white/10" />
                                 <button
                                     onClick={clearSelection}
@@ -529,6 +615,23 @@ export default function GroupsTab() {
                                 >
                                     Clear selection
                                 </button>
+                            </div>
+                        )}
+
+                        {/* AI Bulk Actions */}
+                        {selectedIds.size > 0 && (
+                            <div className="px-6 py-2 bg-white/[0.02] border-b border-white/5">
+                                <AiBulkActions
+                                    selectedIds={selectedIds}
+                                    groups={groups}
+                                    compact
+                                    onGroupsUpdated={(updates) => {
+                                        setGroups(prev => prev.map(g => {
+                                            const u = updates.find(u => u._id === g._id);
+                                            return u ? { ...g, ...u.changes } : g;
+                                        }));
+                                    }}
+                                />
                             </div>
                         )}
 
@@ -561,6 +664,12 @@ export default function GroupsTab() {
                                             onClick={() => handleSort('status')}
                                         >
                                             Status {sortBy === 'status' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
+                                        </th>
+                                        <th
+                                            className="px-4 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none"
+                                            onClick={() => handleSort('members')}
+                                        >
+                                            Members {sortBy === 'members' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
                                         </th>
                                         <th
                                             className="px-4 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none"
@@ -640,11 +749,8 @@ export default function GroupsTab() {
                                                         <div className="font-medium text-white flex items-center gap-2">
                                                             {group.name}
                                                             {group.premiumOnly && <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold">VAULT</span>}
-                                                            {group.pinned && <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded">FEATURED</span>}
-                                                            {group.pinned && group.advertiserId && (() => {
-                                                                const adv = advertisers.find((a) => a._id === group.advertiserId);
-                                                                return adv ? <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">{adv.name}</span> : null;
-                                                            })()}
+                                                            {group.featured && <span className="text-[10px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded font-bold">FEATURED</span>}
+                                                            {group.boosted && <span className="text-[10px] bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded font-bold">BOOSTED</span>}
                                                         </div>
                                                         <div className="text-xs text-[#666] truncate max-w-[200px]">{group.telegramLink}</div>
                                                     </div>
@@ -652,9 +758,10 @@ export default function GroupsTab() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-wrap gap-1">
-                                                    {(group.categories?.length ? group.categories : [group.category, group.country].filter((c: string) => c && c !== 'All')).map((cat: string) => (
-                                                        <span key={cat} className="text-[10px] bg-white/5 text-gray-300 px-1.5 py-0.5 rounded">{cat}</span>
+                                                    {(group.categories?.length ? group.categories : [group.category].filter((c: string) => c && c !== 'All')).map((cat: string, ci: number) => (
+                                                        <span key={cat} className={`text-[10px] px-1.5 py-0.5 rounded ${ci === 0 ? 'bg-blue-500/20 text-blue-300 font-medium' : 'bg-white/5 text-gray-300'}`}>{cat}</span>
                                                     ))}
+                                                    {!group.categories?.length && <span className="text-[10px] text-yellow-500/60 ml-1">needs AI</span>}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
@@ -666,6 +773,11 @@ export default function GroupsTab() {
                                                     {group.status.charAt(0).toUpperCase() + group.status.slice(1)}
                                                 </span>
                                                 {group.premiumOnly && <span className="ml-1.5 text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold">VAULT</span>}
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <span className={`text-sm tabular-nums font-medium ${(group.memberCount || 0) === 0 ? 'text-red-400/60' : (group.memberCount || 0) < 50 ? 'text-yellow-400' : 'text-white'}`}>
+                                                    {(group.memberCount || 0) > 0 ? (group.memberCount || 0).toLocaleString() : '—'}
+                                                </span>
                                             </td>
                                             <td className="px-4 py-4">
                                                 <span className="text-xs text-[#666] whitespace-nowrap">{group.createdAt ? new Date(group.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—'}</span>
@@ -715,8 +827,16 @@ export default function GroupsTab() {
 
                         {/* Pagination */}
                         <div className="px-6 py-4 border-t border-white/5 flex items-center justify-between">
-                            <div className="text-sm text-[#666]">
-                                Showing <span className="text-white font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="text-white font-medium">{Math.min(currentPage * itemsPerPage, sortedGroups.length)}</span> of <span className="text-white font-medium">{sortedGroups.length}</span> results
+                            <div className="flex items-center gap-4">
+                                <div className="text-sm text-[#666]">
+                                    Showing <span className="text-white font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="text-white font-medium">{Math.min(currentPage * itemsPerPage, sortedGroups.length)}</span> of <span className="text-white font-medium">{sortedGroups.length}</span> results
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-xs text-[#555]">Per page:</span>
+                                    {[10, 25, 50, 100].map(n => (
+                                        <button key={n} onClick={() => { setItemsPerPage(n); setCurrentPage(1); }} className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${itemsPerPage === n ? 'bg-[#b31b1b] text-white' : 'bg-white/5 text-[#999] hover:bg-white/10'}`}>{n}</button>
+                                    ))}
+                                </div>
                             </div>
                             <div className="flex gap-2">
                                 <button
@@ -838,18 +958,6 @@ export default function GroupsTab() {
                                         <label className="flex items-center gap-3 cursor-pointer">
                                             <input
                                                 type="checkbox"
-                                                checked={groupData.pinned}
-                                                onChange={(e) => setGroupData({ ...groupData, pinned: e.target.checked })}
-                                                className="w-5 h-5 rounded border-white/10 bg-[#1a1a1a] text-[#b31b1b] focus:ring-[#b31b1b]"
-                                            />
-                                            <span className="text-white font-medium">Pin to top (featured slot)</span>
-                                        </label>
-                                        <span className="text-xs text-[#999] ml-3">Max 2 featured slots on groups page</span>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <label className="flex items-center gap-3 cursor-pointer">
-                                            <input
-                                                type="checkbox"
                                                 checked={groupData.showVerified ?? false}
                                                 onChange={(e) => setGroupData({ ...groupData, showVerified: e.target.checked })}
                                                 className="w-5 h-5 rounded border-white/10 bg-[#1a1a1a] text-[#b31b1b] focus:ring-[#b31b1b]"
@@ -889,20 +997,6 @@ export default function GroupsTab() {
                                         </label>
                                         <span className="text-xs text-[#666] ml-3">Hidden from public, only visible to premium users</span>
                                     </div>
-
-                                    {groupData.pinned && (
-                                        <div>
-                                            <label className="block text-xs font-bold text-[#666] uppercase mb-2">Assign advertiser (tracked in dashboard)</label>
-                                            <select
-                                                value={groupData.advertiserId}
-                                                onChange={(e) => setGroupData({ ...groupData, advertiserId: e.target.value })}
-                                                className="w-full rounded-lg border border-white/10 bg-[#1a1a1a] text-white px-3 py-2 text-sm focus:ring-2 focus:ring-[#b31b1b]/50"
-                                            >
-                                                <option value="">No advertiser (untracked)</option>
-                                                {advertisers.map((a) => <option key={a._id} value={a._id}>{a.name}</option>)}
-                                            </select>
-                                        </div>
-                                    )}
 
                                     <div className="col-span-2">
                                         <label className="block text-xs font-bold text-[#666] uppercase mb-2">Image</label>

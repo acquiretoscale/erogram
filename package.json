@@ -33,6 +33,7 @@
     "mongoose": "^8.19.2",
     "next": "^16.1.1",
     "next-auth": "^4.24.13",
+    "openai": "^6.27.0",
     "papaparse": "^5.5.3",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",

@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import Papa from 'papaparse';
 import { filterCategories, filterCountries } from '@/app/groups/constants';
 import { estimateScheduleDays } from '@/lib/utils/scheduleGenerator';
+import { useTaskManager } from './TaskManagerContext';
+import { isSpamDescription } from '@/lib/utils/spamCleaner';
 
 // ──────────────────────────────────────
 // Types
@@ -34,9 +36,12 @@ interface ImportedGroup {
   name: string;
   slug: string;
   category: string;
+  categories?: string[];
   country: string;
   telegramLink: string;
   description: string;
+  description_de?: string;
+  description_es?: string;
   memberCount: number;
   image: string;
   sourceImageUrl: string | null;
@@ -67,21 +72,54 @@ function mapColumns(headers: string[]): Record<string, string> {
   const mapping: Record<string, string> = {};
   const lower = headers.map(h => h.toLowerCase().trim());
 
-  const patterns: Record<string, string[]> = {
-    name: ['name', 'group_name', 'group name', 'title', 'channel'],
-    telegramLink: ['link', 'telegram_link', 'telegram link', 'telegramlink', 'url', 'telegram_url', 'invite_link', 'invite link'],
+  // Exact matches first (highest priority), then substring fallbacks
+  const exactPatterns: Record<string, string[]> = {
+    telegramLink: ['telegramlink', 'telegram_link', 'telegram link', 'invite_link', 'invite link', 'telegram_url'],
+    name: ['name', 'group_name', 'group name', 'title'],
     description: ['description', 'desc', 'about', 'bio'],
-    profilePictureUrl: ['image', 'picture', 'profile_picture', 'profile picture', 'photo', 'avatar', 'profilepictureurl', 'profile_picture_url'],
-    totalUsers: ['users', 'members', 'total_users', 'total users', 'totalusers', 'member_count', 'member count', 'subscribers'],
-    category: ['category', 'cat', 'type', 'genre', 'niche'],
-    country: ['country', 'region', 'location', 'geo', 'geography'],
+    profilePictureUrl: ['profilepictureurl', 'profile_picture_url', 'profile_picture', 'profile picture', 'image', 'picture', 'photo', 'avatar'],
+    totalUsers: ['totalusers', 'total_users', 'total users', 'member_count', 'member count', 'members', 'users', 'subscribers'],
+    category: ['category', 'cat', 'niche', 'genre', 'type'],
+    country: ['country', 'region', 'location', 'geo'],
+  };
+
+  // Pass 1: exact match on full header
+  for (let i = 0; i < lower.length; i++) {
+    const h = lower[i];
+    for (const [field, fieldPatterns] of Object.entries(exactPatterns)) {
+      if (!mapping[field] && fieldPatterns.includes(h)) {
+        mapping[field] = headers[i];
+      }
+    }
+  }
+
+  // Pass 2: substring fallback for anything still unmapped (skip ambiguous short patterns)
+  const substringPatterns: Record<string, string[]> = {
+    telegramLink: ['telegram', 'invite'],
+    name: ['name', 'title', 'channel'],
+    description: ['description', 'desc'],
+    profilePictureUrl: ['image', 'picture', 'photo', 'avatar'],
+    totalUsers: ['member', 'subscriber', 'users'],
+    category: ['category', 'niche'],
+    country: ['country', 'region'],
   };
 
   for (let i = 0; i < lower.length; i++) {
     const h = lower[i];
-    for (const [field, fieldPatterns] of Object.entries(patterns)) {
-      if (!mapping[field] && fieldPatterns.some(p => h.includes(p))) {
+    for (const [field, pats] of Object.entries(substringPatterns)) {
+      if (!mapping[field] && pats.some(p => h.includes(p))) {
         mapping[field] = headers[i];
+      }
+    }
+  }
+
+  // Pass 3: last resort — match generic 'link' or 'url' for telegramLink only
+  if (!mapping.telegramLink) {
+    for (let i = 0; i < lower.length; i++) {
+      const h = lower[i];
+      if ((h === 'link' || h === 'url' || h === 'href') && !Object.values(mapping).includes(headers[i])) {
+        mapping.telegramLink = headers[i];
+        break;
       }
     }
   }
@@ -113,6 +151,9 @@ export default function CsvImportTab() {
   const [dispatchSelected, setDispatchSelected] = useState<Set<string>>(new Set());
   const [dispatchLoading, setDispatchLoading] = useState(false);
   const [bulkCategory, setBulkCategory] = useState('');
+  const [dispatchPerPage, setDispatchPerPage] = useState(50);
+  const [dispatchPage, setDispatchPage] = useState(0);
+  const [memberFilter, setMemberFilter] = useState<'all' | '0' | '<50' | '<500' | '500+' | '1k+' | '5k+'>('all');
   const [bulkCountry, setBulkCountry] = useState('');
   const [editingGroup, setEditingGroup] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
@@ -172,9 +213,123 @@ export default function CsvImportTab() {
   // Phase 1: File upload + parse
   // ──────────────────────────────────────
 
+  const processRawRows = useCallback(async (rawRows: Record<string, string>[], mapping: Record<string, string>) => {
+    const rows: ParsedRow[] = rawRows.map((raw, index) => {
+      const name = (raw[mapping.name] || '').trim();
+      let telegramLink = (raw[mapping.telegramLink] || '').trim();
+      const rawDesc = mapping.description ? (raw[mapping.description] || '').trim() : '';
+      const description = isSpamDescription(rawDesc) ? '' : rawDesc;
+      const profilePictureUrl = mapping.profilePictureUrl ? (raw[mapping.profilePictureUrl] || '').trim() : '';
+      const totalUsers = mapping.totalUsers ? (raw[mapping.totalUsers] || '').trim() : '0';
+      let category = mapping.category ? (raw[mapping.category] || '').trim() : '';
+      const country = mapping.country ? (raw[mapping.country] || '').trim() : '';
+
+      const catLower = category.toLowerCase();
+      if (catLower === 'porn' || catLower === 'porn-telegram' || catLower === 'telegram porn' || catLower === 'porn telegram') {
+        category = 'Telegram-Porn';
+      }
+
+      if (telegramLink) {
+        // tg://resolve?domain=username → https://t.me/username
+        const tgResolve = telegramLink.match(/^tg:\/\/resolve\?domain=([a-zA-Z0-9_]+)/);
+        if (tgResolve) { telegramLink = `https://t.me/${tgResolve[1]}`; }
+        // tg://join?invite=HASH → https://t.me/+HASH  (private invite links)
+        const tgJoin = telegramLink.match(/^tg:\/\/join\?invite=(.+)/);
+        if (tgJoin) { telegramLink = `https://t.me/+${tgJoin[1]}`; }
+        // tg://openmessage?user_id=... or other tg:// schemes → strip (unsupported)
+        if (telegramLink.startsWith('tg://') && !telegramLink.startsWith('https://')) {
+          const domainMatch = telegramLink.match(/domain=([a-zA-Z0-9_]+)/);
+          telegramLink = domainMatch ? `https://t.me/${domainMatch[1]}` : '';
+        }
+        // telegram.me/username → https://t.me/username
+        const telegramMe = telegramLink.match(/^https?:\/\/telegram\.me\/(.+)/);
+        if (telegramMe) { telegramLink = `https://t.me/${telegramMe[1]}`; }
+        // telegram.dog/username → https://t.me/username
+        const telegramDog = telegramLink.match(/^https?:\/\/telegram\.dog\/(.+)/);
+        if (telegramDog) { telegramLink = `https://t.me/${telegramDog[1]}`; }
+        // t.me without protocol
+        if (telegramLink.startsWith('t.me/')) telegramLink = `https://${telegramLink}`;
+        // http → https
+        if (telegramLink.startsWith('http://t.me/')) telegramLink = telegramLink.replace('http://', 'https://');
+        // bare username (no protocol, no domain)
+        if (telegramLink && !telegramLink.includes('://') && !telegramLink.startsWith('https://')) {
+          telegramLink = `https://t.me/${telegramLink.replace(/^@/, '')}`;
+        }
+      }
+
+      const errors: string[] = [];
+      if (!name) errors.push('Missing name');
+      if (!telegramLink) errors.push('Missing link');
+      else if (!/^https:\/\/t\.me\/.+$/.test(telegramLink)) errors.push('Invalid link');
+
+      return { index, name, telegramLink, description, profilePictureUrl, totalUsers, category, country, errors, isDuplicate: false, isDbDuplicate: false, selected: errors.length === 0 };
+    });
+
+    const linkSeen = new Map<string, number>();
+    for (const row of rows) {
+      if (!row.telegramLink) continue;
+      if (linkSeen.has(row.telegramLink)) { row.isDuplicate = true; row.selected = false; }
+      else linkSeen.set(row.telegramLink, row.index);
+    }
+
+    setParsedRows(rows);
+
+    setCheckingDuplicates(true);
+    try {
+      const links = rows.filter(r => r.telegramLink && !r.isDuplicate).map(r => r.telegramLink);
+      if (links.length > 0) {
+        const res = await axios.post('/api/admin/csv-import/check-duplicates', { telegramLinks: links }, { headers: authHeader });
+        const dbDupes = new Set(res.data.duplicates.map((d: any) => d.telegramLink));
+        setParsedRows(prev => prev.map(r => ({ ...r, isDbDuplicate: dbDupes.has(r.telegramLink), selected: r.selected && !dbDupes.has(r.telegramLink) })));
+      }
+    } catch { /* ignore */ } finally { setCheckingDuplicates(false); }
+  }, [authHeader]);
+
   const handleFile = useCallback((file: File) => {
-    if (!file.name.endsWith('.csv')) {
-      alert('Please upload a .csv file');
+    const ext = file.name.split('.').pop()?.toLowerCase();
+
+    if (ext === 'json') {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          let data = JSON.parse(e.target?.result as string);
+
+          if (!Array.isArray(data)) {
+            const possibleArrayKey = Object.keys(data).find(k => Array.isArray(data[k]));
+            if (possibleArrayKey) data = data[possibleArrayKey];
+            else { alert('JSON must contain an array of groups (or an object with an array property).'); return; }
+          }
+
+          if (data.length === 0) { alert('JSON array is empty.'); return; }
+
+          const sampleKeys = Object.keys(data[0]);
+          const mapping = mapColumns(sampleKeys);
+          setColumnMapping(mapping);
+
+          if (!mapping.name || !mapping.telegramLink) {
+            alert(`Could not auto-detect required fields.\n\nDetected keys: ${sampleKeys.join(', ')}\n\nNeed at least: name/title and link/url fields.`);
+            return;
+          }
+
+          const rawRows: Record<string, string>[] = data.map((item: any) => {
+            const row: Record<string, string> = {};
+            for (const key of sampleKeys) {
+              row[key] = item[key] != null ? String(item[key]) : '';
+            }
+            return row;
+          });
+
+          await processRawRows(rawRows, mapping);
+        } catch (err: any) {
+          alert(`JSON parse error: ${err.message}`);
+        }
+      };
+      reader.readAsText(file);
+      return;
+    }
+
+    if (ext !== 'csv') {
+      alert('Please upload a .csv or .json file');
       return;
     }
 
@@ -191,58 +346,11 @@ export default function CsvImportTab() {
           return;
         }
 
-        const rows: ParsedRow[] = (results.data as Record<string, string>[]).map(
-          (raw, index) => {
-            const name = (raw[mapping.name] || '').trim();
-            let telegramLink = (raw[mapping.telegramLink] || '').trim();
-            const description = mapping.description ? (raw[mapping.description] || '').trim() : '';
-            const profilePictureUrl = mapping.profilePictureUrl ? (raw[mapping.profilePictureUrl] || '').trim() : '';
-            const totalUsers = mapping.totalUsers ? (raw[mapping.totalUsers] || '').trim() : '0';
-            let category = mapping.category ? (raw[mapping.category] || '').trim() : '';
-            const country = mapping.country ? (raw[mapping.country] || '').trim() : '';
-
-            const catLower = category.toLowerCase();
-            if (catLower === 'porn' || catLower === 'porn-telegram' || catLower === 'telegram porn' || catLower === 'porn telegram') {
-              category = 'Telegram-Porn';
-            }
-
-            if (telegramLink && !telegramLink.startsWith('https://t.me/')) {
-              if (telegramLink.startsWith('t.me/')) telegramLink = `https://${telegramLink}`;
-              else if (telegramLink.startsWith('http://t.me/')) telegramLink = telegramLink.replace('http://', 'https://');
-              else if (!telegramLink.includes('://')) telegramLink = `https://t.me/${telegramLink}`;
-            }
-
-            const errors: string[] = [];
-            if (!name) errors.push('Missing name');
-            if (!telegramLink) errors.push('Missing link');
-            else if (!/^https:\/\/t\.me\/.+$/.test(telegramLink)) errors.push('Invalid link');
-
-            return { index, name, telegramLink, description, profilePictureUrl, totalUsers, category, country, errors, isDuplicate: false, isDbDuplicate: false, selected: errors.length === 0 };
-          }
-        );
-
-        const linkSeen = new Map<string, number>();
-        for (const row of rows) {
-          if (!row.telegramLink) continue;
-          if (linkSeen.has(row.telegramLink)) { row.isDuplicate = true; row.selected = false; }
-          else linkSeen.set(row.telegramLink, row.index);
-        }
-
-        setParsedRows(rows);
-
-        setCheckingDuplicates(true);
-        try {
-          const links = rows.filter(r => r.telegramLink && !r.isDuplicate).map(r => r.telegramLink);
-          if (links.length > 0) {
-            const res = await axios.post('/api/admin/csv-import/check-duplicates', { telegramLinks: links }, { headers: authHeader });
-            const dbDupes = new Set(res.data.duplicates.map((d: any) => d.telegramLink));
-            setParsedRows(prev => prev.map(r => ({ ...r, isDbDuplicate: dbDupes.has(r.telegramLink), selected: r.selected && !dbDupes.has(r.telegramLink) })));
-          }
-        } catch { /* ignore */ } finally { setCheckingDuplicates(false); }
+        await processRawRows(results.data as Record<string, string>[], mapping);
       },
       error: (err) => alert(`CSV parse error: ${err.message}`),
     });
-  }, [authHeader]);
+  }, [processRawRows]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault(); setDragActive(false);
@@ -340,10 +448,28 @@ export default function CsvImportTab() {
   const toggleDispatchSelect = (id: string) => {
     setDispatchSelected(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   };
+  const filteredDispatch = useMemo(() => {
+    if (memberFilter === 'all') return dispatchGroups;
+    return dispatchGroups.filter(g => {
+      const m = g.memberCount || 0;
+      switch (memberFilter) {
+        case '0': return m === 0;
+        case '<50': return m < 50;
+        case '<500': return m < 500;
+        case '500+': return m >= 500;
+        case '1k+': return m >= 1000;
+        case '5k+': return m >= 5000;
+        default: return true;
+      }
+    });
+  }, [dispatchGroups, memberFilter]);
+  const pagedDispatch = filteredDispatch.slice(dispatchPage * dispatchPerPage, (dispatchPage + 1) * dispatchPerPage);
+  const dispatchTotalPages = Math.max(1, Math.ceil(filteredDispatch.length / dispatchPerPage));
   const selectAllDispatch = () => setDispatchSelected(new Set(dispatchGroups.map(g => g._id)));
+  const selectPageDispatch = () => setDispatchSelected(prev => { const next = new Set(prev); pagedDispatch.forEach(g => next.add(g._id)); return next; });
   const deselectAllDispatch = () => setDispatchSelected(new Set());
 
-  const dispatchBulkAction = async (action: 'vault' | 'unvault' | 'approve' | 'delete' | 'category' | 'country') => {
+  const dispatchBulkAction = async (action: 'vault' | 'unvault' | 'approve' | 'delete' | 'category') => {
     const ids = Array.from(dispatchSelected);
     if (ids.length === 0) return;
     setDispatchLoading(true);
@@ -361,17 +487,42 @@ export default function CsvImportTab() {
         await axios.put('/api/admin/csv-import/dispatch', { groupIds: ids, updates: { status: 'approved' } }, { headers: authHeader });
         setDispatchGroups(prev => prev.map(g => dispatchSelected.has(g._id) ? { ...g, status: 'approved' } : g));
       } else if (action === 'category' && bulkCategory) {
-        await axios.put('/api/admin/csv-import/dispatch', { groupIds: ids, updates: { category: bulkCategory } }, { headers: authHeader });
-        setDispatchGroups(prev => prev.map(g => dispatchSelected.has(g._id) ? { ...g, category: bulkCategory } : g));
-      } else if (action === 'country' && bulkCountry) {
-        await axios.put('/api/admin/csv-import/dispatch', { groupIds: ids, updates: { country: bulkCountry } }, { headers: authHeader });
-        setDispatchGroups(prev => prev.map(g => dispatchSelected.has(g._id) ? { ...g, country: bulkCountry } : g));
+        await axios.put('/api/admin/csv-import/dispatch', { groupIds: ids, updates: { addCategory: bulkCategory } }, { headers: authHeader });
+        setDispatchGroups(prev => prev.map(g => {
+          if (!dispatchSelected.has(g._id)) return g;
+          const cats = g.categories || [g.category].filter(Boolean);
+          if (cats.includes(bulkCategory) || cats.length >= 3) return g;
+          return { ...g, categories: [...cats, bulkCategory] };
+        }));
+        setBulkCategory('');
       }
       setDispatchSelected(new Set());
     } catch (err) {
       console.error('Dispatch action failed:', err);
       alert('Action failed.');
     } finally { setDispatchLoading(false); }
+  };
+
+  const cleanDescs = async (mode: 'spam' | 'all') => {
+    const pool = dispatchSelected.size > 0
+      ? dispatchGroups.filter(g => dispatchSelected.has(g._id))
+      : dispatchGroups;
+    const targets = mode === 'all'
+      ? pool.filter(g => g.description)
+      : pool.filter(g => g.description && isSpamDescription(g.description));
+    if (targets.length === 0) { alert(mode === 'all' ? 'No descriptions to clear.' : `No spam detected in ${pool.length} group(s).\nSpam is auto-cleaned on import. Use "Clear All Desc" to wipe remaining.`); return; }
+    const msg = mode === 'all'
+      ? `Clear ALL descriptions from ${targets.length} group(s)?\n\nThis wipes every description so AI can rewrite from scratch.`
+      : `Found ${targets.length} spam description(s) out of ${pool.length}.\n\nClear them so AI can rewrite from scratch?`;
+    if (!confirm(msg)) return;
+    setDispatchLoading(true);
+    try {
+      const groupIds = targets.map(g => g._id);
+      await axios.put('/api/admin/csv-import/dispatch', { groupIds, updates: { description: '' } }, { headers: authHeader });
+      setDispatchGroups(prev => prev.map(g => groupIds.includes(g._id) ? { ...g, description: '' } : g));
+      alert(`Cleared ${targets.length} description(s). Run AI Rewrite to generate fresh ones.`);
+    } catch { alert('Failed to clean descriptions.'); }
+    finally { setDispatchLoading(false); }
   };
 
   const saveInlineEdit = async (groupId: string) => {
@@ -427,176 +578,277 @@ export default function CsvImportTab() {
   const [fetchingPhotos, setFetchingPhotos] = useState(false);
   const [photoProgress, setPhotoProgress] = useState({ total: 0, done: 0, failed: 0 });
 
+  // Fetch member counts from Telegram
+  const [fetchingUsers, setFetchingUsers] = useState(false);
+  const [usersProgress, setUsersProgress] = useState({ total: 0, done: 0, success: 0 });
+
   const fetchTelegramPhotos = async () => {
-    const missingImage = dispatchGroups.filter(g => !g.image || g.image === '/assets/image.jpg');
+    const missingImage = dispatchGroups.filter(g => !g.image || g.image === '/assets/image.jpg' || g.image === '/assets/placeholder-no-image.png');
     if (missingImage.length === 0) { alert('All groups already have images.'); return; }
 
     setFetchingPhotos(true);
     setPhotoProgress({ total: missingImage.length, done: 0, failed: 0 });
 
+    const failedNames: string[] = [];
+    const skippedNames: string[] = [];
+
     for (let i = 0; i < missingImage.length; i += 5) {
       const batch = missingImage.slice(i, i + 5);
       try {
-        const res = await axios.post('/api/admin/csv-import/fetch-photos', { groupIds: batch.map(g => g._id) }, { headers: authHeader });
+        const res = await axios.post('/api/admin/csv-import/fetch-photos', { groupIds: batch.map(g => g._id), force: false }, { headers: authHeader });
         const results = res.data.results || [];
-        const ok = results.filter((r: any) => r.status === 'success').length;
-        const fail = results.filter((r: any) => r.status === 'failed').length;
-        setPhotoProgress(prev => ({ ...prev, done: prev.done + ok, failed: prev.failed + fail }));
-        // Update local state with new image URLs
+        let ok = 0, fail = 0;
         for (const r of results) {
           if (r.status === 'success' && r.url) {
+            ok++;
             setDispatchGroups(prev => prev.map(g => g._id === r.id ? { ...g, image: r.url } : g));
+          } else if (r.status === 'failed') {
+            fail++;
+            const grp = batch.find(g => g._id === r.id);
+            failedNames.push(`${grp?.name || r.id}: ${r.error}`);
+          } else if (r.status === 'skipped') {
+            const grp = batch.find(g => g._id === r.id);
+            skippedNames.push(`${grp?.name || r.id}: ${r.error}`);
           }
         }
+        setPhotoProgress(prev => ({ ...prev, done: prev.done + ok, failed: prev.failed + fail }));
       } catch {
         setPhotoProgress(prev => ({ ...prev, failed: prev.failed + batch.length }));
       }
+      if (i + 5 < missingImage.length) await new Promise(r => setTimeout(r, 3000));
     }
     setFetchingPhotos(false);
+
+    if (failedNames.length > 0 || skippedNames.length > 0) {
+      const msg = [
+        failedNames.length > 0 ? `Failed (${failedNames.length}):\n${failedNames.slice(0, 15).join('\n')}${failedNames.length > 15 ? `\n...and ${failedNames.length - 15} more` : ''}` : '',
+        skippedNames.length > 0 ? `Skipped (${skippedNames.length}):\n${skippedNames.slice(0, 10).join('\n')}` : '',
+      ].filter(Boolean).join('\n\n');
+      alert(msg);
+    }
+  };
+
+  const fetchTelegramUsers = async () => {
+    const target = dispatchSelected.size > 0
+      ? dispatchGroups.filter(g => dispatchSelected.has(g._id) && (g.memberCount || 0) === 0)
+      : dispatchGroups.filter(g => (g.memberCount || 0) === 0);
+
+    if (target.length === 0) { alert('All groups already have member counts.'); return; }
+
+    setFetchingUsers(true);
+    setUsersProgress({ total: target.length, done: 0, success: 0 });
+    let totalSuccess = 0;
+
+    for (let i = 0; i < target.length; i += 10) {
+      const batch = target.slice(i, i + 10);
+      try {
+        const res = await axios.post('/api/admin/csv-import/fetch-users', { groupIds: batch.map(g => g._id) }, { headers: authHeader });
+        const results = res.data.results || [];
+        for (const r of results) {
+          if (r.status === 'success' && r.memberCount) {
+            totalSuccess++;
+            setDispatchGroups(prev => prev.map(g => g._id === r.id ? { ...g, memberCount: r.memberCount } : g));
+          }
+        }
+      } catch { /* continue */ }
+      setUsersProgress({ total: target.length, done: Math.min(i + 10, target.length), success: totalSuccess });
+      if (i + 10 < target.length) await new Promise(r => setTimeout(r, 1500));
+    }
+
+    setFetchingUsers(false);
+    alert(`Done! Fetched member counts for ${totalSuccess} of ${target.length} groups.`);
   };
 
   // ──────────────────────────────────────
-  // AI Enrichment
+  // AI Enrichment (legacy state for modal — removed, using Rewrite action instead)
   // ──────────────────────────────────────
 
-  const [aiEnrichGroups, setAiEnrichGroups] = useState<ImportedGroup[]>([]);
-  const [aiEnrichOpen, setAiEnrichOpen] = useState(false);
-  const [aiEnrichResults, setAiEnrichResults] = useState<Record<string, string>>({});
-  const [aiEnrichSaving, setAiEnrichSaving] = useState(false);
-  const [aiPromptCopied, setAiPromptCopied] = useState(false);
-  const [aiGenerating, setAiGenerating] = useState(false);
+  // ──────────────────────────────────────
+  // AI Actions (Qwen/DeepSeek via /api/admin/translate)
+  // ──────────────────────────────────────
 
-  const openAiEnrich = (groups: ImportedGroup[]) => {
-    setAiEnrichGroups(groups);
-    setAiEnrichResults({});
-    setAiPromptCopied(false);
-    setAiGenerating(false);
-    setAiEnrichOpen(true);
-  };
+  const [aiActionRunning, setAiActionRunning] = useState(false);
+  const [aiActionLabel, setAiActionLabel] = useState('');
+  const [aiDone, setAiDone] = useState<Record<string, Set<string>>>({});
+  const aiAbortRef = useRef(false);
+  const [importAiModel, setImportAiModel] = useState<'qwen' | 'deepseek' | 'both'>('qwen');
+  const { addTask, updateTask, finishTask } = useTaskManager();
+  const importTaskIdRef = useRef('');
 
-  const generateAiPrompt = (groups: ImportedGroup[]): string => {
-    const context = `You are writing for Erogram.pro, a directory of Telegram groups and channels focused on adult content, adult entertainment, and NSFW material. The audience is adults looking to discover and join Telegram groups in this niche.`;
+  const AI_CATEGORIZE_SYSTEM = `You are a category classification specialist for Erogram.pro, an adult NSFW Telegram groups directory.
 
-    if (groups.length === 1) {
-      const g = groups[0];
-      return `${context}
+You MUST assign EXACTLY 2 or 3 categories from this EXACT list (use exact spelling, case-sensitive):
+${filterCategories.filter(c => c !== 'All').join(', ')}
 
-Write a unique, SEO-friendly description for this Telegram group.
+HOW TO CATEGORIZE:
+1. READ THE GROUP NAME — strongest signal. "Hot Desi Girls" = Asian. "Lesbian Paradise" = Lesbian.
+2. READ THE DESCRIPTION — identify the ACTUAL content type.
+3. DETECT COUNTRY from the group name and topic, NOT from spam/disclaimers in the description.
 
-Group name: ${g.name}
-Category: ${g.category || 'Unknown'}
-Members: ${g.memberCount > 0 ? g.memberCount.toLocaleString() : 'Unknown'}
-Current description: ${g.description || 'None'}
+CRITICAL: Many descriptions contain MIXED LANGUAGES from spam and ads unrelated to the group. A "Colombian Girls" group with Russian disclaimers is Colombian, NOT Russian. Only assign a country when the GROUP NAME or ACTUAL TOPIC clearly indicates it.
+
+Country mappings: Brazilian/Portuguese → "Brazil", Chinese → "China", Japanese → "Japan", Russian → "Russian", German → "Germany", Spanish → "Spain", British → "UK", American → "USA", Colombian → "Colombia", Mexican → "Mexico", French → "France", Italian → "Italy", Filipino → "Philippines", Vietnamese → "Vietnam", Argentine → "Argentina", Ukrainian → "Ukraine"
+
+- MINIMUM 2 categories, MAXIMUM 3. NEVER return only 1.
+- Pick SPECIFIC niches first. "Telegram-Porn" or "Amateur" as fallbacks.
+- Format: [N] Category1 | Category2 | Category3
+- Return ONLY categorizations, no explanations.`;
+
+  const AI_REWRITE_SYSTEM = `You are an expert SEO content writer for Erogram.pro, a Telegram groups directory.
+
+CRITICAL: You MUST write ALL descriptions in ENGLISH regardless of the source language. If the original description is in Portuguese, Spanish, Russian, or any other language, translate and rewrite it into fluent English.
 
 Rules:
-- Write 2-3 sentences (150-200 characters total) that are UNIQUE to this group
-- Mention the group name naturally
-- Reference the niche/category and what members can expect to find
-- If the current description is in a non-English language, translate it to English and append the original in parentheses
-- If the group name is in a non-Latin script (Russian, Chinese, Arabic, etc.), include an English translation in [brackets] after the name
-- Do NOT use generic filler like "Join now" or "Best group ever"
-- Do NOT duplicate phrasing from other descriptions
-- Keep it factual and descriptive for search engines
-- Output ONLY the description, nothing else`;
-    }
+- ALWAYS output in ENGLISH — never in Portuguese, Spanish, or any other language
+- Rewrite each description to be UNIQUE and human-written to avoid duplicate content penalties
+- Each description must be 200+ characters minimum
+- NO filler words (no "Join now!", "Best group!", "Don't miss!", "Click here!", "Amazing!")
+- Identify the NICHE from the group name, category, members, and description — write about it specifically
+- Mention the group name naturally. If non-Latin script (Chinese, Russian, Arabic, Korean), keep original + [English meaning]
+- Use member count for credibility when available
+- Each description MUST be unique — vary structure, vocabulary, approach
+- Format: [0], [1], [2]... (zero-based indices matching input order) followed by the rewritten text
+- Return ONLY lines in [N] rewritten_text format, no explanations`;
 
-    let prompt = `${context}
+  const AI_TRANSLATE_SYSTEM = (lang: string) => `You are a native ${lang} speaker writing for Erogram.pro — an adult NSFW Telegram groups directory.
 
-Write unique, SEO-friendly descriptions for these ${groups.length} Telegram groups. Each must be distinct — no shared phrasing between groups.
+Rules:
+- DO NOT translate word-for-word. Rewrite naturally in ${lang} as a native speaker would phrase it
+- Use everyday slang, tone, and vocabulary that ${lang}-speaking adults use when discussing NSFW content online
+- Write like a real person — casual, direct, sex-positive. Adult industry directory, not corporate
+- Each description must be 200+ characters — expand thin descriptions using niche knowledge
+- NO filler words. Talk about the NICHE specifically using terms native ${lang} speakers search for
+- Preserve brand names: Erogram, Telegram
+- If group name is non-Latin, keep original script AND add [English meaning]
+- Prioritize how a ${lang} speaker would naturally search for and describe this content
+- Format: [N] translated_text
+- Return ONLY translations in [N] format, no explanations`;
 
-For each group, output a line in this exact format:
-[NUMBER]. DESCRIPTION_TEXT
+  const runAiAction = async (actionMode: 'categorize' | 'rewrite' | 'translate_de' | 'translate_es') => {
+    const ids = Array.from(dispatchSelected);
+    if (ids.length === 0) { alert('Select groups first.'); return; }
 
-Rules for ALL descriptions:
-- 2-3 sentences, 150-200 characters each
-- Mention the group name naturally
-- Reference the niche/category and what members can expect
-- If the current description is in a non-English language, translate it and append the original in parentheses
-- If a group name is in a non-Latin script, add an English translation in [brackets]
-- No generic filler, keep it factual and SEO-friendly
-- Each description MUST be unique — no copy-paste between groups
+    const mode = actionMode.startsWith('translate') ? 'translate' : actionMode;
+    const targetLang = actionMode === 'translate_de' ? 'de' : actionMode === 'translate_es' ? 'es' : 'en';
+    const targetField = mode === 'categorize' ? 'category' : mode === 'rewrite' ? 'description' : `description_${targetLang}`;
+    const langName = targetLang === 'de' ? 'German' : targetLang === 'es' ? 'Spanish' : 'English';
 
-Groups:\n\n`;
+    const systemPrompt = mode === 'categorize' ? AI_CATEGORIZE_SYSTEM
+      : mode === 'rewrite' ? AI_REWRITE_SYSTEM
+      : AI_TRANSLATE_SYSTEM(langName);
 
-    groups.forEach((g, i) => {
-      prompt += `${i + 1}. Name: ${g.name}\n   Category: ${g.category || 'Unknown'} | Members: ${g.memberCount > 0 ? g.memberCount.toLocaleString() : 'Unknown'}\n   Current: ${g.description || 'None'}\n\n`;
-    });
+    const userPromptTemplate = mode === 'categorize'
+      ? `Classify these {{count}} groups into categories. If a group already has categories listed, ADD more specific ones to reach 2-3 total — do NOT remove existing valid categories. NEVER return only 1 category. Return [N] Category1 | Category2 | Category3:\n\n{{groups}}`
+      : mode === 'rewrite'
+      ? `Rewrite these {{count}} group descriptions IN ENGLISH for SEO. If the source is in Portuguese, Spanish, or any other language, translate it to English. Each must be 200+ chars, unique, human-like, niche-specific. Use [0], [1], [2]... (zero-based) matching the input. Return each on its own line:\n\n{{groups}}`
+      : `Translate these {{count}} group descriptions to {{language}}. Each 200+ characters, niche-specific. Return [N] translated_text:\n\n{{groups}}`;
 
-    return prompt;
-  };
+    const label = mode === 'categorize' ? 'Categorizing' : mode === 'rewrite' ? 'Rewriting' : `Translating → ${langName}`;
+    aiAbortRef.current = false;
+    setAiActionRunning(true);
+    setAiActionLabel(label);
 
-  const copyAiPrompt = () => {
-    const prompt = generateAiPrompt(aiEnrichGroups);
-    navigator.clipboard.writeText(prompt);
-    setAiPromptCopied(true);
-    setTimeout(() => setAiPromptCopied(false), 2000);
-  };
+    const tid = `import_ai_${Date.now()}`;
+    importTaskIdRef.current = tid;
+    addTask(tid, `Import ${label}: ${ids.length} groups`, ids.length);
 
-  const autoGenerateWithAi = async () => {
-    if (aiEnrichGroups.length === 0) return;
-    setAiGenerating(true);
+    let totalProcessed = 0;
+    let totalErrors = 0;
+
     try {
-      const res = await axios.post('/api/admin/csv-import/ai-enrich', {
-        groupIds: aiEnrichGroups.map(g => g._id),
-      }, { headers: authHeader });
+      const CHUNK = 5;
+      let chunkIdx = 0;
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        if (aiAbortRef.current) break;
+        const chunk = ids.slice(i, i + CHUNK);
+        const chunkModel: 'qwen' | 'deepseek' = importAiModel === 'both'
+          ? (chunkIdx % 2 === 0 ? 'qwen' : 'deepseek')
+          : importAiModel;
+        chunkIdx++;
+        try {
+          const res = await axios.post('/api/admin/translate', {
+            groupIds: chunk,
+            targetLanguage: targetLang,
+            targetField,
+            systemPrompt,
+            userPromptTemplate,
+            mode,
+            dryRun: false,
+            aiModel: chunkModel,
+          }, { headers: authHeader });
 
-      const results: Record<string, string> = res.data.results || {};
-      setAiEnrichResults(results);
+          const results = res.data.results || {};
+          const count = Object.keys(results).length;
+          totalProcessed += count;
 
-      // Update local state immediately
-      if (Object.keys(results).length > 0) {
-        setDispatchGroups(prev => prev.map(g => {
-          const enriched = results[g._id];
-          return enriched ? { ...g, description: enriched } : g;
-        }));
-      }
-    } catch (err: any) {
-      const msg = err.response?.data?.message || 'AI generation failed';
-      alert(msg);
-    } finally {
-      setAiGenerating(false);
-    }
-  };
+          console.log(`[AI Action] Chunk response:`, { processed: res.data.processed, saved: res.data.saved, errors: res.data.errors, resultCount: count, sampleKeys: Object.keys(results).slice(0, 3) });
+          if (count === 0) {
+            console.warn(`[AI Action] Empty results for chunk. Full response:`, res.data);
+          }
 
-  const parseAiResults = (text: string) => {
-    if (aiEnrichGroups.length === 1) {
-      setAiEnrichResults({ [aiEnrichGroups[0]._id]: text.trim() });
-      return;
-    }
-    const lines = text.split('\n').filter(l => l.trim());
-    const parsed: Record<string, string> = {};
-    for (const line of lines) {
-      const match = line.match(/^(\d+)\.\s*(.+)$/);
-      if (match) {
-        const idx = parseInt(match[1]) - 1;
-        if (idx >= 0 && idx < aiEnrichGroups.length) {
-          parsed[aiEnrichGroups[idx]._id] = match[2].trim();
+          const doneIds = Object.keys(results);
+          if (doneIds.length > 0) {
+            setAiDone(prev => {
+              const next = { ...prev };
+              for (const id of doneIds) {
+                if (!next[id]) next[id] = new Set();
+                next[id] = new Set([...next[id], actionMode]);
+              }
+              return next;
+            });
+          }
+
+          if (mode === 'categorize' && count > 0) {
+            const validSet = new Set(filterCategories.map(c => c.toLowerCase()));
+            setDispatchGroups(prev => prev.map(g => {
+              const raw = results[g._id];
+              if (!raw) return g;
+              const allCats = raw.split('|').map((c: string) => c.trim()).filter(Boolean)
+                .filter((c: string) => validSet.has(c.toLowerCase()));
+              return { ...g, category: allCats[0] || g.category, categories: allCats.length ? allCats : g.categories };
+            }));
+          } else if ((mode === 'rewrite' || mode === 'translate') && count > 0) {
+            setDispatchGroups(prev => prev.map(g => {
+              const val = results[g._id];
+              if (!val) return g;
+              if (mode === 'rewrite') return { ...g, description: val };
+              if (actionMode === 'translate_de') return { ...g, description_de: val };
+              if (actionMode === 'translate_es') return { ...g, description_es: val };
+              return g;
+            }));
+          }
+        } catch (err: any) {
+          console.error(`AI chunk failed:`, err);
+          totalErrors += chunk.length;
         }
+
+        const processed = Math.min(i + CHUNK, ids.length);
+        setAiActionLabel(`${aiAbortRef.current ? 'Stopped' : label} ${processed}/${ids.length}`);
+        updateTask(importTaskIdRef.current, totalProcessed);
       }
-    }
-    setAiEnrichResults(parsed);
-  };
 
-  const saveAiEnrichments = async () => {
-    const enrichments = Object.entries(aiEnrichResults)
-      .filter(([, desc]) => desc.trim())
-      .map(([groupId, description]) => ({ groupId, description }));
-    if (enrichments.length === 0) return;
+      if (batchId && totalProcessed > 0) {
+        await loadDispatchFromDB(batchId);
+      }
 
-    setAiEnrichSaving(true);
-    try {
-      await axios.post('/api/admin/csv-import/ai-enrich', { enrichments }, { headers: authHeader });
-      setDispatchGroups(prev => prev.map(g => {
-        const enriched = aiEnrichResults[g._id];
-        return enriched ? { ...g, description: enriched } : g;
-      }));
-      setAiEnrichOpen(false);
-      setAiEnrichGroups([]);
-      setAiEnrichResults({});
-    } catch {
-      alert('Failed to save enrichments.');
+      const stopped = aiAbortRef.current;
+      finishTask(importTaskIdRef.current, stopped ? 'stopped' : totalProcessed > 0 ? 'done' : 'error',
+        totalErrors > 0 ? `${totalErrors} errors` : undefined);
+
+      const msg = stopped
+        ? `Stopped. ${totalProcessed} groups saved so far.`
+        : totalErrors > 0
+        ? `${label} done: ${totalProcessed} processed, ${totalErrors} errors.`
+        : totalProcessed === 0
+        ? `${label} finished but 0 results parsed. Check server logs (F12).`
+        : `${label} complete: ${totalProcessed} groups updated.`;
+      alert(msg);
+    } catch (err: any) {
+      finishTask(importTaskIdRef.current, 'error', err.message);
+      alert(`AI action failed: ${err.response?.data?.message || err.message}`);
     } finally {
-      setAiEnrichSaving(false);
+      setAiActionRunning(false);
+      setAiActionLabel('');
     }
   };
 
@@ -775,15 +1027,13 @@ Groups:\n\n`;
 
   return (
     <div>
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-3xl font-black">CSV Import</h2>
           <p className="text-[#666] mt-1">Import → Review & Dispatch → Schedule</p>
         </div>
         <div className="flex gap-3">
-          {phase !== 'upload' && phase !== 'queue' && (
-            <button onClick={() => { setPhase('upload'); setParsedRows([]); setDispatchGroups([]); setBatchId(null); setImportError(''); }} className="px-4 py-2 rounded-xl text-sm font-medium bg-white/5 hover:bg-white/10 transition-colors">
+          {phase !== 'queue' && (phase !== 'upload' || parsedRows.length > 0 || dispatchGroups.length > 0) && (
+            <button onClick={() => { setPhase('upload'); setParsedRows([]); setDispatchGroups([]); setBatchId(null); setImportError(''); setColumnMapping({}); }} className="px-4 py-2 rounded-xl text-sm font-medium bg-white/5 hover:bg-white/10 transition-colors">
               New Import
             </button>
           )}
@@ -822,10 +1072,14 @@ Groups:\n\n`;
                   onClick={() => document.getElementById('csv-file-input')?.click()}
                 >
                   <div className="text-5xl mb-4">📄</div>
-                  <h3 className="text-xl font-bold mb-2">Upload CSV File</h3>
+                  <h3 className="text-xl font-bold mb-2">Upload CSV or JSON</h3>
                   <p className="text-[#666] mb-4">Drag and drop or click to browse</p>
-                  <p className="text-xs text-[#444]">Columns: name/title, link/url, description, category, country, image, members</p>
-                  <input id="csv-file-input" type="file" accept=".csv" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
+                  <div className="flex justify-center gap-3 mb-4">
+                    <span className="px-3 py-1 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-medium">.csv</span>
+                    <span className="px-3 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-medium">.json</span>
+                  </div>
+                  <p className="text-xs text-[#444]">Fields: name/title, link/url, description, category, country, image, members</p>
+                  <input id="csv-file-input" type="file" accept=".csv,.json" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
                 </div>
 
                 {/* Recent batches */}
@@ -876,6 +1130,7 @@ Groups:\n\n`;
 
                 {/* Actions */}
                 <div className="flex gap-3 mb-4">
+                  <button onClick={() => { setParsedRows([]); setColumnMapping({}); setImportError(''); }} className="px-3 py-1.5 text-xs rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors font-medium">← Start Over</button>
                   <button onClick={selectAll} className="px-3 py-1.5 text-xs rounded-lg bg-white/5 hover:bg-white/10 transition-colors">Select All Valid</button>
                   <button onClick={deselectAll} className="px-3 py-1.5 text-xs rounded-lg bg-white/5 hover:bg-white/10 transition-colors">Deselect All</button>
                   {dupeCount > 0 && <button onClick={deleteAllDuplicates} className="px-3 py-1.5 text-xs rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors">Delete {dupeCount} Duplicates</button>}
@@ -914,10 +1169,17 @@ Groups:\n\n`;
                           <td className="p-3 text-blue-400 max-w-[150px] truncate text-xs">{row.telegramLink}</td>
                           <td className="p-3 text-xs">
                             {row.category ? <span className="text-emerald-400">{row.category}</span> : <span className="text-yellow-500/60">—</span>}
-                            {row.country && <span className="text-[#555] ml-1">· {row.country}</span>}
+                            
                           </td>
                           <td className="p-3 text-[#666] max-w-[180px] truncate text-xs">{row.description || '—'}</td>
-                          <td className="p-3 text-[#666]">{row.totalUsers || '—'}</td>
+                          <td className="p-3">
+                            {(() => {
+                              const n = parseInt(row.totalUsers) || 0;
+                              return n > 0
+                                ? <span className={`font-medium tabular-nums ${n < 50 ? 'text-red-400' : n < 500 ? 'text-yellow-400' : 'text-green-400'}`}>{n.toLocaleString()}</span>
+                                : <span className="text-red-400/60">—</span>;
+                            })()}
+                          </td>
                           <td className="p-3">
                             {row.errors.length > 0 && <span className="text-red-400 text-xs">{row.errors.join(', ')}</span>}
                             {row.isDuplicate && <span className="text-yellow-400 text-xs">CSV dupe</span>}
@@ -1003,20 +1265,26 @@ Groups:\n\n`;
                     <button onClick={() => dispatchBulkAction('approve')} disabled={dispatchLoading} className="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-xs font-medium hover:bg-green-500/30 disabled:opacity-50 transition-colors">Approve Now (skip schedule)</button>
                     <div className="flex items-center gap-1">
                       <select value={bulkCategory} onChange={(e) => setBulkCategory(e.target.value)} className="px-2 py-1.5 bg-[#1a1a1a] border border-white/10 rounded-lg text-xs text-white outline-none">
-                        <option value="">Category...</option>
+                        <option value="">+ Add Category...</option>
                         {filterCategories.filter(c => c !== 'All').map(cat => <option key={cat} value={cat}>{cat}</option>)}
                       </select>
-                      <select value={bulkCountry} onChange={(e) => setBulkCountry(e.target.value)} className="px-2 py-1.5 bg-[#1a1a1a] border border-white/10 rounded-lg text-xs text-white outline-none">
-                        <option value="">Region...</option>
-                        {filterCountries.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                      {(bulkCategory || bulkCountry) && (
-                        <button onClick={() => { if (bulkCategory) dispatchBulkAction('category'); if (bulkCountry) dispatchBulkAction('country'); }} disabled={dispatchLoading} className="px-2 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-500/30 disabled:opacity-50 transition-colors">Apply</button>
+                      {bulkCategory && (
+                        <button onClick={() => dispatchBulkAction('category')} disabled={dispatchLoading} className="px-2 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-500/30 disabled:opacity-50 transition-colors">+ Add</button>
                       )}
                     </div>
                     <button onClick={() => dispatchBulkAction('delete')} disabled={dispatchLoading} className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-xs font-medium hover:bg-red-500/30 disabled:opacity-50 transition-colors">Delete</button>
+                    <button onClick={() => cleanDescs('spam')} disabled={dispatchLoading} className="px-3 py-1.5 bg-orange-500/20 text-orange-400 rounded-lg text-xs font-medium hover:bg-orange-500/30 disabled:opacity-50 transition-colors">🧹 Clean Spam</button>
+                    <button onClick={() => cleanDescs('all')} disabled={dispatchLoading} className="px-3 py-1.5 bg-red-500/10 text-red-400/80 rounded-lg text-xs font-medium hover:bg-red-500/20 disabled:opacity-50 transition-colors">🗑️ Clear All Desc</button>
                     <div className="h-4 w-px bg-white/10" />
-                    <button onClick={() => openAiEnrich(dispatchGroups.filter(g => dispatchSelected.has(g._id)))} className="px-3 py-1.5 bg-purple-500/20 text-purple-400 rounded-lg text-xs font-medium hover:bg-purple-500/30 transition-colors">✦ AI Enrich</button>
+                    <div className="flex rounded-lg overflow-hidden border border-white/10">
+                      {([{ k: 'qwen', l: 'Q' }, { k: 'deepseek', l: 'DS' }, { k: 'both', l: 'Both' }] as { k: 'qwen' | 'deepseek' | 'both'; l: string }[]).map(m => (
+                        <button key={m.k} onClick={() => setImportAiModel(m.k)} className={`px-2 py-1 text-[10px] font-bold transition-colors ${importAiModel === m.k ? (m.k === 'qwen' ? 'bg-blue-600 text-white' : m.k === 'deepseek' ? 'bg-emerald-600 text-white' : 'bg-purple-600 text-white') : 'bg-white/5 text-[#666] hover:text-white'}`}>{m.l}</button>
+                      ))}
+                    </div>
+                    <button onClick={() => runAiAction('categorize')} disabled={aiActionRunning} className="px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-500/30 disabled:opacity-50 transition-colors">🏷️ Categorize</button>
+                    <button onClick={() => runAiAction('rewrite')} disabled={aiActionRunning} className="px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-lg text-xs font-medium hover:bg-amber-500/30 disabled:opacity-50 transition-colors">✍️ Rewrite in English</button>
+                    <button onClick={() => runAiAction('translate_de')} disabled={aiActionRunning} className="px-3 py-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg text-xs font-medium hover:bg-emerald-500/30 disabled:opacity-50 transition-colors">🇩🇪 DE</button>
+                    <button onClick={() => runAiAction('translate_es')} disabled={aiActionRunning} className="px-3 py-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg text-xs font-medium hover:bg-emerald-500/30 disabled:opacity-50 transition-colors">🇪🇸 ES</button>
                     <div className="h-4 w-px bg-white/10" />
                     <button onClick={() => scheduleNow(Array.from(dispatchSelected))} disabled={dispatchLoading} className="px-3 py-1.5 bg-[#b31b1b] text-white rounded-lg text-xs font-bold hover:bg-[#c42b2b] disabled:opacity-50 transition-colors">
                       {dispatchLoading ? 'Scheduling...' : `Schedule ${dispatchSelected.size} Now`}
@@ -1024,9 +1292,23 @@ Groups:\n\n`;
                   </div>
                 )}
 
+                {/* AI action progress */}
+                {aiActionRunning && (
+                  <div className="mb-4 p-3 rounded-xl bg-blue-500/5 border border-blue-500/20 flex items-center gap-3">
+                    <span className="w-4 h-4 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin shrink-0" />
+                    <span className="text-sm text-blue-400 font-medium flex-1">{aiActionLabel || 'AI processing...'}</span>
+                    <button
+                      onClick={() => { aiAbortRef.current = true; }}
+                      className="px-3 py-1 rounded-lg text-xs font-bold text-white bg-red-600 hover:bg-red-500 transition-colors"
+                    >
+                      Stop
+                    </button>
+                  </div>
+                )}
+
                 {/* Fetch photos bar */}
                 {(() => {
-                  const missingCount = dispatchGroups.filter(g => !g.image || g.image === '/assets/image.jpg').length;
+                  const missingCount = dispatchGroups.filter(g => !g.image || g.image === '/assets/image.jpg' || g.image === '/assets/placeholder-no-image.png').length;
                   if (missingCount === 0 && !fetchingPhotos) return null;
                   return (
                     <div className="mb-4 p-3 rounded-xl bg-purple-500/5 border border-purple-500/20 flex items-center gap-3">
@@ -1047,12 +1329,86 @@ Groups:\n\n`;
                   );
                 })()}
 
-                {/* Selection controls + stats */}
-                <div className="flex gap-3 mb-4">
-                  <button onClick={selectAllDispatch} className="px-3 py-1.5 text-xs rounded-lg bg-white/5 hover:bg-white/10 transition-colors">Select All</button>
+                {/* Fetch users (member counts) bar */}
+                {(() => {
+                  const zeroCount = dispatchGroups.filter(g => (g.memberCount || 0) === 0).length;
+                  if (zeroCount === 0 && !fetchingUsers) return null;
+                  return (
+                    <div className="mb-4 p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/20 flex items-center gap-3">
+                      {fetchingUsers ? (
+                        <>
+                          <span className="text-sm text-cyan-400 animate-pulse">Fetching member counts...</span>
+                          <span className="text-xs text-[#666]">{usersProgress.done}/{usersProgress.total} done — {usersProgress.success} fetched</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-sm text-cyan-300">{zeroCount} groups with 0 members</span>
+                          <button onClick={fetchTelegramUsers} className="px-3 py-1.5 bg-cyan-500/20 text-cyan-400 rounded-lg text-xs font-medium hover:bg-cyan-500/30 transition-colors">
+                            Fetch Users
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Member filter */}
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <span className="text-[10px] text-[#666] uppercase tracking-wider">Members:</span>
+                  {([
+                    ['all', 'All', '', dispatchGroups.length],
+                    ['0', '0', 'red', dispatchGroups.filter(g => (g.memberCount || 0) === 0).length],
+                    ['<50', '<50', 'red', dispatchGroups.filter(g => (g.memberCount || 0) > 0 && (g.memberCount || 0) < 50).length],
+                    ['<500', '<500', 'yellow', dispatchGroups.filter(g => (g.memberCount || 0) > 0 && (g.memberCount || 0) < 500).length],
+                    ['500+', '500+', 'green', dispatchGroups.filter(g => (g.memberCount || 0) >= 500).length],
+                    ['1k+', '1K+', 'green', dispatchGroups.filter(g => (g.memberCount || 0) >= 1000).length],
+                    ['5k+', '5K+', 'emerald', dispatchGroups.filter(g => (g.memberCount || 0) >= 5000).length],
+                  ] as [string, string, string, number][]).map(([val, label, color, count]) => (
+                    <button
+                      key={val}
+                      onClick={() => { setMemberFilter(val as any); setDispatchPage(0); }}
+                      className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all ${memberFilter === val
+                        ? 'bg-[#b31b1b] text-white'
+                        : color === 'red' ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
+                        : color === 'yellow' ? 'bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20'
+                        : color === 'green' ? 'bg-green-500/10 text-green-400 hover:bg-green-500/20'
+                        : color === 'emerald' ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                        : 'bg-white/5 text-[#999] hover:text-white'
+                      }`}
+                    >
+                      {label} ({count})
+                    </button>
+                  ))}
+                  {memberFilter !== 'all' && (
+                    <button
+                      onClick={() => { const ids = filteredDispatch.map(g => g._id); setDispatchSelected(new Set(ids)); }}
+                      className="px-2.5 py-1 text-[10px] font-bold rounded-md bg-white/10 text-white hover:bg-white/15 transition-colors"
+                    >
+                      Select filtered ({filteredDispatch.length})
+                    </button>
+                  )}
+                </div>
+
+                {/* Selection controls + pagination + stats */}
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  <button onClick={selectPageDispatch} className="px-3 py-1.5 text-xs rounded-lg bg-white/5 hover:bg-white/10 transition-colors">Select Page</button>
+                  <button onClick={selectAllDispatch} className="px-3 py-1.5 text-xs rounded-lg bg-white/5 hover:bg-white/10 transition-colors">Select All ({dispatchGroups.length})</button>
                   <button onClick={deselectAllDispatch} className="px-3 py-1.5 text-xs rounded-lg bg-white/5 hover:bg-white/10 transition-colors">Deselect All</button>
+                  <div className="h-4 w-px bg-white/10" />
+                  <span className="text-[10px] text-[#666] uppercase tracking-wider">Quick select:</span>
+                  <button onClick={() => { const ids = dispatchGroups.filter(g => !g.description).map(g => g._id); setDispatchSelected(new Set(ids)); }} className="px-2 py-1 text-[10px] font-medium rounded-md bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors">No Desc ({dispatchGroups.filter(g => !g.description).length})</button>
+                  <button onClick={() => { const ids = dispatchGroups.filter(g => !g.categories || g.categories.length < 2).map(g => g._id); setDispatchSelected(new Set(ids)); }} className="px-2 py-1 text-[10px] font-medium rounded-md bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors">&lt;2 Cats ({dispatchGroups.filter(g => !g.categories || g.categories.length < 2).length})</button>
+                  <div className="h-4 w-px bg-white/10" />
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-[#666] uppercase tracking-wider mr-1">Show:</span>
+                    {[10, 50, 100].map(n => (
+                      <button key={n} onClick={() => { setDispatchPerPage(n); setDispatchPage(0); }} className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${dispatchPerPage === n ? 'bg-[#b31b1b] text-white' : 'bg-white/5 text-[#666] hover:text-white'}`}>{n}</button>
+                    ))}
+                    <button onClick={() => { setDispatchPerPage(999999); setDispatchPage(0); }} className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${dispatchPerPage >= 999999 ? 'bg-[#b31b1b] text-white' : 'bg-white/5 text-[#666] hover:text-white'}`}>All</button>
+                  </div>
                   <div className="flex-1" />
                   <div className="text-xs text-[#666] flex items-center gap-3">
+                    <span className="text-white font-bold">{dispatchSelected.size} selected</span>
                     <span className="text-amber-400">{schedulableVault.length} vault</span>
                     <span className="text-white">{schedulableFeed.length} feed</span>
                     <span className="text-blue-400">{dispatchGroups.filter(g => g.status === 'scheduled').length} scheduled</span>
@@ -1065,11 +1421,11 @@ Groups:\n\n`;
                     <thead>
                       <tr className="bg-white/5">
                         <th className="p-3 text-left w-10">
-                          <input type="checkbox" checked={dispatchSelected.size === dispatchGroups.length && dispatchGroups.length > 0} onChange={() => dispatchSelected.size === dispatchGroups.length ? deselectAllDispatch() : selectAllDispatch()} className="accent-[#b31b1b]" />
+                          <input type="checkbox" checked={pagedDispatch.length > 0 && pagedDispatch.every(g => dispatchSelected.has(g._id))} onChange={() => pagedDispatch.every(g => dispatchSelected.has(g._id)) ? setDispatchSelected(prev => { const next = new Set(prev); pagedDispatch.forEach(g => next.delete(g._id)); return next; }) : selectPageDispatch()} className="accent-[#b31b1b]" />
                         </th>
                         <th className="p-3 text-left w-12">Pic</th>
                         <th className="p-3 text-left">Name</th>
-                        <th className="p-3 text-left">Category / Region</th>
+                        <th className="p-3 text-left">Categories</th>
                         <th className="p-3 text-left">Description</th>
                         <th className="p-3 text-left">Members</th>
                         <th className="p-3 text-left">Status</th>
@@ -1077,7 +1433,7 @@ Groups:\n\n`;
                       </tr>
                     </thead>
                     <tbody>
-                      {dispatchGroups.map((g) => (
+                      {pagedDispatch.map((g) => (
                         <React.Fragment key={g._id}>
                           <tr className={`border-t border-white/5 transition-colors ${g.premiumOnly ? 'bg-amber-500/5' : g.status === 'approved' ? 'bg-green-500/5' : !g.category || g.category === 'Adult' ? 'bg-yellow-500/[0.03]' : 'bg-white/[0.02]'}`}>
                             <td className="p-3"><input type="checkbox" checked={dispatchSelected.has(g._id)} onChange={() => toggleDispatchSelect(g._id)} className="accent-[#b31b1b]" /></td>
@@ -1093,24 +1449,48 @@ Groups:\n\n`;
                               {g.premiumOnly && <span className="ml-1.5 text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold">VAULT</span>}
                             </td>
                             <td className="p-3 text-xs">
-                              <div>
+                              {g.categories && g.categories.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {g.categories.map((cat, ci) => (
+                                    <span key={ci} className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${ci === 0 ? 'bg-blue-500/20 text-blue-300' : 'bg-white/5 text-[#999]'}`}>{cat}</span>
+                                  ))}
+                                </div>
+                              ) : (
                                 <span className={!g.category || g.category === 'Adult' ? 'text-yellow-400' : 'text-white'}>{g.category || '—'}</span>
-                                {g.country && <span className="text-[#555] ml-1">· {g.country}</span>}
-                              </div>
+                              )}
                             </td>
                             <td className="p-3 text-xs text-[#666] max-w-[200px] truncate">{g.description || '—'}</td>
-                            <td className="p-3 text-xs text-[#666]">{g.memberCount > 0 ? g.memberCount.toLocaleString() : '—'}</td>
                             <td className="p-3">
-                              {g.premiumOnly ? <span className="text-xs text-amber-400 font-medium">Vault</span>
-                                : g.status === 'approved' ? <span className="text-xs text-green-400 font-medium">Approved</span>
-                                : <span className="text-xs text-white/50">Pending</span>}
+                              <span className={`text-xs font-medium tabular-nums ${(g.memberCount || 0) === 0 ? 'text-red-400/60' : (g.memberCount || 0) < 50 ? 'text-red-400' : (g.memberCount || 0) < 500 ? 'text-yellow-400' : 'text-green-400'}`}>
+                                {(g.memberCount || 0) > 0 ? (g.memberCount || 0).toLocaleString() : '—'}
+                              </span>
+                            </td>
+                            <td className="p-3">
+                              <div className="flex flex-col gap-1">
+                                {g.premiumOnly ? <span className="text-xs text-amber-400 font-medium">Vault</span>
+                                  : g.status === 'approved' ? <span className="text-xs text-green-400 font-medium">Approved</span>
+                                  : <span className="text-xs text-white/50">Pending</span>}
+                                <div className="flex flex-wrap gap-0.5">
+                                  {(g.categories && g.categories.length >= 2) || aiDone[g._id]?.has('categorize')
+                                    ? <span className="text-[9px] bg-blue-500/20 text-blue-400 px-1 py-0.5 rounded">✓ Cat</span>
+                                    : <span className="text-[9px] bg-white/5 text-[#555] px-1 py-0.5 rounded">○ Cat</span>}
+                                  {(aiDone[g._id]?.has('rewrite') || (g.description && g.description.length >= 200 && (g.description.match(/🔞/g)?.length ?? 0) < 2 && (g.description.match(/⚠️/g)?.length ?? 0) < 2))
+                                    ? <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1 py-0.5 rounded">✓ Rw</span>
+                                    : <span className="text-[9px] bg-white/5 text-[#555] px-1 py-0.5 rounded">○ Rw</span>}
+                                  {g.description_de || aiDone[g._id]?.has('translate_de')
+                                    ? <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-1 py-0.5 rounded">✓ DE</span>
+                                    : <span className="text-[9px] bg-white/5 text-[#555] px-1 py-0.5 rounded">○ DE</span>}
+                                  {g.description_es || aiDone[g._id]?.has('translate_es')
+                                    ? <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-1 py-0.5 rounded">✓ ES</span>
+                                    : <span className="text-[9px] bg-white/5 text-[#555] px-1 py-0.5 rounded">○ ES</span>}
+                                </div>
+                              </div>
                             </td>
                             <td className="p-3">
                               <div className="flex gap-1.5">
                                 <button onClick={() => { if (editingGroup === g._id) { setEditingGroup(null); setEditValues({}); } else { setEditingGroup(g._id); setEditValues({ name: g.name, category: g.category, country: g.country, description: g.description }); }}} className={`transition-colors text-xs ${editingGroup === g._id ? 'text-[#b31b1b]' : 'text-[#666] hover:text-white'}`}>
                                   {editingGroup === g._id ? '▼' : '✎'}
                                 </button>
-                                <button onClick={() => openAiEnrich([g])} className="text-[#666] hover:text-purple-400 transition-colors text-xs" title="AI Enrich">✦</button>
                               </div>
                             </td>
                           </tr>
@@ -1128,13 +1508,6 @@ Groups:\n\n`;
                                       <select value={editValues.category || g.category} onChange={(e) => setEditValues(prev => ({ ...prev, category: e.target.value }))} className="w-full px-2 py-2 bg-[#1a1a1a] border border-white/10 rounded-lg text-xs text-white outline-none focus:border-[#b31b1b]/50">
                                         <option value="">Category...</option>
                                         {filterCategories.filter(c => c !== 'All').map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                                      </select>
-                                    </div>
-                                    <div>
-                                      <label className="text-[10px] text-[#666] uppercase tracking-wider mb-1 block">Region</label>
-                                      <select value={editValues.country || g.country} onChange={(e) => setEditValues(prev => ({ ...prev, country: e.target.value }))} className="w-full px-2 py-2 bg-[#1a1a1a] border border-white/10 rounded-lg text-xs text-white outline-none focus:border-[#b31b1b]/50">
-                                        <option value="">Region...</option>
-                                        {filterCountries.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
                                       </select>
                                     </div>
                                   </div>
@@ -1155,6 +1528,22 @@ Groups:\n\n`;
                     </tbody>
                   </table>
                 </div>
+
+                {/* Pagination */}
+                {dispatchTotalPages > 1 && (
+                  <div className="flex items-center justify-between mt-3">
+                    <span className="text-[11px] text-[#666]">
+                      Showing {dispatchPage * dispatchPerPage + 1}–{Math.min((dispatchPage + 1) * dispatchPerPage, filteredDispatch.length)} of {filteredDispatch.length}{memberFilter !== 'all' ? ` (filtered from ${dispatchGroups.length})` : ''}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button disabled={dispatchPage === 0} onClick={() => setDispatchPage(0)} className="px-2 py-1 text-[10px] rounded-md bg-white/5 text-[#999] hover:text-white disabled:opacity-30 transition-all">««</button>
+                      <button disabled={dispatchPage === 0} onClick={() => setDispatchPage(p => p - 1)} className="px-2 py-1 text-[10px] rounded-md bg-white/5 text-[#999] hover:text-white disabled:opacity-30 transition-all">‹</button>
+                      <span className="px-3 py-1 text-[10px] font-bold text-white">{dispatchPage + 1} / {dispatchTotalPages}</span>
+                      <button disabled={dispatchPage >= dispatchTotalPages - 1} onClick={() => setDispatchPage(p => p + 1)} className="px-2 py-1 text-[10px] rounded-md bg-white/5 text-[#999] hover:text-white disabled:opacity-30 transition-all">›</button>
+                      <button disabled={dispatchPage >= dispatchTotalPages - 1} onClick={() => setDispatchPage(dispatchTotalPages - 1)} className="px-2 py-1 text-[10px] rounded-md bg-white/5 text-[#999] hover:text-white disabled:opacity-30 transition-all">»»</button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Summary + Schedule buttons */}
                 {(() => {
@@ -1255,7 +1644,7 @@ Groups:\n\n`;
                             {g.name}
                             {g.premiumOnly && <span className="ml-1.5 text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold">VAULT</span>}
                           </div>
-                          <div className="text-xs text-[#666]">{g.category}{g.country ? ` · ${g.country}` : ''}</div>
+                          <div className="text-xs text-[#666]">{(g.categories?.length ? g.categories : [g.category]).filter(Boolean).join(' · ')}</div>
                         </div>
                         <div className="text-xs text-[#666]">{g.memberCount > 0 ? `${g.memberCount.toLocaleString()} members` : ''}</div>
                       </div>
@@ -1302,7 +1691,6 @@ Groups:\n\n`;
                 <span className="text-sm font-bold text-white">{queueSelected.size} selected</span>
                 <div className="h-4 w-px bg-white/10" />
                 <button onClick={queueBulkVault} className="px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-lg text-xs font-medium hover:bg-amber-500/30 transition-colors">→ Premium Vault</button>
-                <button onClick={() => openAiEnrich(scheduledGroups.filter(g => queueSelected.has(g._id)))} className="px-3 py-1.5 bg-purple-500/20 text-purple-400 rounded-lg text-xs font-medium hover:bg-purple-500/30 transition-colors">✦ AI Enrich</button>
                 <button onClick={() => setQueueSelected(new Set())} className="px-3 py-1.5 bg-white/5 text-[#999] rounded-lg text-xs font-medium hover:bg-white/10 transition-colors">Deselect</button>
               </div>
             )}
@@ -1366,7 +1754,6 @@ Groups:\n\n`;
                                 {g.telegramLink && (
                                   <a href={g.telegramLink} target="_blank" rel="noopener noreferrer" className="px-2 py-1 bg-blue-500/10 text-blue-400 rounded-lg text-[10px] font-medium hover:bg-blue-500/20 transition-colors" title={g.telegramLink}>↗</a>
                                 )}
-                                <button onClick={() => openAiEnrich([g])} className="px-2 py-1 text-[10px] text-purple-400 bg-purple-500/10 rounded-lg hover:bg-purple-500/20 transition-colors" title="AI Enrich">✦</button>
                                 <button onClick={() => { if (queueEditingGroup === g._id) { setQueueEditingGroup(null); setQueueEditValues({}); } else { setQueueEditingGroup(g._id); setQueueEditValues({ name: g.name, category: g.category, country: g.country, description: g.description }); }}} className={`px-2 py-1 text-[10px] rounded-lg transition-colors ${queueEditingGroup === g._id ? 'text-[#b31b1b] bg-[#b31b1b]/10' : 'text-[#666] bg-white/5 hover:bg-white/10 hover:text-white'}`} title="Edit">✎</button>
                                 <button onClick={() => publishNow(g._id)} className="px-2.5 py-1 bg-green-500/15 text-green-400 rounded-lg text-[10px] font-medium hover:bg-green-500/25 transition-colors">Publish</button>
                                 <button onClick={() => cancelGroup(g._id)} className="text-[10px] text-[#666] hover:text-red-400 transition-colors px-1.5 py-1">✕</button>
@@ -1403,13 +1790,6 @@ Groups:\n\n`;
                                       {filterCategories.filter(c => c !== 'All').map(cat => <option key={cat} value={cat}>{cat}</option>)}
                                     </select>
                                   </div>
-                                  <div>
-                                    <label className="text-[10px] text-[#666] uppercase tracking-wider mb-0.5 block">Region</label>
-                                    <select value={queueEditValues.country || g.country} onChange={(e) => setQueueEditValues(prev => ({ ...prev, country: e.target.value }))} className="w-full px-2 py-1.5 bg-[#1a1a1a] border border-white/10 rounded-lg text-xs text-white outline-none focus:border-[#b31b1b]/50">
-                                      <option value="">Region...</option>
-                                      {filterCountries.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
-                                    </select>
-                                  </div>
                                 </div>
                                 <div className="mb-2">
                                   <label className="text-[10px] text-[#666] uppercase tracking-wider mb-0.5 block">Description</label>
@@ -1437,119 +1817,6 @@ Groups:\n\n`;
         )}
       </AnimatePresence>
 
-      {/* ─── AI Enrichment Modal ─── */}
-      {aiEnrichOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setAiEnrichOpen(false)}>
-          <div className="bg-[#111] border border-white/10 rounded-2xl shadow-2xl w-[90vw] max-w-[900px] max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            {/* Modal header */}
-            <div className="flex items-center justify-between p-5 border-b border-white/5">
-              <div>
-                <h3 className="text-lg font-bold flex items-center gap-2">
-                  <span className="text-purple-400">✦</span> AI Description Enrichment
-                </h3>
-                <p className="text-xs text-[#666] mt-1">{aiEnrichGroups.length} group{aiEnrichGroups.length !== 1 ? 's' : ''} selected</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={autoGenerateWithAi}
-                  disabled={aiGenerating}
-                  className="px-4 py-2 rounded-xl text-sm font-bold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-purple-500/20"
-                >
-                  {aiGenerating ? (
-                    <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Generating...</span>
-                  ) : (
-                    <span className="flex items-center gap-2">✦ Auto-Generate (Deepseek)</span>
-                  )}
-                </button>
-                <button onClick={() => setAiEnrichOpen(false)} className="text-[#666] hover:text-white transition-colors text-xl leading-none">✕</button>
-              </div>
-            </div>
-
-            {/* Modal body */}
-            <div className="flex-1 overflow-y-auto p-5">
-              {/* Results preview (shown after auto-generate or manual paste) */}
-              {Object.keys(aiEnrichResults).length > 0 ? (
-                <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="text-xs font-bold text-green-400 uppercase tracking-wider">
-                      Generated: {Object.keys(aiEnrichResults).length}/{aiEnrichGroups.length} descriptions
-                    </div>
-                    <div className="flex-1 h-px bg-white/5" />
-                  </div>
-                  <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                    {aiEnrichGroups.map(g => (
-                      <div key={g._id} className={`p-3 rounded-xl border ${aiEnrichResults[g._id] ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
-                        <div className="flex items-center gap-2 mb-1.5">
-                          {g.image && g.image !== '/assets/image.jpg' && (
-                            <img src={g.image} alt="" className="w-6 h-6 rounded-full object-cover border border-white/10" />
-                          )}
-                          <span className="text-sm font-medium text-white">{g.name}</span>
-                          <span className="text-[10px] text-[#666]">{g.category}</span>
-                        </div>
-                        {aiEnrichResults[g._id] ? (
-                          <textarea
-                            value={aiEnrichResults[g._id]}
-                            onChange={(e) => setAiEnrichResults(prev => ({ ...prev, [g._id]: e.target.value }))}
-                            rows={2}
-                            className="w-full px-3 py-2 bg-[#0a0a0a] border border-white/10 rounded-lg text-xs text-green-300 outline-none focus:border-green-500/50 resize-y"
-                          />
-                        ) : (
-                          <span className="text-xs text-red-400/60">(no result)</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                  {/* Left: Prompt */}
-                  <div className="flex flex-col">
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-xs font-bold text-[#999] uppercase tracking-wider">Prompt Preview</label>
-                      <button onClick={copyAiPrompt} className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${aiPromptCopied ? 'bg-green-500/20 text-green-400' : 'bg-white/5 text-[#999] hover:bg-white/10 hover:text-white'}`}>
-                        {aiPromptCopied ? '✓ Copied!' : 'Copy Prompt'}
-                      </button>
-                    </div>
-                    <pre className="flex-1 min-h-[200px] p-4 rounded-xl bg-[#0a0a0a] border border-white/5 text-xs text-[#ccc] whitespace-pre-wrap overflow-y-auto font-mono leading-relaxed select-all">
-                      {generateAiPrompt(aiEnrichGroups)}
-                    </pre>
-                  </div>
-
-                  {/* Right: Manual paste (fallback) */}
-                  <div className="flex flex-col">
-                    <label className="text-xs font-bold text-[#999] uppercase tracking-wider mb-2">Or Paste Manually</label>
-                    <textarea
-                      className="flex-1 min-h-[200px] p-4 rounded-xl bg-[#0a0a0a] border border-white/10 text-xs text-white outline-none focus:border-purple-500/50 resize-none font-mono leading-relaxed"
-                      placeholder={aiEnrichGroups.length === 1 ? 'Paste the enriched description here...' : 'Paste the numbered list here...\n\n1. Description for first group...\n2. Description for second group...'}
-                      onChange={(e) => parseAiResults(e.target.value)}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Modal footer */}
-            <div className="flex items-center justify-between p-5 border-t border-white/5">
-              <div className="text-xs text-[#555]">
-                {Object.keys(aiEnrichResults).length > 0 ? 'Review and edit results above, then save' : 'Click Auto-Generate or copy prompt for manual use'}
-              </div>
-              <div className="flex gap-3">
-                {Object.keys(aiEnrichResults).length > 0 && (
-                  <button onClick={() => setAiEnrichResults({})} className="px-4 py-2 rounded-xl text-sm text-[#999] bg-white/5 hover:bg-white/10 transition-colors">Clear Results</button>
-                )}
-                <button onClick={() => setAiEnrichOpen(false)} className="px-5 py-2 rounded-xl text-sm text-[#999] bg-white/5 hover:bg-white/10 transition-colors">Cancel</button>
-                <button
-                  onClick={saveAiEnrichments}
-                  disabled={Object.keys(aiEnrichResults).length === 0 || aiEnrichSaving}
-                  className="px-5 py-2 rounded-xl text-sm font-bold text-white bg-purple-600 hover:bg-purple-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  {aiEnrichSaving ? 'Saving...' : `Save ${Object.keys(aiEnrichResults).length} Enrichment${Object.keys(aiEnrichResults).length !== 1 ? 's' : ''}`}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

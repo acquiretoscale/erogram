@@ -41,9 +41,9 @@ export async function GET(req: NextRequest) {
     const sortBy = searchParams.get('sortBy') || 'newest';
     const search = searchParams.get('search') || '';
     const category = searchParams.get('category') || '';
+    const subcategory = searchParams.get('subcategory') || '';
     const country = searchParams.get('country') || '';
 
-    // Exclude image field to prevent maxSize errors - images loaded lazily via API
     let query: any = { status: 'approved' };
     let sortCriteria: any = { pinned: -1, createdAt: -1 };
 
@@ -61,6 +61,12 @@ export async function GET(req: NextRequest) {
     if (category && category !== 'All') {
       andConditions.push({
         $or: [{ categories: category }, { category: category }, { country: category }],
+      });
+    }
+
+    if (subcategory && subcategory !== 'All') {
+      andConditions.push({
+        $or: [{ categories: subcategory }, { category: subcategory }],
       });
     }
 

@@ -2,13 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
 import { User, PremiumEvent } from '@/lib/models';
 import { authenticateUser, MAX_PREMIUM_SLOTS } from '@/lib/auth';
+import { getPremiumPricing, getStarsRate, usdToStars, isValidPlan, getPlanConfig } from '@/lib/premiumPricing';
 
 const BOT_TOKEN = process.env.TELEGRAM_PAYMENT_BOT_TOKEN || '';
-
-const PLANS = {
-  monthly: { title: 'Erogram VIP (Monthly)', description: 'Unlimited bookmarks, folders & exclusive unlisted groups for 30 days', amount: 600, days: 30 },
-  yearly: { title: 'Erogram VIP (Yearly)', description: 'Unlimited bookmarks, folders & exclusive unlisted groups for 1 year — best value', amount: 3333, days: 365 },
-} as const;
 
 function logEvent(data: Record<string, any>) {
   PremiumEvent.create({ source: 'server', ...data }).catch(() => {});
@@ -39,19 +35,21 @@ export async function POST(req: NextRequest) {
   }
 
   const { plan } = await req.json();
-  if (!plan || !PLANS[plan as keyof typeof PLANS]) {
+  if (!plan || !isValidPlan(plan)) {
     return NextResponse.json({ message: 'Invalid plan' }, { status: 400 });
   }
 
-  const p = PLANS[plan as keyof typeof PLANS];
+  const [pricing, rate] = await Promise.all([getPremiumPricing(), getStarsRate()]);
+  const p = getPlanConfig(pricing, plan);
+  const starsAmount = usdToStars(p.priceUsd, rate);
 
   try {
     const payload = JSON.stringify({
-      title: p.title,
+      title: p.label,
       description: p.description,
       payload: JSON.stringify({ userId: user._id, plan }),
       currency: 'XTR',
-      prices: [{ label: p.title, amount: p.amount }],
+      prices: [{ label: p.label, amount: starsAmount }],
     });
 
     const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/createInvoiceLink`, {

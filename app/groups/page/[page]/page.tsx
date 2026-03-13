@@ -153,7 +153,7 @@ export default async function GroupsPaginatedPage(
                 )}
               </div>
               <p className="text-sm text-[#999] mt-2">
-                {g.category} • {g.country}
+                {g.category}
               </p>
               {g.description && (
                 <p className="text-sm text-gray-300 mt-3 line-clamp-3">{g.description}</p>

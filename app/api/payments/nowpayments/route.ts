@@ -2,15 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticateUser, MAX_PREMIUM_SLOTS } from '@/lib/auth';
 import connectDB from '@/lib/db/mongodb';
 import { User, PremiumEvent } from '@/lib/models';
+import { getPremiumPricing, isValidPlan, getPlanConfig } from '@/lib/premiumPricing';
 
 const API_KEY = process.env.NOWPAYMENTS_API_KEY || '';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
 const NP_BASE = 'https://api.nowpayments.io/v1';
-
-const PLANS = {
-  monthly: { label: 'Erogram VIP (Monthly)', description: '30-day unlimited access — Secret Vault, bookmarks & more', price: 8.99, days: 30 },
-  yearly:  { label: 'Erogram VIP (Yearly)',  description: '1-year unlimited access — Secret Vault, bookmarks & more', price: 49.99, days: 365 },
-} as const;
 
 function logEvent(data: Record<string, any>) {
   PremiumEvent.create({ source: 'server', ...data }).catch(() => {});
@@ -38,12 +34,12 @@ export async function POST(req: NextRequest) {
   }
 
   const { plan } = await req.json();
-  if (!plan || !PLANS[plan as keyof typeof PLANS]) {
+  if (!plan || !isValidPlan(plan)) {
     return NextResponse.json({ message: 'Invalid plan.' }, { status: 400 });
   }
 
-  const p = PLANS[plan as keyof typeof PLANS];
-  // Encode userId + plan in order_id so the webhook can activate the right account
+  const pricing = await getPremiumPricing();
+  const p = getPlanConfig(pricing, plan);
   const orderId = `${user._id}__${plan}__${Date.now()}`;
 
   try {
@@ -54,8 +50,9 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        price_amount: p.price,
+        price_amount: p.priceUsd,
         price_currency: 'usd',
+        pay_currency: 'usdttrc20',
         order_id: orderId,
         order_description: p.description,
         ipn_callback_url: `${SITE_URL}/api/payments/nowpayments/webhook`,

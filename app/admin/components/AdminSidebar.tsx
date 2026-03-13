@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -12,12 +11,10 @@ interface AdminSidebarProps {
 
 const tabs = [
     { href: '/admin', name: 'Overview', icon: '📊' },
-    { href: '/admin/groups', name: 'Groups', icon: '👥' },
+    { href: '/admin/groups', name: 'Groups Hub', icon: '👥' },
+    { href: '/admin/featured', name: 'Featured', icon: '⭐' },
     { href: '/admin/bots', name: 'Bots', icon: '🤖' },
-    { href: '/admin/pending-groups', name: 'Pending Groups', icon: '⏳' },
     { href: '/admin/pending-bots', name: 'Pending Bots', icon: '🤖' },
-    { href: '/admin/vault', name: 'Secret Vault', icon: '🔐' },
-    { href: '/admin/csv-import', name: 'CSV Import', icon: '📤' },
     { href: '/admin/stories', name: 'Stories', icon: '📖' },
     { href: '/admin/reviews', name: 'Reviews', icon: '⭐' },
     { href: '/admin/reports', name: 'Reports', icon: '🚨' },
@@ -76,7 +73,7 @@ export default function AdminSidebar({ onLogout, isOpen, onClose }: AdminSidebar
 
                 <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-1 custom-scrollbar">
                     {tabs.map((tab) => (
-                        <Link
+                        <a
                             key={tab.href}
                             href={tab.href}
                             onClick={handleClick}
@@ -88,7 +85,7 @@ export default function AdminSidebar({ onLogout, isOpen, onClose }: AdminSidebar
                         >
                             <span className="text-lg">{tab.icon}</span>
                             {tab.name}
-                        </Link>
+                        </a>
                     ))}
                 </nav>
 

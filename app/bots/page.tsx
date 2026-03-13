@@ -7,34 +7,45 @@ import BotsClient from './BotsClient';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { getActiveCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
+import { getLocale, getPathname } from '@/lib/i18n/server';
+import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
 
-const baseUrl = 'https://erogram.pro';
+const canonicalBase = 'https://erogram.pro';
 
 // ISR for public listing page
 export const revalidate = 300;
 
-export const metadata: Metadata = {
-  title: 'Discover NSFW Telegram Bots - Browse Amazing Adult Bots | Erogram.pro',
-  description: 'Browse and discover amazing NSFW Telegram bots. Find AI companions, chat bots, and adult entertainment bots by category, country, and interests. Use the best Telegram bots today.',
-  keywords: 'NSFW telegram bots, adult telegram bots, telegram bot directory, NSFW AI bots, adult chat bots, erotic bots, telegram companions',
-  alternates: {
-    canonical: `${baseUrl}/bots`,
-  },
-  openGraph: {
-    title: 'Discover NSFW Telegram Bots - Browse Amazing Adult Bots | Erogram.pro',
-    description: 'Browse and discover amazing NSFW Telegram bots. Find AI companions, chat bots, and adult entertainment bots by category, country, and interests.',
-    type: 'website',
-    siteName: 'Erogram',
-    url: `${baseUrl}/bots`,
-    images: [{ url: `${baseUrl}/assets/og-default.png`, width: 512, height: 512, alt: 'Erogram - Telegram Bots' }],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Discover NSFW Telegram Bots - Browse Amazing Adult Bots | Erogram.pro',
-    description: 'Browse and discover amazing NSFW Telegram bots. Find AI companions, chat bots, and adult entertainment bots by category, country, and interests.',
-    images: [`${baseUrl}/assets/og-default.png`],
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const pathname = await getPathname();
+  const dict = await getDictionary(locale);
+
+  return {
+    title: dict.meta.botsTitle,
+    description: dict.meta.botsDesc,
+    keywords: 'NSFW telegram bots, adult telegram bots, telegram bot directory, NSFW AI bots, adult chat bots, erotic bots, telegram companions',
+    alternates: {
+      canonical: `${canonicalBase}${pathname === '/' ? '' : pathname}`,
+      languages: Object.fromEntries(
+        LOCALES.map(l => [l, `${canonicalBase}${localePath('/bots', l)}`])
+      ),
+    },
+    openGraph: {
+      title: dict.meta.botsTitle,
+      description: dict.meta.botsDesc,
+      type: 'website',
+      siteName: 'Erogram',
+      url: `${canonicalBase}${pathname}`,
+      images: [{ url: `${canonicalBase}/assets/og-default.png`, width: 512, height: 512, alt: 'Erogram - Telegram Bots' }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: dict.meta.botsTitle,
+      description: dict.meta.botsDesc,
+      images: [`${canonicalBase}/assets/og-default.png`],
+    },
+  };
+}
 
 async function getBots() {
   try {

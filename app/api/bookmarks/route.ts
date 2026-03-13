@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   const botIds = bookmarks.filter(b => (b as any).itemType === 'bot').map(b => (b as any).itemId);
 
   const [groups, bots] = await Promise.all([
-    groupIds.length ? Group.find({ _id: { $in: groupIds } }).select('name slug image category country memberCount description').lean() : [],
+    groupIds.length ? Group.find({ _id: { $in: groupIds } }).select('name slug image category categories country memberCount description').lean() : [],
     botIds.length ? Bot.find({ _id: { $in: botIds } }).select('name slug image category country memberCount description').lean() : [],
   ]);
 
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: 'Already bookmarked', _id: (existing as any)._id.toString() });
   }
 
-  if (!user.premium) {
+  if (!user.premium && !user.isAdmin) {
     const count = await Bookmark.countDocuments({ userId: user._id });
     if (count >= FREE_BOOKMARK_LIMIT) {
       return NextResponse.json({ message: 'Bookmark limit reached', upgrade: true, limit: FREE_BOOKMARK_LIMIT }, { status: 403 });

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
+import { useTranslation, useLocalePath } from '@/lib/i18n';
 
 const TELEGRAM_BLUE = '#0088cc';
 
@@ -14,10 +15,13 @@ interface AddClientProps {
 }
 
 export default function AddClient({ categories, countries }: AddClientProps) {
+  const { t } = useTranslation();
+  const lp = useLocalePath();
+
   const [tab, setTab] = useState<'group' | 'bot'>('group');
   const [groupData, setGroupData] = useState({
     name: '',
-    category: 'Adult',
+    category: 'NSFW-Telegram',
     country: 'Adult-Telegram',
     telegramLink: '',
     description: '',
@@ -25,7 +29,7 @@ export default function AddClient({ categories, countries }: AddClientProps) {
   });
   const [botData, setBotData] = useState({
     name: '',
-    category: 'Adult',
+    category: 'NSFW-Telegram',
     country: 'Adult-Telegram',
     telegramLink: '',
     description: '',
@@ -83,15 +87,15 @@ export default function AddClient({ categories, countries }: AddClientProps) {
   const submitGroup = async () => {
     setError('');
     if (!groupData.name || !groupData.category || !groupData.telegramLink || !groupData.description) {
-      setError('Name, category, Telegram link and description are required');
+      setError(t('add.nameRequired'));
       return;
     }
     if (groupData.description.length < 30) {
-      setError('Description must be at least 30 characters');
+      setError(t('add.descMin30'));
       return;
     }
     if (!groupData.telegramLink.startsWith('https://t.me/')) {
-      setError('Telegram link must start with https://t.me/');
+      setError(t('add.linkMustStart'));
       return;
     }
     setIsSubmitting(true);
@@ -118,10 +122,10 @@ export default function AddClient({ categories, countries }: AddClientProps) {
         image: imageUrl || PLACEHOLDER_IMAGE_URL,
       });
       setSuccess('group');
-      setGroupData({ name: '', category: 'Adult', country: 'Adult-Telegram', telegramLink: '', description: '', imageFile: null });
+      setGroupData({ name: '', category: 'NSFW-Telegram', country: 'Adult-Telegram', telegramLink: '', description: '', imageFile: null });
       setGroupPreview(null);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to submit group');
+      setError(err.response?.data?.message || t('add.failedGroup'));
     } finally {
       setIsSubmitting(false);
     }
@@ -130,15 +134,15 @@ export default function AddClient({ categories, countries }: AddClientProps) {
   const submitBot = async () => {
     setError('');
     if (!botData.name || !botData.category || !botData.telegramLink || !botData.description) {
-      setError('Name, category, Telegram link and description are required');
+      setError(t('add.nameRequired'));
       return;
     }
     if (botData.description.length < 30) {
-      setError('Description must be at least 30 characters');
+      setError(t('add.descMin30'));
       return;
     }
     if (!botData.telegramLink.startsWith('https://t.me/')) {
-      setError('Telegram link must start with https://t.me/');
+      setError(t('add.linkMustStart'));
       return;
     }
     setIsSubmitting(true);
@@ -161,10 +165,10 @@ export default function AddClient({ categories, countries }: AddClientProps) {
         image: imageUrl || PLACEHOLDER_IMAGE_URL,
       });
       setSuccess('bot');
-      setBotData({ name: '', category: 'Adult', country: 'Adult-Telegram', telegramLink: '', description: '', imageFile: null });
+      setBotData({ name: '', category: 'NSFW-Telegram', country: 'Adult-Telegram', telegramLink: '', description: '', imageFile: null });
       setBotPreview(null);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to submit bot');
+      setError(err.response?.data?.message || t('add.failedBot'));
     } finally {
       setIsSubmitting(false);
     }
@@ -174,10 +178,10 @@ export default function AddClient({ categories, countries }: AddClientProps) {
     <main className="pt-24 pb-16 px-4 max-w-2xl mx-auto">
       <div className="text-center mb-8">
         <h1 className="text-3xl md:text-4xl font-black text-white mb-2">
-          Add Group or Bot
+          {t('add.title')}
         </h1>
         <p className="text-[#999]">
-          No login required. Your submission will be reviewed by moderators.
+          {t('add.subtitle')}
         </p>
       </div>
 
@@ -189,7 +193,7 @@ export default function AddClient({ categories, countries }: AddClientProps) {
           className={`flex-1 py-2.5 rounded-full font-bold text-sm transition-all ${tab === 'group' ? 'text-white' : 'text-[#999] hover:text-white'}`}
           style={tab === 'group' ? { backgroundColor: TELEGRAM_BLUE } : {}}
         >
-          👥 Group
+          👥 {t('add.group')}
         </button>
         <button
           type="button"
@@ -197,7 +201,7 @@ export default function AddClient({ categories, countries }: AddClientProps) {
           className={`flex-1 py-2.5 rounded-full font-bold text-sm transition-all ${tab === 'bot' ? 'text-white' : 'text-[#999] hover:text-white'}`}
           style={tab === 'bot' ? { backgroundColor: TELEGRAM_BLUE } : {}}
         >
-          🤖 Bot
+          🤖 {t('add.bot')}
         </button>
       </div>
 
@@ -207,7 +211,7 @@ export default function AddClient({ categories, countries }: AddClientProps) {
           animate={{ opacity: 1, y: 0 }}
           className="mb-6 p-4 rounded-xl bg-green-500/20 border border-green-500/40 text-green-400 text-center"
         >
-          ✓ Submitted for moderation. We&apos;ll review your {success} shortly.
+          ✓ {t('add.submitted').replace('{type}', success || '')}
         </motion.div>
       )}
 
@@ -224,59 +228,47 @@ export default function AddClient({ categories, countries }: AddClientProps) {
           className="space-y-5"
         >
           <div>
-            <label className="block text-sm font-semibold text-[#ccc] mb-1">Group image</label>
+            <label className="block text-sm font-semibold text-[#ccc] mb-1">{t('add.groupImage')}</label>
             <input type="file" accept="image/*" onChange={handleGroupImage} className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-[#ccc] text-sm" />
             {groupPreview && <img src={groupPreview} alt="Preview" className="mt-2 h-32 object-cover rounded-xl" />}
           </div>
           <div>
-            <label className="block text-sm font-semibold text-[#ccc] mb-1">Name *</label>
+            <label className="block text-sm font-semibold text-[#ccc] mb-1">{t('add.name')} *</label>
             <input
               type="text"
               value={groupData.name}
               onChange={(e) => setGroupData((d) => ({ ...d, name: e.target.value }))}
               className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-500"
-              placeholder="Group name"
+              placeholder={t('add.groupPlaceholder')}
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-[#ccc] mb-1">Category *</label>
-              <select
-                value={groupData.category}
-                onChange={(e) => setGroupData((d) => ({ ...d, category: e.target.value }))}
-                className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white"
-              >
-                {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-[#ccc] mb-1">Country (optional)</label>
-              <select
-                value={groupData.country}
-                onChange={(e) => setGroupData((d) => ({ ...d, country: e.target.value }))}
-                className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white"
-              >
-                {countries.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
+          <div>
+            <label className="block text-sm font-semibold text-[#ccc] mb-1">{t('add.categoryLabel')} *</label>
+            <select
+              value={groupData.category}
+              onChange={(e) => setGroupData((d) => ({ ...d, category: e.target.value }))}
+              className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white"
+            >
+              {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-[#ccc] mb-1">Telegram link *</label>
+            <label className="block text-sm font-semibold text-[#ccc] mb-1">{t('add.telegramLink')} *</label>
             <input
               type="url"
               value={groupData.telegramLink}
               onChange={(e) => setGroupData((d) => ({ ...d, telegramLink: e.target.value }))}
               className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-500"
-              placeholder="https://t.me/yourgroup"
+              placeholder={t('add.tgGroupPlaceholder')}
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-[#ccc] mb-1">Description * (min 30 characters)</label>
+            <label className="block text-sm font-semibold text-[#ccc] mb-1">{t('add.descLabel')} *</label>
             <textarea
               value={groupData.description}
               onChange={(e) => setGroupData((d) => ({ ...d, description: e.target.value }))}
               className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-500 resize-none"
-              placeholder="Describe your group..."
+              placeholder={t('add.descGroupPlaceholder')}
               rows={4}
             />
             <p className="text-xs text-[#666] mt-1">{groupData.description.length}/30</p>
@@ -288,7 +280,7 @@ export default function AddClient({ categories, countries }: AddClientProps) {
             className="w-full py-3.5 rounded-full font-bold text-white disabled:opacity-50 transition-all"
             style={{ backgroundColor: TELEGRAM_BLUE }}
           >
-            {isSubmitting ? 'Submitting…' : 'Submit for moderation'}
+            {isSubmitting ? t('add.submitting') : t('add.submitForMod')}
           </button>
         </motion.div>
       )}
@@ -300,59 +292,47 @@ export default function AddClient({ categories, countries }: AddClientProps) {
           className="space-y-5"
         >
           <div>
-            <label className="block text-sm font-semibold text-[#ccc] mb-1">Bot image</label>
+            <label className="block text-sm font-semibold text-[#ccc] mb-1">{t('add.botImage')}</label>
             <input type="file" accept="image/*" onChange={handleBotImage} className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-[#ccc] text-sm" />
             {botPreview && <img src={botPreview} alt="Preview" className="mt-2 h-32 object-cover rounded-xl" />}
           </div>
           <div>
-            <label className="block text-sm font-semibold text-[#ccc] mb-1">Name *</label>
+            <label className="block text-sm font-semibold text-[#ccc] mb-1">{t('add.name')} *</label>
             <input
               type="text"
               value={botData.name}
               onChange={(e) => setBotData((d) => ({ ...d, name: e.target.value }))}
               className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-500"
-              placeholder="Bot name"
+              placeholder={t('add.botPlaceholder')}
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-[#ccc] mb-1">Category *</label>
-              <select
-                value={botData.category}
-                onChange={(e) => setBotData((d) => ({ ...d, category: e.target.value }))}
-                className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white"
-              >
-                {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-[#ccc] mb-1">Country (optional)</label>
-              <select
-                value={botData.country}
-                onChange={(e) => setBotData((d) => ({ ...d, country: e.target.value }))}
-                className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white"
-              >
-                {countries.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
+          <div>
+            <label className="block text-sm font-semibold text-[#ccc] mb-1">{t('add.categoryLabel')} *</label>
+            <select
+              value={botData.category}
+              onChange={(e) => setBotData((d) => ({ ...d, category: e.target.value }))}
+              className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white"
+            >
+              {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-[#ccc] mb-1">Telegram link *</label>
+            <label className="block text-sm font-semibold text-[#ccc] mb-1">{t('add.telegramLink')} *</label>
             <input
               type="url"
               value={botData.telegramLink}
               onChange={(e) => setBotData((d) => ({ ...d, telegramLink: e.target.value }))}
               className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-500"
-              placeholder="https://t.me/yourbot"
+              placeholder={t('add.tgBotPlaceholder')}
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-[#ccc] mb-1">Description * (min 30 characters)</label>
+            <label className="block text-sm font-semibold text-[#ccc] mb-1">{t('add.descLabel')} *</label>
             <textarea
               value={botData.description}
               onChange={(e) => setBotData((d) => ({ ...d, description: e.target.value }))}
               className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-500 resize-none"
-              placeholder="Describe your bot..."
+              placeholder={t('add.descBotPlaceholder')}
               rows={4}
             />
             <p className="text-xs text-[#666] mt-1">{botData.description.length}/30</p>
@@ -364,15 +344,15 @@ export default function AddClient({ categories, countries }: AddClientProps) {
             className="w-full py-3.5 rounded-full font-bold text-white disabled:opacity-50 transition-all"
             style={{ backgroundColor: TELEGRAM_BLUE }}
           >
-            {isSubmitting ? 'Submitting…' : 'Submit for moderation'}
+            {isSubmitting ? t('add.submitting') : t('add.submitForMod')}
           </button>
         </motion.div>
       )}
 
       <p className="mt-8 text-center text-[#666] text-sm">
-        <Link href="/groups" className="text-[#0088cc] hover:underline">Browse groups</Link>
+        <Link href={lp('/groups')} className="text-[#0088cc] hover:underline">{t('add.browseGroups')}</Link>
         {' · '}
-        <Link href="/bots" className="text-[#0088cc] hover:underline">Browse bots</Link>
+        <Link href={lp('/bots')} className="text-[#0088cc] hover:underline">{t('add.browseBots')}</Link>
       </p>
     </main>
   );

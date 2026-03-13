@@ -7,6 +7,8 @@ import connectDB from '@/lib/db/mongodb';
 import { Group } from '@/lib/models';
 import { categories } from '@/app/groups/constants';
 import Navbar from '@/components/Navbar';
+import { getLocale, getPathname } from '@/lib/i18n/server';
+import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
 
 interface PageProps {
     params: Promise<{ category: string }>;
@@ -28,6 +30,8 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+    const locale = await getLocale();
+    const pathname = await getPathname();
     const { category } = await params;
     const decodedSlug = decodeURIComponent(category).toLowerCase();
 
@@ -54,7 +58,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
             description: `Discover the top 10 best ${realCategory} Telegram groups and channels in ${year}. Curated, verified list of the most popular and active adult communities.`,
         },
         alternates: {
-            canonical: `${siteUrl}/best-telegram-groups/${decodedSlug}`,
+            canonical: `${siteUrl}${pathname}`,
+            languages: Object.fromEntries(LOCALES.map(l => [l, `${siteUrl}${localePath(`/best-telegram-groups/${decodedSlug}`, l)}`])),
         },
     };
 
@@ -72,10 +77,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function BestGroupsPage({ params }: PageProps) {
+    const locale = await getLocale();
+    const dict = await getDictionary(locale);
+
     const { category } = await params;
     const decodedSlug = decodeURIComponent(category).toLowerCase();
     const year = new Date().getFullYear();
-    const month = new Date().toLocaleString('default', { month: 'long' });
+    const localeMap: Record<string, string> = { en: 'en-US', de: 'de-DE', es: 'es-ES' };
+    const month = new Date().toLocaleString(localeMap[locale] || 'en-US', { month: 'long' });
 
     // Find the real category name (case-insensitive match)
     const realCategory = categories.find(c => c.toLowerCase() === decodedSlug);
@@ -110,10 +119,10 @@ export default async function BestGroupsPage({ params }: PageProps) {
                 $match: {
                     status: 'approved',
                     isAdvertisement: false,
-                    category: { $ne: realCategory } // Exclude current category
+                    category: { $ne: realCategory }
                 }
             },
-            { $sample: { size: 5 } } // Get 5 random groups
+            { $sample: { size: 5 } }
         ]);
 
         otherGroups = rawOtherGroups.map((group: any) => ({
@@ -130,14 +139,15 @@ export default async function BestGroupsPage({ params }: PageProps) {
                 {/* Article Header */}
                 <header className="text-center mb-16">
                     <div className="inline-block px-4 py-1 bg-[#b31b1b]/20 text-[#b31b1b] rounded-full text-sm font-bold mb-4 border border-[#b31b1b]/30">
-                        Updated {month} {year}
+                        {dict.bestGroups.updated.replace('{month}', month).replace('{year}', String(year))}
                     </div>
                     <h1 className="text-4xl md:text-5xl lg:text-6xl font-black mb-6 leading-tight">
-                        The {groups.length > 0 ? groups.length : 'Best'} Best <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">{realCategory}</span> Telegram Groups
+                        {groups.length > 0
+                            ? `${dict.bestGroups.theBest.split('{category}')[0].replace('{count}', String(groups.length))}`
+                            : `${dict.bestGroups.theBestFallback.split('{category}')[0]}`}<span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">{realCategory}</span>{dict.bestGroups.theBest.split('{category}')[1] || ''}
                     </h1>
                     <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-                        Looking for the best <strong>{realCategory}</strong> communities on Telegram?
-                        We've curated the most popular, active, and highly-rated groups for you to join in {year}.
+                        {dict.bestGroups.categoryDesc.replace('{category}', realCategory).replace('{year}', String(year))}
                     </p>
                 </header>
 
@@ -169,12 +179,12 @@ export default async function BestGroupsPage({ params }: PageProps) {
                                     {/* Content */}
                                     <div className="flex-grow flex flex-col justify-center">
                                         <h2 className="text-3xl font-bold mb-4 hover:text-[#b31b1b] transition-colors">
-                                            <Link href={`/${group.slug}`}>{group.name}</Link>
+                                            <Link href={localePath(`/${group.slug}`, locale)}>{group.name}</Link>
                                         </h2>
 
                                         <div className="flex flex-wrap gap-3 mb-6">
                                             <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-gray-300">
-                                                👁️ {group.views.toLocaleString()} Views
+                                                👁️ {group.views.toLocaleString()} {dict.common.views}
                                             </span>
                                             <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-gray-300">
                                                 🌍 {group.country}
@@ -190,12 +200,12 @@ export default async function BestGroupsPage({ params }: PageProps) {
 
                                         <div className="mt-auto">
                                             <a
-                                                href={`/${group.slug}`}
+                                                href={localePath(`/${group.slug}`, locale)}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="block w-full md:w-auto text-center bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-4 px-8 rounded-xl transition-all hover:scale-105 shadow-lg shadow-blue-900/20"
                                             >
-                                                Join Group 🚀
+                                                {dict.bestGroups.joinGroup} 🚀
                                             </a>
                                         </div>
                                     </div>
@@ -206,7 +216,7 @@ export default async function BestGroupsPage({ params }: PageProps) {
                 ) : (
                     <div className="text-center py-10 mb-20">
                         <p className="text-xl text-gray-400">
-                            We are currently curating the best groups for this category. Check back soon!
+                            {dict.bestGroups.curatingMsg}
                         </p>
                     </div>
                 )}
@@ -215,7 +225,7 @@ export default async function BestGroupsPage({ params }: PageProps) {
                 {otherGroups.length > 0 && (
                     <div className="mb-20">
                         <h2 className="text-3xl font-bold mb-8 text-center">
-                            🔥 Groups from other categories
+                            🔥 {dict.bestGroups.otherCategories}
                         </h2>
                         <div className="space-y-8">
                             {otherGroups.map((group: any) => (
@@ -233,7 +243,7 @@ export default async function BestGroupsPage({ params }: PageProps) {
                                         </div>
                                         <div className="flex-grow">
                                             <h3 className="text-xl font-bold mb-2">
-                                                <Link href={`/${group.slug}`} className="hover:text-[#b31b1b] transition-colors">
+                                                <Link href={localePath(`/${group.slug}`, locale)} className="hover:text-[#b31b1b] transition-colors">
                                                     {group.name}
                                                 </Link>
                                             </h3>
@@ -242,7 +252,7 @@ export default async function BestGroupsPage({ params }: PageProps) {
                                                     {group.category}
                                                 </span>
                                                 <span className="text-xs bg-white/10 px-2 py-1 rounded-full text-gray-300">
-                                                    {group.views.toLocaleString()} Views
+                                                    {group.views.toLocaleString()} {dict.common.views}
                                                 </span>
                                             </div>
                                             <p className="text-sm text-gray-400 line-clamp-2">
@@ -251,12 +261,12 @@ export default async function BestGroupsPage({ params }: PageProps) {
                                         </div>
                                         <div className="hidden sm:block">
                                             <a
-                                                href={`/${group.slug}`}
+                                                href={localePath(`/${group.slug}`, locale)}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="px-6 py-2 bg-white/10 hover:bg-white/20 rounded-lg font-bold transition-colors"
                                             >
-                                                Join
+                                                {dict.bestGroups.join}
                                             </a>
                                         </div>
                                     </div>
@@ -268,15 +278,15 @@ export default async function BestGroupsPage({ params }: PageProps) {
 
                 {/* Footer CTA */}
                 <div className="text-center p-10 glass rounded-3xl border border-white/10">
-                    <h3 className="text-2xl font-bold mb-4">Want to see more?</h3>
+                    <h3 className="text-2xl font-bold mb-4">{dict.bestGroups.wantMore}</h3>
                     <p className="text-gray-400 mb-8">
-                        We have thousands of other groups waiting for you.
+                        {dict.bestGroups.wantMoreDesc}
                     </p>
                     <Link
-                        href={`/groups?category=${encodeURIComponent(realCategory)}`}
+                        href={localePath(`/groups?category=${encodeURIComponent(realCategory)}`, locale)}
                         className="inline-block bg-[#b31b1b] text-white px-8 py-4 rounded-xl font-bold hover:bg-[#c42b2b] transition-colors"
                     >
-                        Browse All Groups
+                        {dict.bestGroups.browseAll}
                     </Link>
                 </div>
             </main>

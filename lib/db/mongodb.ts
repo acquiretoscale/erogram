@@ -7,8 +7,10 @@ if (!process.env.MONGODB_URI) {
 
 const uri = process.env.MONGODB_URI;
 const options = {
-  family: 4, // Force IPv4 to avoid timeouts
-  serverSelectionTimeoutMS: 5000,
+  family: 4,
+  serverSelectionTimeoutMS: 30000,
+  connectTimeoutMS: 30000,
+  socketTimeoutMS: 45000,
   bufferCommands: false,
 };
 

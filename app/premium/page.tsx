@@ -15,18 +15,18 @@ async function getVaultTeaser() {
 
     let groups = await Group.find({ showOnVaultTeaser: true, premiumOnly: true, status: 'approved' })
       .sort({ vaultTeaserOrder: 1 })
-      .select('name image category country memberCount vaultTeaserOrder vaultCategories')
+      .select('name image category categories country memberCount vaultTeaserOrder vaultCategories')
       .lean();
 
-    if (groups.length > 14) {
-      groups = [...groups].sort(() => Math.random() - 0.5).slice(0, 14);
+    if (groups.length > 20) {
+      groups = [...groups].sort(() => Math.random() - 0.5).slice(0, 20);
     }
 
     if (groups.length === 0) {
       groups = await Group.find({ premiumOnly: true, status: 'approved' })
         .sort({ createdAt: -1 })
-        .limit(14)
-        .select('name image category country memberCount vaultCategories')
+        .limit(20)
+        .select('name image category categories country memberCount vaultCategories')
         .lean();
     }
 
@@ -35,9 +35,10 @@ async function getVaultTeaser() {
       name: (g.name || '') as string,
       image: (g.image || '') as string,
       category: (g.category || '') as string,
+      categories: g.categories?.length ? g.categories : (g.category ? [g.category] : []),
       country: (g.country || '') as string,
       memberCount: (g.memberCount || 0) as number,
-      vaultCategories: (g as any).vaultCategories || [],
+      vaultCategories: (g as any).vaultCategories?.length ? g.vaultCategories : (g.categories?.length ? g.categories : (g.category ? [g.category] : [])),
     }));
   } catch {
     return [];

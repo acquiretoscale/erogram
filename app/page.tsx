@@ -4,6 +4,8 @@ import connectDB from '@/lib/db/mongodb';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { getActiveCampaigns } from '@/lib/actions/campaigns';
 import { Article, User, Group, Bot } from '@/lib/models';
+import { getLocale, getPathname } from '@/lib/i18n/server';
+import { getDictionary } from '@/lib/i18n';
 
 export const revalidate = 300;
 
@@ -53,35 +55,39 @@ async function getFeaturedArticles(limit: number = 6) {
   }
 }
 
-export const metadata: Metadata = {
-  title: 'Erogram | Best NSFW Telegram Groups & Channels Directory 2026',
-  description: 'Explore thousands of NSFW Telegram groups, channels, and AI companion bots. Connect with like-minded adults in curated communities for dating, chat, gaming, and more. Safe, verified, and updated daily.',
-  keywords: 'NSFW telegram groups, adult telegram communities, NSFW channels, adult chat groups, telegram dating groups, erotic telegram groups, adult messaging, NSFW telegram bots, AI companion bots, adult chat bots',
-  alternates: {
-    canonical: siteUrl,
-  },
-  openGraph: {
-    title: 'Erogram | Best NSFW Telegram Groups & Channels Directory 2026',
-    description: 'Explore thousands of NSFW Telegram groups, channels, and AI companion bots. Connect with like-minded adults in curated communities for dating, chat, gaming, and more.',
-    type: 'website',
-    siteName: 'Erogram',
-    url: siteUrl,
-    images: [
-      {
-        url: (process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${siteUrl}/assets/placeholder-no-image.png`),
-        width: 1200,
-        height: 630,
-        alt: 'Erogram - NSFW Telegram Groups, Channels & Bots Directory',
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Erogram | Best NSFW Telegram Groups & Channels Directory 2026',
-    description: 'Explore thousands of NSFW Telegram groups, channels, and AI companion bots. Connect with like-minded adults in curated communities.',
-    images: [(process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${siteUrl}/assets/placeholder-no-image.png`)],
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const pathname = await getPathname();
+  const dict = await getDictionary(locale);
+  const m = dict.meta || {};
+
+  const title = m.homeTitle || 'Erogram | Best NSFW Telegram Groups & Channels Directory 2026';
+  const description = m.homeDesc || 'Explore thousands of NSFW Telegram groups, channels, and AI companion bots. Connect with like-minded adults in curated communities for dating, chat, gaming, and more. Safe, verified, and updated daily.';
+  const imgUrl = process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${siteUrl}/assets/placeholder-no-image.png`;
+  const canonicalBase = 'https://erogram.pro';
+  const canonical = `${canonicalBase}${pathname === '/' ? '' : pathname}`;
+
+  return {
+    title,
+    description,
+    keywords: 'NSFW telegram groups, adult telegram communities, NSFW channels, adult chat groups, telegram dating groups, erotic telegram groups, adult messaging, NSFW telegram bots, AI companion bots, adult chat bots',
+    alternates: { canonical },
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      siteName: 'Erogram',
+      url: canonical,
+      images: [{ url: imgUrl, width: 1200, height: 630, alt: title }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [imgUrl],
+    },
+  };
+}
 
 async function getNewGroups(limit: number = 8) {
   try {
@@ -142,6 +148,11 @@ async function getStats() {
 }
 
 export default async function Home() {
+  const locale = await getLocale();
+  const dict = await getDictionary(locale);
+  const faq: { q: string; a: string }[] = dict.home?.faq || [];
+  const metaDict = dict.meta || {};
+
   const [featuredArticles, heroCampaigns, newGroups, stats] = await Promise.all([
     getFeaturedArticles(6),
     getActiveCampaigns('homepage-hero'),
@@ -153,8 +164,9 @@ export default async function Home() {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: 'Erogram',
-    description: 'Directory of NSFW Telegram groups, channels, and AI companion bots for adults',
+    description: metaDict.homeDesc || 'Directory of NSFW Telegram groups, channels, and AI companion bots for adults',
     url: siteUrl,
+    inLanguage: locale,
     potentialAction: {
       '@type': 'SearchAction',
       target: `${siteUrl}/groups?search={search_term_string}`,
@@ -167,64 +179,14 @@ export default async function Home() {
     },
     mainEntity: {
       '@type': 'FAQPage',
-      mainEntity: [
-        {
-          '@type': 'Question',
-          name: 'What is Erogram?',
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: 'Erogram is the ultimate directory for discovering NSFW Telegram groups, channels, and AI companion bots. We curate and verify adult-oriented communities and bots to help you find like-minded people and engaging AI companions that match your interests.',
-          },
+      mainEntity: faq.map((item) => ({
+        '@type': 'Question',
+        name: item.q,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: item.a,
         },
-        {
-          '@type': 'Question',
-          name: "What's the difference between groups and bots?",
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: 'Groups are community spaces where multiple people chat and interact, while bots are AI-powered companions that provide personalized conversations, entertainment, and interactive experiences. Both are fully integrated into our platform.',
-          },
-        },
-        {
-          '@type': 'Question',
-          name: 'Are all communities and bots safe?',
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: 'Yes, we take safety seriously. All groups and bots listed on Erogram are verified and moderated to ensure they meet our community standards. We regularly review content to maintain a safe environment for all users.',
-          },
-        },
-        {
-          '@type': 'Question',
-          name: 'How do I join a Telegram group or use a bot?',
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: "Simply click on any group or bot card and follow the Telegram link. You'll be redirected to Telegram where you can join the group or start chatting with the bot instantly. Make sure you have the Telegram app installed for the best experience.",
-          },
-        },
-        {
-          '@type': 'Question',
-          name: 'Is Erogram free to use?',
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: "Yes, Erogram is completely free to use. We don't charge for browsing groups, using bots, joining communities, or accessing our content. Our service is supported through partnerships and donations.",
-          },
-        },
-        {
-          '@type': 'Question',
-          name: 'How often are new groups and bots added?',
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: 'We add fresh groups and bots daily from our community submissions. Our team reviews and approves new content regularly to ensure quality and relevance. Check back often for the latest additions!',
-          },
-        },
-        {
-          '@type': 'Question',
-          name: 'Can I submit my own group or bot?',
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: "Yes! You can submit your own group or bot using the 'Add' button in the navigation bar. Fill out the form with your details, and our team will review and approve it. Once approved, your content will be visible to all users on our platform.",
-          },
-        },
-      ],
+      })),
     },
   };
 
@@ -237,7 +199,13 @@ export default async function Home() {
         }}
       />
       <ErrorBoundary>
-        <HomeClient featuredArticles={featuredArticles} heroCampaigns={heroCampaigns} newGroups={newGroups} stats={stats} />
+        <HomeClient
+          featuredArticles={featuredArticles}
+          heroCampaigns={heroCampaigns}
+          newGroups={newGroups}
+          stats={stats}
+          locale={locale}
+        />
       </ErrorBoundary>
     </>
   );

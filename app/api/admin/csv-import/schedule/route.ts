@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
     const groups = await Group.find(query)
       .sort(statusFilter === 'scheduled' ? { scheduledPublishAt: 1 } : { createdAt: -1 })
       .select(
-        'name slug category country telegramLink description image memberCount scheduledPublishAt importBatchId sourceImageUrl premiumOnly status'
+        'name slug category categories country telegramLink description description_de description_es image memberCount scheduledPublishAt importBatchId sourceImageUrl premiumOnly status'
       )
       .lean();
 

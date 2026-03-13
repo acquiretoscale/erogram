@@ -11,6 +11,10 @@ export interface Group {
     isAdvertisement?: boolean;
     advertisementUrl?: string;
     pinned?: boolean;
+    featured?: boolean;
+    featuredOrder?: number;
+    boosted?: boolean;
+    boostExpiresAt?: string;
     clickCount?: number;
     views?: number;
     createdBy?: {

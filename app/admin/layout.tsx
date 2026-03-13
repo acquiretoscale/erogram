@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from './components/AdminSidebar';
+import AiChatWidget from './components/AiChatWidget';
+import TaskBar from './components/TaskBar';
+import { TaskManagerProvider } from './components/TaskManagerContext';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -27,13 +30,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       return;
     }
     try {
-      await axios.get('/api/auth/me', {
+      const res = await axios.get('/api/auth/me', {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (res.data.username) localStorage.setItem('username', res.data.username);
+      if (res.data.isAdmin) localStorage.setItem('isAdmin', 'true');
       setIsAuthenticated(true);
       setIsLoading(false);
     } catch {
       localStorage.removeItem('token');
+      localStorage.removeItem('username');
+      localStorage.removeItem('isAdmin');
       setIsLoading(false);
     }
   };
@@ -56,6 +63,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         return;
       }
       localStorage.setItem('token', res.data.token);
+      if (res.data.username) localStorage.setItem('username', res.data.username);
+      localStorage.setItem('isAdmin', 'true');
       setIsAuthenticated(true);
       setLoginLoading(false);
     } catch (err: any) {
@@ -71,6 +80,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    localStorage.removeItem('isAdmin');
+    localStorage.removeItem('firstName');
+    localStorage.removeItem('photoUrl');
     setIsAuthenticated(false);
     router.push('/');
   };
@@ -135,24 +148,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col md:flex-row">
-      <div className="md:hidden flex items-center justify-between p-4 border-b border-white/5 bg-[#0a0a0a] sticky top-0 z-40">
-        <h1 className="text-xl font-black gradient-text">Admin Panel</h1>
-        <button
-          onClick={() => setIsSidebarOpen(true)}
-          className="p-2 text-white hover:bg-white/5 rounded-lg"
-        >
-          <span className="text-2xl">☰</span>
-        </button>
+    <TaskManagerProvider>
+      <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col md:flex-row">
+        <div className="md:hidden flex items-center justify-between p-4 border-b border-white/5 bg-[#0a0a0a] sticky top-0 z-40">
+          <h1 className="text-xl font-black gradient-text">Admin Panel</h1>
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 text-white hover:bg-white/5 rounded-lg"
+          >
+            <span className="text-2xl">☰</span>
+          </button>
+        </div>
+        <AdminSidebar
+          onLogout={handleLogout}
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+        />
+        <main className="flex-1 md:ml-64 p-4 md:p-8 min-h-screen overflow-y-auto w-full">
+          <div className="max-w-7xl mx-auto">{children}</div>
+        </main>
+        <TaskBar />
+        <AiChatWidget />
       </div>
-      <AdminSidebar
-        onLogout={handleLogout}
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-      />
-      <main className="flex-1 md:ml-64 p-4 md:p-8 min-h-screen overflow-y-auto w-full">
-        <div className="max-w-7xl mx-auto">{children}</div>
-      </main>
-    </div>
+    </TaskManagerProvider>
   );
 }

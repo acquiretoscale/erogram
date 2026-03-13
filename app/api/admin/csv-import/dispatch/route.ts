@@ -37,9 +37,21 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ message: 'No group IDs provided' }, { status: 400 });
     }
 
+    // addCategory: push a category into the categories array (max 3, no duplicates)
+    if (updates?.addCategory && typeof updates.addCategory === 'string') {
+      const cat = updates.addCategory.trim();
+      const result = await Group.updateMany(
+        { _id: { $in: groupIds }, $expr: { $lt: [{ $size: { $ifNull: ['$categories', []] } }, 3] }, categories: { $ne: cat } },
+        { $push: { categories: cat } }
+      );
+      console.log(`[Dispatch] Added category "${cat}" to ${result.modifiedCount} groups (skipped groups already at 3 categories)`);
+      return NextResponse.json({ modified: result.modifiedCount, updates: { addCategory: cat } });
+    }
+
     const allowedFields: Record<string, boolean> = {
       premiumOnly: true,
       category: true,
+      categories: true,
       country: true,
       status: true,
       description: true,

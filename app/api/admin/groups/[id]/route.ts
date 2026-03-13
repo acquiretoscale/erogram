@@ -204,20 +204,24 @@ export async function DELETE(
     }
     
     const { id } = await params;
-    const group = await Group.findByIdAndUpdate(
-      id,
-      { status: 'deleted', deletedAt: new Date() },
-      { new: true }
-    );
-    
+    const group = await Group.findById(id);
+
     if (!group) {
       return NextResponse.json(
         { message: 'Group not found' },
         { status: 404 }
       );
     }
-    
-    return NextResponse.json({ message: 'Group soft-deleted successfully' });
+
+    if (group.status === 'approved') {
+      group.status = 'deleted';
+      group.deletedAt = new Date();
+      await group.save();
+      return NextResponse.json({ message: 'Group soft-deleted (was approved/live)' });
+    }
+
+    await Group.findByIdAndDelete(id);
+    return NextResponse.json({ message: 'Group permanently deleted' });
   } catch (error: any) {
     console.error('Group delete error:', error);
     return NextResponse.json(

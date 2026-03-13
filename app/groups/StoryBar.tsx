@@ -146,17 +146,12 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-[9px] font-black uppercase tracking-wider shrink-0 mr-0.5" style={{ color: '#f59e0b' }}>🔥 Trending Categories</span>
             {[
-              { label: 'Lesbian', href: '/best-telegram-groups/lesbian' },
-              { label: 'Threesome', href: '/best-telegram-groups/threesome' },
-              { label: 'Big Ass', href: '/best-telegram-groups/big%20ass' },
+              { label: 'Russian', href: '/best-telegram-groups/russian' },
               { label: 'Amateur', href: '/best-telegram-groups/amateur' },
-              { label: 'Onlyfans', href: '/best-telegram-groups/onlyfans' },
-              { label: 'Hentai', href: '/best-telegram-groups/hentai' },
-              { label: 'Thailand', href: '/groups/country/Thailand' },
-              { label: 'Russia', href: '/groups/country/Russia' },
-              { label: 'UK', href: '/groups/country/UK' },
-              { label: 'Germany', href: '/groups/country/Germany' },
-              { label: 'France', href: '/groups/country/France' },
+              { label: 'Threesome', href: '/best-telegram-groups/threesome' },
+              { label: 'Lesbian', href: '/best-telegram-groups/lesbian' },
+              { label: 'China', href: '/best-telegram-groups/china' },
+              { label: 'Cosplay', href: '/best-telegram-groups/cosplay' },
             ].map(({ label, href }) => (
               <Link
                 key={href}
@@ -171,6 +166,18 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
                 {label}
               </Link>
             ))}
+            <Link
+              href="/premiumvault"
+              className="px-2.5 py-[3px] text-[9px] font-black rounded-full transition-all duration-200 whitespace-nowrap hover:scale-105 inline-flex items-center gap-1"
+              style={{
+                background: 'linear-gradient(135deg, #c9973a, #e8ba5a, #c9973a)',
+                color: '#0d0c0a',
+                border: '1px solid rgba(232,186,90,0.5)',
+              }}
+            >
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              EROGRAM PREMIUM
+            </Link>
         </div>
       </nav>
     </section>

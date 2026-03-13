@@ -60,6 +60,20 @@ export default function PendingGroupsTab() {
         }
     };
 
+    const handleDelete = async (id: string) => {
+        const group = groups.find(g => g._id === id);
+        if (!confirm(`Permanently delete "${group?.name || id}"? This cannot be undone.`)) return;
+        try {
+            const token = localStorage.getItem('token');
+            await axios.delete(`/api/admin/groups/${id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setGroups(groups.filter(g => g._id !== id));
+        } catch (err: any) {
+            alert(err.response?.data?.message || 'Failed to delete group');
+        }
+    };
+
     const handleApprovePremium = async (id: string) => {
         if (!confirm('Approve this group into the Premium Vault?\n\nIt will be:\n• Approved & live immediately\n• Hidden from public listings\n• Not indexed by Google\n• Only accessible to Premium members')) return;
         try {
@@ -80,7 +94,6 @@ export default function PendingGroupsTab() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-3xl font-black text-white mb-1">Pending Groups</h1>
                 <p className="text-[#999] text-sm">{groups.length} groups waiting for approval</p>
             </div>
 
@@ -135,10 +148,10 @@ export default function PendingGroupsTab() {
 
                                 <div className="grid grid-cols-2 gap-3 mt-auto">
                                     <button
-                                        onClick={() => handleStatusChange(group._id, 'rejected')}
+                                        onClick={() => handleDelete(group._id)}
                                         className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl text-sm font-bold transition-colors"
                                     >
-                                        Reject
+                                        Delete
                                     </button>
                                     <button
                                         onClick={() => handleStatusChange(group._id, 'approved')}

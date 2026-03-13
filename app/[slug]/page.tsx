@@ -8,6 +8,8 @@ import JoinClient from './JoinClient';
 import { getTelegramMemberCount } from '@/lib/utils/telegram';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import { getActiveCampaigns } from '@/lib/actions/campaigns';
+import { getLocale, getPathname } from '@/lib/i18n/server';
+import { LOCALES, localePath } from '@/lib/i18n';
 
 // ISR for public join pages (keeps SSR output crawlable while avoiding per-request rendering)
 export const revalidate = 300;
@@ -400,11 +402,11 @@ async function getGroupReviewStats(groupId: string) {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
+  const pathname = await getPathname();
 
   // Try to find a group first
   const group = await getGroup(slug);
   if (group) {
-    // Premium vault groups must never be indexed by search engines
     if (group.premiumOnly) {
       return {
         title: 'Premium Content — Erogram',
@@ -412,7 +414,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       };
     }
 
-    const groupUrl = `${BASE_URL}/${group.slug}`;
+    const groupUrl = `${BASE_URL}${pathname}`;
 
     const category = group.category || 'NSFW';
     const country = group.country && group.country !== 'All' ? ` from ${group.country}` : '';
@@ -447,6 +449,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       },
       alternates: {
         canonical: groupUrl,
+        languages: Object.fromEntries(
+          LOCALES.map(l => [l, `${BASE_URL}${localePath(`/${group.slug}`, l)}`])
+        ),
       },
       openGraph: {
         title: `${group.name} - Join NSFW Telegram Group`,
@@ -475,7 +480,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // If no group found, try to find a bot
   const bot = await getBot(slug);
   if (bot) {
-    const botUrl = `${BASE_URL}/${bot.slug}`;
+    const botUrl = `${BASE_URL}${pathname}`;
 
     const botCategory = bot.category || 'NSFW';
     const baseDescription = bot.description
@@ -502,6 +507,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       keywords: `NSFW telegram bot, ${bot.name}, adult telegram bot, ${(bot.categories || [bot.category, bot.country].filter(Boolean)).join(', ')}, telegram bot, erotic bots, adult bot`,
       alternates: {
         canonical: botUrl,
+        languages: Object.fromEntries(
+          LOCALES.map(l => [l, `${BASE_URL}${localePath(`/${bot.slug}`, l)}`])
+        ),
       },
       openGraph: {
         title: `${bot.name} - Use NSFW Telegram Bot`,

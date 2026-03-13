@@ -3,10 +3,11 @@ import crypto from 'crypto';
 import connectDB from '@/lib/db/mongodb';
 import { User, PremiumEvent } from '@/lib/models';
 import { notifyAdminsOfSale } from '@/lib/utils/notifyAdmins';
+import { getPremiumPricing } from '@/lib/premiumPricing';
 
 const IPN_SECRET = process.env.NOWPAYMENTS_IPN_SECRET || '';
 
-const VALID_PLANS = new Set(['monthly', 'yearly', 'lifetime']);
+const VALID_PLANS = new Set(['monthly', 'quarterly', 'yearly', 'lifetime']);
 const ACTIVATE_ON = new Set(['finished', 'confirmed']);
 
 function logEvent(data: Record<string, any>) {
@@ -94,13 +95,12 @@ export async function POST(req: NextRequest) {
 
     if (plan === 'lifetime') {
       update.premiumExpiresAt = null;
-    } else if (plan === 'yearly') {
-      const exp = new Date(now);
-      exp.setDate(exp.getDate() + 365);
-      update.premiumExpiresAt = exp;
     } else {
+      const pricing = await getPremiumPricing();
+      const planConfig = plan === 'yearly' ? pricing.yearly : plan === 'quarterly' ? pricing.quarterly : pricing.monthly;
+      const planDays = planConfig.days;
       const exp = new Date(now);
-      exp.setDate(exp.getDate() + 30);
+      exp.setDate(exp.getDate() + planDays);
       update.premiumExpiresAt = exp;
     }
 

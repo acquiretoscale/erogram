@@ -278,7 +278,7 @@ function ProfileContent() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <VaultTab isPremium={effectivePremium} />
+              <VaultTab isPremium={effectivePremium} isAdmin={isAdmin} />
             </motion.div>
           )}
         </div>

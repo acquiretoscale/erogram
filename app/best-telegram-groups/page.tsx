@@ -3,19 +3,32 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { categories } from '@/app/groups/constants';
+import { getLocale, getPathname } from '@/lib/i18n/server';
+import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
 
 import connectDB from '@/lib/db/mongodb';
 import { Group } from '@/lib/models';
 
-export const metadata: Metadata = {
-    title: 'Best Telegram Groups Lists – Erogram',
-    description: 'Browse our curated lists of the best Telegram groups and channels by category. Find the top communities for every interest.',
-    alternates: {
-        canonical: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro'}/best-telegram-groups`,
-    },
-};
+const canonicalBase = 'https://erogram.pro';
+
+export async function generateMetadata(): Promise<Metadata> {
+    const locale = await getLocale();
+    const pathname = await getPathname();
+    const dict = await getDictionary(locale);
+    return {
+        title: dict.meta.bestGroupsIndexTitle,
+        description: dict.meta.bestGroupsIndexDesc,
+        alternates: {
+            canonical: `${canonicalBase}${pathname}`,
+            languages: Object.fromEntries(LOCALES.map(l => [l, `${canonicalBase}${localePath('/best-telegram-groups', l)}`])),
+        },
+    };
+}
 
 export default async function BestGroupsIndexPage() {
+    const locale = await getLocale();
+    const dict = await getDictionary(locale);
+
     await connectDB();
 
     // Get categories with at least 1 approved group
@@ -36,10 +49,10 @@ export default async function BestGroupsIndexPage() {
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
                 <div className="text-center mb-16">
                     <h1 className="text-4xl md:text-5xl lg:text-6xl font-black mb-6 leading-tight">
-                        Curated <span className="gradient-text">Top Lists</span>
+                        {dict.bestGroups.curatedTitle} <span className="gradient-text">{dict.bestGroups.topLists}</span>
                     </h1>
                     <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-                        Explore our hand-picked collections of the best Telegram groups and channels for every category.
+                        {dict.bestGroups.indexDesc}
                     </p>
                 </div>
 
@@ -47,14 +60,14 @@ export default async function BestGroupsIndexPage() {
                     {sortedCategories.map((category) => (
                         <Link
                             key={category}
-                            href={`/best-telegram-groups/${category.toLowerCase()}`}
+                            href={localePath(`/best-telegram-groups/${category.toLowerCase()}`, locale)}
                             className="glass p-6 rounded-2xl hover-glow transition-all duration-300 group border border-white/5 hover:border-white/20"
                         >
                             <h2 className="text-xl font-bold mb-2 group-hover:text-[#b31b1b] transition-colors">
-                                Best {category} Groups
+                                {dict.bestGroups.bestCategory.replace('{category}', category)}
                             </h2>
                             <p className="text-sm text-gray-400">
-                                Top 10 {category} communities
+                                {dict.bestGroups.top10.replace('{category}', category)}
                             </p>
                         </Link>
                     ))}
