@@ -20,7 +20,7 @@ export default function PremiumVaultPage() {
   useEffect(() => {
     if (!mounted) return;
     const token = localStorage.getItem('token');
-    if (!token) { router.push('/login?redirect=/premiumvault'); return; }
+    if (!token) return;
 
     setUsername(localStorage.getItem('username'));
     setIsAdmin(localStorage.getItem('isAdmin') === 'true');

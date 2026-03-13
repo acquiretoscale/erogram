@@ -5,11 +5,8 @@ import { authenticateUser } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   const user = await authenticateUser(req);
-  if (!user) {
-    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-  }
 
-  const isPreview = !user.premium && !user.isAdmin;
+  const isPreview = !user || (!user.premium && !user.isAdmin);
 
   await connectDB();
 
@@ -49,7 +46,7 @@ export async function GET(req: NextRequest) {
     query.$and = conditions;
   }
 
-  const previewLimit = 24;
+  const previewLimit = 52;
   const effectiveLimit = isPreview ? Math.min(limit, previewLimit) : limit;
 
   const isFirstLoad = skip === 0;

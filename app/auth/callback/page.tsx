@@ -33,7 +33,7 @@ export default function AuthCallbackPage() {
     } else if (state === 'premium') {
       router.replace('/premium');
     } else {
-      router.replace('/profile');
+      router.replace('/premiumvault');
     }
   }, [router, searchParams]);
 

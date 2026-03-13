@@ -40,14 +40,14 @@ interface VaultTeaserItem {
   vaultCategories?: string[];
 }
 
-function VaultTeaserSection({ items }: { items: VaultTeaserItem[]; catOrder?: string[] }) {
+function VaultTeaserSection({ items, isLoggedIn = false }: { items: VaultTeaserItem[]; catOrder?: string[]; isLoggedIn?: boolean }) {
   const lp = useLocalePath();
   const fmtNum = (n: number) => n >= 1_000_000 ? (n/1_000_000).toFixed(1)+'M' : n >= 1_000 ? (n/1_000).toFixed(n>=10_000?0:1)+'K' : '';
 
   if (!items.length) return null;
 
   return (
-    <Link href={lp('/premiumvault')} className="block mb-8 group cursor-pointer">
+    <Link href={isLoggedIn ? '/premium' : lp('/premiumvault')} target={isLoggedIn ? '_blank' : undefined} className="block mb-8 group cursor-pointer">
       <div
         className="relative rounded-2xl overflow-hidden px-5 py-4 transition-all group-hover:scale-[1.01]"
         style={{ background: 'linear-gradient(135deg, #111009 0%, #140f07 60%, #0e0d0b 100%)', border: '1px solid #2e2010' }}
@@ -220,6 +220,8 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
       .finally(() => setFeaturedLoading(false));
   }, []);
 
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
   useEffect(() => {
     // Get username from localStorage on mount
     if (typeof window !== 'undefined') {
@@ -227,6 +229,8 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
       if (storedUsername) {
         setUsername(storedUsername);
       }
+      const token = localStorage.getItem('token');
+      if (token) setIsLoggedIn(true);
 
       // Only update device detection if we don't have server-side values
       if (!initialIsMobile) {
@@ -858,7 +862,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                       <VirtualizedGroupGrid key={`chunk-${cursor}`} groups={firstSlice} feedCampaigns={cursor === 0 ? gridCampaigns : []} isTelegram={isTelegram} onOpenReviewModal={openReviewModal} onOpenReportModal={openReportModal} />
                     );
                     cursor += FIRST;
-                    chunks.push(<VaultTeaserSection key={`vault-${cursor}`} items={vaultTeaser} catOrder={vaultCatOrder} />);
+                    chunks.push(<VaultTeaserSection key={`vault-${cursor}`} items={vaultTeaser} catOrder={vaultCatOrder} isLoggedIn={isLoggedIn} />);
                   }
 
                   // Subsequent chunks: every 15 posts, insert vault
@@ -869,7 +873,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                     );
                     cursor += INTERVAL;
                     if (cursor < displayGroups.length) {
-                      chunks.push(<VaultTeaserSection key={`vault-${cursor}`} items={vaultTeaser} catOrder={vaultCatOrder} />);
+                      chunks.push(<VaultTeaserSection key={`vault-${cursor}`} items={vaultTeaser} catOrder={vaultCatOrder} isLoggedIn={isLoggedIn} />);
                     }
                   }
 

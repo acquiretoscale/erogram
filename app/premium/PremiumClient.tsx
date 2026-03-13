@@ -106,6 +106,123 @@ function VaultPreview({ items }: { items: VaultTeaserItem[] }) {
   );
 }
 
+/* ─── Social Proof Toast ─── */
+const PROOF_CITIES = [
+  'New York','Amsterdam','Ashburn','Los Angeles','Dallas','Frankfurt am Main',
+  'Chicago','Ankara','Warsaw','London','Milan','Naaldwijk','Paris','San Jose',
+  'Singapore','Toronto','Izmir','Sydney','Houston','Atlanta','Seattle','Lagos',
+  'Melbourne','Tel Aviv-Yafo','Bucharest',
+];
+const PROOF_WEIGHTS = [
+  14,10,8,12,7,9,8,6,5,11,7,3,9,6,5,5,4,4,5,5,4,3,3,3,3,
+];
+function pickCity() {
+  const total = PROOF_WEIGHTS.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < PROOF_CITIES.length; i++) {
+    r -= PROOF_WEIGHTS[i];
+    if (r <= 0) return PROOF_CITIES[i];
+  }
+  return PROOF_CITIES[0];
+}
+
+function genProofEntry() {
+  const city = pickCity();
+  const plans: { label: string; weight: number }[] = [
+    { label: '3 months', weight: 55 },
+    { label: '1 year', weight: 45 },
+  ];
+  const tw = plans.reduce((a, p) => a + p.weight, 0);
+  let rp = Math.random() * tw;
+  let plan = plans[0].label;
+  for (const p of plans) { rp -= p.weight; if (rp <= 0) { plan = p.label; break; } }
+
+  const r = Math.random();
+  let minutesAgo: number;
+  if (r < 0.20) minutesAgo = Math.floor(Math.random() * 3) + 1;
+  else if (r < 0.50) minutesAgo = Math.floor(Math.random() * 12) + 3;
+  else if (r < 0.75) minutesAgo = Math.floor(Math.random() * 30) + 15;
+  else if (r < 0.90) minutesAgo = Math.floor(Math.random() * 60) + 45;
+  else minutesAgo = Math.floor(Math.random() * 180) + 60;
+
+  let timeAgo: string;
+  if (minutesAgo <= 1) timeAgo = 'just now';
+  else if (minutesAgo < 60) timeAgo = `${minutesAgo} min ago`;
+  else { const h = Math.floor(minutesAgo / 60); timeAgo = `${h} hour${h > 1 ? 's' : ''} ago`; }
+
+  return { city, plan, timeAgo };
+}
+
+function SocialProofToast() {
+  const [entry, setEntry] = useState<{ city: string; plan: string; timeAgo: string } | null>(null);
+  const [visible, setVisible] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showNext = useCallback(() => {
+    const next = genProofEntry();
+    setEntry(next);
+    setVisible(true);
+    timeoutRef.current = setTimeout(() => {
+      setVisible(false);
+      const delay = 7_000 + Math.floor(Math.random() * 6_000);
+      timeoutRef.current = setTimeout(showNext, delay);
+    }, 8000);
+  }, []);
+
+  useEffect(() => {
+    const initial = 3_000 + Math.floor(Math.random() * 5_000);
+    timeoutRef.current = setTimeout(showNext, initial);
+    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
+  }, [showNext]);
+
+  if (!entry) return null;
+
+  return (
+    <div
+      className="fixed z-[9999] pointer-events-none"
+      style={{
+        bottom: '16px',
+        left: '50%',
+        transform: visible ? 'translateX(-50%) translateY(0)' : 'translateX(-50%) translateY(24px)',
+        opacity: visible ? 1 : 0,
+        transition: 'all 0.45s cubic-bezier(0.22, 1, 0.36, 1)',
+        width: 'calc(100% - 32px)',
+        maxWidth: '360px',
+      }}
+    >
+      <div
+        className="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl w-full"
+        style={{
+          background: '#ffffff',
+          border: '1px solid #e5e7eb',
+          boxShadow: '0 8px 30px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.08)',
+        }}
+      >
+        <div className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 6L9 17l-5-5"/>
+          </svg>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-normal text-gray-900 leading-snug">
+            Somebody from <span className="font-black text-gray-900">{entry.city}</span>
+          </p>
+          <p className="text-[12px] font-normal text-gray-500 leading-snug">
+            <span className="font-black text-gray-900">UNLOCKED THE VAULT</span> for {entry.plan}
+          </p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <p className="text-[10px] font-medium text-gray-400">{entry.timeAgo}</p>
+            <span className="inline-flex items-center gap-1 text-[8px] font-bold text-green-600 uppercase tracking-wider">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              verified
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface PremiumClientProps { vaultTeaser?: VaultTeaserItem[]; }
 
 export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) {
@@ -256,6 +373,7 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
 
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, #070605 0%, #0a0906 100%)' }}>
+      {!isPremium && <SocialProofToast />}
       <div className="max-w-[520px] mx-auto px-3 sm:px-4 pt-5 pb-16">
 
         {/* ━━━ TIMER — at top of page (logged-in only) ━━━ */}

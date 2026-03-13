@@ -49,7 +49,7 @@ export default function LoginPage() {
         if (res.data.isAdmin === 'true' || res.data.isAdmin === true) {
           router.push('/admin');
         } else {
-          router.push(rd || '/profile');
+          router.push(rd || '/premiumvault');
         }
       } catch (err: any) {
         console.error('Telegram login error:', err);

@@ -76,7 +76,7 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
   };
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
-  const headers = { Authorization: `Bearer ${token}` };
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 300);
@@ -284,7 +284,7 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
               {visibleTop.map(g => (
                 <Link
                   key={g._id}
-                  href={isPremium && g.slug ? `/${g.slug}` : '/premium'}
+                  href={isPremium && g.slug ? `/${g.slug}` : (token ? '/premium' : '/login?redirect=/premium')}
                   className="group/top block rounded-xl overflow-hidden relative transition-all duration-500 hover:scale-[1.03] hover:shadow-lg"
                   style={{ aspectRatio: '1', border: '2px solid #c9973a33', boxShadow: '0 4px 20px #c9973a0a' }}
                 >
@@ -339,19 +339,51 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
                   ? { background: T.pillActive, color: T.pillActiveText }
                   : { background: T.pillBg, border: `1px solid ${T.pillBorder}`, color: T.pillText }}
               >All</button>
-              {quickCategories.filter(q => !['Blonde', 'Big Tits', 'Italy', 'Telegram-Porn', 'USA'].includes(q.category)).map(q => {
-                const isActive = category === q.category;
+              {(() => {
+                const EXTRA_CATS = ['Brazil', 'China', 'Colombia', 'Cosplay'];
+                const HIDDEN = ['Blonde', 'Big Tits', 'Italy', 'Telegram-Porn', 'USA'];
+                const TEASER_CATS = ['Threesome', 'Creampie', 'Fantasy', 'Hardcore', 'Cuckold', 'Free-use'];
+                const filtered = quickCategories.filter(q => !HIDDEN.includes(q.category));
+                const shown = filtered.filter(q => !TEASER_CATS.includes(q.category));
+                const extraFromApi = EXTRA_CATS.filter(c => !shown.some(q => q.category === c));
                 return (
-                  <button
-                    key={q.category}
-                    onClick={() => setCategory(isActive ? 'All' : q.category)}
-                    className="px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-all hover:scale-[1.04]"
-                    style={isActive
-                      ? { background: T.pillActive, color: T.pillActiveText }
-                      : { background: T.pillBg, border: `1px solid ${T.pillBorder}`, color: T.pillText }}
-                  >{q.category}</button>
+                  <>
+                    {shown.map(q => {
+                      const isActive = category === q.category;
+                      return (
+                        <button
+                          key={q.category}
+                          onClick={() => setCategory(isActive ? 'All' : q.category)}
+                          className="px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-all hover:scale-[1.04]"
+                          style={isActive
+                            ? { background: T.pillActive, color: T.pillActiveText }
+                            : { background: T.pillBg, border: `1px solid ${T.pillBorder}`, color: T.pillText }}
+                        >{q.category}</button>
+                      );
+                    })}
+                    {extraFromApi.map(c => {
+                      const isActive = category === c;
+                      return (
+                        <button
+                          key={c}
+                          onClick={() => setCategory(isActive ? 'All' : c)}
+                          className="px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-all hover:scale-[1.04]"
+                          style={isActive
+                            ? { background: T.pillActive, color: T.pillActiveText }
+                            : { background: T.pillBg, border: `1px solid ${T.pillBorder}`, color: T.pillText }}
+                        >{c}</button>
+                      );
+                    })}
+                    {TEASER_CATS.map(c => (
+                      <span
+                        key={c}
+                        className="px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide cursor-not-allowed select-none"
+                        style={{ background: T.pillBg, border: `1px solid ${T.pillBorder}`, color: T.pillText, filter: 'blur(3px)', opacity: 0.4 }}
+                      >{c}</span>
+                    ))}
+                  </>
                 );
-              })}
+              })()}
             </div>
             <div className="flex gap-2 flex-wrap">
               {isPremium ? (
@@ -367,7 +399,7 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
                   />
                 </div>
               ) : (
-                <div className="relative flex-1 min-w-[140px] cursor-not-allowed" onClick={() => window.location.href = '/premium'}>
+                <div className="relative flex-1 min-w-[140px] cursor-not-allowed" onClick={() => window.location.href = token ? '/premium' : '/login?redirect=/premium'}>
                   <svg className="absolute left-3 top-1/2 -translate-y-1/2" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.textMuted} strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
                   <div className="w-full pl-8 pr-3 py-2 text-sm rounded-xl flex items-center gap-1" style={{ background: T.inputBg, border: `1px solid ${T.inputBorder}`, color: T.textMuted }}>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={T.textMuted} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -392,7 +424,7 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
                   </select>
                 ) : (
                   <div
-                    onClick={() => window.location.href = '/premium'}
+                    onClick={() => window.location.href = token ? '/premium' : '/login?redirect=/premium'}
                     className="px-2.5 py-2 text-[11px] font-bold rounded-xl cursor-not-allowed flex items-center gap-1"
                     style={{ background: T.inputBg, border: `1px solid ${T.inputBorder}`, color: T.textMuted }}
                   >
@@ -417,7 +449,7 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
                 </select>
               ) : (
                 <div
-                  onClick={() => window.location.href = '/premium'}
+                  onClick={() => window.location.href = token ? '/premium' : '/login?redirect=/premium'}
                   className="px-2.5 py-2 text-[11px] font-bold rounded-xl cursor-not-allowed flex items-center gap-1"
                   style={{ background: T.inputBg, border: `1px solid ${T.inputBorder}`, color: T.textMuted }}
                 >
@@ -485,8 +517,9 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
                 return (
                 <div
                   key={group._id}
-                  className="group/card relative rounded-2xl overflow-hidden transition-all duration-300"
+                  className={`group/card relative rounded-2xl overflow-hidden transition-all duration-300${!isPremium ? ' cursor-pointer' : ''}`}
                   style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}` }}
+                  onClick={!isPremium ? () => { window.location.href = token ? '/premium' : '/login?redirect=/premium'; } : undefined}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.border = `1px solid ${T.cardHover}`; (e.currentTarget as HTMLElement).style.boxShadow = `0 8px 40px ${T.glowColor}0d`; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.border = `1px solid ${T.cardBorder}`; (e.currentTarget as HTMLElement).style.boxShadow = 'none'; }}
                 >
@@ -510,7 +543,7 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
                       {isPremium ? (
                         <Link href={`/${group.slug}`} className="block font-bold text-[14px] truncate leading-tight transition-colors" style={{ color: T.text }} onMouseEnter={e => (e.currentTarget.style.color = T.gold)} onMouseLeave={e => (e.currentTarget.style.color = T.text)}>{group.name}</Link>
                       ) : (
-                        <p className="font-bold text-[14px] truncate leading-tight" style={{ color: T.text }}>{(group.name || '').slice(0, 6)}<span style={{ filter: 'blur(5px)', opacity: 0.4, color: T.text, userSelect: 'none' }}>{(group.name || '██████').slice(6) || '██████'}</span></p>
+                        <p className="font-bold text-[14px] truncate leading-tight" style={{ color: T.text }}>{(group.name || '').slice(0, 6)}<span style={{ filter: 'blur(5px)', color: '#ffffff', opacity: 0.7, userSelect: 'none' }}>{(group.name || '██████').slice(6) || '██████'}</span></p>
                       )}
                       <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                         {cats.map((cat, i) => (
@@ -605,12 +638,12 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
                         </>
                       ) : (
                         <Link
-                          href="/premium"
+                          href={token ? '/premium' : '/login?redirect=/premium'}
                           className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all hover:scale-[1.04]"
                           style={{ background: 'linear-gradient(135deg, #c9973a, #a67c2e)', color: '#0d0c0a' }}
                         >
                           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                          Unlock Premium
+                          {token ? 'Unlock Premium' : 'Sign Up to Unlock'}
                         </Link>
                       )}
                     </div>
@@ -622,12 +655,16 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
               {/* Blurred list items for free users */}
               {blurredGroups.length > 0 && (
                 <div className="relative">
-                  <div className="space-y-1.5 select-none pointer-events-none" style={{ filter: 'blur(6px)', opacity: 0.5 }}>
-                    {blurredGroups.slice(0, 10).map(group => (
+                  <div className="space-y-1.5 select-none pointer-events-none">
+                    {blurredGroups.slice(0, 40).map((group, idx) => {
+                      const progress = idx / 39;
+                      const blur = 6 + progress * 18;
+                      const opacity = 0.45 - progress * 0.4;
+                      return (
                       <div
                         key={group._id}
                         className="rounded-2xl overflow-hidden"
-                        style={{ background: 'linear-gradient(135deg, #0f0d08 0%, #120e09 100%)', border: '1px solid #2a1f0e' }}
+                        style={{ background: 'linear-gradient(135deg, #0f0d08 0%, #120e09 100%)', border: '1px solid #2a1f0e', filter: `blur(${blur}px)`, opacity: Math.max(opacity, 0.05) }}
                       >
                         <div className="flex items-center gap-3 px-3 py-2.5">
                           <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0" style={{ border: '1px solid #2e2010' }}>
@@ -640,11 +677,12 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
                           {group.memberCount ? <span className="text-[15px] font-black" style={{ color: '#c9973a' }}>{formatNum(group.memberCount)}</span> : null}
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <Link
-                      href="/premium"
+                      href={token ? '/premium' : '/login?redirect=/premium'}
                       className="flex flex-col items-center gap-2 px-8 py-5 rounded-2xl text-center transition-all hover:scale-105"
                       style={{
                         background: 'linear-gradient(135deg, #d4a94c, #e8c66a, #c9973a, #b8860b)',
@@ -654,7 +692,7 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
                       }}
                     >
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                      <span className="font-black text-lg uppercase tracking-wide">Unlock Premium</span>
+                      <span className="font-black text-lg uppercase tracking-wide">{token ? 'Unlock Premium' : 'Sign Up to Unlock'}</span>
                       <span className="text-[11px] font-semibold opacity-75">See all groups instantly</span>
                     </Link>
                   </div>
@@ -668,7 +706,7 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
                 const Wrapper = isPremium ? Link : 'a';
                 const wrapperProps = isPremium
                   ? { href: `/${group.slug}` }
-                  : { href: '/premium' };
+                  : { href: token ? '/premium' : '/login?redirect=/premium' };
                 return (
                   <div
                     key={group._id}
@@ -686,7 +724,7 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
                       />
                       <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 30%, #0a0908dd 70%, #0a0908 100%)' }} />
                       <div className="absolute bottom-0 left-0 right-0 p-2">
-                        <p className="text-[11px] font-bold text-white leading-tight truncate mb-1">{isPremium ? group.name : <>{(group.name || '').slice(0, 6)}<span style={{ filter: 'blur(5px)', opacity: 0.4, color: '#fff', userSelect: 'none' as const }}>{(group.name || '██████').slice(6) || '██████'}</span></>}</p>
+                        <p className="text-[11px] font-bold text-white leading-tight truncate mb-1">{isPremium ? group.name : <>{(group.name || '').slice(0, 6)}<span style={{ filter: 'blur(5px)', color: '#ffffff', opacity: 0.7, userSelect: 'none' as const }}>{(group.name || '██████').slice(6) || '██████'}</span></>}</p>
                         <div className="flex flex-wrap gap-0.5 mb-1">
                           {cats.map((cat, i) => (
                             isPremium && isAdmin ? (
@@ -784,9 +822,13 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
               {/* Blurred grid items for free users */}
               {blurredGroups.length > 0 && (
                 <div className="col-span-full relative">
-                  <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 select-none pointer-events-none" style={{ filter: 'blur(6px)', opacity: 0.5 }}>
-                    {blurredGroups.slice(0, 8).map(group => (
-                      <div key={group._id} className="rounded-xl overflow-hidden relative" style={{ border: '1px solid #2a1f0e' }}>
+                  <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 select-none pointer-events-none">
+                    {blurredGroups.slice(0, 40).map((group, idx) => {
+                      const progress = idx / 39;
+                      const blur = 6 + progress * 18;
+                      const opacity = 0.45 - progress * 0.4;
+                      return (
+                      <div key={group._id} className="rounded-xl overflow-hidden relative" style={{ border: '1px solid #2a1f0e', filter: `blur(${blur}px)`, opacity: Math.max(opacity, 0.05) }}>
                         <div className="aspect-square relative">
                           <img src={group.image || '/assets/placeholder-no-image.png'} alt="" className="w-full h-full object-cover" />
                           <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 30%, #0a0908dd 70%, #0a0908 100%)' }} />
@@ -797,11 +839,12 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
                           </div>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <Link
-                      href="/premium"
+                      href={token ? '/premium' : '/login?redirect=/premium'}
                       className="flex flex-col items-center gap-2 px-8 py-5 rounded-2xl text-center transition-all hover:scale-105"
                       style={{
                         background: 'linear-gradient(135deg, #d4a94c, #e8c66a, #c9973a, #b8860b)',
@@ -811,7 +854,7 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
                       }}
                     >
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                      <span className="font-black text-lg uppercase tracking-wide">Unlock Premium</span>
+                      <span className="font-black text-lg uppercase tracking-wide">{token ? 'Unlock Premium' : 'Sign Up to Unlock'}</span>
                       <span className="text-[11px] font-semibold opacity-75">See all groups instantly</span>
                     </Link>
                   </div>
