@@ -222,7 +222,8 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
       (group) =>
         !!group.image &&
         group.image !== '/assets/image.jpg' &&
-        group.image !== '/assets/placeholder-no-image.png'
+        group.image !== '/assets/placeholder-no-image.png' &&
+        group.country !== 'China'
     );
     const vaultLiveCount = vaultTotal ?? total;
     const totalGroupCount = 4000 + (vaultLiveCount || 0);
@@ -297,7 +298,7 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
                       <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 15%, rgba(10,9,8,0.75) 100%)' }} />
                       <div className="absolute bottom-0 left-0 right-0 p-1">
                         <p className="text-[7px] sm:text-[8px] font-bold text-white/80 truncate leading-tight" style={{ opacity: 1 - progress * 0.6 }}>
-                          {(group.name || '').slice(0, 8)}...
+                          {(group.name || '').slice(0, 5)}...
                         </p>
                         {subs && (
                           <p className="text-[7px] sm:text-[8px] font-black leading-none mt-px" style={{ color: '#c9973a', opacity: 1 - progress * 0.5 }}>{subs}</p>
@@ -649,7 +650,7 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
                       {isPremium ? (
                         <Link href={`/${group.slug}`} className="block font-bold text-[14px] truncate leading-tight transition-colors" style={{ color: T.text }} onMouseEnter={e => (e.currentTarget.style.color = T.gold)} onMouseLeave={e => (e.currentTarget.style.color = T.text)}>{group.name}</Link>
                       ) : (
-                        <p className="font-bold text-[14px] truncate leading-tight" style={{ color: T.text }}>{(group.name || '').slice(0, 6)}<span style={{ filter: 'blur(5px)', color: '#ffffff', opacity: 0.7, userSelect: 'none' }}>{(group.name || '██████').slice(6) || '██████'}</span></p>
+                        <p className="font-bold text-[14px] truncate leading-tight" style={{ color: T.text }}>{(group.name || '').slice(0, 5)}<span style={{ filter: 'blur(5px)', color: '#ffffff', opacity: 0.7, userSelect: 'none' }}>{(group.name || '██████').slice(5) || '██████'}</span></p>
                       )}
                       <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                         {cats.map((cat, i) => (
@@ -830,7 +831,7 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
                       />
                       <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 30%, #0a0908dd 70%, #0a0908 100%)' }} />
                       <div className="absolute bottom-0 left-0 right-0 p-2">
-                        <p className="text-[11px] font-bold text-white leading-tight truncate mb-1">{isPremium ? group.name : <>{(group.name || '').slice(0, 6)}<span style={{ filter: 'blur(5px)', color: '#ffffff', opacity: 0.7, userSelect: 'none' as const }}>{(group.name || '██████').slice(6) || '██████'}</span></>}</p>
+                        <p className="text-[11px] font-bold text-white leading-tight truncate mb-1">{isPremium ? group.name : <>{(group.name || '').slice(0, 5)}<span style={{ filter: 'blur(5px)', color: '#ffffff', opacity: 0.7, userSelect: 'none' as const }}>{(group.name || '██████').slice(5) || '██████'}</span></>}</p>
                         <div className="flex flex-wrap gap-0.5 mb-1">
                           {cats.map((cat, i) => (
                             isPremium && isAdmin ? (

@@ -81,7 +81,7 @@ function VaultPreview({ items }: { items: VaultTeaserItem[] }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-bold text-[10px] truncate leading-tight mb-0.5 select-none pointer-events-none" aria-hidden="true">
-                    <span className="text-white">{g.name.slice(0, 4)}</span><span style={{ filter: 'blur(4px)', color: '#fff' }}>{g.name.slice(4) || '····'}</span>
+                    <span className="text-white">{g.name.slice(0, 6)}</span><span style={{ filter: 'blur(4px)', color: '#fff' }}>{g.name.slice(6) || '····'}</span>
                   </div>
                   <div className="flex items-center gap-1 flex-wrap">
                     {cats.map((c: string, i: number) => (
@@ -225,7 +225,10 @@ function SocialProofToast() {
 
 interface PremiumClientProps { vaultTeaser?: VaultTeaserItem[]; }
 
-export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) {
+const hasImage = (g: VaultTeaserItem) => !!g.image && g.image !== '/assets/image.jpg' && g.image !== '/assets/placeholder-no-image.png';
+
+export default function PremiumClient({ vaultTeaser: rawVaultTeaser = [] }: PremiumClientProps) {
+  const vaultTeaser = rawVaultTeaser.filter(g => hasImage(g) && g.country !== 'China');
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [soldOut, setSoldOut] = useState(false);
@@ -411,7 +414,7 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                           <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 30%, #0a0908dd 75%, #0a0908 100%)' }} />
                           <div className="absolute bottom-0 left-0 right-0 p-1.5">
                             <p className="text-[10px] font-bold text-white leading-tight truncate">
-                              {(g.name || '').slice(0, 4)}<span style={{ filter: 'blur(5px)', color: '#fff', userSelect: 'none' as const }}>{(g.name || '██████').slice(4) || '██████'}</span>
+                              {(g.name || '').slice(0, 6)}<span style={{ filter: 'blur(5px)', color: '#fff', userSelect: 'none' as const }}>{(g.name || '██████').slice(6) || '██████'}</span>
                             </p>
                             {g.memberCount ? (
                               <p className="text-[11px] font-black leading-none" style={{ color: '#c9973a' }}>
@@ -705,7 +708,7 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                       <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 30%, #0a0908dd 75%, #0a0908 100%)' }} />
                       <div className="absolute bottom-0 left-0 right-0 p-1.5">
                         <p className="text-[10px] font-bold text-white leading-tight truncate">
-                          {(g.name || '').slice(0, 4)}<span style={{ filter: 'blur(5px)', color: '#fff', userSelect: 'none' as const }}>{(g.name || '██████').slice(4) || '██████'}</span>
+                          {(g.name || '').slice(0, 6)}<span style={{ filter: 'blur(5px)', color: '#fff', userSelect: 'none' as const }}>{(g.name || '██████').slice(6) || '██████'}</span>
                         </p>
                         {g.memberCount ? (
                           <p className="text-[11px] font-black leading-none" style={{ color: '#c9973a' }}>

@@ -498,7 +498,7 @@ export default function AddClient({ categories, countries }: AddClientProps) {
                   value={groupData.telegramLink}
                   onChange={(e) => setGroupData((d) => ({ ...d, telegramLink: e.target.value }))}
                   className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-500"
-                  placeholder={t('add.tgGroupPlaceholder')}
+                  placeholder="Your Telegram link starting with https://t.me/"
                 />
               </div>
               <div>
@@ -549,7 +549,7 @@ export default function AddClient({ categories, countries }: AddClientProps) {
                   value={botData.telegramLink}
                   onChange={(e) => setBotData((d) => ({ ...d, telegramLink: e.target.value }))}
                   className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-500"
-                  placeholder={t('add.tgBotPlaceholder')}
+                  placeholder="Your Telegram link starting with https://t.me/"
                 />
               </div>
               <div>
