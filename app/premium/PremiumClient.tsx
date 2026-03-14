@@ -237,8 +237,8 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
   const [premiumExpiresAt, setPremiumExpiresAt] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [awaitingPayment, setAwaitingPayment] = useState(false);
-  const [payMethod, setPayMethod] = useState<'stars' | 'crypto'>('stars');
-  const [authProvider, setAuthProvider] = useState<'telegram' | 'google' | 'password' | null>(null);
+  const payMethod = 'stars' as const;
+  
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminPreview, setAdminPreview] = useState<'none' | 'telegram' | 'google'>('none');
   const tracked = useRef(false);
@@ -247,7 +247,7 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
   const [isIOSDevice, setIsIOSDevice] = useState(false);
   const [appInstalled, setAppInstalled] = useState(false);
   const [topIdx, setTopIdx] = useState(0);
-  const [btmIdx, setBtmIdx] = useState(0);
+  const [btmOffset, setBtmOffset] = useState(0);
   const [pricingConfig, setPricingConfig] = useState<{
     monthly: { priceUsd: number; starsAmount: number; days: number; label: string };
     quarterly: { priceUsd: number; starsAmount: number; days: number; label: string };
@@ -258,7 +258,8 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
   } | null>(null);
 
   useEffect(() => {
-    fetch('/api/admin/premium-config').then(r => r.json()).then(d => setPricingConfig(d)).catch(() => {});
+    fetch(`/api/admin/premium-config?t=${Date.now()}`, { cache: 'no-store' })
+      .then(r => r.json()).then(d => setPricingConfig(d)).catch(() => {});
   }, []);
 
   const mp = pricingConfig?.monthly ?? { priceUsd: 12.97, starsAmount: 865, days: 30 };
@@ -290,25 +291,10 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
 
   useEffect(() => {
     if (!tracked.current) { tracked.current = true; trackPremiumEvent('page_view'); }
-    const isCryptoReturn = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('payment') === 'crypto_success';
-    if (isCryptoReturn) setAwaitingPayment(true);
     const token = localStorage.getItem('token');
     if (token) {
       setIsLoggedIn(true); setAuthChecked(true); checkPremiumStatus();
-      fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(d => { if (d.authProvider) setAuthProvider(d.authProvider); if (d.isAdmin) setIsAdmin(true); }).catch(() => {});
-      // Start polling if user returned from crypto checkout
-      if (isCryptoReturn) {
-        if (pollRef.current) clearInterval(pollRef.current);
-        let attempts = 0;
-        pollRef.current = setInterval(async () => {
-          attempts++;
-          const confirmed = await checkPremiumStatus();
-          if (confirmed || attempts >= 120) {
-            clearInterval(pollRef.current!); pollRef.current = null;
-            if (!confirmed) setAwaitingPayment(false);
-          }
-        }, 5000);
-      }
+      fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(d => { if (d.isAdmin) setIsAdmin(true); }).catch(() => {});
     } else {
       setAuthChecked(true);
     }
@@ -327,10 +313,10 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
   }, [vaultTeaser.length]);
 
   useEffect(() => {
-    if (vaultTeaser.length <= 8) return;
+    if (vaultTeaser.length <= 24) return;
     const interval = setInterval(() => {
-      setBtmIdx(prev => (prev + 8) % vaultTeaser.length);
-    }, 6000);
+      setBtmOffset(prev => (prev + 4) % vaultTeaser.length);
+    }, 8000);
     return () => clearInterval(interval);
   }, [vaultTeaser.length]);
 
@@ -353,15 +339,7 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
     } catch (err: any) { if (err?.response?.data?.soldOut) setSoldOut(true); setError(err?.response?.data?.message || 'Failed to create payment'); } finally { setLoading(null); }
   };
 
-  const handleCryptoPurchase = async (plan: 'monthly' | 'quarterly' | 'yearly' | 'lifetime') => {
-    if (!isLoggedIn) { window.location.href = '/login?redirect=/premium'; return; }
-    trackPremiumEvent('crypto_plan_click', { plan }); setLoading(`crypto_${plan}`); setError('');
-    try {
-      const token = localStorage.getItem('token');
-      const res = await axios.post('/api/payments/nowpayments', { plan }, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.data?.url) window.location.href = res.data.url;
-    } catch (err: any) { if (err?.response?.data?.soldOut) setSoldOut(true); setError(err?.response?.data?.message || 'Failed to create crypto payment.'); } finally { setLoading(null); }
-  };
+  // Crypto payment removed — Stars only
 
   if (!authChecked) {
     return (
@@ -373,7 +351,7 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
 
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, #070605 0%, #0a0906 100%)' }}>
-      {!isPremium && <SocialProofToast />}
+      
       <div className="max-w-[520px] mx-auto px-3 sm:px-4 pt-5 pb-16">
 
         {/* ━━━ TIMER — at top of page (logged-in only) ━━━ */}
@@ -433,7 +411,7 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                           <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 30%, #0a0908dd 75%, #0a0908 100%)' }} />
                           <div className="absolute bottom-0 left-0 right-0 p-1.5">
                             <p className="text-[10px] font-bold text-white leading-tight truncate">
-                              {(g.name || '').slice(0, 4)}<span style={{ filter: 'blur(4px)', opacity: 0.4, color: '#fff', userSelect: 'none' as const }}>{(g.name || '██████').slice(4) || '██████'}</span>
+                              {(g.name || '').slice(0, 4)}<span style={{ filter: 'blur(5px)', color: '#fff', userSelect: 'none' as const }}>{(g.name || '██████').slice(4) || '██████'}</span>
                             </p>
                             {g.memberCount ? (
                               <p className="text-[11px] font-black leading-none" style={{ color: '#c9973a' }}>
@@ -540,9 +518,7 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
 
         {/* ━━━ UPGRADE CARD — after Inner Circle ━━━ */}
         {(() => {
-          const effectiveProvider = adminPreview !== 'none' ? adminPreview : authProvider;
-          const effectivePayMethod = payMethod;
-          return (
+      return (
         <div
           className="rounded-xl overflow-hidden relative mb-6"
           style={{ background: 'linear-gradient(160deg, #0f0d09 0%, #110e08 60%, #0d0b07 100%)', border: `1px solid ${G.border}`, boxShadow: `0 0 50px ${G.gold}08` }}
@@ -555,7 +531,7 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
               <div className="mb-3 px-3 py-2 rounded-lg flex items-center gap-2" style={{ background: `${G.gold}06`, border: `1px solid ${G.gold}25` }}>
                 <svg className="animate-spin shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={G.gold} strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
                 <span className="text-amber-400 text-[11px] font-medium">
-                  {payMethod === 'crypto' || effectiveProvider !== 'telegram' ? 'Complete your crypto payment — this page will update automatically once confirmed.' : 'Complete payment in Telegram — this page will update automatically once confirmed.'}
+                  Complete payment in Telegram — this page will update automatically once confirmed.
                 </span>
               </div>
             )}
@@ -623,142 +599,77 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
               </div>
             )}
 
-            {/* JOIN NOW — not logged in */}
-            {!isLoggedIn && !isPremium && adminPreview === 'none' && (
-              <div className="rounded-xl p-5 text-center space-y-4" style={{ background: '#ffffff', border: '1px solid #e5e7eb', boxShadow: '0 8px 28px rgba(0,0,0,0.12)' }}>
-                <div>
-                  <p className="font-black text-gray-900 text-lg mb-1">Unlock Premium Access</p>
-                  <p className="text-gray-500 text-xs">Log in to see exclusive pricing and payment options</p>
-                </div>
-                <a
-                  href="/login?redirect=/premium"
-                  className="inline-flex items-center justify-center gap-2 w-full py-3.5 rounded-lg font-black text-sm uppercase tracking-wide text-white transition-all hover:scale-[1.02] active:scale-95"
-                  style={{ background: 'linear-gradient(135deg, #16a34a, #15803d)', boxShadow: '0 4px 14px rgba(22,163,74,0.35)' }}
-                >
-                  UNLOCK INSTANT ACCESS
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                </a>
-                <p className="text-[10px] text-gray-400">Free to join · Pay only when you choose a plan</p>
-              </div>
-            )}
+            {/* Pricing — visible to all users (redirects to login on click if needed) */}
+            {((!isPremium && !soldOut) || adminPreview !== 'none') && (() => {
+              const activeMethod = 'stars' as const;
 
-            {/* Pricing — logged-in users only */}
-            {((!isPremium && !soldOut && isLoggedIn) || adminPreview !== 'none') && (() => {
-              const isTelegram = effectiveProvider === 'telegram';
-              const showToggle = isTelegram;
-              const forceCrypto = !isTelegram;
-              const activeMethod = forceCrypto ? 'crypto' as const : effectivePayMethod;
-
-              const starsSvg = <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>;
               const arrowSvg = <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>;
               const spinSvg = <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>;
 
               const buyBtn = (plan: 'monthly' | 'quarterly' | 'yearly', label: string, perMo?: string) => (
                 <div className="shrink-0 flex flex-col items-center gap-0.5">
                   <button
-                    onClick={() => activeMethod === 'stars' ? handlePurchase(plan) : handleCryptoPurchase(plan)}
+                    onClick={() => handlePurchase(plan)}
                     disabled={!!loading}
                     className="px-3 py-1.5 rounded-md font-black text-[10px] uppercase tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 flex items-center gap-1 hover:opacity-90"
                     style={{ background: '#16a34a', whiteSpace: 'nowrap' }}
                   >
-                    {(loading === plan || loading === `crypto_${plan}`) ? spinSvg : <>{label} {arrowSvg}</>}
+                    {loading === plan ? spinSvg : <>{label} {arrowSvg}</>}
                   </button>
                   {perMo && <span className="text-[9px] font-bold text-green-700">{perMo}</span>}
                 </div>
               );
 
-              const priceDisplay = (priceUsd: number, stars: number, suffix: string) => (
-                activeMethod === 'stars' ? (
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <span className="font-black text-[20px] leading-none text-gray-900">{stars.toLocaleString()}</span>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="#111827"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                    <span className="text-gray-500 text-[10px]">≈ ${priceUsd}{suffix}</span>
-                  </div>
-                ) : (
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="font-black text-[20px] leading-none text-gray-900">${priceUsd}</span>
-                    <span className="text-gray-500 text-[10px]">{suffix}</span>
-                  </div>
-                )
-              );
-
               return (
               <div className="rounded-xl p-2.5 space-y-2" style={{ background: '#ffffff', border: '1px solid #e5e7eb', boxShadow: '0 8px 28px rgba(0,0,0,0.12)' }}>
-                {/* One-time payment notice */}
                 <p className="text-center text-[10px] font-bold text-gray-900">✓ One-time payment · No auto-renew · No hidden fees</p>
 
-                {/* Payment method toggle — only for Telegram users */}
-                {showToggle && (
-                  <div className="flex gap-1.5">
-                    <button
-                      onClick={() => setPayMethod('stars')}
-                      className="flex-1 py-1.5 text-[10px] font-bold transition-all rounded-md flex items-center justify-center gap-1"
-                      style={activeMethod === 'stars'
-                        ? { background: '#229ED9', color: '#ffffff', boxShadow: '0 2px 6px rgba(34,158,217,0.35)' }
-                        : { background: '#111827', color: '#e5e7eb' }}
-                    >
-                      {starsSvg} Telegram Stars
-                    </button>
-                    <button
-                      onClick={() => setPayMethod('crypto')}
-                      className="flex-1 py-1.5 text-[10px] font-bold transition-all rounded-md flex items-center justify-center gap-1"
-                      style={activeMethod === 'crypto'
-                        ? { background: '#F7931A', color: '#ffffff', boxShadow: '0 2px 6px rgba(247,147,26,0.35)' }
-                        : { background: '#111827', color: '#e5e7eb' }}
-                    >
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 17.97L4.58 13.62 11.943 24l7.37-10.38-7.372 4.35h.003zM12.056 0L4.69 12.223l7.365 4.354 7.365-4.35L12.056 0z"/></svg>
-                      Crypto (USDT)
-                    </button>
-                  </div>
-                )}
+                <div className="flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[10px] font-bold" style={{ background: '#229ED9', color: '#fff' }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
+                  Pay with Telegram Stars
+                </div>
 
                 <div className="space-y-1.5">
 
-                  {/* ── 3 Months — Popular ── */}
-                  <div className="rounded-md px-3 py-2 flex items-center" style={{ border: '2px solid #16a34a', background: '#f0fdf4' }}>
-                    <span className="text-[10px] font-bold text-green-700 w-[52px] shrink-0">3 Months</span>
+                  {/* ── 1 Month ── */}
+                  <div className="rounded-md px-3 py-2 flex items-center" style={{ border: '1px solid #e5e7eb' }}>
+                    <span className="text-[10px] font-bold text-gray-700 w-[58px] shrink-0">1 Month</span>
                     <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                      <span className="font-black text-gray-900 text-[16px] leading-none">
-                        {activeMethod === 'stars' ? `${qp.starsAmount.toLocaleString()} ★` : `$${qp.priceUsd}`}
-                      </span>
-                      <span className="line-through text-[10px] font-bold text-red-400">
-                        {activeMethod === 'stars' ? `${(mp.starsAmount * 3).toLocaleString()} ★` : `$${(mp.priceUsd * 3).toFixed(2)}`}
-                      </span>
-                      <span className="px-1 py-0.5 rounded text-[7px] font-black" style={{ background: '#16a34a', color: '#fff' }}>🔥 POPULAR</span>
-                      <span className="px-1 py-0.5 rounded text-[7px] font-black" style={{ background: '#dc2626', color: '#fff' }}>80% OFF</span>
+                      <span className="font-black text-gray-900 text-[16px] leading-none">{mp.starsAmount.toLocaleString()} ★</span>
                     </div>
-                    {buyBtn('quarterly', 'Get Access Now',
-                      activeMethod === 'stars' ? `${Math.round(qp.starsAmount / 3).toLocaleString()} ★/mo` : `$${(qp.priceUsd / 3).toFixed(2)}/mo`
-                    )}
+                    {buyBtn('monthly', 'Get Access')}
                   </div>
 
-                  {/* ── 1 Year — Best Value ── */}
-                  <div className="rounded-md px-3 py-2 flex items-center" style={{ border: '1.5px solid #111827' }}>
-                    <span className="text-[10px] font-bold text-gray-700 w-[52px] shrink-0">1 Year</span>
-                    <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                      <span className="font-black text-gray-900 text-[16px] leading-none">
-                        {activeMethod === 'stars' ? `${yp.starsAmount.toLocaleString()} ★` : `$${yp.priceUsd}`}
-                      </span>
-                      <span className="line-through text-[10px] font-bold text-red-400">
-                        {activeMethod === 'stars' ? `${(mp.starsAmount * 12).toLocaleString()} ★` : `$${(mp.priceUsd * 12).toFixed(2)}`}
-                      </span>
-                      <span className="px-1 py-0.5 rounded text-[7px] font-black" style={{ background: '#f59e0b', color: '#111827' }}>🏆 BEST</span>
-                      <span className="px-1 py-0.5 rounded text-[7px] font-black" style={{ background: '#dc2626', color: '#fff' }}>80% OFF</span>
+                  {/* ── 3 Months — Popular ── */}
+                  <div className="rounded-md px-3 py-2 flex items-center" style={{ border: '2px solid #16a34a', background: '#f0fdf4' }}>
+                    <span className="text-[10px] font-bold text-green-700 w-[58px] shrink-0">3 Months</span>
+                    <div className="flex-1 min-w-0 flex items-center gap-1.5 flex-wrap">
+                      <span className="font-black text-gray-900 text-[16px] leading-none">{qp.starsAmount.toLocaleString()} ★</span>
+                      <span className="line-through text-[10px] font-bold text-red-400">{(mp.starsAmount * 3).toLocaleString()} ★</span>
+                      <span className="px-1 py-0.5 rounded text-[7px] font-black" style={{ background: '#16a34a', color: '#fff' }}>🔥 POPULAR</span>
                     </div>
-                    {buyBtn('yearly', 'Unlock Access',
-                      activeMethod === 'stars' ? `${Math.round(yp.starsAmount / 12).toLocaleString()} ★/mo` : `$${(yp.priceUsd / 12).toFixed(2)}/mo`
-                    )}
+                    {buyBtn('quarterly', 'Get Access', `${Math.round(qp.starsAmount / 3).toLocaleString()} ★/mo`)}
+                  </div>
+
+                  {/* ── 12 Months — Best Value ── */}
+                  <div className="rounded-md px-3 py-2 flex items-center" style={{ border: '1.5px solid #111827' }}>
+                    <span className="text-[10px] font-bold text-gray-700 w-[58px] shrink-0">12 Months</span>
+                    <div className="flex-1 min-w-0 flex items-center gap-1.5 flex-wrap">
+                      <span className="font-black text-gray-900 text-[16px] leading-none">{yp.starsAmount.toLocaleString()} ★</span>
+                      <span className="line-through text-[10px] font-bold text-red-400">{(mp.starsAmount * 12).toLocaleString()} ★</span>
+                      <span className="px-1 py-0.5 rounded text-[7px] font-black" style={{ background: '#f59e0b', color: '#111827' }}>🏆 BEST</span>
+                    </div>
+                    {buyBtn('yearly', 'Get Access', `${Math.round(yp.starsAmount / 12).toLocaleString()} ★/mo`)}
                   </div>
 
                 </div>
-                {activeMethod === 'crypto' && <p className="text-center text-[8px] text-gray-400 mt-1">USDT (TRC20) · Powered by NowPayments</p>}
-                {activeMethod === 'stars' && <p className="text-center text-[8px] text-gray-400 mt-1">Stars price based on live USD rate</p>}
+                <p className="text-center text-[8px] text-gray-400 mt-1">Pay via Telegram Stars · Instant activation</p>
               </div>
               );
             })()}
 
             <div className="mt-4 space-y-0.5">
-              <p className="text-center text-[9px]" style={{ color: '#2a1f0e' }}>Telegram Stars · Crypto USDT (TRC20)</p>
+              <p className="text-center text-[9px]" style={{ color: '#2a1f0e' }}>Telegram Stars · Instant activation</p>
               <p className="text-center text-[9px]" style={{ color: '#1e1510' }}>Erogram is actively developing — more features coming soon</p>
             </div>
           </div>
@@ -766,7 +677,7 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
           );
         })()}
 
-        {/* ━━━ BOTTOM VAULT PREVIEW (8 images, below checkout) ━━━ */}
+        {/* ━━━ BOTTOM VAULT PREVIEW (24 hand-picked, static) ━━━ */}
         {!isPremium && vaultTeaser.length > 0 && (
           <div
             className="relative overflow-hidden rounded-2xl p-4 mt-2 mb-4 select-none pointer-events-none"
@@ -780,21 +691,21 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
               <h3 className="text-sm font-black text-white tracking-tight mb-3">Unlock Instantly Thousands of Curated NSFW Groups</h3>
 
               <div className="grid grid-cols-4 gap-2">
-                {Array.from({ length: Math.min(8, vaultTeaser.length) }, (_, i) => vaultTeaser[(btmIdx + i) % vaultTeaser.length]).map((g, i) => {
+                {Array.from({ length: 24 }, (_, i) => vaultTeaser[(btmOffset + i) % vaultTeaser.length]).map((g, i) => {
                   const fmtNum = (n: number) => n >= 1_000_000 ? (n/1_000_000).toFixed(1)+'M' : n >= 1_000 ? (n/1_000).toFixed(n>=10_000?0:1)+'K' : '';
                   const cats = g.vaultCategories && g.vaultCategories.length > 0 ? g.vaultCategories : [g.category];
                   const topCat = cats[2] || cats[1] || cats[0] || '';
                   return (
                     <div
                       key={`${g._id}-btm-${i}`}
-                      className="rounded-xl overflow-hidden relative"
+                      className="rounded-xl overflow-hidden relative transition-all duration-1000"
                       style={{ aspectRatio: '1', border: '2px solid #c9973a33', boxShadow: '0 4px 20px #c9973a0a' }}
                     >
                       <img src={g.image || '/assets/placeholder-no-image.png'} alt="" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
                       <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 30%, #0a0908dd 75%, #0a0908 100%)' }} />
                       <div className="absolute bottom-0 left-0 right-0 p-1.5">
                         <p className="text-[10px] font-bold text-white leading-tight truncate">
-                          {(g.name || '').slice(0, 4)}<span style={{ filter: 'blur(4px)', opacity: 0.4, color: '#fff', userSelect: 'none' as const }}>{(g.name || '██████').slice(4) || '██████'}</span>
+                          {(g.name || '').slice(0, 4)}<span style={{ filter: 'blur(5px)', color: '#fff', userSelect: 'none' as const }}>{(g.name || '██████').slice(4) || '██████'}</span>
                         </p>
                         {g.memberCount ? (
                           <p className="text-[11px] font-black leading-none" style={{ color: '#c9973a' }}>

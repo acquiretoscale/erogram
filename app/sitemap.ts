@@ -23,18 +23,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     await connectDB();
 
     const [groups, bots, articles, totalGroups, totalBots, dbCountries, categoryCounts, countryCounts] = await Promise.all([
-      Group.find({ status: { $in: ['approved', 'deleted'] } }).select('slug updatedAt').lean(),
+      Group.find({ status: { $in: ['approved', 'deleted'] }, premiumOnly: { $ne: true } }).select('slug updatedAt').lean(),
       Bot.find({ status: 'approved' }).select('slug updatedAt').lean(),
       Article.find({}).select('slug updatedAt publishedAt').lean(),
-      Group.countDocuments({ status: 'approved' }),
+      Group.countDocuments({ status: 'approved', premiumOnly: { $ne: true } }),
       Bot.countDocuments({ status: 'approved' }),
-      Group.distinct('country', { status: 'approved' }),
+      Group.distinct('country', { status: 'approved', premiumOnly: { $ne: true } }),
       Group.aggregate([
-        { $match: { status: 'approved' } },
+        { $match: { status: 'approved', premiumOnly: { $ne: true } } },
         { $group: { _id: '$category', count: { $sum: 1 } } },
       ]),
       Group.aggregate([
-        { $match: { status: 'approved' } },
+        { $match: { status: 'approved', premiumOnly: { $ne: true } } },
         { $group: { _id: '$country', count: { $sum: 1 } } },
       ]),
     ]);

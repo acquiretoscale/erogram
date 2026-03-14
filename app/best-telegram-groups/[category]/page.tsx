@@ -101,6 +101,7 @@ export default async function BestGroupsPage({ params }: PageProps) {
         category: realCategory,
         status: 'approved',
         isAdvertisement: false,
+        premiumOnly: { $ne: true },
     })
         .sort({ views: -1 })
         .limit(10)

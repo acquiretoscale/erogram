@@ -15,6 +15,7 @@ const SLOT_LIMITS: Record<string, number> = {
   'navbar-cta': 1,
   'join-cta': 1,
   'filter-cta': 1,
+  'vault-premium': 1, // internal EROGRAM premium vault ad
 };
 
 async function authenticateAdmin(token: string) {

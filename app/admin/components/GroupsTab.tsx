@@ -205,7 +205,8 @@ export default function GroupsTab() {
         const matchesSearch = group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             group.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (group.country || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (group.telegramLink || '').toLowerCase().includes(searchQuery.toLowerCase());
+            (group.telegramLink || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (group.description || '').toLowerCase().includes(searchQuery.toLowerCase());
         if (!matchesSearch) return false;
         if (premiumFilter === 'premium' && !group.premiumOnly) return false;
         if (premiumFilter === 'public' && group.premiumOnly) return false;
@@ -745,14 +746,21 @@ export default function GroupsTab() {
                                                             <img src={group.image || PLACEHOLDER_IMAGE_URL} alt={group.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = PLACEHOLDER_IMAGE_URL; }} />
                                                         )}
                                                     </div>
-                                                    <div>
+                                                    <div className="min-w-0">
                                                         <div className="font-medium text-white flex items-center gap-2">
                                                             {group.name}
                                                             {group.premiumOnly && <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold">VAULT</span>}
                                                             {group.featured && <span className="text-[10px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded font-bold">FEATURED</span>}
                                                             {group.boosted && <span className="text-[10px] bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded font-bold">BOOSTED</span>}
                                                         </div>
-                                                        <div className="text-xs text-[#666] truncate max-w-[200px]">{group.telegramLink}</div>
+                                                        <div className="text-xs text-[#666] truncate max-w-[240px]">{group.telegramLink}</div>
+                                                        {group.description ? (
+                                                            <div className="text-xs text-[#888] mt-0.5 max-w-[240px]" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                                                {group.description}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="text-xs text-red-400/50 mt-0.5 italic">No description</div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </td>

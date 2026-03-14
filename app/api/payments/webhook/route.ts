@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
-import { User, PremiumEvent } from '@/lib/models';
+import { User, PremiumEvent, Group, Bot } from '@/lib/models';
 import { MAX_PREMIUM_SLOTS } from '@/lib/auth';
 import { notifyAdminsOfSale } from '@/lib/utils/notifyAdmins';
 import { getPremiumPricing } from '@/lib/premiumPricing';
+
+const GROUP_SUBMISSION_TYPES = new Set(['instant_approval', 'boost_week', 'boost_month']);
 
 function logEvent(data: Record<string, any>) {
   PremiumEvent.create({ source: 'server', ...data }).catch(() => {});
@@ -116,6 +118,21 @@ export async function POST(req: NextRequest) {
       const query = update.pre_checkout_query;
       try {
         const payload = JSON.parse(query.invoice_payload);
+
+        // Group/bot submission instant approval payments
+        if (payload.groupId && payload.type && GROUP_SUBMISSION_TYPES.has(payload.type)) {
+          await connectDB();
+          const Model = payload.entityType === 'bot' ? Bot : Group;
+          const entity = await Model.findById(payload.groupId).lean();
+          if (!entity) {
+            await answerPreCheckoutQuery(query.id, false, 'Submission not found');
+            return NextResponse.json({ ok: true });
+          }
+          await answerPreCheckoutQuery(query.id, true);
+          return NextResponse.json({ ok: true });
+        }
+
+        // Premium subscription payments
         if (!payload.userId || !payload.plan || !VALID_PLANS.has(payload.plan)) {
           await answerPreCheckoutQuery(query.id, false, 'Invalid payment data');
           return NextResponse.json({ ok: true });
@@ -155,6 +172,78 @@ export async function POST(req: NextRequest) {
       const payment = update.message.successful_payment;
       try {
         const payload = JSON.parse(payment.invoice_payload);
+
+        // Group/bot submission instant approval
+        if (payload.groupId && payload.type && GROUP_SUBMISSION_TYPES.has(payload.type)) {
+          await connectDB();
+          const Model = payload.entityType === 'bot' ? Bot : Group;
+          const entity = await Model.findById(payload.groupId).lean() as any;
+          if (!entity) {
+            console.error('Webhook: group/bot not found for submission payment:', payload.groupId);
+            return NextResponse.json({ ok: true });
+          }
+
+          // Idempotency: skip if already approved via paid boost
+          if (entity.paidBoost && entity.status === 'approved') {
+            console.log(`[Webhook] ${payload.entityType || 'group'} ${payload.groupId} already processed — skipping`);
+            return NextResponse.json({ ok: true });
+          }
+
+          const now = new Date();
+          const updateFields: Record<string, any> = { status: 'approved' };
+
+          const STARS_AMOUNTS: Record<string, number> = {
+            instant_approval: 1000,
+            boost_week: 3000,
+            boost_month: 6000,
+          };
+
+          if (payload.type === 'boost_week') {
+            const boostExpiry = new Date(now);
+            boostExpiry.setDate(boostExpiry.getDate() + 7);
+            updateFields.featured = true;
+            updateFields.featuredAt = now;
+            updateFields.boosted = true;
+            updateFields.boostExpiresAt = boostExpiry;
+            updateFields.boostDuration = '7d';
+            updateFields.paidBoost = true;
+            updateFields.paidBoostStars = STARS_AMOUNTS.boost_week;
+          } else if (payload.type === 'boost_month') {
+            const boostExpiry = new Date(now);
+            boostExpiry.setDate(boostExpiry.getDate() + 30);
+            updateFields.featured = true;
+            updateFields.featuredAt = now;
+            updateFields.boosted = true;
+            updateFields.boostExpiresAt = boostExpiry;
+            updateFields.boostDuration = '30d';
+            updateFields.paidBoost = true;
+            updateFields.paidBoostStars = STARS_AMOUNTS.boost_month;
+          } else if (payload.type === 'instant_approval') {
+            updateFields.paidBoost = true;
+            updateFields.paidBoostStars = STARS_AMOUNTS.instant_approval;
+          }
+
+          await Model.findByIdAndUpdate(payload.groupId, { $set: updateFields });
+
+          const entityLabel = payload.entityType === 'bot' ? 'bot' : 'group';
+          const boostLabels: Record<string, string> = {
+            boost_week: 'instant + boost 1 week',
+            boost_month: 'instant + boost 1 month',
+            instant_approval: 'instant approval',
+          };
+          const typeLabel = boostLabels[payload.type] || payload.type;
+          console.log(`[Webhook] ${entityLabel} ${payload.groupId} approved via ${typeLabel}`);
+
+          notifyAdminsOfSale({
+            plan: `${entityLabel}_${payload.type}`,
+            method: 'stars',
+            username: entity.name,
+          }).catch(() => {});
+
+          return NextResponse.json({ ok: true });
+        }
+
+        // Premium subscription payments
         const { userId, plan } = payload;
 
         if (!userId || !plan || !VALID_PLANS.has(plan)) {

@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const skip = parseInt(searchParams.get('skip') || '0');
-  const limit = Math.min(parseInt(searchParams.get('limit') || '24'), 100);
+  const limit = Math.min(parseInt(searchParams.get('limit') || '24'), 200);
   const search = searchParams.get('search') || '';
   const category = searchParams.get('category') || '';
   const country = searchParams.get('country') || '';
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
     query.$and = conditions;
   }
 
-  const previewLimit = 52;
+  const previewLimit = 200;
   const effectiveLimit = isPreview ? Math.min(limit, previewLimit) : limit;
 
   const isFirstLoad = skip === 0;

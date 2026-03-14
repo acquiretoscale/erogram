@@ -160,7 +160,7 @@ async function getRelatedArticles(excludeArticleId: string, limit: number = 4) {
 async function getTopGroups(limit: number = 5) {
   try {
     await connectDB();
-    const groups = await Group.find({ status: 'approved', isAdvertisement: false })
+    const groups = await Group.find({ status: 'approved', isAdvertisement: false, premiumOnly: { $ne: true } })
       .sort({ views: -1 })
       .limit(limit)
       .select('name slug image category views description')

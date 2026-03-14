@@ -3,15 +3,21 @@ import { Group, FeedCampaign } from './types';
 import GroupCard from './GroupCard';
 import AdvertCard from './AdvertCard';
 
+interface VaultItem { _id: string; name: string; image: string; category: string; country: string; memberCount: number; vaultCategories?: string[]; }
+
 interface VirtualizedGroupGridProps {
     groups: Group[];
     feedCampaigns: FeedCampaign[];
     isTelegram: boolean;
     onOpenReviewModal?: (group: Group) => void;
     onOpenReportModal?: (group: Group) => void;
+    vaultItems?: VaultItem[];
+    vaultPositions?: number[];
+    isLoggedIn?: boolean;
+    VaultCard?: React.ComponentType<{ items: VaultItem[]; isLoggedIn?: boolean }>;
 }
 
-type Item = { type: 'group' | 'campaign'; data: Group | FeedCampaign; index: number };
+type Item = { type: 'group' | 'campaign' | 'vault'; data: Group | FeedCampaign | null; index: number };
 
 // Static ad positions in the grid (1-indexed group count):
 // Tier 2 → after 2 groups (position 3 in the grid)
@@ -51,12 +57,17 @@ function buildFeedItems(groups: Group[], campaigns: FeedCampaign[]): Item[] {
     return items;
 }
 
+const VAULT_EVERY = 8;
+
 const VirtualizedGroupGrid = React.memo(function VirtualizedGroupGrid({
     groups,
     feedCampaigns,
     isTelegram,
     onOpenReviewModal,
     onOpenReportModal,
+    vaultItems,
+    isLoggedIn,
+    VaultCard,
 }: VirtualizedGroupGridProps) {
     const [items, setItems] = useState<Item[]>(() => buildFeedItems(groups, feedCampaigns));
 
@@ -64,9 +75,25 @@ const VirtualizedGroupGrid = React.memo(function VirtualizedGroupGrid({
         setItems(buildFeedItems(groups, feedCampaigns));
     }, [groups, feedCampaigns]);
 
+    const hasVault = VaultCard && vaultItems && vaultItems.length > 0;
+
+    const finalItems: (Item | 'vault')[] = [];
+    let groupsSinceLastVault = 0;
+    for (let i = 0; i < items.length; i++) {
+        if (hasVault && groupsSinceLastVault >= VAULT_EVERY) {
+            finalItems.push('vault');
+            groupsSinceLastVault = 0;
+        }
+        finalItems.push(items[i]);
+        groupsSinceLastVault++;
+    }
+
     return (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
-            {items.map((item) => {
+            {finalItems.map((item, idx) => {
+                if (item === 'vault') {
+                    return VaultCard ? <VaultCard key={`vault-${idx}`} items={vaultItems!} isLoggedIn={isLoggedIn} /> : null;
+                }
                 if (item.type === 'group') {
                     return (
                         <GroupCard

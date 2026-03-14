@@ -42,9 +42,11 @@ function formatGroupLine(g: any, idx: number, mode?: string): string {
   const members = g.memberCount > 0 ? `${g.memberCount.toLocaleString()} members` : 'Unknown members';
   const name = g.name || '';
   const desc = (g.description || '').slice(0, 400);
+  const cat = (g.categories?.length ? g.categories.join(', ') : g.category) || '';
 
   let line = `[${idx}] Name: ${name} | Members: ${members}`;
-  if (mode === 'categorize' && g.country && g.country !== 'All') {
+  if (cat) line += ` | Category: ${cat}`;
+  if (g.country && g.country !== 'All') {
     line += ` | Country: ${g.country}`;
   }
   line += ` | Description: ${desc || 'None'}`;
@@ -256,7 +258,7 @@ export async function POST(req: NextRequest) {
         if (mode === 'categorize') {
           userContent = `Categorize these ${batch.length} groups. If a group already has categories listed, ADD more specific ones to reach 2-3 total — do NOT remove existing valid categories. Return [N] Category1 | Category2 | Category3:\n\n${groupsText}`;
         } else if (mode === 'rewrite') {
-          userContent = `Rewrite these ${batch.length} descriptions (200+ chars, unique, human-like). Return [N] text:\n\n${groupsText}`;
+          userContent = `Rewrite these ${batch.length} descriptions. STRICT: 100-120 characters each. Include niche, member count, category, country if known. No filler, no fluff. Return [N] text:\n\n${groupsText}`;
         } else {
           userContent = `Translate these ${batch.length} descriptions to ${langName}. Return [N] text:\n\n${groupsText}`;
         }
@@ -281,7 +283,7 @@ export async function POST(req: NextRequest) {
             soloContent = mode === 'categorize'
               ? `Categorize this group. If it already has categories, ADD more specific ones to reach 2-3 total. Return [0] Category1 | Category2 | Category3:\n\n${soloText}`
               : mode === 'rewrite'
-              ? `Rewrite this description (200+ chars, unique, human-like). Return [0] text:\n\n${soloText}`
+              ? `Rewrite this description. STRICT: 100-120 characters. Include niche, member count, category, country if known. No filler. Return [0] text:\n\n${soloText}`
               : `Translate this description to ${langName}. Return [0] text:\n\n${soloText}`;
           }
           let soloRes = await callAI(activeModel, sysPrompt, soloContent, mode);

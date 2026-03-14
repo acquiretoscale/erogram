@@ -23,6 +23,8 @@ interface FeaturedGroup {
   boosted: boolean;
   boostExpiresAt: string | null;
   boostDuration: string | null;
+  paidBoost: boolean;
+  paidBoostStars: number | null;
   status: string;
 }
 
@@ -213,6 +215,8 @@ export default function FeaturedPage() {
   };
 
   const boostedCount = featured.filter(f => f.boosted).length;
+  const paidCount = featured.filter(f => f.paidBoost).length;
+  const totalStarsRevenue = featured.reduce((sum, f) => sum + (f.paidBoostStars || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -223,6 +227,9 @@ export default function FeaturedPage() {
             Manage featured groups shown below Top Groups.
             {boostedCount > 0 && (
               <span className="ml-2 text-orange-400">{boostedCount} group{boostedCount > 1 ? 's' : ''} currently boosted to Top Groups</span>
+            )}
+            {paidCount > 0 && (
+              <span className="ml-2 text-green-400">({paidCount} paid)</span>
             )}
           </p>
         </div>
@@ -236,7 +243,7 @@ export default function FeaturedPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="glass rounded-xl border border-white/5 p-4">
           <div className="text-2xl font-black text-white">{featured.length}</div>
           <div className="text-xs text-[#666] font-medium">Featured Groups</div>
@@ -244,6 +251,10 @@ export default function FeaturedPage() {
         <div className="glass rounded-xl border border-white/5 p-4">
           <div className="text-2xl font-black text-orange-400">{boostedCount}</div>
           <div className="text-xs text-[#666] font-medium">Boosted to Top</div>
+        </div>
+        <div className="glass rounded-xl border border-white/5 p-4">
+          <div className="text-2xl font-black text-yellow-400">{totalStarsRevenue.toLocaleString()}★</div>
+          <div className="text-xs text-[#666] font-medium">Boost Revenue</div>
         </div>
         <div className="glass rounded-xl border border-white/5 p-4">
           <div className="text-2xl font-black text-green-400">{featured.reduce((sum, f) => sum + (f.weeklyClicks || 0), 0).toLocaleString()}</div>
@@ -316,6 +327,11 @@ export default function FeaturedPage() {
                         BOOSTED
                       </span>
                     )}
+                    {group.paidBoost && (
+                      <span className="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded font-bold flex items-center gap-1">
+                        ★ PAID {group.paidBoostStars ? `${group.paidBoostStars.toLocaleString()}★` : ''}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 mt-0.5">
                     <span className="text-xs text-[#666]">{group.category}</span>
@@ -359,10 +375,11 @@ export default function FeaturedPage() {
                   </button>
                   <button
                     onClick={() => handleRemoveFeatured(group._id)}
-                    className="p-2 text-[#555] hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover/row:opacity-100"
+                    className="px-3 py-2 rounded-lg text-xs font-bold bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 transition-colors flex items-center gap-1.5"
                     title="Remove from featured"
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    Remove
                   </button>
                 </div>
               </div>
@@ -392,8 +409,8 @@ export default function FeaturedPage() {
           <div className="flex gap-3">
             <span className="text-green-400 text-lg mt-0.5">💰</span>
             <div>
-              <div className="text-white font-medium mb-1">Phase 2: Paid</div>
-              Future: group owners pay for featured placement & boost. Admin-only for now.
+              <div className="text-white font-medium mb-1">Paid Boosts (Live)</div>
+              Users can pay via Telegram Stars when submitting groups: 1,000★ instant approval, 3,000★ instant + 1 week boost, 6,000★ instant + 1 month boost. Paid groups show a green &quot;PAID&quot; badge.
             </div>
           </div>
         </div>

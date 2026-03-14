@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
 
     const featured = await Group.find({ featured: true, status: 'approved' })
       .sort({ featuredOrder: 1, featuredAt: -1 })
-      .select('name slug category country categories image telegramLink views weeklyClicks clickCount memberCount verified featured featuredOrder featuredAt boosted boostExpiresAt boostDuration status')
+      .select('name slug category country categories image telegramLink views weeklyClicks clickCount memberCount verified featured featuredOrder featuredAt boosted boostExpiresAt boostDuration paidBoost paidBoostStars status')
       .lean();
 
     return NextResponse.json(featured);
@@ -103,7 +103,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const updated = await Group.findByIdAndUpdate(groupId, { $set: update }, { new: true })
-      .select('name slug category country categories image telegramLink views weeklyClicks clickCount memberCount verified featured featuredOrder featuredAt boosted boostExpiresAt boostDuration status')
+      .select('name slug category country categories image telegramLink views weeklyClicks clickCount memberCount verified featured featuredOrder featuredAt boosted boostExpiresAt boostDuration paidBoost paidBoostStars status')
       .lean();
 
     return NextResponse.json(updated);

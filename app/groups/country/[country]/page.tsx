@@ -226,7 +226,7 @@ async function getGroupsByCountry(country: string) {
     await connectDB();
 
     const normalizedCountry = normalizeCountryParam(country);
-    const match: Record<string, any> = { status: 'approved', isAdvertisement: { $ne: true } };
+    const match: Record<string, any> = { status: 'approved', isAdvertisement: { $ne: true }, premiumOnly: { $ne: true } };
 
     // Special case: "All" means no country filter.
     if (normalizedCountry && normalizedCountry !== 'All') {

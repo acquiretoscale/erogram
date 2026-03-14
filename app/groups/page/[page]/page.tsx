@@ -57,9 +57,9 @@ async function getPaginatedGroups(page: number) {
   const skip = (page - 1) * PER_PAGE;
 
   const [total, groups] = await Promise.all([
-    Group.countDocuments({ status: 'approved' }),
-    Group.find({ status: 'approved' })
-      .select('-image') // avoid huge base64 strings
+    Group.countDocuments({ status: 'approved', premiumOnly: { $ne: true } }),
+    Group.find({ status: 'approved', premiumOnly: { $ne: true } })
+      .select('-image')
       .sort({ pinned: -1, createdAt: -1 })
       .skip(skip)
       .limit(PER_PAGE)

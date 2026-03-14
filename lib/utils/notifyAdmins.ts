@@ -11,7 +11,7 @@ if (VAPID_PUBLIC && VAPID_PRIVATE) {
 }
 
 export interface SaleNotificationPayload {
-  plan: 'monthly' | 'yearly' | 'lifetime';
+  plan: string;
   method: 'stars' | 'crypto';
   username?: string;
 }
@@ -48,7 +48,19 @@ async function sendPushToAdmins(notification: object) {
 }
 
 export async function notifyAdminsOfSale(payload: SaleNotificationPayload) {
-  const planLabel = payload.plan === 'yearly' ? 'Yearly ($49.99)' : payload.plan === 'monthly' ? 'Monthly ($8.99)' : 'Lifetime';
+  const PLAN_LABELS: Record<string, string> = {
+    monthly: 'Premium Monthly',
+    quarterly: 'Premium 3 Months',
+    yearly: 'Premium Yearly',
+    lifetime: 'Premium Lifetime',
+    group_instant_approval: 'Group Instant Approval (1000★)',
+    group_boost_week: 'Group Boost 1 Week (3000★)',
+    group_boost_month: 'Group Boost 1 Month (6000★)',
+    bot_instant_approval: 'Bot Instant Approval (1000★)',
+    bot_boost_week: 'Bot Boost 1 Week (3000★)',
+    bot_boost_month: 'Bot Boost 1 Month (6000★)',
+  };
+  const planLabel = PLAN_LABELS[payload.plan] || payload.plan;
   const methodLabel = payload.method === 'stars' ? '⭐ Stars' : '₿ Crypto';
   const userLabel = payload.username ? `@${payload.username}` : 'Anonymous';
   await sendPushToAdmins({

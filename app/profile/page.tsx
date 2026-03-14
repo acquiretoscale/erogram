@@ -148,13 +148,22 @@ function ProfileContent() {
             </button>
             <button
               onClick={() => setActiveTab('vault')}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
+              className={`flex-1 py-2.5 rounded-lg text-sm font-black uppercase tracking-wide transition-all flex items-center justify-center gap-1.5 ${
                 activeTab === 'vault'
-                  ? 'bg-gradient-to-r from-amber-600/30 to-yellow-500/20 text-amber-300 ring-1 ring-amber-500/30 shadow-[0_0_12px_rgba(245,158,11,0.15)]'
-                  : 'text-amber-500/50 hover:text-amber-400/70 hover:bg-amber-500/5'
+                  ? 'ring-2 ring-yellow-400/60 scale-[1.03]'
+                  : 'hover:scale-[1.02]'
               }`}
+              style={{
+                background: activeTab === 'vault'
+                  ? 'linear-gradient(135deg, #d4a94c 0%, #e8c66a 30%, #c9973a 60%, #b8860b 100%)'
+                  : 'linear-gradient(135deg, #b8860b 0%, #c9973a 50%, #a67c00 100%)',
+                color: activeTab === 'vault' ? '#1a1000' : '#1a1000',
+                boxShadow: activeTab === 'vault'
+                  ? '0 0 20px rgba(201,151,58,0.5), 0 4px 12px rgba(0,0,0,0.3)'
+                  : '0 0 10px rgba(201,151,58,0.25), 0 2px 6px rgba(0,0,0,0.2)',
+              }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={activeTab === 'vault' ? '#fbbf24' : '#d97706'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#1a1000" stroke="#1a1000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>

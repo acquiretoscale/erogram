@@ -15,17 +15,14 @@ async function getVaultTeaser() {
 
     let groups = await Group.find({ showOnVaultTeaser: true, premiumOnly: true, status: 'approved' })
       .sort({ vaultTeaserOrder: 1 })
+      .limit(48)
       .select('name image category categories country memberCount vaultTeaserOrder vaultCategories')
       .lean();
-
-    if (groups.length > 20) {
-      groups = [...groups].sort(() => Math.random() - 0.5).slice(0, 20);
-    }
 
     if (groups.length === 0) {
       groups = await Group.find({ premiumOnly: true, status: 'approved' })
         .sort({ createdAt: -1 })
-        .limit(20)
+        .limit(48)
         .select('name image category categories country memberCount vaultCategories')
         .lean();
     }

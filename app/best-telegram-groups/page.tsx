@@ -33,7 +33,7 @@ export default async function BestGroupsIndexPage() {
 
     // Get categories with at least 1 approved group
     const categoryCounts = await Group.aggregate([
-        { $match: { status: 'approved' } },
+        { $match: { status: 'approved', premiumOnly: { $ne: true } } },
         { $group: { _id: '$category', count: { $sum: 1 } } }
     ]);
     const activeCategories = new Set(categoryCounts.map(c => c._id));

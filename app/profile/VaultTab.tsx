@@ -88,7 +88,8 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
     else setLoadingMore(true);
     try {
       const skip = reset ? 0 : groups.length;
-      const params = new URLSearchParams({ skip: String(skip), limit: '50' });
+      const fetchLimit = isPremium ? 50 : 200;
+      const params = new URLSearchParams({ skip: String(skip), limit: String(fetchLimit) });
       if (searchDebounced) params.set('search', searchDebounced);
       if (category !== 'All') params.set('category', category);
       if (country !== 'All') params.set('country', country);
@@ -215,6 +216,135 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
     return new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  /* ━━━ NON-PREMIUM LOCKED VIEW ━━━ */
+  if (!isPremium) {
+    const photoOnlyGroups = groups.filter(
+      (group) =>
+        !!group.image &&
+        group.image !== '/assets/image.jpg' &&
+        group.image !== '/assets/placeholder-no-image.png'
+    );
+    const vaultLiveCount = vaultTotal ?? total;
+    const totalGroupCount = 4000 + (vaultLiveCount || 0);
+    const fmtTotal = totalGroupCount.toLocaleString();
+
+    return (
+      <div className="space-y-4 pb-24">
+        <div
+          className="relative rounded-2xl overflow-hidden px-5 py-5 text-center"
+          style={{ background: 'linear-gradient(135deg, #111009 0%, #140f07 60%, #0e0d0b 100%)', border: '1px solid #2e2010' }}
+        >
+          <div className="absolute top-0 right-0 w-56 h-56 blur-3xl opacity-[0.12] rounded-full pointer-events-none" style={{ background: 'radial-gradient(ellipse, #c9973a 0%, transparent 60%)' }} />
+          <div className="absolute bottom-0 left-0 w-40 h-40 blur-3xl opacity-[0.07] rounded-full pointer-events-none" style={{ background: 'radial-gradient(ellipse, #c9973a 0%, transparent 60%)' }} />
+          <div className="relative">
+            <div className="flex items-center justify-center gap-0.5 mb-2"><GoldStar /><GoldStar /><GoldStar /><GoldStar /><GoldStar /></div>
+            <div className="w-14 h-14 mx-auto mb-3 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #c9973a, #e8ba5a)', boxShadow: '0 0 40px rgba(201,151,58,0.35)' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0d0c0a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </div>
+            <span className="text-[9px] font-black uppercase tracking-[0.3em] block mb-1" style={{ color: '#b8964e' }}>Private Vault · Members Only</span>
+            <h2 className="text-lg sm:text-xl font-black text-white tracking-tight mb-1">Vault Locked</h2>
+            <p className="text-[12px] font-bold" style={{ color: '#c9973a' }}>Unlock {fmtTotal} hand-picked groups in all categories</p>
+          </div>
+        </div>
+
+        <a
+          href="/premium"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group block w-full rounded-2xl px-5 py-4 text-center transition-all duration-300 hover:scale-[1.01] active:scale-[0.98]"
+          style={{
+            background: 'linear-gradient(135deg, #d4a94c 0%, #e8c66a 30%, #c9973a 60%, #b8860b 100%)',
+            border: '2px solid rgba(232,198,106,0.7)',
+            color: '#1a1000',
+            boxShadow: '0 0 30px rgba(201,151,58,0.35), 0 8px 20px rgba(0,0,0,0.25)',
+          }}
+        >
+          <span className="block text-2xl font-black uppercase tracking-wide leading-none">UNLOCK THE VAULT</span>
+          <span className="block text-[12px] sm:text-[13px] font-bold mt-1 opacity-85">
+            Instant access to {fmtTotal} exclusive groups
+          </span>
+        </a>
+
+        <div className="relative rounded-2xl overflow-hidden" style={{ border: '1px solid #2e2010' }}>
+          {loading ? (
+            <div className="py-20 text-center">
+              <div className="w-8 h-8 border-2 border-[#c9973a]/30 border-t-[#c9973a] rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-sm" style={{ color: '#7a6040' }}>Loading preview...</p>
+            </div>
+          ) : (
+            <div className="select-none pointer-events-none">
+              <div className="grid grid-cols-8 gap-[2px] p-[2px]">
+                {photoOnlyGroups.slice(0, 192).map((group, idx) => {
+                  const row = Math.floor(idx / 8);
+                  const totalRows = Math.ceil(Math.min(photoOnlyGroups.length, 192) / 8);
+                  const progress = totalRows > 1 ? row / (totalRows - 1) : 0;
+                  const blur = 2 + progress * 14;
+                  const subs = group.memberCount
+                    ? group.memberCount >= 1_000_000 ? (group.memberCount / 1_000_000).toFixed(1) + 'M'
+                    : group.memberCount >= 1_000 ? (group.memberCount / 1_000).toFixed(group.memberCount >= 10_000 ? 0 : 1) + 'K'
+                    : null : null;
+                  return (
+                    <div key={group._id} className="relative overflow-hidden" style={{ aspectRatio: '1' }}>
+                      <img
+                        src={group.image || '/assets/placeholder-no-image.png'}
+                        alt=""
+                        className="w-full h-full object-cover"
+                        style={{ filter: `blur(${blur}px)`, transform: 'scale(1.05)' }}
+                        onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }}
+                      />
+                      <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 15%, rgba(10,9,8,0.75) 100%)' }} />
+                      <div className="absolute bottom-0 left-0 right-0 p-1">
+                        <p className="text-[7px] sm:text-[8px] font-bold text-white/80 truncate leading-tight" style={{ opacity: 1 - progress * 0.6 }}>
+                          {(group.name || '').slice(0, 8)}...
+                        </p>
+                        {subs && (
+                          <p className="text-[7px] sm:text-[8px] font-black leading-none mt-px" style={{ color: '#c9973a', opacity: 1 - progress * 0.5 }}>{subs}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(180deg, transparent 50%, rgba(10,9,8,0.6) 75%, #0a0908 100%)' }} />
+
+          <div className="absolute bottom-0 left-0 right-0 px-3 pb-3">
+            <div className="rounded-xl px-3 py-2 text-center" style={{ background: 'rgba(10,9,8,0.78)', border: '1px solid #c9973a33' }}>
+              <p className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#c9973a' }}>
+                Unlock {fmtTotal} hand-picked groups in all categories
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="sticky bottom-3 z-20">
+          <a
+            href="/premium"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group flex items-center justify-center gap-2 w-full rounded-2xl px-5 py-4 text-center transition-all duration-300 hover:scale-[1.01] active:scale-[0.98]"
+            style={{
+              background: 'linear-gradient(135deg, #d4a94c 0%, #e8c66a 30%, #c9973a 60%, #b8860b 100%)',
+              border: '2px solid rgba(232,198,106,0.75)',
+              color: '#1a1000',
+              boxShadow: '0 0 40px rgba(201,151,58,0.45), 0 8px 26px rgba(0,0,0,0.35)',
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <span className="text-[18px] sm:text-[20px] font-black uppercase tracking-wide">Unlock Premium</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ background: T.bg }} className={lightMode ? 'rounded-2xl p-1' : ''}>
 
@@ -252,31 +382,13 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
                 <div className="flex gap-0.5"><GoldStar /><GoldStar /><GoldStar /><GoldStar /><GoldStar /></div>
                 <span className="text-[8px] font-black uppercase tracking-[0.3em]" style={{ color: '#b8964e' }}>Private Vault · Members Only</span>
               </div>
-              <h2 className="text-sm font-black tracking-tight" style={{ color: T.text }}>
-                {isPremium ? 'Your Exclusive Collection' : 'Unlock Instantly Thousands of Curated NSFW Groups'}
-              </h2>
-              {isPremium && <p className="text-[10px]" style={{ color: T.textDim }}>Hand-curated. Not listed publicly. Updated regularly.</p>}
+              <h2 className="text-sm font-black tracking-tight" style={{ color: T.text }}>Your Exclusive Collection</h2>
+              <p className="text-[10px]" style={{ color: T.textDim }}>Hand-curated. Not listed publicly. Updated regularly.</p>
             </div>
-            {isPremium ? (
-              <span
-                className="inline-block px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.2em]"
-                style={{ background: 'linear-gradient(135deg, #1f1709, #241b0c)', border: '1px solid #c9973a33', color: '#c9973a' }}
-              >✦ Elite Access</span>
-            ) : (
-              <Link
-                href={token ? '/premium' : '/login?redirect=/premium'}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all hover:scale-105"
-                style={{
-                  background: 'linear-gradient(135deg, #d4a94c, #e8c66a, #c9973a, #b8860b)',
-                  border: '1.5px solid rgba(232,198,106,0.5)',
-                  color: '#1a1000',
-                  boxShadow: '0 0 20px rgba(201,151,58,0.3), 0 2px 10px rgba(0,0,0,0.2)',
-                }}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="#1a1000"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                Unlock Premium
-              </Link>
-            )}
+            <span
+              className="inline-block px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.2em]"
+              style={{ background: 'linear-gradient(135deg, #1f1709, #241b0c)', border: '1px solid #c9973a33', color: '#c9973a' }}
+            >✦ Elite Access</span>
           </div>
           {/* 4 featured icon cards */}
           {visibleTop.length > 0 ? (
@@ -284,7 +396,7 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
               {visibleTop.map(g => (
                 <Link
                   key={g._id}
-                  href={isPremium && g.slug ? `/${g.slug}` : (token ? '/premium' : '/login?redirect=/premium')}
+                  href={g.slug ? `/${g.slug}` : '#'}
                   className="group/top block rounded-xl overflow-hidden relative transition-all duration-500 hover:scale-[1.03] hover:shadow-lg"
                   style={{ aspectRatio: '1', border: '2px solid #c9973a33', boxShadow: '0 4px 20px #c9973a0a' }}
                 >
@@ -296,13 +408,7 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
                   />
                   <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 30%, #0a0908dd 75%, #0a0908 100%)' }} />
                   <div className="absolute bottom-0 left-0 right-0 p-1.5">
-                    {isPremium ? (
-                      <p className="text-[10px] font-bold text-white leading-tight truncate">{g.name || '████████'}</p>
-                    ) : (
-                      <p className="text-[10px] font-bold text-white leading-tight truncate">
-                        {(g.name || '').slice(0, 6)}<span style={{ filter: 'blur(4px)', opacity: 0.4, color: '#fff', userSelect: 'none' as const }}>{(g.name || '██████').slice(6) || '██████'}</span>
-                      </p>
-                    )}
+                    <p className="text-[10px] font-bold text-white leading-tight truncate">{g.name || '████████'}</p>
                     {g.memberCount ? (
                       <p className="text-[11px] font-black leading-none" style={{ color: '#c9973a' }}>
                         {formatNum(g.memberCount)} <span className="text-[9px] font-bold" style={{ color: '#7a6040' }}>subs</span>

@@ -310,8 +310,14 @@ export default function PremiumTab() {
     setPricingSaving(true); setPricingMsg('');
     try {
       const token = localStorage.getItem('token');
-      await axios.put('/api/admin/premium-config', pricingConfig, { headers: { Authorization: `Bearer ${token}` } });
-      setPricingMsg('Saved successfully');
+      const res = await axios.put('/api/admin/premium-config', pricingConfig, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.data?.ok) {
+        const { ok, ...saved } = res.data;
+        setPricingConfig(saved);
+        setPricingMsg('Saved & confirmed ✓');
+      } else {
+        setPricingMsg(res.data?.message || 'Save returned unexpected response');
+      }
       setTimeout(() => setPricingMsg(''), 3000);
     } catch (err: any) {
       setPricingMsg(err?.response?.data?.message || 'Failed to save');
@@ -1189,7 +1195,7 @@ export default function PremiumTab() {
         </div>
       )}
 
-      {/* ── PRICING & OFFER TAB ── */}
+      {/* ── PRICING & OFFER TAB (Stars-first) ── */}
       {tab === 'pricing' && (
         <div className="space-y-6">
           {pricingLoading ? (
@@ -1207,7 +1213,7 @@ export default function PremiumTab() {
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <h3 className="text-lg font-bold text-white">Pricing & Offer Editor</h3>
-                  <p className="text-[#666] text-xs mt-1">Changes apply immediately to the premium page and payment flows.</p>
+                  <p className="text-[#666] text-xs mt-1">Set prices in Stars — crypto/USD price is derived automatically from the live Stars rate.</p>
                 </div>
                 <div className="flex items-center gap-3">
                   {pricingMsg && (
@@ -1224,6 +1230,19 @@ export default function PremiumTab() {
                   </button>
                 </div>
               </div>
+
+              {/* Stars Rate Info */}
+              {pricingConfig.starsRate > 0 && (
+                <div className="glass rounded-xl border border-white/5 p-4 flex items-center gap-4 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#229ED9"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
+                    <span className="text-white text-sm font-bold">1 Star</span>
+                    <span className="text-[#666] text-sm">=</span>
+                    <span className="text-green-400 text-sm font-bold">${pricingConfig.starsRate.toFixed(4)}</span>
+                  </div>
+                  <span className="text-[#444] text-xs">Live rate from Telegram Stars API — crypto/USD prices update automatically</span>
+                </div>
+              )}
 
               {/* Offer Banner */}
               <div className="glass p-6 rounded-2xl border border-white/5">
@@ -1259,28 +1278,46 @@ export default function PremiumTab() {
                 </div>
               </div>
 
-              {/* Plan editor — reusable block */}
+              {/* Plan editor — Stars-first */}
               {(['monthly', 'quarterly', 'yearly'] as const).map(planKey => {
                 const titles: Record<string, string> = { monthly: '1 Month Plan', quarterly: '3 Months Plan', yearly: '1 Year Plan' };
+                const plan = pricingConfig[planKey];
+                const starsVal = plan?.starsAmount ?? 0;
+                const rate = pricingConfig.starsRate || 0.015;
+                const derivedUsd = starsVal > 0 ? (starsVal * rate).toFixed(2) : plan?.priceUsd?.toFixed(2) ?? '0.00';
                 return (
                 <div key={planKey} className="glass p-6 rounded-2xl border border-white/5">
-                  <h4 className="text-sm font-bold text-white/60 uppercase tracking-wider mb-4">{titles[planKey]}</h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-sm font-bold text-white/60 uppercase tracking-wider">{titles[planKey]}</h4>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl font-black text-amber-400">{starsVal.toLocaleString()} ★</span>
+                      <span className="text-white/30">=</span>
+                      <span className="text-lg font-bold text-emerald-400">${derivedUsd}</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div>
-                      <label className="text-[10px] text-white/40 uppercase font-bold tracking-wider block mb-1.5">Price (USD)</label>
-                      <input type="number" step="0.01" value={pricingConfig[planKey]?.priceUsd ?? ''} onChange={e => updatePricingField(`${planKey}.priceUsd`, parseFloat(e.target.value) || 0)} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:border-amber-500/50 focus:outline-none transition-all" />
+                      <label className="text-[10px] text-white/40 uppercase font-bold tracking-wider block mb-1.5">Stars Price</label>
+                      <div className="relative">
+                        <input type="number" min={1} value={plan?.starsAmount ?? ''} onChange={e => updatePricingField(`${planKey}.starsAmount`, parseInt(e.target.value) || 0)} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-amber-500/30 text-white text-sm font-bold focus:border-amber-500/60 focus:outline-none transition-all pr-10" />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-400 text-xs font-bold">★</span>
+                      </div>
+                      <p className="text-[10px] text-emerald-400/60 mt-1 font-medium">= ${derivedUsd} crypto</p>
                     </div>
                     <div>
                       <label className="text-[10px] text-white/40 uppercase font-bold tracking-wider block mb-1.5">Duration (days)</label>
-                      <input type="number" value={pricingConfig[planKey]?.days ?? ''} onChange={e => updatePricingField(`${planKey}.days`, parseInt(e.target.value) || 0)} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:border-amber-500/50 focus:outline-none transition-all" />
+                      <input type="number" value={plan?.days ?? ''} onChange={e => updatePricingField(`${planKey}.days`, parseInt(e.target.value) || 0)} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:border-amber-500/50 focus:outline-none transition-all" />
                     </div>
                     <div>
                       <label className="text-[10px] text-white/40 uppercase font-bold tracking-wider block mb-1.5">Label</label>
-                      <input type="text" value={pricingConfig[planKey]?.label ?? ''} onChange={e => updatePricingField(`${planKey}.label`, e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:border-amber-500/50 focus:outline-none transition-all" />
+                      <input type="text" value={plan?.label ?? ''} onChange={e => updatePricingField(`${planKey}.label`, e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:border-amber-500/50 focus:outline-none transition-all" />
                     </div>
-                    <div className="col-span-2 sm:col-span-3">
-                      <label className="text-[10px] text-white/40 uppercase font-bold tracking-wider block mb-1.5">Description</label>
-                      <input type="text" value={pricingConfig[planKey]?.description ?? ''} onChange={e => updatePricingField(`${planKey}.description`, e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:border-amber-500/50 focus:outline-none transition-all" />
+                    <div>
+                      <label className="text-[10px] text-white/40 uppercase font-bold tracking-wider block mb-1.5">Crypto Price (auto)</label>
+                      <div className="px-3 py-2.5 rounded-lg bg-white/[0.02] border border-white/5 text-emerald-400 text-sm font-bold cursor-not-allowed">
+                        ${derivedUsd}
+                      </div>
+                      <p className="text-[10px] text-white/20 mt-1">Auto-derived from Stars</p>
                     </div>
                   </div>
                 </div>
@@ -1290,14 +1327,18 @@ export default function PremiumTab() {
               {/* Quick Reference */}
               <div className="glass p-5 rounded-2xl border border-white/5">
                 <h4 className="text-sm font-bold text-white/60 uppercase tracking-wider mb-3">Quick Reference</h4>
-                <p className="text-[10px] text-white/30 mb-3">Stars amounts are computed live from the USD price using Telegram&apos;s current Stars rate.</p>
+                <p className="text-[10px] text-white/30 mb-3">Stars is the source of truth — crypto/USD prices are derived using the live Stars-to-USD rate (${(pricingConfig.starsRate || 0.015).toFixed(4)}/★).</p>
                 <div className="grid grid-cols-3 gap-4 text-center">
                   {(['monthly', 'quarterly', 'yearly'] as const).map(k => {
                     const labels: Record<string, string> = { monthly: '1 Month', quarterly: '3 Months', yearly: '1 Year' };
+                    const stars = pricingConfig[k]?.starsAmount ?? 0;
+                    const rate = pricingConfig.starsRate || 0.015;
+                    const usd = (stars * rate).toFixed(2);
                     return (
                       <div key={k}>
                         <p className="text-[10px] text-white/30 uppercase font-bold mb-1">{labels[k]}</p>
-                        <p className="text-lg font-bold text-white">${pricingConfig[k]?.priceUsd}</p>
+                        <p className="text-lg font-bold text-amber-400">{stars.toLocaleString()} ★</p>
+                        <p className="text-sm font-bold text-emerald-400">${usd}</p>
                         <p className="text-[10px] text-white/20">{pricingConfig[k]?.days} days</p>
                       </div>
                     );

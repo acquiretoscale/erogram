@@ -41,7 +41,9 @@ export async function POST(req: NextRequest) {
 
   const [pricing, rate] = await Promise.all([getPremiumPricing(), getStarsRate()]);
   const p = getPlanConfig(pricing, plan);
-  const starsAmount = usdToStars(p.priceUsd, rate);
+  const starsAmount = (typeof p.starsAmount === 'number' && p.starsAmount > 0)
+    ? p.starsAmount
+    : usdToStars(p.priceUsd, rate);
 
   try {
     const payload = JSON.stringify({

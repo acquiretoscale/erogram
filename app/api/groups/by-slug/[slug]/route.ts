@@ -22,6 +22,13 @@ export async function GET(
       );
     }
 
+    if ((group as any).premiumOnly) {
+      return NextResponse.json(
+        { message: 'Group not found' },
+        { status: 404 }
+      );
+    }
+
     // Increment view count (fire and forget)
     const groupId = (group as any)._id;
     Group.findByIdAndUpdate(groupId, {

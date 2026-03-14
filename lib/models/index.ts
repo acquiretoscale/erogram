@@ -90,6 +90,8 @@ export const groupSchema = new Schema(
     boosted: { type: Boolean, default: false },
     boostExpiresAt: { type: Date, default: null },
     boostDuration: { type: String, enum: ['1d', '7d', '14d', '30d', null], default: null },
+    paidBoost: { type: Boolean, default: false },
+    paidBoostStars: { type: Number, default: null },
     // CSV bulk-import scheduling fields
     scheduledPublishAt: { type: Date, default: null },
     importBatchId: { type: String, default: null },
@@ -279,6 +281,14 @@ export const botSchema = new Schema(
     pinned: { type: Boolean, default: false },
     topBot: { type: Boolean, default: false },
     showVerified: { type: Boolean, default: false },
+    featured: { type: Boolean, default: false },
+    featuredOrder: { type: Number, default: 999 },
+    featuredAt: { type: Date, default: null },
+    boosted: { type: Boolean, default: false },
+    boostExpiresAt: { type: Date, default: null },
+    boostDuration: { type: String, enum: ['1d', '7d', '14d', '30d', null], default: null },
+    paidBoost: { type: Boolean, default: false },
+    paidBoostStars: { type: Number, default: null },
     views: { type: Number, default: 0 },
     isAdvertisement: { type: Boolean, default: false },
     advertisementUrl: { type: String },
@@ -459,7 +469,7 @@ export const campaignSchema = new Schema(
     name: { type: String, required: true },
     slot: {
       type: String,
-      enum: ['top-banner', 'homepage-hero', 'feed', 'navbar-cta', 'join-cta', 'filter-cta'],
+      enum: ['top-banner', 'homepage-hero', 'feed', 'navbar-cta', 'join-cta', 'filter-cta', 'vault-premium'],
       required: true,
     },
     creative: { type: String, required: false, default: '' },
@@ -650,6 +660,7 @@ export const adminPushSubscriptionSchema = new Schema(
 // Premium pricing config (singleton — one document with key='default')
 const planSubSchema = {
   priceUsd: { type: Number, required: true },
+  starsAmount: { type: Number, default: null },
   days: { type: Number, required: true },
   label: { type: String, required: true },
   description: { type: String, default: '' },
@@ -657,9 +668,9 @@ const planSubSchema = {
 const premiumConfigSchema = new Schema(
   {
     key: { type: String, default: 'default', unique: true },
-    monthly: { ...planSubSchema, priceUsd: { type: Number, default: 12.97 }, days: { type: Number, default: 30 }, label: { type: String, default: 'Erogram VIP (1 Month)' }, description: { type: String, default: '30-day unlimited access — Secret Vault, bookmarks & more' } },
-    quarterly: { ...planSubSchema, priceUsd: { type: Number, default: 19.97 }, days: { type: Number, default: 90 }, label: { type: String, default: 'Erogram VIP (3 Months)' }, description: { type: String, default: '3-month unlimited access — Secret Vault, bookmarks & more' } },
-    yearly: { ...planSubSchema, priceUsd: { type: Number, default: 29 }, days: { type: Number, default: 365 }, label: { type: String, default: 'Erogram VIP (1 Year)' }, description: { type: String, default: '1-year unlimited access — Secret Vault, bookmarks & more' } },
+    monthly: { ...planSubSchema, starsAmount: { type: Number, default: 865 }, priceUsd: { type: Number, default: 12.97 }, days: { type: Number, default: 30 }, label: { type: String, default: 'Erogram VIP (1 Month)' }, description: { type: String, default: '30-day unlimited access — Secret Vault, bookmarks & more' } },
+    quarterly: { ...planSubSchema, starsAmount: { type: Number, default: 1332 }, priceUsd: { type: Number, default: 19.97 }, days: { type: Number, default: 90 }, label: { type: String, default: 'Erogram VIP (3 Months)' }, description: { type: String, default: '3-month unlimited access — Secret Vault, bookmarks & more' } },
+    yearly: { ...planSubSchema, starsAmount: { type: Number, default: 1934 }, priceUsd: { type: Number, default: 29 }, days: { type: Number, default: 365 }, label: { type: String, default: 'Erogram VIP (1 Year)' }, description: { type: String, default: '1-year unlimited access — Secret Vault, bookmarks & more' } },
     offerBadge: { type: String, default: '80% OFF' },
     offerText: { type: String, default: 'Launch price ends soon' },
   },

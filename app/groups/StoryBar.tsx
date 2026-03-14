@@ -169,7 +169,8 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
               </Link>
             ))}
             <Link
-              href="/premiumvault"
+              href="/premium"
+              target="_blank"
               className="px-3 py-1.5 text-[10px] font-black rounded-full transition-all duration-200 whitespace-nowrap hover:opacity-90 inline-flex items-center gap-1"
               style={{
                 background: 'linear-gradient(135deg, #c9973a, #e8ba5a)',

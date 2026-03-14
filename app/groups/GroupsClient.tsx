@@ -40,76 +40,123 @@ interface VaultTeaserItem {
   vaultCategories?: string[];
 }
 
-function VaultTeaserSection({ items, isLoggedIn = false }: { items: VaultTeaserItem[]; catOrder?: string[]; isLoggedIn?: boolean }) {
+function VaultTeaserCard({ items, isLoggedIn = false }: { items: VaultTeaserItem[]; isLoggedIn?: boolean }) {
   const lp = useLocalePath();
+  const [imgIdx, setImgIdx] = useState(0);
+  const cardRef = useRef<HTMLAnchorElement>(null);
+  const impressionFired = useRef(false);
   const fmtNum = (n: number) => n >= 1_000_000 ? (n/1_000_000).toFixed(1)+'M' : n >= 1_000 ? (n/1_000).toFixed(n>=10_000?0:1)+'K' : '';
+
+  useEffect(() => {
+    if (items.length <= 4) return;
+    const interval = setInterval(() => {
+      setImgIdx(prev => (prev + 4) % items.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [items.length]);
+
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !impressionFired.current) {
+        impressionFired.current = true;
+        fetch('/api/vault/track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'impression' }),
+        }).catch(() => {});
+      }
+    }, { threshold: 0.3 });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const handleClick = () => {
+    fetch('/api/vault/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'click' }),
+    }).catch(() => {});
+  };
 
   if (!items.length) return null;
 
+  const visible = Array.from({ length: 4 }, (_, i) => items[(imgIdx + i) % items.length]);
+
   return (
-    <Link href={isLoggedIn ? '/premium' : lp('/premiumvault')} target={isLoggedIn ? '_blank' : undefined} className="block mb-8 group cursor-pointer">
-      <div
-        className="relative rounded-2xl overflow-hidden px-5 py-4 transition-all group-hover:scale-[1.01]"
-        style={{ background: 'linear-gradient(135deg, #111009 0%, #140f07 60%, #0e0d0b 100%)', border: '1px solid #2e2010' }}
-      >
-        <div className="absolute top-0 right-0 w-56 h-56 blur-3xl opacity-[0.12] rounded-full pointer-events-none" style={{ background: 'radial-gradient(ellipse, #c9973a 0%, transparent 60%)' }} />
-        <div className="absolute bottom-0 left-0 w-40 h-40 blur-3xl opacity-[0.07] rounded-full pointer-events-none" style={{ background: 'radial-gradient(ellipse, #c9973a 0%, transparent 60%)' }} />
-
-        <div className="relative">
-          <div className="mb-2">
-            <div className="flex items-center gap-1.5 mb-1">
-              <div className="flex gap-0.5">
-                {[1,2,3,4,5].map(i => <svg key={i} width="12" height="12" viewBox="0 0 24 24" fill="#b8964e"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>)}
-              </div>
-              <span className="text-[8px] font-black uppercase tracking-[0.3em]" style={{ color: '#b8964e' }}>Private Vault · Members Only</span>
-            </div>
-            <h2 className="text-sm font-black text-white tracking-tight">Unlock Instantly Thousands of Curated NSFW Groups</h2>
-          </div>
-
-          <div className="grid grid-cols-4 gap-2 mb-3">
-            {items.slice(0, 4).map(g => {
-              const cats = g.vaultCategories && g.vaultCategories.length > 0 ? g.vaultCategories : [g.category];
-              const topCat = cats[2] || cats[1] || cats[0] || '';
-              return (
-                <div
-                  key={g._id}
-                  className="rounded-xl overflow-hidden relative"
-                  style={{ aspectRatio: '1', border: '2px solid #c9973a33', boxShadow: '0 4px 20px #c9973a0a' }}
-                >
-                  <img src={g.image || '/assets/placeholder-no-image.png'} alt="" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
-                  <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 30%, #0a0908dd 75%, #0a0908 100%)' }} />
-                  <div className="absolute bottom-0 left-0 right-0 p-1.5">
-                    <p className="text-[10px] font-bold text-white leading-tight truncate">
-                      {(g.name || '').slice(0, 4)}<span style={{ filter: 'blur(4px)', opacity: 0.4, color: '#fff', userSelect: 'none' as const }}>{(g.name || '██████').slice(4) || '██████'}</span>
-                    </p>
-                    {g.memberCount ? (
-                      <p className="text-[11px] font-black leading-none" style={{ color: '#c9973a' }}>
-                        {fmtNum(g.memberCount)} <span className="text-[9px] font-bold" style={{ color: '#7a6040' }}>subs</span>
-                        {topCat && <span className="text-[9px] font-bold" style={{ color: '#7a604088' }}> · {topCat}</span>}
+    <Link ref={cardRef} href="/premium" target="_blank" className="block h-full" onClick={handleClick}>
+      {/* Serpent LED border: rotating conic-gradient behind the card */}
+      <div className="relative h-full rounded-2xl sm:rounded-3xl p-[2px] overflow-hidden" style={{ background: 'transparent' }}>
+        <style>{`
+          @keyframes vault-led-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          .vault-led-ring::before {
+            content: '';
+            position: absolute;
+            inset: -60%;
+            background: conic-gradient(
+              from 0deg,
+              transparent 0deg,
+              transparent 60deg,
+              #ff6a00 80deg,
+              #ff9500 90deg,
+              #ffffff 100deg,
+              #ff9500 110deg,
+              #ff6a00 120deg,
+              transparent 140deg,
+              transparent 360deg
+            );
+            animation: vault-led-spin 5s linear infinite;
+            border-radius: inherit;
+          }
+        `}</style>
+        <div className="vault-led-ring absolute inset-0 rounded-2xl sm:rounded-3xl overflow-hidden pointer-events-none" />
+        <div className="relative glass rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col hover:shadow-2xl hover:shadow-orange-500/30 transition-all duration-500 group" style={{ background: '#0a0a0a' }}>
+          {/* 2x2 mosaic — flex-[7] takes ~70% of card height */}
+          <div className="relative flex-[7] min-h-0 overflow-hidden">
+            <div className="grid grid-cols-2 grid-rows-2 w-full h-full gap-[2px] p-[2px]">
+              {visible.map((g, i) => {
+                const cats = g.vaultCategories && g.vaultCategories.length > 0 ? g.vaultCategories : [g.category];
+                const topCat = cats[0] || '';
+                return (
+                  <div key={`${g._id}-${i}`} className="relative rounded-md sm:rounded-lg overflow-hidden transition-all duration-1000 border border-orange-500/60">
+                    <img
+                      src={g.image || '/assets/placeholder-no-image.png'}
+                      alt=""
+                      className="w-full h-full object-cover"
+                      onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }}
+                    />
+                    <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 20%, rgba(0,0,0,0.85) 100%)' }} />
+                    <div className="absolute bottom-0 left-0 right-0 p-1 sm:p-1.5">
+                      <p className="text-[8px] sm:text-[10px] font-bold text-white truncate leading-tight">
+                        {(g.name || '').slice(0, 6)}<span style={{ display: 'inline-block', width: '3.5em', height: '0.75em', background: 'rgba(255,255,255,0.9)', borderRadius: '3px', verticalAlign: 'middle', marginLeft: '2px', filter: 'blur(2px)', userSelect: 'none' as const }} />
                       </p>
-                    ) : null}
+                      <div className="flex items-center gap-0.5">
+                        {g.memberCount ? <span className="text-[8px] sm:text-[10px] font-black text-orange-400 leading-none">{fmtNum(g.memberCount)}</span> : null}
+                        {topCat && <span className="text-[7px] sm:text-[8px] font-bold text-white/40 leading-none truncate">· {topCat}</span>}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
 
-          <div className="flex gap-1.5 flex-wrap">
-            {['Amateur', 'Onlyfans', 'NSFW-Telegram', 'Russian', 'Hentai', 'Feet', 'BDSM', 'MILF', 'Latina', 'Fetish', 'Asian', 'Cosplay', 'Lesbian', 'Onlyfans Leaks'].map(cat => (
-              <span key={cat} className="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide" style={{ background: '#0d0c0a', border: '1px solid #2e2010', color: '#7a6040' }}>{cat}</span>
-            ))}
-            <span className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wide" style={{ background: 'linear-gradient(135deg, #1f1709, #241b0c)', border: '1px solid #c9973a33', color: '#c9973a' }}>&amp; MUCH MORE</span>
+          {/* Bottom ~30% — compact title + CTA */}
+          <div className="flex-[3] p-2 sm:p-3 flex flex-col justify-center relative" style={{ background: 'linear-gradient(180deg, #1a0f00, #0a0a0a)' }}>
+            <h3 className="text-xs sm:text-sm font-black text-white mb-1 sm:mb-1.5 leading-tight group-hover:text-orange-400 transition-colors">🔒 Premium Vault</h3>
+            <p className="text-orange-300 text-[10px] sm:text-xs font-bold mb-1.5 sm:mb-2 leading-snug uppercase tracking-wide">Unlock instantly thousands of hand-picked groups</p>
+            <div className="group/btn relative flex items-center justify-center w-full overflow-hidden rounded-lg sm:rounded-xl py-1.5 sm:py-2.5 px-2 sm:px-3 font-black text-white shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-r from-orange-500 to-red-600 hover:shadow-orange-500/40">
+              <div className="absolute inset-0 bg-white/20 opacity-0 transition-opacity duration-300 group-hover/btn:opacity-100" />
+              <span className="relative flex items-center justify-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs uppercase tracking-wider font-black">
+                <span className="text-sm sm:text-base">🔓</span> Unlock The Vault
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-
-      <div className="mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl font-black text-sm transition-all group-hover:scale-[1.02]"
-        style={{ background: 'linear-gradient(135deg, #c9973a, #a67c2e)', color: '#0d0c0a' }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-        </svg>
-        Unlock Premium Access
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       </div>
     </Link>
   );
@@ -838,47 +885,16 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                     </p>
                   </div>
                 )}
-                {(() => {
-                  if (vaultTeaser.length === 0) {
-                    return (
-                      <VirtualizedGroupGrid
-                        groups={displayGroups}
-                        feedCampaigns={gridCampaigns}
-                        isTelegram={isTelegram}
-                        onOpenReviewModal={openReviewModal}
-                        onOpenReportModal={openReportModal}
-                      />
-                    );
-                  }
-                  const FIRST = 20;
-                  const INTERVAL = 16;
-                  const chunks: React.ReactNode[] = [];
-                  let cursor = 0;
-
-                  // First chunk: 1 post, then vault
-                  const firstSlice = displayGroups.slice(cursor, cursor + FIRST);
-                  if (firstSlice.length > 0) {
-                    chunks.push(
-                      <VirtualizedGroupGrid key={`chunk-${cursor}`} groups={firstSlice} feedCampaigns={cursor === 0 ? gridCampaigns : []} isTelegram={isTelegram} onOpenReviewModal={openReviewModal} onOpenReportModal={openReportModal} />
-                    );
-                    cursor += FIRST;
-                    chunks.push(<VaultTeaserSection key={`vault-${cursor}`} items={vaultTeaser} catOrder={vaultCatOrder} isLoggedIn={isLoggedIn} />);
-                  }
-
-                  // Subsequent chunks: every 15 posts, insert vault
-                  while (cursor < displayGroups.length) {
-                    const slice = displayGroups.slice(cursor, cursor + INTERVAL);
-                    chunks.push(
-                      <VirtualizedGroupGrid key={`chunk-${cursor}`} groups={slice} feedCampaigns={[]} isTelegram={isTelegram} onOpenReviewModal={openReviewModal} onOpenReportModal={openReportModal} />
-                    );
-                    cursor += INTERVAL;
-                    if (cursor < displayGroups.length) {
-                      chunks.push(<VaultTeaserSection key={`vault-${cursor}`} items={vaultTeaser} catOrder={vaultCatOrder} isLoggedIn={isLoggedIn} />);
-                    }
-                  }
-
-                  return <>{chunks}</>;
-                })()}
+                <VirtualizedGroupGrid
+                  groups={displayGroups}
+                  feedCampaigns={gridCampaigns}
+                  isTelegram={isTelegram}
+                  onOpenReviewModal={openReviewModal}
+                  onOpenReportModal={openReportModal}
+                  vaultItems={vaultTeaser.length > 0 ? vaultTeaser : undefined}
+                  isLoggedIn={isLoggedIn}
+                  VaultCard={vaultTeaser.length > 0 ? VaultTeaserCard : undefined}
+                />
               </div>
 
               {loading && (

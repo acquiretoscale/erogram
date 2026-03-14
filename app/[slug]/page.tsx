@@ -258,6 +258,7 @@ async function getRandomSimilarGroups(currentGroupId: string, category?: string)
     let matchStage: any = {
       status: 'approved',
       isAdvertisement: { $ne: true },
+      premiumOnly: { $ne: true },
       _id: { $ne: currentObjectId },
     };
 
@@ -292,6 +293,7 @@ async function getRandomSimilarGroups(currentGroupId: string, category?: string)
           $match: {
             status: 'approved',
             isAdvertisement: { $ne: true },
+            premiumOnly: { $ne: true },
             _id: { $nin: existingIds },
           },
         },

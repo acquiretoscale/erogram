@@ -163,8 +163,8 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
           {/* Erogram Premium */}
           {!isPremium && (
             <Link
-              href={currentUsername ? '/premium' : '/premiumvault'}
-              target={currentUsername ? '_blank' : undefined}
+              href="/premium"
+              target="_blank"
               className="relative overflow-hidden text-[12px] px-3 py-1.5 rounded-lg font-bold tracking-wide whitespace-nowrap inline-flex items-center gap-1 transition-all hover:scale-[1.03]"
               style={{
                 background: 'linear-gradient(135deg, #c9973a 0%, #e8ba5a 40%, #c9973a 60%, #a67c2e 100%)',
@@ -404,8 +404,8 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
 
           {!isPremium && (
             <Link
-              href={currentUsername ? '/premium' : '/premiumvault'}
-              target={currentUsername ? '_blank' : undefined}
+              href="/premium"
+              target="_blank"
               onClick={() => setIsMenuOpen(false)}
               className="relative overflow-hidden flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg text-[14px] font-black tracking-wide transition-all"
               style={{

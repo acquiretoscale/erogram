@@ -1,8 +1,9 @@
 import connectDB from '@/lib/db/mongodb';
-import { PremiumConfig } from '@/lib/models';
+import mongoose from 'mongoose';
 
 export interface PlanConfig {
   priceUsd: number;
+  starsAmount: number | null;
   days: number;
   label: string;
   description: string;
@@ -17,9 +18,9 @@ export interface PremiumPricing {
 }
 
 const DEFAULTS: PremiumPricing = {
-  monthly: { priceUsd: 12.97, days: 30, label: 'Erogram VIP (1 Month)', description: '30-day unlimited access — Secret Vault, bookmarks & more' },
-  quarterly: { priceUsd: 19.97, days: 90, label: 'Erogram VIP (3 Months)', description: '3-month unlimited access — Secret Vault, bookmarks & more' },
-  yearly: { priceUsd: 29, days: 365, label: 'Erogram VIP (1 Year)', description: '1-year unlimited access — Secret Vault, bookmarks & more' },
+  monthly: { priceUsd: 12.97, starsAmount: 865, days: 30, label: 'Erogram VIP (1 Month)', description: '30-day unlimited access — Secret Vault, bookmarks & more' },
+  quarterly: { priceUsd: 19.97, starsAmount: 1332, days: 90, label: 'Erogram VIP (3 Months)', description: '3-month unlimited access — Secret Vault, bookmarks & more' },
+  yearly: { priceUsd: 29, starsAmount: 1934, days: 365, label: 'Erogram VIP (1 Year)', description: '1-year unlimited access — Secret Vault, bookmarks & more' },
   offerBadge: '80% OFF',
   offerText: 'Launch price ends soon',
 };
@@ -38,12 +39,19 @@ export async function getPremiumPricing(): Promise<PremiumPricing> {
 
   try {
     await connectDB();
-    const doc = await PremiumConfig.findOne({ key: 'default' }).lean() as any;
+    const doc = await mongoose.connection.db.collection('premiumconfigs').findOne({ key: 'default' }) as any;
     if (doc) {
+      const pick = (def: PlanConfig, raw: any): PlanConfig => ({
+        priceUsd: raw?.priceUsd ?? def.priceUsd,
+        starsAmount: raw?.starsAmount ?? def.starsAmount,
+        days: raw?.days ?? def.days,
+        label: raw?.label ?? def.label,
+        description: raw?.description ?? def.description,
+      });
       cached = {
-        monthly: { ...DEFAULTS.monthly, ...doc.monthly },
-        quarterly: { ...DEFAULTS.quarterly, ...doc.quarterly },
-        yearly: { ...DEFAULTS.yearly, ...doc.yearly },
+        monthly: pick(DEFAULTS.monthly, doc.monthly),
+        quarterly: pick(DEFAULTS.quarterly, doc.quarterly),
+        yearly: pick(DEFAULTS.yearly, doc.yearly),
         offerBadge: doc.offerBadge ?? DEFAULTS.offerBadge,
         offerText: doc.offerText ?? DEFAULTS.offerText,
       };
@@ -89,4 +97,9 @@ export async function getStarsRate(): Promise<number> {
 export function usdToStars(usd: number, ratePerStar: number): number {
   if (ratePerStar <= 0) return Math.ceil(usd / 0.015);
   return Math.ceil(usd / ratePerStar);
+}
+
+export function starsToUsd(stars: number, ratePerStar: number): number {
+  const rate = ratePerStar > 0 ? ratePerStar : 0.015;
+  return +(stars * rate).toFixed(2);
 }

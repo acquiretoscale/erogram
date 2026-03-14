@@ -93,6 +93,7 @@ export default async function BestCountryGroupsPage({ params }: PageProps) {
         country: realCountry,
         status: 'approved',
         isAdvertisement: false,
+        premiumOnly: { $ne: true },
     })
         .sort({ views: -1 })
         .limit(10)
@@ -112,7 +113,8 @@ export default async function BestCountryGroupsPage({ params }: PageProps) {
                 $match: {
                     status: 'approved',
                     isAdvertisement: false,
-                    country: { $ne: realCountry } // Exclude current country
+                    premiumOnly: { $ne: true },
+                    country: { $ne: realCountry },
                 }
             },
             { $sample: { size: 5 } } // Get 5 random groups
