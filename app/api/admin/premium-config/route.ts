@@ -20,7 +20,9 @@ function enrichPlan(plan: any, rate: number) {
 // Native MongoDB collection — bypasses Mongoose strict schema that strips starsAmount
 async function getCollection() {
   await connectDB();
-  return mongoose.connection.db.collection('premiumconfigs');
+  const db = mongoose.connection.db;
+  if (!db) throw new Error('Database not connected');
+  return db.collection('premiumconfigs');
 }
 
 // Public GET
