@@ -39,7 +39,9 @@ export async function getPremiumPricing(): Promise<PremiumPricing> {
 
   try {
     await connectDB();
-    const doc = await mongoose.connection.db.collection('premiumconfigs').findOne({ key: 'default' }) as any;
+    const db = mongoose.connection.db;
+    if (!db) return DEFAULTS;
+    const doc = await db.collection('premiumconfigs').findOne({ key: 'default' }) as any;
     if (doc) {
       const pick = (def: PlanConfig, raw: any): PlanConfig => ({
         priceUsd: raw?.priceUsd ?? def.priceUsd,
