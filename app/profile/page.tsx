@@ -61,6 +61,7 @@ function ProfileContent() {
   const effectivePremium = isAdmin
     ? viewMode === 'admin' || viewMode === 'premium'
     : isPremium;
+  const effectiveAdmin = isAdmin && viewMode === 'admin';
 
   const handleDeleteProfile = () => {
     localStorage.removeItem('token');
@@ -287,7 +288,7 @@ function ProfileContent() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <VaultTab isPremium={effectivePremium} isAdmin={isAdmin} />
+              <VaultTab isPremium={effectivePremium} isAdmin={effectiveAdmin} />
             </motion.div>
           )}
         </div>
