@@ -17,8 +17,10 @@ export async function GET(req: NextRequest) {
   const category = searchParams.get('category') || '';
   const country = searchParams.get('country') || '';
   const sortBy = searchParams.get('sort') || 'newest';
+  const featuredOnly = searchParams.get('featured') === '1';
 
   const baseQuery: any = { premiumOnly: true, status: 'approved' };
+  if (featuredOnly) baseQuery.showOnVaultTeaser = true;
 
   if (isPreview) {
     baseQuery.image = { $nin: [null, '', '/assets/image.jpg', '/assets/placeholder-no-image.png'] };

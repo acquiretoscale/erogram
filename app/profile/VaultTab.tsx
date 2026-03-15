@@ -39,6 +39,7 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
   const [category, setCategory] = useState('All');
   const [country, setCountry] = useState('All');
   const [sortBy, setSortBy] = useState('random');
+  const [featuredOnly, setFeaturedOnly] = useState(false);
   const [searchDebounced, setSearchDebounced] = useState('');
   const [quickCategories, setQuickCategories] = useState<{ category: string; count: number }[]>([]);
   const [quickCountries, setQuickCountries] = useState<{ country: string; count: number }[]>([]);
@@ -93,6 +94,7 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
       if (searchDebounced) params.set('search', searchDebounced);
       if (category !== 'All') params.set('category', category);
       if (country !== 'All') params.set('country', country);
+      if (featuredOnly) params.set('featured', '1');
       if (sortBy !== 'random') params.set('sort', sortBy);
       else {
         params.set('sort', 'random');
@@ -117,9 +119,9 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [searchDebounced, category, country, sortBy, groups.length]);
+  }, [searchDebounced, category, country, sortBy, featuredOnly, groups.length]);
 
-  useEffect(() => { loadGroups(true); }, [searchDebounced, category, country, sortBy]);
+  useEffect(() => { loadGroups(true); }, [searchDebounced, category, country, sortBy, featuredOnly]);
 
   useEffect(() => {
     if (!isPremium || groups.length === 0 || !token) return;
@@ -218,11 +220,9 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
 
   /* ━━━ NON-PREMIUM LOCKED VIEW ━━━ */
   if (!isPremium) {
-    const VAULT_PREVIEW_CATS = ['Ukraine', 'Russian', 'Feet', 'MILF', 'Latina', 'Onlyfans', 'Threesome', 'Blowjob', 'Colombia'];
     const photoOnlyGroups = groups.filter((group) => {
       if (!group.image || group.image === '/assets/image.jpg' || group.image === '/assets/placeholder-no-image.png') return false;
-      const cats = group.categories?.length ? group.categories : [group.category];
-      return cats.some(c => VAULT_PREVIEW_CATS.some(vc => vc.toLowerCase() === (c || '').toLowerCase()));
+      return !!group.showOnVaultTeaser;
     });
     const vaultLiveCount = vaultTotal ?? total;
     const totalGroupCount = 4000 + (vaultLiveCount || 0);
@@ -439,12 +439,21 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
           <div className="mb-4">
             <div className="flex gap-1.5 flex-wrap mb-3">
               <button
-                onClick={() => setCategory('All')}
+                onClick={() => { setCategory('All'); setFeaturedOnly(false); }}
                 className="px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-all"
-                style={category === 'All'
+                style={category === 'All' && !featuredOnly
                   ? { background: T.pillActive, color: T.pillActiveText }
                   : { background: T.pillBg, border: `1px solid ${T.pillBorder}`, color: T.pillText }}
               >All</button>
+              {isAdmin && (
+                <button
+                  onClick={() => setFeaturedOnly(!featuredOnly)}
+                  className="px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-all hover:scale-[1.04]"
+                  style={featuredOnly
+                    ? { background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#1a1000' }
+                    : { background: T.pillBg, border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b' }}
+                >★ Featured</button>
+              )}
               {(() => {
                 const EXTRA_CATS = ['Brazil', 'China', 'Colombia', 'Cosplay'];
                 const HIDDEN = ['Blonde', 'Big Tits', 'Italy', 'Telegram-Porn', 'USA'];
