@@ -10,6 +10,22 @@ if (VAPID_PUBLIC && VAPID_PRIVATE) {
   webpush.setVapidDetails(CONTACT, VAPID_PUBLIC, VAPID_PRIVATE);
 }
 
+const ADMIN_TG_BOT = process.env.TELEGRAM_BOT_TOKEN || '';
+const ADMIN_TG_CHAT = process.env.ADMIN_TELEGRAM_CHAT_ID || '';
+
+async function sendTelegramDM(text: string) {
+  if (!ADMIN_TG_BOT || !ADMIN_TG_CHAT) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${ADMIN_TG_BOT}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: ADMIN_TG_CHAT, text, parse_mode: 'HTML' }),
+    });
+  } catch (err) {
+    console.error('[notifyAdmins] Telegram DM failed:', err);
+  }
+}
+
 export interface SaleNotificationPayload {
   plan: string;
   method: 'stars' | 'crypto';
@@ -63,24 +79,35 @@ export async function notifyAdminsOfSale(payload: SaleNotificationPayload) {
   const planLabel = PLAN_LABELS[payload.plan] || payload.plan;
   const methodLabel = payload.method === 'stars' ? '⭐ Stars' : '₿ Crypto';
   const userLabel = payload.username ? `@${payload.username}` : 'Anonymous';
-  await sendPushToAdmins({
-    title: '💰 New Sale!',
-    body: `${planLabel} · ${methodLabel} · ${userLabel}`,
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-192.png',
-    tag: 'erogram-sale',
-    data: { url: '/admin' },
-  });
+
+  const body = `${planLabel} · ${methodLabel} · ${userLabel}`;
+
+  await Promise.allSettled([
+    sendPushToAdmins({
+      title: '💰 New Sale!',
+      body,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      tag: 'erogram-sale',
+      data: { url: '/admin' },
+    }),
+    sendTelegramDM(`💰 <b>New Sale!</b>\n${body}`),
+  ]);
 }
 
 export async function notifyAdminsOfNewUser(payload: NewUserNotificationPayload) {
   const providerLabel = payload.provider === 'google' ? '📧 Google' : '✈️ Telegram';
-  await sendPushToAdmins({
-    title: '👤 New User Registered!',
-    body: `@${payload.username} · ${providerLabel}`,
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-192.png',
-    tag: 'erogram-new-user',
-    data: { url: '/admin/users' },
-  });
+  const body = `@${payload.username} · ${providerLabel}`;
+
+  await Promise.allSettled([
+    sendPushToAdmins({
+      title: '👤 New User Registered!',
+      body,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      tag: 'erogram-new-user',
+      data: { url: '/admin/users' },
+    }),
+    sendTelegramDM(`👤 <b>New User!</b>\n${body}`),
+  ]);
 }

@@ -218,13 +218,12 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
 
   /* ━━━ NON-PREMIUM LOCKED VIEW ━━━ */
   if (!isPremium) {
-    const photoOnlyGroups = groups.filter(
-      (group) =>
-        !!group.image &&
-        group.image !== '/assets/image.jpg' &&
-        group.image !== '/assets/placeholder-no-image.png' &&
-        group.country !== 'China'
-    );
+    const VAULT_PREVIEW_CATS = ['Ukraine', 'Russian', 'Feet', 'MILF', 'Latina', 'Onlyfans', 'Threesome', 'Blowjob', 'Colombia'];
+    const photoOnlyGroups = groups.filter((group) => {
+      if (!group.image || group.image === '/assets/image.jpg' || group.image === '/assets/placeholder-no-image.png') return false;
+      const cats = group.categories?.length ? group.categories : [group.category];
+      return cats.some(c => VAULT_PREVIEW_CATS.some(vc => vc.toLowerCase() === (c || '').toLowerCase()));
+    });
     const vaultLiveCount = vaultTotal ?? total;
     const totalGroupCount = 4000 + (vaultLiveCount || 0);
     const fmtTotal = totalGroupCount.toLocaleString();
@@ -276,10 +275,10 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
             </div>
           ) : (
             <div className="select-none pointer-events-none">
-              <div className="grid grid-cols-8 gap-[2px] p-[2px]">
-                {photoOnlyGroups.slice(0, 192).map((group, idx) => {
-                  const row = Math.floor(idx / 8);
-                  const totalRows = Math.ceil(Math.min(photoOnlyGroups.length, 192) / 8);
+              <div className="grid grid-cols-6 gap-[2px] p-[2px]">
+                {photoOnlyGroups.slice(0, 120).map((group, idx) => {
+                  const row = Math.floor(idx / 6);
+                  const totalRows = Math.ceil(Math.min(photoOnlyGroups.length, 120) / 6);
                   const progress = totalRows > 1 ? row / (totalRows - 1) : 0;
                   const blur = 2 + progress * 14;
                   const subs = group.memberCount
@@ -481,13 +480,25 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
                         >{c}</button>
                       );
                     })}
-                    {TEASER_CATS.map(c => (
-                      <span
-                        key={c}
-                        className="px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide cursor-not-allowed select-none"
-                        style={{ background: T.pillBg, border: `1px solid ${T.pillBorder}`, color: T.pillText, filter: 'blur(3px)', opacity: 0.4 }}
-                      >{c}</span>
-                    ))}
+                    {TEASER_CATS.map(c => {
+                      const isActive = category === c;
+                      return isPremium ? (
+                        <button
+                          key={c}
+                          onClick={() => setCategory(isActive ? 'All' : c)}
+                          className="px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-all hover:scale-[1.04]"
+                          style={isActive
+                            ? { background: T.pillActive, color: T.pillActiveText }
+                            : { background: T.pillBg, border: `1px solid ${T.pillBorder}`, color: T.pillText }}
+                        >{c}</button>
+                      ) : (
+                        <span
+                          key={c}
+                          className="px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide cursor-not-allowed select-none"
+                          style={{ background: T.pillBg, border: `1px solid ${T.pillBorder}`, color: T.pillText, filter: 'blur(3px)', opacity: 0.4 }}
+                        >{c}</span>
+                      );
+                    })}
                   </>
                 );
               })()}

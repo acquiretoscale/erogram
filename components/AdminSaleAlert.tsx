@@ -62,9 +62,9 @@ export default function AdminSaleAlert() {
         if (!publicKey) return;
 
         const sub = await reg.pushManager.subscribe({
-          userNotifications: true,
+          userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(publicKey),
-        } as any);
+        });
 
         const token = localStorage.getItem('token');
         await fetch('/api/admin/push/subscribe', {

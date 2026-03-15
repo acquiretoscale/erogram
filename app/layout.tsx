@@ -108,18 +108,13 @@ export default async function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                  for (var i = 0; i < registrations.length; i++) {
-                    registrations[i].unregister();
-                  }
-                });
-                if (typeof caches !== 'undefined') {
-                  caches.keys().then(function(names) {
-                    for (var i = 0; i < names.length; i++) {
-                      caches.delete(names[i]);
-                    }
+                navigator.serviceWorker.register('/sw.js')
+                  .then(function(reg) {
+                    console.log('[SW] Registered, scope:', reg.scope);
+                  })
+                  .catch(function(err) {
+                    console.warn('[SW] Registration failed:', err);
                   });
-                }
               }
             `,
           }}
