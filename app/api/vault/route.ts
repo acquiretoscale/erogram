@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
   if (featuredOnly) baseQuery.showOnVaultTeaser = true;
 
   if (isPreview) {
+    baseQuery.showOnVaultTeaser = true;
     baseQuery.image = { $nin: [null, '', '/assets/image.jpg', '/assets/placeholder-no-image.png'] };
     baseQuery.memberCount = { $gt: 0 };
   }

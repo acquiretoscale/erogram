@@ -220,10 +220,9 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
 
   /* ━━━ NON-PREMIUM LOCKED VIEW ━━━ */
   if (!isPremium) {
-    const photoOnlyGroups = groups.filter((group) => {
-      if (!group.image || group.image === '/assets/image.jpg' || group.image === '/assets/placeholder-no-image.png') return false;
-      return !!group.showOnVaultTeaser;
-    });
+    const photoOnlyGroups = groups.filter((group) =>
+      !!group.image && group.image !== '/assets/image.jpg' && group.image !== '/assets/placeholder-no-image.png'
+    );
     const vaultLiveCount = vaultTotal ?? total;
     const totalGroupCount = 4000 + (vaultLiveCount || 0);
     const fmtTotal = totalGroupCount.toLocaleString();
