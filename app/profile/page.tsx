@@ -254,24 +254,37 @@ function ProfileContent() {
               </div>
 
               {!effectivePremium && (
-                <div className="mb-6 p-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.04] text-center">
-                  <p className="text-white/70 text-sm mb-2">Unlock the <strong className="text-amber-400">Premium Vault</strong>, unlimited bookmarks &amp; more</p>
-                  <a href="/premium" target="_blank" rel="noopener noreferrer" className="inline-block px-5 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-white text-sm font-bold transition">
-                    Upgrade to Premium
-                  </a>
-                </div>
+                <a
+                  href="/premium"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mb-6 flex items-center justify-between gap-4 w-full rounded-2xl px-5 py-4 transition-all duration-300 hover:scale-[1.01] active:scale-[0.98]"
+                  style={{
+                    background: 'linear-gradient(135deg, #d4a94c 0%, #e8c66a 30%, #c9973a 60%, #b8860b 100%)',
+                    border: '2px solid rgba(232,198,106,0.5)',
+                    boxShadow: '0 0 30px rgba(201,151,58,0.25), 0 6px 16px rgba(0,0,0,0.3)',
+                    color: '#1a1000',
+                  }}
+                >
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.2em] opacity-70 mb-0.5">Members Only</p>
+                    <p className="text-[17px] font-black uppercase tracking-tight leading-none">Unlock the Vault</p>
+                    <p className="text-[11px] font-semibold mt-0.5 opacity-75">4,000+ exclusive groups · Instant access</p>
+                  </div>
+                  <div className="shrink-0 flex items-center gap-2">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1a1000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a1000" strokeWidth="3" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                  </div>
+                </a>
               )}
 
-              <div className="text-center">
+              <div className="text-center mt-2">
                 <button
                   onClick={handleDeleteProfile}
-                  className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-bold"
+                  className="text-[11px] text-white/20 hover:text-white/40 transition-colors underline underline-offset-2"
                 >
-                  Delete Profile
+                  Delete account
                 </button>
-                <p className="text-sm text-[#999] mt-2">
-                  This will sign you out of your account.
-                </p>
               </div>
             </motion.div>
           ) : activeTab === 'saved' ? (
