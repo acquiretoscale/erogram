@@ -488,41 +488,35 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
     slotGroups.get(ts)!.push(c);
   }
 
-  // For each of the 4 slots, randomly pick one variant (A/B test)
-  const slotPicks: (any | null)[] = [null, null, null, null];
+  // Slots 1-3: pick one random variant (A/B test).
+  // Slot 4: return ALL active campaigns so the frontend can cycle through them as the user scrolls.
+  const results: any[] = [];
   for (let s = 1; s <= 4; s++) {
     const variants = slotGroups.get(s);
-    if (variants && variants.length > 0) {
-      slotPicks[s - 1] = variants[Math.floor(Math.random() * variants.length)];
-    }
-  }
+    if (!variants || variants.length === 0) continue;
 
-  // Return one campaign per slot with its tierSlot preserved.
-  // Front-end buildFeedItems handles placement: slot 1 → top section,
-  // slot 2 → after 2 groups, slot 3 → after 7, slot 4 → after 12 + loops.
-  const results: any[] = [];
-  for (let s = 0; s < 4; s++) {
-    const pick = slotPicks[s];
-    if (!pick) continue;
-    results.push({
-      _id: pick._id.toString(),
-      creative: pick.creative,
-      destinationUrl: pick.destinationUrl,
-      slot: pick.slot,
-      position: s + 1,
-      tierSlot: (pick as any).tierSlot,
-      description: pick.description || '',
-      category: pick.category || 'All',
-      country: pick.country || 'All',
-      buttonText: pick.buttonText || 'Visit Site',
-      name: pick.name,
-      videoUrl: pick.videoUrl || '',
-      badgeText: pick.badgeText || '',
-      verified: Boolean(pick.verified),
-      adType: pick.adType || 'advertiser',
-      premiumCategory: pick.premiumCategory || '',
-      socialProof: pick.socialProof || 'random',
-    });
+    const picks = s === 4 ? variants : [variants[Math.floor(Math.random() * variants.length)]];
+    for (const pick of picks) {
+      results.push({
+        _id: pick._id.toString(),
+        creative: pick.creative,
+        destinationUrl: pick.destinationUrl,
+        slot: pick.slot,
+        position: s,
+        tierSlot: (pick as any).tierSlot,
+        description: pick.description || '',
+        category: pick.category || 'All',
+        country: pick.country || 'All',
+        buttonText: pick.buttonText || 'Visit Site',
+        name: pick.name,
+        videoUrl: pick.videoUrl || '',
+        badgeText: pick.badgeText || '',
+        verified: Boolean(pick.verified),
+        adType: pick.adType || 'advertiser',
+        premiumCategory: pick.premiumCategory || '',
+        socialProof: pick.socialProof || 'random',
+      });
+    }
   }
 
   // For premium campaigns, load top featured groups for their category.
