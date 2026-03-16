@@ -1,0 +1,12 @@
+{
+  "/api/auth/me/route": "app/api/auth/me/route.js",
+  "/api/templates/route": "app/api/templates/route.js",
+  "/api/settings/cta/route": "app/api/settings/cta/route.js",
+  "/api/media/route": "app/api/media/route.js",
+  "/api/tracking/route": "app/api/tracking/route.js",
+  "/(dashboard)/stats/page": "app/(dashboard)/stats/page.js",
+  "/(dashboard)/templates/page": "app/(dashboard)/templates/page.js",
+  "/(dashboard)/schedules/page": "app/(dashboard)/schedules/page.js",
+  "/(dashboard)/media/page": "app/(dashboard)/media/page.js",
+  "/(dashboard)/logs/page": "app/(dashboard)/logs/page.js"
+}
