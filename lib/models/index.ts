@@ -720,6 +720,19 @@ export const manualRevenueSchema = new Schema(
 manualRevenueSchema.index({ paidAt: -1 });
 manualRevenueSchema.index({ category: 1 });
 
+// Premium Pricing Schema (per-plan documents for Stars-based pricing)
+export const premiumPricingSchema = new Schema(
+  {
+    plan: { type: String, required: true, unique: true },
+    starsPrice: { type: Number, required: true },
+    starsOriginalPrice: { type: Number, required: true },
+    enabled: { type: Boolean, default: true },
+    discountLabel: { type: String, default: '' },
+    bestseller: { type: Boolean, default: false },
+  },
+  { timestamps: true }
+);
+
 // Export models
 export const Vote = models.Vote || model('Vote', voteSchema);
 export const User = models.User || model('User', userSchema);
@@ -750,3 +763,4 @@ export const BookmarkFolder = models.BookmarkFolder || model('BookmarkFolder', b
 export const AdminPushSubscription = models.AdminPushSubscription || model('AdminPushSubscription', adminPushSubscriptionSchema);
 export const PremiumConfig = models.PremiumConfig || model('PremiumConfig', premiumConfigSchema);
 export const ManualRevenue = models.ManualRevenue || model('ManualRevenue', manualRevenueSchema);
+export const PremiumPricing = models.PremiumPricing || model('PremiumPricing', premiumPricingSchema);
