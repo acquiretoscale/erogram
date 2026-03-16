@@ -1,347 +1,441 @@
 import { NextRequest, NextResponse } from 'next/server';
-import mongoose from 'mongoose';
+import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
-import { authenticateUser } from '@/lib/auth';
-import { Bot, CampaignClick, Group, ManualRevenue, Post, PremiumEvent, Report, User } from '@/lib/models';
+import {
+  User,
+  Group,
+  Bot,
+  Post,
+  Report,
+  PremiumEvent,
+  PremiumConfig,
+  CampaignClick,
+  ManualRevenue,
+  StarsRate,
+  Bookmark,
+  BookmarkFolder,
+} from '@/lib/models';
 
-type TrendPoint = { date: string; value: number };
+export const dynamic = 'force-dynamic';
 
-const STARS_PAID_EVENT = 'payment_success';
-const PAY_BOT_TOKEN = process.env.TELEGRAM_PAYMENT_BOT_TOKEN || '';
+const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
-// ── Stars helpers (mirrors stars-metrics/route.ts exactly) ────────────────────
-
-type StarTx = {
-  id: string;
-  date: number;
-  amount: number;
-  source?: { transaction_type?: string };
-};
-
-async function fetchStarsTxs(): Promise<StarTx[]> {
-  if (!PAY_BOT_TOKEN) return [];
-  const all: StarTx[] = [];
-  let offset = '0';
-  for (let page = 0; page < 200; page++) {
-    let raw: { ok?: boolean; result?: { transactions?: StarTx[]; next_offset?: string } };
-    try {
-      const res = await fetch(
-        `https://api.telegram.org/bot${PAY_BOT_TOKEN}/getStarTransactions?offset=${encodeURIComponent(offset)}&limit=100`,
-        { method: 'GET', cache: 'no-store' }
-      );
-      raw = await res.json();
-    } catch {
-      break;
-    }
-    if (!raw?.ok) break;
-    const txs: StarTx[] = raw?.result?.transactions ?? [];
-    all.push(...txs);
-    const next = raw?.result?.next_offset;
-    if (typeof next === 'string' && next.length && next !== offset) {
-      offset = next;
-      if (txs.length === 0) break;
-      continue;
-    }
-    const n = Number(offset);
-    if (Number.isFinite(n) && txs.length === 100) { offset = String(n + 100); continue; }
-    break;
-  }
-  return all;
-}
-
-async function fetchStarsUsdRate(): Promise<number> {
+async function authenticateAdmin(token: string) {
+  if (!token) return null;
   try {
-    const res = await fetch('https://bes-dev.github.io/telegram_stars_rates/api.json', {
-      method: 'GET', cache: 'no-store',
-    });
-    const d = await res.json();
-    if (typeof d?.usdt_per_star === 'number' && Number.isFinite(d.usdt_per_star)) {
-      return d.usdt_per_star;
-    }
-  } catch { /* fall through */ }
-  return 0.015;
-}
-
-function dayKeyUTC(unixSeconds: number): string {
-  const d = new Date(unixSeconds * 1000);
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const dd = String(d.getUTCDate()).padStart(2, '0');
-  return `${d.getUTCFullYear()}-${mm}-${dd}`;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-function utcDayKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-function getLastNDaysUtc(n: number): string[] {
-  const out: string[] = [];
-  const now = new Date();
-  for (let i = n - 1; i >= 0; i--) {
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - i));
-    out.push(utcDayKey(d));
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
+    await connectDB();
+    const user = await User.findById(decoded.id).lean();
+    if (user && (user as any).isAdmin) return user;
+  } catch {
+    return null;
   }
-  return out;
+  return null;
 }
 
-function mergeTrend(days: string[], rows: Array<{ _id: string; count: number }>): TrendPoint[] {
-  const counts = new Map<string, number>();
-  for (const row of rows) counts.set(row._id, row.count || 0);
-  return days.map((date) => ({ date, value: counts.get(date) || 0 }));
+function fmtDateKey(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function buildTrend(raw: { _id: string; value: number }[], days = 30) {
+  const map = new Map(raw.map((r) => [r._id, r.value]));
+  const result: { date: string; value: number }[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    result.push({ date: fmtDateKey(d), value: map.get(fmtDateKey(d)) || 0 });
+  }
+  return result;
 }
 
 export async function GET(req: NextRequest) {
-  const user = await authenticateUser(req);
-  if (!user?.isAdmin) {
-    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-  }
+  const start = Date.now();
+  try {
+    const auth = req.headers.get('authorization');
+    if (!auth?.startsWith('Bearer ')) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+    const admin = await authenticateAdmin(auth.replace('Bearer ', ''));
+    if (!admin) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-  await connectDB();
+    await connectDB();
 
-  const now = new Date();
-  const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const last30Days = getLastNDaysUtc(30);
-  const since30dUtc = new Date(`${last30Days[0]}T00:00:00.000Z`);
+    const now       = new Date();
+    const _24h      = new Date(now.getTime() - 86400000);
+    const _30d      = new Date(); _30d.setDate(_30d.getDate() - 30); _30d.setHours(0,0,0,0);
+    const _30dStr   = fmtDateKey(_30d);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const dbPingStart = Date.now();
-  if (mongoose.connection.db) {
-    await mongoose.connection.db.admin().command({ ping: 1 });
-  }
-  const dbLatencyMs = Date.now() - dbPingStart;
+    const [
+      pendingGroups, pendingBots, pendingReviews, pendingReports,
+      totalAdClicks, adClicks24h,
+      totalUsers, totalPageviews,
+      // All premium users (the source of truth)
+      allPremiumUsers,
+      // All PremiumEvent payment_success (for cross-referencing timing)
+      allPaymentEvents,
+      // All paid groups & bots
+      allPaidGroups, allPaidBots,
+      // Trends
+      subsTrend30d, adClicksTrend30d, trafficTrend30d, newUsersTrend30d, usersByCountry30d,
+      // Config & rates
+      latestRate, premiumConfig,
+      // Manual revenue by advertiser
+      manualByAdvertiser,
+      manualTotal,
+      manualThisMonth,
+      totalBookmarks, totalBookmarkFolders,
+    ] = await Promise.all([
+      Group.countDocuments({ status: 'pending' }),
+      Bot.countDocuments({ status: 'pending' }),
+      Post.countDocuments({ status: 'pending' }),
+      Report.countDocuments({ status: 'pending' }),
+      CampaignClick.countDocuments(),
+      CampaignClick.countDocuments({ clickedAt: { $gte: _24h } }),
+      User.countDocuments(),
+      Group.aggregate([{ $group: { _id: null, total: { $sum: '$views' } } }]),
 
-  // Fetch Stars txs + rate in parallel with DB queries — same source as Premium section
-  const [starsTxs, starsUsdRate] = await Promise.all([
-    fetchStarsTxs(),
-    fetchStarsUsdRate(),
-  ]);
+      // ALL users who are or were premium
+      User.find({ $or: [{ premium: true }, { premiumSince: { $ne: null } }] })
+        .sort({ premiumSince: -1 })
+        .select('username firstName country city photoUrl telegramUsername premium premiumPlan premiumSince premiumExpiresAt paymentMethod')
+        .lean(),
 
-  // Earnings from actual invoice_payment Stars transactions (identical to stars-metrics)
-  const todayKey = dayKeyUTC(Math.floor(now.getTime() / 1000));
-  let starsLifetime = 0;
-  let starsToday = 0;
-  for (const tx of starsTxs) {
-    if (tx?.source?.transaction_type !== 'invoice_payment') continue;
-    const stars = Number(tx.amount || 0);
-    starsLifetime += stars;
-    if (dayKeyUTC(Number(tx.date || 0)) === todayKey) starsToday += stars;
-  }
-  const earningsLifetimeUsd = starsLifetime * starsUsdRate;
-  const earningsTodayUsd = starsToday * starsUsdRate;
-  const earningsSource = PAY_BOT_TOKEN ? 'stars_api' : 'unavailable';
+      // All payment events (for date cross-reference)
+      PremiumEvent.find({ event: { $in: ['payment_success', 'crypto_payment_success'] } })
+        .sort({ createdAt: -1 })
+        .select('userId plan paymentMethod createdAt')
+        .lean(),
 
-  // Manual revenue (partner deals, affiliates, ad sales)
-  const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const manualEntries = await ManualRevenue.find({}).select('amount paidAt').lean() as any[];
-  let manualRevenueLifetime = 0;
-  let manualRevenueThisMonth = 0;
-  for (const e of manualEntries) {
-    manualRevenueLifetime += e.amount || 0;
-    if (new Date(e.paidAt) >= startOfMonth) manualRevenueThisMonth += e.amount || 0;
-  }
+      // All paid groups
+      Group.find({ paidBoost: true })
+        .sort({ createdAt: -1 })
+        .select('name paidBoostStars createdBy createdByUsername createdAt')
+        .populate('createdBy', 'username firstName country city photoUrl telegramUsername')
+        .lean(),
 
-  const [
-    paidSubs24h,
-    paidSubsLifetime,
-    paidSubs30Rows,
-    users24h,
-    usersLifetime,
-    users30Rows,
-    groups24h,
-    groupsLifetime,
-    groups30Rows,
-    adClicks24h,
-    adClicksLifetime,
-    adClicks30Rows,
-    totalViewsLifetimeRows,
-    views30Rows,
-    pendingGroups,
-    pendingBots,
-    pendingReviews,
-    pendingReports,
-  ] = await Promise.all([
-    PremiumEvent.countDocuments({ event: STARS_PAID_EVENT, createdAt: { $gte: since24h } }),
-    PremiumEvent.countDocuments({ event: STARS_PAID_EVENT }),
-    PremiumEvent.aggregate([
-      { $match: { event: STARS_PAID_EVENT, createdAt: { $gte: since30dUtc } } },
-      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'UTC' } }, count: { $sum: 1 } } },
-      { $sort: { _id: 1 } },
-    ]),
+      // All paid bots
+      Bot.find({ paidBoost: true })
+        .sort({ createdAt: -1 })
+        .select('name paidBoostStars createdBy createdByUsername createdAt')
+        .populate('createdBy', 'username firstName country city photoUrl telegramUsername')
+        .lean(),
 
-    User.countDocuments({ createdAt: { $gte: since24h } }),
-    User.countDocuments({}),
-    User.aggregate([
-      { $match: { createdAt: { $gte: since30dUtc } } },
-      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'UTC' } }, count: { $sum: 1 } } },
-      { $sort: { _id: 1 } },
-    ]),
+      // Paid subs trend 30d
+      PremiumEvent.aggregate([
+        { $match: { event: { $in: ['payment_success', 'crypto_payment_success'] }, createdAt: { $gte: _30d } } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, value: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      // Ad clicks trend 30d
+      CampaignClick.aggregate([
+        { $match: { clickedAt: { $gte: _30d } } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$clickedAt' } }, value: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      // Traffic trend 30d
+      Group.aggregate([
+        { $match: { status: 'approved' } },
+        { $project: { vbd: { $objectToArray: '$viewsByDay' } } },
+        { $unwind: '$vbd' },
+        { $match: { 'vbd.k': { $gte: _30dStr } } },
+        { $group: { _id: '$vbd.k', value: { $sum: '$vbd.v' } } },
+        { $sort: { _id: 1 } },
+      ]),
 
-    Group.countDocuments({ status: { $ne: 'deleted' }, createdAt: { $gte: since24h } }),
-    Group.countDocuments({ status: { $ne: 'deleted' } }),
-    Group.aggregate([
-      { $match: { status: { $ne: 'deleted' }, createdAt: { $gte: since30dUtc } } },
-      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'UTC' } }, count: { $sum: 1 } } },
-      { $sort: { _id: 1 } },
-    ]),
+      // All new user registrations per day (30d)
+      User.aggregate([
+        { $match: { createdAt: { $gte: _30d } } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, value: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      // Users by country (last 30d, top 20)
+      User.aggregate([
+        { $match: { createdAt: { $gte: _30d }, country: { $ne: null } } },
+        { $group: { _id: '$country', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 10 },
+      ]),
 
-    CampaignClick.countDocuments({ clickedAt: { $gte: since24h } }),
-    CampaignClick.countDocuments({}),
-    CampaignClick.aggregate([
-      { $match: { clickedAt: { $gte: since30dUtc } } },
-      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$clickedAt', timezone: 'UTC' } }, count: { $sum: 1 } } },
-      { $sort: { _id: 1 } },
-    ]),
+      StarsRate.findOne().sort({ fetchedAt: -1 }).lean(),
+      PremiumConfig.findOne({ key: 'default' }).lean(),
 
-    Group.aggregate([
-      { $match: { status: { $ne: 'deleted' } } },
-      { $group: { _id: null, total: { $sum: '$views' } } },
-    ]),
-    Group.aggregate([
-      { $match: { status: { $ne: 'deleted' } } },
-      { $project: { viewsDay: { $objectToArray: '$viewsByDay' } } },
-      { $unwind: '$viewsDay' },
-      { $match: { 'viewsDay.k': { $gte: last30Days[0], $lte: last30Days[last30Days.length - 1] } } },
-      { $group: { _id: '$viewsDay.k', count: { $sum: '$viewsDay.v' } } },
-      { $sort: { _id: 1 } },
-    ]),
+      // Manual revenue grouped by clientName (each advertiser)
+      ManualRevenue.aggregate([
+        { $group: { _id: '$clientName', total: { $sum: '$amount' }, count: { $sum: 1 } } },
+        { $sort: { total: -1 } },
+      ]),
+      ManualRevenue.aggregate([{ $group: { _id: null, total: { $sum: '$amount' } } }]),
+      // Manual revenue this month
+      ManualRevenue.aggregate([
+        { $match: { paidAt: { $gte: monthStart } } },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ]),
+      Bookmark.countDocuments(),
+      BookmarkFolder.countDocuments(),
+    ]);
 
-    Group.countDocuments({ status: 'pending' }),
-    Bot.countDocuments({ status: 'pending' }),
-    Post.countDocuments({ status: 'pending' }),
-    Report.countDocuments({ status: 'pending' }),
-  ]);
+    const starsUsdRate = (latestRate as any)?.usdtPerStar || 0;
+    const rate = starsUsdRate || 0.013;
+    const totalPageviewsLifetime = totalPageviews[0]?.total || 0;
+    const manualLifetime  = manualTotal[0]?.total || 0;
+    const manualThisMonthUsd = (manualThisMonth as any)[0]?.total || 0;
 
-  const totalViewsLifetime = Number(totalViewsLifetimeRows?.[0]?.total || 0);
+    const cfg = premiumConfig as any;
+    // Stars = actual Stars the user paid (from PremiumConfig)
+    // USD   = actual fiat price charged (from PremiumConfig)
+    // These are NEVER derived from each other — they are independent values.
+    const planStars: Record<string, number> = {
+      monthly:   cfg?.monthly?.starsAmount   || 865,
+      quarterly: cfg?.quarterly?.starsAmount  || 1332,
+      yearly:    cfg?.yearly?.starsAmount     || 1934,
+      lifetime:  0, // lifetime plans are typically gifted / manually activated
+    };
+    const planUsd: Record<string, number> = {
+      monthly:   cfg?.monthly?.priceUsd   || 12.97,
+      quarterly: cfg?.quarterly?.priceUsd  || 19.97,
+      yearly:    cfg?.yearly?.priceUsd     || 29,
+      lifetime:  cfg?.lifetime?.priceUsd   || 0,
+    };
 
-  const monitoringAlerts: Array<{
-    level: 'critical' | 'warning' | 'info' | 'ok';
-    title: string;
-    description: string;
-    actionUrl?: string;
-  }> = [];
+    // Build event lookup: userId -> earliest payment event date
+    const eventsByUser = new Map<string, { createdAt: Date; plan: string; paymentMethod: string }[]>();
+    for (const ev of allPaymentEvents as any[]) {
+      if (!ev.userId) continue;
+      const uid = ev.userId.toString();
+      if (!eventsByUser.has(uid)) eventsByUser.set(uid, []);
+      eventsByUser.get(uid)!.push({ createdAt: ev.createdAt, plan: ev.plan, paymentMethod: ev.paymentMethod });
+    }
 
-  const publicChannel = (process.env.TELEGRAM_CHANNEL_ID || '').trim();
-  const plusChannel = (process.env.EROGRAM_PLUS_CHANNEL_ID || '').trim();
+    type SaleEntry = {
+      _id: string;
+      type: 'subscription' | 'group_boost' | 'bot_boost';
+      label: string;
+      plan: string | null;
+      paymentMethod: string;
+      stars: number;
+      usd: number;
+      createdAt: string;
+      buyer: {
+        username: string;
+        firstName: string | null;
+        country: string | null;
+        city: string | null;
+        photoUrl: string | null;
+        telegramUsername: string | null;
+      };
+    };
 
-  if (!process.env.MONGODB_URI) {
-    monitoringAlerts.push({
-      level: 'critical',
-      title: 'Database config missing',
-      description: 'MONGODB_URI is not configured.',
-      actionUrl: '/admin/settings',
-    });
-  }
+    const sales: SaleEntry[] = [];
+    const seenUserIds = new Set<string>();
 
-  if (publicChannel && plusChannel && publicChannel === plusChannel) {
-    monitoringAlerts.push({
-      level: 'critical',
-      title: 'Premium leak risk detected',
-      description: 'Public and Premium Telegram channel IDs are identical.',
-      actionUrl: '/admin/settings',
-    });
-  }
+    // 1) Premium users — the source of truth
+    for (const u of allPremiumUsers as any[]) {
+      const uid = u._id.toString();
+      seenUserIds.add(uid);
 
-  const pendingTotal = pendingGroups + pendingBots + pendingReviews + pendingReports;
-  if (pendingTotal >= 80) {
-    monitoringAlerts.push({
-      level: 'critical',
-      title: 'Moderation backlog is high',
-      description: `${pendingTotal} items are waiting moderation.`,
-      actionUrl: '/admin/pending-groups',
-    });
-  } else if (pendingTotal >= 30) {
-    monitoringAlerts.push({
-      level: 'warning',
-      title: 'Moderation backlog growing',
-      description: `${pendingTotal} items are waiting moderation.`,
-      actionUrl: '/admin/pending-groups',
-    });
-  }
+      const plan = u.premiumPlan || 'monthly';
+      const events = eventsByUser.get(uid);
 
-  if (dbLatencyMs > 800) {
-    monitoringAlerts.push({
-      level: 'warning',
-      title: 'Database latency elevated',
-      description: `Current DB ping is ${dbLatencyMs}ms.`,
-    });
-  }
+      // Use premiumSince (the real activation date), fallback to event date
+      let saleDate: Date;
+      if (u.premiumSince) {
+        saleDate = new Date(u.premiumSince);
+      } else if (events?.length) {
+        saleDate = new Date(events[0].createdAt);
+      } else {
+        saleDate = new Date(u.createdAt || Date.now());
+      }
 
-  if (paidSubs24h === 0) {
-    monitoringAlerts.push({
-      level: 'info',
-      title: 'No premium payments in last 24h',
-      description: 'Review premium funnel and checkout flow.',
-      actionUrl: '/admin/premium',
-    });
-  }
+      const method = u.paymentMethod || events?.[0]?.paymentMethod || 'stars';
+      const stars  = planStars[plan] || 0;
+      const usd    = planUsd[plan] || stars * rate;
 
-  if (adClicks24h === 0) {
-    monitoringAlerts.push({
-      level: 'info',
-      title: 'No ad clicks in last 24h',
-      description: 'Check active campaigns and ad placement.',
-      actionUrl: '/admin/adverts',
-    });
-  }
+      sales.push({
+        _id: uid,
+        type: 'subscription',
+        label: `Premium ${plan}`,
+        plan,
+        paymentMethod: method,
+        stars,
+        usd,
+        createdAt: saleDate.toISOString(),
+        buyer: {
+          username:          u.username || 'Unknown',
+          firstName:         u.firstName || null,
+          country:           u.country || null,
+          city:              u.city || null,
+          photoUrl:          u.photoUrl || null,
+          telegramUsername:   u.telegramUsername || null,
+        },
+      });
+    }
 
-  if (monitoringAlerts.length === 0) {
-    monitoringAlerts.push({
-      level: 'ok',
-      title: 'All systems look healthy',
-      description: 'No urgent issues detected right now.',
-    });
-  }
+    // 2) Payment events for users who DON'T appear in premium users (edge case: expired, cancelled)
+    for (const ev of allPaymentEvents as any[]) {
+      if (!ev.userId) continue;
+      const uid = ev.userId.toString();
+      if (seenUserIds.has(uid)) continue;
+      seenUserIds.add(uid);
+      // Fetch user info
+      const u = await User.findById(uid).select('username firstName country city photoUrl telegramUsername').lean() as any;
+      const plan = ev.plan || 'monthly';
+      sales.push({
+        _id: uid + '_ev',
+        type: 'subscription',
+        label: `Premium ${plan}`,
+        plan,
+        paymentMethod: ev.paymentMethod || 'stars',
+        stars: planStars[plan] || 0,
+        usd: planUsd[plan] || 0,
+        createdAt: new Date(ev.createdAt).toISOString(),
+        buyer: {
+          username:          u?.username || 'Unknown',
+          firstName:         u?.firstName || null,
+          country:           u?.country || null,
+          city:              u?.city || null,
+          photoUrl:          u?.photoUrl || null,
+          telegramUsername:   u?.telegramUsername || null,
+        },
+      });
+    }
 
-  return NextResponse.json({
-    generatedAt: now.toISOString(),
-    headline: {
-      totalPageviewsLifetime: totalViewsLifetime,
-      earningsTodayUsd,
-      earningsLifetimeUsd,
-      starsLifetime,
-      starsUsdRate,
-      earningsSource,
-      manualRevenueLifetime,
-      manualRevenueThisMonth,
-      totalEarningsLifetimeUsd: earningsLifetimeUsd + manualRevenueLifetime,
-      totalEarningsThisMonthUsd: earningsTodayUsd + manualRevenueThisMonth,
-    },
-    kpis: {
-      paidSubs: {
-        last24h: paidSubs24h,
-        lifetime: paidSubsLifetime,
-        trend30d: mergeTrend(last30Days, paidSubs30Rows as Array<{ _id: string; count: number }>),
+    // 3) Paid group insertions
+    for (const g of allPaidGroups as any[]) {
+      const starsAmt = g.paidBoostStars || 0;
+      const buyer = g.createdBy || {};
+      sales.push({
+        _id: g._id.toString(),
+        type: 'group_boost',
+        label: g.name || 'Group',
+        plan: null,
+        paymentMethod: 'stars',
+        stars: starsAmt,
+        usd: starsAmt * rate,
+        createdAt: new Date(g.createdAt).toISOString(),
+        buyer: {
+          username:        buyer.username || g.createdByUsername || 'Unknown',
+          firstName:       buyer.firstName || null,
+          country:         buyer.country || null,
+          city:            buyer.city || null,
+          photoUrl:        buyer.photoUrl || null,
+          telegramUsername: buyer.telegramUsername || null,
+        },
+      });
+    }
+
+    // 4) Paid bot boosts
+    for (const b of allPaidBots as any[]) {
+      const starsAmt = b.paidBoostStars || 0;
+      const buyer = b.createdBy || {};
+      sales.push({
+        _id: b._id.toString(),
+        type: 'bot_boost',
+        label: b.name || 'Bot',
+        plan: null,
+        paymentMethod: 'stars',
+        stars: starsAmt,
+        usd: starsAmt * rate,
+        createdAt: new Date(b.createdAt).toISOString(),
+        buyer: {
+          username:        buyer.username || b.createdByUsername || 'Unknown',
+          firstName:       buyer.firstName || null,
+          country:         buyer.country || null,
+          city:            buyer.city || null,
+          photoUrl:        buyer.photoUrl || null,
+          telegramUsername: buyer.telegramUsername || null,
+        },
+      });
+    }
+
+    sales.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    const salesTotalStars = sales.reduce((s, x) => s + x.stars, 0);
+    const salesTotalUsd   = sales.reduce((s, x) => s + x.usd, 0);
+    const sales24h        = sales.filter((s) => new Date(s.createdAt).getTime() >= _24h.getTime());
+    const sales24hUsd     = sales24h.reduce((s, x) => s + x.usd, 0);
+    const salesThisMonth  = sales.filter((s) => new Date(s.createdAt).getTime() >= monthStart.getTime());
+    const starsThisMonthUsd = salesThisMonth
+      .filter(s => s.type === 'subscription').reduce((a, s) => a + s.usd, 0)
+      + salesThisMonth.filter(s => s.type !== 'subscription').reduce((a, s) => a + s.stars * rate, 0);
+    const totalThisMonthUsd = starsThisMonthUsd + manualThisMonthUsd;
+
+    // Pie data: individual advertisers from ManualRevenue
+    const advertisers = (manualByAdvertiser as any[]).map((a) => ({
+      name:  a._id || 'Unnamed',
+      total: a.total || 0,
+      count: a.count || 0,
+    }));
+
+    const subRevenue = sales.filter(s => s.type === 'subscription').reduce((a, s) => a + s.usd, 0);
+    const groupRevenue = sales.filter(s => s.type === 'group_boost').reduce((a, s) => a + s.usd, 0);
+    const botRevenue = sales.filter(s => s.type === 'bot_boost').reduce((a, s) => a + s.usd, 0);
+
+    const pendingTotal = pendingGroups + pendingBots + pendingReviews + pendingReports;
+    const dbLatencyMs  = Date.now() - start;
+
+    const alerts: { level: string; title: string; description: string; actionUrl?: string }[] = [];
+    if (pendingGroups > 20) alerts.push({ level: 'warning', title: 'High Pending Groups', description: `${pendingGroups} groups waiting`, actionUrl: '/admin/groups?tab=pending' });
+    if (pendingReports > 5) alerts.push({ level: 'critical', title: 'Unresolved Reports', description: `${pendingReports} reports`, actionUrl: '/admin/reports' });
+    if (pendingTotal === 0) alerts.push({ level: 'ok', title: 'All Clear', description: 'Queue is empty' });
+
+    // earningsLifetimeUsd uses per-sale USD values:
+    //   subscriptions → planUsd[plan]   (fixed price, e.g. $12.97)
+    //   boosts        → paidBoostStars × rate
+    // Never re-derive from Stars total to avoid rate-conversion drift.
+    const starsEarningsUsd = sales
+      .filter(s => s.type === 'subscription')
+      .reduce((a, s) => a + s.usd, 0)
+      + sales.filter(s => s.type !== 'subscription').reduce((a, s) => a + s.stars * rate, 0);
+
+    return NextResponse.json({
+      generatedAt: now.toISOString(),
+      headline: {
+        totalPageviewsLifetime,
+        earningsLifetimeUsd: starsEarningsUsd,
+        starsLifetime: salesTotalStars,   // actual Stars paid by users
+        starsUsdRate,
+        manualRevenueLifetime: manualLifetime,
+        totalEarningsLifetimeUsd: starsEarningsUsd + manualLifetime,
+        totalRevenueThisMonth: totalThisMonthUsd,
+        starsRevenueThisMonth: starsThisMonthUsd,
+        manualRevenueThisMonth: manualThisMonthUsd,
       },
-      newUsers: {
-        last24h: users24h,
-        lifetime: usersLifetime,
-        trend30d: mergeTrend(last30Days, users30Rows as Array<{ _id: string; count: number }>),
+      kpis: {
+        paidSubs:  { last24h: sales24h.filter(s => s.type === 'subscription').length, lifetime: allPremiumUsers.length, trend30d: buildTrend(subsTrend30d) },
+        adClicks:  { last24h: adClicks24h, lifetime: totalAdClicks, trend30d: buildTrend(adClicksTrend30d) },
+        traffic:   { lifetime: totalPageviewsLifetime, trend30d: buildTrend(trafficTrend30d) },
+        users:     {
+          total: totalUsers - 20,
+          free: totalUsers - 20 - allPremiumUsers.length,
+          newUsersTrend30d: buildTrend(
+            (newUsersTrend30d as {_id:string;value:number}[]).map(d =>
+              d._id === '2026-03-14' ? { ...d, value: Math.max(0, d.value - 20) } : d
+            )
+          ),
+          byCountry30d: (usersByCountry30d as {_id:string;count:number}[]).map(c => ({ country: c._id, count: c.count })),
+        },
+        engagement: { bookmarks: totalBookmarks, folders: totalBookmarkFolders },
       },
-      newGroups: {
-        last24h: groups24h,
-        lifetime: groupsLifetime,
-        trend30d: mergeTrend(last30Days, groups30Rows as Array<{ _id: string; count: number }>),
+      pending: { groups: pendingGroups, bots: pendingBots, reviews: pendingReviews, reports: pendingReports, total: pendingTotal },
+      recentSales: sales,
+      salesSummary: {
+        count: sales.length,
+        totalStars: salesTotalStars,
+        totalUsd: salesTotalUsd,
+        last24hCount: sales24h.length,
+        last24hUsd: sales24hUsd,
       },
-      adClicks: {
-        last24h: adClicks24h,
-        lifetime: adClicksLifetime,
-        trend30d: mergeTrend(last30Days, adClicks30Rows as Array<{ _id: string; count: number }>),
+      earningsByCategory: {
+        subscriptions: subRevenue,
+        groups: groupRevenue,
+        bots: botRevenue,
+        advertisers,
       },
-      totalViews: {
-        lifetime: totalViewsLifetime,
-        trend30d: mergeTrend(last30Days, views30Rows as Array<{ _id: string; count: number }>),
-      },
-    },
-    pending: {
-      groups: pendingGroups,
-      bots: pendingBots,
-      reviews: pendingReviews,
-      reports: pendingReports,
-      total: pendingTotal,
-    },
-    monitoring: {
-      dbLatencyMs,
-      alerts: monitoringAlerts,
-    },
-  });
+      monitoring: { dbLatencyMs, alerts },
+    });
+  } catch (err: any) {
+    console.error('[admin/overview]', err);
+    return NextResponse.json({ message: err.message || 'Internal error' }, { status: 500 });
+  }
 }

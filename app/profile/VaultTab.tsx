@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import BookmarkButton from '@/components/BookmarkButton';
-import VoteButtons from '@/components/VoteButtons';
+import ReportModal from '@/app/groups/ReportModal';
 
 interface VaultGroup {
   _id: string;
@@ -50,7 +50,7 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
     return 'list';
   });
 
-  const [userVotes, setUserVotes] = useState<Record<string, 'like' | 'dislike'>>({});
+  const [reportGroup, setReportGroup] = useState<VaultGroup | null>(null);
   const [lightMode, setLightMode] = useState(() => {
     if (typeof window !== 'undefined') return localStorage.getItem('vault_theme') === 'light';
     return false;
@@ -123,14 +123,7 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
 
   useEffect(() => { loadGroups(true); }, [searchDebounced, category, country, sortBy, featuredOnly]);
 
-  useEffect(() => {
-    if (!isPremium || groups.length === 0 || !token) return;
-    const ids = groups.map(g => g._id).join(',');
-    fetch(`/api/vault/vote?ids=${ids}`, { headers })
-      .then(r => r.json())
-      .then(data => { if (data.votes) setUserVotes(prev => ({ ...prev, ...data.votes })); })
-      .catch(() => {});
-  }, [isPremium, groups.length]);
+  
 
   useEffect(() => {
     if (topLiked.length <= 4) return;
@@ -738,7 +731,14 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
                       {isPremium ? (
                         <>
                           <div className="w-px h-7" style={{ background: '#2e2010' }} />
-                          <VoteButtons groupId={group._id} initialLikes={group.likes || 0} initialDislikes={group.dislikes || 0} userVote={userVotes[group._id] || null} size="sm" />
+                          <button
+                            onClick={e => { e.preventDefault(); e.stopPropagation(); setReportGroup(group); }}
+                            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                            title="Report"
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                            Report
+                          </button>
                           {group.telegramLink && (
                             <a href={group.telegramLink} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="px-3.5 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide transition-all hover:scale-[1.04]" style={{ background: 'linear-gradient(135deg, #c9973a, #a67c2e)', color: '#0d0c0a' }}>Join ↗</a>
                           )}
@@ -911,7 +911,13 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
                     </Wrapper>
                     {isPremium && (
                       <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
-                        <VoteButtons groupId={group._id} initialLikes={group.likes || 0} initialDislikes={group.dislikes || 0} userVote={userVotes[group._id] || null} size="sm" compact />
+                        <button
+                          onClick={e => { e.preventDefault(); e.stopPropagation(); setReportGroup(group); }}
+                          className="flex items-center justify-center w-7 h-7 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/20 transition-all"
+                          title="Report"
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                        </button>
                         <BookmarkButton itemId={group._id} itemType="group" size="sm" />
                       </div>
                     )}
@@ -1005,6 +1011,10 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
         </>
         );
       })()}
+
+      {reportGroup && (
+        <ReportModal group={reportGroup} onClose={() => setReportGroup(null)} />
+      )}
     </div>
   );
 }
