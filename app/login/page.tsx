@@ -16,8 +16,13 @@ const Navbar = dynamic(() => import('@/components/Navbar'), {
 
 export default function LoginPage() {
   const [error, setError] = useState('');
-  const [redirectTo, setRedirectTo] = useState('/groups');
+  const [redirectTo, setRedirectTo] = useState('/profile?tab=saved');
   const router = useRouter();
+
+  const normalizeRedirect = (value: string | null) => {
+    if (!value || !value.startsWith('/')) return '/profile?tab=saved';
+    return value;
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
@@ -25,8 +30,8 @@ export default function LoginPage() {
     if (err === 'google_denied') setError('Google sign-in was cancelled.');
     else if (err === 'google_config') setError('Google sign-in is not configured.');
     else if (err === 'google_token' || err === 'google_userinfo' || err === 'server') setError('Google sign-in failed. Please try again.');
-    const rd = params.get('redirect');
-    if (rd) setRedirectTo(rd);
+    const rd = normalizeRedirect(params.get('redirect'));
+    setRedirectTo(rd);
   }, []);
 
   useEffect(() => {
@@ -45,11 +50,11 @@ export default function LoginPage() {
         localStorage.setItem('photoUrl', res.data.photoUrl);
 
         const params = new URLSearchParams(window.location.search);
-        const rd = params.get('redirect');
+        const rd = normalizeRedirect(params.get('redirect'));
         if (res.data.isAdmin === 'true' || res.data.isAdmin === true) {
           router.push('/admin');
         } else {
-          router.push(rd || '/premiumvault');
+          router.push(rd);
         }
       } catch (err: any) {
         console.error('Telegram login error:', err);
@@ -88,7 +93,7 @@ export default function LoginPage() {
 
           <div className="flex flex-col gap-3">
             <a
-              href={redirectTo === '/premium' ? '/api/auth/google?state=premium' : '/api/auth/google'}
+              href={redirectTo === '/premium' ? '/api/auth/google?state=premium' : `/api/auth/google?state=${encodeURIComponent(`redirect:${redirectTo}`)}`}
               className="w-full px-6 py-3 bg-white/10 hover:bg-white/15 border border-white/10 text-white rounded-lg font-medium transition-all flex items-center justify-center gap-3"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">

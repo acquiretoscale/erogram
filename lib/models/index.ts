@@ -467,6 +467,7 @@ export const campaignSchema = new Schema(
   {
     advertiserId: { type: Schema.Types.ObjectId, ref: 'Advertiser', required: true },
     name: { type: String, required: true },
+    internalName: { type: String, default: '' },
     slot: {
       type: String,
       enum: ['top-banner', 'homepage-hero', 'feed', 'navbar-cta', 'join-cta', 'filter-cta', 'sidebar-feed'],

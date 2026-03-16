@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
 import { BookmarkFolder } from '@/lib/models';
-import { authenticateUser } from '@/lib/auth';
+import { authenticateUser, FREE_FOLDER_LIMIT } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,10 +26,6 @@ export async function POST(req: NextRequest) {
   const user = await authenticateUser(req);
   if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-  if (!user.premium && !user.isAdmin) {
-    return NextResponse.json({ message: 'Premium required to create folders', upgrade: true }, { status: 403 });
-  }
-
   await connectDB();
   const { name } = await req.json();
   if (!name || typeof name !== 'string' || name.trim().length === 0 || name.length > 40) {
@@ -37,8 +33,11 @@ export async function POST(req: NextRequest) {
   }
 
   const count = await BookmarkFolder.countDocuments({ userId: user._id });
-  if (count >= 20) {
-    return NextResponse.json({ message: 'Maximum 20 folders' }, { status: 400 });
+  if (!user.premium && !user.isAdmin && count >= FREE_FOLDER_LIMIT) {
+    return NextResponse.json(
+      { message: 'Free folder limit reached', upgrade: true, limit: FREE_FOLDER_LIMIT },
+      { status: 403 }
+    );
   }
 
   const folder = await BookmarkFolder.create({

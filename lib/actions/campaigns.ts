@@ -49,6 +49,7 @@ export async function getCampaigns(token: string, advertiserId?: string) {
     advertiserId: c.advertiserId?._id?.toString() || '',
     advertiserName: c.advertiserId?.name || 'Unknown',
     name: c.name,
+    internalName: c.internalName || '',
     slot: c.slot,
     creative: c.creative,
     destinationUrl: c.destinationUrl,
@@ -81,6 +82,7 @@ export async function createCampaign(
   data: {
     advertiserId: string;
     name: string;
+    internalName?: string;
     slot: string;
     creative: string;
     destinationUrl: string;
@@ -178,6 +180,7 @@ export async function createCampaign(
   const doc = await Campaign.create({
     advertiserId: data.advertiserId,
     name: data.name,
+    internalName: data.internalName || '',
     slot: data.slot,
     creative: isCtaSlot ? '' : (data.creative || ''),
     destinationUrl: data.destinationUrl,
@@ -217,6 +220,7 @@ export async function updateCampaign(
   id: string,
   data: Partial<{
     name: string;
+    internalName: string;
     slot: string;
     creative: string;
     destinationUrl: string;
@@ -248,6 +252,7 @@ export async function updateCampaign(
   await connectDB();
   const updateData: Record<string, unknown> = {};
   if (data.name != null) updateData.name = String(data.name).trim();
+  if ('internalName' in data) updateData.internalName = String(data.internalName ?? '').trim();
   if (data.slot != null) updateData.slot = String(data.slot).trim().toLowerCase();
   if (data.advertiserId != null) updateData.advertiserId = String(data.advertiserId).trim();
   if (data.creative != null) updateData.creative = data.creative;

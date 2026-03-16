@@ -101,6 +101,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   const [groupReviews, setGroupReviews] = useState<any[]>([]);
   const [showReportModal, setShowReportModal] = useState(false);
   const [selectedGroupForReport, setSelectedGroupForReport] = useState<Group | null>(null);
+  const [bookmarkedMap, setBookmarkedMap] = useState<Record<string, string>>({});
   // Initialize device detection from server props to prevent hydration mismatches
   const [isMobile, setIsMobile] = useState(initialIsMobile);
   const [isTelegram, setIsTelegram] = useState(initialIsTelegram);
@@ -132,6 +133,35 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
       .catch(err => console.error('Failed to fetch featured groups:', err))
       .finally(() => setFeaturedLoading(false));
   }, []);
+
+  const allGroupIds = useMemo(() => {
+    const ids = new Set<string>();
+    regularGroups.forEach(g => ids.add(g._id));
+    topGroups.forEach(g => ids.add(g._id));
+    featuredGroups.forEach(g => ids.add(g._id));
+    if (boostedGroup) ids.add(boostedGroup._id);
+    return Array.from(ids);
+  }, [regularGroups, topGroups, featuredGroups, boostedGroup]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || allGroupIds.length === 0) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const uncheckedIds = allGroupIds.filter(id => !(id in bookmarkedMap));
+    if (uncheckedIds.length === 0) return;
+
+    fetch(`/api/bookmarks/check?ids=${uncheckedIds.join(',')}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.bookmarked) {
+          setBookmarkedMap(prev => ({ ...prev, ...data.bookmarked }));
+        }
+      })
+      .catch(() => {});
+  }, [allGroupIds]);
 
   useEffect(() => {
     // Get username from localStorage on mount
@@ -675,6 +705,8 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                                 isIndex={0}
                                 onOpenReviewModal={openReviewModal}
                                 onOpenReportModal={openReportModal}
+                                isBookmarked={!!bookmarkedMap[finalGroups[0]._id]}
+                                bookmarkId={bookmarkedMap[finalGroups[0]._id] || null}
                               />
                             )}
                             {tier1Campaign && !isTelegram ? (
@@ -692,6 +724,8 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                                 isIndex={1}
                                 onOpenReviewModal={openReviewModal}
                                 onOpenReportModal={openReportModal}
+                                isBookmarked={!!bookmarkedMap[finalGroups[1]._id]}
+                                bookmarkId={bookmarkedMap[finalGroups[1]._id] || null}
                               />
                             ) : null}
                             {(tier1Campaign && !isTelegram ? finalGroups.slice(1, 3) : finalGroups.slice(2, 4)).map((g, i) => (
@@ -701,6 +735,8 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                                 isIndex={i + 2}
                                 onOpenReviewModal={openReviewModal}
                                 onOpenReportModal={openReportModal}
+                                isBookmarked={!!bookmarkedMap[g._id]}
+                                bookmarkId={bookmarkedMap[g._id] || null}
                               />
                             ))}
                           </>
@@ -733,6 +769,8 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                             isFeatured
                             onOpenReviewModal={openReviewModal}
                             onOpenReportModal={openReportModal}
+                            isBookmarked={!!bookmarkedMap[g._id]}
+                            bookmarkId={bookmarkedMap[g._id] || null}
                           />
                         ))}
                       </div>
@@ -764,6 +802,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                   isTelegram={isTelegram}
                   onOpenReviewModal={openReviewModal}
                   onOpenReportModal={openReportModal}
+                  bookmarkedMap={bookmarkedMap}
                 />
               </div>
 

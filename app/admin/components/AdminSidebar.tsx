@@ -2,32 +2,61 @@
 
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+    LayoutDashboard,
+    Users,
+    Star,
+    Bot,
+    BookOpen,
+    MessageSquareWarning,
+    Flag,
+    FileText,
+    Target,
+    Megaphone,
+    Briefcase,
+    Crown,
+    User,
+    Settings,
+    ChevronLeft,
+    ChevronRight,
+    LogOut,
+    ArrowLeft,
+    ClockArrowDown,
+} from 'lucide-react';
 
 interface AdminSidebarProps {
     onLogout: () => void;
     isOpen: boolean;
     onClose: () => void;
+    isCollapsed: boolean;
+    onToggleCollapse: () => void;
 }
 
 const tabs = [
-    { href: '/admin', name: 'Overview', icon: '📊' },
-    { href: '/admin/groups', name: 'Groups Hub', icon: '👥' },
-    { href: '/admin/featured', name: 'Featured', icon: '⭐' },
-    { href: '/admin/bots', name: 'Bots', icon: '🤖' },
-    { href: '/admin/pending-bots', name: 'Pending Bots', icon: '🤖' },
-    { href: '/admin/stories', name: 'Stories', icon: '📖' },
-    { href: '/admin/reviews', name: 'Reviews', icon: '⭐' },
-    { href: '/admin/reports', name: 'Reports', icon: '🚨' },
-    { href: '/admin/articles', name: 'Articles', icon: '📝' },
-    { href: '/admin/cta', name: 'CTA Manager', icon: '🎯' },
-    { href: '/admin/adverts', name: 'Adverts', icon: '📢' },
-    { href: '/admin/advertisers', name: 'Advertisers', icon: '💰' },
-    { href: '/admin/premium', name: 'Premium', icon: '💎' },
-    { href: '/admin/users', name: 'Users', icon: '👤' },
-    { href: '/admin/settings', name: 'Settings', icon: '⚙️' },
+    { href: '/admin',             name: 'Overview',       icon: LayoutDashboard },
+    { href: '/admin/groups',      name: 'Groups Hub',     icon: Users },
+    { href: '/admin/featured',    name: 'Featured',       icon: Star },
+    { href: '/admin/bots',        name: 'Bots',           icon: Bot },
+    { href: '/admin/pending-bots',name: 'Pending Bots',   icon: ClockArrowDown },
+    { href: '/admin/stories',     name: 'Stories',        icon: BookOpen },
+    { href: '/admin/reviews',     name: 'Reviews',        icon: MessageSquareWarning },
+    { href: '/admin/reports',     name: 'Reports',        icon: Flag },
+    { href: '/admin/articles',    name: 'Articles',       icon: FileText },
+    { href: '/admin/cta',         name: 'CTA Manager',    icon: Target },
+    { href: '/admin/adverts',     name: 'Adverts',        icon: Megaphone },
+    { href: '/admin/advertisers', name: 'Advertisers',    icon: Briefcase },
+    { href: '/admin/premium',     name: 'Premium',        icon: Crown },
+    { href: '/admin/users',       name: 'Users',          icon: User },
+    { href: '/admin/settings',    name: 'Settings',       icon: Settings },
 ];
 
-export default function AdminSidebar({ onLogout, isOpen, onClose }: AdminSidebarProps) {
+export default function AdminSidebar({
+    onLogout,
+    isOpen,
+    onClose,
+    isCollapsed,
+    onToggleCollapse,
+}: AdminSidebarProps) {
     const pathname = usePathname();
 
     const isActive = (href: string) => {
@@ -48,59 +77,92 @@ export default function AdminSidebar({ onLogout, isOpen, onClose }: AdminSidebar
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
+                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
                     />
                 )}
             </AnimatePresence>
 
             <aside
-                className={`fixed left-0 top-0 bottom-0 w-64 bg-[#0a0a0a] border-r border-white/5 flex flex-col z-50 transition-transform duration-300 ease-in-out ${
+                className={`fixed left-0 top-0 bottom-0 ${isCollapsed ? 'w-[60px]' : 'w-[220px]'} bg-[#0f0f0f] border-r border-white/[0.06] flex flex-col z-50 transition-all duration-300 ease-in-out ${
                     isOpen ? 'translate-x-0' : '-translate-x-full'
                 } md:translate-x-0`}
             >
-                <div className="p-6 border-b border-white/5 flex justify-between items-center">
-                    <div>
-                        <h1 className="text-2xl font-black gradient-text">Admin Panel</h1>
-                        <p className="text-xs text-[#666] mt-1">v2.0.0</p>
-                    </div>
+                {/* Header */}
+                <div className={`flex items-center border-b border-white/[0.06] h-14 ${isCollapsed ? 'justify-center px-0' : 'px-4 justify-between'}`}>
+                    {!isCollapsed && (
+                        <div>
+                            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-red-500">Erogram</span>
+                            <p className="text-[13px] font-semibold text-white leading-tight">Admin Console</p>
+                        </div>
+                    )}
+                    <button
+                        onClick={onToggleCollapse}
+                        className="hidden md:flex h-7 w-7 items-center justify-center rounded-md text-white/30 hover:text-white hover:bg-white/[0.06] transition-colors"
+                        title={isCollapsed ? 'Expand' : 'Collapse'}
+                    >
+                        {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+                    </button>
                     <button
                         onClick={onClose}
-                        className="md:hidden text-[#666] hover:text-white"
+                        className="md:hidden flex h-7 w-7 items-center justify-center rounded-md text-white/30 hover:text-white hover:bg-white/[0.06] transition-colors"
                     >
-                        ✕
+                        <ChevronLeft size={14} />
                     </button>
                 </div>
 
-                <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-1 custom-scrollbar">
-                    {tabs.map((tab) => (
-                        <a
-                            key={tab.href}
-                            href={tab.href}
-                            onClick={handleClick}
-                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                                isActive(tab.href)
-                                    ? 'bg-[#b31b1b] text-white shadow-lg shadow-[#b31b1b]/20'
-                                    : 'text-[#999] hover:bg-white/5 hover:text-white'
-                            }`}
-                        >
-                            <span className="text-lg">{tab.icon}</span>
-                            {tab.name}
-                        </a>
-                    ))}
+                {/* Nav */}
+                <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5 custom-scrollbar">
+                    {tabs.map((tab) => {
+                        const Icon = tab.icon;
+                        const active = isActive(tab.href);
+                        return (
+                            <a
+                                key={tab.href}
+                                href={tab.href}
+                                onClick={handleClick}
+                                title={isCollapsed ? tab.name : undefined}
+                                className={`flex items-center h-9 rounded-md transition-all duration-150 ${
+                                    isCollapsed ? 'justify-center w-full px-0' : 'gap-2.5 px-3'
+                                } ${
+                                    active
+                                        ? 'bg-red-600 text-white'
+                                        : 'text-white/45 hover:text-white hover:bg-white/[0.05]'
+                                }`}
+                            >
+                                <Icon
+                                    size={15}
+                                    className={`shrink-0 ${active ? 'text-white' : 'text-white/50'}`}
+                                    strokeWidth={active ? 2.2 : 1.8}
+                                />
+                                {!isCollapsed && (
+                                    <span className="text-[12.5px] font-medium truncate">{tab.name}</span>
+                                )}
+                            </a>
+                        );
+                    })}
                 </nav>
 
-                <div className="p-4 border-t border-white/5 space-y-2">
+                {/* Footer */}
+                <div className="px-2 pb-3 pt-2 border-t border-white/[0.06] space-y-0.5">
                     <a
                         href="/"
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-[#999] hover:bg-white/5 hover:text-white transition-colors"
+                        title={isCollapsed ? 'Back to Site' : undefined}
+                        className={`flex items-center h-9 rounded-md transition-all duration-150 text-white/40 hover:text-white hover:bg-white/[0.05] ${
+                            isCollapsed ? 'justify-center px-0' : 'gap-2.5 px-3'
+                        }`}
                     >
-                        <span>🏠</span> Back to Site
+                        <ArrowLeft size={15} className="shrink-0" strokeWidth={1.8} />
+                        {!isCollapsed && <span className="text-[12.5px] font-medium">Back to Site</span>}
                     </a>
                     <button
                         onClick={onLogout}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 transition-colors"
+                        title={isCollapsed ? 'Logout' : undefined}
+                        className={`w-full flex items-center h-9 rounded-md transition-all duration-150 text-red-400 hover:text-red-300 hover:bg-red-500/[0.08] ${
+                            isCollapsed ? 'justify-center px-0' : 'gap-2.5 px-3'
+                        }`}
                     >
-                        <span>🚪</span> Logout
+                        <LogOut size={15} className="shrink-0" strokeWidth={1.8} />
+                        {!isCollapsed && <span className="text-[12.5px] font-medium">Logout</span>}
                     </button>
                 </div>
             </aside>

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import BookmarkButton from '@/components/BookmarkButton';
 import ReportModal from '@/app/groups/ReportModal';
+import { useToast } from '@/components/Toast';
 
 interface VaultGroup {
   _id: string;
@@ -29,6 +30,7 @@ const GoldStar = () => (
 );
 
 export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; isAdmin?: boolean }) {
+  const { toast } = useToast();
   const [groups, setGroups] = useState<VaultGroup[]>([]);
   const [total, setTotal] = useState(0);
   const [vaultTotal, setVaultTotal] = useState<number | null>(null);
@@ -114,8 +116,9 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
       if (data.countryCounts) setQuickCountries(data.countryCounts);
       if (data.vaultTotal != null) setVaultTotal(data.vaultTotal);
       if (data.topLiked?.length) setTopLiked(data.topLiked);
-    } catch { /* silent */ }
-    finally {
+    } catch {
+      toast('Failed to load vault groups', 'error');
+    } finally {
       setLoading(false);
       setLoadingMore(false);
     }
@@ -159,7 +162,9 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
         body: JSON.stringify({ categories: capped, category: capped[0] || '' }),
       });
       setGroups(prev => prev.map(g => g._id === groupId ? { ...g, categories: capped, category: capped[0] || g.category } : g));
-    } catch { /* silent */ }
+    } catch {
+      toast('Failed to update categories', 'error');
+    }
   };
 
   const deleteGroup = async (group: VaultGroup) => {
@@ -195,7 +200,9 @@ export default function VaultTab({ isPremium, isAdmin }: { isPremium: boolean; i
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({ groupId: group._id, showOnVaultTeaser: next }),
       });
-    } catch { /* silent */ }
+    } catch {
+      toast('Failed to update featured status', 'error');
+    }
   };
 
   const totalMembers = useMemo(() => groups.reduce((s, g) => s + (g.memberCount || 0), 0), [groups]);

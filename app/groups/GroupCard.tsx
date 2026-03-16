@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
+import BookmarkButton from '@/components/BookmarkButton';
 import { Group } from './types';
 
 interface GroupCardProps {
@@ -11,9 +12,12 @@ interface GroupCardProps {
     onVisible?: () => void;
     onOpenReviewModal?: (group: Group) => void;
     onOpenReportModal?: (group: Group) => void;
+    isBookmarked?: boolean;
+    bookmarkId?: string | null;
+    itemType?: 'group' | 'bot';
 }
 
-export default function GroupCard({ group, isFeatured = false, isIndex = 0, shouldPreload = false, onVisible, onOpenReviewModal, onOpenReportModal }: GroupCardProps) {
+export default function GroupCard({ group, isFeatured = false, isIndex = 0, shouldPreload = false, onVisible, onOpenReviewModal, onOpenReportModal, isBookmarked = false, bookmarkId = null, itemType = 'group' }: GroupCardProps) {
     const [isHovered, setIsHovered] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
     const [deleted, setDeleted] = useState(false);
@@ -159,16 +163,26 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                         )}
                     </div>
 
-                    {/* Admin delete */}
-                    {isAdmin && (
-                        <button
-                            onClick={handleAdminDelete}
-                            className="absolute top-2 right-2 z-20 w-7 h-7 flex items-center justify-center rounded-full bg-red-600/80 hover:bg-red-600 text-white text-xs backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100"
-                            title="Delete group"
-                        >
-                            🗑️
-                        </button>
-                    )}
+                    {/* Top-right actions */}
+                    <div className="absolute top-2 right-2 z-20 flex flex-col gap-1.5 items-end">
+                        {isAdmin && (
+                            <button
+                                onClick={handleAdminDelete}
+                                className="w-7 h-7 flex items-center justify-center rounded-full bg-red-600/80 hover:bg-red-600 text-white text-xs backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100"
+                                title="Delete group"
+                            >
+                                🗑️
+                            </button>
+                        )}
+                        <BookmarkButton
+                            itemId={group._id}
+                            itemType={itemType}
+                            initialBookmarked={isBookmarked}
+                            initialBookmarkId={bookmarkId}
+                            size="sm"
+                            className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm hover:bg-black/70 transition-colors"
+                        />
+                    </div>
 
                     {/* Stats Overlay */}
                     <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end">

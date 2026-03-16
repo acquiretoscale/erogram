@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
+import { ToastProvider, useToast } from '@/components/Toast';
 import SavedTab from './SavedTab';
 import VaultTab from './VaultTab';
 
@@ -21,9 +22,12 @@ function ProfileContent() {
   const [premiumExpiresAt, setPremiumExpiresAt] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('admin');
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<Tab>((searchParams.get('tab') as Tab) || 'profile');
+  const onboardingIntent = searchParams.get('onboarding');
   const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
     setMounted(true);
@@ -63,13 +67,54 @@ function ProfileContent() {
     : isPremium;
   const effectiveAdmin = isAdmin && viewMode === 'admin';
 
-  const handleDeleteProfile = () => {
+  const clearLocalAuth = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
     localStorage.removeItem('isAdmin');
     localStorage.removeItem('firstName');
     localStorage.removeItem('photoUrl');
+  };
+
+  const handleLogout = () => {
+    clearLocalAuth();
     router.push('/');
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmed = confirm(
+      'Are you sure you want to permanently delete your account?\n\nThis will remove all your bookmarks, folders, reviews, and data. This action cannot be undone.'
+    );
+    if (!confirmed) return;
+
+    const doubleConfirm = confirm(
+      'This is your last chance. Type OK below means your account, bookmarks, and all data will be permanently erased.'
+    );
+    if (!doubleConfirm) return;
+
+    setDeletingAccount(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/auth/account', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || 'Failed to delete account');
+      }
+      clearLocalAuth();
+      router.push('/');
+    } catch (err: any) {
+      toast(err.message || 'Failed to delete account', 'error');
+      setDeletingAccount(false);
+    }
+  };
+
+  const getRemainingDays = () => {
+    if (!premiumExpiresAt) return null;
+    const diff = new Date(premiumExpiresAt).getTime() - Date.now();
+    if (diff <= 0) return 0;
+    return Math.ceil(diff / 86400000);
   };
 
   if (!mounted) return null;
@@ -178,7 +223,7 @@ function ProfileContent() {
                     Premium{isAdmin && viewMode !== 'admin' ? ` (simulated)` : ''}
                   </div>
                 )}
-                {effectivePremium && (premiumPlan || premiumSince || premiumExpiresAt) && viewMode === 'admin' && (
+                {effectivePremium && (premiumPlan || premiumSince || premiumExpiresAt) && (
                   <div className="mt-3 mx-auto max-w-xs rounded-xl border border-amber-500/15 bg-amber-500/[0.04] p-3 text-left space-y-1.5">
                     {premiumPlan && (
                       <div className="flex justify-between text-xs">
@@ -192,19 +237,55 @@ function ProfileContent() {
                         <span className="text-white/70">{new Date(premiumSince).toLocaleDateString()}</span>
                       </div>
                     )}
-                    {premiumExpiresAt ? (
-                      <div className="flex justify-between text-xs">
-                        <span className="text-white/40">Expires</span>
-                        <span className={`font-medium ${new Date(premiumExpiresAt) < new Date(Date.now() + 7 * 86400000) ? 'text-red-400' : 'text-white/70'}`}>
-                          {new Date(premiumExpiresAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                    ) : premiumPlan === 'lifetime' ? (
+                    {premiumExpiresAt ? (() => {
+                      const remaining = getRemainingDays();
+                      const isExpiringSoon = remaining !== null && remaining <= 7;
+                      return (
+                        <>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-white/40">Expires</span>
+                            <span className={`font-medium ${isExpiringSoon ? 'text-red-400' : 'text-white/70'}`}>
+                              {new Date(premiumExpiresAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          {remaining !== null && remaining > 0 && (
+                            <div className="flex justify-between text-xs">
+                              <span className="text-white/40">Remaining</span>
+                              <span className={`font-bold ${isExpiringSoon ? 'text-red-400' : 'text-amber-400'}`}>
+                                {remaining} day{remaining !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                          )}
+                          {remaining === 0 && (
+                            <div className="flex justify-between text-xs">
+                              <span className="text-white/40">Status</span>
+                              <span className="text-red-400 font-bold">Expired</span>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })() : premiumPlan === 'lifetime' ? (
                       <div className="flex justify-between text-xs">
                         <span className="text-white/40">Expires</span>
                         <span className="text-green-400 font-medium">Never — Lifetime</span>
                       </div>
                     ) : null}
+                  </div>
+                )}
+                {!effectivePremium && (
+                  <div className="mt-3 mx-auto max-w-xs rounded-xl border border-white/10 bg-white/[0.03] p-3 text-left space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-white/40">Plan</span>
+                      <span className="text-white/60 font-semibold">Free</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-white/40">Saves</span>
+                      <span className="text-white/60">20 max</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-white/40">Folders</span>
+                      <span className="text-white/60">2 max</span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -264,12 +345,19 @@ function ProfileContent() {
                 </a>
               )}
 
-              <div className="text-center mt-2">
+              <div className="flex flex-col items-center gap-3 mt-4">
                 <button
-                  onClick={handleDeleteProfile}
-                  className="text-[11px] text-white/20 hover:text-white/40 transition-colors underline underline-offset-2"
+                  onClick={handleLogout}
+                  className="w-full max-w-xs px-4 py-2.5 rounded-xl text-sm font-semibold text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
                 >
-                  Delete account
+                  Log out
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={deletingAccount}
+                  className="text-[11px] text-red-400/40 hover:text-red-400 transition-colors underline underline-offset-2 disabled:opacity-50"
+                >
+                  {deletingAccount ? 'Deleting...' : 'Delete account permanently'}
                 </button>
               </div>
             </motion.div>
@@ -279,7 +367,7 @@ function ProfileContent() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <SavedTab isPremium={effectivePremium} />
+              <SavedTab isPremium={effectivePremium} showOnboardingHint={onboardingIntent === 'bookmark'} />
             </motion.div>
           ) : (
             <motion.div
@@ -298,8 +386,10 @@ function ProfileContent() {
 
 export default function ProfilePage() {
   return (
-    <Suspense>
-      <ProfileContent />
-    </Suspense>
+    <ToastProvider>
+      <Suspense>
+        <ProfileContent />
+      </Suspense>
+    </ToastProvider>
   );
 }

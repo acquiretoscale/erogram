@@ -16,6 +16,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [error, setError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -163,8 +164,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           onLogout={handleLogout}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
         />
-        <main className="flex-1 md:ml-64 p-4 md:p-8 min-h-screen overflow-y-auto w-full">
+        <main className={`flex-1 ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'} p-4 md:p-8 min-h-screen overflow-y-auto w-full transition-all duration-300`}>
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
         <TaskBar />

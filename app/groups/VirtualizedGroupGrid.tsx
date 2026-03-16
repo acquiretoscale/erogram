@@ -9,6 +9,7 @@ interface VirtualizedGroupGridProps {
     isTelegram: boolean;
     onOpenReviewModal?: (group: Group) => void;
     onOpenReportModal?: (group: Group) => void;
+    bookmarkedMap?: Record<string, string>;
 }
 
 type Item = { type: 'group' | 'campaign'; data: Group | FeedCampaign | null; index: number };
@@ -68,6 +69,7 @@ const VirtualizedGroupGrid = React.memo(function VirtualizedGroupGrid({
     isTelegram,
     onOpenReviewModal,
     onOpenReportModal,
+    bookmarkedMap = {},
 }: VirtualizedGroupGridProps) {
     const [items, setItems] = useState<Item[]>(() => buildFeedItems(groups, feedCampaigns));
 
@@ -79,14 +81,18 @@ const VirtualizedGroupGrid = React.memo(function VirtualizedGroupGrid({
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
             {items.map((item, idx) => {
                 if (item.type === 'group') {
+                    const groupData = item.data as Group;
+                    const bmId = bookmarkedMap[groupData._id] || null;
                     return (
                         <GroupCard
-                            key={`group-${(item.data as Group)._id}`}
-                            group={item.data as Group}
+                            key={`group-${groupData._id}`}
+                            group={groupData}
                             isIndex={Math.floor(item.index)}
-                            isFeatured={(item.data as Group).pinned}
+                            isFeatured={groupData.pinned}
                             onOpenReviewModal={onOpenReviewModal}
                             onOpenReportModal={onOpenReportModal}
+                            isBookmarked={!!bmId}
+                            bookmarkId={bmId}
                         />
                     );
                 }

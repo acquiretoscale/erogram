@@ -21,8 +21,8 @@ export async function GET(req: NextRequest) {
   const botIds = bookmarks.filter(b => (b as any).itemType === 'bot').map(b => (b as any).itemId);
 
   const [groups, bots] = await Promise.all([
-    groupIds.length ? Group.find({ _id: { $in: groupIds } }).select('name slug image category categories country memberCount description').lean() : [],
-    botIds.length ? Bot.find({ _id: { $in: botIds } }).select('name slug image category country memberCount description').lean() : [],
+    groupIds.length ? Group.find({ _id: { $in: groupIds } }).select('name slug image category categories country memberCount description telegramLink').lean() : [],
+    botIds.length ? Bot.find({ _id: { $in: botIds } }).select('name slug image category country memberCount description telegramLink').lean() : [],
   ]);
 
   const itemMap = new Map<string, any>();

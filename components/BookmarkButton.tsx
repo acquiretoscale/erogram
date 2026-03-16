@@ -9,6 +9,7 @@ interface BookmarkButtonProps {
   itemId: string;
   itemType: 'group' | 'bot';
   initialBookmarked?: boolean;
+  initialBookmarkId?: string | null;
   size?: 'sm' | 'md';
   className?: string;
 }
@@ -17,13 +18,14 @@ export default function BookmarkButton({
   itemId,
   itemType,
   initialBookmarked = false,
+  initialBookmarkId = null,
   size = 'sm',
   className = '',
 }: BookmarkButtonProps) {
   const [bookmarked, setBookmarked] = useState(initialBookmarked);
   const [loading, setLoading] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const [bookmarkId, setBookmarkId] = useState<string | null>(null);
+  const [bookmarkId, setBookmarkId] = useState<string | null>(initialBookmarkId);
   const router = useRouter();
 
   const toggle = useCallback(async (e: React.MouseEvent) => {
@@ -32,7 +34,7 @@ export default function BookmarkButton({
 
     const token = localStorage.getItem('token');
     if (!token) {
-      router.push('/login');
+      router.push('/login?redirect=%2Fprofile%3Ftab%3Dsaved%26onboarding%3Dbookmark');
       return;
     }
 
@@ -55,7 +57,7 @@ export default function BookmarkButton({
       if (err?.response?.status === 403 && err?.response?.data?.upgrade) {
         setShowUpgrade(true);
       } else if (err?.response?.status === 401) {
-        router.push('/login');
+        router.push('/login?redirect=%2Fprofile%3Ftab%3Dsaved%26onboarding%3Dbookmark');
       }
     } finally {
       setLoading(false);
@@ -72,8 +74,8 @@ export default function BookmarkButton({
         className={`flex items-center justify-center transition-all duration-200 ${
           loading ? 'opacity-50' : 'hover:scale-110 active:scale-90'
         } ${className}`}
-        aria-label={bookmarked ? 'Remove bookmark' : 'Save bookmark'}
-        title={bookmarked ? 'Remove from saved' : 'Save to bookmarks'}
+        aria-label={bookmarked ? 'Remove from saved' : 'Save'}
+        title={bookmarked ? 'Remove from saved' : 'Save'}
       >
         {bookmarked ? (
           <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="#f97316" className="drop-shadow-[0_0_6px_rgba(249,115,22,0.5)]">

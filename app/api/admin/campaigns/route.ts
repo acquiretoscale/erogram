@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
     const result = await createCampaign(token, {
       advertiserId: body.advertiserId != null ? String(body.advertiserId).trim() : '',
       name: body.name != null ? String(body.name).trim() : '',
+      internalName: body.internalName != null ? String(body.internalName).trim() : '',
       slot,
       creative: isCtaSlot ? '' : (body.creative ?? ''),
       destinationUrl: body.destinationUrl != null ? String(body.destinationUrl).trim() : '',

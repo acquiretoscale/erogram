@@ -267,6 +267,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
   const [editingCampaign, setEditingCampaign] = useState<CampaignRow | null>(null);
   const [campForm, setCampForm] = useState({
     advertiserId: '',
+    internalName: '',
     name: '',
     slot: 'homepage-hero',
     creative: '',
@@ -450,6 +451,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
     const end = new Date(Date.now() + 30 * 86400000);
     setCampForm({
       advertiserId: preselectedAdvertiserId || (advertisers[0]?._id ?? ''),
+      internalName: '',
       name: '',
       slot,
       creative: isCtaSlot ? '' : '',
@@ -486,6 +488,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
     const premCat = (camp as any).premiumCategory || '';
     setCampForm({
       advertiserId: camp.advertiserId,
+      internalName: (camp as any).internalName || '',
       name: camp.name,
       slot: normalizedSlot,
       creative: camp.creative,
@@ -569,6 +572,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       const feedPos = campForm.slot === 'feed' ? Math.max(1, Math.floor(Number(campForm.position) || 1)) : null;
       const payload: Record<string, unknown> = {
         name: (campForm.name ?? '').trim() || (isCta ? ctaLabel : 'Campaign'),
+        internalName: (campForm.internalName ?? '').trim(),
         slot: String(campForm.slot ?? ''),
         creative: isCta ? '' : String(campForm.creative ?? ''),
         destinationUrl: String((campForm.destinationUrl ?? '').trim()),
@@ -619,6 +623,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       setSelectedGroupIds(new Set());
       setCampForm({
         advertiserId: campForm.advertiserId,
+        internalName: '',
         name: '',
         slot: 'homepage-hero',
         creative: '',
@@ -975,6 +980,11 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
             <div>
               <label className="block text-sm font-semibold text-[#999] mb-2">Campaign Name *</label>
               <input type="text" value={campForm.name} onChange={(e) => setCampForm({ ...campForm, name: e.target.value })} className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-[#b31b1b] outline-none" placeholder="e.g. February Top Banner" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-[#999] mb-2">Internal Name</label>
+              <input type="text" value={campForm.internalName} onChange={(e) => setCampForm({ ...campForm, internalName: e.target.value })} className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-[#b31b1b] outline-none" placeholder="e.g. CPA Offer #3 — Dating" />
+              <p className="text-[#666] text-xs mt-1">Only visible to you in the admin panel</p>
             </div>
             {/* Slot: hidden for feed ads (fixed In-Feed); show for other campaign types */}
             {!FEED_SLOTS.includes(campForm.slot) ? (
@@ -2198,7 +2208,10 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                 {slotPanelCampaigns.map((camp) => (
                   <tr key={camp._id} className="hover:bg-white/5 transition-colors">
                     <td className="px-4 py-3 text-white">{advertisers.find((a) => a._id === camp.advertiserId)?.name || '—'}</td>
-                    <td className="px-4 py-3 text-white font-medium">{camp.name}</td>
+                    <td className="px-4 py-3">
+                      <span className="text-white font-medium">{(camp as any).internalName || camp.name}</span>
+                      {(camp as any).internalName && <span className="block text-[#666] text-xs mt-0.5 truncate max-w-[200px]">{camp.name}</span>}
+                    </td>
                     <td className="px-4 py-3 text-[#999] max-w-[180px] truncate" title={CTA_SLOTS.includes(camp.slot) ? (camp.description || camp.buttonText || '') : camp.destinationUrl}>
                       {CTA_SLOTS.includes(camp.slot) ? (camp.description || camp.buttonText || 'CTA') : camp.destinationUrl}
                     </td>
@@ -2481,7 +2494,10 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                                 <div className="w-20 h-12 rounded-lg bg-white/10" />
                               )}
                             </td>
-                            <td className="px-5 py-3 text-white font-medium">{camp.name}</td>
+                            <td className="px-5 py-3">
+                              <span className="text-white font-medium">{(camp as any).internalName || camp.name}</span>
+                              {(camp as any).internalName && <span className="block text-[#666] text-xs mt-0.5 truncate max-w-[200px]">{camp.name}</span>}
+                            </td>
                             <td className="px-5 py-3 text-[#999]">{SLOT_LABELS[camp.slot] || camp.slot}</td>
                             <td className="px-5 py-3 text-[#999]">
                               {camp.slot === 'feed'
@@ -2733,7 +2749,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                   </div>
                   <button
                     onClick={() => {
-                      setCampForm({ ...campForm, slot: 'feed', advertiserId: advertisers[0]?._id || '', name: '', creative: '', destinationUrl: '', description: '', category: 'All', country: 'All', buttonText: 'Visit Site', feedTier: 1, tierSlot: 1, position: 1, feedPlacement: 'both', videoUrl: '', badgeText: '', socialProof: 'random' } as any);
+                      setCampForm({ ...campForm, slot: 'feed', advertiserId: advertisers[0]?._id || '', internalName: '', name: '', creative: '', destinationUrl: '', description: '', category: 'All', country: 'All', buttonText: 'Visit Site', feedTier: 1, tierSlot: 1, position: 1, feedPlacement: 'both', videoUrl: '', badgeText: '', socialProof: 'random' } as any);
                       setEditingCampaign(null);
                       setView('editCampaign');
                     }}
@@ -2869,7 +2885,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                                 tabIndex={0}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setCampForm({ ...campForm, slot: 'feed', advertiserId: advertisers[0]?._id || '', name: '', creative: '', destinationUrl: '', description: '', category: 'All', country: 'All', buttonText: 'Visit Site', feedTier: group.feedTier, tierSlot: group.tierSlot, position: slotNum, feedPlacement: 'both', videoUrl: '', badgeText: '', socialProof: 'random' } as any);
+                                  setCampForm({ ...campForm, slot: 'feed', advertiserId: advertisers[0]?._id || '', internalName: '', name: '', creative: '', destinationUrl: '', description: '', category: 'All', country: 'All', buttonText: 'Visit Site', feedTier: group.feedTier, tierSlot: group.tierSlot, position: slotNum, feedPlacement: 'both', videoUrl: '', badgeText: '', socialProof: 'random' } as any);
                                   setEditingCampaign(null);
                                   setView('editCampaign');
                                 }}
@@ -2927,9 +2943,9 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                                       <td className="px-3 py-2">
                                         {c.creative ? <img src={c.creative} alt="" className="h-10 w-14 object-cover rounded" /> : <span className="text-[#666]">—</span>}
                                       </td>
-                                      <td className="px-3 py-2 text-white font-medium">
-                                        <span className="inline-flex items-center gap-1.5">
-                                          {c.name}
+                                      <td className="px-3 py-2">
+                                        <span className="inline-flex items-center gap-1.5 text-white font-medium">
+                                          {(c as any).internalName || c.name}
                                           {(c as any).videoUrl && (
                                             <svg className="w-4 h-4 text-purple-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
                                           )}
@@ -2937,6 +2953,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                                             <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-black uppercase bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">Winner</span>
                                           )}
                                         </span>
+                                        {(c as any).internalName && <span className="block text-[#666] text-xs mt-0.5 truncate max-w-[200px]">{c.name}</span>}
                                       </td>
                                       <td className="px-3 py-2 text-[#999]">{c.feedPlacement === 'both' ? 'Both' : c.feedPlacement === 'groups' ? 'Groups' : c.feedPlacement === 'bots' ? 'Bots' : 'Both'}</td>
                                       <td className="px-3 py-2 text-right text-[#999] tabular-nums">{impressions.toLocaleString()}</td>

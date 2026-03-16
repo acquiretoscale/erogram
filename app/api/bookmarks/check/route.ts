@@ -16,11 +16,11 @@ export async function GET(req: NextRequest) {
   const bookmarks = await Bookmark.find({
     userId: user._id,
     itemId: { $in: ids },
-  }).select('itemId').lean();
+  }).select('itemId _id').lean();
 
-  const bookmarked: Record<string, boolean> = {};
+  const bookmarked: Record<string, string> = {};
   for (const bk of bookmarks) {
-    bookmarked[(bk as any).itemId.toString()] = true;
+    bookmarked[(bk as any).itemId.toString()] = (bk as any)._id.toString();
   }
 
   return NextResponse.json({ bookmarked });

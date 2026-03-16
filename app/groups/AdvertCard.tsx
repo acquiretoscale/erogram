@@ -278,25 +278,8 @@ function PremiumMosaicCard({ campaign, handleClick }: { campaign: FeedCampaign; 
 
     return (
         <div ref={cardRef} onClick={handleClick} className="block h-full cursor-pointer" role="link" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && handleClick()}>
-            <style>{`
-                @keyframes vault-led-spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
-            `}</style>
-            <div className="relative h-full rounded-2xl sm:rounded-3xl p-[2px]">
-                {/* LED spinning border layer */}
-                <div className="absolute inset-0 rounded-2xl sm:rounded-3xl overflow-hidden">
-                    <div style={{
-                        position: 'absolute',
-                        inset: '-80%',
-                        background: 'conic-gradient(from 0deg, transparent 0deg, transparent 60deg, #ff6a00 80deg, #ff9500 90deg, #ffffff 100deg, #ff9500 110deg, #ff6a00 120deg, transparent 140deg, transparent 360deg)',
-                        animation: 'vault-led-spin 12s linear infinite',
-                    }} />
-                </div>
-
-                {/* Card content — sits on top of the LED ring */}
-                <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col hover:shadow-2xl hover:shadow-orange-500/30 transition-all duration-500 group border border-white/[0.06]" style={{ background: 'linear-gradient(160deg, #1c1412 0%, #15100e 40%, #1a130d 100%)' }}>
+            <div className="relative h-full">
+                <div className="glass rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col backdrop-blur-xl hover:shadow-2xl hover:shadow-black/50 transition-all duration-500 group border border-white/5 hover:border-white/20">
                     {/* 2x2 mosaic — square grid */}
                     <div className="relative w-full p-2 sm:p-3 overflow-hidden">
                         <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
@@ -338,7 +321,7 @@ function PremiumMosaicCard({ campaign, handleClick }: { campaign: FeedCampaign; 
                             🔒 {campaign.name || `Premium ${catLabel}`}
                         </h3>
                         <div className="mb-3 sm:mb-6 flex-grow">
-                            <p className="text-orange-300 text-xs sm:text-sm font-bold leading-snug uppercase tracking-wide">
+                            <p className="text-gray-400 text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed">
                                 {campaign.description || `Unlock the best ${catLabel} groups`}
                             </p>
                         </div>
@@ -657,9 +640,9 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                 onHoverEnd={() => setIsHovered(false)}
                 className="h-full"
             >
-                <div className={`rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col border transition-all duration-500 group relative border-gray-200 hover:border-gray-300 hover:shadow-2xl hover:shadow-black/20 bg-white`}>
+                <div className={`glass rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col backdrop-blur-xl border transition-all duration-500 group relative border-white/5 hover:border-white/20 hover:shadow-2xl hover:shadow-black/50`}>
                     {/* Advert Image */}
-                    <div ref={imgRef} className="relative w-full h-32 sm:h-52 overflow-hidden bg-gray-100">
+                    <div ref={imgRef} className="relative w-full h-32 sm:h-52 overflow-hidden bg-[#1a1a1a]">
                         <Image
                             src={imageSrc}
                             alt={ad.name}
@@ -669,7 +652,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                             priority={forceVisible || isIndex < 12}
                             onError={() => setImageSrc('/assets/image.jpg')}
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent opacity-80" />
 
                         {/* Badges - Subtle "Sponsored" */}
                         {showSponsored && (
@@ -698,7 +681,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                     {/* Card Content */}
                     <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
                         {/* Title */}
-                        <h3 className="text-sm sm:text-xl font-black text-gray-900 mb-2 sm:mb-3 leading-tight group-hover:text-blue-600 transition-colors flex items-center gap-1">
+                        <h3 className="text-sm sm:text-xl font-black text-white mb-2 sm:mb-3 leading-tight group-hover:text-blue-400 transition-colors flex items-center gap-1">
                             <span className="truncate min-w-0">{ad.name}</span>
                             {showVerified && (
                                 <svg className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
@@ -707,7 +690,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
                         {/* Description */}
                         <div className="mb-3 sm:mb-6 flex-grow">
-                            <p className="text-gray-500 text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed">
+                            <p className="text-gray-400 text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed">
                                 {ad.description}
                             </p>
                         </div>
@@ -718,10 +701,10 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                             <div className="flex items-center justify-between px-1">
                                 <div className="flex items-center gap-1">
                                     <span className="text-yellow-500 text-[10px] sm:text-sm">⭐</span>
-                                    <span className="text-gray-800 font-bold text-[10px] sm:text-sm">{(seededRandom(seed + 'rating') * 0.7 + 4.2).toFixed(1)}</span>
-                                    <span className="text-gray-400 text-[10px] sm:text-xs">({Math.floor(seededRandom(seed + 'reviews') * 38 + 5)})</span>
+                                    <span className="text-white font-bold text-[10px] sm:text-sm">{(seededRandom(seed + 'rating') * 0.7 + 4.2).toFixed(1)}</span>
+                                    <span className="text-gray-500 text-[10px] sm:text-xs">({Math.floor(seededRandom(seed + 'reviews') * 38 + 5)})</span>
                                 </div>
-                                <div className="hidden sm:block text-xs text-gray-400 font-medium">
+                                <div className="hidden sm:block text-xs text-gray-500 font-medium">
                                     Promoted
                                 </div>
                             </div>
@@ -752,7 +735,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
             onHoverStart={() => setIsHovered(true)}
             onHoverEnd={() => setIsHovered(false)}
         >
-            <div className={`rounded-2xl overflow-hidden h-full flex flex-col border border-gray-200 transition-all duration-300 ${isHovered ? 'scale-[1.02] shadow-xl shadow-black/15' : 'shadow-md shadow-black/10'} relative bg-white`}>
+            <div className={`glass rounded-2xl overflow-hidden h-full flex flex-col backdrop-blur-xl border transition-all duration-300 ${isHovered ? 'scale-[1.02] shadow-2xl shadow-black/50 border-white/20' : 'border-white/5'} relative`}>
                 {/* Random Badge */}
                 {showBadge && (
                     <div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10">
@@ -763,7 +746,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                 )}
 
                 {/* Advert Image */}
-                <div ref={imgRef} className="relative w-full h-32 sm:h-48 overflow-hidden bg-gray-100">
+                <div ref={imgRef} className="relative w-full h-32 sm:h-48 overflow-hidden bg-[#1a1a1a]">
                     <Image
                         src={imageSrc}
                         alt={ad.name}
@@ -775,7 +758,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                         onError={() => setImageSrc('/assets/image.jpg')}
                     />
                     {/* Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent opacity-80"></div>
 
                     {/* Fake Stats Overlay */}
                     {fakeCount && (
@@ -790,7 +773,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
                 {/* Card Content */}
                 <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
-                    <h3 className="text-sm sm:text-xl md:text-2xl font-black text-gray-900 mb-2 sm:mb-3 text-center flex items-center justify-center gap-1">
+                    <h3 className="text-sm sm:text-xl md:text-2xl font-black text-white mb-2 sm:mb-3 text-center flex items-center justify-center gap-1">
                         <span className="truncate min-w-0">{ad.name}</span>
                         {showVerified && (
                             <svg className="w-[14px] h-[14px] sm:w-[16px] sm:h-[16px] text-blue-500 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
@@ -799,7 +782,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
                     {/* Description */}
                     <div className="mb-3 sm:mb-6 flex-grow">
-                        <p className="text-gray-500 text-center text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed font-medium">
+                        <p className="text-gray-400 text-center text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed font-medium">
                             {ad.description}
                         </p>
                     </div>

@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { RefreshCw } from 'lucide-react';
 
 /* ─── Types ─── */
 type TrendPoint = { date: string; value: number };
@@ -60,7 +61,9 @@ const fmtNum = (v: number) => {
   if (v >= 1_000) return `${(v / 1_000).toFixed(1)}K`;
   return String(Math.round(v) || 0);
 };
+const fmtFullNum = (v: number) => new Intl.NumberFormat('en-US').format(Math.round(v || 0));
 const fmtUsd = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(v || 0);
+const fmtUsdWhole = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v || 0);
 const fmtDate = (iso: string) => {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '—';
@@ -85,11 +88,11 @@ const FLAGS: Record<string, string> = {
 };
 const flag = (c: string | null) => c ? (FLAGS[c.toUpperCase()] ?? '🌍') : '🌍';
 
-/* ─── Interactive Area Chart ─── */
+/* ─── Area Chart ─── */
 function AreaChart({ points, color, label }: { points: TrendPoint[]; color: string; label: string }) {
   const [hover, setHover] = useState<number | null>(null);
 
-  if (!points?.length) return <div className="h-[88px] flex items-center justify-center text-xs text-gray-400">No data</div>;
+  if (!points?.length) return <div className="h-16 flex items-center justify-center text-xs text-white/20">No data</div>;
 
   const W = 400, H = 64, PAD = 2;
   const vals  = points.map(p => p.value);
@@ -103,67 +106,50 @@ function AreaChart({ points, color, label }: { points: TrendPoint[]; color: stri
   return (
     <div>
       <div className="relative">
-        <svg
-          viewBox={`0 0 ${W} ${H}`}
-          className="w-full"
-          style={{ height: 64 }}
-          onMouseLeave={() => setHover(null)}
-        >
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 56 }} onMouseLeave={() => setHover(null)}>
           <defs>
             <linearGradient id={`g-${label}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+              <stop offset="0%" stopColor={color} stopOpacity="0.25" />
               <stop offset="100%" stopColor={color} stopOpacity="0" />
             </linearGradient>
           </defs>
           <path d={area} fill={`url(#g-${label})`} />
-          <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          {/* Invisible rects per data point for hover */}
+          <path d={line} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           {pts.map((p, i) => (
-            <rect
-              key={i}
-              x={p.x - step / 2}
-              y={0}
-              width={step}
-              height={H}
-              fill="transparent"
-              onMouseEnter={() => setHover(i)}
-              onClick={() => setHover(i)}
-              style={{ cursor: 'pointer' }}
-            />
+            <rect key={i} x={p.x - step / 2} y={0} width={step} height={H} fill="transparent"
+              onMouseEnter={() => setHover(i)} onClick={() => setHover(i)} style={{ cursor: 'pointer' }} />
           ))}
-          {/* Hover dot + line */}
           {hover !== null && pts[hover] && (
             <>
-              <line x1={pts[hover].x} y1={0} x2={pts[hover].x} y2={H} stroke={color} strokeWidth="1" strokeDasharray="3,3" opacity="0.4" />
-              <circle cx={pts[hover].x} cy={pts[hover].y} r="4" fill="white" stroke={color} strokeWidth="2" />
+              <line x1={pts[hover].x} y1={0} x2={pts[hover].x} y2={H} stroke={color} strokeWidth="1" strokeDasharray="3,3" opacity="0.3" />
+              <circle cx={pts[hover].x} cy={pts[hover].y} r="3.5" fill="#141414" stroke={color} strokeWidth="1.5" />
             </>
           )}
         </svg>
-        {/* Tooltip */}
         {hover !== null && points[hover] && (
           <div
-            className="absolute -top-10 pointer-events-none z-10 bg-gray-900 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg shadow-lg whitespace-nowrap"
+            className="absolute -top-8 pointer-events-none z-10 bg-[#1e1e1e] border border-white/10 text-white text-[11px] font-semibold px-2 py-1 rounded-md shadow-lg whitespace-nowrap"
             style={{ left: `${(hover / Math.max(points.length - 1, 1)) * 100}%`, transform: 'translateX(-50%)' }}
           >
             {fmtShortDate(points[hover].date)}: <span className="font-bold">{fmtNum(points[hover].value)}</span>
           </div>
         )}
       </div>
-      <div className="flex justify-between mt-1.5">
-        {axIdx.map(i => <span key={i} className="text-[10px] text-gray-400">{fmtShortDate(points[i].date)}</span>)}
+      <div className="flex justify-between mt-1">
+        {axIdx.map(i => <span key={i} className="text-[10px] text-white/25">{fmtShortDate(points[i].date)}</span>)}
       </div>
     </div>
   );
 }
 
-/* ─── Dual Area Chart (free vs paid users) with toggles ─── */
+/* ─── Dual Area Chart ─── */
 function DualAreaChart({ free: allNew, paid }: { free: TrendPoint[]; paid: TrendPoint[] }) {
   const [hover, setHover] = useState<number | null>(null);
   const [showFree, setShowFree] = useState(true);
   const [showPaid, setShowPaid] = useState(true);
 
   const dates = allNew.length ? allNew.map(p => p.date) : paid.map(p => p.date);
-  if (!dates.length) return <div className="h-[88px] flex items-center justify-center text-xs text-gray-400">No data</div>;
+  if (!dates.length) return <div className="h-16 flex items-center justify-center text-xs text-white/20">No data</div>;
 
   const allMap  = Object.fromEntries(allNew.map(p => [p.date, p.value]));
   const paidMap = Object.fromEntries(paid.map(p => [p.date, p.value]));
@@ -203,36 +189,36 @@ function DualAreaChart({ free: allNew, paid }: { free: TrendPoint[]; paid: Trend
       <div className="flex items-center gap-2 mb-2">
         <button
           onClick={() => { if (showFree || !showPaid) setShowFree(!showFree); if (!showFree && !showPaid) setShowPaid(true); }}
-          className={`flex items-center gap-1 text-[10px] font-semibold rounded-full px-2 py-0.5 transition-colors ${showFree ? 'bg-sky-100 text-sky-700' : 'bg-gray-100 text-gray-400 line-through'}`}
+          className={`flex items-center gap-1 text-[10px] font-semibold rounded px-2 py-0.5 transition-colors ${showFree ? 'bg-sky-500/15 text-sky-400 border border-sky-500/20' : 'bg-white/5 text-white/30 border border-white/5 line-through'}`}
         >
-          <span className={`w-2 h-2 rounded-full inline-block ${showFree ? 'bg-sky-500' : 'bg-gray-300'}`} />Free
+          <span className={`w-1.5 h-1.5 rounded-full inline-block ${showFree ? 'bg-sky-400' : 'bg-white/20'}`} />Free
         </button>
         <button
           onClick={() => { if (showPaid || !showFree) setShowPaid(!showPaid); if (!showPaid && !showFree) setShowFree(true); }}
-          className={`flex items-center gap-1 text-[10px] font-semibold rounded-full px-2 py-0.5 transition-colors ${showPaid ? 'bg-violet-100 text-violet-700' : 'bg-gray-100 text-gray-400 line-through'}`}
+          className={`flex items-center gap-1 text-[10px] font-semibold rounded px-2 py-0.5 transition-colors ${showPaid ? 'bg-violet-500/15 text-violet-400 border border-violet-500/20' : 'bg-white/5 text-white/30 border border-white/5 line-through'}`}
         >
-          <span className={`w-2 h-2 rounded-full inline-block ${showPaid ? 'bg-violet-500' : 'bg-gray-300'}`} />Paid
+          <span className={`w-1.5 h-1.5 rounded-full inline-block ${showPaid ? 'bg-violet-400' : 'bg-white/20'}`} />Paid
         </button>
       </div>
       <div className="relative">
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 64 }} onMouseLeave={() => setHover(null)}>
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 56 }} onMouseLeave={() => setHover(null)}>
           <defs>
             <linearGradient id="g-free" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#0ea5e9" stopOpacity="0.25" />
+              <stop offset="0%" stopColor="#0ea5e9" stopOpacity="0.2" />
               <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0" />
             </linearGradient>
             <linearGradient id="g-paid" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#7c3aed" stopOpacity="0.25" />
+              <stop offset="0%" stopColor="#7c3aed" stopOpacity="0.2" />
               <stop offset="100%" stopColor="#7c3aed" stopOpacity="0" />
             </linearGradient>
           </defs>
           {showFree && <>
             <path d={areaPath(freePts, freeLine)} fill="url(#g-free)" />
-            <path d={freeLine} fill="none" stroke="#0ea5e9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d={freeLine} fill="none" stroke="#0ea5e9" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </>}
           {showPaid && <>
             <path d={areaPath(paidPts, paidLine)} fill="url(#g-paid)" />
-            <path d={paidLine} fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d={paidLine} fill="none" stroke="#7c3aed" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </>}
           {combined.map((_, i) => (
             <rect key={i} x={freePts[i].x - step/2} y={0} width={step} height={H}
@@ -240,25 +226,25 @@ function DualAreaChart({ free: allNew, paid }: { free: TrendPoint[]; paid: Trend
           ))}
           {hover !== null && hoverX !== null && (
             <>
-              <line x1={hoverX} y1={0} x2={hoverX} y2={H} stroke="#6b7280" strokeWidth="1" strokeDasharray="3,3" opacity="0.4" />
-              {showFree && <circle cx={freePts[hover].x} cy={freePts[hover].y} r="4" fill="white" stroke="#0ea5e9" strokeWidth="2" />}
-              {showPaid && <circle cx={paidPts[hover].x} cy={paidPts[hover].y} r="4" fill="white" stroke="#7c3aed" strokeWidth="2" />}
+              <line x1={hoverX} y1={0} x2={hoverX} y2={H} stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="3,3" />
+              {showFree && <circle cx={freePts[hover].x} cy={freePts[hover].y} r="3.5" fill="#141414" stroke="#0ea5e9" strokeWidth="1.5" />}
+              {showPaid && <circle cx={paidPts[hover].x} cy={paidPts[hover].y} r="3.5" fill="#141414" stroke="#7c3aed" strokeWidth="1.5" />}
             </>
           )}
         </svg>
         {hover !== null && combined[hover] && (
           <div
-            className="absolute -top-10 pointer-events-none z-10 bg-gray-900 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg shadow-lg whitespace-nowrap"
+            className="absolute -top-8 pointer-events-none z-10 bg-[#1e1e1e] border border-white/10 text-white text-[11px] font-semibold px-2 py-1 rounded-md shadow-lg whitespace-nowrap"
             style={{ left: `${(hover / Math.max(combined.length - 1, 1)) * 100}%`, transform: 'translateX(-50%)' }}
           >
             {fmtShortDate(combined[hover].date)}
-            {showFree && <>{' '}<span className="text-sky-300">Free {fmtNum(combined[hover].free)}</span></>}
-            {showPaid && <>{' '}<span className="text-violet-300">Paid {fmtNum(combined[hover].paid)}</span></>}
+            {showFree && <>{' '}<span className="text-sky-400">Free {fmtNum(combined[hover].free)}</span></>}
+            {showPaid && <>{' '}<span className="text-violet-400">Paid {fmtNum(combined[hover].paid)}</span></>}
           </div>
         )}
       </div>
-      <div className="flex justify-between mt-1.5">
-        {axIdx.map(i => <span key={i} className="text-[10px] text-gray-400">{fmtShortDate(combined[i].date)}</span>)}
+      <div className="flex justify-between mt-1">
+        {axIdx.map(i => <span key={i} className="text-[10px] text-white/25">{fmtShortDate(combined[i].date)}</span>)}
       </div>
     </div>
   );
@@ -269,12 +255,14 @@ interface Slice { label: string; value: number; color: string }
 
 const PIE_COLORS = ['#7c3aed', '#0284c7', '#0d9488', '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6', '#06b6d4', '#84cc16', '#f97316'];
 
-function DonutChart({ slices, format = 'usd' }: { slices: Slice[]; format?: 'usd' | 'number' }) {
+function DonutChart({ slices, format = 'usd', compact = false }: { slices: Slice[]; format?: 'usd' | 'number'; compact?: boolean }) {
   const [hovered, setHovered] = useState<number | null>(null);
   const total = slices.reduce((s, x) => s + x.value, 0);
-  if (total === 0) return <p className="text-sm text-gray-400 text-center py-4">No data</p>;
+  if (total === 0) return <p className="text-sm text-white/25 text-center py-4">No data</p>;
 
-  const CX = 56, CY = 56, R = 48, IR = 30;
+  const SIZE = compact ? 80 : 112;
+  const CX = SIZE / 2, CY = SIZE / 2;
+  const R = compact ? 34 : 48, IR = compact ? 20 : 30;
   const toRad = (deg: number) => ((deg - 90) * Math.PI) / 180;
 
   let cursor = 0;
@@ -286,7 +274,7 @@ function DonutChart({ slices, format = 'usd' }: { slices: Slice[]; format?: 'usd
     if (pct >= 0.9999) return { ...s, idx, pct, path: null };
     const s1 = toRad(start), e1 = toRad(start + span);
     const lg = span > 180 ? 1 : 0;
-    const rr = hovered === idx ? R + 4 : R;
+    const rr = hovered === idx ? R + 3 : R;
     const ir = hovered === idx ? IR - 2 : IR;
     const path = [
       `M${CX + rr * Math.cos(s1)},${CY + rr * Math.sin(s1)}`,
@@ -299,30 +287,32 @@ function DonutChart({ slices, format = 'usd' }: { slices: Slice[]; format?: 'usd
   });
 
   return (
-    <div className="flex items-start gap-4">
-      <svg width="112" height="112" viewBox="0 0 112 112" className="shrink-0">
+    <div className={`flex items-start ${compact ? 'gap-3' : 'gap-4'}`}>
+      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className="shrink-0">
         {arcs.map((a) =>
           a.path
             ? <path key={a.label} d={a.path} fill={a.color} onMouseEnter={() => setHovered(a.idx)} onMouseLeave={() => setHovered(null)} style={{ cursor: 'pointer', transition: 'd 150ms' }} />
             : <circle key={a.label} cx={CX} cy={CY} r={R} fill={a.color} />
         )}
-        <circle cx={CX} cy={CY} r={IR} fill="white" />
-        <text x={CX} y={CY + 4} textAnchor="middle" fontSize="11" fill="#111827" fontWeight="700">
+        <circle cx={CX} cy={CY} r={IR} fill="#141414" />
+        <text x={CX} y={CY + 3} textAnchor="middle" fontSize={compact ? '9' : '11'} fill="#f0f0f0" fontWeight="700">
           {format === 'usd'
             ? (total >= 1000 ? `$${(total / 1000).toFixed(1)}K` : `$${Math.round(total)}`)
             : fmtNum(total)}
         </text>
       </svg>
-      <div className="flex flex-col gap-1.5 flex-1 pt-1">
+      <div className={`flex flex-col ${compact ? 'gap-0.5' : 'gap-1.5'} flex-1 ${compact ? '' : 'pt-1'}`}>
         {slices.filter(s => s.value > 0).map((s, i) => (
-          <div key={s.label} className={`flex items-center justify-between gap-2 rounded-lg px-2 py-1 transition-colors ${hovered === i ? 'bg-gray-100' : ''}`} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)}>
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: s.color }} />
-              <span className="text-xs text-gray-700 truncate">{s.label}</span>
+          <div key={s.label}
+            className={`flex items-center justify-between gap-2 rounded-md ${compact ? 'px-1.5 py-0.5' : 'px-2 py-1'} transition-colors ${hovered === i ? 'bg-white/[0.05]' : ''}`}
+            onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)}>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <div className={`${compact ? 'w-2 h-2' : 'w-2.5 h-2.5'} rounded-sm shrink-0`} style={{ background: s.color }} />
+              <span className={`${compact ? 'text-[11px]' : 'text-xs'} text-white/60 truncate`}>{s.label}</span>
             </div>
             <div className="text-right shrink-0">
-              <span className="text-xs font-bold text-gray-900">{format === 'usd' ? fmtUsd(s.value) : fmtNum(s.value)}</span>
-              <span className="text-[10px] text-gray-400 ml-1">{Math.round((s.value / total) * 100)}%</span>
+              <span className={`${compact ? 'text-[11px]' : 'text-xs'} font-bold text-white/90`}>{format === 'usd' ? fmtUsd(s.value) : fmtNum(s.value)}</span>
+              <span className={`${compact ? 'text-[9px]' : 'text-[10px]'} text-white/30 ml-1`}>{Math.round((s.value / total) * 100)}%</span>
             </div>
           </div>
         ))}
@@ -332,25 +322,89 @@ function DonutChart({ slices, format = 'usd' }: { slices: Slice[]; format?: 'usd
 }
 
 /* ─── Stat Card ─── */
-function StatCard({ label, value, sub, dot, subGreen }: { label: string; value: string; sub: string; dot: string; subGreen?: boolean }) {
+function StatCard({ label, value, sub, accent, live }: { label: string; value: string; sub: string; accent?: string; live?: boolean }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3.5">
-      <div className="flex items-center gap-2 mb-2.5">
-        <div className="w-2 h-2 rounded-full" style={{ background: dot }} />
-        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">{label}</p>
+    <div className="bg-[#141414] border border-white/[0.07] rounded-xl px-4 py-3.5">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[10px] font-semibold text-white/35 uppercase tracking-[0.12em]">{label}</p>
+        {live && (
+          <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+            </span>
+            LIVE
+          </span>
+        )}
+        {accent && !live && <div className="w-1.5 h-1.5 rounded-full" style={{ background: accent }} />}
       </div>
-      <p className="text-[22px] font-bold text-gray-900 leading-none tracking-tight">{value}</p>
-      <p className={`text-xs mt-1.5 font-semibold ${subGreen ? 'text-emerald-500' : 'text-gray-400'}`}>{sub}</p>
+      <p className="text-[22px] font-bold text-white leading-none tracking-tight tabular-nums">{value}</p>
+      <p className="text-[11px] mt-1.5 text-white/35">{sub}</p>
     </div>
   );
 }
 
 const TYPE_META = {
-  subscription: { dot: '#7c3aed', label: 'Premium', bg: '#f5f3ff', tx: '#6d28d9' },
-  group_boost:  { dot: '#0284c7', label: 'Group',   bg: '#f0f9ff', tx: '#0369a1' },
-  bot_boost:    { dot: '#0d9488', label: 'Bot',      bg: '#f0fdfa', tx: '#0f766e' },
+  subscription: { dot: '#a78bfa', label: 'Premium', bg: 'rgba(124,58,237,0.12)', tx: '#c4b5fd' },
+  group_boost:  { dot: '#38bdf8', label: 'Group',   bg: 'rgba(2,132,199,0.12)',  tx: '#7dd3fc' },
+  bot_boost:    { dot: '#2dd4bf', label: 'Bot',      bg: 'rgba(13,148,136,0.12)', tx: '#5eead4' },
 };
 const PLAN_LABEL: Record<string, string> = { monthly:'1 Month', quarterly:'3 Months', yearly:'1 Year', lifetime:'Lifetime' };
+
+/* ─── Live Stats Hook ─── */
+function useLiveStats(initialPageviews: number) {
+  const [totalPageviews, setTotalPageviews] = useState(initialPageviews);
+  const [activeVisitors, setActiveVisitors] = useState<number | null>(null);
+  const prevInitial = useRef(initialPageviews);
+
+  useEffect(() => {
+    if (initialPageviews && initialPageviews !== prevInitial.current) {
+      setTotalPageviews(initialPageviews);
+      prevInitial.current = initialPageviews;
+    }
+  }, [initialPageviews]);
+
+  const poll = useCallback(async () => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      if (!token) return;
+      const res = await fetch('/api/admin/live-stats', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      if (json.totalPageviews) setTotalPageviews(json.totalPageviews);
+      if (json.activeVisitors != null) setActiveVisitors(json.activeVisitors);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    poll();
+    const id = setInterval(poll, 15_000);
+    return () => clearInterval(id);
+  }, [poll]);
+
+  return { totalPageviews, activeVisitors };
+}
+
+/* ─── Card shell ─── */
+function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`bg-[#141414] border border-white/[0.07] rounded-xl overflow-hidden ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+/* ─── Section header ─── */
+function SectionHeader({ title, right }: { title: string; right?: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06]">
+      <p className="text-[12px] font-semibold text-white/70">{title}</p>
+      {right}
+    </div>
+  );
+}
 
 /* ─── Main ─── */
 export default function OverviewTab({ data, loading, onRefresh }: Props) {
@@ -362,7 +416,8 @@ export default function OverviewTab({ data, loading, onRefresh }: Props) {
   const earn    = data?.earningsByCategory ?? { subscriptions:0, groups:0, bots:0, advertisers:[] };
   const mon     = data?.monitoring       ?? { dbLatencyMs:0, alerts:[] };
 
-  // Build pie slices: Premium + Groups + Bots + each individual advertiser
+  const { totalPageviews, activeVisitors } = useLiveStats(h.totalPageviewsLifetime || 0);
+
   const pieSlices: Slice[] = [];
   const starsTotal = (earn.subscriptions ?? 0) + (earn.groups ?? 0);
   if (starsTotal > 0)  pieSlices.push({ label: 'Stars Revenue',  value: starsTotal,    color: PIE_COLORS[0] });
@@ -374,7 +429,7 @@ export default function OverviewTab({ data, loading, onRefresh }: Props) {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="w-8 h-8 rounded-full border-2 border-gray-200 border-t-indigo-500 animate-spin" />
+        <div className="w-7 h-7 rounded-full border-2 border-white/10 border-t-red-500 animate-spin" />
       </div>
     );
   }
@@ -385,248 +440,261 @@ export default function OverviewTab({ data, loading, onRefresh }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Overview</h1>
-          {data?.generatedAt && <p className="text-xs text-gray-400 mt-0.5">Updated {fmtDate(data.generatedAt)}</p>}
+          <h1 className="text-[15px] font-semibold text-white">Overview</h1>
+          {data?.generatedAt && <p className="text-[11px] text-white/30 mt-0.5">Updated {fmtDate(data.generatedAt)}</p>}
         </div>
-        <button onClick={() => onRefresh()} className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50 transition-colors">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 11-3.25-6.92M21 3v6h-6" /></svg>
+        <button
+          onClick={() => onRefresh()}
+          className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[12px] font-medium text-white/50 hover:text-white hover:bg-white/[0.07] transition-colors"
+        >
+          <RefreshCw size={12} />
           Refresh
         </button>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }}>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3.5 h-full">
-            <div className="flex items-center gap-2 mb-2.5">
-              <div className="w-2 h-2 rounded-full bg-emerald-500" />
-              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">This Month</p>
-            </div>
-            <p className="text-[26px] font-black text-gray-900 leading-none tracking-tight tabular-nums">{fmtUsd(h.totalRevenueThisMonth || 0)}</p>
-            <p className="text-xs mt-1.5 font-semibold text-emerald-500">
-              Stars {fmtUsd(h.starsRevenueThisMonth || 0)}{(h.manualRevenueThisMonth ?? 0) > 0 ? ` · Ads ${fmtUsd(h.manualRevenueThisMonth!)}` : ''}
-            </p>
+      {/* Stat cards — 6 cards, 2 col on mobile, 3 on md, 6 on lg */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
+        <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0 }}
+          className="bg-emerald-950/40 border border-emerald-500/20 rounded-xl px-4 py-3.5 col-span-2 md:col-span-1">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-semibold text-emerald-400/70 uppercase tracking-[0.12em]">This Month</p>
+            <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/15">MTD</span>
           </div>
+          <p className="text-[24px] font-bold text-emerald-300 leading-none tracking-tight tabular-nums">{fmtUsdWhole(h.totalRevenueThisMonth || 0)}</p>
+          <p className="text-[11px] mt-1.5 text-emerald-400/50">Total revenue this month</p>
         </motion.div>
-        <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.04 }}>
-          <StatCard label="Sales (24h)" value={fmtUsd(summary.last24hUsd)} sub={`${summary.last24hCount} transaction${summary.last24hCount !== 1 ? 's' : ''}`} dot="#ef4444" />
+        <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.03 }}>
+          <StatCard label="Page Views" value={fmtFullNum(totalPageviews)} sub="Lifetime total" live />
         </motion.div>
-        <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.08 }}>
-          <StatCard label="Premium Users" value={fmtNum(kpis.paidSubs?.lifetime || 0)} sub={`+${fmtNum(kpis.paidSubs?.last24h || 0)} today`} dot="#7c3aed" subGreen={true} />
+        <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.06 }}>
+          <StatCard label="Live Now" value={activeVisitors != null ? fmtFullNum(activeVisitors) : '—'} sub="Last 30 minutes" live />
         </motion.div>
-        <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.12 }}>
-          <StatCard label="Free Users" value={fmtNum(kpis.users?.free || 0)} sub={`${fmtNum(kpis.users?.total || 0)} total`} dot="#0ea5e9" />
+        <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.09 }}>
+          <StatCard label="Sales 24h" value={fmtUsd(summary.last24hUsd)} sub={`${summary.last24hCount} transaction${summary.last24hCount !== 1 ? 's' : ''}`} accent="#ef4444" />
         </motion.div>
-        <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.16 }}>
-          <StatCard label="Ad Clicks (24h)" value={fmtNum(kpis.adClicks?.last24h || 0)} sub={`${fmtNum(kpis.adClicks?.lifetime || 0)} lifetime`} dot="#f59e0b" />
+        <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.12 }}>
+          <StatCard label="Ad Clicks 24h" value={fmtNum(kpis.adClicks?.last24h || 0)} sub={`${fmtNum(kpis.adClicks?.lifetime || 0)} lifetime`} accent="#f59e0b" />
         </motion.div>
-        <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.2 }}>
-          <StatCard label="Bookmarks" value={fmtNum(kpis.engagement?.bookmarks || 0)} sub={`${fmtNum(kpis.engagement?.folders || 0)} folders`} dot="#ec4899" />
+        <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.15 }}>
+          <StatCard label="Bookmarks" value={fmtNum(kpis.engagement?.bookmarks || 0)} sub={`${fmtNum(kpis.engagement?.folders || 0)} folders`} accent="#ec4899" />
         </motion.div>
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.1 }} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-gray-900">Ad Clicks</h3>
-            <span className="text-xs text-gray-400">30d · hover</span>
-          </div>
-          <AreaChart points={kpis.adClicks?.trend30d ?? []} color="#f59e0b" label="adclicks" />
-        </motion.div>
-        <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.14 }} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-gray-900">Traffic</h3>
-            <span className="text-xs text-gray-400">30d · hover</span>
-          </div>
-          <AreaChart points={kpis.traffic?.trend30d ?? []} color="#0284c7" label="traffic" />
-        </motion.div>
-        <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.18 }} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-gray-900">New Users</h3>
-            <span className="text-xs text-gray-400">30d · hover</span>
-          </div>
-          <DualAreaChart free={kpis.users?.newUsersTrend30d ?? []} paid={kpis.paidSubs?.trend30d ?? []} />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {[
+          { title: 'Ad Clicks', points: kpis.adClicks?.trend30d ?? [], color: '#f59e0b', label: 'adclicks' },
+          { title: 'Traffic',   points: kpis.traffic?.trend30d  ?? [], color: '#0284c7', label: 'traffic'  },
+        ].map(c => (
+          <motion.div key={c.label} initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.1 }}>
+            <Card>
+              <SectionHeader title={c.title} right={<span className="text-[10px] text-white/25">30d</span>} />
+              <div className="p-3 pt-2">
+                <AreaChart points={c.points} color={c.color} label={c.label} />
+              </div>
+            </Card>
+          </motion.div>
+        ))}
+        <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.14 }}>
+          <Card>
+            <SectionHeader title="New Users" right={<span className="text-[10px] text-white/25">30d</span>} />
+            <div className="p-3 pt-2">
+              <DualAreaChart free={kpis.users?.newUsersTrend30d ?? []} paid={kpis.paidSubs?.trend30d ?? []} />
+            </div>
+          </Card>
         </motion.div>
       </div>
 
-      {/* Pies: Earnings + Users by Country */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.18 }} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <h3 className="text-sm font-bold text-gray-900 mb-4">Earnings by Source</h3>
-          <DonutChart slices={pieSlices} />
+      {/* Donuts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.17 }}>
+          <Card>
+            <SectionHeader title="Earnings by Source" />
+            <div className="p-3.5">
+              <DonutChart slices={pieSlices} compact />
+            </div>
+          </Card>
         </motion.div>
         {(kpis.users?.byCountry30d?.length ?? 0) > 0 && (
-          <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.22 }} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-gray-900">Users by Country</h3>
-              <span className="text-[10px] text-gray-400">30 days</span>
-            </div>
-            <DonutChart format="number" slices={
-              (kpis.users!.byCountry30d!).map((r, i) => ({
-                label: `${flag(r.country)} ${r.country}`,
-                value: r.count,
-                color: PIE_COLORS[i % PIE_COLORS.length],
-              }))
-            } />
+          <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.2 }}>
+            <Card>
+              <SectionHeader title="Users by Country" right={<span className="text-[10px] text-white/25">30 days</span>} />
+              <div className="p-3.5">
+                <DonutChart format="number" compact slices={
+                  (kpis.users!.byCountry30d!).map((r, i) => ({
+                    label: `${flag(r.country)} ${r.country}`,
+                    value: r.count,
+                    color: PIE_COLORS[i % PIE_COLORS.length],
+                  }))
+                } />
+              </div>
+            </Card>
           </motion.div>
         )}
       </div>
 
-      {/* Sales + Sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
+      {/* Bottom: Sales table + sidebar */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4 items-start">
 
         {/* Sales table */}
-        <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.12 }} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden max-w-[500px]">
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
-            <div className="flex items-baseline gap-2">
-              <h2 className="text-sm font-bold text-gray-900">All Sales</h2>
-              <span className="text-xs text-gray-400">{summary.count}</span>
-            </div>
-            <p className="text-sm font-bold text-emerald-600">{fmtUsd(summary.totalUsd)}</p>
-          </div>
-
-          {sales.length === 0 ? (
-            <div className="py-10 text-center text-sm text-gray-400">No sales recorded yet</div>
-          ) : (
-            <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
-              <table className="w-full">
-                <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-100">
-                  <tr>
-                    <th className="text-left text-[10px] font-semibold text-gray-400 px-3 py-2 uppercase tracking-wide">Buyer</th>
-                    <th className="text-left text-[10px] font-semibold text-gray-400 px-2 py-2 uppercase tracking-wide">Type</th>
-                    <th className="text-left text-[10px] font-semibold text-gray-400 px-2 py-2 uppercase tracking-wide">Plan</th>
-                    <th className="text-right text-[10px] font-semibold text-gray-400 px-3 py-2 uppercase tracking-wide">Amount</th>
-                    <th className="text-right text-[10px] font-semibold text-gray-400 px-3 py-2 uppercase tracking-wide">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {sales.map((s) => {
-                    const meta = TYPE_META[s.type] ?? TYPE_META.subscription;
-                    const name = s.buyer.firstName || s.buyer.username;
-                    return (
-                      <tr key={s._id} className="hover:bg-gray-50/60 transition-colors">
-                        <td className="px-3 py-1.5">
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white text-[10px] font-bold shrink-0 overflow-hidden">
-                              {s.buyer.photoUrl
-                                ? <img src={s.buyer.photoUrl} alt="" className="w-6 h-6 object-cover" />
-                                : (name ?? '?')[0].toUpperCase()}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-xs font-semibold text-gray-900 leading-tight truncate max-w-[90px]">
+        <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.12 }}>
+          <Card>
+            <SectionHeader
+              title="All Sales"
+              right={
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-white/30">{summary.count} total</span>
+                  <span className="text-[12px] font-semibold text-emerald-400">{fmtUsd(summary.totalUsd)}</span>
+                </div>
+              }
+            />
+            {sales.length === 0 ? (
+              <div className="py-10 text-center text-[12px] text-white/25">No sales recorded yet</div>
+            ) : (
+              <div className="overflow-x-auto max-h-[440px] overflow-y-auto custom-scrollbar">
+                <table className="w-full">
+                  <thead className="sticky top-0 z-10 bg-[#1a1a1a] border-b border-white/[0.06]">
+                    <tr>
+                      <th className="text-left text-[10px] font-semibold text-white/30 px-4 py-2 uppercase tracking-wide">Buyer</th>
+                      <th className="text-left text-[10px] font-semibold text-white/30 px-3 py-2 uppercase tracking-wide">Type</th>
+                      <th className="text-left text-[10px] font-semibold text-white/30 px-3 py-2 uppercase tracking-wide">Plan</th>
+                      <th className="text-right text-[10px] font-semibold text-white/30 px-4 py-2 uppercase tracking-wide">Amount</th>
+                      <th className="text-right text-[10px] font-semibold text-white/30 px-4 py-2 uppercase tracking-wide">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.04]">
+                    {sales.map((s) => {
+                      const meta = TYPE_META[s.type] ?? TYPE_META.subscription;
+                      const name = s.buyer.firstName || s.buyer.username;
+                      return (
+                        <tr key={s._id} className="hover:bg-white/[0.02] transition-colors">
+                          <td className="px-4 py-2">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-red-600 to-red-400 flex items-center justify-center text-white text-[10px] font-bold shrink-0 overflow-hidden">
+                                {s.buyer.photoUrl
+                                  ? <img src={s.buyer.photoUrl} alt="" className="w-6 h-6 object-cover" />
+                                  : (name ?? '?')[0].toUpperCase()}
+                              </div>
+                              <p className="text-[12px] font-medium text-white/80 truncate max-w-[90px]">
                                 {flag(s.buyer.country)} {name}
                               </p>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-2 py-1.5">
-                          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: meta.bg, color: meta.tx }}>
-                            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: meta.dot }} />
-                            {meta.label}
-                          </span>
-                        </td>
-                        <td className="px-2 py-1.5 text-xs text-gray-600 whitespace-nowrap">
-                          {s.plan ? (PLAN_LABEL[s.plan] ?? s.plan) : (s.label ?? '—')}
-                        </td>
-                        <td className="px-3 py-1.5 text-right whitespace-nowrap">
-                          <span className="text-xs font-bold text-gray-900">{fmtUsd(s.usd)}</span>
-                          {s.stars > 0 && <p className="text-[9px] text-amber-500 leading-tight">{fmtNum(s.stars)} ⭐</p>}
-                        </td>
-                        <td className="px-3 py-1.5 text-right whitespace-nowrap">
-                          <span className="text-[10px] text-gray-400">{fmtDate(s.createdAt)}</span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                          </td>
+                          <td className="px-3 py-2">
+                            <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-semibold" style={{ background: meta.bg, color: meta.tx }}>
+                              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: meta.dot }} />
+                              {meta.label}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-[12px] text-white/50 whitespace-nowrap">
+                            {s.plan ? (PLAN_LABEL[s.plan] ?? s.plan) : (s.label ?? '—')}
+                          </td>
+                          <td className="px-4 py-2 text-right whitespace-nowrap">
+                            <span className="text-[12px] font-semibold text-white/90">{fmtUsd(s.usd)}</span>
+                            {s.stars > 0 && <p className="text-[9px] text-amber-400 leading-tight">{fmtNum(s.stars)} ⭐</p>}
+                          </td>
+                          <td className="px-4 py-2 text-right whitespace-nowrap">
+                            <span className="text-[11px] text-white/30">{fmtDate(s.createdAt)}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
         </motion.div>
 
-        {/* Sidebar */}
-        <div className="space-y-4">
+        {/* Right sidebar */}
+        <div className="space-y-3">
 
-          {/* Pending */}
-          <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.22 }} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-gray-900">Pending Queue</h3>
-              {pending.total > 0 && <span className="text-xs font-bold text-white bg-red-500 rounded-full px-2 py-0.5">{pending.total}</span>}
-            </div>
-            <div className="space-y-1.5">
-              {([
-                { label:'Groups',  count:pending.groups,  href:'/admin/groups?tab=pending', color:'#f59e0b' },
-                { label:'Bots',    count:pending.bots,    href:'/admin/pending-bots',       color:'#7c3aed' },
-                { label:'Reviews', count:pending.reviews, href:'/admin/reviews',            color:'#0284c7' },
-                { label:'Reports', count:pending.reports, href:'/admin/reports',            color:'#ef4444' },
-              ]).map(item => (
-                <Link key={item.label} href={item.href} className="flex items-center justify-between rounded-xl bg-gray-50 hover:bg-gray-100 px-3.5 py-2.5 transition-colors">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-2 h-2 rounded-full" style={{ background: item.color }} />
-                    <span className="text-sm text-gray-700">{item.label}</span>
-                  </div>
-                  <span className="text-sm font-bold text-gray-900">{item.count}</span>
-                </Link>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Lifetime revenue */}
-          <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.26 }} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <h3 className="text-sm font-bold text-gray-900 mb-3">Revenue</h3>
-            <div className="space-y-2.5">
-              {/* This month highlight */}
-              <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2.5 flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600">This Month</p>
-                  <p className="text-base font-bold text-emerald-700 leading-tight">{fmtUsd(h.totalRevenueThisMonth || 0)}</p>
-                </div>
-                <div className="text-right text-[10px] text-emerald-600 space-y-0.5">
-                  <p>Stars {fmtUsd(h.starsRevenueThisMonth || 0)}</p>
-                  {(h.manualRevenueThisMonth ?? 0) > 0 && <p>Ads {fmtUsd(h.manualRevenueThisMonth!)}</p>}
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500" /><span className="text-sm text-gray-600">Stars (all time)</span></div>
-                <span className="text-sm font-bold text-gray-900">{fmtUsd(h.earningsLifetimeUsd || 0)}</span>
-              </div>
-              {(h.manualRevenueLifetime ?? 0) > 0 && (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-500" /><span className="text-sm text-gray-600">Advertisers (all time)</span></div>
-                  <span className="text-sm font-bold text-gray-900">{fmtUsd(h.manualRevenueLifetime!)}</span>
-                </div>
-              )}
-              <div className="border-t border-gray-100 pt-2.5 flex items-center justify-between">
-                <span className="text-sm font-semibold text-gray-700">Total lifetime</span>
-                <span className="text-sm font-bold text-emerald-600">{fmtUsd(h.totalEarningsLifetimeUsd || h.earningsLifetimeUsd || 0)}</span>
-              </div>
-              {h.starsUsdRate ? <p className="text-xs text-gray-400">${h.starsUsdRate.toFixed(4)} / star</p> : null}
-            </div>
-          </motion.div>
-
-          {/* System */}
-          {mon.alerts.length > 0 && (
-            <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.3 }} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-bold text-gray-900">System</h3>
-                <span className="text-xs font-mono text-gray-400">{mon.dbLatencyMs}ms</span>
-              </div>
-              <div className="space-y-2">
-                {mon.alerts.map((a, i) => {
-                  const s = { critical:{bar:'bg-red-500',bg:'bg-red-50',tx:'text-red-700'}, warning:{bar:'bg-amber-400',bg:'bg-amber-50',tx:'text-amber-700'}, ok:{bar:'bg-emerald-500',bg:'bg-emerald-50',tx:'text-emerald-700'}, info:{bar:'bg-blue-500',bg:'bg-blue-50',tx:'text-blue-700'} }[a.level] ?? {bar:'bg-gray-400',bg:'bg-gray-50',tx:'text-gray-700'};
-                  return (
-                    <div key={i} className={`flex gap-3 rounded-xl p-3 ${s.bg}`}>
-                      <div className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${s.bar}`} />
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-semibold ${s.tx}`}>{a.title}</p>
-                        <p className={`text-xs mt-0.5 ${s.tx} opacity-70`}>{a.description}</p>
-                      </div>
-                      {a.actionUrl && <Link href={a.actionUrl} className={`text-xs font-semibold shrink-0 ${s.tx} underline`}>View</Link>}
+          {/* Pending Queue */}
+          <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.22 }}>
+            <Card>
+              <SectionHeader
+                title="Pending Queue"
+                right={pending.total > 0 ? <span className="text-[10px] font-bold text-white bg-red-600 rounded-full px-2 py-0.5">{pending.total}</span> : undefined}
+              />
+              <div className="p-2 space-y-0.5">
+                {([
+                  { label:'Groups',  count:pending.groups,  href:'/admin/groups?tab=pending', color:'#f59e0b' },
+                  { label:'Bots',    count:pending.bots,    href:'/admin/pending-bots',       color:'#7c3aed' },
+                  { label:'Reviews', count:pending.reviews, href:'/admin/reviews',            color:'#0284c7' },
+                  { label:'Reports', count:pending.reports, href:'/admin/reports',            color:'#ef4444' },
+                ]).map(item => (
+                  <Link key={item.label} href={item.href}
+                    className="flex items-center justify-between rounded-md bg-white/[0.02] hover:bg-white/[0.05] px-3 py-2 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: item.color }} />
+                      <span className="text-[12px] text-white/55">{item.label}</span>
                     </div>
-                  );
-                })}
+                    <span className="text-[12px] font-semibold text-white/80">{item.count}</span>
+                  </Link>
+                ))}
               </div>
+            </Card>
+          </motion.div>
+
+          {/* Revenue */}
+          <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.26 }}>
+            <Card>
+              <SectionHeader title="Revenue" />
+              <div className="p-3 space-y-2">
+                <div className="rounded-lg bg-emerald-950/40 border border-emerald-500/20 px-3 py-2.5">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400/70">This Month</p>
+                    <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/15">MTD</span>
+                  </div>
+                  <p className="text-[20px] font-bold text-emerald-300 leading-tight tabular-nums">{fmtUsdWhole(h.totalRevenueThisMonth || 0)}</p>
+                </div>
+                <div className="space-y-1.5 pt-0.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /><span className="text-[12px] text-white/50">Stars (all time)</span></div>
+                    <span className="text-[12px] font-semibold text-white/80">{fmtUsd(h.earningsLifetimeUsd || 0)}</span>
+                  </div>
+                  {(h.manualRevenueLifetime ?? 0) > 0 && (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-amber-500" /><span className="text-[12px] text-white/50">Advertisers (all time)</span></div>
+                      <span className="text-[12px] font-semibold text-white/80">{fmtUsd(h.manualRevenueLifetime!)}</span>
+                    </div>
+                  )}
+                  <div className="border-t border-white/[0.06] pt-2 flex items-center justify-between">
+                    <span className="text-[12px] font-medium text-white/50">Total lifetime</span>
+                    <span className="text-[12px] font-bold text-emerald-400">{fmtUsd(h.totalEarningsLifetimeUsd || h.earningsLifetimeUsd || 0)}</span>
+                  </div>
+                  {h.starsUsdRate ? <p className="text-[10px] text-white/25">${h.starsUsdRate.toFixed(4)} / star</p> : null}
+                </div>
+              </div>
+            </Card>
+          </motion.div>
+
+          {/* System Alerts */}
+          {mon.alerts.length > 0 && (
+            <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.3 }}>
+              <Card>
+                <SectionHeader title="System" right={<span className="text-[10px] font-mono text-white/25">{mon.dbLatencyMs}ms</span>} />
+                <div className="p-2 space-y-1">
+                  {mon.alerts.map((a, i) => {
+                    const s = {
+                      critical: { dot:'bg-red-500',     bg:'bg-red-500/10',     tx:'text-red-400'     },
+                      warning:  { dot:'bg-amber-400',   bg:'bg-amber-500/10',   tx:'text-amber-400'   },
+                      ok:       { dot:'bg-emerald-500', bg:'bg-emerald-500/10', tx:'text-emerald-400' },
+                      info:     { dot:'bg-blue-500',    bg:'bg-blue-500/10',    tx:'text-blue-400'    },
+                    }[a.level] ?? { dot:'bg-white/20', bg:'bg-white/5', tx:'text-white/50' };
+                    return (
+                      <div key={i} className={`flex gap-2.5 rounded-md p-2.5 ${s.bg}`}>
+                        <div className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${s.dot}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-[12px] font-semibold ${s.tx}`}>{a.title}</p>
+                          <p className={`text-[11px] mt-0.5 ${s.tx} opacity-70`}>{a.description}</p>
+                        </div>
+                        {a.actionUrl && <Link href={a.actionUrl} className={`text-[11px] font-semibold shrink-0 ${s.tx} underline`}>View</Link>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
             </motion.div>
           )}
         </div>

@@ -8,6 +8,7 @@ const FEED_SLOT_MAX = 12;
 type CampaignRow = {
   _id: string;
   name: string;
+  internalName: string;
   slot: string;
   creative: string;
   destinationUrl: string;
@@ -44,6 +45,7 @@ export default function FeedAdsTab() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     slot: 1,
+    internalName: '',
     name: '',
     creative: '',
     destinationUrl: '',
@@ -90,6 +92,7 @@ export default function FeedAdsTab() {
     setEditing(c);
     setForm({
       slot: positionToSlot(c.position),
+      internalName: c.internalName || '',
       name: c.name,
       creative: c.creative || '',
       destinationUrl: c.destinationUrl || '',
@@ -110,6 +113,7 @@ export default function FeedAdsTab() {
     setEditing(null);
     setForm({
       slot: nextSlot > FEED_SLOT_MAX ? 1 : nextSlot,
+      internalName: '',
       name: '',
       creative: '',
       destinationUrl: '',
@@ -128,8 +132,12 @@ export default function FeedAdsTab() {
   };
 
   const save = async () => {
+    if (!form.internalName?.trim()) {
+      alert('Internal name is required');
+      return;
+    }
     if (!form.name?.trim()) {
-      alert('Name is required');
+      alert('Ad title is required');
       return;
     }
     if (!form.destinationUrl?.trim().startsWith('http')) {
@@ -162,6 +170,7 @@ export default function FeedAdsTab() {
       const finalSlot = ((position - 1) % 3) + 1;
       const payload: Record<string, unknown> = {
         name: form.name.trim(),
+        internalName: form.internalName.trim(),
         slot: 'feed',
         creative: form.creative?.trim() || (editing?.creative ?? ''),
         destinationUrl: form.destinationUrl.trim(),
@@ -250,12 +259,22 @@ export default function FeedAdsTab() {
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-[#999] mb-1">Name *</label>
+              <label className="block text-sm font-semibold text-[#999] mb-1">Internal Name *</label>
+              <input
+                value={form.internalName}
+                onChange={(e) => setForm({ ...form, internalName: e.target.value })}
+                className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white"
+                placeholder="e.g. CPA Offer #3 — Dating"
+              />
+              <p className="text-[#666] text-xs mt-1">Only visible to you in the admin panel</p>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-[#999] mb-1">Ad Title (shown in feed) *</label>
               <input
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white"
-                placeholder="Ad title"
+                placeholder="Title users see on the card"
               />
             </div>
             <div className="md:col-span-2">
@@ -370,7 +389,7 @@ export default function FeedAdsTab() {
             <tr>
               <th className="px-4 py-3 text-[#999] font-semibold">Slot</th>
               <th className="px-4 py-3 text-[#999] font-semibold">Image</th>
-              <th className="px-4 py-3 text-[#999] font-semibold">Name</th>
+              <th className="px-4 py-3 text-[#999] font-semibold">Internal Name</th>
               <th className="px-4 py-3 text-[#999] font-semibold">Show on</th>
               <th className="px-4 py-3 text-[#999] font-semibold">Button</th>
               <th className="px-4 py-3 text-[#999] font-semibold">Status</th>
@@ -396,7 +415,10 @@ export default function FeedAdsTab() {
                       <span className="text-[#666]">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-white">{c.name}</td>
+                  <td className="px-4 py-3">
+                    <span className="text-white font-medium">{c.internalName || c.name}</span>
+                    <span className="block text-[#666] text-xs mt-0.5 truncate max-w-[200px]">{c.name}</span>
+                  </td>
                   <td className="px-4 py-3 text-[#999]">{c.feedPlacement === 'both' ? 'Groups + Bots' : c.feedPlacement === 'groups' ? 'Groups' : 'Bots'}</td>
                   <td className="px-4 py-3 text-[#999]">{c.buttonText || 'Visit Site'}</td>
                   <td className="px-4 py-3">
