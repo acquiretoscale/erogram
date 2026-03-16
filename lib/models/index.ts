@@ -509,6 +509,8 @@ export const campaignSchema = new Schema(
     adType: { type: String, enum: ['advertiser', 'premium'], default: 'advertiser' },
     // For premium ads: which category to pull featured groups from
     premiumCategory: { type: String, default: '' },
+    // For premium ads: hand-picked group IDs to show (overrides automatic category query)
+    premiumGroupIds: { type: [Schema.Types.ObjectId], default: [] },
     // Social proof indicator shown on the card: 'none' | 'visiting' | 'clicks' | 'trending' | 'random'
     socialProof: { type: String, enum: ['none', 'visiting', 'clicks', 'trending', 'random'], default: 'random' },
   },

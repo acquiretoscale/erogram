@@ -12,6 +12,7 @@ export async function GET(req: NextRequest) {
     }
 
     const category = req.nextUrl.searchParams.get('category');
+    const maxResults = Math.min(parseInt(req.nextUrl.searchParams.get('limit') || '200', 10) || 200, 500);
 
     await connectDB();
 
@@ -22,25 +23,39 @@ export async function GET(req: NextRequest) {
     if (category) {
       query.$or = [
         { category },
+        { categories: category },
         { vaultCategories: category },
       ];
     }
 
     const groups = await Group.find(query)
       .sort({ showOnVaultTeaser: -1, memberCount: -1 })
-      .limit(8)
-      .select('_id name image memberCount category')
+      .limit(maxResults)
+      .select('_id name image memberCount category categories showOnVaultTeaser')
       .lean();
 
-    const result = groups.map((g: any) => ({
-      _id: g._id.toString(),
-      name: g.name || '',
-      image: g.image || '',
-      memberCount: g.memberCount || 0,
-      category: g.category || '',
-    }));
+    const allCats = new Set<string>();
+    const result = groups.map((g: any) => {
+      const cats: string[] = [
+        ...(g.categories || []),
+        ...(g.category ? [g.category] : []),
+      ].filter(Boolean);
+      cats.forEach(c => allCats.add(c));
+      return {
+        _id: g._id.toString(),
+        name: g.name || '',
+        image: g.image || '',
+        memberCount: g.memberCount || 0,
+        category: g.category || '',
+        favourited: Boolean(g.showOnVaultTeaser),
+      };
+    });
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      groups: result,
+      categories: [...allCats].sort(),
+      total: result.length,
+    });
   } catch (err: any) {
     return NextResponse.json({ message: err.message || 'Failed' }, { status: 500 });
   }

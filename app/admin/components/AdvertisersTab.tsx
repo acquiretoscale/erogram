@@ -293,8 +293,12 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const savingRef = useRef(false);
-  const [premiumPreviewGroups, setPremiumPreviewGroups] = useState<{ _id: string; name: string; image: string; memberCount: number; category: string }[]>([]);
+  const [premiumPreviewGroups, setPremiumPreviewGroups] = useState<{ _id: string; name: string; image: string; memberCount: number; category: string; favourited: boolean }[]>([]);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [premiumGroupCategories, setPremiumGroupCategories] = useState<string[]>([]);
+  const [premiumCategoryFilter, setPremiumCategoryFilter] = useState('');
+  const [premiumGroupsLoaded, setPremiumGroupsLoaded] = useState(false);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
 
   // Data fetching. skipLoading=true = refresh without full-page loading (e.g. after save).
   const fetchAll = async (skipLoading = false) => {
@@ -316,6 +320,33 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
     } finally {
       if (!skipLoading) setIsLoading(false);
     }
+  };
+
+  const [premiumFetchError, setPremiumFetchError] = useState('');
+  const fetchAllPremiumGroups = async (force = false) => {
+    if (premiumGroupsLoaded && !force) return;
+    setIsLoadingPreview(true);
+    setPremiumFetchError('');
+    try {
+      const res = await axios.get('/api/admin/premium-preview-groups?limit=500', authHeaders());
+      const data = res.data || {};
+      const groups = Array.isArray(data.groups) ? data.groups : [];
+      setPremiumPreviewGroups(groups);
+      setPremiumGroupCategories(Array.isArray(data.categories) ? data.categories : []);
+      if (groups.length === 0) {
+        console.warn('[PremiumGroups] API returned 0 groups. Response:', JSON.stringify(data).slice(0, 500));
+      } else {
+        const favCount = groups.filter((g: any) => g.favourited).length;
+        console.log(`[PremiumGroups] Loaded ${groups.length} groups, ${favCount} favourited`);
+      }
+    } catch (err: any) {
+      console.error('[PremiumGroups] Fetch failed:', err?.response?.status, err?.message);
+      setPremiumFetchError(err?.response?.data?.message || err?.message || 'Failed to load premium groups');
+      setPremiumPreviewGroups([]);
+      setPremiumGroupCategories([]);
+    }
+    setPremiumGroupsLoaded(true);
+    setIsLoadingPreview(false);
   };
 
   useEffect(() => {
@@ -414,6 +445,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
     const isCtaSlot = isTextOnlySlot(slot);
     setCampaignType(isCtaSlot ? 'text' : 'image');
     setPremiumPreviewGroups([]);
+    setSelectedGroupIds(new Set());
     const start = new Date();
     const end = new Date(Date.now() + 30 * 86400000);
     setCampForm({
@@ -479,12 +511,11 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       premiumCategory: premCat,
       socialProof: (camp as any).socialProof || 'random',
     });
-    if (isPremium && premCat) {
-      setIsLoadingPreview(true);
-      axios.get(`/api/admin/premium-preview-groups?category=${encodeURIComponent(premCat)}`, authHeaders())
-        .then(res => setPremiumPreviewGroups(res.data || []))
-        .catch(() => setPremiumPreviewGroups([]))
-        .finally(() => setIsLoadingPreview(false));
+    const savedIds: string[] = (camp as any).premiumGroupIds || [];
+    setSelectedGroupIds(new Set(savedIds));
+    if (isPremium) {
+      fetchAllPremiumGroups();
+      if (premCat) setPremiumCategoryFilter(premCat);
     } else {
       setPremiumPreviewGroups([]);
     }
@@ -556,6 +587,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
         verified: isFeed ? Boolean(campForm.verified) : false,
         adType: campForm.adType || 'advertiser',
         premiumCategory: campForm.adType === 'premium' ? (campForm.premiumCategory || '') : '',
+        premiumGroupIds: campForm.adType === 'premium' ? [...selectedGroupIds] : [],
         socialProof: isFeed ? ((campForm as any).socialProof || 'random') : 'random',
       };
       if (isFeed && !editingCampaign) {
@@ -584,6 +616,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       setEditingCampaign(null);
       setCampaignType('image');
       setPremiumPreviewGroups([]);
+      setSelectedGroupIds(new Set());
       setCampForm({
         advertiserId: campForm.advertiserId,
         name: '',
@@ -928,6 +961,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                       destinationUrl: campForm.destinationUrl || 'https://erogram.pro/premium',
                       buttonText: campForm.buttonText || 'Unlock The Vault',
                     });
+                    fetchAllPremiumGroups();
                   }}
                   className="w-4 h-4 text-orange-500 focus:ring-orange-500"
                 />
@@ -1003,103 +1037,158 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
               </div>
             </div>
           ) : campaignType === 'premium' ? (
-            /* --- PREMIUM: category selector — shows top groups as a mosaic in the feed --- */
+            /* --- PREMIUM: pick groups for the mosaic ad --- */
             <div className="rounded-xl bg-orange-500/10 border border-orange-500/30 p-4 space-y-4">
-              <p className="text-sm font-semibold text-orange-200">Premium group mosaic — select a category. Top favourited groups from that category will be shown as a 2x2 grid in the feed.</p>
-              <div>
-                <label className="block text-sm font-semibold text-[#999] mb-2">Category *</label>
-                <select
-                  value={campForm.premiumCategory}
-                  onChange={async (e) => {
-                    const cat = e.target.value;
-                    setCampForm({ ...campForm, premiumCategory: cat, name: campForm.name || `Premium — ${cat}` });
-                    setPremiumPreviewGroups([]);
-                    if (!cat) return;
-                    setIsLoadingPreview(true);
-                    try {
-                      const res = await axios.get(`/api/admin/premium-preview-groups?category=${encodeURIComponent(cat)}`, authHeaders());
-                      setPremiumPreviewGroups(res.data || []);
-                    } catch { setPremiumPreviewGroups([]); }
-                    setIsLoadingPreview(false);
-                  }}
-                  className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-orange-500 outline-none"
-                >
-                  <option value="">Select a category…</option>
-                  {['AI NSFW', 'Amateur', 'Anal', 'Anime', 'Asian', 'BDSM', 'Big Ass', 'Big Tits', 'Black', 'Blonde', 'Blowjob',
-                    'Brazil', 'Brunette', 'Cosplay', 'Creampie', 'Cuckold', 'Ebony', 'Fantasy', 'Feet', 'Fetish', 'Free-use',
-                    'Hardcore', 'Japan', 'Latina', 'Lesbian', 'Masturbation', 'MILF',
-                    'Onlyfans', 'Onlyfans Leaks', 'Petite', 'Public', 'Red Hair', 'Russian',
-                    'Telegram-Porn', 'Threesome', 'Trans', 'USA', 'UK',
-                  ].map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
+              <p className="text-sm font-semibold text-orange-200">Pick which premium groups to show in this feed ad mosaic.</p>
 
-              {/* Live preview of the premium mosaic card */}
               {isLoadingPreview && (
                 <div className="flex items-center gap-2 text-orange-300 text-sm py-4">
                   <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                  Loading preview…
+                  Loading premium groups…
                 </div>
               )}
-              {!isLoadingPreview && premiumPreviewGroups.length > 0 && (
-                <div>
-                  <label className="block text-sm font-semibold text-[#999] mb-3">Preview — as shown in feed ({premiumPreviewGroups.length} groups)</label>
-                  <div className="flex flex-col md:flex-row gap-4">
-                    {/* Mosaic preview card */}
-                    <div className="w-[220px] shrink-0 rounded-2xl p-[2px] overflow-hidden" style={{ background: 'conic-gradient(from 0deg, transparent 0deg, #ff6a00 80deg, #ff9500 90deg, #ffffff 100deg, #ff9500 110deg, #ff6a00 120deg, transparent 140deg, transparent 360deg)' }}>
-                      <div className="rounded-2xl overflow-hidden flex flex-col" style={{ background: '#0a0a0a' }}>
-                        <div className="grid grid-cols-2 grid-rows-2 gap-[2px] p-[2px]" style={{ aspectRatio: '1' }}>
-                          {premiumPreviewGroups.slice(0, 4).map((g, i) => (
-                            <div key={g._id} className="relative rounded-md overflow-hidden border border-orange-500/60">
-                              <img src={g.image || '/assets/placeholder-no-image.png'} alt="" className="w-full h-full object-cover" style={{ aspectRatio: '1' }} onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
-                              <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 20%, rgba(0,0,0,0.85) 100%)' }} />
-                              <div className="absolute bottom-0 left-0 right-0 p-1">
-                                <p className="text-[8px] font-bold text-white truncate">
-                                  {(g.name || '').slice(0, 6)}
-                                  <span style={{ display: 'inline-block', width: '3em', height: '0.65em', background: 'rgba(255,255,255,0.9)', borderRadius: '2px', verticalAlign: 'middle', marginLeft: '2px', filter: 'blur(2px)' }} />
-                                </p>
-                                <div className="flex items-center gap-0.5">
-                                  {g.memberCount > 0 && <span className="text-[8px] font-black text-orange-400">{g.memberCount >= 1000 ? (g.memberCount / 1000).toFixed(g.memberCount >= 10000 ? 0 : 1) + 'K' : g.memberCount}</span>}
-                                  <span className="text-[7px] font-bold text-white/40 truncate">· {g.category}</span>
+              {!isLoadingPreview && premiumPreviewGroups.length > 0 && (() => {
+                const favouritesOnly = premiumPreviewGroups.filter(g => g.favourited);
+                const filtered = premiumCategoryFilter
+                  ? favouritesOnly.filter(g => g.category === premiumCategoryFilter)
+                  : favouritesOnly;
+                const pickedGroups = premiumPreviewGroups.filter(g => selectedGroupIds.has(g._id));
+                return (
+                <div className="space-y-4">
+                  {/* Selection status + filter */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="text-sm font-bold text-white">{selectedGroupIds.size} selected</span>
+                      {selectedGroupIds.size > 0 && (
+                        <button type="button" onClick={() => setSelectedGroupIds(new Set())} className="text-[10px] text-red-400 hover:text-red-300 font-bold uppercase tracking-wider">
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={premiumCategoryFilter}
+                        onChange={(e) => setPremiumCategoryFilter(e.target.value)}
+                        className="px-3 py-1.5 bg-[#1a1a1a] border border-white/10 rounded-lg text-white text-xs focus:ring-1 focus:ring-orange-500 outline-none"
+                      >
+                        <option value="">All categories ({favouritesOnly.length})</option>
+                        {Array.isArray(premiumGroupCategories) && premiumGroupCategories.map(cat => (
+                          <option key={cat} value={cat}>{cat} ({favouritesOnly.filter(g => g.category === cat).length})</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => fetchAllPremiumGroups(true)}
+                        className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/50 hover:text-white text-xs transition-all"
+                      >
+                        Refresh
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row gap-3">
+                    {/* Mosaic preview — hard-constrained to 160px */}
+                    <div style={{ width: 160, minWidth: 160, maxWidth: 160 }} className="shrink-0">
+                      <div className="rounded-2xl p-[2px] overflow-hidden" style={{ width: 160, background: 'conic-gradient(from 0deg, transparent 0deg, #ff6a00 80deg, #ff9500 90deg, #ffffff 100deg, #ff9500 110deg, #ff6a00 120deg, transparent 140deg, transparent 360deg)' }}>
+                        <div className="rounded-2xl overflow-hidden flex flex-col" style={{ width: 156, background: '#0a0a0a' }}>
+                          <div className="grid grid-cols-2 grid-rows-2 gap-[2px] p-[2px] overflow-hidden" style={{ width: 156, height: 156 }}>
+                            {pickedGroups.slice(0, 4).map((g) => (
+                              <div key={g._id} className="relative rounded-md overflow-hidden border border-orange-500/60" style={{ width: 75, height: 75 }}>
+                                <img src={g.image || '/assets/placeholder-no-image.png'} alt="" width={75} height={75} className="object-cover" style={{ width: 75, height: 75, display: 'block' }} onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
+                                <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 20%, rgba(0,0,0,0.85) 100%)' }} />
+                                <div className="absolute bottom-0 left-0 right-0 p-1">
+                                  <p className="text-[7px] font-bold text-white truncate">
+                                    {(g.name || '').slice(0, 6)}
+                                  </p>
+                                  <div className="flex items-center gap-0.5">
+                                    {g.memberCount > 0 && <span className="text-[7px] font-black text-orange-400">{g.memberCount >= 1000 ? (g.memberCount / 1000).toFixed(0) + 'K' : g.memberCount}</span>}
+                                  </div>
                                 </div>
                               </div>
+                            ))}
+                            {Array.from({ length: Math.max(0, 4 - pickedGroups.length) }).map((_, i) => (
+                              <div key={`empty-${i}`} className="rounded-md border border-dashed border-white/10 flex items-center justify-center" style={{ width: 75, height: 75 }}>
+                                <span className="text-white/15 text-[9px]">pick</span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="p-1.5 flex flex-col gap-0.5" style={{ background: 'linear-gradient(180deg, #1a0f00, #0a0a0a)' }}>
+                            <h3 className="text-[9px] font-black text-white leading-tight truncate">🔒 {campForm.name || 'Premium Vault'}</h3>
+                            <div className="flex items-center justify-center rounded-md py-0.5 px-1.5 font-black text-white text-[8px] uppercase tracking-wider bg-gradient-to-r from-orange-500 to-red-600">
+                              🔓 {campForm.buttonText || 'Unlock The Vault'}
                             </div>
-                          ))}
-                        </div>
-                        <div className="p-2 flex flex-col gap-1" style={{ background: 'linear-gradient(180deg, #1a0f00, #0a0a0a)' }}>
-                          <h3 className="text-[10px] font-black text-white leading-tight">🔒 {campForm.name || `Premium ${campForm.premiumCategory}`}</h3>
-                          <p className="text-orange-300 text-[8px] font-bold uppercase tracking-wide">{campForm.description || `Unlock the best ${campForm.premiumCategory} groups`}</p>
-                          <div className="flex items-center justify-center rounded-lg py-1 px-2 font-black text-white text-[9px] uppercase tracking-wider bg-gradient-to-r from-orange-500 to-red-600">
-                            🔓 {campForm.buttonText || 'Unlock The Vault'}
                           </div>
                         </div>
                       </div>
+                      {pickedGroups.length > 4 && (
+                        <p className="text-[9px] text-white/30 mt-1 text-center">+{pickedGroups.length - 4} more (rotates)</p>
+                      )}
                     </div>
 
-                    {/* Group list */}
+                    {/* Selectable group list */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-white/40 mb-2">Groups that will appear (rotates every 4s):</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-[280px] overflow-y-auto pr-1">
-                        {premiumPreviewGroups.map((g, i) => (
-                          <div key={g._id} className="flex items-center gap-2 p-1.5 rounded-lg bg-white/[0.03] border border-white/[0.06]">
-                            <span className="text-[10px] text-white/30 w-4 text-center font-mono">{i + 1}</span>
-                            <img src={g.image || '/assets/placeholder-no-image.png'} alt="" className="w-8 h-8 rounded-md object-cover border border-orange-500/30" onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs text-white font-medium truncate">{g.name}</p>
-                              <p className="text-[10px] text-white/40">{g.memberCount >= 1000 ? (g.memberCount / 1000).toFixed(1) + 'K' : g.memberCount} members · {g.category}</p>
-                            </div>
-                          </div>
-                        ))}
+                      <p className="text-[10px] text-white/40 mb-1">Click to select/deselect ({filtered.length} shown):</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-[480px] overflow-y-auto pr-1">
+                        {filtered.map((g) => {
+                          const isSelected = selectedGroupIds.has(g._id);
+                          return (
+                            <button
+                              key={g._id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedGroupIds(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(g._id)) next.delete(g._id);
+                                  else next.add(g._id);
+                                  return next;
+                                });
+                              }}
+                              className={`flex flex-col items-center gap-1 p-1.5 rounded-lg text-center transition-all ${
+                                isSelected
+                                  ? 'bg-orange-500/15 border-2 border-orange-500/60'
+                                  : 'bg-white/[0.03] border-2 border-transparent hover:border-white/15'
+                              }`}
+                            >
+                              <div className="relative shrink-0">
+                                <img src={g.image || '/assets/placeholder-no-image.png'} alt="" width={96} height={96} style={{ width: 96, height: 96, display: 'block' }} className={`shrink-0 rounded-lg object-cover ${isSelected ? 'ring-2 ring-orange-500' : ''}`} onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
+                                <div className={`absolute top-1 right-1 w-5 h-5 rounded border-2 flex items-center justify-center ${
+                                  isSelected ? 'border-orange-500 bg-orange-500' : 'border-white/30 bg-black/50'
+                                }`}>
+                                  {isSelected && (
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="w-full min-w-0 overflow-hidden">
+                                <p className={`text-[11px] font-semibold truncate leading-tight ${isSelected ? 'text-orange-200' : 'text-white'}`}>{g.name}</p>
+                                <p className="text-[10px] text-white/30 truncate leading-tight">
+                                  {g.memberCount >= 1000 ? (g.memberCount / 1000).toFixed(1) + 'K' : g.memberCount} · {g.category}
+                                </p>
+                              </div>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
                 </div>
+                );
+              })()}
+              {!isLoadingPreview && premiumGroupsLoaded && premiumFetchError && (
+                <div className="text-red-400/80 text-sm py-3 flex items-center gap-2">
+                  <span>❌</span> API error: {premiumFetchError}
+                  <button type="button" onClick={() => fetchAllPremiumGroups(true)} className="ml-2 text-xs underline hover:text-white">Retry</button>
+                </div>
               )}
-              {!isLoadingPreview && campForm.premiumCategory && premiumPreviewGroups.length === 0 && (
+              {!isLoadingPreview && premiumPreviewGroups.length === 0 && premiumGroupsLoaded && !premiumFetchError && (
                 <div className="text-amber-400/80 text-sm py-3 flex items-center gap-2">
-                  <span>⚠️</span> No premium groups found for &quot;{campForm.premiumCategory}&quot;. Make sure groups in this category are marked as premium and approved.
+                  <span>⚠️</span> No premium groups found. Make sure groups are marked as premium and approved.
+                  <button type="button" onClick={() => fetchAllPremiumGroups(true)} className="ml-2 text-xs underline hover:text-white">Retry</button>
+                </div>
+              )}
+              {!isLoadingPreview && premiumPreviewGroups.length > 0 && premiumPreviewGroups.filter(g => g.favourited).length === 0 && premiumGroupsLoaded && (
+                <div className="text-amber-400/80 text-sm py-3 flex items-center gap-2">
+                  <span>⚠️</span> {premiumPreviewGroups.length} premium groups loaded but none are favourited (showOnVaultTeaser). Star some groups first.
                 </div>
               )}
             </div>
@@ -2511,7 +2600,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
               });
             };
 
-            const duplicateCampaigns = async (ids: string[]) => {
+            const duplicateCampaigns = async (ids: string[], targetSlots?: number[]) => {
               const token = getToken();
               if (!token) return;
               const toDuplicate = feedCampaigns.filter((c) => ids.includes(c._id));
@@ -2519,31 +2608,39 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
               const maxPos = Math.max(0, ...feedCampaigns.map((c) => c.position ?? 0));
               let nextPos = maxPos + 1;
               for (const c of toDuplicate) {
-                const payload: Record<string, unknown> = {
-                  name: `${c.name} (copy)`,
-                  slot: 'feed',
-                  creative: c.creative || '',
-                  destinationUrl: c.destinationUrl || '',
-                  startDate: new Date().toISOString().slice(0, 10),
-                  endDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
-                  status: 'paused',
-                  isVisible: true,
-                  position: nextPos,
-                  feedTier: c.feedTier,
-                  tierSlot: c.tierSlot,
-                  description: c.description || '',
-                  category: c.category || 'All',
-                  country: c.country || 'All',
-                  buttonText: c.buttonText || 'Visit Site',
-                  feedPlacement: c.feedPlacement || 'both',
-                  videoUrl: (c as any).videoUrl || '',
-                  badgeText: (c as any).badgeText || '',
-                  verified: Boolean((c as any).verified),
-                  socialProof: (c as any).socialProof || 'random',
-                  advertiserId: c.advertiserId,
-                };
-                await axios.post('/api/admin/campaigns', payload, authHeaders());
-                nextPos++;
+                const slots = targetSlots && targetSlots.length > 0 ? targetSlots : [c.tierSlot ?? 1];
+                for (const ts of slots) {
+                  const payload: Record<string, unknown> = {
+                    name: targetSlots && targetSlots.length > 0
+                      ? `${c.name} (slot ${ts})`
+                      : `${c.name} (copy)`,
+                    slot: 'feed',
+                    creative: c.creative || '',
+                    destinationUrl: c.destinationUrl || '',
+                    startDate: new Date().toISOString().slice(0, 10),
+                    endDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+                    status: 'paused',
+                    isVisible: true,
+                    position: nextPos,
+                    feedTier: c.feedTier ?? 1,
+                    tierSlot: ts,
+                    description: c.description || '',
+                    category: c.category || 'All',
+                    country: c.country || 'All',
+                    buttonText: c.buttonText || 'Visit Site',
+                    feedPlacement: c.feedPlacement || 'both',
+                    videoUrl: (c as any).videoUrl || '',
+                    badgeText: (c as any).badgeText || '',
+                    verified: Boolean((c as any).verified),
+                    socialProof: (c as any).socialProof || 'random',
+                    advertiserId: c.advertiserId,
+                    adType: (c as any).adType || 'advertiser',
+                    premiumCategory: (c as any).premiumCategory || '',
+                    premiumGroupIds: (c as any).premiumGroupIds || [],
+                  };
+                  await axios.post('/api/admin/campaigns', payload, authHeaders());
+                  nextPos++;
+                }
               }
               await fetchAll();
               clearFeedAdsSelection();
@@ -2870,7 +2967,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                                           {feedAdsMenuOpen === c._id && (
                                             <>
                                               <div className="fixed inset-0 z-40" onClick={() => setFeedAdsMenuOpen(null)} />
-                                              <div className="absolute right-0 top-8 z-50 w-36 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-xl overflow-hidden">
+                                              <div className="absolute right-0 top-8 z-50 w-48 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-xl overflow-hidden">
                                                 <button
                                                   onClick={() => { setFeedAdsMenuOpen(null); openEditCampaign(c); }}
                                                   className="w-full text-left px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2"
@@ -2884,8 +2981,44 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                                                   }}
                                                   className="w-full text-left px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2"
                                                 >
-                                                  <span className="text-purple-400">⧉</span> Duplicate
+                                                  <span className="text-purple-400">⧉</span> Duplicate (same slot)
                                                 </button>
+                                                <div className="border-t border-white/5" />
+                                                <div className="px-4 py-1.5 text-[10px] text-white/30 uppercase tracking-wider font-bold">Duplicate to slot…</div>
+                                                <div className="flex gap-1 px-4 pb-2">
+                                                  {[1, 2, 3, 4].map(ts => {
+                                                    const isCurrent = (c.tierSlot ?? 1) === ts;
+                                                    return (
+                                                      <button
+                                                        key={ts}
+                                                        disabled={isCurrent}
+                                                        onClick={async () => {
+                                                          setFeedAdsMenuOpen(null);
+                                                          try { await duplicateCampaigns([c._id], [ts]); } catch (err: any) { alert(err.response?.data?.message || 'Duplicate failed'); }
+                                                        }}
+                                                        className={`flex-1 py-1.5 rounded text-xs font-bold transition-all ${
+                                                          isCurrent
+                                                            ? 'bg-white/5 text-white/20 cursor-not-allowed'
+                                                            : 'bg-purple-600/20 text-purple-300 hover:bg-purple-600 hover:text-white'
+                                                        }`}
+                                                        title={isCurrent ? 'Already in this slot' : `Duplicate to slot ${ts}`}
+                                                      >
+                                                        {ts}
+                                                      </button>
+                                                    );
+                                                  })}
+                                                </div>
+                                                <button
+                                                  onClick={async () => {
+                                                    setFeedAdsMenuOpen(null);
+                                                    const otherSlots = [1, 2, 3, 4].filter(ts => ts !== (c.tierSlot ?? 1));
+                                                    try { await duplicateCampaigns([c._id], otherSlots); } catch (err: any) { alert(err.response?.data?.message || 'Duplicate failed'); }
+                                                  }}
+                                                  className="w-full text-left px-4 py-2 text-xs text-purple-300 hover:bg-purple-600/20 transition-colors flex items-center gap-2 font-medium"
+                                                >
+                                                  <span className="text-purple-400">⧉</span> Duplicate to ALL other slots
+                                                </button>
+                                                <div className="border-t border-white/5" />
                                                 <button
                                                   onClick={() => { setFeedAdsMenuOpen(null); toggleCampaignStatus(c); }}
                                                   className="w-full text-left px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2"

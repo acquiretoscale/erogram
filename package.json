@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "analyze": "ANALYZE=true next build --webpack",
-    "clean": "rm -rf .next node_modules/.cache",
+    "clean": "rm -rf .next .next-* node_modules/.cache",
     "dev:clean": "npm run clean && npm run dev",
     "fetch-missing-images": "node --env-file=.env.local scripts/fetch-missing-images.mjs",
     "fetch-missing-images:dry": "node --env-file=.env.local scripts/fetch-missing-images.mjs --dry-run",

@@ -2,9 +2,11 @@ import type { NextConfig } from "next";
 import withBundleAnalyzer from '@next/bundle-analyzer';
 
 const port = process.env.PORT ? String(process.env.PORT) : '';
+const isDev = process.env.NODE_ENV === 'development';
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  compress: true, // Enable gzip compression
+  compress: !isDev,
   ...(port && port !== '3000' ? { distDir: `.next-${port}` } : {}),
 
   reactStrictMode: false,

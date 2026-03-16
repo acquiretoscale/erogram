@@ -72,6 +72,7 @@ export async function getCampaigns(token: string, advertiserId?: string) {
     verified: Boolean(c.verified),
     adType: c.adType || 'advertiser',
     premiumCategory: c.premiumCategory || '',
+    premiumGroupIds: (c.premiumGroupIds || []).map((id: any) => id.toString()),
   }));
 }
 
@@ -100,6 +101,7 @@ export async function createCampaign(
     verified?: boolean;
     adType?: 'advertiser' | 'premium';
     premiumCategory?: string;
+    premiumGroupIds?: string[];
     socialProof?: string;
   }
 ) {
@@ -143,8 +145,8 @@ export async function createCampaign(
   if (data.slot === 'feed') {
     const slot = data.tierSlot != null ? Number(data.tierSlot) : null;
     if (slot != null) {
-      if (slot < 1 || slot > 3) {
-        throw new Error('Feed Slot must be 1–3.');
+      if (slot < 1 || slot > 4) {
+        throw new Error('Feed Slot must be 1–4.');
       }
       (data as any).feedTier = 1; // all feed ads live in tier 1
       const variantCount = await Campaign.countDocuments({
@@ -196,6 +198,9 @@ export async function createCampaign(
     verified: data.slot === 'feed' ? Boolean(data.verified) : false,
     adType: data.adType || 'advertiser',
     premiumCategory: data.adType === 'premium' ? (data.premiumCategory || '') : '',
+    premiumGroupIds: data.adType === 'premium' && data.premiumGroupIds?.length
+      ? data.premiumGroupIds.map(id => new mongoose.Types.ObjectId(id))
+      : [],
     socialProof: data.socialProof || 'random',
   });
 
@@ -233,6 +238,7 @@ export async function updateCampaign(
     verified: boolean;
     adType: 'advertiser' | 'premium';
     premiumCategory: string;
+    premiumGroupIds: string[];
     socialProof: string;
   }>
 ) {
@@ -264,6 +270,9 @@ export async function updateCampaign(
   if ('verified' in data) updateData.verified = Boolean(data.verified);
   if ('adType' in data) updateData.adType = data.adType || 'advertiser';
   if ('premiumCategory' in data) updateData.premiumCategory = String(data.premiumCategory ?? '').trim();
+  if ('premiumGroupIds' in data) {
+    updateData.premiumGroupIds = (data.premiumGroupIds || []).map(id => new mongoose.Types.ObjectId(id));
+  }
   if ('socialProof' in data) updateData.socialProof = data.socialProof || 'random';
 
   if (Object.keys(updateData).length === 0) {
@@ -385,15 +394,15 @@ export async function getFeedTierCapacity(token: string) {
         startDate: { $lte: now },
         endDate: { $gte: now },
         feedTier: 1,
-        tierSlot: { $gte: 1, $lte: 3 },
+        tierSlot: { $gte: 1, $lte: 4 },
       },
     },
     { $group: { _id: '$tierSlot', count: { $sum: 1 } } },
   ]);
 
-  const TIER_LABELS = ['Top Groups — Position 2', 'Discover NSFW Telegram — Position 3', 'Discover NSFW Groups — Position 8'];
+  const TIER_LABELS = ['Top Groups — Position 2', 'Discover NSFW Telegram — Position 3', 'Discover NSFW Groups — Position 8', 'After 12 Groups — Position 12+'];
   const countBySlot = new Map(counts.map((c: any) => [c._id, c.count]));
-  return [1, 2, 3].map((s) => ({
+  return [1, 2, 3, 4].map((s) => ({
     tier: 1,
     label: TIER_LABELS[s - 1],
     max: 4,
@@ -421,7 +430,7 @@ async function normalizeFeedPositions(): Promise<void> {
   const withKey = allFeed.map((c: any) => {
     const slot = c.tierSlot as number | null;
     const stored = c.position != null ? Number(c.position) : 999;
-    const sortKey = slot != null && slot >= 1 && slot <= 3 ? slot : stored;
+    const sortKey = slot != null && slot >= 1 && slot <= 4 ? slot : stored;
     const isActive = c.status === 'active';
     return { c, sortKey, isActive };
   });
@@ -468,7 +477,7 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
       { feedPlacement: { $exists: false } },
     ],
   })
-    .select('_id creative destinationUrl slot feedTier tierSlot position description category country buttonText name feedPlacement videoUrl badgeText verified adType premiumCategory socialProof')
+    .select('_id creative destinationUrl slot feedTier tierSlot position description category country buttonText name feedPlacement videoUrl badgeText verified adType premiumCategory premiumGroupIds socialProof')
     .lean();
 
   // Group by tierSlot (1-4) for A/B variant selection
@@ -521,60 +530,87 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
   try {
     const premiumCampaigns = results.filter(r => r.adType === 'premium');
     if (premiumCampaigns.length > 0) {
-      const categoryCampaigns = premiumCampaigns.filter(c => c.premiumCategory);
-      const noCategoryCampaigns = premiumCampaigns.filter(c => !c.premiumCategory);
+      const toGroupObj = (g: any) => ({
+        _id: g._id.toString(),
+        name: g.name || '',
+        image: g.image || '',
+        memberCount: g.memberCount || 0,
+        category: g.category || '',
+      });
+
+      // Separate campaigns by whether they have hand-picked group IDs
+      const handPickedCampaigns = premiumCampaigns.filter(c => {
+        const src = campaigns.find((doc: any) => doc._id.toString() === c._id);
+        const ids = (src as any)?.premiumGroupIds || [];
+        return ids.length > 0;
+      });
+      const autoCampaigns = premiumCampaigns.filter(c => !handPickedCampaigns.includes(c));
+
+      // Load hand-picked groups by their IDs (preserving selection order)
+      const allPickedIds = new Set<string>();
+      for (const camp of handPickedCampaigns) {
+        const src = campaigns.find((doc: any) => doc._id.toString() === camp._id);
+        for (const id of ((src as any)?.premiumGroupIds || [])) allPickedIds.add(id.toString());
+      }
+      let pickedGroupsMap = new Map<string, any>();
+      if (allPickedIds.size > 0) {
+        const pickedGroups = await Group.find({
+          _id: { $in: [...allPickedIds].map(id => new mongoose.Types.ObjectId(id)) },
+          premiumOnly: true,
+          status: 'approved',
+        })
+          .select('_id name image memberCount category')
+          .lean();
+        for (const g of pickedGroups) pickedGroupsMap.set((g as any)._id.toString(), toGroupObj(g));
+      }
+
+      // For auto campaigns, load by category
+      const categoryCampaigns = autoCampaigns.filter(c => c.premiumCategory);
+      const noCategoryCampaigns = autoCampaigns.filter(c => !c.premiumCategory);
       const categories = [...new Set(categoryCampaigns.map(c => c.premiumCategory))];
 
       const groupsByCategory: Record<string, any[]> = {};
-
-      // Load groups for campaigns with a specific category
       await Promise.all(categories.map(async (cat) => {
         const groups = await Group.find({
           premiumOnly: true,
           status: 'approved',
           $or: [
             { category: cat },
+            { categories: cat },
             { vaultCategories: cat },
           ],
         })
           .sort({ showOnVaultTeaser: -1, memberCount: -1 })
           .limit(8)
-          .select('_id name image memberCount category vaultCategories')
+          .select('_id name image memberCount category')
           .lean();
-        groupsByCategory[cat] = groups.map((g: any) => ({
-          _id: g._id.toString(),
-          name: g.name || '',
-          image: g.image || '',
-          memberCount: g.memberCount || 0,
-          category: g.category || '',
-        }));
+        groupsByCategory[cat] = groups.map(toGroupObj);
       }));
 
-      // Load ALL top premium groups for campaigns without a specific category
       let allPremiumGroups: any[] = [];
       if (noCategoryCampaigns.length > 0) {
-        const groups = await Group.find({
-          premiumOnly: true,
-          status: 'approved',
-        })
+        const groups = await Group.find({ premiumOnly: true, status: 'approved' })
           .sort({ showOnVaultTeaser: -1, memberCount: -1 })
           .limit(8)
-          .select('_id name image memberCount category vaultCategories')
+          .select('_id name image memberCount category')
           .lean();
-        allPremiumGroups = groups.map((g: any) => ({
-          _id: g._id.toString(),
-          name: g.name || '',
-          image: g.image || '',
-          memberCount: g.memberCount || 0,
-          category: g.category || '',
-        }));
+        allPremiumGroups = groups.map(toGroupObj);
       }
 
       for (const r of results) {
-        if (r.adType === 'premium') {
-          r.premiumGroups = r.premiumCategory
-            ? (groupsByCategory[r.premiumCategory] || [])
-            : allPremiumGroups;
+        if (r.adType !== 'premium') continue;
+
+        // Check for hand-picked IDs first
+        const src = campaigns.find((doc: any) => doc._id.toString() === r._id);
+        const pickedIds: string[] = ((src as any)?.premiumGroupIds || []).map((id: any) => id.toString());
+        if (pickedIds.length > 0) {
+          r.premiumGroups = pickedIds
+            .map(id => pickedGroupsMap.get(id))
+            .filter(Boolean);
+        } else if (r.premiumCategory) {
+          r.premiumGroups = groupsByCategory[r.premiumCategory] || [];
+        } else {
+          r.premiumGroups = allPremiumGroups;
         }
       }
     }
