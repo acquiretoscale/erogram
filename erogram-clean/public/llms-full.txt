@@ -1,0 +1,91 @@
+# Erogram — Full Site Documentation
+
+> Erogram.pro is the #1 verified directory for discovering NSFW Telegram groups, channels, and AI companion bots.
+
+## Site Structure
+
+### Homepage (https://erogram.pro/)
+The landing page showcasing the platform's key features, latest articles, newly added groups, and curated top lists. Includes a FAQ section answering common questions about the platform.
+
+### Groups Directory (https://erogram.pro/groups)
+The main browsable directory of NSFW Telegram groups. Users can:
+- Filter by category (30+ categories)
+- Filter by country (150+ countries)
+- Sort by: newest, popular, most members, most views
+- Search by keyword
+- Paginated results at /groups/page/{number}
+
+### Bots Directory (https://erogram.pro/bots)
+A directory of AI companion bots and interactive Telegram bots. Supports the same filtering, sorting, and search as the groups directory. Paginated at /bots/page/{number}.
+
+### Individual Group/Bot Pages (https://erogram.pro/{slug})
+Each group and bot has a dedicated page showing:
+- Name, description, category, and country
+- Member count and view statistics
+- User reviews and ratings
+- Direct Telegram join link
+- Related groups/bots suggestions
+- Breadcrumb navigation (Home > Groups/Bots > Name)
+
+### Top Lists (https://erogram.pro/best-telegram-groups)
+Curated "Best of" lists organized by:
+- Category: /best-telegram-groups/{category} (e.g., /best-telegram-groups/lesbian)
+- Country: /best-telegram-groups/country/{country}
+Each list shows the top 10 groups in that category or region.
+
+### Articles (https://erogram.pro/articles)
+Blog-style articles and guides. Each article at /articles/{slug} includes:
+- Full article content with featured images
+- Author information
+- Related articles
+- Sidebar with trending groups
+
+### Country Pages
+- Groups by country: /groups/country/{country}
+- Bots by country: /bots/country/{country}
+
+### Informational Pages
+- About: https://erogram.pro/about
+- Privacy Policy: https://erogram.pro/privacy
+- Terms of Service: https://erogram.pro/terms
+- Contact: https://erogram.pro/contact
+
+### User Actions
+- Submit a group or bot: https://erogram.pro/add
+- User profiles: https://erogram.pro/profile (authenticated)
+
+## Content Guidelines
+
+- All listed groups and bots are manually reviewed before approval
+- Content is labeled as adult/NSFW (RTA rated)
+- Groups with reported violations are investigated and removed
+- Users can report inappropriate listings
+
+## API & Data
+
+- Sitemap: https://erogram.pro/sitemap.xml
+- Robots: https://erogram.pro/robots.txt
+- The site uses server-side rendering; all content is available in the initial HTML response
+
+## Frequently Asked Questions
+
+Q: What is Erogram?
+A: Erogram is the ultimate directory for discovering NSFW Telegram groups, channels, and AI companion bots. We curate and verify adult-oriented communities to help users find like-minded people and engaging AI companions.
+
+Q: What's the difference between groups and bots?
+A: Groups are community chat spaces where multiple people interact, while bots are AI-powered companions that provide personalized conversations and interactive experiences.
+
+Q: Are all communities safe?
+A: All groups and bots are verified and moderated to meet community standards. Content is regularly reviewed.
+
+Q: How do I join a group or bot?
+A: Click on any listing and follow the Telegram link. You'll be redirected to Telegram to join instantly.
+
+Q: Is Erogram free?
+A: Yes, browsing and joining groups/bots is completely free.
+
+Q: How often is content updated?
+A: New groups and bots are added daily from community submissions.
+
+Q: Can I submit my own group or bot?
+A: Yes, use the Add page (https://erogram.pro/add) to submit for review and approval.

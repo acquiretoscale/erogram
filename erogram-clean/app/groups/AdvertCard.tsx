@@ -1,0 +1,822 @@
+import React, { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
+import { motion } from 'framer-motion';
+import { Advert, FeedCampaign } from './types';
+import { useIsTelegramBrowser } from '../hooks/useIsTelegramBrowser';
+
+interface AdvertCardProps {
+    advert?: Advert;
+    campaign?: FeedCampaign;
+    isIndex: number;
+    shouldPreload?: boolean;
+    onVisible?: () => void;
+    forceVisible?: boolean;
+}
+
+/**
+ * VideoAdCard — displayed when a FeedCampaign has a videoUrl.
+ * Matches GroupCard dimensions exactly (h-full flex-col, h-52 media, flex-grow content).
+ * SEO/Performance:
+ *  - preload="none"  → zero network cost at page load
+ *  - poster          → static image shown until video plays (no CLS)
+ *  - src set via JS  → only when card enters viewport (IntersectionObserver)
+ *  - muted + playsInline + loop → browser-safe autoplay, no sound
+ *  - pause on leave  → saves CPU/bandwidth when scrolled away
+ */
+const BADGE_PRESETS: Record<string, { icon: string; color: string }> = {
+    'trending':      { icon: '🔥', color: 'bg-red-500' },
+    'hot':           { icon: '🌶️', color: 'bg-orange-500' },
+    'new':           { icon: '✨', color: 'bg-green-500' },
+    'premium':       { icon: '👑', color: 'bg-purple-500' },
+    'verified':      { icon: '✅', color: 'bg-blue-500' },
+    'best value':    { icon: '💎', color: 'bg-pink-500' },
+    "editor's pick": { icon: '🎯', color: 'bg-indigo-500' },
+    'featured':      { icon: '⭐', color: 'bg-yellow-500' },
+    'popular':       { icon: '📈', color: 'bg-cyan-500' },
+    'exclusive':     { icon: '🔒', color: 'bg-violet-500' },
+    'limited':       { icon: '⏳', color: 'bg-amber-500' },
+};
+
+function videoBadge(text: string): { label: string; icon: string; color: string } {
+    const key = text.toLowerCase().trim();
+    const preset = BADGE_PRESETS[key];
+    if (preset) return { label: text.trim(), ...preset };
+    return { label: text.trim(), icon: '⭐', color: 'bg-gradient-to-r from-yellow-400 to-orange-500' };
+}
+
+function seededRandomVideo(seed: string) {
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+        const char = seed.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+    }
+    return Math.abs(hash) / 2147483647;
+}
+
+function VideoAdCard({ campaign, handleClick }: { campaign: FeedCampaign; handleClick: () => void }) {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const cardRef = useRef<HTMLDivElement>(null);
+    const videoImpressionFiredRef = useRef(false);
+
+    const seed = campaign._id;
+    const initialVisiting = Math.floor(300 + seededRandomVideo(seed + 'visiting') * 350);
+    const [visitingCount, setVisitingCount] = useState(initialVisiting);
+
+    useEffect(() => {
+        const video = videoRef.current;
+        const card = cardRef.current;
+        if (!video || !card) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        if (!video.src) {
+                            video.src = campaign.videoUrl!;
+                            video.load();
+                        }
+                        video.play().catch(() => {});
+                        if (!videoImpressionFiredRef.current) {
+                            videoImpressionFiredRef.current = true;
+                            fetch('/api/campaigns/impression', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ campaignId: campaign._id }),
+                            }).catch(() => {});
+                        }
+                    } else {
+                        video.pause();
+                    }
+                });
+            },
+            { threshold: 0.3 }
+        );
+
+        observer.observe(card);
+        return () => observer.disconnect();
+    }, [campaign.videoUrl, campaign._id]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setVisitingCount((prev) => {
+                const change = Math.floor(Math.random() * 9) - 3;
+                return Math.max(300, prev + change);
+            });
+        }, 3000 + Math.random() * 2000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const buttonText = (campaign.buttonText && campaign.buttonText.trim()) ? campaign.buttonText.trim() : 'Visit Now';
+
+    const badge = campaign.badgeText ? videoBadge(campaign.badgeText) : null;
+
+    const rating = (seededRandomVideo(seed + 'rating') * 0.7 + 4.2).toFixed(1);
+    const reviewCount = Math.floor(seededRandomVideo(seed + 'reviews') * 38 + 5);
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 60 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="h-full"
+        >
+            <div
+                ref={cardRef}
+                className="rounded-2xl sm:rounded-3xl overflow-hidden h-full min-h-[280px] sm:min-h-[480px] relative cursor-pointer group border border-white/5 hover:border-white/20 transition-all duration-500 hover:shadow-2xl hover:shadow-black/50 bg-[#0a0a0a]"
+                onClick={handleClick}
+                role="link"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && handleClick()}
+                aria-label={badge ? `${badge.label}: ${campaign.name}` : campaign.name}
+            >
+                {/* Video fills the entire card */}
+                <video
+                    ref={videoRef}
+                    poster={campaign.creative || undefined}
+                    muted
+                    playsInline
+                    loop
+                    preload="none"
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    aria-hidden="true"
+                />
+
+                {/* Gradient for text readability */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/10 pointer-events-none" />
+
+                {/* Badge — top left (only when you set one in admin: Trending, Hot, New, etc.) */}
+                {badge && (
+                    <div className="absolute top-3 left-3 z-10">
+                        <span className={`${badge.color} text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg uppercase tracking-wider flex items-center gap-1`}>
+                            <span>{badge.icon}</span> {badge.label}
+                        </span>
+                    </div>
+                )}
+
+                {/* Bottom content */}
+                <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-5 z-10 flex flex-col gap-1.5 sm:gap-2.5">
+                    <div className="flex justify-start">
+                        <div className="bg-black/80 backdrop-blur-md border border-white/10 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg flex items-center gap-1 sm:gap-1.5 shadow-lg">
+                            <span className="text-[10px] sm:text-xs text-red-400">⚡</span>
+                            <span className="text-[10px] sm:text-xs font-bold text-white">{visitingCount} visiting</span>
+                        </div>
+                    </div>
+                    <h3 className="text-sm sm:text-xl font-black text-white leading-tight drop-shadow-lg flex items-center gap-1">
+                        <span className="truncate min-w-0">{campaign.name}</span>
+                        {campaign.verified && (
+                            <svg className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500 shrink-0 drop-shadow-lg" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
+                        )}
+                    </h3>
+
+                    {campaign.description && (
+                        <p className="text-gray-300 text-xs sm:text-sm line-clamp-1 sm:line-clamp-2 leading-relaxed drop-shadow">
+                            {campaign.description}
+                        </p>
+                    )}
+
+                    {/* Star rating row */}
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                            <span className="text-yellow-500 text-[10px] sm:text-sm">⭐</span>
+                            <span className="text-white font-bold text-[10px] sm:text-sm drop-shadow">{rating}</span>
+                            <span className="text-gray-400 text-[10px] sm:text-xs drop-shadow">({reviewCount})</span>
+                        </div>
+                        <span className="hidden sm:inline text-[10px] text-gray-400 font-medium uppercase tracking-wide drop-shadow">Promoted</span>
+                    </div>
+
+                    <button
+                        onClick={(e) => { e.stopPropagation(); handleClick(); }}
+                        className="w-full py-2.5 sm:py-3.5 px-3 sm:px-4 rounded-xl font-black text-white text-xs sm:text-sm uppercase tracking-wide bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                        🚀 {buttonText}
+                    </button>
+                </div>
+            </div>
+        </motion.div>
+    );
+}
+
+function PremiumMosaicCard({ campaign, handleClick }: { campaign: FeedCampaign; handleClick: () => void }) {
+    const [imgIdx, setImgIdx] = useState(0);
+    const [liveCount, setLiveCount] = useState(0);
+    const cardRef = useRef<HTMLDivElement>(null);
+    const impressionFiredRef = useRef(false);
+    const groups = campaign.premiumGroups || [];
+    const fmtNum = (n: number) => n >= 1_000_000 ? (n/1_000_000).toFixed(1)+'M' : n >= 1_000 ? (n/1_000).toFixed(n>=10_000?0:1)+'K' : '';
+
+    const seededRandom = (s: string) => {
+        let hash = 0;
+        for (let i = 0; i < s.length; i++) { hash = ((hash << 5) - hash) + s.charCodeAt(i); hash = hash & hash; }
+        return Math.abs(hash) / 2147483647;
+    };
+    const seed = `premium-${campaign._id}`;
+
+    // Social proof
+    const proofSetting = campaign.socialProof || 'random';
+    let resolvedProof = proofSetting;
+    if (resolvedProof === 'random') {
+        const r = seededRandom(seed + 'stats');
+        if (r > 0.7) {
+            const t = seededRandom(seed + 'statsType');
+            resolvedProof = t < 0.33 ? 'visiting' : t < 0.66 ? 'clicks' : 'trending';
+        } else {
+            resolvedProof = 'none';
+        }
+    }
+
+    let fakeCount: string | null = null;
+    let isLiveCount = false;
+    if (resolvedProof === 'visiting') {
+        if (liveCount === 0) setLiveCount(Math.floor(seededRandom(seed + 'count1') * 400 + 120));
+        isLiveCount = true;
+        fakeCount = `${liveCount} visiting now`;
+    } else if (resolvedProof === 'clicks') {
+        fakeCount = `${(seededRandom(seed + 'count2') * 5 + 1).toFixed(1)}k clicks today`;
+    } else if (resolvedProof === 'trending') {
+        fakeCount = `Trending #${Math.floor(seededRandom(seed + 'count3') * 5 + 1)}`;
+    }
+    if (isLiveCount) fakeCount = `${liveCount} visiting now`;
+
+    useEffect(() => {
+        if (!isLiveCount) return;
+        const interval = setInterval(() => {
+            setLiveCount(prev => Math.max(10, prev + Math.floor(Math.random() * 9) - 3));
+        }, 3000 + Math.random() * 2000);
+        return () => clearInterval(interval);
+    }, [isLiveCount]);
+
+    useEffect(() => {
+        if (groups.length <= 4) return;
+        const interval = setInterval(() => {
+            setImgIdx(prev => (prev + 4) % groups.length);
+        }, 12000);
+        return () => clearInterval(interval);
+    }, [groups.length]);
+
+    useEffect(() => {
+        const el = cardRef.current;
+        if (!el) return;
+        const observer = new IntersectionObserver(([entry]) => {
+            if (entry.isIntersecting && !impressionFiredRef.current) {
+                impressionFiredRef.current = true;
+                fetch('/api/campaigns/impression', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ campaignId: campaign._id }),
+                }).catch(() => {});
+            }
+        }, { threshold: 0.3 });
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [campaign._id]);
+
+    if (groups.length === 0) return null;
+
+    const visible = Array.from({ length: 4 }, (_, i) => groups[(imgIdx + i) % groups.length]);
+    const catLabel = campaign.premiumCategory || 'Premium';
+
+    return (
+        <div ref={cardRef} onClick={handleClick} className="block h-full cursor-pointer" role="link" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && handleClick()}>
+            <style>{`
+                @keyframes vault-led-spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            `}</style>
+            <div className="relative h-full rounded-2xl sm:rounded-3xl p-[2px]">
+                {/* LED spinning border layer */}
+                <div className="absolute inset-0 rounded-2xl sm:rounded-3xl overflow-hidden">
+                    <div style={{
+                        position: 'absolute',
+                        inset: '-80%',
+                        background: 'conic-gradient(from 0deg, transparent 0deg, transparent 60deg, #ff6a00 80deg, #ff9500 90deg, #ffffff 100deg, #ff9500 110deg, #ff6a00 120deg, transparent 140deg, transparent 360deg)',
+                        animation: 'vault-led-spin 12s linear infinite',
+                    }} />
+                </div>
+
+                {/* Card content — sits on top of the LED ring */}
+                <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col hover:shadow-2xl hover:shadow-orange-500/30 transition-all duration-500 group border border-white/[0.06]" style={{ background: 'linear-gradient(160deg, #1c1412 0%, #15100e 40%, #1a130d 100%)' }}>
+                    {/* 2x2 mosaic — square grid */}
+                    <div className="relative w-full p-2 sm:p-3 overflow-hidden">
+                        <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
+                            {visible.map((g, i) => (
+                                <div key={`${g._id}-${i}`} className="relative rounded-lg sm:rounded-xl overflow-hidden transition-all duration-1000 aspect-square">
+                                    <img
+                                        src={g.image || '/assets/placeholder-no-image.png'}
+                                        alt=""
+                                        className="absolute inset-0 w-full h-full object-cover"
+                                        onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }}
+                                    />
+                                    <div className="absolute inset-0 rounded-lg sm:rounded-xl ring-1 ring-orange-500/40" />
+                                    <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.85) 100%)' }} />
+                                    <div className="absolute bottom-0 left-0 right-0 p-1 sm:p-1.5">
+                                        <p className="text-[8px] sm:text-[10px] font-bold text-white truncate leading-tight">
+                                            {(g.name || '').slice(0, 6)}<span style={{ display: 'inline-block', width: '3.5em', height: '0.75em', background: 'rgba(255,255,255,0.9)', borderRadius: '3px', verticalAlign: 'middle', marginLeft: '2px', filter: 'blur(2px)', userSelect: 'none' as const }} />
+                                        </p>
+                                        <div className="flex items-center gap-0.5">
+                                            {g.memberCount ? <span className="text-[8px] sm:text-[10px] font-black text-orange-400 leading-none">{fmtNum(g.memberCount)}</span> : null}
+                                            <span className="text-[7px] sm:text-[8px] font-bold text-white/40 leading-none truncate">· {g.category}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Content area — flex-grow pushes button to bottom like other feed cards */}
+                    <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
+                        {fakeCount && (
+                            <div className="mb-2">
+                                <div className="inline-flex bg-black/60 backdrop-blur-md border border-white/10 px-2 py-1 rounded-lg items-center gap-1.5 shadow-lg">
+                                    <span className="text-xs text-red-400">⚡</span>
+                                    <span className="text-xs font-bold text-white">{fakeCount}</span>
+                                </div>
+                            </div>
+                        )}
+                        <h3 className="text-sm sm:text-xl font-black text-white mb-1 sm:mb-2 leading-tight group-hover:text-orange-400 transition-colors">
+                            🔒 {campaign.name || `Premium ${catLabel}`}
+                        </h3>
+                        <div className="mb-3 sm:mb-6 flex-grow">
+                            <p className="text-orange-300 text-xs sm:text-sm font-bold leading-snug uppercase tracking-wide">
+                                {campaign.description || `Unlock the best ${catLabel} groups`}
+                            </p>
+                        </div>
+                        <div className="mt-auto">
+                            <button
+                                onClick={(e) => { e.stopPropagation(); handleClick(); }}
+                                className="w-full py-2.5 sm:py-3.5 px-3 sm:px-4 rounded-xl font-black text-white text-xs sm:text-sm uppercase tracking-wide bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] hover:shadow-orange-500/40"
+                            >
+                                🔓 {campaign.buttonText || 'Unlock The Vault'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreload = false, onVisible, forceVisible = false }: AdvertCardProps) {
+    const isTelegram = useIsTelegramBrowser();
+
+    // Normalize: support both legacy Advert and new FeedCampaign
+    const ad = campaign
+      ? {
+          _id: campaign._id,
+          name: campaign.name,
+          image: campaign.creative,
+          url: campaign.destinationUrl,
+          description: campaign.description,
+          category: campaign.category,
+          country: campaign.country,
+          buttonText: campaign.buttonText || 'Visit Site',
+          isCampaign: true,
+        }
+      : {
+            _id: advert?._id || '',
+            name: advert?.name || '',
+            image: advert?.image || '/assets/image.jpg',
+            url: advert?.url || '',
+            description: advert?.description || '',
+            category: advert?.category || '',
+            country: advert?.country || '',
+            buttonText: advert?.buttonText || 'Visit Site',
+            isCampaign: false,
+          };
+
+    const [isHovered, setIsHovered] = useState(false);
+    const [imageSrc, setImageSrc] = useState(ad.image || '/assets/image.jpg');
+    const [isInView, setIsInView] = useState(forceVisible);
+    const hasFetchedRef = useRef(false);
+    const impressionFiredRef = useRef(false);
+    const imgRef = useRef<HTMLDivElement>(null);
+    const [liveCount, setLiveCount] = useState<number>(0);
+
+    // Button text variations
+    const buttonTexts = [
+        'Try now',
+        'See More',
+        'Show Me',
+        'Continue →',
+        'Next →',
+        'Details',
+        'More Info',
+        'View',
+        'Preview',
+        'Begin',
+        'Visit',
+        'Check It Out',
+        'Learn More',
+        'Get Started',
+        'Continue to Site',
+        'Visit Site',
+        'Open Now',
+        'Explore',
+        'Watch Video',
+        'Join Now',
+        'Sign Up Free',
+        'Claim Offer',
+        'Start Now',
+        'Access Now',
+        'Enter Site',
+        'View Content',
+        'See Action',
+        'Instant Access',
+        'Unlock Now',
+        'Tap to View'
+    ];
+
+    // Color gradient options that fit the site
+    const colorSchemes = [
+        { from: 'from-orange-500', to: 'to-red-600', hoverFrom: 'hover:from-orange-600', hoverTo: 'hover:to-red-700', border: 'border-orange-500/50', hoverBorder: 'hover:border-orange-500' },
+        { from: 'from-blue-500', to: 'to-purple-600', hoverFrom: 'hover:from-blue-600', hoverTo: 'hover:to-purple-700', border: 'border-blue-500/50', hoverBorder: 'hover:border-blue-500' },
+        { from: 'from-purple-500', to: 'to-pink-600', hoverFrom: 'hover:from-purple-600', hoverTo: 'hover:to-pink-700', border: 'border-purple-500/50', hoverBorder: 'hover:border-purple-500' },
+        { from: 'from-green-500', to: 'to-teal-600', hoverFrom: 'hover:from-green-600', hoverTo: 'hover:to-teal-700', border: 'border-green-500/50', hoverBorder: 'hover:border-green-500' },
+        { from: 'from-pink-500', to: 'to-red-600', hoverFrom: 'hover:from-pink-600', hoverTo: 'hover:to-red-700', border: 'border-pink-500/50', hoverBorder: 'hover:border-pink-500' },
+        { from: 'from-yellow-500', to: 'to-orange-600', hoverFrom: 'hover:from-yellow-600', hoverTo: 'hover:to-orange-700', border: 'border-yellow-500/50', hoverBorder: 'hover:border-yellow-500' },
+        { from: 'from-cyan-500', to: 'to-blue-600', hoverFrom: 'hover:from-cyan-600', hoverTo: 'hover:to-blue-700', border: 'border-cyan-500/50', hoverBorder: 'hover:border-cyan-500' },
+        { from: 'from-indigo-500', to: 'to-purple-600', hoverFrom: 'hover:from-indigo-600', hoverTo: 'hover:to-purple-700', border: 'border-indigo-500/50', hoverBorder: 'hover:border-indigo-500' },
+    ];
+
+    // Seeded random function for consistent server/client rendering
+    const seededRandom = (seed: string) => {
+        let hash = 0;
+        for (let i = 0; i < seed.length; i++) {
+            const char = seed.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32bit integer
+        }
+        return Math.abs(hash) / 2147483647; // Normalize to 0-1
+    };
+
+    // Use ad ID + index as seed for consistent random selection (same on server and client)
+    const seed = `${ad._id}-${isIndex}`;
+
+    // CTA button: use only buttonText from the ad (never description)
+    const displayButtonText = (ad.buttonText && String(ad.buttonText).trim()) ? String(ad.buttonText).trim() : (buttonTexts[Math.floor(seededRandom(seed) * buttonTexts.length)]);
+    const colorScheme = colorSchemes[Math.floor(seededRandom(seed + 'color') * colorSchemes.length)];
+
+    // Determine if this should be a "Native" ad (looks like a group card)
+    // 50% chance to be native (increased from 40%)
+    const isNative = seededRandom(seed + 'native') < 0.5;
+
+    // Intersection Observer for lazy loading
+    useEffect(() => {
+        if (forceVisible) {
+            setIsInView(true);
+            return;
+        }
+
+        if (!imgRef.current) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        setIsInView(true);
+                        onVisible?.(); // Report visibility to parent
+                        observer.disconnect();
+                    }
+                });
+            },
+            {
+                rootMargin: '200px', // Start loading 200px before entering viewport - load more images in parallel
+                threshold: 0.01,
+            }
+        );
+
+        observer.observe(imgRef.current);
+
+        return () => {
+            observer.disconnect();
+        };
+    }, [onVisible, forceVisible]);
+
+    // Track impression when a campaign ad enters the viewport (fire once)
+    useEffect(() => {
+        if (isInView && ad.isCampaign && ad._id && !impressionFiredRef.current) {
+            impressionFiredRef.current = true;
+            fetch('/api/campaigns/impression', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ campaignId: ad._id }),
+            }).catch(() => {});
+        }
+    }, [isInView, ad.isCampaign, ad._id]);
+
+    // Preload image if shouldPreload is true (for next 6 items) -- legacy adverts only
+    useEffect(() => {
+        if (!ad.isCampaign && shouldPreload && imageSrc === '/assets/image.jpg' && ad._id && !hasFetchedRef.current) {
+            hasFetchedRef.current = true;
+            fetch(`/api/adverts/${ad._id}/image`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.image && data.image !== '/assets/image.jpg') {
+                        setImageSrc(data.image);
+                    }
+                })
+                .catch(() => {});
+        }
+    }, [shouldPreload, imageSrc, ad._id, ad.isCampaign]);
+
+    // Fetch actual image when in view and it's the placeholder -- legacy adverts only
+    useEffect(() => {
+        if (!ad.isCampaign && isInView && imageSrc === '/assets/image.jpg' && ad._id && !hasFetchedRef.current) {
+            hasFetchedRef.current = true;
+            fetch(`/api/adverts/${ad._id}/image`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.image && data.image !== '/assets/image.jpg') {
+                        setImageSrc(data.image);
+                    }
+                })
+                .catch((err) => {
+                    console.error('Failed to load advert image:', err);
+                });
+        }
+    }, [isInView, imageSrc, ad._id, ad.isCampaign]);
+
+    const handleClick = () => {
+        if (ad.isCampaign) {
+            fetch('/api/campaigns/track', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ campaignId: ad._id, placement: 'feed' }),
+            }).catch(() => {});
+        } else {
+            fetch('/api/adverts/track', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ advertId: ad._id }),
+            }).catch(() => {});
+        }
+        const url = (ad.url || '').trim();
+        if (url && url.startsWith('/')) {
+            window.location.href = url;
+        } else if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+            window.open(url, '_blank', 'noopener,noreferrer');
+        }
+    };
+
+    // Badge Logic
+    const badgeRand = seededRandom(seed + 'badge');
+    let badge = { text: 'Featured', icon: '⭐', color: 'bg-gradient-to-r from-yellow-400 to-orange-500' }; // Default fallback
+
+    // Make badges rarer (20% chance, was 80%)
+    const showBadge = badgeRand > 0.8;
+
+    if (showBadge) {
+        const badges = [
+            { text: 'Trending', icon: '🔥', color: 'bg-red-500' },
+            { text: 'Hot', icon: '🌶️', color: 'bg-orange-500' },
+            { text: 'New', icon: '✨', color: 'bg-green-500' },
+            { text: 'Premium', icon: '👑', color: 'bg-purple-500' },
+            { text: 'Verified', icon: '✅', color: 'bg-blue-500' },
+            { text: 'Best Value', icon: '💎', color: 'bg-pink-500' },
+            { text: 'Editor\'s Pick', icon: '🎯', color: 'bg-indigo-500' }
+        ];
+        badge = badges[Math.floor(seededRandom(seed + 'badgeType') * badges.length)];
+    }
+
+    // Social Proof — controlled via campaign.socialProof
+    const proofSetting = campaign?.socialProof || 'random';
+    let fakeCount: string | null = null;
+    let isLiveCount = false;
+
+    // Resolve which type to show
+    let resolvedProof = proofSetting;
+    if (resolvedProof === 'random') {
+        const statsRand = seededRandom(seed + 'stats');
+        if (statsRand > 0.7) {
+            const type = seededRandom(seed + 'statsType');
+            if (type < 0.33) resolvedProof = 'visiting';
+            else if (type < 0.66) resolvedProof = 'clicks';
+            else resolvedProof = 'trending';
+        } else {
+            resolvedProof = 'none';
+        }
+    }
+
+    if (resolvedProof === 'visiting') {
+        if (liveCount === 0) {
+            setLiveCount(Math.floor(seededRandom(seed + 'count1') * 400 + 120));
+        }
+        isLiveCount = true;
+        fakeCount = `${liveCount} visiting now`;
+    } else if (resolvedProof === 'clicks') {
+        fakeCount = `${(seededRandom(seed + 'count2') * 5 + 1).toFixed(1)}k clicks today`;
+    } else if (resolvedProof === 'trending') {
+        fakeCount = `Trending #${Math.floor(seededRandom(seed + 'count3') * 5 + 1)}`;
+    }
+
+    useEffect(() => {
+        if (isLiveCount) {
+            const interval = setInterval(() => {
+                setLiveCount(prev => {
+                    const change = Math.floor(Math.random() * 9) - 3;
+                    return Math.max(10, prev + change);
+                });
+            }, 3000 + Math.random() * 2000);
+            return () => clearInterval(interval);
+        }
+    }, [isLiveCount]);
+
+    if (isLiveCount) {
+        fakeCount = `${liveCount} visiting now`;
+    }
+
+    // Verified checkmark: controlled from admin panel (campaign.verified field)
+    const showVerified = campaign?.verified === true;
+
+    // Sponsored Badge Logic for Native Ads (10% chance)
+    const showSponsored = seededRandom(seed + 'sponsored') < 0.1;
+
+    if (isTelegram) {
+        return null;
+    }
+
+    // PREMIUM MOSAIC CARD — group grid for premium category ads
+    if (campaign?.adType === 'premium' && campaign.premiumGroups?.length) {
+        return <PremiumMosaicCard campaign={campaign} handleClick={handleClick} />;
+    }
+
+    // VIDEO AD CARD — only when campaign has a videoUrl
+    if (campaign?.videoUrl) {
+        return <VideoAdCard campaign={campaign} handleClick={handleClick} />;
+    }
+
+    // NATIVE AD CARD (Looks like GroupCard)
+    if (isNative) {
+        return (
+            <motion.div
+                initial={{ opacity: 0, y: 60 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: isIndex * 0.1 }}
+                onHoverStart={() => setIsHovered(true)}
+                onHoverEnd={() => setIsHovered(false)}
+                className="h-full"
+            >
+                <div className={`rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col border transition-all duration-500 group relative border-gray-200 hover:border-gray-300 hover:shadow-2xl hover:shadow-black/20 bg-white`}>
+                    {/* Advert Image */}
+                    <div ref={imgRef} className="relative w-full h-32 sm:h-52 overflow-hidden bg-gray-100">
+                        <Image
+                            src={imageSrc}
+                            alt={ad.name}
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            className="object-cover transition-transform duration-700 group-hover:scale-110"
+                            priority={forceVisible || isIndex < 12}
+                            onError={() => setImageSrc('/assets/image.jpg')}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+
+                        {/* Badges - Subtle "Sponsored" */}
+                        {showSponsored && (
+                            <div className="absolute top-3 left-3 flex gap-2 flex-wrap">
+                                <div className="bg-black/50 backdrop-blur-md border border-white/20 text-white text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider flex items-center gap-1">
+                                    <span>📢</span> Sponsored
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Stats Overlay */}
+                        <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end">
+                            <div className="flex gap-2 flex-wrap">
+                                <div className="bg-black/50 backdrop-blur-md border border-white/20 px-2 py-1 rounded-lg flex items-center gap-1.5">
+                                    <span className="text-xs">👁️</span>
+                                    <span className="text-xs font-bold text-white">{Math.floor(seededRandom(seed + 'views') * 50000 + 5000).toLocaleString()}</span>
+                                </div>
+                                <div className="bg-black/50 backdrop-blur-md border border-white/20 px-2 py-1 rounded-lg flex items-center gap-1.5">
+                                    <span className="text-xs">👥</span>
+                                    <span className="text-xs font-bold text-white">{Math.floor(seededRandom(seed + 'members') * 10000 + 1000).toLocaleString()}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Card Content */}
+                    <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
+                        {/* Title */}
+                        <h3 className="text-sm sm:text-xl font-black text-gray-900 mb-2 sm:mb-3 leading-tight group-hover:text-blue-600 transition-colors flex items-center gap-1">
+                            <span className="truncate min-w-0">{ad.name}</span>
+                            {showVerified && (
+                                <svg className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
+                            )}
+                        </h3>
+
+                        {/* Description */}
+                        <div className="mb-3 sm:mb-6 flex-grow">
+                            <p className="text-gray-500 text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed">
+                                {ad.description}
+                            </p>
+                        </div>
+
+                        {/* Footer Actions */}
+                        <div className="mt-auto space-y-2 sm:space-y-3">
+                            {/* Rating Row (Fake) */}
+                            <div className="flex items-center justify-between px-1">
+                                <div className="flex items-center gap-1">
+                                    <span className="text-yellow-500 text-[10px] sm:text-sm">⭐</span>
+                                    <span className="text-gray-800 font-bold text-[10px] sm:text-sm">{(seededRandom(seed + 'rating') * 0.7 + 4.2).toFixed(1)}</span>
+                                    <span className="text-gray-400 text-[10px] sm:text-xs">({Math.floor(seededRandom(seed + 'reviews') * 38 + 5)})</span>
+                                </div>
+                                <div className="hidden sm:block text-xs text-gray-400 font-medium">
+                                    Promoted
+                                </div>
+                            </div>
+
+                            {/* Main Button */}
+                            <button
+                                onClick={handleClick}
+                                className={`group/btn relative flex items-center justify-center w-full overflow-hidden rounded-xl py-2.5 sm:py-3.5 px-3 sm:px-4 font-black text-white shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-blue-500/40`}
+                            >
+                                <div className="absolute inset-0 bg-white/20 opacity-0 transition-opacity duration-300 group-hover/btn:opacity-100" />
+                                <span className={`relative flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm uppercase tracking-wider`}>
+                                    <span className="text-base sm:text-lg">🚀</span> {displayButtonText}
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </motion.div>
+        );
+    }
+
+    // STANDARD AD CARD (Flashy)
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 60 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: isIndex * 0.1 }}
+            onHoverStart={() => setIsHovered(true)}
+            onHoverEnd={() => setIsHovered(false)}
+        >
+            <div className={`rounded-2xl overflow-hidden h-full flex flex-col border border-gray-200 transition-all duration-300 ${isHovered ? 'scale-[1.02] shadow-xl shadow-black/15' : 'shadow-md shadow-black/10'} relative bg-white`}>
+                {/* Random Badge */}
+                {showBadge && (
+                    <div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10">
+                        <span className={`px-2 sm:px-3 py-0.5 sm:py-1 rounded-full ${badge.color} text-white text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-lg flex items-center gap-1 animate-pulse`}>
+                            <span>{badge.icon}</span> <span className="hidden sm:inline">{badge.text}</span>
+                        </span>
+                    </div>
+                )}
+
+                {/* Advert Image */}
+                <div ref={imgRef} className="relative w-full h-32 sm:h-48 overflow-hidden bg-gray-100">
+                    <Image
+                        src={imageSrc}
+                        alt={ad.name}
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        className="object-cover transition-transform duration-700"
+                        style={{ transform: isHovered ? 'scale(1.1)' : 'scale(1)' }}
+                        priority={forceVisible || isIndex < 12}
+                        onError={() => setImageSrc('/assets/image.jpg')}
+                    />
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
+
+                    {/* Fake Stats Overlay */}
+                    {fakeCount && (
+                        <div className="absolute bottom-3 left-3 flex gap-2">
+                            <div className="bg-black/60 backdrop-blur-md border border-white/20 px-2 py-1 rounded-lg flex items-center gap-1.5 shadow-lg">
+                                <span className="text-xs text-red-400">⚡</span>
+                                <span className="text-xs font-bold text-white">{fakeCount}</span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Card Content */}
+                <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
+                    <h3 className="text-sm sm:text-xl md:text-2xl font-black text-gray-900 mb-2 sm:mb-3 text-center flex items-center justify-center gap-1">
+                        <span className="truncate min-w-0">{ad.name}</span>
+                        {showVerified && (
+                            <svg className="w-[14px] h-[14px] sm:w-[16px] sm:h-[16px] text-blue-500 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
+                        )}
+                    </h3>
+
+                    {/* Description */}
+                    <div className="mb-3 sm:mb-6 flex-grow">
+                        <p className="text-gray-500 text-center text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed font-medium">
+                            {ad.description}
+                        </p>
+                    </div>
+
+                    {/* Action Button */}
+                    <button
+                        onClick={handleClick}
+                        className={`group relative w-full overflow-hidden rounded-xl py-2.5 sm:py-3.5 px-3 sm:px-4 font-black text-white shadow-lg transition-all duration-300 hover:scale-[1.03] hover:shadow-xl bg-gradient-to-r ${colorScheme.from} ${colorScheme.to} ${colorScheme.hoverFrom} ${colorScheme.hoverTo}`}
+                    >
+                        <div className="absolute inset-0 flex items-center justify-center bg-white/20 opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
+                        <span className="relative flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-lg uppercase tracking-wide">
+                            {displayButtonText}
+                            <span className="animate-pulse">🚀</span>
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </motion.div>
+    );
+}
