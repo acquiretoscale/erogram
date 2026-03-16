@@ -32,7 +32,7 @@ export default function AuthCallbackPage() {
       router.replace('/admin');
     } else if (state === 'premium') {
       router.replace('/premium');
-    } else if (state.startsWith('redirect:')) {
+    } else if (state?.startsWith('redirect:')) {
       const target = state.slice('redirect:'.length);
       router.replace(target.startsWith('/') ? target : '/profile?tab=saved');
     } else {
