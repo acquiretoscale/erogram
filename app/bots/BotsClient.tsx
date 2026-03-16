@@ -295,6 +295,12 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
 
   return (
     <div className="min-h-screen bg-[#111111]">
+      <style>{`
+        @keyframes vault-led-spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
       {/* Animated Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
@@ -440,8 +446,16 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
           <div className="lg:w-3/4">
             {/* Top Bots Section */}
             {(topBots.length > 0 || topBotsLoading) && (
-              <div className="mb-16 relative">
-                {/* Animated Background Gradient */}
+              <div className="mb-16 relative rounded-3xl p-[2px]">
+                <div className="absolute inset-0 rounded-3xl overflow-hidden">
+                  <div style={{
+                    position: 'absolute',
+                    inset: '-80%',
+                    background: 'conic-gradient(from 0deg, transparent 0deg, transparent 60deg, #f59e0b 80deg, #ea580c 90deg, #ffffff 100deg, #ea580c 110deg, #f59e0b 120deg, transparent 140deg, transparent 360deg)',
+                    animation: 'vault-led-spin 12s linear infinite',
+                  }} />
+                </div>
+                <div className="relative rounded-[22px] bg-[#111111] overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-r from-yellow-600/10 via-orange-600/10 to-red-600/10 rounded-3xl"></div>
 
                 {/* Section Header */}
@@ -514,6 +528,7 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
                     </>
                   )}
                 </div>
+              </div>
               </div>
             )}
 
@@ -915,6 +930,15 @@ const BotAdvertCard = React.memo(function BotAdvertCard({ advert, isIndex = 0, i
 
 
 
+type BotSubmissionType = 'normal_listing' | 'instant_approval' | 'boost_week' | 'boost_month';
+
+const BOT_TIERS: { type: BotSubmissionType; stars: number; label: string; perks: string[]; highlight: boolean; accent: string }[] = [
+  { type: 'normal_listing', stars: 1000, label: 'Normal Listing', perks: ['Added to the bot directory', 'Up to 48h for approval', 'Regular listing position'], highlight: false, accent: '#22c55e' },
+  { type: 'instant_approval', stars: 1500, label: 'Instant Approval', perks: ['Goes live immediately', 'Skip moderation queue', 'Regular listing position'], highlight: false, accent: '#06b6d4' },
+  { type: 'boost_week', stars: 3000, label: 'Instant + Boost 1 Week', perks: ['Goes live immediately', '1 week in Top Bots section', '40× more exposure for 1 week'], highlight: true, accent: '#fb923c' },
+  { type: 'boost_month', stars: 6000, label: 'Instant + Boost 1 Month', perks: ['Goes live immediately', '1 month in Most Popular Bots', '40× more exposure for 1 month'], highlight: false, accent: '#a855f7' },
+];
+
 function AddBotModal({ categories, onClose, onSuccess }: { categories: string[]; onClose: () => void; onSuccess: () => void }) {
   const { t } = useTranslation();
   const [botData, setBotData] = useState({
@@ -927,6 +951,12 @@ function AddBotModal({ categories, onClose, onSuccess }: { categories: string[];
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [selectedTier, setSelectedTier] = useState<BotSubmissionType>('normal_listing');
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, []);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -999,155 +1029,189 @@ function AddBotModal({ categories, onClose, onSuccess }: { categories: string[];
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      if (res.data) {
-        onSuccess();
-      }
+      const botId = res.data?._id;
+      if (!botId) throw new Error('Bot creation failed');
+
+      const payRes = await axios.post('/api/payments/group-submission', {
+        groupId: botId,
+        type: selectedTier,
+        entityType: 'bot',
+      });
+
+      const paymentUrl = payRes.data?.url;
+      if (!paymentUrl) throw new Error('Failed to create payment link');
+
+      window.open(paymentUrl, '_blank');
+
+      pollRef.current = setInterval(async () => {
+        try {
+          const check = await axios.get(`/api/bots/${botId}/status`);
+          if (check.data?.paid) {
+            if (pollRef.current) clearInterval(pollRef.current);
+            onSuccess();
+          }
+        } catch {}
+      }, 3000);
     } catch (err: any) {
-      setError(err.response?.data?.message || t('bots.failedCreate'));
+      setError(err.response?.data?.message || err.message || t('bots.failedCreate'));
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const isFormFilled = botData.name && botData.categories.length > 0 && botData.telegramLink.startsWith('https://t.me/') && botData.description.length >= 30;
+  const tierInfo = BOT_TIERS.find(t => t.type === selectedTier)!;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="glass rounded-3xl shadow-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-white/10"
+        className="glass rounded-3xl shadow-2xl p-6 sm:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-white/10"
         style={{ willChange: 'transform, opacity' }}
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-5 rounded-3xl"></div>
-
         <div className="relative">
-          <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-200 text-3xl font-bold transition hover:scale-110 z-10">
+          <button onClick={onClose} className="absolute top-0 right-0 text-gray-500 hover:text-gray-200 text-3xl font-bold transition hover:scale-110 z-10">
             ✕
           </button>
 
-          <div className="text-center mb-8">
-            <h2 className="text-4xl font-black gradient-text mb-2">
-              ✨ {t('bots.createTitle')}
+          <div className="text-center mb-6">
+            <h2 className="text-3xl sm:text-4xl font-black gradient-text mb-2">
+              🤖 {t('bots.createTitle')}
             </h2>
-            <p className="text-[#999] text-lg">{t('bots.createDesc')}</p>
+            <p className="text-[#999] text-sm sm:text-lg">{t('bots.createDesc')}</p>
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-400 text-sm">
-              <span className="mr-2">⚠️</span>
-              {error}
+            <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-400 text-sm">
+              <span className="mr-2">⚠️</span>{error}
             </div>
           )}
 
-          <div className="space-y-6">
-            {/* Bot Image Upload */}
-            <div className="glass rounded-2xl p-6 border border-white/10">
-              <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
-                <span className="mr-2">📸</span>
-                {t('bots.botImage')}
-              </label>
-              <div className="relative">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="w-full p-4 border-2 border-dashed border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] cursor-pointer"
-                />
+          <div className="space-y-5">
+            {/* Pricing Tiers */}
+            <div>
+              <label className="block text-sm font-bold text-[#f5f5f5] mb-3">⭐ Choose a plan</label>
+              <div className="grid gap-3">
+                {BOT_TIERS.map(tier => (
+                  <button
+                    key={tier.type}
+                    type="button"
+                    onClick={() => setSelectedTier(tier.type)}
+                    className={`relative w-full text-left rounded-2xl p-4 border-2 transition-all ${
+                      selectedTier === tier.type
+                        ? 'border-opacity-100 scale-[1.01]'
+                        : 'border-white/10 hover:border-white/20'
+                    }`}
+                    style={{
+                      borderColor: selectedTier === tier.type ? tier.accent : undefined,
+                      background: selectedTier === tier.type ? `linear-gradient(135deg, ${tier.accent}15, ${tier.accent}08)` : 'rgba(255,255,255,0.03)',
+                    }}
+                  >
+                    {tier.highlight && (
+                      <span className="absolute -top-2.5 right-4 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider text-white" style={{ background: `linear-gradient(135deg, ${tier.accent}, #ea580c)` }}>
+                        Popular
+                      </span>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-white font-bold text-sm sm:text-base">{tier.label}</h4>
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {tier.perks.map(p => (
+                            <span key={p} className="text-[10px] sm:text-xs text-white/50">✓ {p}</span>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0 ml-4">
+                        <span className="text-xl sm:text-2xl font-black" style={{ color: tier.accent }}>{tier.stars.toLocaleString()}</span>
+                        <span className="text-white/40 text-sm ml-1">★</span>
+                      </div>
+                    </div>
+                  </button>
+                ))}
               </div>
-              {imagePreview && (
-                <div className="mt-4">
-                  <img src={imagePreview} alt="Preview" className="w-full h-48 object-cover rounded-xl" />
-                </div>
-              )}
+            </div>
+
+            {/* Bot Image Upload */}
+            <div className="glass rounded-2xl p-4 sm:p-6 border border-white/10">
+              <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
+                <span className="mr-2">📸</span>{t('bots.botImage')}
+              </label>
+              <input type="file" accept="image/*" onChange={handleImageChange} className="w-full p-3 border-2 border-dashed border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] cursor-pointer text-sm" />
+              {imagePreview && <img src={imagePreview} alt="Preview" className="mt-3 w-full h-40 object-cover rounded-xl" />}
             </div>
 
             {/* Bot Name */}
-            <div className="glass rounded-2xl p-6 border border-white/10">
-              <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
-                <span className="mr-2">🏷️</span>
-                {t('bots.botName')} *
+            <div className="glass rounded-2xl p-4 sm:p-6 border border-white/10">
+              <label className="block text-sm font-bold text-[#f5f5f5] mb-2 flex items-center">
+                <span className="mr-2">🏷️</span>{t('bots.botName')} *
               </label>
               <input
                 type="text"
                 value={botData.name}
                 onChange={(e) => setBotData({ ...botData, name: e.target.value })}
-                className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] placeholder:text-gray-500 focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none"
+                className="w-full p-3 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] placeholder:text-gray-500 focus:ring-2 focus:ring-[#b31b1b] outline-none"
                 placeholder={t('bots.enterBotName')}
               />
             </div>
 
-            {/* Categories (multi-select, up to 3) */}
-            <div className="glass rounded-2xl p-6 border border-white/10">
+            {/* Categories */}
+            <div className="glass rounded-2xl p-4 sm:p-6 border border-white/10">
               <label className="block text-sm font-bold text-[#f5f5f5] mb-1 flex items-center">
-                <span className="mr-2">📂</span>
-                {t('bots.categories')} * <span className="text-xs text-white/40 ml-2">({t('bots.pickUpTo3')})</span>
+                <span className="mr-2">📂</span>{t('bots.categories')} * <span className="text-xs text-white/40 ml-2">({botData.categories.length}/3)</span>
               </label>
-              <p className="text-[10px] text-white/30 mb-3">
-                {botData.categories.length}/3 {t('bots.selected')}
-              </p>
-              <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pr-1">
+              <div className="flex flex-wrap gap-2 mt-2 max-h-36 overflow-y-auto">
                 {categories.filter(c => c !== 'All').map(cat => {
                   const selected = botData.categories.includes(cat);
                   return (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => toggleCategory(cat)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
-                        selected
-                          ? 'bg-[#b31b1b]/80 border-[#b31b1b] text-white'
-                          : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white/80'
-                      } ${!selected && botData.categories.length >= 3 ? 'opacity-40 cursor-not-allowed' : ''}`}
-                    >
-                      {cat}
-                    </button>
+                    <button key={cat} type="button" onClick={() => toggleCategory(cat)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${selected ? 'bg-[#b31b1b]/80 border-[#b31b1b] text-white' : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'} ${!selected && botData.categories.length >= 3 ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    >{cat}</button>
                   );
                 })}
               </div>
             </div>
 
             {/* Telegram Link */}
-            <div className="glass rounded-2xl p-6 border border-white/10">
-              <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
-                <span className="mr-2">📱</span>
-                {t('bots.telegramLink')} *
+            <div className="glass rounded-2xl p-4 sm:p-6 border border-white/10">
+              <label className="block text-sm font-bold text-[#f5f5f5] mb-2 flex items-center">
+                <span className="mr-2">📱</span>{t('bots.telegramLink')} *
               </label>
               <input
                 type="url"
                 value={botData.telegramLink}
                 onChange={(e) => setBotData({ ...botData, telegramLink: e.target.value })}
-                className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] placeholder:text-gray-500 focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none"
+                className="w-full p-3 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] placeholder:text-gray-500 focus:ring-2 focus:ring-[#b31b1b] outline-none"
                 placeholder="https://t.me/yourbot"
               />
             </div>
 
             {/* Description */}
-            <div className="glass rounded-2xl p-6 border border-white/10">
-              <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
-                <span className="mr-2">📝</span>
-                {t('bots.description')} * ({t('bots.minChars')})
+            <div className="glass rounded-2xl p-4 sm:p-6 border border-white/10">
+              <label className="block text-sm font-bold text-[#f5f5f5] mb-2 flex items-center">
+                <span className="mr-2">📝</span>{t('bots.description')} * ({t('bots.minChars')})
               </label>
               <textarea
                 value={botData.description}
                 onChange={(e) => setBotData({ ...botData, description: e.target.value })}
-                className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] placeholder:text-gray-500 focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none resize-none"
+                className="w-full p-3 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] placeholder:text-gray-500 focus:ring-2 focus:ring-[#b31b1b] outline-none resize-none"
                 placeholder={t('bots.tellAboutBot')}
-                rows={4}
+                rows={3}
               />
-              <p className="text-xs text-gray-500 mt-2">{botData.description.length}/30 {t('bots.characters')}</p>
+              <p className="text-xs text-gray-500 mt-1">{botData.description.length}/30 {t('bots.characters')}</p>
             </div>
 
-            {/* Submit Button */}
-            <div className="pt-4">
-              <motion.button
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white font-bold py-4 px-6 rounded-xl hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 transition-all text-lg disabled:opacity-50 disabled:cursor-not-allowed hover-glow"
-              >
-                {isSubmitting ? '⏳ ' + t('bots.submitting') : '✨ ' + t('bots.createBot') + ' ✨'}
-              </motion.button>
-            </div>
+            {/* Submit */}
+            <motion.button
+              onClick={handleSubmit}
+              disabled={isSubmitting || !isFormFilled}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full py-4 rounded-xl font-black text-white text-base disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              style={{ background: isFormFilled ? `linear-gradient(135deg, ${tierInfo.accent}, ${tierInfo.accent}cc)` : '#333' }}
+            >
+              {isSubmitting ? '⏳ Submitting...' : `Submit & Pay ${tierInfo.stars.toLocaleString()}★`}
+            </motion.button>
           </div>
         </div>
       </motion.div>

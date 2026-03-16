@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import connectDB from '@/lib/db/mongodb';
 import { authenticateUser } from '@/lib/auth';
-import { Bot, CampaignClick, Group, Post, PremiumEvent, Report, User } from '@/lib/models';
+import { Bot, CampaignClick, Group, ManualRevenue, Post, PremiumEvent, Report, User } from '@/lib/models';
 
 type TrendPoint = { date: string; value: number };
 
@@ -129,6 +129,16 @@ export async function GET(req: NextRequest) {
   const earningsLifetimeUsd = starsLifetime * starsUsdRate;
   const earningsTodayUsd = starsToday * starsUsdRate;
   const earningsSource = PAY_BOT_TOKEN ? 'stars_api' : 'unavailable';
+
+  // Manual revenue (partner deals, affiliates, ad sales)
+  const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const manualEntries = await ManualRevenue.find({}).select('amount paidAt').lean() as any[];
+  let manualRevenueLifetime = 0;
+  let manualRevenueThisMonth = 0;
+  for (const e of manualEntries) {
+    manualRevenueLifetime += e.amount || 0;
+    if (new Date(e.paidAt) >= startOfMonth) manualRevenueThisMonth += e.amount || 0;
+  }
 
   const [
     paidSubs24h,
@@ -291,6 +301,10 @@ export async function GET(req: NextRequest) {
       starsLifetime,
       starsUsdRate,
       earningsSource,
+      manualRevenueLifetime,
+      manualRevenueThisMonth,
+      totalEarningsLifetimeUsd: earningsLifetimeUsd + manualRevenueLifetime,
+      totalEarningsThisMonthUsd: earningsTodayUsd + manualRevenueThisMonth,
     },
     kpis: {
       paidSubs: {

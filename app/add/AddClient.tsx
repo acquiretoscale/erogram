@@ -9,7 +9,7 @@ import { useTranslation, useLocalePath } from '@/lib/i18n';
 
 const TELEGRAM_BLUE = '#0088cc';
 
-type SubmissionType = 'free' | 'instant_approval' | 'boost_week';
+type SubmissionType = 'free' | 'normal_listing' | 'instant_approval' | 'boost_week' | 'boost_month';
 type PageStep = 'form' | 'pay' | 'confirmed' | 'free_done';
 
 interface PricingTier {
@@ -24,7 +24,7 @@ interface PricingTier {
   accentColor: string;
 }
 
-const PRICING_TIERS: PricingTier[] = [
+const GROUP_PRICING_TIERS: PricingTier[] = [
   {
     type: 'free',
     stars: null,
@@ -60,9 +60,63 @@ const PRICING_TIERS: PricingTier[] = [
   },
 ];
 
-const TIER_STARS: Record<string, number> = {
+const BOT_PRICING_TIERS: PricingTier[] = [
+  {
+    type: 'normal_listing',
+    stars: 1000,
+    label: 'Normal Listing',
+    badge: null,
+    perks: ['Added to bot directory', 'Up to 48h for approval', 'Regular listing position'],
+    highlight: false,
+    bg: 'rgba(255,255,255,0.06)',
+    borderSelected: 'rgba(255,255,255,0.35)',
+    accentColor: '#22c55e',
+  },
+  {
+    type: 'instant_approval',
+    stars: 1500,
+    label: 'Instant Approval',
+    badge: 'FAST',
+    perks: ['Goes live immediately', 'Skip moderation queue', 'Regular listing position'],
+    highlight: false,
+    bg: 'linear-gradient(135deg, rgba(6,182,212,0.35), rgba(20,184,166,0.20))',
+    borderSelected: '#06b6d4',
+    accentColor: '#06b6d4',
+  },
+  {
+    type: 'boost_week',
+    stars: 3000,
+    label: 'Instant + Boost 1 Week',
+    badge: null,
+    perks: ['Goes live immediately', '1 week in Top Bots section', '40× more exposure for 1 week'],
+    highlight: true,
+    bg: 'linear-gradient(135deg, rgba(249,115,22,0.50), rgba(234,88,12,0.32))',
+    borderSelected: '#f97316',
+    accentColor: '#fb923c',
+  },
+  {
+    type: 'boost_month',
+    stars: 6000,
+    label: 'Instant + Boost 1 Month',
+    badge: null,
+    perks: ['Goes live immediately', '1 month in Most Popular Bots', '40× more exposure for 1 month'],
+    highlight: false,
+    bg: 'linear-gradient(135deg, rgba(168,85,247,0.45), rgba(139,92,246,0.25))',
+    borderSelected: '#a855f7',
+    accentColor: '#a855f7',
+  },
+];
+
+const GROUP_TIER_STARS: Record<string, number> = {
   instant_approval: 1000,
   boost_week: 3000,
+};
+
+const BOT_TIER_STARS: Record<string, number> = {
+  normal_listing: 1000,
+  instant_approval: 1500,
+  boost_week: 3000,
+  boost_month: 6000,
 };
 
 interface AddClientProps {
@@ -97,6 +151,9 @@ export default function AddClient({ categories, countries }: AddClientProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  const PRICING_TIERS = tab === 'bot' ? BOT_PRICING_TIERS : GROUP_PRICING_TIERS;
+  const TIER_STARS = tab === 'bot' ? BOT_TIER_STARS : GROUP_TIER_STARS;
+
   const [step, setStep] = useState<PageStep>('form');
   const [payUrl, setPayUrl] = useState('');
   const [entityId, setEntityId] = useState('');
@@ -117,7 +174,7 @@ export default function AddClient({ categories, countries }: AddClientProps) {
       try {
         const res = await fetch(`/api/submission-status?id=${id}&entity=${entityType}`);
         const data = await res.json();
-        if (data.paid && data.status === 'approved') {
+        if (data.paid) {
           if (pollRef.current) clearInterval(pollRef.current);
           setStep('confirmed');
         }
@@ -367,12 +424,17 @@ export default function AddClient({ categories, countries }: AddClientProps) {
 
   /* ───── STEP: CONFIRMED ───── */
   if (step === 'confirmed') {
+    const isNormalListing = selectedTier === 'normal_listing';
     return (
       <main className="pt-24 pb-16 px-4 max-w-lg mx-auto text-center">
-        <div className="text-6xl mb-6">🎉</div>
+        <div className="text-6xl mb-6">{isNormalListing ? '✅' : '🎉'}</div>
         <h1 className="text-2xl font-black text-green-400 mb-2">Payment Confirmed!</h1>
         <p className="text-[#ccc] mb-8">
-          Your {entityLabel.toLowerCase()} <span className="text-white font-bold">{submittedName}</span> is now live!
+          {isNormalListing ? (
+            <>Your {entityLabel.toLowerCase()} <span className="text-white font-bold">{submittedName}</span> has been submitted and will be reviewed within 48 hours.</>
+          ) : (
+            <>Your {entityLabel.toLowerCase()} <span className="text-white font-bold">{submittedName}</span> is now live!</>
+          )}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -446,7 +508,7 @@ export default function AddClient({ categories, countries }: AddClientProps) {
       <div className="flex rounded-full bg-white/5 border border-white/10 p-1 mb-8">
         <button
           type="button"
-          onClick={() => { setTab('group'); setError(''); }}
+          onClick={() => { setTab('group'); setSelectedTier('free'); setError(''); }}
           className={`flex-1 py-2.5 rounded-full font-bold text-sm transition-all ${tab === 'group' ? 'text-white' : 'text-[#999] hover:text-white'}`}
           style={tab === 'group' ? { backgroundColor: TELEGRAM_BLUE } : {}}
         >
@@ -454,7 +516,7 @@ export default function AddClient({ categories, countries }: AddClientProps) {
         </button>
         <button
           type="button"
-          onClick={() => { setTab('bot'); setError(''); }}
+          onClick={() => { setTab('bot'); setSelectedTier('normal_listing'); setError(''); }}
           className={`flex-1 py-2.5 rounded-full font-bold text-sm transition-all ${tab === 'bot' ? 'text-white' : 'text-[#999] hover:text-white'}`}
           style={tab === 'bot' ? { backgroundColor: TELEGRAM_BLUE } : {}}
         >
@@ -643,19 +705,21 @@ export default function AddClient({ categories, countries }: AddClientProps) {
                           </div>
                         )}
 
-                        {/* 40X badge — right side, boost_week only */}
-                        {tier.type === 'boost_week' && (
+                        {/* 40X badge — boost_week & boost_month */}
+                        {(tier.type === 'boost_week' || tier.type === 'boost_month') && (
                           <div
                             className="shrink-0 self-stretch rounded-xl flex flex-col items-center justify-center gap-2"
                             style={{
                               width: '15rem',
                               background: 'rgba(0,0,0,0.55)',
-                              border: '1.5px solid rgba(251,146,60,0.8)',
-                              boxShadow: '0 0 12px rgba(249,115,22,0.3)',
+                              border: `1.5px solid ${tier.type === 'boost_month' ? 'rgba(168,85,247,0.8)' : 'rgba(251,146,60,0.8)'}`,
+                              boxShadow: `0 0 12px ${tier.type === 'boost_month' ? 'rgba(168,85,247,0.3)' : 'rgba(249,115,22,0.3)'}`,
                             }}
                           >
                             <span className="font-black text-white leading-none" style={{ fontSize: '3.5rem' }}>40×</span>
-                            <span className="font-black text-sm uppercase tracking-widest text-center leading-tight px-2" style={{ color: '#fdba74' }}>More Exposure</span>
+                            <span className="font-black text-sm uppercase tracking-widest text-center leading-tight px-2" style={{ color: tier.type === 'boost_month' ? '#c4b5fd' : '#fdba74' }}>
+                              More Exposure{tier.type === 'boost_week' ? ' for 1 Week' : ' for 1 Month'}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -685,20 +749,14 @@ export default function AddClient({ categories, countries }: AddClientProps) {
             style={{
               background: !isFormFilled
                 ? '#333'
-                : selectedTier === 'boost_week'
-                  ? 'linear-gradient(135deg, #f97316, #ea580c)'
-                  : selectedTier === 'instant_approval'
-                    ? 'linear-gradient(135deg, #06b6d4, #0891b2)'
-                    : 'linear-gradient(135deg, #22c55e, #16a34a)',
+                : `linear-gradient(135deg, ${PRICING_TIERS.find(t => t.type === selectedTier)?.accentColor || '#22c55e'}, ${PRICING_TIERS.find(t => t.type === selectedTier)?.accentColor || '#22c55e'}cc)`,
             }}
           >
             {isSubmitting
               ? t('add.submitting')
               : selectedTier === 'free'
                 ? t('add.submitForMod')
-                : selectedTier === 'instant_approval'
-                  ? `Submit & Pay ${TIER_STARS.instant_approval.toLocaleString()}★`
-                  : `Submit & Pay ${TIER_STARS.boost_week.toLocaleString()}★`}
+                : `Submit & Pay ${(TIER_STARS[selectedTier] || 0).toLocaleString()}★`}
           </motion.button>
 
           {/* Error — right below the submit button so it's impossible to miss */}
@@ -708,7 +766,7 @@ export default function AddClient({ categories, countries }: AddClientProps) {
             </div>
           )}
 
-          {selectedTier !== 'free' && (
+          {selectedTier !== 'free' && TIER_STARS[selectedTier] && (
             <p className="mt-3 text-center text-xs text-[#555]">
               After submission, a Telegram Stars payment link will appear on this page.
             </p>

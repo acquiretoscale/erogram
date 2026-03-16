@@ -39,16 +39,14 @@ export async function GET(req: NextRequest) {
     const { searchParams } = req.nextUrl;
     const search = searchParams.get('search');
     
-    let query: any = {};
+    let query: any = { status: { $ne: 'deleted' } };
     if (search) {
-      query = {
-        $or: [
-          { name: { $regex: search, $options: 'i' } },
-          { categories: { $regex: search, $options: 'i' } },
-          { category: { $regex: search, $options: 'i' } },
-          { country: { $regex: search, $options: 'i' } }
-        ]
-      };
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { categories: { $regex: search, $options: 'i' } },
+        { category: { $regex: search, $options: 'i' } },
+        { country: { $regex: search, $options: 'i' } }
+      ];
     }
     
     const groups = await Group.find(query)

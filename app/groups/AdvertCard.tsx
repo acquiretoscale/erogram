@@ -197,6 +197,166 @@ function VideoAdCard({ campaign, handleClick }: { campaign: FeedCampaign; handle
     );
 }
 
+function PremiumMosaicCard({ campaign, handleClick }: { campaign: FeedCampaign; handleClick: () => void }) {
+    const [imgIdx, setImgIdx] = useState(0);
+    const [liveCount, setLiveCount] = useState(0);
+    const cardRef = useRef<HTMLDivElement>(null);
+    const impressionFiredRef = useRef(false);
+    const groups = campaign.premiumGroups || [];
+    const fmtNum = (n: number) => n >= 1_000_000 ? (n/1_000_000).toFixed(1)+'M' : n >= 1_000 ? (n/1_000).toFixed(n>=10_000?0:1)+'K' : '';
+
+    const seededRandom = (s: string) => {
+        let hash = 0;
+        for (let i = 0; i < s.length; i++) { hash = ((hash << 5) - hash) + s.charCodeAt(i); hash = hash & hash; }
+        return Math.abs(hash) / 2147483647;
+    };
+    const seed = `premium-${campaign._id}`;
+
+    // Social proof
+    const proofSetting = campaign.socialProof || 'random';
+    let resolvedProof = proofSetting;
+    if (resolvedProof === 'random') {
+        const r = seededRandom(seed + 'stats');
+        if (r > 0.7) {
+            const t = seededRandom(seed + 'statsType');
+            resolvedProof = t < 0.33 ? 'visiting' : t < 0.66 ? 'clicks' : 'trending';
+        } else {
+            resolvedProof = 'none';
+        }
+    }
+
+    let fakeCount: string | null = null;
+    let isLiveCount = false;
+    if (resolvedProof === 'visiting') {
+        if (liveCount === 0) setLiveCount(Math.floor(seededRandom(seed + 'count1') * 400 + 120));
+        isLiveCount = true;
+        fakeCount = `${liveCount} visiting now`;
+    } else if (resolvedProof === 'clicks') {
+        fakeCount = `${(seededRandom(seed + 'count2') * 5 + 1).toFixed(1)}k clicks today`;
+    } else if (resolvedProof === 'trending') {
+        fakeCount = `Trending #${Math.floor(seededRandom(seed + 'count3') * 5 + 1)}`;
+    }
+    if (isLiveCount) fakeCount = `${liveCount} visiting now`;
+
+    useEffect(() => {
+        if (!isLiveCount) return;
+        const interval = setInterval(() => {
+            setLiveCount(prev => Math.max(10, prev + Math.floor(Math.random() * 9) - 3));
+        }, 3000 + Math.random() * 2000);
+        return () => clearInterval(interval);
+    }, [isLiveCount]);
+
+    useEffect(() => {
+        if (groups.length <= 4) return;
+        const interval = setInterval(() => {
+            setImgIdx(prev => (prev + 4) % groups.length);
+        }, 12000);
+        return () => clearInterval(interval);
+    }, [groups.length]);
+
+    useEffect(() => {
+        const el = cardRef.current;
+        if (!el) return;
+        const observer = new IntersectionObserver(([entry]) => {
+            if (entry.isIntersecting && !impressionFiredRef.current) {
+                impressionFiredRef.current = true;
+                fetch('/api/campaigns/impression', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ campaignId: campaign._id }),
+                }).catch(() => {});
+            }
+        }, { threshold: 0.3 });
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [campaign._id]);
+
+    if (groups.length === 0) return null;
+
+    const visible = Array.from({ length: 4 }, (_, i) => groups[(imgIdx + i) % groups.length]);
+    const catLabel = campaign.premiumCategory || 'Premium';
+
+    return (
+        <div ref={cardRef} onClick={handleClick} className="block h-full cursor-pointer" role="link" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && handleClick()}>
+            <style>{`
+                @keyframes vault-led-spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            `}</style>
+            <div className="relative h-full rounded-2xl sm:rounded-3xl p-[2px]">
+                {/* LED spinning border layer */}
+                <div className="absolute inset-0 rounded-2xl sm:rounded-3xl overflow-hidden">
+                    <div style={{
+                        position: 'absolute',
+                        inset: '-80%',
+                        background: 'conic-gradient(from 0deg, transparent 0deg, transparent 60deg, #ff6a00 80deg, #ff9500 90deg, #ffffff 100deg, #ff9500 110deg, #ff6a00 120deg, transparent 140deg, transparent 360deg)',
+                        animation: 'vault-led-spin 12s linear infinite',
+                    }} />
+                </div>
+
+                {/* Card content — sits on top of the LED ring */}
+                <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col hover:shadow-2xl hover:shadow-orange-500/30 transition-all duration-500 group border border-white/[0.06]" style={{ background: 'linear-gradient(160deg, #1c1412 0%, #15100e 40%, #1a130d 100%)' }}>
+                    {/* 2x2 mosaic — square grid */}
+                    <div className="relative w-full p-2 sm:p-3 overflow-hidden">
+                        <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
+                            {visible.map((g, i) => (
+                                <div key={`${g._id}-${i}`} className="relative rounded-lg sm:rounded-xl overflow-hidden transition-all duration-1000 aspect-square">
+                                    <img
+                                        src={g.image || '/assets/placeholder-no-image.png'}
+                                        alt=""
+                                        className="absolute inset-0 w-full h-full object-cover"
+                                        onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }}
+                                    />
+                                    <div className="absolute inset-0 rounded-lg sm:rounded-xl ring-1 ring-orange-500/40" />
+                                    <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.85) 100%)' }} />
+                                    <div className="absolute bottom-0 left-0 right-0 p-1 sm:p-1.5">
+                                        <p className="text-[8px] sm:text-[10px] font-bold text-white truncate leading-tight">
+                                            {(g.name || '').slice(0, 6)}<span style={{ display: 'inline-block', width: '3.5em', height: '0.75em', background: 'rgba(255,255,255,0.9)', borderRadius: '3px', verticalAlign: 'middle', marginLeft: '2px', filter: 'blur(2px)', userSelect: 'none' as const }} />
+                                        </p>
+                                        <div className="flex items-center gap-0.5">
+                                            {g.memberCount ? <span className="text-[8px] sm:text-[10px] font-black text-orange-400 leading-none">{fmtNum(g.memberCount)}</span> : null}
+                                            <span className="text-[7px] sm:text-[8px] font-bold text-white/40 leading-none truncate">· {g.category}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Content area — flex-grow pushes button to bottom like other feed cards */}
+                    <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
+                        {fakeCount && (
+                            <div className="mb-2">
+                                <div className="inline-flex bg-black/60 backdrop-blur-md border border-white/10 px-2 py-1 rounded-lg items-center gap-1.5 shadow-lg">
+                                    <span className="text-xs text-red-400">⚡</span>
+                                    <span className="text-xs font-bold text-white">{fakeCount}</span>
+                                </div>
+                            </div>
+                        )}
+                        <h3 className="text-sm sm:text-xl font-black text-white mb-1 sm:mb-2 leading-tight group-hover:text-orange-400 transition-colors">
+                            🔒 {campaign.name || `Premium ${catLabel}`}
+                        </h3>
+                        <div className="mb-3 sm:mb-6 flex-grow">
+                            <p className="text-orange-300 text-xs sm:text-sm font-bold leading-snug uppercase tracking-wide">
+                                {campaign.description || `Unlock the best ${catLabel} groups`}
+                            </p>
+                        </div>
+                        <div className="mt-auto">
+                            <button
+                                onClick={(e) => { e.stopPropagation(); handleClick(); }}
+                                className="w-full py-2.5 sm:py-3.5 px-3 sm:px-4 rounded-xl font-black text-white text-xs sm:text-sm uppercase tracking-wide bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] hover:shadow-orange-500/40"
+                            >
+                                🔓 {campaign.buttonText || 'Unlock The Vault'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreload = false, onVisible, forceVisible = false }: AdvertCardProps) {
     const isTelegram = useIsTelegramBrowser();
 
@@ -392,7 +552,9 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
             }).catch(() => {});
         }
         const url = (ad.url || '').trim();
-        if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+        if (url && url.startsWith('/')) {
+            window.location.href = url;
+        } else if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
             window.open(url, '_blank', 'noopener,noreferrer');
         }
     };
@@ -417,41 +579,49 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
         badge = badges[Math.floor(seededRandom(seed + 'badgeType') * badges.length)];
     }
 
-    // Fake Stats Logic
-    const statsRand = seededRandom(seed + 'stats');
-    let fakeCount = null;
+    // Social Proof — controlled via campaign.socialProof
+    const proofSetting = campaign?.socialProof || 'random';
+    let fakeCount: string | null = null;
     let isLiveCount = false;
 
-    // Make stats rarer (30% chance, was 70%)
-    if (statsRand > 0.7) {
-        const type = seededRandom(seed + 'statsType');
-        if (type < 0.33) {
-            // Initialize live count
-            if (liveCount === 0) {
-                setLiveCount(Math.floor(seededRandom(seed + 'count1') * 400 + 120));
-            }
-            isLiveCount = true;
-            fakeCount = `${liveCount} visiting now`;
+    // Resolve which type to show
+    let resolvedProof = proofSetting;
+    if (resolvedProof === 'random') {
+        const statsRand = seededRandom(seed + 'stats');
+        if (statsRand > 0.7) {
+            const type = seededRandom(seed + 'statsType');
+            if (type < 0.33) resolvedProof = 'visiting';
+            else if (type < 0.66) resolvedProof = 'clicks';
+            else resolvedProof = 'trending';
+        } else {
+            resolvedProof = 'none';
         }
-        else if (type < 0.66) fakeCount = `${(seededRandom(seed + 'count2') * 5 + 1).toFixed(1)}k clicks today`;
-        else fakeCount = `Trending #${Math.floor(seededRandom(seed + 'count3') * 5 + 1)}`;
     }
 
-    // Dynamic Live Count Effect
+    if (resolvedProof === 'visiting') {
+        if (liveCount === 0) {
+            setLiveCount(Math.floor(seededRandom(seed + 'count1') * 400 + 120));
+        }
+        isLiveCount = true;
+        fakeCount = `${liveCount} visiting now`;
+    } else if (resolvedProof === 'clicks') {
+        fakeCount = `${(seededRandom(seed + 'count2') * 5 + 1).toFixed(1)}k clicks today`;
+    } else if (resolvedProof === 'trending') {
+        fakeCount = `Trending #${Math.floor(seededRandom(seed + 'count3') * 5 + 1)}`;
+    }
+
     useEffect(() => {
         if (isLiveCount) {
             const interval = setInterval(() => {
                 setLiveCount(prev => {
-                    const change = Math.floor(Math.random() * 9) - 3; // -3 to +5
-                    return Math.max(10, prev + change); // Ensure it doesn't go below 10
+                    const change = Math.floor(Math.random() * 9) - 3;
+                    return Math.max(10, prev + change);
                 });
-            }, 3000 + Math.random() * 2000); // Random interval 3-5s
-
+            }, 3000 + Math.random() * 2000);
             return () => clearInterval(interval);
         }
     }, [isLiveCount]);
 
-    // Update fakeCount text when liveCount changes
     if (isLiveCount) {
         fakeCount = `${liveCount} visiting now`;
     }
@@ -464,6 +634,11 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
     if (isTelegram) {
         return null;
+    }
+
+    // PREMIUM MOSAIC CARD — group grid for premium category ads
+    if (campaign?.adType === 'premium' && campaign.premiumGroups?.length) {
+        return <PremiumMosaicCard campaign={campaign} handleClick={handleClick} />;
     }
 
     // VIDEO AD CARD — only when campaign has a videoUrl
@@ -482,9 +657,9 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                 onHoverEnd={() => setIsHovered(false)}
                 className="h-full"
             >
-                <div className={`glass rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col backdrop-blur-xl border transition-all duration-500 group relative border-white/5 hover:border-white/20 hover:shadow-2xl hover:shadow-black/50`}>
+                <div className={`rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col border transition-all duration-500 group relative border-gray-200 hover:border-gray-300 hover:shadow-2xl hover:shadow-black/20 bg-white`}>
                     {/* Advert Image */}
-                    <div ref={imgRef} className="relative w-full h-32 sm:h-52 overflow-hidden bg-[#1a1a1a]">
+                    <div ref={imgRef} className="relative w-full h-32 sm:h-52 overflow-hidden bg-gray-100">
                         <Image
                             src={imageSrc}
                             alt={ad.name}
@@ -494,25 +669,25 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                             priority={forceVisible || isIndex < 12}
                             onError={() => setImageSrc('/assets/image.jpg')}
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent opacity-80" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
 
                         {/* Badges - Subtle "Sponsored" */}
                         {showSponsored && (
                             <div className="absolute top-3 left-3 flex gap-2 flex-wrap">
-                                <div className="bg-white/10 backdrop-blur-md border border-white/10 text-gray-300 text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider flex items-center gap-1">
+                                <div className="bg-black/50 backdrop-blur-md border border-white/20 text-white text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider flex items-center gap-1">
                                     <span>📢</span> Sponsored
                                 </div>
                             </div>
                         )}
 
-                        {/* Stats Overlay (Fake to match group card feel) */}
+                        {/* Stats Overlay */}
                         <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end">
                             <div className="flex gap-2 flex-wrap">
-                                <div className="bg-black/60 backdrop-blur-md border border-white/10 px-2 py-1 rounded-lg flex items-center gap-1.5">
+                                <div className="bg-black/50 backdrop-blur-md border border-white/20 px-2 py-1 rounded-lg flex items-center gap-1.5">
                                     <span className="text-xs">👁️</span>
                                     <span className="text-xs font-bold text-white">{Math.floor(seededRandom(seed + 'views') * 50000 + 5000).toLocaleString()}</span>
                                 </div>
-                                <div className="bg-black/60 backdrop-blur-md border border-white/10 px-2 py-1 rounded-lg flex items-center gap-1.5">
+                                <div className="bg-black/50 backdrop-blur-md border border-white/20 px-2 py-1 rounded-lg flex items-center gap-1.5">
                                     <span className="text-xs">👥</span>
                                     <span className="text-xs font-bold text-white">{Math.floor(seededRandom(seed + 'members') * 10000 + 1000).toLocaleString()}</span>
                                 </div>
@@ -523,7 +698,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                     {/* Card Content */}
                     <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
                         {/* Title */}
-                        <h3 className="text-sm sm:text-xl font-black text-white mb-2 sm:mb-3 leading-tight group-hover:text-blue-400 transition-colors flex items-center gap-1">
+                        <h3 className="text-sm sm:text-xl font-black text-gray-900 mb-2 sm:mb-3 leading-tight group-hover:text-blue-600 transition-colors flex items-center gap-1">
                             <span className="truncate min-w-0">{ad.name}</span>
                             {showVerified && (
                                 <svg className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
@@ -532,7 +707,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
                         {/* Description */}
                         <div className="mb-3 sm:mb-6 flex-grow">
-                            <p className="text-gray-400 text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed">
+                            <p className="text-gray-500 text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed">
                                 {ad.description}
                             </p>
                         </div>
@@ -543,10 +718,10 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                             <div className="flex items-center justify-between px-1">
                                 <div className="flex items-center gap-1">
                                     <span className="text-yellow-500 text-[10px] sm:text-sm">⭐</span>
-                                    <span className="text-white font-bold text-[10px] sm:text-sm">{(seededRandom(seed + 'rating') * 0.7 + 4.2).toFixed(1)}</span>
-                                    <span className="text-gray-500 text-[10px] sm:text-xs">({Math.floor(seededRandom(seed + 'reviews') * 38 + 5)})</span>
+                                    <span className="text-gray-800 font-bold text-[10px] sm:text-sm">{(seededRandom(seed + 'rating') * 0.7 + 4.2).toFixed(1)}</span>
+                                    <span className="text-gray-400 text-[10px] sm:text-xs">({Math.floor(seededRandom(seed + 'reviews') * 38 + 5)})</span>
                                 </div>
-                                <div className="hidden sm:block text-xs text-gray-500 font-medium">
+                                <div className="hidden sm:block text-xs text-gray-400 font-medium">
                                     Promoted
                                 </div>
                             </div>
@@ -577,7 +752,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
             onHoverStart={() => setIsHovered(true)}
             onHoverEnd={() => setIsHovered(false)}
         >
-            <div className={`glass rounded-2xl overflow-hidden h-full flex flex-col backdrop-blur-lg border-2 ${colorScheme.border} ${colorScheme.hoverBorder} transition-all duration-300 ${isHovered ? 'hover-glow scale-[1.02]' : ''} relative shadow-lg shadow-black/40`}>
+            <div className={`rounded-2xl overflow-hidden h-full flex flex-col border border-gray-200 transition-all duration-300 ${isHovered ? 'scale-[1.02] shadow-xl shadow-black/15' : 'shadow-md shadow-black/10'} relative bg-white`}>
                 {/* Random Badge */}
                 {showBadge && (
                     <div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10">
@@ -588,7 +763,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                 )}
 
                 {/* Advert Image */}
-                <div ref={imgRef} className="relative w-full h-32 sm:h-48 overflow-hidden bg-gray-800">
+                <div ref={imgRef} className="relative w-full h-32 sm:h-48 overflow-hidden bg-gray-100">
                     <Image
                         src={imageSrc}
                         alt={ad.name}
@@ -599,13 +774,13 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                         priority={forceVisible || isIndex < 12}
                         onError={() => setImageSrc('/assets/image.jpg')}
                     />
-                    {/* Gradient Overlay for text readability */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-80"></div>
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
 
                     {/* Fake Stats Overlay */}
                     {fakeCount && (
                         <div className="absolute bottom-3 left-3 flex gap-2">
-                            <div className="bg-black/80 backdrop-blur-md border border-white/10 px-2 py-1 rounded-lg flex items-center gap-1.5 shadow-lg">
+                            <div className="bg-black/60 backdrop-blur-md border border-white/20 px-2 py-1 rounded-lg flex items-center gap-1.5 shadow-lg">
                                 <span className="text-xs text-red-400">⚡</span>
                                 <span className="text-xs font-bold text-white">{fakeCount}</span>
                             </div>
@@ -615,7 +790,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
                 {/* Card Content */}
                 <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
-                    <h3 className="text-sm sm:text-xl md:text-2xl font-black text-white mb-2 sm:mb-3 text-center drop-shadow-md flex items-center justify-center gap-1">
+                    <h3 className="text-sm sm:text-xl md:text-2xl font-black text-gray-900 mb-2 sm:mb-3 text-center flex items-center justify-center gap-1">
                         <span className="truncate min-w-0">{ad.name}</span>
                         {showVerified && (
                             <svg className="w-[14px] h-[14px] sm:w-[16px] sm:h-[16px] text-blue-500 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
@@ -624,7 +799,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
                     {/* Description */}
                     <div className="mb-3 sm:mb-6 flex-grow">
-                        <p className="text-gray-300 text-center text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed font-medium">
+                        <p className="text-gray-500 text-center text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed font-medium">
                             {ad.description}
                         </p>
                     </div>

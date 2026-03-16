@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import { User } from '@/lib/models';
 import { notifyAdminsOfNewUser } from '@/lib/utils/notifyAdmins';
+import { geoUpdateFields } from '@/lib/utils/geo';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -64,6 +65,7 @@ export async function GET(req: NextRequest) {
 
     await connectDB();
 
+    const geo = geoUpdateFields(req);
     let user = await User.findOne({ googleId });
 
     if (!user) {
@@ -71,10 +73,10 @@ export async function GET(req: NextRequest) {
       if (email) {
         const existingByEmail = await User.findOne({ email });
         if (existingByEmail) {
-          // Link Google to the existing account instead of creating a duplicate
           existingByEmail.googleId = googleId;
           if (name && !existingByEmail.firstName) existingByEmail.firstName = name;
           if (picture && !existingByEmail.photoUrl) existingByEmail.photoUrl = picture;
+          Object.assign(existingByEmail, geo);
           await existingByEmail.save();
           user = existingByEmail;
         }
@@ -96,16 +98,17 @@ export async function GET(req: NextRequest) {
             googleId,
             firstName: name,
             photoUrl: picture,
+            ...geo,
           });
           notifyAdminsOfNewUser({ username, provider: 'google' }).catch(() => {});
         } catch (err: any) {
           if (err.code === 11000 && err.keyPattern?.email) {
-            // Race condition: email taken between check and insert — create without email
             user = await User.create({
               username,
               googleId,
               firstName: name,
               photoUrl: picture,
+              ...geo,
             });
             notifyAdminsOfNewUser({ username, provider: 'google' }).catch(() => {});
           } else {
@@ -114,23 +117,20 @@ export async function GET(req: NextRequest) {
         }
       }
     } else {
-      let updated = false;
       if (email && user.email !== email) {
         const emailTaken = await User.findOne({ email, _id: { $ne: user._id } });
         if (!emailTaken) {
           user.email = email;
-          updated = true;
         }
       }
       if (name && user.firstName !== name) {
         user.firstName = name;
-        updated = true;
       }
       if (picture && user.photoUrl !== picture) {
         user.photoUrl = picture;
-        updated = true;
       }
-      if (updated) await user.save();
+      Object.assign(user, geo);
+      await user.save();
     }
 
     user.lastLogin = new Date();

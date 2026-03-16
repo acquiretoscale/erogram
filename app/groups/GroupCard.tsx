@@ -15,7 +15,13 @@ interface GroupCardProps {
 
 export default function GroupCard({ group, isFeatured = false, isIndex = 0, shouldPreload = false, onVisible, onOpenReviewModal, onOpenReportModal }: GroupCardProps) {
     const [isHovered, setIsHovered] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [deleted, setDeleted] = useState(false);
     const placeholder = '/assets/image.jpg';
+
+    useEffect(() => {
+        setIsAdmin(localStorage.getItem('isAdmin') === 'true');
+    }, []);
     const isAbsoluteUrl = (s: string) => typeof s === 'string' && (s.startsWith('https://') || s.startsWith('http://'));
     const initialImage = (group.image && isAbsoluteUrl(group.image)) ? group.image : (group.image && typeof group.image === 'string' && group.image.startsWith('/') ? group.image : placeholder);
     const [imageSrc, setImageSrc] = useState(initialImage);
@@ -83,6 +89,25 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
         }
     }, [isInView, needsFetch, group._id]);
 
+    const handleAdminDelete = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!confirm(`Permanently delete "${group.name}"?`)) return;
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`/api/admin/groups/${group._id}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) throw new Error('Failed');
+            setDeleted(true);
+        } catch {
+            alert('Failed to delete group');
+        }
+    };
+
+    if (deleted) return null;
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 60 }}
@@ -133,6 +158,17 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                             </div>
                         )}
                     </div>
+
+                    {/* Admin delete */}
+                    {isAdmin && (
+                        <button
+                            onClick={handleAdminDelete}
+                            className="absolute top-2 right-2 z-20 w-7 h-7 flex items-center justify-center rounded-full bg-red-600/80 hover:bg-red-600 text-white text-xs backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100"
+                            title="Delete group"
+                        >
+                            🗑️
+                        </button>
+                    )}
 
                     {/* Stats Overlay */}
                     <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end">

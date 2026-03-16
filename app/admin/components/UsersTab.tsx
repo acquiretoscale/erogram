@@ -74,10 +74,12 @@ export default function UsersTab() {
 
     const filteredUsers = useMemo(() => {
         return users.filter((user) => {
+            const q = searchQuery.toLowerCase();
             const matchesSearch =
-                user.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                user.telegramUsername?.toLowerCase().includes(searchQuery.toLowerCase());
+                user.username?.toLowerCase().includes(q) ||
+                user.email?.toLowerCase().includes(q) ||
+                user.telegramUsername?.toLowerCase().includes(q) ||
+                user.country?.toLowerCase().includes(q);
 
             if (premiumFilter === 'premium') return matchesSearch && isPremiumActive(user);
             if (premiumFilter === 'free') return matchesSearch && !isPremiumActive(user);
@@ -155,6 +157,7 @@ export default function UsersTab() {
                                     <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">Telegram</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">Role</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">Premium</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">Country</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">Joined</th>
                                     <th className="px-6 py-4 text-right text-xs font-bold text-[#666] uppercase tracking-wider">Actions</th>
                                 </tr>
@@ -201,6 +204,9 @@ export default function UsersTab() {
                                                 </td>
                                                 <td className="px-6 py-4 text-gray-400 text-xs">
                                                     {isPremiumActive(user) ? '⭐' : '—'}
+                                                </td>
+                                                <td className="px-6 py-4 text-gray-400 text-xs">
+                                                    {user.country || '—'}
                                                 </td>
                                                 <td className="px-6 py-4 text-gray-400">
                                                     {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
@@ -249,6 +255,16 @@ export default function UsersTab() {
                                                                     : 'Lifetime'}
                                                             </div>
                                                         </div>
+                                                    ) : (
+                                                        <span className="text-white/20 text-xs">—</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {user.country ? (
+                                                        <span className="inline-flex items-center gap-1 text-xs text-gray-300" title={[user.city, user.country, user.timezone].filter(Boolean).join(' · ')}>
+                                                            {user.country}
+                                                            {user.city && <span className="text-white/30">· {user.city}</span>}
+                                                        </span>
                                                     ) : (
                                                         <span className="text-white/20 text-xs">—</span>
                                                     )}

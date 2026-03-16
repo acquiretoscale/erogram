@@ -43,6 +43,14 @@ export interface Advert {
     buttonText?: string;
 }
 
+export interface PremiumGroupPreview {
+    _id: string;
+    name: string;
+    image: string;
+    memberCount: number;
+    category: string;
+}
+
 export interface FeedCampaign {
     _id: string;
     name: string;
@@ -62,6 +70,14 @@ export interface FeedCampaign {
     verified?: boolean;
     /** Tier slot (1-3): determines which section the ad appears in */
     tierSlot?: number;
+    /** 'advertiser' (image/video) or 'premium' (group mosaic from a category) */
+    adType?: 'advertiser' | 'premium';
+    /** For premium ads: which category the groups are from */
+    premiumCategory?: string;
+    /** For premium ads: top featured groups to show in the mosaic */
+    premiumGroups?: PremiumGroupPreview[];
+    /** Social proof indicator: 'none' | 'visiting' | 'clicks' | 'trending' | 'random' */
+    socialProof?: string;
 }
 
 // ─── Story Types ───

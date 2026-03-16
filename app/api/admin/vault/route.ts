@@ -113,7 +113,7 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// DELETE: remove a group from the vault (sets premiumOnly=false, clears vault fields)
+// DELETE: permanently delete a group from the vault
 export async function DELETE(req: NextRequest) {
   try {
     await connectDB();
@@ -123,14 +123,7 @@ export async function DELETE(req: NextRequest) {
     const { groupId } = await req.json();
     if (!groupId) return NextResponse.json({ message: 'Missing groupId' }, { status: 400 });
 
-    await Group.findByIdAndUpdate(groupId, {
-      $set: {
-        premiumOnly: false,
-        showOnVaultTeaser: false,
-        vaultTeaserOrder: 999,
-        vaultCategories: [],
-      },
-    });
+    await Group.findByIdAndDelete(groupId);
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {

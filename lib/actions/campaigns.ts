@@ -70,6 +70,8 @@ export async function getCampaigns(token: string, advertiserId?: string) {
     videoUrl: c.videoUrl || '',
     badgeText: c.badgeText || '',
     verified: Boolean(c.verified),
+    adType: c.adType || 'advertiser',
+    premiumCategory: c.premiumCategory || '',
   }));
 }
 
@@ -96,6 +98,9 @@ export async function createCampaign(
     videoUrl?: string;
     badgeText?: string;
     verified?: boolean;
+    adType?: 'advertiser' | 'premium';
+    premiumCategory?: string;
+    socialProof?: string;
   }
 ) {
   const admin = await authenticateAdmin(token);
@@ -121,7 +126,7 @@ export async function createCampaign(
   if (!data.destinationUrl || !String(data.destinationUrl).trim()) {
     throw new Error('Destination URL is required');
   }
-  if (!isCtaSlot && !data.creative) {
+  if (!isCtaSlot && data.adType !== 'premium' && !data.creative) {
     throw new Error('Creative image is required for this slot');
   }
   if (isCtaSlot && !(data.description != null && String(data.description).trim())) {
@@ -189,6 +194,9 @@ export async function createCampaign(
     videoUrl: data.slot === 'feed' ? (data.videoUrl || '') : '',
     badgeText: data.slot === 'feed' ? (data.badgeText || '') : '',
     verified: data.slot === 'feed' ? Boolean(data.verified) : false,
+    adType: data.adType || 'advertiser',
+    premiumCategory: data.adType === 'premium' ? (data.premiumCategory || '') : '',
+    socialProof: data.socialProof || 'random',
   });
 
   // Keep feed positions gap-free after a new ad is created
@@ -223,6 +231,9 @@ export async function updateCampaign(
     videoUrl: string;
     badgeText: string;
     verified: boolean;
+    adType: 'advertiser' | 'premium';
+    premiumCategory: string;
+    socialProof: string;
   }>
 ) {
   const admin = await authenticateAdmin(token);
@@ -251,6 +262,9 @@ export async function updateCampaign(
   if ('videoUrl' in data) updateData.videoUrl = String(data.videoUrl ?? '').trim();
   if ('badgeText' in data) updateData.badgeText = String(data.badgeText ?? '').trim();
   if ('verified' in data) updateData.verified = Boolean(data.verified);
+  if ('adType' in data) updateData.adType = data.adType || 'advertiser';
+  if ('premiumCategory' in data) updateData.premiumCategory = String(data.premiumCategory ?? '').trim();
+  if ('socialProof' in data) updateData.socialProof = data.socialProof || 'random';
 
   if (Object.keys(updateData).length === 0) {
     const doc = await Campaign.findById(id).lean();
@@ -447,17 +461,17 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
     startDate: { $lte: now },
     endDate: { $gte: startOfToday },
     feedTier: 1,
-    tierSlot: { $gte: 1, $lte: 3 },
+    tierSlot: { $gte: 1, $lte: 4 },
     $or: [
       { feedPlacement: placement },
       { feedPlacement: 'both' },
       { feedPlacement: { $exists: false } },
     ],
   })
-    .select('_id creative destinationUrl slot feedTier tierSlot position description category country buttonText name feedPlacement videoUrl badgeText verified')
+    .select('_id creative destinationUrl slot feedTier tierSlot position description category country buttonText name feedPlacement videoUrl badgeText verified adType premiumCategory socialProof')
     .lean();
 
-  // Group by tierSlot (1-3) for A/B variant selection
+  // Group by tierSlot (1-4) for A/B variant selection
   const slotGroups = new Map<number, any[]>();
   for (const c of campaigns) {
     const ts = (c as any).tierSlot as number;
@@ -465,26 +479,28 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
     slotGroups.get(ts)!.push(c);
   }
 
-  // For each of the 3 slots, randomly pick one variant
-  const slotPicks: (any | null)[] = [null, null, null];
-  for (let s = 1; s <= 3; s++) {
+  // For each of the 4 slots, randomly pick one variant (A/B test)
+  const slotPicks: (any | null)[] = [null, null, null, null];
+  for (let s = 1; s <= 4; s++) {
     const variants = slotGroups.get(s);
     if (variants && variants.length > 0) {
       slotPicks[s - 1] = variants[Math.floor(Math.random() * variants.length)];
     }
   }
 
-  // Loop slots 1-3 across all 12 display positions: 1,2,3,1,2,3,1,2,3,1,2,3
+  // Return one campaign per slot with its tierSlot preserved.
+  // Front-end buildFeedItems handles placement: slot 1 → top section,
+  // slot 2 → after 2 groups, slot 3 → after 7, slot 4 → after 12 + loops.
   const results: any[] = [];
-  for (let i = 0; i < FEED_DISPLAY_POSITIONS.length; i++) {
-    const pick = slotPicks[i % 3];
+  for (let s = 0; s < 4; s++) {
+    const pick = slotPicks[s];
     if (!pick) continue;
     results.push({
       _id: pick._id.toString(),
       creative: pick.creative,
       destinationUrl: pick.destinationUrl,
       slot: pick.slot,
-      position: FEED_DISPLAY_POSITIONS[i],
+      position: s + 1,
       tierSlot: (pick as any).tierSlot,
       description: pick.description || '',
       category: pick.category || 'All',
@@ -494,8 +510,78 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
       videoUrl: pick.videoUrl || '',
       badgeText: pick.badgeText || '',
       verified: Boolean(pick.verified),
+      adType: pick.adType || 'advertiser',
+      premiumCategory: pick.premiumCategory || '',
+      socialProof: pick.socialProof || 'random',
     });
   }
+
+  // For premium campaigns, load top featured groups for their category.
+  // Wrapped in try-catch so a failure here never prevents advertiser ads from loading.
+  try {
+    const premiumCampaigns = results.filter(r => r.adType === 'premium');
+    if (premiumCampaigns.length > 0) {
+      const categoryCampaigns = premiumCampaigns.filter(c => c.premiumCategory);
+      const noCategoryCampaigns = premiumCampaigns.filter(c => !c.premiumCategory);
+      const categories = [...new Set(categoryCampaigns.map(c => c.premiumCategory))];
+
+      const groupsByCategory: Record<string, any[]> = {};
+
+      // Load groups for campaigns with a specific category
+      await Promise.all(categories.map(async (cat) => {
+        const groups = await Group.find({
+          premiumOnly: true,
+          status: 'approved',
+          $or: [
+            { category: cat },
+            { vaultCategories: cat },
+          ],
+        })
+          .sort({ showOnVaultTeaser: -1, memberCount: -1 })
+          .limit(8)
+          .select('_id name image memberCount category vaultCategories')
+          .lean();
+        groupsByCategory[cat] = groups.map((g: any) => ({
+          _id: g._id.toString(),
+          name: g.name || '',
+          image: g.image || '',
+          memberCount: g.memberCount || 0,
+          category: g.category || '',
+        }));
+      }));
+
+      // Load ALL top premium groups for campaigns without a specific category
+      let allPremiumGroups: any[] = [];
+      if (noCategoryCampaigns.length > 0) {
+        const groups = await Group.find({
+          premiumOnly: true,
+          status: 'approved',
+        })
+          .sort({ showOnVaultTeaser: -1, memberCount: -1 })
+          .limit(8)
+          .select('_id name image memberCount category vaultCategories')
+          .lean();
+        allPremiumGroups = groups.map((g: any) => ({
+          _id: g._id.toString(),
+          name: g.name || '',
+          image: g.image || '',
+          memberCount: g.memberCount || 0,
+          category: g.category || '',
+        }));
+      }
+
+      for (const r of results) {
+        if (r.adType === 'premium') {
+          r.premiumGroups = r.premiumCategory
+            ? (groupsByCategory[r.premiumCategory] || [])
+            : allPremiumGroups;
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[getActiveFeedCampaigns] Failed to load premium groups, continuing without them:', err);
+  }
+
   return results;
 }
 
@@ -507,7 +593,11 @@ export async function trackClick(campaignId: string, placement?: string) {
   try {
     await connectDB();
     await Campaign.findByIdAndUpdate(campaignId, { $inc: { clicks: 1 } });
-    await CampaignClick.create({ campaignId, clickedAt: new Date() });
+    await CampaignClick.create({
+      campaignId,
+      clickedAt: new Date(),
+      ...(placement ? { placement } : {}),
+    });
   } catch {
     // Silently fail — click tracking should never block the user
   }

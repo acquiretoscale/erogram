@@ -188,7 +188,7 @@ function isTextOnlySlot(slot: string): boolean {
   return s === 'navbar-cta' || s === 'join-cta' || s === 'filter-cta';
 }
 
-type SectionTabType = 'overview' | 'slots' | 'buttonsBanners' | 'advertisers' | 'feedAds';
+type SectionTabType = 'overview' | 'slots' | 'buttonsBanners' | 'advertisers' | 'feedAds' | 'premium' | 'revenue';
 
 interface AdvertisersTabProps {
   setActiveTab?: (tab: string) => void;
@@ -262,8 +262,8 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
   const [advForm, setAdvForm] = useState({ name: '', email: '', company: '', logo: '', notes: '', status: 'active' });
   const [isSaving, setIsSaving] = useState(false);
 
-  // Campaign form: type drives whether we show text+link or image+link
-  const [campaignType, setCampaignType] = useState<'text' | 'image'>('image');
+  // Campaign form: type drives whether we show text+link, image+link, or premium mosaic
+  const [campaignType, setCampaignType] = useState<'text' | 'image' | 'premium'>('image');
   const [editingCampaign, setEditingCampaign] = useState<CampaignRow | null>(null);
   const [campForm, setCampForm] = useState({
     advertiserId: '',
@@ -286,10 +286,15 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
     videoUrl: '',
     badgeText: '',
     verified: false,
+    adType: 'advertiser' as 'advertiser' | 'premium',
+    premiumCategory: '',
+    socialProof: 'random',
   });
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const savingRef = useRef(false);
+  const [premiumPreviewGroups, setPremiumPreviewGroups] = useState<{ _id: string; name: string; image: string; memberCount: number; category: string }[]>([]);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
   // Data fetching. skipLoading=true = refresh without full-page loading (e.g. after save).
   const fetchAll = async (skipLoading = false) => {
@@ -408,6 +413,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
     setEditingCampaign(null);
     const isCtaSlot = isTextOnlySlot(slot);
     setCampaignType(isCtaSlot ? 'text' : 'image');
+    setPremiumPreviewGroups([]);
     const start = new Date();
     const end = new Date(Date.now() + 30 * 86400000);
     setCampForm({
@@ -431,6 +437,9 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       videoUrl: '',
       badgeText: '',
       verified: false,
+      adType: 'advertiser',
+      premiumCategory: '',
+      socialProof: 'random',
     });
     setView('editCampaign');
   };
@@ -439,8 +448,10 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
   const openEditCampaign = (camp: CampaignRow) => {
     setEditingCampaign(camp);
     const isCta = isTextOnlySlot(camp.slot);
-    setCampaignType(isCta ? 'text' : 'image');
+    const isPremium = (camp as any).adType === 'premium';
+    setCampaignType(isPremium ? 'premium' : isCta ? 'text' : 'image');
     const normalizedSlot = isCta ? (String(camp.slot).trim().toLowerCase() as 'navbar-cta' | 'join-cta' | 'filter-cta') : camp.slot;
+    const premCat = (camp as any).premiumCategory || '';
     setCampForm({
       advertiserId: camp.advertiserId,
       name: camp.name,
@@ -452,7 +463,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       status: camp.status,
       isVisible: camp.isVisible,
       position: camp.slot === 'feed'
-        ? (camp.position ?? (camp.feedTier != null && camp.tierSlot != null ? (camp.feedTier - 1) * 3 + camp.tierSlot : 1))
+        ? (camp.position ?? (camp.tierSlot ?? 1))
         : camp.position,
       feedTier: camp.feedTier ?? null,
       tierSlot: camp.tierSlot ?? null,
@@ -464,7 +475,19 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       videoUrl: (camp as any).videoUrl || '',
       badgeText: (camp as any).badgeText || '',
       verified: Boolean((camp as any).verified),
+      adType: (camp as any).adType || 'advertiser',
+      premiumCategory: premCat,
+      socialProof: (camp as any).socialProof || 'random',
     });
+    if (isPremium && premCat) {
+      setIsLoadingPreview(true);
+      axios.get(`/api/admin/premium-preview-groups?category=${encodeURIComponent(premCat)}`, authHeaders())
+        .then(res => setPremiumPreviewGroups(res.data || []))
+        .catch(() => setPremiumPreviewGroups([]))
+        .finally(() => setIsLoadingPreview(false));
+    } else {
+      setPremiumPreviewGroups([]);
+    }
     setView('editCampaign');
   };
 
@@ -479,7 +502,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       alert('Name and destination URL are required');
       return;
     }
-    if (!isCta && !campForm.creative) {
+    if (!isCta && campForm.adType !== 'premium' && !campForm.creative) {
       alert('Creative image is required for this slot');
       return;
     }
@@ -502,8 +525,8 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       alert('Please select an Advertiser (required for feed ads).');
       return;
     }
-    if (!campForm.destinationUrl.startsWith('http://') && !campForm.destinationUrl.startsWith('https://')) {
-      alert('Destination URL must start with http:// or https://');
+    if (!campForm.destinationUrl.startsWith('http://') && !campForm.destinationUrl.startsWith('https://') && !campForm.destinationUrl.startsWith('/')) {
+      alert('Destination URL must start with http://, https://, or / for internal pages');
       return;
     }
     if (savingRef.current) return;
@@ -531,10 +554,13 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
         videoUrl: isFeed ? ((campForm as any).videoUrl || '') : '',
         badgeText: isFeed ? ((campForm as any).badgeText || '') : '',
         verified: isFeed ? Boolean(campForm.verified) : false,
+        adType: campForm.adType || 'advertiser',
+        premiumCategory: campForm.adType === 'premium' ? (campForm.premiumCategory || '') : '',
+        socialProof: isFeed ? ((campForm as any).socialProof || 'random') : 'random',
       };
       if (isFeed && !editingCampaign) {
-        payload.feedTier = Math.ceil((feedPos ?? 1) / 3);
-        payload.tierSlot = ((feedPos ?? 1) - 1) % 3 + 1;
+        payload.feedTier = 1;
+        payload.tierSlot = feedPos ?? 1;
       }
       const assignableSlots = FEED_SLOTS.includes(campForm.slot) || CTA_SLOTS.includes(campForm.slot) || ['homepage-hero', 'top-banner'].includes(campForm.slot);
       if (assignableSlots && campForm.advertiserId) payload.advertiserId = String(campForm.advertiserId).trim();
@@ -557,6 +583,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       await fetchAll(true);
       setEditingCampaign(null);
       setCampaignType('image');
+      setPremiumPreviewGroups([]);
       setCampForm({
         advertiserId: campForm.advertiserId,
         name: '',
@@ -578,6 +605,9 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
         videoUrl: '',
         badgeText: '',
         verified: false,
+        adType: 'advertiser',
+        premiumCategory: '',
+        socialProof: 'random',
       });
       setView('list');
       alert('Campaign saved successfully.');
@@ -873,12 +903,36 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                   checked={campaignType === 'image'}
                   onChange={() => {
                     setCampaignType('image');
-                    setCampForm({ ...campForm, slot: 'homepage-hero' });
+                    setCampForm({ ...campForm, slot: 'homepage-hero', adType: 'advertiser', premiumCategory: '' });
                   }}
                   className="w-4 h-4 text-[#b31b1b] focus:ring-[#b31b1b]"
                 />
                 <span className="text-white">Image ad</span>
                 <span className="text-xs text-[#666]">— upload image + link</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="campaignType"
+                  checked={campaignType === 'premium'}
+                  onChange={() => {
+                    const eroAdv = advertisers.find(a => a.name === 'EROGRAM');
+                    setCampaignType('premium');
+                    setCampForm({
+                      ...campForm,
+                      slot: 'feed',
+                      adType: 'premium',
+                      creative: '',
+                      videoUrl: '',
+                      advertiserId: eroAdv?._id || campForm.advertiserId,
+                      destinationUrl: campForm.destinationUrl || 'https://erogram.pro/premium',
+                      buttonText: campForm.buttonText || 'Unlock The Vault',
+                    });
+                  }}
+                  className="w-4 h-4 text-orange-500 focus:ring-orange-500"
+                />
+                <span className="text-white">Premium</span>
+                <span className="text-xs text-[#666]">— group mosaic by category</span>
               </label>
             </div>
           </div>
@@ -947,6 +1001,107 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                   placeholder="e.g. Visit, Meet your AI, Join now"
                 />
               </div>
+            </div>
+          ) : campaignType === 'premium' ? (
+            /* --- PREMIUM: category selector — shows top groups as a mosaic in the feed --- */
+            <div className="rounded-xl bg-orange-500/10 border border-orange-500/30 p-4 space-y-4">
+              <p className="text-sm font-semibold text-orange-200">Premium group mosaic — select a category. Top favourited groups from that category will be shown as a 2x2 grid in the feed.</p>
+              <div>
+                <label className="block text-sm font-semibold text-[#999] mb-2">Category *</label>
+                <select
+                  value={campForm.premiumCategory}
+                  onChange={async (e) => {
+                    const cat = e.target.value;
+                    setCampForm({ ...campForm, premiumCategory: cat, name: campForm.name || `Premium — ${cat}` });
+                    setPremiumPreviewGroups([]);
+                    if (!cat) return;
+                    setIsLoadingPreview(true);
+                    try {
+                      const res = await axios.get(`/api/admin/premium-preview-groups?category=${encodeURIComponent(cat)}`, authHeaders());
+                      setPremiumPreviewGroups(res.data || []);
+                    } catch { setPremiumPreviewGroups([]); }
+                    setIsLoadingPreview(false);
+                  }}
+                  className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-orange-500 outline-none"
+                >
+                  <option value="">Select a category…</option>
+                  {['AI NSFW', 'Amateur', 'Anal', 'Anime', 'Asian', 'BDSM', 'Big Ass', 'Big Tits', 'Black', 'Blonde', 'Blowjob',
+                    'Brazil', 'Brunette', 'Cosplay', 'Creampie', 'Cuckold', 'Ebony', 'Fantasy', 'Feet', 'Fetish', 'Free-use',
+                    'Hardcore', 'Japan', 'Latina', 'Lesbian', 'Masturbation', 'MILF',
+                    'Onlyfans', 'Onlyfans Leaks', 'Petite', 'Public', 'Red Hair', 'Russian',
+                    'Telegram-Porn', 'Threesome', 'Trans', 'USA', 'UK',
+                  ].map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Live preview of the premium mosaic card */}
+              {isLoadingPreview && (
+                <div className="flex items-center gap-2 text-orange-300 text-sm py-4">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                  Loading preview…
+                </div>
+              )}
+              {!isLoadingPreview && premiumPreviewGroups.length > 0 && (
+                <div>
+                  <label className="block text-sm font-semibold text-[#999] mb-3">Preview — as shown in feed ({premiumPreviewGroups.length} groups)</label>
+                  <div className="flex flex-col md:flex-row gap-4">
+                    {/* Mosaic preview card */}
+                    <div className="w-[220px] shrink-0 rounded-2xl p-[2px] overflow-hidden" style={{ background: 'conic-gradient(from 0deg, transparent 0deg, #ff6a00 80deg, #ff9500 90deg, #ffffff 100deg, #ff9500 110deg, #ff6a00 120deg, transparent 140deg, transparent 360deg)' }}>
+                      <div className="rounded-2xl overflow-hidden flex flex-col" style={{ background: '#0a0a0a' }}>
+                        <div className="grid grid-cols-2 grid-rows-2 gap-[2px] p-[2px]" style={{ aspectRatio: '1' }}>
+                          {premiumPreviewGroups.slice(0, 4).map((g, i) => (
+                            <div key={g._id} className="relative rounded-md overflow-hidden border border-orange-500/60">
+                              <img src={g.image || '/assets/placeholder-no-image.png'} alt="" className="w-full h-full object-cover" style={{ aspectRatio: '1' }} onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
+                              <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 20%, rgba(0,0,0,0.85) 100%)' }} />
+                              <div className="absolute bottom-0 left-0 right-0 p-1">
+                                <p className="text-[8px] font-bold text-white truncate">
+                                  {(g.name || '').slice(0, 6)}
+                                  <span style={{ display: 'inline-block', width: '3em', height: '0.65em', background: 'rgba(255,255,255,0.9)', borderRadius: '2px', verticalAlign: 'middle', marginLeft: '2px', filter: 'blur(2px)' }} />
+                                </p>
+                                <div className="flex items-center gap-0.5">
+                                  {g.memberCount > 0 && <span className="text-[8px] font-black text-orange-400">{g.memberCount >= 1000 ? (g.memberCount / 1000).toFixed(g.memberCount >= 10000 ? 0 : 1) + 'K' : g.memberCount}</span>}
+                                  <span className="text-[7px] font-bold text-white/40 truncate">· {g.category}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="p-2 flex flex-col gap-1" style={{ background: 'linear-gradient(180deg, #1a0f00, #0a0a0a)' }}>
+                          <h3 className="text-[10px] font-black text-white leading-tight">🔒 {campForm.name || `Premium ${campForm.premiumCategory}`}</h3>
+                          <p className="text-orange-300 text-[8px] font-bold uppercase tracking-wide">{campForm.description || `Unlock the best ${campForm.premiumCategory} groups`}</p>
+                          <div className="flex items-center justify-center rounded-lg py-1 px-2 font-black text-white text-[9px] uppercase tracking-wider bg-gradient-to-r from-orange-500 to-red-600">
+                            🔓 {campForm.buttonText || 'Unlock The Vault'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Group list */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-white/40 mb-2">Groups that will appear (rotates every 4s):</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-[280px] overflow-y-auto pr-1">
+                        {premiumPreviewGroups.map((g, i) => (
+                          <div key={g._id} className="flex items-center gap-2 p-1.5 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+                            <span className="text-[10px] text-white/30 w-4 text-center font-mono">{i + 1}</span>
+                            <img src={g.image || '/assets/placeholder-no-image.png'} alt="" className="w-8 h-8 rounded-md object-cover border border-orange-500/30" onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-white font-medium truncate">{g.name}</p>
+                              <p className="text-[10px] text-white/40">{g.memberCount >= 1000 ? (g.memberCount / 1000).toFixed(1) + 'K' : g.memberCount} members · {g.category}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {!isLoadingPreview && campForm.premiumCategory && premiumPreviewGroups.length === 0 && (
+                <div className="text-amber-400/80 text-sm py-3 flex items-center gap-2">
+                  <span>⚠️</span> No premium groups found for &quot;{campForm.premiumCategory}&quot;. Make sure groups in this category are marked as premium and approved.
+                </div>
+              )}
             </div>
           ) : (
             /* --- IMAGE AD: only image upload + URL (no CTA text block here) --- */
@@ -1070,6 +1225,26 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                   <span className="text-xs text-[#666]">Shows a blue verified badge next to the ad title</span>
                 </div>
               )}
+
+              {campForm.slot === 'feed' && (
+                <div>
+                  <label className="block text-sm font-semibold text-[#999] mb-1">
+                    📊 Social Proof Indicator
+                  </label>
+                  <select
+                    value={(campForm as any).socialProof || 'random'}
+                    onChange={(e) => setCampForm({ ...campForm, socialProof: e.target.value } as any)}
+                    className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] outline-none"
+                  >
+                    <option value="random">Random (auto-pick one)</option>
+                    <option value="visiting">🔴 "X visiting now" (live animated counter)</option>
+                    <option value="clicks">📈 "X.Xk clicks today"</option>
+                    <option value="trending">🔥 "Trending #X"</option>
+                    <option value="none">None (hide all)</option>
+                  </select>
+                  <p className="text-xs text-[#666] mt-1">Animated social proof shown on the ad card. &quot;Random&quot; picks one automatically.</p>
+                </div>
+              )}
             </>
           )}
 
@@ -1161,6 +1336,8 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
           <button type="button" onClick={() => setSectionTab('buttonsBanners')} className={tabClass('buttonsBanners')}>Buttons & Banners</button>
           <button type="button" onClick={() => setSectionTab('advertisers')} className={tabClass('advertisers')}>Advertisers</button>
           <button type="button" onClick={() => setSectionTab('feedAds')} className={tabClass('feedAds')}>Feed Ads</button>
+          <button type="button" onClick={() => setSectionTab('premium')} className={tabClass('premium')}>Erogram Premium</button>
+          <button type="button" onClick={() => setSectionTab('revenue')} className={tabClass('revenue')}>💰 Revenue</button>
         </div>}
       </div>
 
@@ -2031,6 +2208,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                               feedPlacement: 'both',
                               videoUrl: '',
                               badgeText: '',
+                              socialProof: 'random',
                             } as any);
                             setEditingCampaign(null);
                             setView('editCampaign');
@@ -2219,7 +2397,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                             <td className="px-5 py-3 text-[#999]">
                               {camp.slot === 'feed'
                                 ? (() => {
-                                    const p = camp.position ?? (camp.feedTier != null && camp.tierSlot != null ? (camp.feedTier - 1) * 3 + camp.tierSlot : null);
+                                    const p = camp.position ?? (camp.tierSlot ?? null);
                                     return p != null ? `#${p}` : '—';
                                   })()
                                 : camp.slot === 'sidebar-feed'
@@ -2282,9 +2460,9 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
               return s;
             };
 
-            // Build 3 slots (tier 1, tierSlot 1-3), populate from filtered campaigns
+            // Build 4 slots (tier 1, tierSlot 1-4), populate from filtered campaigns
             const posGroups: Record<string, { feedTier: number; tierSlot: number; campaigns: CampaignRow[] }> = {};
-            for (let ts = 1; ts <= 3; ts++) {
+            for (let ts = 1; ts <= 4; ts++) {
               posGroups[`1-${ts}`] = { feedTier: 1, tierSlot: ts, campaigns: [] };
             }
             for (const c of filteredByShowOn) {
@@ -2361,6 +2539,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                   videoUrl: (c as any).videoUrl || '',
                   badgeText: (c as any).badgeText || '',
                   verified: Boolean((c as any).verified),
+                  socialProof: (c as any).socialProof || 'random',
                   advertiserId: c.advertiserId,
                 };
                 await axios.post('/api/admin/campaigns', payload, authHeaders());
@@ -2457,7 +2636,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                   </div>
                   <button
                     onClick={() => {
-                      setCampForm({ ...campForm, slot: 'feed', advertiserId: advertisers[0]?._id || '', name: '', creative: '', destinationUrl: '', description: '', category: 'All', country: 'All', buttonText: 'Visit Site', feedTier: 1, tierSlot: 1, position: 1, feedPlacement: 'both', videoUrl: '', badgeText: '' } as any);
+                      setCampForm({ ...campForm, slot: 'feed', advertiserId: advertisers[0]?._id || '', name: '', creative: '', destinationUrl: '', description: '', category: 'All', country: 'All', buttonText: 'Visit Site', feedTier: 1, tierSlot: 1, position: 1, feedPlacement: 'both', videoUrl: '', badgeText: '', socialProof: 'random' } as any);
                       setEditingCampaign(null);
                       setView('editCampaign');
                     }}
@@ -2534,7 +2713,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                     const isExpanded = expandedPositions.has(posKey);
                     const variantCount = group.campaigns.length;
                     const activeVariants = group.campaigns.filter((c) => c.status === 'active').length;
-                    const slotNum = (group.feedTier - 1) * 3 + group.tierSlot;
+                    const slotNum = group.tierSlot;
 
                     // Unique advertiser names in this slot
                     const advNames = [...new Set(group.campaigns.map((c) => c.advertiserName || advertisers.find((a) => a._id === c.advertiserId)?.name || '').filter(Boolean))];
@@ -2565,6 +2744,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                         >
                           <svg className={`w-4 h-4 text-[#999] transition-transform shrink-0 ${isExpanded ? 'rotate-90' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6" /></svg>
                           <span className="text-white font-bold text-sm min-w-[52px]">Slot {slotNum}</span>
+                          <span className="text-[#555] text-[10px] shrink-0">{slotNum === 1 ? 'Top Section' : slotNum === 2 ? 'After 2 groups' : slotNum === 3 ? 'After 7 groups' : 'After 12 groups + loops'}</span>
                           {variantCount > 0 ? (
                             <span className="text-[#666] text-xs truncate">{advNames.join(', ')}</span>
                           ) : (
@@ -2592,7 +2772,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                                 tabIndex={0}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setCampForm({ ...campForm, slot: 'feed', advertiserId: advertisers[0]?._id || '', name: '', creative: '', destinationUrl: '', description: '', category: 'All', country: 'All', buttonText: 'Visit Site', feedTier: group.feedTier, tierSlot: group.tierSlot, position: slotNum, feedPlacement: 'both', videoUrl: '', badgeText: '' } as any);
+                                  setCampForm({ ...campForm, slot: 'feed', advertiserId: advertisers[0]?._id || '', name: '', creative: '', destinationUrl: '', description: '', category: 'All', country: 'All', buttonText: 'Visit Site', feedTier: group.feedTier, tierSlot: group.tierSlot, position: slotNum, feedPlacement: 'both', videoUrl: '', badgeText: '', socialProof: 'random' } as any);
                                   setEditingCampaign(null);
                                   setView('editCampaign');
                                 }}
@@ -2745,6 +2925,671 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
         </>
       )}
 
+      {/* ─── Erogram Premium tab ───────────────────────────────────── */}
+      {sectionTab === 'premium' && (
+        <PremiumPlacementsSection />
+      )}
+
+      {/* ─── Revenue tab ───────────────────────────────────── */}
+      {sectionTab === 'revenue' && (
+        <ManualRevenueSection />
+      )}
+
+    </div>
+  );
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   EROGRAM PREMIUM — Placement stats component
+   Tracks: In-feed ads, Navbar CTA button, Vault clicks
+   ═══════════════════════════════════════════════════════════════ */
+
+interface VaultStats {
+  impressions: number;
+  clicks: number;
+  ctr: string;
+  dailyImpressions: { date: string; count: number }[];
+  dailyClicks: { date: string; count: number }[];
+}
+
+interface NavbarCtaStats {
+  name: string;
+  impressions: number;
+  clicks: number;
+  ctr: string;
+  destinationUrl: string;
+}
+
+interface PremiumFunnel {
+  pageViews: number;
+  modalOpens: number;
+  planClicks: number;
+  invoicesCreated: number;
+  payments: number;
+}
+
+interface FeedAdRow {
+  _id: string;
+  name: string;
+  slot: string;
+  status: string;
+  impressions: number;
+  clicks: number;
+  ctr: string;
+  position: number | null;
+  feedTier: number | null;
+  createdAt: string;
+}
+
+interface PremiumPlacementData {
+  period: number;
+  vault: VaultStats;
+  navbarCta: NavbarCtaStats;
+  premiumFunnel: PremiumFunnel;
+  feedAds: FeedAdRow[];
+}
+
+function MiniBar({ value, max, color }: { value: number; max: number; color: string }) {
+  const pct = max > 0 ? Math.max(3, (value / max) * 100) : 0;
+  return (
+    <div className="flex-1 h-5 bg-white/5 rounded overflow-hidden relative">
+      <div className={`h-full ${color} rounded transition-all duration-500`} style={{ width: `${pct}%` }} />
+      <span className="absolute inset-0 flex items-center px-2 text-[10px] font-bold text-white drop-shadow">
+        {value.toLocaleString()}
+      </span>
+    </div>
+  );
+}
+
+function DailyMiniChart({ data, color, label }: { data: { date: string; count: number }[]; color: string; label: string }) {
+  if (!data || data.length === 0) {
+    return <p className="text-white/20 text-xs text-center py-4">No {label} data yet</p>;
+  }
+  const maxVal = Math.max(...data.map(d => d.count), 1);
+  return (
+    <div>
+      <p className="text-[10px] text-white/30 uppercase font-bold tracking-wider mb-2">{label}</p>
+      <div className="flex items-end gap-[2px]" style={{ height: 80 }}>
+        {data.map(d => (
+          <div
+            key={d.date}
+            className={`flex-1 ${color} rounded-t cursor-default min-w-[4px]`}
+            style={{ height: Math.max(3, (d.count / maxVal) * 72) }}
+            title={`${d.date}: ${d.count.toLocaleString()}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PremiumPlacementsSection() {
+  const [data, setData] = useState<PremiumPlacementData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [days, setDays] = useState(30);
+
+  const fetchStats = async (period: number) => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`/api/admin/premium-placement-stats?days=${period}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setData(res.data);
+      setError('');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to load premium stats');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchStats(days); }, [days]);
+
+  if (loading && !data) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-amber-500" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm text-center">
+        {error}
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  const { vault, navbarCta, premiumFunnel, feedAds } = data;
+  const totalImpressions = vault.impressions + navbarCta.impressions + feedAds.reduce((s, a) => s + a.impressions, 0);
+  const totalClicks = vault.clicks + navbarCta.clicks + feedAds.reduce((s, a) => s + a.clicks, 0);
+  const overallCtr = totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : '0';
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+            <span className="text-amber-400">★</span> Erogram Premium Placements
+          </h2>
+          <p className="text-[#666] text-sm mt-1">Track all internal premium promotion placements</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {[7, 14, 30, 90].map(d => (
+            <button
+              key={d}
+              onClick={() => setDays(d)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                days === d
+                  ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/30'
+                  : 'bg-white/5 text-white/40 hover:text-white/70'
+              }`}
+            >
+              {d}d
+            </button>
+          ))}
+          <button
+            onClick={() => fetchStats(days)}
+            className="px-3 py-1.5 rounded-lg text-[10px] font-bold bg-white/5 text-white/50 hover:text-white hover:bg-white/10 transition-all ml-1"
+          >
+            {loading ? '…' : 'Refresh'}
+          </button>
+        </div>
+      </div>
+
+      {/* Aggregate KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="glass p-5 rounded-2xl border border-amber-500/10">
+          <p className="text-amber-400/60 text-[10px] uppercase font-bold tracking-wider mb-1">Total Impressions</p>
+          <p className="text-2xl font-bold text-amber-300">{totalImpressions.toLocaleString()}</p>
+          <p className="text-[10px] text-white/25 mt-0.5">All premium placements</p>
+        </div>
+        <div className="glass p-5 rounded-2xl border border-white/5">
+          <p className="text-[#666] text-[10px] uppercase font-bold tracking-wider mb-1">Total Clicks</p>
+          <p className="text-2xl font-bold text-white">{totalClicks.toLocaleString()}</p>
+          <p className="text-[10px] text-white/25 mt-0.5">CTR: {overallCtr}%</p>
+        </div>
+        <div className="glass p-5 rounded-2xl border border-white/5">
+          <p className="text-[#666] text-[10px] uppercase font-bold tracking-wider mb-1">Premium Page Views</p>
+          <p className="text-2xl font-bold text-white">{premiumFunnel.pageViews.toLocaleString()}</p>
+          <p className="text-[10px] text-white/25 mt-0.5">Last {days} days</p>
+        </div>
+        <div className="glass p-5 rounded-2xl border border-emerald-500/10">
+          <p className="text-emerald-400/60 text-[10px] uppercase font-bold tracking-wider mb-1">Payments</p>
+          <p className="text-2xl font-bold text-emerald-300">{premiumFunnel.payments.toLocaleString()}</p>
+          <p className="text-[10px] text-white/25 mt-0.5">
+            {premiumFunnel.pageViews > 0
+              ? `${((premiumFunnel.payments / premiumFunnel.pageViews) * 100).toFixed(1)}% conversion`
+              : '—'}
+          </p>
+        </div>
+      </div>
+
+      {/* ────── SECTION 1: Vault Clicks ────── */}
+      <div className="glass rounded-2xl border border-purple-500/15 overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/5 bg-purple-500/[0.03]">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🔒</span>
+            <div>
+              <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider">EROGRAM Premium — In-Feed</h3>
+              <p className="text-[10px] text-white/30 mt-0.5">EROGRAM-owned feed campaigns. Aggregated impressions &amp; clicks across all premium ads.</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div>
+              <p className="text-[10px] text-white/40 uppercase font-bold tracking-wider mb-1">Impressions</p>
+              <p className="text-xl font-bold text-white">{vault.impressions.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-white/40 uppercase font-bold tracking-wider mb-1">Clicks</p>
+              <p className="text-xl font-bold text-purple-400">{vault.clicks.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-white/40 uppercase font-bold tracking-wider mb-1">CTR</p>
+              <p className="text-xl font-bold text-white">{vault.ctr}%</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <DailyMiniChart data={vault.dailyImpressions} color="bg-purple-500/70" label="Daily Impressions" />
+            <DailyMiniChart data={vault.dailyClicks} color="bg-purple-400" label="Daily Clicks" />
+          </div>
+        </div>
+      </div>
+
+      {/* ────── SECTION 2: Navbar CTA (Premium Button near Trending Categories) ────── */}
+      <div className="glass rounded-2xl border border-amber-500/15 overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/5 bg-amber-500/[0.03]">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">⭐</span>
+            <div>
+              <h3 className="text-sm font-bold text-amber-300 uppercase tracking-wider">Premium Button — Near Trending Categories</h3>
+              <p className="text-[10px] text-white/30 mt-0.5">CTA button in the navbar / trending area that drives users to the premium page.</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6">
+          {navbarCta.name ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-[10px] text-white/40 uppercase font-bold tracking-wider mb-1">Campaign</p>
+                <p className="text-sm font-medium text-white">{navbarCta.name}</p>
+                {navbarCta.destinationUrl && (
+                  <p className="text-[10px] text-white/20 mt-0.5 truncate">{navbarCta.destinationUrl}</p>
+                )}
+              </div>
+              <div>
+                <p className="text-[10px] text-white/40 uppercase font-bold tracking-wider mb-1">Impressions</p>
+                <p className="text-xl font-bold text-white">{navbarCta.impressions.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-white/40 uppercase font-bold tracking-wider mb-1">Clicks</p>
+                <p className="text-xl font-bold text-amber-400">{navbarCta.clicks.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-white/40 uppercase font-bold tracking-wider mb-1">CTR</p>
+                <p className="text-xl font-bold text-white">{navbarCta.ctr}%</p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-white/30 text-sm">
+              No active Navbar CTA campaign found. Create one in the &quot;Buttons &amp; Banners&quot; tab with slot <code className="text-amber-400/50">navbar-cta</code>.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ────── SECTION 3: In-Feed Premium Ads (EROGRAM-owned) ────── */}
+      <div className="glass rounded-2xl border border-blue-500/15 overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/5 bg-blue-500/[0.03]">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">📰</span>
+            <div>
+              <h3 className="text-sm font-bold text-blue-300 uppercase tracking-wider">In-Feed Premium Ads</h3>
+              <p className="text-[10px] text-white/30 mt-0.5">
+                EROGRAM-owned feed &amp; vault campaigns promoting premium.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="p-0">
+          {feedAds.length === 0 ? (
+            <div className="p-8 text-center text-white/30 text-sm">
+              No EROGRAM-owned feed ads found. Create campaigns under the &quot;EROGRAM&quot; advertiser to see them here.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-white/5">
+                    <th className="px-5 py-3 text-left text-[10px] font-bold text-[#666] uppercase tracking-wider">Campaign</th>
+                    <th className="px-5 py-3 text-left text-[10px] font-bold text-[#666] uppercase tracking-wider">Slot</th>
+                    <th className="px-5 py-3 text-left text-[10px] font-bold text-[#666] uppercase tracking-wider">Status</th>
+                    <th className="px-5 py-3 text-right text-[10px] font-bold text-[#666] uppercase tracking-wider">Impressions</th>
+                    <th className="px-5 py-3 text-right text-[10px] font-bold text-[#666] uppercase tracking-wider">Clicks</th>
+                    <th className="px-5 py-3 text-right text-[10px] font-bold text-[#666] uppercase tracking-wider">CTR</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {feedAds.map(ad => (
+                    <tr key={ad._id} className="border-b border-white/[0.03] hover:bg-white/[0.02]">
+                      <td className="px-5 py-3">
+                        <p className="text-sm font-medium text-white">{ad.name}</p>
+                        {ad.position != null && (
+                          <p className="text-[10px] text-white/25 mt-0.5">
+                            Position {ad.position}{ad.feedTier != null ? ` · Tier ${ad.feedTier}` : ''}
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          ad.slot === 'vault-premium'
+                            ? 'bg-purple-500/15 text-purple-400'
+                            : 'bg-blue-500/15 text-blue-400'
+                        }`}>
+                          {ad.slot === 'vault-premium' ? 'Vault' : 'Feed'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          ad.status === 'active'
+                            ? 'bg-emerald-500/15 text-emerald-400'
+                            : 'bg-white/5 text-white/30'
+                        }`}>
+                          {ad.status}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-right text-sm font-bold text-white">{ad.impressions.toLocaleString()}</td>
+                      <td className="px-5 py-3 text-right text-sm font-bold text-blue-400">{ad.clicks.toLocaleString()}</td>
+                      <td className="px-5 py-3 text-right text-sm font-medium text-white/50">{ad.ctr}%</td>
+                    </tr>
+                  ))}
+                  {/* Totals row */}
+                  <tr className="bg-white/[0.03] border-t border-white/10">
+                    <td className="px-5 py-3 text-xs font-bold text-white/60" colSpan={3}>Total ({feedAds.length} campaigns)</td>
+                    <td className="px-5 py-3 text-right text-sm font-bold text-white">
+                      {feedAds.reduce((s, a) => s + a.impressions, 0).toLocaleString()}
+                    </td>
+                    <td className="px-5 py-3 text-right text-sm font-bold text-blue-400">
+                      {feedAds.reduce((s, a) => s + a.clicks, 0).toLocaleString()}
+                    </td>
+                    <td className="px-5 py-3 text-right text-sm font-medium text-white/50">
+                      {(() => {
+                        const imp = feedAds.reduce((s, a) => s + a.impressions, 0);
+                        const clk = feedAds.reduce((s, a) => s + a.clicks, 0);
+                        return imp > 0 ? ((clk / imp) * 100).toFixed(2) : '0';
+                      })()}%
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ────── Premium Funnel Summary ────── */}
+      <div className="glass rounded-2xl border border-white/5 overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/5">
+          <h3 className="text-sm font-bold text-white/60 uppercase tracking-wider">Premium Funnel (last {days} days)</h3>
+          <p className="text-[10px] text-white/30 mt-0.5">How users move from seeing premium placements to paying</p>
+        </div>
+        <div className="p-6 space-y-2">
+          {(() => {
+            const f = premiumFunnel;
+            const maxVal = Math.max(f.pageViews, 1);
+            const steps = [
+              { label: 'Page Views', value: f.pageViews, color: 'bg-blue-500' },
+              { label: 'Modal Opens', value: f.modalOpens, color: 'bg-cyan-500' },
+              { label: 'Plan Clicks', value: f.planClicks, color: 'bg-amber-500' },
+              { label: 'Invoices Created', value: f.invoicesCreated, color: 'bg-green-500' },
+              { label: 'Payments', value: f.payments, color: 'bg-emerald-500' },
+            ];
+            return steps.map(s => (
+              <div key={s.label} className="flex items-center gap-3">
+                <span className="text-white/40 text-xs w-32 text-right shrink-0">{s.label}</span>
+                <MiniBar value={s.value} max={maxVal} color={s.color} />
+              </div>
+            ));
+          })()}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   MANUAL REVENUE — Partner deals, affiliate, ad sales
+   ═══════════════════════════════════════════════════════════════ */
+
+interface ManualRevenueEntry {
+  _id: string;
+  amount: number;
+  currency: string;
+  description: string;
+  clientName: string;
+  category: string;
+  recurring: boolean;
+  paidAt: string;
+  createdAt: string;
+}
+
+const REVENUE_CATEGORIES: { value: string; label: string }[] = [
+  { value: 'monthly_ad', label: 'Monthly Ad' },
+  { value: 'one_time_ad', label: 'One-Time Ad' },
+  { value: 'affiliate', label: 'Affiliate' },
+  { value: 'sponsored', label: 'Sponsored' },
+  { value: 'partnership', label: 'Partnership' },
+  { value: 'other', label: 'Other' },
+];
+
+function ManualRevenueSection() {
+  const [entries, setEntries] = useState<ManualRevenueEntry[]>([]);
+  const [totalLifetime, setTotalLifetime] = useState(0);
+  const [totalThisMonth, setTotalThisMonth] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    amount: '',
+    description: '',
+    clientName: '',
+    category: 'monthly_ad',
+    recurring: false,
+    paidAt: new Date().toISOString().slice(0, 10),
+  });
+
+  const fetchEntries = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get('/api/admin/manual-revenue', authHeaders());
+      setEntries(res.data.entries || []);
+      setTotalLifetime(res.data.totalLifetime || 0);
+      setTotalThisMonth(res.data.totalThisMonth || 0);
+    } catch (err) {
+      console.error('Failed to fetch manual revenue:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchEntries(); }, []);
+
+  const handleSubmit = async () => {
+    if (!form.amount || !form.description) return;
+    setSaving(true);
+    try {
+      await axios.post('/api/admin/manual-revenue', {
+        amount: parseFloat(form.amount),
+        description: form.description,
+        clientName: form.clientName,
+        category: form.category,
+        recurring: form.recurring,
+        paidAt: form.paidAt,
+      }, authHeaders());
+      setForm({ amount: '', description: '', clientName: '', category: 'monthly_ad', recurring: false, paidAt: new Date().toISOString().slice(0, 10) });
+      setShowForm(false);
+      fetchEntries();
+    } catch (err) {
+      console.error('Failed to add revenue:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Delete this revenue entry?')) return;
+    try {
+      await axios.delete(`/api/admin/manual-revenue/${id}`, authHeaders());
+      fetchEntries();
+    } catch (err) {
+      console.error('Failed to delete:', err);
+    }
+  };
+
+  const formatUsd = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v);
+
+  const catLabel = (cat: string) => REVENUE_CATEGORIES.find(c => c.value === cat)?.label || cat;
+
+  // Group by month for subtotals
+  const byMonth = entries.reduce<Record<string, { entries: ManualRevenueEntry[]; total: number }>>((acc, e) => {
+    const key = e.paidAt ? new Date(e.paidAt).toISOString().slice(0, 7) : 'unknown';
+    if (!acc[key]) acc[key] = { entries: [], total: 0 };
+    acc[key].entries.push(e);
+    acc[key].total += e.amount;
+    return acc;
+  }, {});
+
+  const sortedMonths = Object.keys(byMonth).sort().reverse();
+
+  if (loading) {
+    return <div className="p-10 text-center text-[#999]">Loading revenue data...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Summary cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="glass rounded-2xl p-5 border border-white/10">
+          <p className="text-xs uppercase tracking-wider text-[#999] mb-1">This Month (Manual)</p>
+          <p className="text-2xl font-black text-green-400">{formatUsd(totalThisMonth)}</p>
+        </div>
+        <div className="glass rounded-2xl p-5 border border-white/10">
+          <p className="text-xs uppercase tracking-wider text-[#999] mb-1">Lifetime (Manual)</p>
+          <p className="text-2xl font-black text-white">{formatUsd(totalLifetime)}</p>
+        </div>
+        <div className="glass rounded-2xl p-5 border border-white/10">
+          <p className="text-xs uppercase tracking-wider text-[#999] mb-1">Total Entries</p>
+          <p className="text-2xl font-black text-white">{entries.length}</p>
+        </div>
+      </div>
+
+      {/* Add button */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-white">Manual Revenue Entries</h2>
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-sm transition-all"
+        >
+          {showForm ? 'Cancel' : '+ Add Revenue'}
+        </button>
+      </div>
+
+      {/* Add form */}
+      {showForm && (
+        <div className="glass rounded-2xl p-6 border border-green-500/30 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-[#999] mb-1">Amount (USD) *</label>
+              <input
+                type="number"
+                step="0.01"
+                value={form.amount}
+                onChange={e => setForm({ ...form, amount: e.target.value })}
+                className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-[#555] focus:ring-2 focus:ring-green-500 outline-none"
+                placeholder="500.00"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#999] mb-1">Client Name</label>
+              <input
+                type="text"
+                value={form.clientName}
+                onChange={e => setForm({ ...form, clientName: e.target.value })}
+                className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-[#555] focus:ring-2 focus:ring-green-500 outline-none"
+                placeholder="Partner XYZ"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#999] mb-1">Category</label>
+              <select
+                value={form.category}
+                onChange={e => setForm({ ...form, category: e.target.value })}
+                className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-green-500 outline-none"
+              >
+                {REVENUE_CATEGORIES.map(c => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#999] mb-1">Date Paid</label>
+              <input
+                type="date"
+                value={form.paidAt}
+                onChange={e => setForm({ ...form, paidAt: e.target.value })}
+                className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-green-500 outline-none"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-[#999] mb-1">Description *</label>
+            <input
+              type="text"
+              value={form.description}
+              onChange={e => setForm({ ...form, description: e.target.value })}
+              className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-[#555] focus:ring-2 focus:ring-green-500 outline-none"
+              placeholder="Monthly banner ad — March 2026"
+            />
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-sm text-[#ccc] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.recurring}
+                onChange={e => setForm({ ...form, recurring: e.target.checked })}
+                className="rounded accent-green-500"
+              />
+              Recurring payment
+            </label>
+          </div>
+          <button
+            onClick={handleSubmit}
+            disabled={saving || !form.amount || !form.description}
+            className="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:opacity-40 text-white rounded-xl font-bold text-sm transition-all"
+          >
+            {saving ? 'Saving...' : 'Add Entry'}
+          </button>
+        </div>
+      )}
+
+      {/* Entries grouped by month */}
+      {entries.length === 0 ? (
+        <div className="p-10 text-center text-[#999] glass rounded-2xl border border-white/5">
+          No manual revenue entries yet. Click "+ Add Revenue" to log partner payments, affiliate income, etc.
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {sortedMonths.map(month => {
+            const group = byMonth[month];
+            const monthLabel = month === 'unknown' ? 'Unknown' : new Date(month + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+            return (
+              <div key={month} className="glass rounded-2xl border border-white/10 overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3 bg-white/5 border-b border-white/10">
+                  <h3 className="font-bold text-white text-sm">{monthLabel}</h3>
+                  <span className="text-green-400 font-bold text-sm">{formatUsd(group.total)}</span>
+                </div>
+                <div className="divide-y divide-white/5">
+                  {group.entries.map(e => (
+                    <div key={e._id} className="flex items-center gap-4 px-5 py-3 hover:bg-white/5 transition-colors">
+                      <div className="flex-grow min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="font-semibold text-white text-sm truncate">{e.description}</span>
+                          {e.recurring && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-bold">RECURRING</span>}
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-[#999]">
+                          {e.clientName && <span>{e.clientName}</span>}
+                          <span className="px-1.5 py-0.5 rounded bg-white/5 text-[#bbb]">{catLabel(e.category)}</span>
+                          <span>{new Date(e.paidAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        </div>
+                      </div>
+                      <span className="text-green-400 font-bold text-sm shrink-0">{formatUsd(e.amount)}</span>
+                      <button
+                        onClick={() => handleDelete(e._id)}
+                        className="text-red-400/60 hover:text-red-400 transition-colors shrink-0"
+                        title="Delete"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

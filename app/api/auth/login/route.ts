@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import { User } from '@/lib/models';
+import { geoUpdateFields } from '@/lib/utils/geo';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -37,9 +38,10 @@ export async function POST(req: NextRequest) {
       );
     }
     
-    // Update login info
+    // Update login info + geo data
     user.lastLogin = new Date();
     user.loginCount = (user.loginCount || 0) + 1;
+    Object.assign(user, geoUpdateFields(req));
     await user.save();
     
     // Generate token

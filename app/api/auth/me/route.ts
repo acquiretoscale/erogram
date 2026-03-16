@@ -45,6 +45,9 @@ export async function GET(req: NextRequest) {
       premiumPlan: isPremium ? (u.premiumPlan || null) : null,
       premiumSince: isPremium ? (u.premiumSince || null) : null,
       premiumExpiresAt: u.premiumExpiresAt || null,
+      country: u.country || null,
+      city: u.city || null,
+      timezone: u.timezone || null,
     });
   } catch (error: any) {
     console.error('Auth check error:', error);

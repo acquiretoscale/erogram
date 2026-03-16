@@ -469,7 +469,7 @@ export const campaignSchema = new Schema(
     name: { type: String, required: true },
     slot: {
       type: String,
-      enum: ['top-banner', 'homepage-hero', 'feed', 'navbar-cta', 'join-cta', 'filter-cta', 'vault-premium'],
+      enum: ['top-banner', 'homepage-hero', 'feed', 'navbar-cta', 'join-cta', 'filter-cta', 'sidebar-feed'],
       required: true,
     },
     creative: { type: String, required: false, default: '' },
@@ -478,9 +478,9 @@ export const campaignSchema = new Schema(
       required: true,
       validate: {
         validator: function (v: string) {
-          return /^https?:\/\//.test(v);
+          return /^https?:\/\//.test(v) || /^\//.test(v);
         },
-        message: 'URL must start with http:// or https://',
+        message: 'URL must start with http://, https://, or /',
       },
     },
     startDate: { type: Date, required: true },
@@ -505,6 +505,12 @@ export const campaignSchema = new Schema(
     badgeText: { type: String, default: '' },
     // Show a verified checkmark next to the ad title (like Instagram verified)
     verified: { type: Boolean, default: false },
+    // Ad type: 'advertiser' (image/video) or 'premium' (group mosaic from a category)
+    adType: { type: String, enum: ['advertiser', 'premium'], default: 'advertiser' },
+    // For premium ads: which category to pull featured groups from
+    premiumCategory: { type: String, default: '' },
+    // Social proof indicator shown on the card: 'none' | 'visiting' | 'clicks' | 'trending' | 'random'
+    socialProof: { type: String, enum: ['none', 'visiting', 'clicks', 'trending', 'random'], default: 'random' },
   },
   { timestamps: true }
 );
@@ -517,10 +523,12 @@ export const campaignClickSchema = new Schema(
   {
     campaignId: { type: Schema.Types.ObjectId, ref: 'Campaign', required: true },
     clickedAt: { type: Date, required: true, default: Date.now },
+    placement: { type: String, default: '' },
   },
   { timestamps: true }
 );
 campaignClickSchema.index({ clickedAt: 1 });
+campaignClickSchema.index({ campaignId: 1, clickedAt: 1 });
 
 // CampaignImpressionDaily: daily aggregated impression counts for period-specific CTR
 export const campaignImpressionDailySchema = new Schema(
@@ -689,6 +697,26 @@ const voteSchema = new Schema(
 voteSchema.index({ userId: 1, groupId: 1 }, { unique: true });
 voteSchema.index({ groupId: 1 });
 
+// Manual Revenue (partner deals, affiliate payouts, ad sales logged by admin)
+export const manualRevenueSchema = new Schema(
+  {
+    amount: { type: Number, required: true },
+    currency: { type: String, default: 'USD' },
+    description: { type: String, required: true },
+    clientName: { type: String, default: '' },
+    category: {
+      type: String,
+      enum: ['monthly_ad', 'one_time_ad', 'affiliate', 'sponsored', 'partnership', 'other'],
+      default: 'monthly_ad',
+    },
+    recurring: { type: Boolean, default: false },
+    paidAt: { type: Date, default: Date.now },
+  },
+  { timestamps: true }
+);
+manualRevenueSchema.index({ paidAt: -1 });
+manualRevenueSchema.index({ category: 1 });
+
 // Export models
 export const Vote = models.Vote || model('Vote', voteSchema);
 export const User = models.User || model('User', userSchema);
@@ -718,3 +746,4 @@ export const Bookmark = models.Bookmark || model('Bookmark', bookmarkSchema);
 export const BookmarkFolder = models.BookmarkFolder || model('BookmarkFolder', bookmarkFolderSchema);
 export const AdminPushSubscription = models.AdminPushSubscription || model('AdminPushSubscription', adminPushSubscriptionSchema);
 export const PremiumConfig = models.PremiumConfig || model('PremiumConfig', premiumConfigSchema);
+export const ManualRevenue = models.ManualRevenue || model('ManualRevenue', manualRevenueSchema);

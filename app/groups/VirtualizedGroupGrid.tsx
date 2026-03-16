@@ -3,29 +3,24 @@ import { Group, FeedCampaign } from './types';
 import GroupCard from './GroupCard';
 import AdvertCard from './AdvertCard';
 
-interface VaultItem { _id: string; name: string; image: string; category: string; country: string; memberCount: number; vaultCategories?: string[]; }
-
 interface VirtualizedGroupGridProps {
     groups: Group[];
     feedCampaigns: FeedCampaign[];
     isTelegram: boolean;
     onOpenReviewModal?: (group: Group) => void;
     onOpenReportModal?: (group: Group) => void;
-    vaultItems?: VaultItem[];
-    vaultPositions?: number[];
-    isLoggedIn?: boolean;
-    VaultCard?: React.ComponentType<{ items: VaultItem[]; isLoggedIn?: boolean }>;
 }
 
-type Item = { type: 'group' | 'campaign' | 'vault'; data: Group | FeedCampaign | null; index: number };
+type Item = { type: 'group' | 'campaign'; data: Group | FeedCampaign | null; index: number };
 
-// Static ad positions in the grid (1-indexed group count):
-// Tier 2 → after 2 groups (position 3 in the grid)
-// Tier 3 → after 7 groups (position 8 in the grid)
-// Then loop every 5 groups, cycling through tiers 1→2→3
-const FIRST_AD_POSITION = 2;  // after 2 groups
-const SECOND_AD_POSITION = 7; // after 7 groups (5 more after first ad)
-const LOOP_GAP = 5;           // subsequent ads every 5 groups
+// In-feed ad slot layout (by group count, 0-indexed):
+//   Slot 2 → after 2 groups  (gc=2)   — one-time fixed
+//   Slot 3 → after 7 groups  (gc=7)   — one-time fixed
+//   Slot 4 → after 12 groups (gc=12)  — first occurrence, then loops every 5
+const SLOT2_GC = 2;
+const SLOT3_GC = 7;
+const SLOT4_GC = 12;
+const LOOP_GAP = 5;
 
 function buildFeedItems(groups: Group[], campaigns: FeedCampaign[]): Item[] {
     const items: Item[] = [];
@@ -33,23 +28,33 @@ function buildFeedItems(groups: Group[], campaigns: FeedCampaign[]): Item[] {
         return groups.map((g, i) => ({ type: 'group' as const, data: g, index: i }));
     }
 
-    // Build set of group-count positions where ads should appear
-    const adPositions: number[] = [FIRST_AD_POSITION, SECOND_AD_POSITION];
-    let pos = SECOND_AD_POSITION + LOOP_GAP;
-    while (pos < groups.length + campaigns.length) {
-        adPositions.push(pos);
-        pos += LOOP_GAP;
-    }
+    const slot2 = campaigns.filter(c => c.tierSlot === 2);
+    const slot3 = campaigns.filter(c => c.tierSlot === 3);
+    const slot4 = campaigns.filter(c => c.tierSlot === 4);
+    const allCampaigns = campaigns;
 
     let groupIdx = 0;
-    let campaignIdx = 0;
     let groupCount = 0;
+    let slot4Idx = 0;
 
-    for (let i = 0; groupIdx < groups.length; i++) {
-        if (adPositions.includes(groupCount) && campaignIdx < campaigns.length) {
-            items.push({ type: 'campaign', data: campaigns[campaignIdx % campaigns.length], index: items.length });
-            campaignIdx++;
+    while (groupIdx < groups.length) {
+        if (groupCount === SLOT2_GC && slot2.length > 0) {
+            items.push({ type: 'campaign', data: slot2[0], index: items.length });
+        } else if (groupCount === SLOT3_GC && slot3.length > 0) {
+            items.push({ type: 'campaign', data: slot3[0], index: items.length });
+        } else if (groupCount === SLOT4_GC && slot4.length > 0) {
+            items.push({ type: 'campaign', data: slot4[slot4Idx % slot4.length], index: items.length });
+            slot4Idx++;
+        } else if (groupCount > SLOT4_GC && (groupCount - SLOT4_GC) % LOOP_GAP === 0) {
+            if (slot4.length > 0) {
+                items.push({ type: 'campaign', data: slot4[slot4Idx % slot4.length], index: items.length });
+                slot4Idx++;
+            } else if (allCampaigns.length > 0) {
+                items.push({ type: 'campaign', data: allCampaigns[slot4Idx % allCampaigns.length], index: items.length });
+                slot4Idx++;
+            }
         }
+
         items.push({ type: 'group', data: groups[groupIdx], index: items.length });
         groupIdx++;
         groupCount++;
@@ -57,17 +62,12 @@ function buildFeedItems(groups: Group[], campaigns: FeedCampaign[]): Item[] {
     return items;
 }
 
-const VAULT_EVERY = 8;
-
 const VirtualizedGroupGrid = React.memo(function VirtualizedGroupGrid({
     groups,
     feedCampaigns,
     isTelegram,
     onOpenReviewModal,
     onOpenReportModal,
-    vaultItems,
-    isLoggedIn,
-    VaultCard,
 }: VirtualizedGroupGridProps) {
     const [items, setItems] = useState<Item[]>(() => buildFeedItems(groups, feedCampaigns));
 
@@ -75,25 +75,9 @@ const VirtualizedGroupGrid = React.memo(function VirtualizedGroupGrid({
         setItems(buildFeedItems(groups, feedCampaigns));
     }, [groups, feedCampaigns]);
 
-    const hasVault = VaultCard && vaultItems && vaultItems.length > 0;
-
-    const finalItems: (Item | 'vault')[] = [];
-    let groupsSinceLastVault = 0;
-    for (let i = 0; i < items.length; i++) {
-        if (hasVault && groupsSinceLastVault >= VAULT_EVERY) {
-            finalItems.push('vault');
-            groupsSinceLastVault = 0;
-        }
-        finalItems.push(items[i]);
-        groupsSinceLastVault++;
-    }
-
     return (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
-            {finalItems.map((item, idx) => {
-                if (item === 'vault') {
-                    return VaultCard ? <VaultCard key={`vault-${idx}`} items={vaultItems!} isLoggedIn={isLoggedIn} /> : null;
-                }
+            {items.map((item, idx) => {
                 if (item.type === 'group') {
                     return (
                         <GroupCard
@@ -108,7 +92,7 @@ const VirtualizedGroupGrid = React.memo(function VirtualizedGroupGrid({
                 }
                 return (
                     <AdvertCard
-                        key={`campaign-${(item.data as FeedCampaign)._id}-${item.index}`}
+                        key={`campaign-${(item.data as FeedCampaign)._id}-${idx}`}
                         campaign={item.data as FeedCampaign}
                         isIndex={Math.floor(item.index)}
                         shouldPreload={false}

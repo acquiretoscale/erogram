@@ -17,6 +17,7 @@ const tabs = [
     { href: '/advert/feed-ads', name: 'Feed Ads', icon: '📰' },
     { href: '/advert/slots', name: 'Ad Slots', icon: '🎯' },
     { href: '/advert/stories', name: 'Stories', icon: '📖' },
+    { href: '/advert/premium', name: 'Erogram Premium', icon: '⭐' },
 ];
 
 export default function AdvertSidebar({ onLogout, isOpen, onClose }: AdvertSidebarProps) {

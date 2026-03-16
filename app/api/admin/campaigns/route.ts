@@ -38,6 +38,9 @@ export async function POST(req: NextRequest) {
       videoUrl: body.videoUrl ?? undefined,
       badgeText: body.badgeText ?? undefined,
       verified: body.verified ?? undefined,
+      adType: body.adType ?? undefined,
+      premiumCategory: body.premiumCategory ?? undefined,
+      socialProof: body.socialProof ?? undefined,
     });
     revalidatePath('/groups');
     revalidatePath('/groups/country/[country]', 'page');

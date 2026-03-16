@@ -15,6 +15,10 @@ type DashboardData = {
     starsLifetime?: number;
     starsUsdRate?: number;
     earningsSource?: string;
+    manualRevenueLifetime?: number;
+    manualRevenueThisMonth?: number;
+    totalEarningsLifetimeUsd?: number;
+    totalEarningsThisMonthUsd?: number;
   };
   kpis?: { paidSubs?: Metric; newUsers?: Metric; newGroups?: Metric; adClicks?: Metric; totalViews?: Metric };
   pending?: { groups: number; bots: number; reviews: number; reports: number; total: number };
@@ -157,28 +161,35 @@ export default function OverviewTab({ data, loading, onRefresh }: OverviewTabPro
         <p className="text-xs text-slate-500 mt-1.5">Last sync: {data?.generatedAt ? new Date(data.generatedAt).toLocaleString() : 'N/A'}</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
         <div className="rounded-xl border border-slate-200 bg-white p-3.5">
           <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#64748b' }}>Total Pageviews</p>
           <p className="text-2xl font-semibold mt-1" style={{ color: '#0f172a' }}>{formatNumber(headline.totalPageviewsLifetime || 0)}</p>
           <p className="text-xs mt-1" style={{ color: '#64748b' }}>Lifetime</p>
         </div>
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3.5">
-          <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#047857' }}>Today Earnings</p>
-          <p className="text-2xl font-semibold mt-1" style={{ color: '#064e3b' }}>{formatUsd(headline.earningsTodayUsd || 0)}</p>
+          <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#047857' }}>Stars Earnings</p>
+          <p className="text-2xl font-semibold mt-1" style={{ color: '#064e3b' }}>{formatUsd(headline.earningsLifetimeUsd || 0)}</p>
           <p className="text-xs mt-1" style={{ color: '#065f46' }}>
-            {headline.earningsSource === 'unavailable'
-              ? 'Bot token not configured'
-              : 'Stars invoice payments today'}
-          </p>
-        </div>
-        <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3.5 col-span-2 lg:col-span-1">
-          <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#4338ca' }}>Lifetime Earnings</p>
-          <p className="text-2xl font-semibold mt-1" style={{ color: '#1e1b4b' }}>{formatUsd(headline.earningsLifetimeUsd || 0)}</p>
-          <p className="text-xs mt-1" style={{ color: '#3730a3' }}>
             {headline.starsLifetime
               ? `${headline.starsLifetime.toLocaleString()} ★ · rate $${(headline.starsUsdRate || 0).toFixed(5)}/★`
-              : headline.earningsSource === 'unavailable' ? 'Bot token not configured' : 'All-time Stars revenue'}
+              : headline.earningsSource === 'unavailable' ? 'Bot token not configured' : 'Lifetime Stars revenue'}
+          </p>
+        </div>
+        {(headline.manualRevenueLifetime || 0) > 0 && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3.5">
+            <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#92400e' }}>Manual Revenue</p>
+            <p className="text-2xl font-semibold mt-1" style={{ color: '#78350f' }}>{formatUsd(headline.manualRevenueLifetime || 0)}</p>
+            <p className="text-xs mt-1" style={{ color: '#92400e' }}>
+              This month: {formatUsd(headline.manualRevenueThisMonth || 0)}
+            </p>
+          </div>
+        )}
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3.5">
+          <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#4338ca' }}>Total Earnings</p>
+          <p className="text-2xl font-semibold mt-1" style={{ color: '#1e1b4b' }}>{formatUsd(headline.totalEarningsLifetimeUsd || headline.earningsLifetimeUsd || 0)}</p>
+          <p className="text-xs mt-1" style={{ color: '#3730a3' }}>
+            Stars + Manual · All time
           </p>
         </div>
       </div>

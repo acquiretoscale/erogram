@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import { User } from '@/lib/models';
 import { notifyAdminsOfNewUser } from '@/lib/utils/notifyAdmins';
+import { geoUpdateFields } from '@/lib/utils/geo';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 const BOT_TOKEN = process.env.TELEGRAM_PAYMENT_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || '';
@@ -42,6 +43,8 @@ export async function POST(req: NextRequest) {
 
     let user = await User.findOne({ telegramId: data.id });
 
+    const geo = geoUpdateFields(req);
+
     if (!user) {
       // Create new Telegram user
       try {
@@ -52,6 +55,7 @@ export async function POST(req: NextRequest) {
           telegramUsername: data.username || null,
           firstName: data.first_name || null,
           photoUrl: data.photo_url || null,
+          ...geo,
         });
         notifyAdminsOfNewUser({ username: user.username, provider: 'telegram' }).catch(() => {});
       } catch (error: any) {
@@ -62,6 +66,7 @@ export async function POST(req: NextRequest) {
             telegramUsername: data.username || null,
             firstName: data.first_name || null,
             photoUrl: data.photo_url || null,
+            ...geo,
           });
           notifyAdminsOfNewUser({ username: user.username, provider: 'telegram' }).catch(() => {});
         } else {
@@ -70,20 +75,19 @@ export async function POST(req: NextRequest) {
       }
     } else {
       // Update existing Telegram user info if changed
-      let updated = false;
       if (data.username && data.username !== user.telegramUsername) {
         user.telegramUsername = data.username;
-        updated = true;
       }
       if (data.first_name && data.first_name !== user.firstName) {
         user.firstName = data.first_name;
-        updated = true;
       }
       if (data.photo_url && data.photo_url !== user.photoUrl) {
         user.photoUrl = data.photo_url;
-        updated = true;
       }
-      if (updated) await user.save();
+      Object.assign(user, geo);
+      user.lastLogin = new Date();
+      user.loginCount = (user.loginCount || 0) + 1;
+      await user.save();
     }
 
     const token = jwt.sign(

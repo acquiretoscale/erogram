@@ -5,7 +5,7 @@ import { MAX_PREMIUM_SLOTS } from '@/lib/auth';
 import { notifyAdminsOfSale } from '@/lib/utils/notifyAdmins';
 import { getPremiumPricing } from '@/lib/premiumPricing';
 
-const GROUP_SUBMISSION_TYPES = new Set(['instant_approval', 'boost_week', 'boost_month']);
+const GROUP_SUBMISSION_TYPES = new Set(['normal_listing', 'instant_approval', 'boost_week', 'boost_month']);
 
 function logEvent(data: Record<string, any>) {
   PremiumEvent.create({ source: 'server', ...data }).catch(() => {});
@@ -183,22 +183,24 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ ok: true });
           }
 
-          // Idempotency: skip if already approved via paid boost
-          if (entity.paidBoost && entity.status === 'approved') {
+          // Idempotency: skip if already processed via paid boost
+          if (entity.paidBoost) {
             console.log(`[Webhook] ${payload.entityType || 'group'} ${payload.groupId} already processed — skipping`);
             return NextResponse.json({ ok: true });
           }
 
           const now = new Date();
-          const updateFields: Record<string, any> = { status: 'approved' };
+          const GROUP_STARS: Record<string, number> = { instant_approval: 1000, boost_week: 3000, boost_month: 6000 };
+          const BOT_STARS: Record<string, number> = { normal_listing: 1000, instant_approval: 1500, boost_week: 3000, boost_month: 6000 };
+          const STARS_AMOUNTS = payload.entityType === 'bot' ? BOT_STARS : GROUP_STARS;
 
-          const STARS_AMOUNTS: Record<string, number> = {
-            instant_approval: 1000,
-            boost_week: 3000,
-            boost_month: 6000,
-          };
+          const updateFields: Record<string, any> = {};
 
-          if (payload.type === 'boost_week') {
+          if (payload.type === 'normal_listing') {
+            updateFields.paidBoost = true;
+            updateFields.paidBoostStars = STARS_AMOUNTS.normal_listing;
+          } else if (payload.type === 'boost_week') {
+            updateFields.status = 'approved';
             const boostExpiry = new Date(now);
             boostExpiry.setDate(boostExpiry.getDate() + 7);
             updateFields.featured = true;
@@ -209,6 +211,7 @@ export async function POST(req: NextRequest) {
             updateFields.paidBoost = true;
             updateFields.paidBoostStars = STARS_AMOUNTS.boost_week;
           } else if (payload.type === 'boost_month') {
+            updateFields.status = 'approved';
             const boostExpiry = new Date(now);
             boostExpiry.setDate(boostExpiry.getDate() + 30);
             updateFields.featured = true;
@@ -219,6 +222,7 @@ export async function POST(req: NextRequest) {
             updateFields.paidBoost = true;
             updateFields.paidBoostStars = STARS_AMOUNTS.boost_month;
           } else if (payload.type === 'instant_approval') {
+            updateFields.status = 'approved';
             updateFields.paidBoost = true;
             updateFields.paidBoostStars = STARS_AMOUNTS.instant_approval;
           }
@@ -227,6 +231,7 @@ export async function POST(req: NextRequest) {
 
           const entityLabel = payload.entityType === 'bot' ? 'bot' : 'group';
           const boostLabels: Record<string, string> = {
+            normal_listing: 'normal listing',
             boost_week: 'instant + boost 1 week',
             boost_month: 'instant + boost 1 month',
             instant_approval: 'instant approval',

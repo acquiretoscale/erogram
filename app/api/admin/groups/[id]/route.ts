@@ -204,7 +204,7 @@ export async function DELETE(
     }
     
     const { id } = await params;
-    const group = await Group.findById(id);
+    const group = await Group.findByIdAndDelete(id);
 
     if (!group) {
       return NextResponse.json(
@@ -213,14 +213,6 @@ export async function DELETE(
       );
     }
 
-    if (group.status === 'approved') {
-      group.status = 'deleted';
-      group.deletedAt = new Date();
-      await group.save();
-      return NextResponse.json({ message: 'Group soft-deleted (was approved/live)' });
-    }
-
-    await Group.findByIdAndDelete(id);
     return NextResponse.json({ message: 'Group permanently deleted' });
   } catch (error: any) {
     console.error('Group delete error:', error);

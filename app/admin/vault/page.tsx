@@ -186,7 +186,7 @@ export default function AdminVaultPage() {
   };
 
   const deleteFromVault = async (g: VaultGroup) => {
-    if (!confirm(`Remove "${g.name}" from the Secret Vault? It will become a regular public group.`)) return;
+    if (!confirm(`Permanently delete "${g.name}"? This cannot be undone.`)) return;
     setGroups(prev => prev.filter(x => x._id !== g._id));
     await fetch('/api/admin/vault', { method: 'DELETE', headers, body: JSON.stringify({ groupId: g._id }) });
   };
