@@ -40,6 +40,17 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get('search');
     
     let query: any = { status: { $ne: 'deleted' } };
+
+    const filterCategory = searchParams.get('category');
+    const filterStatus = searchParams.get('status');
+    const limit = searchParams.get('limit');
+
+    if (filterStatus) {
+      query.status = filterStatus;
+    }
+    if (filterCategory) {
+      query.category = filterCategory;
+    }
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -49,9 +60,9 @@ export async function GET(req: NextRequest) {
       ];
     }
     
-    const groups = await Group.find(query)
-      .sort({ createdAt: -1 })
-      .lean();
+    let q = Group.find(query).sort({ createdAt: -1 });
+    if (limit) q = q.limit(parseInt(limit, 10));
+    const groups = await q.lean();
     
     return NextResponse.json(groups);
   } catch (error: any) {

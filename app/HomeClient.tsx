@@ -446,7 +446,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               'Amateur', 'Anime', 'Onlyfans',
-              'Asian', 'Anal', 'Roleplay', 'Gay',
+              'Asian', 'Anal', 'Roleplay', 'Fetish',
               'Lesbian', 'MILF', 'BDSM', 'Cosplay'
             ].map((cat, idx) => (
               <Link
@@ -465,7 +465,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
           </div>
           <div className="text-center mt-8">
             <Link
-              href={lp('/groups')}
+              href={lp('/best-telegram-groups')}
               className="text-[#999] hover:text-[#b31b1b] text-sm underline transition-colors"
             >
               {t('home.viewAllCategories', 'View all categories')}

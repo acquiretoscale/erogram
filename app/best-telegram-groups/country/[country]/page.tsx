@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import FallbackImage from '@/components/FallbackImage';
 import connectDB from '@/lib/db/mongodb';
-import { Group } from '@/lib/models';
+import { Group, BestGroupPick } from '@/lib/models';
 import { countries } from '@/app/groups/constants';
 import Navbar from '@/components/Navbar';
 
@@ -88,26 +88,49 @@ export default async function BestCountryGroupsPage({ params }: PageProps) {
 
     await connectDB();
 
-    // Fetch top 10 groups for this country
-    const rawGroups = await Group.find({
+    // 1. Fetch admin-curated picks for this country (up to 10)
+    const curatedPicks = await BestGroupPick.find({
+        targetType: 'country',
+        targetValue: realCountry,
+    })
+        .sort({ position: 1 })
+        .populate({
+            path: 'group',
+            match: { status: 'approved' },
+        })
+        .lean();
+
+    const curatedGroups = curatedPicks
+        .filter((p: any) => p.group)
+        .map((p: any) => ({
+            ...p.group,
+            _id: p.group._id.toString(),
+        }));
+
+    const curatedIds = new Set(curatedGroups.map((g: any) => g._id));
+
+    // 2. Auto-fill with top-viewed groups (5 slots, excluding curated picks)
+    const rawAutoGroups = await Group.find({
         country: realCountry,
         status: 'approved',
         isAdvertisement: false,
         premiumOnly: { $ne: true },
+        _id: { $nin: Array.from(curatedIds) },
     })
         .sort({ views: -1 })
-        .limit(10)
+        .limit(5)
         .lean();
 
-    const groups = rawGroups.map((group: any) => ({
+    const autoGroups = rawAutoGroups.map((group: any) => ({
         ...group,
         _id: group._id.toString(),
     }));
 
-    // If fewer than 10 groups, fetch random groups from "All" or other countries to fill the list
-    // The user said "most groups are 'all'", so we should probably include 'All' country groups as fallback or mix
+    const groups = [...curatedGroups, ...autoGroups];
+
+    // If very few groups overall, show some from other countries
     let otherGroups: any[] = [];
-    if (groups.length < 10) {
+    if (groups.length < 5) {
         const rawOtherGroups = await Group.aggregate([
             {
                 $match: {
@@ -117,7 +140,7 @@ export default async function BestCountryGroupsPage({ params }: PageProps) {
                     country: { $ne: realCountry },
                 }
             },
-            { $sample: { size: 5 } } // Get 5 random groups
+            { $sample: { size: 5 } }
         ]);
 
         otherGroups = rawOtherGroups.map((group: any) => ({

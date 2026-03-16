@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import FallbackImage from '@/components/FallbackImage';
 import connectDB from '@/lib/db/mongodb';
-import { Group } from '@/lib/models';
+import { Group, BestGroupPick } from '@/lib/models';
 import { categories } from '@/app/groups/constants';
 import Navbar from '@/components/Navbar';
 import { getLocale, getPathname } from '@/lib/i18n/server';
@@ -96,25 +96,49 @@ export default async function BestGroupsPage({ params }: PageProps) {
 
     await connectDB();
 
-    // Fetch top 10 groups for this category
-    const rawGroups = await Group.find({
+    // 1. Fetch admin-curated picks for this category (up to 10)
+    const curatedPicks = await BestGroupPick.find({
+        targetType: 'category',
+        targetValue: realCategory,
+    })
+        .sort({ position: 1 })
+        .populate({
+            path: 'group',
+            match: { status: 'approved' },
+        })
+        .lean();
+
+    const curatedGroups = curatedPicks
+        .filter((p: any) => p.group)
+        .map((p: any) => ({
+            ...p.group,
+            _id: p.group._id.toString(),
+        }));
+
+    const curatedIds = new Set(curatedGroups.map((g: any) => g._id));
+
+    // 2. Auto-fill with top-viewed groups (5 slots, excluding curated picks)
+    const rawAutoGroups = await Group.find({
         category: realCategory,
         status: 'approved',
         isAdvertisement: false,
         premiumOnly: { $ne: true },
+        _id: { $nin: Array.from(curatedIds) },
     })
         .sort({ views: -1 })
-        .limit(10)
+        .limit(5)
         .lean();
 
-    const groups = rawGroups.map((group: any) => ({
+    const autoGroups = rawAutoGroups.map((group: any) => ({
         ...group,
         _id: group._id.toString(),
     }));
 
-    // If fewer than 10 groups, fetch random groups from other categories
+    const groups = [...curatedGroups, ...autoGroups];
+
+    // If very few groups overall, show some from other categories
     let otherGroups: any[] = [];
-    if (groups.length < 10) {
+    if (groups.length < 5) {
         const rawOtherGroups = await Group.aggregate([
             {
                 $match: {

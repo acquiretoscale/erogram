@@ -61,7 +61,13 @@ export const allCountries = [
     'Mongolia', 'Taiwan', 'Hong Kong', 'Macau', 'Kazakhstan',
 ];
 
-// Backward-compat aliases
+// Categories hidden from all public UI surfaces but kept in allCategories
+// so that generateStaticParams / sitemap / direct-URL access still work (SEO safe).
+export const HIDDEN_CATEGORIES = new Set(['Gay', 'Trans', 'LGBTQ+']);
+
+export const visibleCategories = allCategories.filter(c => !HIDDEN_CATEGORIES.has(c));
+
+// Backward-compat aliases — DO NOT filter these; they feed generateStaticParams & sitemap
 export const categories = allCategories;
 export const countries = allCountries;
 export const filterCountries = allCountries;

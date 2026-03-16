@@ -764,3 +764,19 @@ export const AdminPushSubscription = models.AdminPushSubscription || model('Admi
 export const PremiumConfig = models.PremiumConfig || model('PremiumConfig', premiumConfigSchema);
 export const ManualRevenue = models.ManualRevenue || model('ManualRevenue', manualRevenueSchema);
 export const PremiumPricing = models.PremiumPricing || model('PremiumPricing', premiumPricingSchema);
+
+// Best Group Pick Schema – admin-curated picks for "Best Telegram Groups" pages
+export const bestGroupPickSchema = new Schema(
+  {
+    targetType: { type: String, enum: ['category', 'country'], required: true },
+    targetValue: { type: String, required: true },
+    group: { type: Schema.Types.ObjectId, ref: 'Group', required: true },
+    position: { type: Number, required: true, min: 1, max: 10 },
+  },
+  { timestamps: true }
+);
+
+bestGroupPickSchema.index({ targetType: 1, targetValue: 1, position: 1 }, { unique: true });
+bestGroupPickSchema.index({ targetType: 1, targetValue: 1, group: 1 }, { unique: true });
+
+export const BestGroupPick = models.BestGroupPick || model('BestGroupPick', bestGroupPickSchema);

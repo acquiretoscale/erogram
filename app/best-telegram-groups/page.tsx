@@ -2,7 +2,7 @@ import React from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
-import { categories } from '@/app/groups/constants';
+import { visibleCategories } from '@/app/groups/constants';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
 
@@ -38,7 +38,7 @@ export default async function BestGroupsIndexPage() {
     ]);
     const activeCategories = new Set(categoryCounts.map(c => c._id));
 
-    const sortedCategories = categories
+    const sortedCategories = visibleCategories
         .filter(c => c !== 'All' && activeCategories.has(c))
         .sort();
 
