@@ -959,6 +959,7 @@ export interface DashboardStatsResult {
   articleClicksByAdvertiser: { advertiserId: string; advertiserName: string; articleClicks: number }[];
   prevPeriodClicksByDay?: { date: string; clicks: number }[];
   prevPeriodTotal?: number;
+  clicksByDayBySlot?: { date: string; slots: Record<string, number> }[];
   advertiserSlotBreakdown?: { advertiserId: string; advertiserName: string; slots: { slot: string; clicks: number }[] }[];
   featuredGroups?: { groupId: string; name: string; advertiserId: string; advertiserName: string; clickCount: number; lastClickedAt?: string }[];
 }
@@ -1143,6 +1144,29 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
     }));
   }
 
+  // Per-day per-slot breakdown
+  let clicksByDayBySlot: { date: string; slots: Record<string, number> }[] | undefined;
+  {
+    const daySlotRows = await CampaignClick.aggregate([
+      { $match: matchInRange },
+      { $lookup: { from: 'campaigns', localField: 'campaignId', foreignField: '_id', as: 'camp' } },
+      { $unwind: '$camp' },
+      { $group: { _id: { date: { $dateToString: { format: '%Y-%m-%d', date: '$clickedAt' } }, slot: '$camp.slot' }, clicks: { $sum: 1 } } },
+      { $sort: { '_id.date': 1 } },
+    ]);
+    const daySlotMap = new Map<string, Record<string, number>>();
+    for (const r of daySlotRows as any[]) {
+      const date = r._id.date as string;
+      const slot = r._id.slot as string;
+      if (!daySlotMap.has(date)) daySlotMap.set(date, {});
+      daySlotMap.get(date)![slot] = r.clicks;
+    }
+    clicksByDayBySlot = clicksByDay.map((d) => ({
+      date: d.date,
+      slots: daySlotMap.get(d.date) || {},
+    }));
+  }
+
   // Period comparison: previous period of same length
   let prevPeriodClicksByDay: { date: string; clicks: number }[] | undefined;
   let prevPeriodTotal: number | undefined;
@@ -1261,6 +1285,7 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
     articleClicksByAdvertiser,
     prevPeriodClicksByDay,
     prevPeriodTotal,
+    clicksByDayBySlot,
     advertiserSlotBreakdown,
     featuredGroups,
   };

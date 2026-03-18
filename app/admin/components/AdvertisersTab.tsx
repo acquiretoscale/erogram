@@ -87,6 +87,290 @@ const SLOT_LABELS: Record<string, string> = {
 const FEED_SLOTS = ['feed'];
 const CTA_SLOTS = ['navbar-cta', 'join-cta', 'filter-cta'];
 
+type ChartSeriesDef = {
+  id: string;
+  label: string;
+  color: string;
+  dashed?: boolean;
+};
+
+type ChartDatum = {
+  date: string;
+  values: Record<string, number>;
+};
+
+const AXIS_DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  timeZone: 'UTC',
+});
+
+const TOOLTIP_DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  weekday: 'short',
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
+function parseDateKeyUTC(dateKey: string): Date {
+  const [year, month, day] = dateKey.split('-').map((part) => Number(part));
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function formatAxisDate(dateKey: string): string {
+  return AXIS_DATE_FORMATTER.format(parseDateKeyUTC(dateKey));
+}
+
+function formatTooltipDate(dateKey: string): string {
+  return TOOLTIP_DATE_FORMATTER.format(parseDateKeyUTC(dateKey));
+}
+
+function niceStep(maxValue: number, tickCount: number): number {
+  if (maxValue <= 0) return 1;
+  const rough = maxValue / tickCount;
+  const exponent = Math.floor(Math.log10(rough));
+  const base = Math.pow(10, exponent);
+  const ratio = rough / base;
+  if (ratio <= 1) return base;
+  if (ratio <= 2) return 2 * base;
+  if (ratio <= 5) return 5 * base;
+  return 10 * base;
+}
+
+function niceMax(maxValue: number, tickCount: number): number {
+  const step = niceStep(maxValue, tickCount);
+  return Math.max(step, Math.ceil(maxValue / step) * step);
+}
+
+function InsightLineChart({
+  data,
+  allSeries,
+  emptyMessage,
+  height = 290,
+  sortTooltipValues = false,
+  showTotal = false,
+  totalLabel = 'Total',
+  hiddenIds: externalHidden,
+  onToggle: externalToggle,
+}: {
+  data: ChartDatum[];
+  allSeries: ChartSeriesDef[];
+  emptyMessage?: string;
+  height?: number;
+  sortTooltipValues?: boolean;
+  showTotal?: boolean;
+  totalLabel?: string;
+  hiddenIds?: Set<string>;
+  onToggle?: (id: string) => void;
+}) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const [internalHidden, setInternalHidden] = useState<Set<string>>(new Set());
+
+  const hidden = externalHidden ?? internalHidden;
+  const toggle = externalToggle ?? ((id: string) => setInternalHidden((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  }));
+
+  if (data.length === 0 || allSeries.length === 0) {
+    return (
+      <div className="h-44 flex items-center justify-center text-gray-400 text-sm">
+        {emptyMessage || 'No chart data available'}
+      </div>
+    );
+  }
+
+  const visibleSeries = allSeries.filter((s) => !hidden.has(s.id));
+
+  const n = data.length;
+  const svgWidth = 1000;
+  const padding = { top: 18, right: 14, bottom: 44, left: 44 };
+  const plotWidth = svgWidth - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
+
+  const allValues = visibleSeries.length > 0
+    ? data.flatMap((row) => visibleSeries.map((s) => row.values[s.id] ?? 0))
+    : [0];
+  const maxValue = Math.max(1, ...allValues);
+  const tickCount = 5;
+  const yMax = niceMax(maxValue, tickCount);
+  const yTicks = Array.from({ length: tickCount + 1 }, (_, i) => (yMax / tickCount) * i);
+  const xLabelEvery = n > 1 ? Math.max(1, Math.ceil(n / 9)) : 1;
+
+  const xFor = (idx: number) => {
+    if (n === 1) return padding.left + plotWidth / 2;
+    return padding.left + (idx / (n - 1)) * plotWidth;
+  };
+  const yFor = (value: number) => padding.top + plotHeight - (value / yMax) * plotHeight;
+
+  const hovered = hoverIdx !== null ? data[hoverIdx] : null;
+  const hoverX = hoverIdx !== null ? xFor(hoverIdx) : null;
+
+  const tooltipRows = hovered
+    ? allSeries
+        .filter((s) => !hidden.has(s.id))
+        .map((s) => ({ ...s, value: hovered.values[s.id] ?? 0 }))
+        .sort((a, b) => (sortTooltipValues ? b.value - a.value : 0))
+    : [];
+
+  return (
+    <div className="relative">
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        {allSeries.map((item) => {
+          const isHidden = hidden.has(item.id);
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => toggle(item.id)}
+              className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] transition-all cursor-pointer select-none ${
+                isHidden
+                  ? 'border-gray-200 bg-white text-gray-400 line-through'
+                  : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <span
+                className="inline-block w-2.5 h-2.5 rounded-full transition-opacity"
+                style={{
+                  backgroundColor: item.color,
+                  opacity: isHidden ? 0.25 : 1,
+                  border: item.dashed ? '1.5px dashed #9ca3af' : undefined,
+                }}
+              />
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {hovered && hoverX !== null && (
+        <div
+          className="absolute z-20 pointer-events-none"
+          style={{
+            left: `${(hoverX / svgWidth) * 100}%`,
+            top: 40,
+            transform: (hoverX / svgWidth) * 100 > 68 ? 'translateX(calc(-100% - 8px))' : 'translateX(8px)',
+          }}
+        >
+          <div className="rounded-xl border border-gray-200 bg-white shadow-lg px-3 py-2 min-w-[170px]">
+            <div className="text-[11px] font-semibold text-gray-600 mb-2 pb-2 border-b border-gray-100">
+              {formatTooltipDate(hovered.date)}
+            </div>
+            <div className="space-y-1.5">
+              {tooltipRows.map((row) => (
+                <div key={row.id} className="flex items-center gap-2 text-[11px]">
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: row.color, border: row.dashed ? '1px solid #9ca3af' : undefined }}
+                  />
+                  <span className="text-gray-600 truncate flex-1">{row.label}</span>
+                  <span className="font-semibold text-gray-900 tabular-nums">{row.value.toLocaleString()}</span>
+                </div>
+              ))}
+              {showTotal && tooltipRows.filter((r) => !r.dashed).length > 1 && (
+                <div className="flex items-center gap-2 text-[11px] pt-1.5 mt-1 border-t border-gray-100">
+                  <span className="w-2 h-2 shrink-0" />
+                  <span className="text-gray-700 font-semibold flex-1">{totalLabel}</span>
+                  <span className="font-bold text-gray-900 tabular-nums">
+                    {tooltipRows.filter((r) => !r.dashed).reduce((s, r) => s + r.value, 0).toLocaleString()}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <svg
+        viewBox={`0 0 ${svgWidth} ${height}`}
+        className="w-full cursor-crosshair"
+        style={{ height }}
+        preserveAspectRatio="none"
+        role="img"
+        aria-label="Click trend chart"
+        onMouseLeave={() => setHoverIdx(null)}
+        onMouseMove={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const fraction = (e.clientX - rect.left) / rect.width;
+          const nextIdx = n === 1
+            ? 0
+            : Math.min(n - 1, Math.max(0, Math.round(fraction * (n - 1))));
+          setHoverIdx(nextIdx);
+        }}
+      >
+        {yTicks.map((tick) => {
+          const y = yFor(tick);
+          return (
+            <g key={tick}>
+              <line x1={padding.left} x2={padding.left + plotWidth} y1={y} y2={y} stroke="#e5e7eb" strokeDasharray="3 4" />
+              <text x={padding.left - 8} y={y + 3} textAnchor="end" className="fill-gray-400 text-[10px]">
+                {Math.round(tick).toLocaleString()}
+              </text>
+            </g>
+          );
+        })}
+
+        <line x1={padding.left} x2={padding.left + plotWidth} y1={padding.top + plotHeight} y2={padding.top + plotHeight} stroke="#d1d5db" />
+
+        {data.map((row, idx) => {
+          const showLabel = idx % xLabelEvery === 0 || idx === n - 1;
+          if (!showLabel) return null;
+          const x = xFor(idx);
+          return (
+            <text key={row.date} x={x} y={height - 12} textAnchor="middle" className="fill-gray-400 text-[10px]">
+              {formatAxisDate(row.date)}
+            </text>
+          );
+        })}
+
+        {visibleSeries.map((seriesConfig) => {
+          const points = data.map((row, idx) => `${xFor(idx)},${yFor(row.values[seriesConfig.id] ?? 0)}`).join(' ');
+          return (
+            <polyline
+              key={seriesConfig.id}
+              points={points}
+              fill="none"
+              stroke={seriesConfig.color}
+              strokeWidth={seriesConfig.dashed ? '2' : '2.5'}
+              strokeDasharray={seriesConfig.dashed ? '5 4' : undefined}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          );
+        })}
+
+        {hoverIdx !== null && hoverX !== null && (
+          <>
+            <line
+              x1={hoverX}
+              x2={hoverX}
+              y1={padding.top}
+              y2={padding.top + plotHeight}
+              stroke="#6b7280"
+              strokeWidth="1"
+              strokeDasharray="3 3"
+              opacity="0.6"
+            />
+            {visibleSeries.map((s) => (
+              <circle
+                key={s.id}
+                cx={hoverX}
+                cy={yFor(data[hoverIdx].values[s.id] ?? 0)}
+                r={3.5}
+                fill={s.color}
+                stroke="white"
+                strokeWidth="1.5"
+              />
+            ))}
+          </>
+        )}
+      </svg>
+    </div>
+  );
+}
+
 function FeedAdsBulkBar({
   selectedCount,
   onClear,
@@ -221,14 +505,13 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
     articleClicksByAdvertiser: { advertiserId: string; advertiserName: string; articleClicks: number }[];
     prevPeriodClicksByDay?: { date: string; clicks: number }[];
     prevPeriodTotal?: number;
+    clicksByDayBySlot?: { date: string; slots: Record<string, number> }[];
     advertiserSlotBreakdown?: { advertiserId: string; advertiserName: string; slots: { slot: string; clicks: number }[] }[];
     featuredGroups?: { groupId: string; name: string; advertiserId: string; advertiserName: string; clickCount: number; lastClickedAt?: string }[];
   } | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [overviewAdvSortBy, setOverviewAdvSortBy] = useState<'period' | '7d' | '30d' | 'share'>('period');
   const [overviewAdvSortOrder, setOverviewAdvSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [trendHoverIdx, setTrendHoverIdx] = useState<number | null>(null);
-  const [compareHoverInfo, setCompareHoverInfo] = useState<{ dayIdx: number; advIdx: number } | null>(null);
   const [feedAdsFilterAdvertiser, setFeedAdsFilterAdvertiser] = useState<string>('all');
   const [feedAdsFilterStatus, setFeedAdsFilterStatus] = useState<string>('active');
   const [feedAdsFilterShowOn, setFeedAdsFilterShowOn] = useState<string>('all');
@@ -1613,146 +1896,116 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                   </div>
                 )}
 
-                <div className="rounded-xl border border-gray-100 p-5">
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-700">{isSingle ? `${selectedNames[0]} — Clicks trend` : 'Clicks trend'}</h3>
-                      <p className="text-[11px] text-gray-400">Current period vs previous period for quick momentum checks.</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const rows = [['Date', 'Clicks'], ...dashboardStats.clicksByDay.map((d) => [d.date, String(d.clicks)])];
-                          const csv = rows.map((r) => r.join(',')).join('\n');
-                          const blob = new Blob([csv], { type: 'text/csv' });
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = `clicks-trend-${dashboardRange}.csv`;
-                          a.click();
-                          URL.revokeObjectURL(url);
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 text-xs font-medium text-gray-600 transition-colors"
-                        title="Export chart data as CSV"
-                      >
-                        ↓ CSV
-                      </button>
-                      <div className="text-right">
-                        {dashboardRange === 'lifetime' && <div className="text-[11px] text-gray-400">Trend uses full lifetime range</div>}
-                        {dashboardStats.prevPeriodTotal !== undefined && dashboardRange !== 'lifetime' && dashboardRange !== 'custom' && (
-                          <div className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold ${periodDelta >= 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                            {periodDelta >= 0 ? '+' : ''}{periodDelta.toFixed(1)}% vs previous
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {dashboardStats.prevPeriodClicksByDay && (
-                    <div className="flex gap-4 mb-2 text-[11px] text-gray-400">
-                      <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-blue-500 inline-block rounded" /> Current</span>
-                      <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-gray-300 inline-block rounded" /> Previous</span>
-                    </div>
-                  )}
-                  {dashboardStats.clicksByDay.length === 0 ? (
-                    <div className="h-44 flex items-center justify-center text-gray-400 text-sm">No click data for this period</div>
-                  ) : (() => {
-                    const data = dashboardStats.clicksByDay;
-                    const prev = dashboardStats.prevPeriodClicksByDay;
-                    const allVals = [...data.map((x) => x.clicks), ...(prev?.map((x) => x.clicks) ?? [])];
-                    const maxVal = Math.max(1, ...allVals);
-                    const ch = 190;
-                    const w = data.length * 26;
-                    const yTicks = maxVal <= 4 ? Array.from({ length: maxVal + 1 }, (_, i) => i) : [0, Math.round(maxVal / 4), Math.round(maxVal / 2), Math.round((maxVal * 3) / 4), maxVal];
-                    const showEveryN = data.length > 16 ? Math.ceil(data.length / 10) : 1;
-                    const toY = (v: number) => ch - (maxVal ? (v / maxVal) * (ch - 8) : 0) - 4;
-                    const hovered = trendHoverIdx !== null ? data[trendHoverIdx] : null;
-                    return (
-                      <div className="relative" style={{ height: ch + 30 }}>
-                        {yTicks.map((t) => (
-                          <div key={t} className="absolute left-0 right-0 flex items-center" style={{ bottom: (maxVal ? (t / maxVal) * ch : 0) + 24 }}>
-                            <span className="text-[10px] text-gray-400 tabular-nums w-8 text-right pr-2 shrink-0">{t}</span>
-                            <div className="flex-1 border-t border-dashed border-gray-100" />
-                          </div>
-                        ))}
-                        {/* Hover tooltip */}
-                        {hovered && trendHoverIdx !== null && (() => {
-                          const xPct = ((trendHoverIdx * 26 + 12) / w) * 100;
-                          const flip = xPct > 70;
-                          return (
-                            <div
-                              className="absolute z-20 pointer-events-none"
-                              style={{ left: `calc(32px + ${xPct}%)`, top: 0, transform: flip ? 'translateX(calc(-100% - 8px))' : 'translateX(8px)' }}
-                            >
-                              <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.13)', padding: '10px 14px', minWidth: 120, fontSize: 12 }}>
-                                <div style={{ fontWeight: 600, color: '#6b7280', marginBottom: 6, fontSize: 11 }}>{hovered.date}</div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6', flexShrink: 0 }} />
-                                  <span style={{ fontWeight: 700, fontSize: 16, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>{hovered.clicks.toLocaleString()}</span>
-                                  <span style={{ color: '#9ca3af', fontSize: 11 }}>clicks</span>
-                                </div>
-                                {prev && prev[trendHoverIdx] != null && (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 6, paddingTop: 6, borderTop: '1px solid #f3f4f6' }}>
-                                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#d1d5db', flexShrink: 0 }} />
-                                    <span style={{ fontWeight: 600, color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>{prev[trendHoverIdx].clicks.toLocaleString()}</span>
-                                    <span style={{ color: '#9ca3af', fontSize: 11 }}>prev</span>
-                                  </div>
-                                )}
+                {(() => {
+                  const current = dashboardStats.clicksByDay;
+                  const previous = dashboardStats.prevPeriodClicksByDay;
+                  const hasPrevious = Boolean(previous && previous.length > 0);
+                  const slotDaily = dashboardStats.clicksByDayBySlot;
+
+                  const slotKeys = new Set<string>();
+                  if (slotDaily) slotDaily.forEach((d) => Object.keys(d.slots).forEach((k) => slotKeys.add(k)));
+                  const slotList = [...slotKeys].sort();
+                  const hasSlots = slotList.length > 0;
+
+                  const SLOT_COLORS: Record<string, string> = {
+                    'top-banner': '#3b82f6', 'homepage-hero': '#8b5cf6', feed: '#10b981',
+                    'navbar-cta': '#f59e0b', 'join-cta': '#06b6d4', 'filter-cta': '#ec4899',
+                  };
+
+                  const trendData: ChartDatum[] = current.map((row, idx) => {
+                    const slotRow = slotDaily?.[idx];
+                    const vals: Record<string, number> = {};
+                    if (hasSlots && slotRow) {
+                      slotList.forEach((s) => { vals[`slot_${s}`] = slotRow.slots[s] ?? 0; });
+                    } else {
+                      vals.clicks = row.clicks;
+                    }
+                    if (hasPrevious) vals.previous = previous?.[idx]?.clicks ?? 0;
+                    return { date: row.date, values: vals };
+                  });
+
+                  const trendSeries: ChartSeriesDef[] = hasSlots
+                    ? [
+                        ...slotList.map((s) => ({
+                          id: `slot_${s}`,
+                          label: SLOT_LABELS[s] || s,
+                          color: SLOT_COLORS[s] || '#6b7280',
+                        })),
+                        ...(hasPrevious ? [{ id: 'previous', label: 'Previous period (total)', color: '#9ca3af', dashed: true }] : []),
+                      ]
+                    : [
+                        { id: 'clicks', label: 'Total clicks', color: '#2563eb' },
+                        ...(hasPrevious ? [{ id: 'previous', label: 'Previous period', color: '#9ca3af', dashed: true }] : []),
+                      ];
+
+                  const exportCsv = () => {
+                    const headers = ['Date'];
+                    if (hasSlots) { slotList.forEach((s) => headers.push(SLOT_LABELS[s] || s)); headers.push('Total'); }
+                    else headers.push('Clicks');
+                    if (hasPrevious) headers.push('Previous Period');
+                    const rows = current.map((d, idx) => {
+                      const r = [d.date];
+                      if (hasSlots) {
+                        const slotRow = slotDaily?.[idx];
+                        slotList.forEach((s) => r.push(String(slotRow?.slots[s] ?? 0)));
+                        r.push(String(d.clicks));
+                      } else {
+                        r.push(String(d.clicks));
+                      }
+                      if (hasPrevious) r.push(String(previous?.[idx]?.clicks ?? 0));
+                      return r;
+                    });
+                    const csv = [headers, ...rows].map((r) => r.join(',')).join('\n');
+                    const blob = new Blob([csv], { type: 'text/csv' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `clicks-trend-${dashboardRange}.csv`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  };
+
+                  return (
+                    <div className="rounded-xl border border-gray-100 p-5">
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div>
+                          <h3 className="text-sm font-semibold text-gray-700">{isSingle ? `${selectedNames[0]} — Clicks trend` : 'Clicks by ad placement'}</h3>
+                          <p className="text-[11px] text-gray-400">
+                            {hasSlots ? 'Each line = independent placement. Click legend to toggle.' : 'Daily click volume.'}
+                            {hasPrevious ? ' Dashed line = previous period total.' : ''}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={exportCsv}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 text-xs font-medium text-gray-600 transition-colors"
+                            title="Export chart data as CSV"
+                          >
+                            ↓ CSV
+                          </button>
+                          <div className="text-right">
+                            {dashboardRange === 'lifetime' && <div className="text-[11px] text-gray-400">Trend uses full lifetime range</div>}
+                            {dashboardStats.prevPeriodTotal !== undefined && dashboardRange !== 'lifetime' && dashboardRange !== 'custom' && (
+                              <div className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold ${periodDelta >= 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                                {periodDelta >= 0 ? '+' : ''}{periodDelta.toFixed(1)}% vs previous
                               </div>
-                            </div>
-                          );
-                        })()}
-                        <svg
-                          viewBox={`0 0 ${w} ${ch}`}
-                          className="w-full cursor-crosshair"
-                          style={{ height: ch, marginLeft: 32 }}
-                          preserveAspectRatio="none"
-                          onMouseLeave={() => setTrendHoverIdx(null)}
-                          onMouseMove={(e) => {
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            const x = ((e.clientX - rect.left) / rect.width) * w;
-                            const idx = Math.round((x - 12) / 26);
-                            setTrendHoverIdx(idx >= 0 && idx < data.length ? idx : null);
-                          }}
-                        >
-                          <defs>
-                            <linearGradient id="overviewAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.18" />
-                              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.02" />
-                            </linearGradient>
-                          </defs>
-                          {prev && prev.length === data.length && (
-                            <polyline points={prev.map((d, i) => `${i * 26 + 12},${toY(d.clicks)}`).join(' ')} fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeDasharray="4 3" strokeLinejoin="round" />
-                          )}
-                          <path d={`M0,${ch} ` + data.map((d, i) => `L${i * 26 + 12},${toY(d.clicks)}`).join(' ') + ` L${(data.length - 1) * 26 + 12},${ch} Z`} fill="url(#overviewAreaGrad)" />
-                          <polyline points={data.map((d, i) => `${i * 26 + 12},${toY(d.clicks)}`).join(' ')} fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-                          {/* Hover vertical line + dot */}
-                          {trendHoverIdx !== null && data[trendHoverIdx] && (
-                            <>
-                              <line
-                                x1={trendHoverIdx * 26 + 12} y1={0}
-                                x2={trendHoverIdx * 26 + 12} y2={ch}
-                                stroke="#3b82f6" strokeWidth="1" strokeDasharray="3 2" opacity="0.5"
-                              />
-                              <circle cx={trendHoverIdx * 26 + 12} cy={toY(data[trendHoverIdx].clicks)} r={4} fill="#3b82f6" stroke="white" strokeWidth="2" />
-                            </>
-                          )}
-                        </svg>
-                        <div className="flex" style={{ marginLeft: 32 }}>
-                          {data.map((d, i) => (
-                            <div
-                              key={d.date}
-                              className={`text-center text-[10px] transition-colors ${trendHoverIdx === i ? 'text-blue-500 font-semibold' : 'text-gray-400'}`}
-                              style={{ width: 26 }}
-                            >
-                              {i % showEveryN === 0 ? d.date.slice(5) : ''}
-                            </div>
-                          ))}
+                            )}
+                          </div>
                         </div>
                       </div>
-                    );
-                  })()}
-                </div>
+
+                      <InsightLineChart
+                        data={trendData}
+                        allSeries={trendSeries}
+                        emptyMessage="No click data for this period"
+                        height={310}
+                        showTotal={hasSlots}
+                        totalLabel="Total clicks"
+                      />
+                    </div>
+                  );
+                })()}
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {dashboardStats.bySlot.length > 0 && (() => {
@@ -1851,27 +2104,53 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                 </div>
 
                 {isCompare && dashboardStats.clicksByDayByAdvertiser && dashboardStats.clicksByDayByAdvertiser.length > 0 && (() => {
-                  const allAdvs = dashboardStats.byAdvertiser;
+                  const allAdvs = [...dashboardStats.byAdvertiser].sort((a, b) => b.totalClicks - a.totalClicks);
                   const data = dashboardStats.clicksByDayByAdvertiser;
-                  const globalMax = Math.max(1, ...data.flatMap((d) => d.advertisers.map((a) => a.clicks)));
-                  const ch = 160;
-                  const cw = 24;
-                  const showEveryN = data.length > 14 ? Math.ceil(data.length / 10) : 1;
-                  const toY = (v: number) => ch - (globalMax ? (v / globalMax) * (ch - 8) : 0) - 4;
-                  const hoveredDay = compareHoverInfo !== null ? data[compareHoverInfo.dayIdx] : null;
+                  const MAX_SERIES = 6;
+                  const primaryAdvs = allAdvs.slice(0, MAX_SERIES);
+                  const otherAdvs = allAdvs.slice(MAX_SERIES);
+
+                  const compareSeries: ChartSeriesDef[] = [
+                    ...primaryAdvs.map((adv, idx) => ({
+                      id: adv.advertiserId,
+                      label: adv.advertiserName,
+                      color: CHART_COLORS[idx % CHART_COLORS.length],
+                    })),
+                    ...(otherAdvs.length > 0
+                      ? [{ id: '__others__', label: `Others (${otherAdvs.length})`, color: '#94a3b8', dashed: true }]
+                      : []),
+                  ];
+
+                  const compareData: ChartDatum[] = data.map((row) => {
+                    const lookup = new Map(row.advertisers.map((a) => [a.advertiserId, a.clicks]));
+                    const othersClicks = otherAdvs.reduce((sum, adv) => sum + (lookup.get(adv.advertiserId) ?? 0), 0);
+                    return {
+                      date: row.date,
+                      values: {
+                        ...Object.fromEntries(primaryAdvs.map((adv) => [adv.advertiserId, lookup.get(adv.advertiserId) ?? 0])),
+                        ...(otherAdvs.length > 0 ? { __others__: othersClicks } : {}),
+                      },
+                    };
+                  });
+
                   return (
                     <div className="rounded-xl border border-gray-100 p-5">
                       <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
                         <div>
                           <h3 className="text-sm font-semibold text-gray-700">Advertiser comparison over time</h3>
-                          <p className="text-[11px] text-gray-400">Use this to compare selected advertisers directly.</p>
+                          <p className="text-[11px] text-gray-400">
+                            Showing top {primaryAdvs.length} advertisers by total clicks{otherAdvs.length > 0 ? ' plus an aggregated Others line' : ''}.
+                          </p>
                         </div>
                         <div className="flex items-center gap-3 flex-wrap">
                           <button
                             type="button"
                             onClick={() => {
                               const headers = ['Date', ...allAdvs.map((a) => a.advertiserName)];
-                              const rows = data.map((d) => [d.date, ...allAdvs.map((a) => { const m = d.advertisers.find((x) => x.advertiserId === a.advertiserId); return String(m?.clicks ?? 0); })]);
+                              const rows = data.map((d) => [d.date, ...allAdvs.map((a) => {
+                                const m = d.advertisers.find((x) => x.advertiserId === a.advertiserId);
+                                return String(m?.clicks ?? 0);
+                              })]);
                               const csv = [headers, ...rows].map((r) => r.join(',')).join('\n');
                               const blob = new Blob([csv], { type: 'text/csv' });
                               const url = URL.createObjectURL(blob);
@@ -1885,108 +2164,18 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                           >
                             ↓ CSV
                           </button>
-                          <div className="flex flex-wrap gap-3">
-                            {allAdvs.map((a, i) => (
-                              <span key={a.advertiserId} className="flex items-center gap-1.5 text-[11px] text-gray-500">
-                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />{a.advertiserName}
-                              </span>
-                            ))}
-                          </div>
                         </div>
                       </div>
-                      <div className="relative" style={{ height: ch + 24 }}>
-                        {/* Hover tooltip */}
-                        {hoveredDay && compareHoverInfo !== null && (() => {
-                          const xPct = ((compareHoverInfo.dayIdx * cw + 12) / (data.length * cw)) * 100;
-                          const flip = xPct > 65;
-                          const advEntries = allAdvs.map((a, i) => {
-                            const m = hoveredDay.advertisers.find((x) => x.advertiserId === a.advertiserId);
-                            return { name: a.advertiserName, clicks: m?.clicks ?? 0, color: CHART_COLORS[i % CHART_COLORS.length] };
-                          }).sort((a, b) => b.clicks - a.clicks);
-                          return (
-                            <div
-                              className="absolute z-20 pointer-events-none"
-                              style={{ left: `${xPct}%`, top: 0, transform: flip ? 'translateX(calc(-100% - 6px))' : 'translateX(6px)' }}
-                            >
-                              <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.13)', padding: '10px 14px', minWidth: 160, fontSize: 12 }}>
-                                <div style={{ fontWeight: 600, color: '#6b7280', marginBottom: 8, paddingBottom: 7, borderBottom: '1px solid #f3f4f6', fontSize: 11 }}>{hoveredDay.date}</div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                  {advEntries.map((e) => (
-                                    <div key={e.name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: e.color, flexShrink: 0 }} />
-                                      <span style={{ flex: 1, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100 }}>{e.name}</span>
-                                      <span style={{ fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>{e.clicks.toLocaleString()}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 7, paddingTop: 7, borderTop: '1px solid #f3f4f6', fontSize: 11, color: '#6b7280' }}>
-                                  <span>Total</span>
-                                  <span style={{ fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>{advEntries.reduce((s, e) => s + e.clicks, 0).toLocaleString()}</span>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })()}
-                        <svg
-                          viewBox={`0 0 ${data.length * cw} ${ch}`}
-                          className="w-full cursor-crosshair"
-                          style={{ height: ch }}
-                          preserveAspectRatio="none"
-                          onMouseLeave={() => setCompareHoverInfo(null)}
-                          onMouseMove={(e) => {
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            const x = ((e.clientX - rect.left) / rect.width) * (data.length * cw);
-                            const dayIdx = Math.round((x - 12) / cw);
-                            if (dayIdx >= 0 && dayIdx < data.length) {
-                              setCompareHoverInfo({ dayIdx, advIdx: 0 });
-                            } else {
-                              setCompareHoverInfo(null);
-                            }
-                          }}
-                        >
-                          {allAdvs.map((adv, ai) => (
-                            <polyline key={adv.advertiserId} points={data.map((d, i) => {
-                              const m = d.advertisers.find((a) => a.advertiserId === adv.advertiserId);
-                              return `${i * cw + 12},${toY(m?.clicks ?? 0)}`;
-                            }).join(' ')} fill="none" stroke={CHART_COLORS[ai % CHART_COLORS.length]} strokeWidth="2" strokeLinejoin="round" />
-                          ))}
-                          {/* Hover vertical rule + dots */}
-                          {compareHoverInfo !== null && hoveredDay && (
-                            <>
-                              <line
-                                x1={compareHoverInfo.dayIdx * cw + 12} y1={0}
-                                x2={compareHoverInfo.dayIdx * cw + 12} y2={ch}
-                                stroke="#6b7280" strokeWidth="1" strokeDasharray="3 2" opacity="0.5"
-                              />
-                              {allAdvs.map((adv, ai) => {
-                                const m = hoveredDay.advertisers.find((a) => a.advertiserId === adv.advertiserId);
-                                return (
-                                  <circle
-                                    key={adv.advertiserId}
-                                    cx={compareHoverInfo.dayIdx * cw + 12}
-                                    cy={toY(m?.clicks ?? 0)}
-                                    r={3.5}
-                                    fill={CHART_COLORS[ai % CHART_COLORS.length]}
-                                    stroke="white"
-                                    strokeWidth="1.5"
-                                  />
-                                );
-                              })}
-                            </>
-                          )}
-                        </svg>
-                        <div className="flex">
-                          {data.map((d, i) => (
-                            <div
-                              key={d.date}
-                              className={`text-center text-[10px] transition-colors ${compareHoverInfo?.dayIdx === i ? 'text-gray-700 font-semibold' : 'text-gray-400'}`}
-                              style={{ width: cw }}
-                            >
-                              {i % showEveryN === 0 ? d.date.slice(5) : ''}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+
+                      <InsightLineChart
+                        data={compareData}
+                        allSeries={compareSeries}
+                        emptyMessage="No advertiser comparison data for this period"
+                        height={270}
+                        sortTooltipValues
+                        showTotal
+                        totalLabel="All advertisers"
+                      />
                     </div>
                   );
                 })()}

@@ -108,7 +108,7 @@ function VaultPreview({ items }: { items: VaultTeaserItem[] }) {
 
 interface PremiumClientProps { vaultTeaser?: VaultTeaserItem[]; }
 
-export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) {
+export default function Premium10Client({ vaultTeaser = [] }: PremiumClientProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [soldOut, setSoldOut] = useState(false);
@@ -120,7 +120,10 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
   const [premiumExpiresAt, setPremiumExpiresAt] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [awaitingPayment, setAwaitingPayment] = useState(false);
+  const [payMethod, setPayMethod] = useState<'stars' | 'crypto'>('stars');
+  const [authProvider, setAuthProvider] = useState<'telegram' | 'google' | 'password' | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminPreview, setAdminPreview] = useState<'none' | 'telegram' | 'google'>('none');
   const tracked = useRef(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -144,10 +147,25 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
 
   useEffect(() => {
     if (!tracked.current) { tracked.current = true; trackPremiumEvent('page_view'); }
+    const isCryptoReturn = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('payment') === 'crypto_success';
+    if (isCryptoReturn) setAwaitingPayment(true);
     const token = localStorage.getItem('token');
     if (token) {
       setIsLoggedIn(true); setAuthChecked(true); checkPremiumStatus();
-      fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(d => { if (d.isAdmin) setIsAdmin(true); }).catch(() => {});
+      fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(d => { if (d.authProvider) setAuthProvider(d.authProvider); if (d.isAdmin) setIsAdmin(true); }).catch(() => {});
+      // Start polling if user returned from crypto checkout
+      if (isCryptoReturn) {
+        if (pollRef.current) clearInterval(pollRef.current);
+        let attempts = 0;
+        pollRef.current = setInterval(async () => {
+          attempts++;
+          const confirmed = await checkPremiumStatus();
+          if (confirmed || attempts >= 120) {
+            clearInterval(pollRef.current!); pollRef.current = null;
+            if (!confirmed) setAwaitingPayment(false);
+          }
+        }, 5000);
+      }
     } else {
       setAuthChecked(true);
     }
@@ -166,14 +184,24 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
     return () => window.removeEventListener('beforeinstallprompt', handler as EventListener);
   }, []);
 
-  const handlePurchase = async (plan: 'monthly' | 'quarterly' | 'yearly' | 'lifetime') => {
-    if (!isLoggedIn) { window.location.href = '/login?redirect=/premium'; return; }
+  const handlePurchase = async (plan: 'monthly' | 'yearly' | 'lifetime') => {
+    if (!isLoggedIn) { window.location.href = '/login?redirect=/premium10'; return; }
     trackPremiumEvent('plan_click', { plan }); setLoading(plan); setError('');
     try {
       const token = localStorage.getItem('token');
       const res = await axios.post('/api/payments/stars', { plan }, { headers: { Authorization: `Bearer ${token}` } });
       if (res.data?.url) { window.open(res.data.url, '_blank'); setAwaitingPayment(true); if (pollRef.current) clearInterval(pollRef.current); let a = 0; pollRef.current = setInterval(async () => { a++; await checkPremiumStatus(); if (a >= 120) { clearInterval(pollRef.current!); pollRef.current = null; setAwaitingPayment(false); } }, 5000); }
     } catch (err: any) { if (err?.response?.data?.soldOut) setSoldOut(true); setError(err?.response?.data?.message || 'Failed to create payment'); } finally { setLoading(null); }
+  };
+
+  const handleCryptoPurchase = async (plan: 'monthly' | 'yearly' | 'lifetime') => {
+    if (!isLoggedIn) { window.location.href = '/login?redirect=/premium10'; return; }
+    trackPremiumEvent('crypto_plan_click', { plan }); setLoading(`crypto_${plan}`); setError('');
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.post('/api/payments/nowpayments', { plan }, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.data?.url) window.location.href = res.data.url;
+    } catch (err: any) { if (err?.response?.data?.soldOut) setSoldOut(true); setError(err?.response?.data?.message || 'Failed to create crypto payment.'); } finally { setLoading(null); }
   };
 
   if (!authChecked) {
@@ -299,6 +327,27 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
           </div>
         </div>
 
+        {/* ━━━ ADMIN PREVIEW PANEL ━━━ */}
+        {isAdmin && (
+          <div className="mb-4 p-3 rounded-lg border border-dashed border-white/20 bg-white/[0.02]">
+            <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider mb-2">Admin Preview — see checkout as different users</p>
+            <div className="flex gap-2 flex-wrap">
+              {(['none', 'telegram', 'google'] as const).map(mode => (
+                <button
+                  key={mode}
+                  onClick={() => setAdminPreview(mode)}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${adminPreview === mode ? 'bg-amber-500 text-black' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+                >
+                  {mode === 'none' ? 'Normal (my account)' : mode === 'telegram' ? 'Preview as Telegram user' : 'Preview as Google user'}
+                </button>
+              ))}
+            </div>
+            {adminPreview !== 'none' && (
+              <p className="text-[10px] text-amber-400/60 mt-1.5">Showing checkout as a <strong>{adminPreview}</strong> user. Payment will still work for testing.</p>
+            )}
+          </div>
+        )}
+
         {/* ━━━ TIMER — above checkout ━━━ */}
         {!isPremium && !soldOut && timeLeft > 0 && (
           <div className="mb-4 rounded-xl bg-white p-3 shadow-lg shadow-white/5">
@@ -318,6 +367,10 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
         )}
 
         {/* ━━━ UPGRADE CARD — after Inner Circle ━━━ */}
+        {(() => {
+          const effectiveProvider = adminPreview !== 'none' ? adminPreview : authProvider;
+          const effectivePayMethod = payMethod;
+          return (
         <div
           className="rounded-xl overflow-hidden relative mb-6"
           style={{ background: 'linear-gradient(160deg, #0f0d09 0%, #110e08 60%, #0d0b07 100%)', border: `1px solid ${G.border}`, boxShadow: `0 0 50px ${G.gold}08` }}
@@ -330,14 +383,14 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
               <div className="mb-3 px-3 py-2 rounded-lg flex items-center gap-2" style={{ background: `${G.gold}06`, border: `1px solid ${G.gold}25` }}>
                 <svg className="animate-spin shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={G.gold} strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
                 <span className="text-amber-400 text-[11px] font-medium">
-                  Complete payment in Telegram — this page will update automatically once confirmed.
+                  {effectivePayMethod === 'crypto' ? 'Complete your crypto payment — this page will update automatically once confirmed.' : 'Complete payment in Telegram — this page will update automatically once confirmed.'}
                 </span>
               </div>
             )}
 
             {error && <div className="mb-3 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center">{error}</div>}
 
-            {(isPremium || isAdmin) && (
+            {(isPremium || isAdmin) && adminPreview === 'none' && (
               <div className="py-4 px-4 rounded-xl mb-3 space-y-2.5" style={{ background: `${G.gold}05`, border: `1px solid ${G.gold}20` }}>
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style={{ background: `${G.gold}20` }}>
@@ -390,7 +443,7 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
               </div>
             )}
 
-            {soldOut && !isPremium && (
+            {soldOut && !isPremium && adminPreview === 'none' && (
               <div className="text-center py-4 rounded-xl mb-3" style={{ border: `1px solid ${G.border}`, background: 'rgba(255,255,255,0.01)' }}>
                 <div className="text-xl mb-1">🔥</div>
                 <div className="text-white font-bold text-sm mb-0.5">All 100 spots are taken!</div>
@@ -398,110 +451,127 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
               </div>
             )}
 
-            {/* Pricing — Stars only */}
-            {!isPremium && !soldOut && (
+            {/* Pricing — all users (login on click if needed) */}
+            {((!isPremium && !soldOut) || adminPreview !== 'none') && (
               <div className="rounded-xl p-3 space-y-2.5" style={{ background: '#ffffff', border: '1px solid #e5e7eb', boxShadow: '0 8px 28px rgba(0,0,0,0.12)' }}>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setPayMethod('stars')}
+                    className="flex-1 py-2 text-[11px] font-bold transition-all rounded-lg flex items-center justify-center gap-1.5"
+                    style={effectivePayMethod === 'stars'
+                      ? { background: '#229ED9', color: '#ffffff', boxShadow: '0 2px 6px rgba(34,158,217,0.35)' }
+                      : { background: '#111827', color: '#e5e7eb' }}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
+                    Telegram Stars
+                  </button>
+                  <button
+                    onClick={() => setPayMethod('crypto')}
+                    className="flex-1 py-2 text-[11px] font-bold transition-all rounded-lg flex items-center justify-center gap-1.5"
+                    style={effectivePayMethod === 'crypto'
+                      ? { background: '#F7931A', color: '#ffffff', boxShadow: '0 2px 6px rgba(247,147,26,0.35)' }
+                      : { background: '#111827', color: '#e5e7eb' }}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 17.97L4.58 13.62 11.943 24l7.37-10.38-7.372 4.35h.003zM12.056 0L4.69 12.223l7.365 4.354 7.365-4.35L12.056 0z"/></svg>
+                    Crypto
+                  </button>
+                </div>
 
                 <div className="space-y-2">
-                  {/* Monthly — 600★ (80% OFF from 3,000★) */}
+                  {/* Monthly */}
                   <div className="rounded-lg px-3 py-3 flex items-center gap-3" style={{ border: '1px solid #e5e7eb' }}>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                         <span className="font-black text-gray-900 text-[13px]">Monthly</span>
-                        <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-red-600 text-white">80% OFF</span>
+                        <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-green-50 text-green-700">
+                          ⏳ {effectivePayMethod === 'stars' ? 'Save 2,400★ ($35.96)' : 'Save $35.96'}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-1 flex-wrap">
-                        <span className="line-through text-[11px]" style={{ color: '#16a34a' }}>3,000</span>
-                        <svg width="9" height="9" viewBox="0 0 24 24" fill="#16a34a"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                        <span className="font-black text-[20px] leading-none text-gray-900">600</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="#111827"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                        <span className="text-gray-500 text-[10px]">≈ $8.99/mo</span>
-                      </div>
+                      {effectivePayMethod === 'stars' ? (
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span className="line-through text-[11px]" style={{ color: '#16a34a' }}>3,000</span>
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="#16a34a"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
+                          <span className="font-black text-[20px] leading-none text-gray-900">600</span>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="#111827"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
+                          <span className="text-gray-500 text-[10px]">≈ $8.99/mo</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="line-through text-[11px]" style={{ color: '#16a34a' }}>$44.95</span>
+                          <span className="font-black text-[20px] leading-none text-gray-900">$8.99</span>
+                          <span className="text-gray-500 text-[10px]">/mo</span>
+                        </div>
+                      )}
                       <p className="text-[9px] mt-1 text-gray-500">One-time payment · No auto-renew</p>
                     </div>
                     <button
-                      onClick={() => handlePurchase('monthly')}
+                      onClick={() => effectivePayMethod === 'stars' ? handlePurchase('monthly') : handleCryptoPurchase('monthly')}
                       disabled={!!loading}
                       className="shrink-0 px-3.5 py-2.5 rounded-lg font-black text-[11px] uppercase tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 flex items-center gap-1.5 hover:opacity-90"
                       style={{ background: '#16a34a', whiteSpace: 'nowrap' }}
                     >
-                      {loading === 'monthly' ? (
+                      {(loading === 'monthly' || loading === 'crypto_monthly') ? (
                         <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
                       ) : (<>Get Monthly <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></>)}
                     </button>
                   </div>
 
-                  {/* 3 Months — 900★ (80% OFF from 4,500★) */}
-                  <div className="rounded-lg px-3 py-3 flex items-center gap-3" style={{ border: '2px solid #16a34a', background: '#f0fdf4' }}>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                        <span className="font-black text-gray-900 text-[13px]">3 Months</span>
-                        <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-red-600 text-white">80% OFF</span>
-                      </div>
-                      <div className="flex items-center gap-1 flex-wrap">
-                        <span className="line-through text-[11px]" style={{ color: '#16a34a' }}>4,500</span>
-                        <svg width="9" height="9" viewBox="0 0 24 24" fill="#16a34a"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                        <span className="font-black text-[20px] leading-none text-gray-900">900</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="#111827"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                        <span className="text-gray-500 text-[10px]">≈ $13.49 · $4.50/mo</span>
-                      </div>
-                      <p className="text-[9px] mt-1 text-gray-500">One-time payment · No auto-renew</p>
-                    </div>
-                    <button
-                      onClick={() => handlePurchase('quarterly')}
-                      disabled={!!loading}
-                      className="shrink-0 px-3.5 py-2.5 rounded-lg font-black text-[11px] uppercase tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 flex items-center gap-1.5 hover:opacity-90"
-                      style={{ background: '#16a34a', whiteSpace: 'nowrap' }}
-                    >
-                      {loading === 'quarterly' ? (
-                        <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                      ) : (<>Get 3 Months <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></>)}
-                    </button>
-                  </div>
-
-                  {/* Yearly — 2,000★ (80% OFF from 10,000★) */}
+                  {/* Yearly */}
                   <div className="rounded-lg overflow-hidden" style={{ border: '2px solid #111827' }}>
                     <div className="flex items-center justify-between px-3 py-1.5" style={{ background: '#111827' }}>
                       <span className="font-black text-white text-[13px]">Yearly</span>
                       <span className="text-[8px] font-black tracking-widest text-white uppercase opacity-70">BESTSELLER</span>
                     </div>
                     <div className="px-3 py-3 flex items-center gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                          <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-red-600 text-white">80% OFF</span>
-                        </div>
-                        <div className="flex items-center gap-1 flex-wrap">
-                          <span className="line-through text-[11px]" style={{ color: '#16a34a' }}>10,000</span>
-                          <svg width="9" height="9" viewBox="0 0 24 24" fill="#16a34a"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                          <span className="font-black text-[20px] leading-none text-gray-900">2,000</span>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="#111827"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                          <span className="text-gray-500 text-[10px]">≈ $29.99/yr · $2.50/mo</span>
-                        </div>
-                        <p className="text-[9px] mt-1 text-gray-500">One-time payment · No auto-renew</p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                        <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-green-50 text-green-700">
+                          ⏳ {effectivePayMethod === 'stars' ? 'Save 13,332★ ($199.96)' : 'Save $199.96'}
+                        </span>
                       </div>
-                      <button
-                        onClick={() => handlePurchase('yearly')}
-                        disabled={!!loading}
-                        className="shrink-0 px-3.5 py-2.5 rounded-lg font-black text-[11px] uppercase tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 flex items-center gap-1.5 hover:opacity-90"
-                        style={{ background: '#16a34a', whiteSpace: 'nowrap' }}
-                      >
-                        {loading === 'yearly' ? (
-                          <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                        ) : (<>Get Yearly <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></>)}
-                      </button>
+                      {effectivePayMethod === 'stars' ? (
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span className="line-through text-[11px]" style={{ color: '#16a34a' }}>16,665</span>
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="#16a34a"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
+                          <span className="font-black text-[20px] leading-none text-gray-900">3,333</span>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="#111827"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
+                          <span className="text-gray-500 text-[10px]">≈ $49.99/yr · $4.17/mo</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="line-through text-[11px]" style={{ color: '#16a34a' }}>$249.95</span>
+                          <span className="font-black text-[20px] leading-none text-gray-900">$49.99</span>
+                          <span className="text-gray-500 text-[10px]">/yr · $4.17/mo</span>
+                        </div>
+                      )}
+                      <p className="text-[9px] mt-1 text-gray-500">One-time payment · No auto-renew</p>
+                    </div>
+                    <button
+                      onClick={() => effectivePayMethod === 'stars' ? handlePurchase('yearly') : handleCryptoPurchase('yearly')}
+                      disabled={!!loading}
+                      className="shrink-0 px-3.5 py-2.5 rounded-lg font-black text-[11px] uppercase tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 flex items-center gap-1.5 hover:opacity-90"
+                      style={{ background: '#16a34a', whiteSpace: 'nowrap' }}
+                    >
+                      {(loading === 'yearly' || loading === 'crypto_yearly') ? (
+                        <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                      ) : (<>Get Yearly <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></>)}
+                    </button>
                     </div>
                   </div>
                 </div>
-                <p className="text-center text-[10px] text-gray-500">Secure checkout via Telegram Stars · Instant access · No hidden fees</p>
+                <p className="text-center text-[10px] text-gray-500">Secure checkout · Instant access · No hidden fees</p>
+                {effectivePayMethod === 'crypto' && <p className="text-center text-[9px] text-gray-500">300+ cryptocurrencies accepted · Powered by NowPayments</p>}
               </div>
             )}
 
             <div className="mt-4 space-y-0.5">
-              <p className="text-center text-[9px]" style={{ color: '#2a1f0e' }}>Pay with Telegram Stars</p>
+              <p className="text-center text-[9px]" style={{ color: '#2a1f0e' }}>Telegram Stars · Crypto (BTC, ETH, USDT, 300+ more)</p>
               <p className="text-center text-[9px]" style={{ color: '#1e1510' }}>Erogram is actively developing — more features coming soon</p>
             </div>
           </div>
         </div>
+          );
+        })()}
 
         {/* ━━━ SECOND VAULT PREVIEW — below payment ━━━ */}
         {vaultTeaser.length > 0 && <VaultPreview items={vaultTeaser} />}

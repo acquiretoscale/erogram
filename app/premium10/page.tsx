@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import connectDB from '@/lib/db/mongodb';
 import { Group, SiteConfig } from '@/lib/models';
-import PremiumClient from './PremiumClient';
+import Premium10Client from './Premium10Client';
 
 export const metadata: Metadata = {
   title: 'Upgrade to Premium | Erogram.pro',
@@ -44,7 +44,7 @@ async function getVaultTeaser() {
   }
 }
 
-export default async function PremiumPage() {
+export default async function Premium10Page() {
   const vaultTeaser = await getVaultTeaser();
-  return <PremiumClient vaultTeaser={vaultTeaser} />;
+  return <Premium10Client vaultTeaser={vaultTeaser} />;
 }
