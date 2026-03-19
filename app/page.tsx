@@ -61,8 +61,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const dict = await getDictionary(locale);
   const m = dict.meta || {};
 
-  const title = m.homeTitle || 'Erogram | Best NSFW Telegram Groups & Channels Directory 2026';
-  const description = m.homeDesc || 'Explore thousands of NSFW Telegram groups, channels, and AI companion bots. Connect with like-minded adults in curated communities for dating, chat, gaming, and more. Safe, verified, and updated daily.';
+  const title = m.homeTitle || 'Erogram | Best NSFW & Porn Telegram Groups Directory (2026)';
+  const description = m.homeDesc || 'The best NSFW & Porn Telegram groups directory. Browse thousands of verified adult Telegram communities and AI bots by category — amateur, anal, lesbian, MILF, hentai & more. Updated daily.';
   const imgUrl = process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${siteUrl}/assets/placeholder-no-image.png`;
   const canonicalBase = 'https://erogram.pro';
   const canonical = `${canonicalBase}${pathname === '/' ? '' : pathname}`;
@@ -70,7 +70,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title,
     description,
-    keywords: 'NSFW telegram groups, adult telegram communities, NSFW channels, adult chat groups, telegram dating groups, erotic telegram groups, adult messaging, NSFW telegram bots, AI companion bots, adult chat bots',
+    keywords: 'porn telegram, telegram porn, best porn telegram groups, nsfw telegram groups, adult telegram directory, porn telegram channels, nsfw telegram, telegram porn groups, amateur porn telegram, anal telegram',
     alternates: { canonical },
     openGraph: {
       title,
@@ -164,7 +164,7 @@ export default async function Home() {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: 'Erogram',
-    description: metaDict.homeDesc || 'Directory of NSFW Telegram groups, channels, and AI companion bots for adults',
+    description: metaDict.homeDesc || 'The best NSFW and Porn Telegram groups directory. Browse verified adult communities and AI bots by category.',
     url: siteUrl,
     inLanguage: locale,
     potentialAction: {

@@ -168,7 +168,7 @@ export default function AiBulkActions({ selectedIds, groups, onGroupsUpdated, co
       } else {
         const lang = action === 'de' ? 'German' : 'Spanish';
         const field = `description_${action}`;
-        run = await runChunked(ids, 'translate', field, lang, TR_SYS(lang), TR_USR, `Translating ${action.toUpperCase()}`);
+        run = await runChunked(ids, 'translate', field, action, TR_SYS(lang), TR_USR, `Translating ${action.toUpperCase()}`);
         const updates = Object.entries(run.results).map(([id, val]) => ({ _id: id, changes: { [field]: val } }));
         onGroupsUpdated(updates);
       }

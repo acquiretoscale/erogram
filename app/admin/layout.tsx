@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import AdminSidebar from './components/AdminSidebar';
 import AiChatWidget from './components/AiChatWidget';
 import TaskBar from './components/TaskBar';
+import NotificationBell from './components/NotificationBell';
 import { TaskManagerProvider } from './components/TaskManagerContext';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -151,15 +152,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <TaskManagerProvider>
       <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col md:flex-row">
+        {/* Mobile-only top bar */}
         <div className="md:hidden flex items-center justify-between p-4 border-b border-white/5 bg-[#0a0a0a] sticky top-0 z-40">
           <h1 className="text-xl font-black gradient-text">Admin Panel</h1>
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="p-2 text-white hover:bg-white/5 rounded-lg"
-          >
-            <span className="text-2xl">☰</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 text-white hover:bg-white/5 rounded-lg"
+            >
+              <span className="text-2xl">☰</span>
+            </button>
+          </div>
         </div>
+
+        {/* Desktop-only fixed bell — top-right corner */}
+        <div className="hidden md:block fixed top-3 right-4 z-50">
+          <NotificationBell />
+        </div>
+
         <AdminSidebar
           onLogout={handleLogout}
           isOpen={isSidebarOpen}
@@ -167,7 +178,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
         />
-        <main className={`flex-1 ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'} p-4 md:p-8 min-h-screen overflow-y-auto w-full transition-all duration-300`}>
+        <main className={`flex-1 ${isSidebarCollapsed ? 'md:ml-[60px]' : 'md:ml-[220px]'} p-4 md:p-8 min-h-screen overflow-y-auto w-full transition-all duration-300`}>
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
         <TaskBar />

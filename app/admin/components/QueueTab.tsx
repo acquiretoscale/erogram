@@ -14,6 +14,8 @@ interface ScheduledGroup {
   country: string;
   telegramLink: string;
   description: string;
+  description_de?: string;
+  description_es?: string;
   memberCount: number;
   image: string;
   premiumOnly: boolean;
@@ -35,6 +37,9 @@ export default function QueueTab() {
 
   const [enrichGroups, setEnrichGroups] = useState<ScheduledGroup[]>([]);
   const [enrichOpen, setEnrichOpen] = useState(false);
+
+  type ContentFilter = 'all' | 'ready' | 'missing_de' | 'missing_es' | 'missing_rewrite' | 'fully_translated';
+  const [contentFilter, setContentFilter] = useState<ContentFilter>('all');
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const authHeader = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
@@ -162,8 +167,28 @@ export default function QueueTab() {
     setEnrichOpen(true);
   };
 
+  const hasRewrite = (g: ScheduledGroup) => !!g.description && g.description.length > 20;
+  const hasDE = (g: ScheduledGroup) => !!g.description_de && g.description_de.length > 5;
+  const hasES = (g: ScheduledGroup) => !!g.description_es && g.description_es.length > 5;
+  const isReady = (g: ScheduledGroup) => hasRewrite(g) && hasDE(g) && hasES(g);
+
+  const filteredGroups = groups.filter(g => {
+    if (contentFilter === 'all') return true;
+    if (contentFilter === 'ready') return isReady(g);
+    if (contentFilter === 'missing_de') return !hasDE(g);
+    if (contentFilter === 'missing_es') return !hasES(g);
+    if (contentFilter === 'missing_rewrite') return !hasRewrite(g);
+    if (contentFilter === 'fully_translated') return hasDE(g) && hasES(g);
+    return true;
+  });
+
+  const countMissingDE = groups.filter(g => !hasDE(g)).length;
+  const countMissingES = groups.filter(g => !hasES(g)).length;
+  const countMissingRW = groups.filter(g => !hasRewrite(g)).length;
+  const countReady = groups.filter(g => isReady(g)).length;
+
   const grouped: Record<string, ScheduledGroup[]> = {};
-  for (const g of groups) {
+  for (const g of filteredGroups) {
     const dateKey = g.scheduledPublishAt
       ? new Date(g.scheduledPublishAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
       : 'Unscheduled';
@@ -242,6 +267,48 @@ export default function QueueTab() {
         </div>
       )}
 
+      {/* Content status filters */}
+      {!loading && groups.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] text-white/30 uppercase tracking-wider mr-1">Content:</span>
+          {([
+            { id: 'all' as ContentFilter, label: 'All', count: groups.length, color: '' },
+            { id: 'ready' as ContentFilter, label: 'Ready', count: countReady, color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+            { id: 'missing_rewrite' as ContentFilter, label: 'No Rewrite', count: countMissingRW, color: 'text-red-400 bg-red-500/10 border-red-500/20' },
+            { id: 'missing_de' as ContentFilter, label: 'No DE', count: countMissingDE, color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+            { id: 'missing_es' as ContentFilter, label: 'No ES', count: countMissingES, color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+          ]).map(f => (
+            <button
+              key={f.id}
+              onClick={() => setContentFilter(f.id)}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold border transition-colors ${
+                contentFilter === f.id
+                  ? (f.color || 'text-white bg-white/10 border-white/20')
+                  : 'text-white/40 bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:text-white/60'
+              }`}
+            >
+              {f.label}
+              {f.count > 0 && <span className="ml-1 opacity-70">{f.count}</span>}
+            </button>
+          ))}
+          <div className="h-4 w-px bg-white/10 mx-1" />
+          <button
+            onClick={() => setSelected(new Set(filteredGroups.map(g => g._id)))}
+            className="px-2.5 py-1 rounded-lg text-[10px] font-semibold border text-white/40 bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:text-white/60 transition-colors"
+          >
+            Select all{contentFilter !== 'all' ? ' filtered' : ''} ({filteredGroups.length})
+          </button>
+          {selected.size > 0 && (
+            <button
+              onClick={() => setSelected(new Set())}
+              className="px-2.5 py-1 rounded-lg text-[10px] font-semibold border text-white/40 bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:text-white/60 transition-colors"
+            >
+              Deselect all
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Queue list */}
       {loading ? (
         <div className="text-center py-16 text-[#666]">Loading queue...</div>
@@ -284,9 +351,23 @@ export default function QueueTab() {
                         <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px] text-[#444] shrink-0">?</div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate">
+                        <div className="font-medium text-sm truncate flex items-center gap-1.5 flex-wrap">
                           {g.name}
-                          {g.premiumOnly && <span className="ml-1.5 text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold">VAULT</span>}
+                          {g.premiumOnly && <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold leading-none">VAULT</span>}
+                          {/* Content status badges */}
+                          {hasRewrite(g)
+                            ? <span className="text-[9px] bg-emerald-500/15 text-emerald-400 px-1 py-0.5 rounded font-bold leading-none">EN</span>
+                            : <span className="text-[9px] bg-red-500/15 text-red-400 px-1 py-0.5 rounded font-bold leading-none">EN✗</span>
+                          }
+                          {hasDE(g)
+                            ? <span className="text-[9px] bg-emerald-500/15 text-emerald-400 px-1 py-0.5 rounded font-bold leading-none">DE</span>
+                            : <span className="text-[9px] bg-white/5 text-white/20 px-1 py-0.5 rounded font-bold leading-none">DE</span>
+                          }
+                          {hasES(g)
+                            ? <span className="text-[9px] bg-emerald-500/15 text-emerald-400 px-1 py-0.5 rounded font-bold leading-none">ES</span>
+                            : <span className="text-[9px] bg-white/5 text-white/20 px-1 py-0.5 rounded font-bold leading-none">ES</span>
+                          }
+                          {isReady(g) && <span className="text-[9px] text-emerald-400 leading-none">✓</span>}
                         </div>
                         <div className="text-xs text-[#666] truncate">
                           {g.category} · <span className={`font-medium ${(g.memberCount || 0) === 0 ? 'text-red-400/60' : (g.memberCount || 0) < 50 ? 'text-red-400' : (g.memberCount || 0) < 500 ? 'text-yellow-400' : 'text-green-400'}`}>{g.memberCount > 0 ? `${g.memberCount.toLocaleString()} members` : '0 members'}</span>

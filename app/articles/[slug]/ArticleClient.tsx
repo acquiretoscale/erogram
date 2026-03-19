@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, useScroll, useSpring, useTransform } from 'framer-motion';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -9,6 +9,19 @@ import Navbar from '@/components/Navbar';
 import HeaderBanner from '@/components/HeaderBanner';
 import Footer from '@/components/Footer';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
+
+function trackArticleClick(slug: string, url: string, type: 'link' | 'cta') {
+  try {
+    fetch('/api/articles/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug, url, type }),
+      keepalive: true,
+    });
+  } catch {
+    // fire-and-forget
+  }
+}
 
 interface Article {
   _id: string;
@@ -266,14 +279,29 @@ export default function ArticleClient({ article, relatedArticles = [], topGroups
     }
   };
 
-  // Memoize markdown components
+  const onLinkClick = useCallback((href: string) => {
+    if (href && /^https?:\/\//.test(href)) {
+      trackArticleClick(article.slug, href, 'link');
+    }
+  }, [article.slug]);
+
+  const onCtaClick = useCallback((href: string) => {
+    trackArticleClick(article.slug, href, 'cta');
+  }, [article.slug]);
+
   const markdownComponents = useMemo(() => ({
     h1: ({ children }: any) => <h1 className="text-3xl md:text-4xl font-bold text-white mt-12 mb-6">{children}</h1>,
     h2: ({ children }: any) => <h2 className="text-2xl md:text-3xl font-bold text-white mt-12 mb-6 border-b border-white/10 pb-4">{children}</h2>,
     h3: ({ children }: any) => <h3 className="text-xl md:text-2xl font-bold text-white mt-8 mb-4">{children}</h3>,
     p: ({ children }: any) => <p className="text-gray-300 leading-relaxed mb-6">{children}</p>,
     a: ({ href, children }: any) => (
-      <a href={href} className="text-[#b31b1b] hover:text-[#ff4d4d] underline decoration-2 underline-offset-4 transition-colors font-medium">
+      <a
+        href={href}
+        target={href && /^https?:\/\//.test(href) ? '_blank' : undefined}
+        rel={href && /^https?:\/\//.test(href) ? 'noopener noreferrer' : undefined}
+        className="text-[#b31b1b] hover:text-[#ff4d4d] underline decoration-2 underline-offset-4 transition-colors font-medium"
+        onClick={() => onLinkClick(href || '')}
+      >
         {children}
       </a>
     ),
@@ -291,9 +319,83 @@ export default function ArticleClient({ article, relatedArticles = [], topGroups
         {alt && <p className="text-center text-sm text-gray-500 mt-2 p-2">{alt}</p>}
       </div>
     ),
-    code: ({ children }: any) => <code className="bg-white/10 text-[#ff4d4d] px-1.5 py-0.5 rounded font-mono text-sm">{children}</code>,
-    pre: ({ children }: any) => <pre className="bg-[#111] p-6 rounded-xl overflow-x-auto my-8 border border-white/10">{children}</pre>,
-  }), []);
+    code: ({ children }: any) => (
+      <code className="bg-white/10 text-[#ff4d4d] px-1.5 py-0.5 rounded font-mono text-sm">{children}</code>
+    ),
+    pre: ({ children }: any) => {
+      const child = Array.isArray(children) ? children[0] : children;
+      const cls = child?.props?.className || '';
+      const lang = typeof cls === 'string' ? cls.replace(/^language-/, '') : '';
+      const codeContent = String(child?.props?.children ?? '');
+
+      if (lang === 'cta') {
+        const lines = codeContent.trim().split('\n');
+        let url = '', text = '', description = '', headline = '';
+        for (const line of lines) {
+          const idx = line.indexOf(':');
+          if (idx === -1) continue;
+          const key = line.slice(0, idx).trim().toLowerCase();
+          const val = line.slice(idx + 1).trim();
+          if (key === 'url') url = val;
+          else if (key === 'text') text = val;
+          else if (key === 'description') description = val;
+          else if (key === 'headline' || key === 'title') headline = val;
+        }
+        if (!url || !text) return null;
+        const heading = headline || 'Ready to continue?';
+        return (
+          <div className="not-prose my-12">
+            <div className="mx-auto max-w-3xl relative overflow-hidden rounded-3xl border border-[#b31b1b]/20 bg-gradient-to-br from-[#140909] via-[#0f0f0f] to-[#090909]">
+              <div className="absolute -top-24 -right-20 w-80 h-80 rounded-full bg-[#b31b1b]/15 blur-[110px] pointer-events-none" />
+              <div className="absolute -bottom-24 -left-20 w-72 h-72 rounded-full bg-[#b31b1b]/10 blur-[95px] pointer-events-none" />
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#ff4d4d]/40 to-transparent" />
+
+              <div className="relative z-10 px-7 py-10 md:px-12 md:py-12 text-center">
+                <h3 className="text-white text-2xl md:text-3xl font-black tracking-tight">
+                  {heading}
+                </h3>
+
+                {description && (
+                  <p className="mt-3 text-gray-300 text-base md:text-lg leading-relaxed max-w-2xl mx-auto">
+                    {description}
+                  </p>
+                )}
+
+                <div className="mt-8 flex justify-center">
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => { e.stopPropagation(); onCtaClick(url); }}
+                    style={{ textDecoration: 'none', pointerEvents: 'auto', cursor: 'pointer' }}
+                    className="group inline-flex w-full sm:w-auto sm:min-w-[340px] max-w-[520px] items-center justify-center gap-3 px-10 py-5 rounded-2xl font-black text-base uppercase tracking-[0.1em] text-white
+                      bg-gradient-to-b from-[#ff4d4d] to-[#b31b1b]
+                      border border-[#ff6b6b]/50
+                      ring-1 ring-white/10
+                      hover:from-[#ff5d5d] hover:to-[#c61f1f]
+                      shadow-[0_18px_44px_rgba(179,27,27,0.56),inset_0_1px_0_rgba(255,255,255,0.25)] hover:shadow-[0_24px_54px_rgba(179,27,27,0.68),inset_0_1px_0_rgba(255,255,255,0.3)]
+                      transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] active:scale-[0.985]"
+                  >
+                    {text}
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 transition-transform duration-200 group-hover:translate-x-1">
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                      <polyline points="12 5 19 12 12 19" />
+                    </svg>
+                  </a>
+                </div>
+
+                <p className="mt-3 text-xs text-gray-500">Opens in a new tab</p>
+              </div>
+
+              <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#b31b1b]/30 to-transparent" />
+            </div>
+          </div>
+        );
+      }
+
+      return <pre className="bg-[#111] p-6 rounded-xl overflow-x-auto my-8 border border-white/10">{children}</pre>;
+    },
+  }), [onLinkClick, onCtaClick]);
 
   // Split content logic
   const { part1, part2 } = useMemo(() => {

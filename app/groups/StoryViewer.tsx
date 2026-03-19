@@ -757,6 +757,33 @@ function MediaSlideView({
         </div>
       )}
 
+      {/* Premium CTA on video slides without a custom CTA */}
+      {slide.mediaType === 'video' && !slide.ctaText && (
+        <div className="absolute bottom-16 left-0 right-0 z-10 flex justify-center px-5 pointer-events-none">
+          <Link
+            href="/premium"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => { e.stopPropagation(); onCtaClick(); }}
+            onPointerDown={stopPointer}
+            className="flex items-center justify-center gap-2 w-full max-w-[280px] py-3.5 rounded-xl text-white text-[14px] font-black uppercase tracking-wide transition-all duration-200 active:scale-[0.96] shadow-xl pointer-events-auto"
+            style={{
+              background: 'linear-gradient(135deg, #c9973a 0%, #e8ba5a 50%, #c9973a 100%)',
+              boxShadow: '0 8px 32px rgba(201,151,58,0.4), 0 0 20px rgba(201,151,58,0.2)',
+              color: '#0d0c0a',
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#0d0c0a">
+              <path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/>
+            </svg>
+            Join Erogram Premium
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0d0c0a" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </Link>
+        </div>
+      )}
+
       {/* Client name badge */}
       {slide.clientName && (
         <div className="absolute bottom-8 left-0 right-0 z-10 flex justify-center">

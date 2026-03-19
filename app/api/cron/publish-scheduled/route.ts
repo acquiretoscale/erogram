@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
     for (const group of groupsToPublish) {
       group.status = 'approved';
       group.scheduledPublishAt = null;
+      group.publishedAt = new Date();
       await group.save();
 
       try {

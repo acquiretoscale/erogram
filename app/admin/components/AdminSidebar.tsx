@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     LayoutDashboard,
@@ -23,6 +24,7 @@ import {
     LogOut,
     ArrowLeft,
     ClockArrowDown,
+    Bell,
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -33,23 +35,26 @@ interface AdminSidebarProps {
     onToggleCollapse: () => void;
 }
 
-const tabs = [
-    { href: '/admin',             name: 'Overview',       icon: LayoutDashboard },
-    { href: '/admin/groups',      name: 'Groups Hub',     icon: Users },
-    { href: '/admin/featured',    name: 'Featured',       icon: Star },
-    { href: '/admin/best-groups', name: 'Best Groups',    icon: Trophy },
-    { href: '/admin/bots',        name: 'Bots',           icon: Bot },
-    { href: '/admin/pending-bots',name: 'Pending Bots',   icon: ClockArrowDown },
-    { href: '/admin/stories',     name: 'Stories',        icon: BookOpen },
-    { href: '/admin/reviews',     name: 'Reviews',        icon: MessageSquareWarning },
-    { href: '/admin/reports',     name: 'Reports',        icon: Flag },
-    { href: '/admin/articles',    name: 'Articles',       icon: FileText },
-    { href: '/admin/cta',         name: 'CTA Manager',    icon: Target },
-    { href: '/admin/adverts',     name: 'Adverts',        icon: Megaphone },
-    { href: '/admin/advertisers', name: 'Advertisers',    icon: Briefcase },
-    { href: '/admin/premium',     name: 'Premium',        icon: Crown },
-    { href: '/admin/users',       name: 'Users',          icon: User },
-    { href: '/admin/settings',    name: 'Settings',       icon: Settings },
+type TabItem = { href: string; name: string; icon: any; hasBadge?: boolean };
+
+const tabs: TabItem[] = [
+    { href: '/admin',                  name: 'Overview',        icon: LayoutDashboard },
+    { href: '/admin/pending-actions',  name: 'Pending Actions', icon: Bell, hasBadge: true },
+    { href: '/admin/groups',           name: 'Groups Hub',      icon: Users },
+    { href: '/admin/featured',         name: 'Featured',        icon: Star },
+    { href: '/admin/best-groups',      name: 'Best Groups',     icon: Trophy },
+    { href: '/admin/bots',             name: 'Bots',            icon: Bot },
+    { href: '/admin/pending-bots',     name: 'Pending Bots',    icon: ClockArrowDown },
+    { href: '/admin/stories',          name: 'Stories',         icon: BookOpen },
+    { href: '/admin/reviews',          name: 'Reviews',         icon: MessageSquareWarning },
+    { href: '/admin/reports',          name: 'Reports',         icon: Flag },
+    { href: '/admin/articles',         name: 'Articles',        icon: FileText },
+    { href: '/admin/cta',              name: 'CTA Manager',     icon: Target },
+    { href: '/admin/adverts',          name: 'Adverts',         icon: Megaphone },
+    { href: '/admin/advertisers',      name: 'Advertisers',     icon: Briefcase },
+    { href: '/admin/premium',          name: 'Premium',         icon: Crown },
+    { href: '/admin/users',            name: 'Users',           icon: User },
+    { href: '/admin/settings',         name: 'Settings',        icon: Settings },
 ];
 
 export default function AdminSidebar({
@@ -60,6 +65,27 @@ export default function AdminSidebar({
     onToggleCollapse,
 }: AdminSidebarProps) {
     const pathname = usePathname();
+    const [pendingTotal, setPendingTotal] = useState(0);
+
+    const fetchPendingCounts = useCallback(async () => {
+        try {
+            const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+            if (!token) return;
+            const res = await fetch('/api/admin/pending-counts', {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setPendingTotal(data.total || 0);
+            }
+        } catch {}
+    }, []);
+
+    useEffect(() => {
+        fetchPendingCounts();
+        const id = setInterval(fetchPendingCounts, 60_000);
+        return () => clearInterval(id);
+    }, [fetchPendingCounts]);
 
     const isActive = (href: string) => {
         if (href === '/admin') return pathname === '/admin';
@@ -117,27 +143,42 @@ export default function AdminSidebar({
                     {tabs.map((tab) => {
                         const Icon = tab.icon;
                         const active = isActive(tab.href);
+                        const showBadge = tab.hasBadge && pendingTotal > 0;
                         return (
                             <a
                                 key={tab.href}
                                 href={tab.href}
                                 onClick={handleClick}
-                                title={isCollapsed ? tab.name : undefined}
-                                className={`flex items-center h-9 rounded-md transition-all duration-150 ${
+                                title={isCollapsed ? `${tab.name}${showBadge ? ` (${pendingTotal})` : ''}` : undefined}
+                                className={`relative flex items-center h-9 rounded-md transition-all duration-150 ${
                                     isCollapsed ? 'justify-center w-full px-0' : 'gap-2.5 px-3'
                                 } ${
                                     active
                                         ? 'bg-red-600 text-white'
+                                        : showBadge && !active
+                                        ? 'text-amber-400/80 hover:text-amber-300 hover:bg-amber-500/[0.08]'
                                         : 'text-white/45 hover:text-white hover:bg-white/[0.05]'
                                 }`}
                             >
                                 <Icon
                                     size={15}
-                                    className={`shrink-0 ${active ? 'text-white' : 'text-white/50'}`}
+                                    className={`shrink-0 ${active ? 'text-white' : showBadge ? 'text-amber-400' : 'text-white/50'}`}
                                     strokeWidth={active ? 2.2 : 1.8}
                                 />
                                 {!isCollapsed && (
-                                    <span className="text-[12.5px] font-medium truncate">{tab.name}</span>
+                                    <>
+                                        <span className="text-[12.5px] font-medium truncate">{tab.name}</span>
+                                        {showBadge && (
+                                            <span className={`ml-auto text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 ${
+                                                active ? 'bg-white/20 text-white' : 'bg-red-600 text-white'
+                                            }`}>
+                                                {pendingTotal}
+                                            </span>
+                                        )}
+                                    </>
+                                )}
+                                {isCollapsed && showBadge && (
+                                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-600 border-2 border-[#0f0f0f]" />
                                 )}
                             </a>
                         );

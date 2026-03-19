@@ -76,8 +76,7 @@ interface HomeClientProps {
 }
 
 const GROUP_BASE = 4_000;
-const BOT_BASE = 100;
-const MEMBER_BASE = 10_000;
+const ACTIVE_USERS_POLL = 60_000;
 
 function useCountUp(target: number, duration = 1800) {
   const [value, setValue] = useState(0);
@@ -112,7 +111,7 @@ function useCountUp(target: number, duration = 1800) {
   return { value, ref };
 }
 
-function LiveStatCard({ target, label, icon }: { target: number; label: string; icon: string }) {
+function LiveStatCard({ target, label, icon, liveNow }: { target: number; label: string; icon: string; liveNow?: boolean }) {
   const { value, ref } = useCountUp(target);
   const [display, setDisplay] = useState(target);
 
@@ -130,6 +129,38 @@ function LiveStatCard({ target, label, icon }: { target: number; label: string; 
     }, 3000 + Math.random() * 4000);
     return () => clearInterval(interval);
   }, [value, target]);
+
+  if (liveNow) {
+    return (
+      <div
+        ref={ref}
+        className="relative rounded-xl sm:rounded-2xl px-3 py-3 sm:p-5 text-center transition-all duration-300 overflow-hidden"
+        style={{
+          background: 'linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(5,150,105,0.08) 100%)',
+          border: '1px solid rgba(52,211,153,0.25)',
+          boxShadow: '0 0 20px rgba(16,185,129,0.1), inset 0 1px 0 rgba(52,211,153,0.1)',
+        }}
+      >
+        {/* Pulsing glow ring */}
+        <div className="absolute inset-0 rounded-xl sm:rounded-2xl animate-pulse" style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(52,211,153,0.08) 0%, transparent 70%)' }} />
+        {/* LIVE badge */}
+        <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 flex items-center gap-1 px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(52,211,153,0.3)' }}>
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+          </span>
+          <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-emerald-400">Live</span>
+        </div>
+        <div className="text-lg sm:text-2xl mb-0.5 sm:mb-1">{icon}</div>
+        <div className="text-[17px] sm:text-2xl md:text-3xl font-black text-emerald-300 mb-0.5 tracking-tight tabular-nums leading-tight">
+          {display.toLocaleString('en-US')}
+        </div>
+        <div className="text-emerald-400/70 text-[10px] sm:text-xs font-black uppercase tracking-wider leading-tight">
+          {label}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -151,12 +182,29 @@ function LiveStatCard({ target, label, icon }: { target: number; label: string; 
   );
 }
 
+function useActiveUsers() {
+  const [count, setCount] = useState<number>(0);
+  useEffect(() => {
+    const fetchActive = () => {
+      fetch('/api/advertise-stats', { cache: 'no-store' })
+        .then(r => r.json())
+        .then(d => { if (typeof d.activeVisitors === 'number') setCount(d.activeVisitors); })
+        .catch(() => {});
+    };
+    fetchActive();
+    const id = setInterval(fetchActive, ACTIVE_USERS_POLL);
+    return () => clearInterval(id);
+  }, []);
+  return count;
+}
+
 export default function HomeClient({ featuredArticles, heroCampaigns = [], newGroups = [], stats, locale = 'en' }: HomeClientProps) {
   const { t, dict } = useTranslation();
   const lp = useLocalePath();
   const router = useRouter();
   const [username, setUsername] = useState<string | null>(null);
   const [useLightAnimations, setUseLightAnimations] = useState(false);
+  const activeUsers = useActiveUsers();
   useEffect(() => {
     // Client-only: read from localStorage (avoid breaking SSR and restricted envs)
     try {
@@ -335,7 +383,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
           {useLightAnimations ? (
             <div className={`grid grid-cols-3 gap-2 sm:gap-4 max-w-3xl mx-auto ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.5s' }}>
               <LiveStatCard target={GROUP_BASE + (stats?.groupCount ?? 0)} label={t('home.statsGroups', 'Groups')} icon="🔥" />
-              <LiveStatCard target={MEMBER_BASE + (stats?.totalMembers ?? 0)} label={t('home.statsMembers', 'Members')} icon="👥" />
+              <LiveStatCard target={activeUsers} label="Visiting Now" icon="🟢" liveNow />
               <LiveStatCard target={stats?.totalViews ?? 0} label={t('home.statsViews', 'Views')} icon="👁️" />
             </div>
           ) : (
@@ -347,7 +395,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
               style={{ willChange: 'transform, opacity' }}
             >
               <LiveStatCard target={GROUP_BASE + (stats?.groupCount ?? 0)} label={t('home.statsGroups', 'Groups')} icon="🔥" />
-              <LiveStatCard target={MEMBER_BASE + (stats?.totalMembers ?? 0)} label={t('home.statsMembers', 'Members')} icon="👥" />
+              <LiveStatCard target={activeUsers} label="Visiting Now" icon="🟢" liveNow />
               <LiveStatCard target={stats?.totalViews ?? 0} label={t('home.statsViews', 'Views')} icon="👁️" />
             </motion.div>
           )}

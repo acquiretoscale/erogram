@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import type { StoryCategory } from './types';
 
@@ -51,7 +51,7 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
   const hasStories = storyData.length > 0;
 
   return (
-    <section className="mb-6">
+    <section className="mb-3">
       {hasStories && (
         <style>{`
           @keyframes story-neon-spin {
@@ -68,45 +68,36 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
 
       <h3 className="sr-only">Recent Groups</h3>
 
-      {/* Main card — warm orange gradient with glossy reflection */}
-      {hasStories && <div className="relative rounded-2xl overflow-hidden" style={{
+      {/* Single-row card: label on left, circles scroll right */}
+      {hasStories && <div className="relative rounded-xl overflow-hidden flex items-stretch" style={{
         background: 'linear-gradient(165deg, #1a1008 0%, #2a1a0a 40%, #1f1208 100%)',
         border: '1px solid rgba(245,158,11,0.2)',
         boxShadow: '0 4px 24px rgba(245,158,11,0.08), inset 0 1px 0 rgba(255,200,100,0.08)',
       }}>
         {/* Glossy reflection overlay */}
-        <div className="absolute inset-0 pointer-events-none" style={{
+        <div className="absolute inset-0 pointer-events-none z-0" style={{
           background: 'linear-gradient(180deg, rgba(255,180,60,0.07) 0%, transparent 40%, transparent 85%, rgba(245,158,11,0.04) 100%)',
         }} />
 
-        {/* Compact header — dark with orange accent */}
-        <div className="relative z-[1] px-4 py-2.5 flex items-center gap-2.5" style={{ background: '#0a0a0a' }}>
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #f97316, #ea580c)' }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="2" width="20" height="20" rx="5" />
-              <circle cx="12" cy="12" r="5" />
-              <circle cx="17.5" cy="6.5" r="1.5" fill="white" stroke="none" />
-            </svg>
-          </div>
-          <div>
-            <h4 className="text-[13px] font-black uppercase tracking-widest leading-tight text-white">Erogram Stories</h4>
-            <p className="text-[10px] font-medium leading-tight" style={{ color: '#f97316' }}>See what&apos;s new</p>
-          </div>
-          {/* Orange accent line at bottom */}
-          <div className="absolute bottom-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(90deg, #f97316, #ea580c, #f59e0b)' }} />
+        {/* Left label — compact horizontal */}
+        <div className="relative z-[1] shrink-0 flex flex-col items-center justify-center px-2 py-2" style={{
+          background: 'linear-gradient(180deg, #0d0d0d 0%, #111008 100%)',
+          borderRight: '1px solid rgba(245,158,11,0.15)',
+        }}>
+          <p className="text-[8px] font-black uppercase tracking-widest text-white/60 whitespace-nowrap" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>Stories</p>
         </div>
 
-        {/* Scroll container */}
-        <div className="relative group/scroll">
+        {/* Scrollable circles */}
+        <div className="relative flex-1 min-w-0 group/scroll">
           {canScrollLeft && (
             <button
               onClick={() => scroll('left')}
-              className="absolute left-0 top-0 bottom-0 z-10 w-10 flex items-center justify-start pl-1.5 opacity-0 group-hover/scroll:opacity-100 transition-opacity duration-200"
+              className="absolute left-0 top-0 bottom-0 z-10 w-8 flex items-center justify-start pl-1 opacity-0 group-hover/scroll:opacity-100 transition-opacity duration-200"
               style={{ background: 'linear-gradient(to right, #1a1008 40%, transparent)' }}
               aria-label="Scroll left"
             >
-              <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="15,18 9,12 15,6" /></svg>
+              <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="15,18 9,12 15,6" /></svg>
               </div>
             </button>
           )}
@@ -114,19 +105,19 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
           {canScrollRight && (
             <button
               onClick={() => scroll('right')}
-              className="absolute right-0 top-0 bottom-0 z-10 w-10 flex items-center justify-end pr-1.5 opacity-0 group-hover/scroll:opacity-100 transition-opacity duration-200"
+              className="absolute right-0 top-0 bottom-0 z-10 w-8 flex items-center justify-end pr-1 opacity-0 group-hover/scroll:opacity-100 transition-opacity duration-200"
               style={{ background: 'linear-gradient(to left, #1a1008 40%, transparent)' }}
               aria-label="Scroll right"
             >
-              <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="9,6 15,12 9,18" /></svg>
+              <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="9,6 15,12 9,18" /></svg>
               </div>
             </button>
           )}
 
           <div
             ref={scrollRef}
-            className="flex gap-5 overflow-x-auto scrollbar-hide px-4 py-4 pb-5"
+            className="flex gap-3 overflow-x-auto scrollbar-hide px-2.5 py-2"
           >
             {storyData.map((cat, i) => (
               <StoryCircle
@@ -137,28 +128,31 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
               />
             ))}
             <PremiumUpgradeCircle />
+            <VisitingNowCard />
           </div>
         </div>
       </div>}
 
       {/* Trending categories — always visible for SEO */}
-      <nav aria-label="Trending Telegram group categories" className="mt-3 rounded-xl p-2.5 shadow-sm" style={{ background: 'linear-gradient(135deg, #1a1510, #191510)', border: '1px solid rgba(245,158,11,0.15)' }}>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[9px] font-black uppercase tracking-wider shrink-0 mr-0.5" style={{ color: '#f59e0b' }}>🔥 Trending Categories</span>
+      <nav aria-label="Trending Telegram group categories" className="mt-1.5 rounded-lg px-2 py-1.5 shadow-sm" style={{ background: 'linear-gradient(135deg, #1a1510, #191510)', border: '1px solid rgba(245,158,11,0.15)' }}>
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="text-[8px] font-black uppercase tracking-wider shrink-0 mr-0.5" style={{ color: '#f59e0b' }}>🔥 Trending</span>
             {[
-              { label: 'Russian', href: '/best-telegram-groups/russian' },
-              { label: 'Amateur', href: '/best-telegram-groups/amateur' },
-              { label: 'Threesome', href: '/best-telegram-groups/threesome' },
+              { label: 'Telegram Porn', href: '/best-telegram-groups/porn-telegram' },
               { label: 'Lesbian', href: '/best-telegram-groups/lesbian' },
-              { label: 'China', href: '/best-telegram-groups/china' },
-              { label: 'Cosplay', href: '/best-telegram-groups/cosplay' },
+              { label: 'Threesome', href: '/best-telegram-groups/threesome' },
+              { label: 'Big Ass', href: '/best-telegram-groups/big%20ass' },
               { label: 'Blowjob', href: '/best-telegram-groups/blowjob' },
-              { label: 'Colombia', href: '/best-telegram-groups/colombia' },
+              { label: 'Amateur', href: '/best-telegram-groups/amateur' },
+              { label: 'Onlyfans', href: '/best-telegram-groups/onlyfans' },
+              { label: 'Russia', href: '/groups/country/Russia' },
+              { label: 'UK', href: '/groups/country/UK' },
+              { label: 'Germany', href: '/groups/country/Germany' },
             ].map(({ label, href }) => (
               <Link
                 key={href}
                 href={href}
-                className="px-2 py-[3px] text-[9px] font-bold rounded-full transition-all duration-200 whitespace-nowrap hover:scale-105"
+                className="px-1.5 py-[2px] text-[8px] font-bold rounded-full transition-all duration-200 whitespace-nowrap hover:scale-105"
                 style={{
                   background: 'linear-gradient(135deg, rgba(245,158,11,0.2), rgba(234,88,12,0.15))',
                   color: '#fbbf24',
@@ -168,18 +162,6 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
                 {label}
               </Link>
             ))}
-            <Link
-              href="/premium"
-              target="_blank"
-              className="px-3 py-1.5 text-[10px] font-black rounded-full transition-all duration-200 whitespace-nowrap hover:opacity-90 inline-flex items-center gap-1"
-              style={{
-                background: 'linear-gradient(135deg, #c9973a, #e8ba5a)',
-                color: '#0d0c0a',
-                boxShadow: '0 0 10px rgba(201,151,58,0.35)',
-              }}
-            >
-              ⭐ EROGRAM PREMIUM
-            </Link>
         </div>
       </nav>
     </section>
@@ -191,7 +173,7 @@ function PremiumUpgradeCircle() {
     <Link
       href="/premium"
       target="_blank"
-      className="flex flex-col items-center gap-2 shrink-0 group outline-none"
+      className="flex flex-col items-center gap-1 shrink-0 group outline-none"
       aria-label="Upgrade to Erogram Premium"
     >
       <div className="relative w-[76px] h-[76px] md:w-[84px] md:h-[84px]">
@@ -217,10 +199,59 @@ function PremiumUpgradeCircle() {
           </svg>
         </div>
       </div>
-      <span className="text-[9px] md:text-[10px] font-black uppercase tracking-tight text-center leading-tight text-amber-400 group-hover:text-amber-300 transition-colors max-w-[76px] md:max-w-[84px]">
-        Upgrade<br />Premium
+      <span className="text-[7px] md:text-[8px] font-black uppercase tracking-tight text-center leading-none text-amber-400 group-hover:text-amber-300 transition-colors whitespace-nowrap">
+        ⭐ Erogram<br />Premium
       </span>
     </Link>
+  );
+}
+
+function VisitingNowCard() {
+  const [count, setCount] = useState(0);
+
+  const fetchCount = useCallback(() => {
+    fetch('/api/advertise-stats', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => { if (typeof d.activeVisitors === 'number') setCount(d.activeVisitors); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetchCount();
+    const id = setInterval(fetchCount, 60_000);
+    return () => clearInterval(id);
+  }, [fetchCount]);
+
+  return (
+    <div className="shrink-0 flex flex-col justify-center gap-2 pl-3 ml-1" style={{ borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
+      {/* Visiting now — subtle stat */}
+      <div className="flex items-center gap-1.5">
+        <span className="relative flex h-1.5 w-1.5 shrink-0">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+        </span>
+        <div className="flex flex-col leading-none">
+          <span className="text-[17px] font-black text-white/80 tabular-nums">{count > 0 ? count.toLocaleString('en-US') : '—'}</span>
+          <span className="text-[10px] font-medium text-white/40 mt-0.5">visiting now</span>
+        </div>
+      </div>
+
+      {/* Advertise CTA */}
+      <Link
+        href="/advertise"
+        className="flex items-center gap-0.5 px-1.5 py-0.5 rounded font-black text-[7px] uppercase tracking-wider transition-all hover:opacity-90 active:scale-95 whitespace-nowrap"
+        style={{
+          background: 'linear-gradient(135deg, #b31b1b, #7f1d1d)',
+          color: 'white',
+          boxShadow: '0 1px 4px rgba(179,27,27,0.3)',
+        }}
+      >
+        <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </svg>
+        Advertise
+      </Link>
+    </div>
   );
 }
 
@@ -255,10 +286,9 @@ function StoryCircle({
   return (
     <button
       onClick={onClick}
-      className="flex flex-col items-center gap-2 shrink-0 group outline-none"
+      className="flex flex-col items-center gap-1 shrink-0 group outline-none"
       aria-label={`View ${category.label} stories`}
     >
-      {/* Outer sizing wrapper */}
       <div className="relative w-[76px] h-[76px] md:w-[84px] md:h-[84px]">
 
         {/* Spinning neon ring layer — clipped to circle */}

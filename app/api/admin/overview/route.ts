@@ -85,6 +85,9 @@ export async function GET(req: NextRequest) {
       manualTotal,
       manualThisMonth,
       totalBookmarks, totalBookmarkFolders,
+      groupsTrend30d, botsTrend30d,
+      scheduledCount, nextScheduledGroup, lastScheduledGroup,
+      newUsers24hCount, newBots24hCount, newPaidBots24hCount,
     ] = await Promise.all([
       Group.countDocuments({ status: 'pending' }),
       Bot.countDocuments({ status: 'pending' }),
@@ -173,6 +176,26 @@ export async function GET(req: NextRequest) {
       ]),
       Bookmark.countDocuments(),
       BookmarkFolder.countDocuments(),
+      // Groups published trend 30d (use publishedAt, fallback to createdAt for legacy)
+      Group.aggregate([
+        { $match: { status: 'approved', $or: [{ publishedAt: { $gte: _30d } }, { publishedAt: null, createdAt: { $gte: _30d } }] } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: { $ifNull: ['$publishedAt', '$createdAt'] } } }, value: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      // Bots published trend 30d (use publishedAt, fallback to createdAt for legacy)
+      Bot.aggregate([
+        { $match: { status: 'approved', $or: [{ publishedAt: { $gte: _30d } }, { publishedAt: null, createdAt: { $gte: _30d } }] } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: { $ifNull: ['$publishedAt', '$createdAt'] } } }, value: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      // Scheduled pipeline stats
+      Group.countDocuments({ status: 'scheduled' }),
+      Group.findOne({ status: 'scheduled' }).sort({ scheduledPublishAt: 1 }).select('scheduledPublishAt name').lean(),
+      Group.findOne({ status: 'scheduled' }).sort({ scheduledPublishAt: -1 }).select('scheduledPublishAt').lean(),
+      // Activity counts (24h)
+      User.countDocuments({ createdAt: { $gte: _24h } }),
+      Bot.countDocuments({ createdAt: { $gte: _24h } }),
+      Bot.countDocuments({ createdAt: { $gte: _24h }, paidBoost: true }),
     ]);
 
     const starsUsdRate = (latestRate as any)?.usdtPerStar || 0;
@@ -416,6 +439,13 @@ export async function GET(req: NextRequest) {
           byCountry30d: (usersByCountry30d as {_id:string;count:number}[]).map(c => ({ country: c._id, count: c.count })),
         },
         engagement: { bookmarks: totalBookmarks, folders: totalBookmarkFolders },
+        publishing: {
+          groupsTrend30d: buildTrend(groupsTrend30d),
+          botsTrend30d: buildTrend(botsTrend30d),
+          scheduledCount: scheduledCount as number,
+          nextScheduled: nextScheduledGroup ? { name: (nextScheduledGroup as any).name, date: (nextScheduledGroup as any).scheduledPublishAt } : null,
+          lastScheduled: lastScheduledGroup ? { date: (lastScheduledGroup as any).scheduledPublishAt } : null,
+        },
       },
       pending: { groups: pendingGroups, bots: pendingBots, reviews: pendingReviews, reports: pendingReports, total: pendingTotal },
       recentSales: sales,
@@ -433,6 +463,14 @@ export async function GET(req: NextRequest) {
         advertisers,
       },
       monitoring: { dbLatencyMs, alerts },
+      activity: {
+        newUsers24h: (newUsers24hCount as number) || 0,
+        newPaidUsers24h: sales24h.filter(s => s.type === 'subscription').length,
+        newFreeUsers24h: Math.max(0, ((newUsers24hCount as number) || 0) - sales24h.filter(s => s.type === 'subscription').length),
+        newBots24h: (newBots24hCount as number) || 0,
+        newPaidBots24h: (newPaidBots24hCount as number) || 0,
+        newFreeBots24h: Math.max(0, ((newBots24hCount as number) || 0) - ((newPaidBots24hCount as number) || 0)),
+      },
     });
   } catch (err: any) {
     console.error('[admin/overview]', err);

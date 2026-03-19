@@ -69,6 +69,10 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ message: 'No valid updates provided' }, { status: 400 });
     }
 
+    if (cleanUpdates.status === 'approved') {
+      cleanUpdates.publishedAt = new Date();
+    }
+
     const result = await Group.updateMany(
       { _id: { $in: groupIds } },
       { $set: cleanUpdates }

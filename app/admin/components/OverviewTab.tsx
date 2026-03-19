@@ -41,7 +41,7 @@ export type DashboardData = {
     starsRevenueThisMonth?: number;
     manualRevenueThisMonth?: number;
   };
-  kpis?: { paidSubs?: Metric; adClicks?: Metric; traffic?: Metric; users?: { total: number; free: number; newUsersTrend30d: TrendPoint[]; byCountry30d?: { country: string; count: number }[] }; engagement?: { bookmarks: number; folders: number } };
+  kpis?: { paidSubs?: Metric; adClicks?: Metric; traffic?: Metric; users?: { total: number; free: number; newUsersTrend30d: TrendPoint[]; byCountry30d?: { country: string; count: number }[] }; engagement?: { bookmarks: number; folders: number }; publishing?: { groupsTrend30d: TrendPoint[]; botsTrend30d: TrendPoint[]; scheduledCount?: number; nextScheduled?: { name: string; date: string } | null; lastScheduled?: { date: string } | null } };
   pending?: { groups: number; bots: number; reviews: number; reports: number; total: number };
   recentSales?: RecentSale[];
   salesSummary?: { count: number; totalStars: number; totalUsd: number; last24hCount: number; last24hUsd: number };
@@ -126,14 +126,17 @@ function AreaChart({ points, color, label }: { points: TrendPoint[]; color: stri
             </>
           )}
         </svg>
-        {hover !== null && points[hover] && (
-          <div
-            className="absolute -top-8 pointer-events-none z-10 bg-[#1e1e1e] border border-white/10 text-white text-[11px] font-semibold px-2 py-1 rounded-md shadow-lg whitespace-nowrap"
-            style={{ left: `${(hover / Math.max(points.length - 1, 1)) * 100}%`, transform: 'translateX(-50%)' }}
-          >
-            {fmtShortDate(points[hover].date)}: <span className="font-bold">{fmtNum(points[hover].value)}</span>
-          </div>
-        )}
+        {hover !== null && points[hover] && (() => {
+          const pct = hover / Math.max(points.length - 1, 1);
+          return (
+            <div
+              className="absolute -top-8 pointer-events-none z-10 bg-[#1e1e1e] border border-white/10 text-white text-[11px] font-semibold px-2 py-1 rounded-md shadow-lg whitespace-nowrap"
+              style={{ left: `${pct * 100}%`, transform: `translateX(-${pct * 100}%)` }}
+            >
+              {fmtShortDate(points[hover].date)}: <span className="font-bold">{fmtNum(points[hover].value)}</span>
+            </div>
+          );
+        })()}
       </div>
       <div className="flex justify-between mt-1">
         {axIdx.map(i => <span key={i} className="text-[10px] text-white/25">{fmtShortDate(points[i].date)}</span>)}
@@ -232,16 +235,131 @@ function DualAreaChart({ free: allNew, paid }: { free: TrendPoint[]; paid: Trend
             </>
           )}
         </svg>
-        {hover !== null && combined[hover] && (
-          <div
-            className="absolute -top-8 pointer-events-none z-10 bg-[#1e1e1e] border border-white/10 text-white text-[11px] font-semibold px-2 py-1 rounded-md shadow-lg whitespace-nowrap"
-            style={{ left: `${(hover / Math.max(combined.length - 1, 1)) * 100}%`, transform: 'translateX(-50%)' }}
-          >
-            {fmtShortDate(combined[hover].date)}
-            {showFree && <>{' '}<span className="text-sky-400">Free {fmtNum(combined[hover].free)}</span></>}
-            {showPaid && <>{' '}<span className="text-violet-400">Paid {fmtNum(combined[hover].paid)}</span></>}
-          </div>
-        )}
+        {hover !== null && combined[hover] && (() => {
+          const pct = hover / Math.max(combined.length - 1, 1);
+          return (
+            <div
+              className="absolute -top-8 pointer-events-none z-10 bg-[#1e1e1e] border border-white/10 text-white text-[11px] font-semibold px-2 py-1 rounded-md shadow-lg whitespace-nowrap"
+              style={{ left: `${pct * 100}%`, transform: `translateX(-${pct * 100}%)` }}
+            >
+              {fmtShortDate(combined[hover].date)}
+              {showFree && <>{' '}<span className="text-sky-400">Free {fmtNum(combined[hover].free)}</span></>}
+              {showPaid && <>{' '}<span className="text-violet-400">Paid {fmtNum(combined[hover].paid)}</span></>}
+            </div>
+          );
+        })()}
+      </div>
+      <div className="flex justify-between mt-1">
+        {axIdx.map(i => <span key={i} className="text-[10px] text-white/25">{fmtShortDate(combined[i].date)}</span>)}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Dual Series Chart (two independent series) ─── */
+function DualSeriesChart({ series1, series2, label1, label2, color1, color2 }: {
+  series1: TrendPoint[]; series2: TrendPoint[];
+  label1: string; label2: string;
+  color1: string; color2: string;
+}) {
+  const [hover, setHover] = useState<number | null>(null);
+  const [show1, setShow1] = useState(true);
+  const [show2, setShow2] = useState(true);
+
+  const dates = series1.length ? series1.map(p => p.date) : series2.map(p => p.date);
+  if (!dates.length) return <div className="h-16 flex items-center justify-center text-xs text-white/20">No data</div>;
+
+  const map1 = Object.fromEntries(series1.map(p => [p.date, p.value]));
+  const map2 = Object.fromEntries(series2.map(p => [p.date, p.value]));
+  const combined = dates.map(d => ({ date: d, v1: map1[d] ?? 0, v2: map2[d] ?? 0 }));
+
+  const W = 400, H = 64, PAD = 2;
+  const maxVal = Math.max(
+    ...combined.map(p => {
+      let v = 0;
+      if (show1) v = Math.max(v, p.v1);
+      if (show2) v = Math.max(v, p.v2);
+      return v;
+    }),
+    1
+  );
+  const step = (W - PAD * 2) / Math.max(combined.length - 1, 1);
+  const yOf = (v: number) => PAD + (1 - v / maxVal) * (H - PAD * 2);
+
+  const pts1 = combined.map((p, i) => ({ x: PAD + i * step, y: yOf(p.v1) }));
+  const pts2 = combined.map((p, i) => ({ x: PAD + i * step, y: yOf(p.v2) }));
+
+  const linePath = (pts: {x:number;y:number}[]) => pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+  const areaPath = (pts: {x:number;y:number}[], line: string) =>
+    `${line} L${pts[pts.length-1].x},${H} L${pts[0].x},${H} Z`;
+
+  const line1 = linePath(pts1);
+  const line2 = linePath(pts2);
+  const axIdx = [0, Math.floor(combined.length / 2), combined.length - 1];
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-2">
+        <button
+          onClick={() => { if (show1 || !show2) setShow1(!show1); if (!show1 && !show2) setShow2(true); }}
+          className={`flex items-center gap-1 text-[10px] font-semibold rounded px-2 py-0.5 transition-colors ${show1 ? `bg-[${color1}]/15 border` : 'bg-white/5 text-white/30 border border-white/5 line-through'}`}
+          style={show1 ? { background: `${color1}15`, color: color1, borderColor: `${color1}33` } : undefined}
+        >
+          <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: show1 ? color1 : 'rgba(255,255,255,0.2)' }} />{label1}
+        </button>
+        <button
+          onClick={() => { if (show2 || !show1) setShow2(!show2); if (!show2 && !show1) setShow1(true); }}
+          className={`flex items-center gap-1 text-[10px] font-semibold rounded px-2 py-0.5 transition-colors ${show2 ? `border` : 'bg-white/5 text-white/30 border border-white/5 line-through'}`}
+          style={show2 ? { background: `${color2}15`, color: color2, borderColor: `${color2}33` } : undefined}
+        >
+          <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: show2 ? color2 : 'rgba(255,255,255,0.2)' }} />{label2}
+        </button>
+      </div>
+      <div className="relative">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 56 }} onMouseLeave={() => setHover(null)}>
+          <defs>
+            <linearGradient id={`g-ds-1`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color1} stopOpacity="0.2" />
+              <stop offset="100%" stopColor={color1} stopOpacity="0" />
+            </linearGradient>
+            <linearGradient id={`g-ds-2`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color2} stopOpacity="0.2" />
+              <stop offset="100%" stopColor={color2} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          {show1 && <>
+            <path d={areaPath(pts1, line1)} fill="url(#g-ds-1)" />
+            <path d={line1} fill="none" stroke={color1} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </>}
+          {show2 && <>
+            <path d={areaPath(pts2, line2)} fill="url(#g-ds-2)" />
+            <path d={line2} fill="none" stroke={color2} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </>}
+          {combined.map((_, i) => (
+            <rect key={i} x={pts1[i].x - step/2} y={0} width={step} height={H}
+              fill="transparent" onMouseEnter={() => setHover(i)} onClick={() => setHover(i)} style={{ cursor: 'pointer' }} />
+          ))}
+          {hover !== null && pts1[hover] && (
+            <>
+              <line x1={pts1[hover].x} y1={0} x2={pts1[hover].x} y2={H} stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="3,3" />
+              {show1 && <circle cx={pts1[hover].x} cy={pts1[hover].y} r="3.5" fill="#141414" stroke={color1} strokeWidth="1.5" />}
+              {show2 && <circle cx={pts2[hover].x} cy={pts2[hover].y} r="3.5" fill="#141414" stroke={color2} strokeWidth="1.5" />}
+            </>
+          )}
+        </svg>
+        {hover !== null && combined[hover] && (() => {
+          const pct = hover / Math.max(combined.length - 1, 1);
+          return (
+            <div
+              className="absolute -top-8 pointer-events-none z-10 bg-[#1e1e1e] border border-white/10 text-white text-[11px] font-semibold px-2 py-1 rounded-md shadow-lg whitespace-nowrap"
+              style={{ left: `${pct * 100}%`, transform: `translateX(-${pct * 100}%)` }}
+            >
+              {fmtShortDate(combined[hover].date)}
+              {show1 && <>{' '}<span style={{ color: color1 }}>{label1} {fmtNum(combined[hover].v1)}</span></>}
+              {show2 && <>{' '}<span style={{ color: color2 }}>{label2} {fmtNum(combined[hover].v2)}</span></>}
+            </div>
+          );
+        })()}
       </div>
       <div className="flex justify-between mt-1">
         {axIdx.map(i => <span key={i} className="text-[10px] text-white/25">{fmtShortDate(combined[i].date)}</span>)}
@@ -504,6 +622,45 @@ export default function OverviewTab({ data, loading, onRefresh }: Props) {
           </Card>
         </motion.div>
       </div>
+
+      {/* Groups/Bots Published */}
+      <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.16 }}>
+        <Card>
+          <SectionHeader title="Groups & Bots Published" right={<span className="text-[10px] text-white/25">30d</span>} />
+          <div className="p-3 pt-2">
+            <DualSeriesChart
+              series1={kpis.publishing?.groupsTrend30d ?? []}
+              series2={kpis.publishing?.botsTrend30d ?? []}
+              label1="Groups" label2="Bots"
+              color1="#f59e0b" color2="#7c3aed"
+            />
+            {/* Scheduled pipeline status */}
+            <div className="mt-3 pt-3 border-t border-white/[0.06]">
+              {(kpis.publishing?.scheduledCount ?? 0) > 0 ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500" />
+                    </span>
+                    <span className="text-[11px] text-white/50">
+                      <span className="font-semibold text-amber-400">{kpis.publishing!.scheduledCount}</span> scheduled
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-white/30">
+                    Next: {kpis.publishing!.nextScheduled ? fmtDate(kpis.publishing!.nextScheduled.date) : '—'}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-500/60" />
+                  <span className="text-[11px] text-red-400/70">No groups in scheduled pipeline</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+      </motion.div>
 
       {/* Donuts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

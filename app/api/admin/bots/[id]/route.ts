@@ -59,6 +59,9 @@ export async function PUT(
     Object.assign(bot, body);
     bot.reviewedBy = admin._id;
     bot.reviewedAt = new Date();
+    if (oldStatus !== 'approved' && bot.status === 'approved') {
+      bot.publishedAt = new Date();
+    }
     await bot.save();
     console.log('Bot updated successfully:', bot._id, 'pinned:', bot.pinned);
     

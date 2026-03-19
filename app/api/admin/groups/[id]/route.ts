@@ -82,6 +82,10 @@ export async function PUT(
       }
     }
     
+    if (body.status === 'approved' && oldGroup.status !== 'approved') {
+      updateData.publishedAt = new Date();
+    }
+
     const group = await Group.findByIdAndUpdate(
       id,
       { ...updateData, updatedAt: new Date() },

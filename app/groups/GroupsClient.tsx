@@ -546,6 +546,13 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
         <div className="w-full mb-4">
           <HeaderBanner campaigns={topBannerCampaigns} />
         </div>
+        {/* Stories — always first on mobile, full-width on all sizes */}
+        <StoryBar
+          storyData={storyData}
+          seenStoryMap={seenStoryMap}
+          onOpenStory={handleOpenStory}
+        />
+
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
           {/* Mobile: Filter toggle */}
           <div className="lg:hidden">
@@ -656,13 +663,6 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
           <div className="lg:w-3/4 min-w-0 shrink-0">
             <div className="relative">
-              {/* Story circles (replaces old Popular Categories) */}
-              <StoryBar
-                storyData={storyData}
-                seenStoryMap={seenStoryMap}
-                onOpenStory={handleOpenStory}
-              />
-
               {/* Top Groups — boosted group takes Spot 1 when active (hidden during search) */}
               {!debouncedSearchQuery && (topGroups.length > 0 || topGroupsLoading) && (
                 <div className="mb-10 relative rounded-3xl p-[2px]">

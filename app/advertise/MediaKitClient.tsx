@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import AdvertiseStats from './AdvertiseStats';
 import HeroSection from './HeroSection';
@@ -12,14 +13,20 @@ import TelegramEcosystem from './TelegramEcosystem';
 import PageReplica from './PageReplica';
 import AdShop from './AdShop';
 import CreativeSpecs from './CreativeSpecs';
+import AdvertiseContactForm from './AdvertiseContactForm';
 
 interface TgGroup { name: string; memberCount: number }
 interface TgEcosystem { groups: TgGroup[]; totalSubscribers: number; groupCount: number }
 
 export default function MediaKitClient() {
+  const [username, setUsername] = useState<string | null>(null);
   const [tgEcosystem, setTgEcosystem] = useState<TgEcosystem | null>(null);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedUsername = localStorage.getItem('username');
+      if (storedUsername) setUsername(storedUsername);
+    }
     fetch('/api/advertise-stats', { cache: 'no-store' })
       .then((r) => r.json())
       .then((d) => { if (d.telegramEcosystem) setTgEcosystem(d.telegramEcosystem); })
@@ -28,37 +35,35 @@ export default function MediaKitClient() {
 
   return (
     <div className="min-h-screen bg-[#111111] text-[#f5f5f5] overflow-hidden">
-        {/* Animated Background — same as Erogram homepage */}
+        {/* Animated Background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-[#ff0000]/10 to-transparent rounded-full blur-[100px] opacity-30" />
           <div className="absolute bottom-0 right-0 w-[800px] h-[800px] bg-[#ff3366]/5 rounded-full blur-[120px] opacity-20" />
         </div>
 
-        {/* Top bar */}
-        <header className="relative z-10 border-b border-[#333] bg-[#111111]/95 backdrop-blur-md">
-          <div className="max-w-5xl mx-auto px-4 sm:px-8 py-4 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 shrink-0">
-              <div className="w-8 h-8 rounded-lg bg-[#b31b1b] flex items-center justify-center text-sm font-black text-white">E</div>
-              <div>
-                <span className="text-sm font-bold text-[#f5f5f5]">Erogram.pro</span>
-                <span className="text-xs text-[#999] ml-2 hidden sm:inline">Media Kit</span>
-              </div>
-            </div>
-            <nav className="flex items-center gap-2 overflow-x-auto scrollbar-none">
-              <a href="#audience-stats" className="whitespace-nowrap px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider text-[#ccc] hover:text-white hover:bg-white/10 transition-all">
-                Audience Stats
-              </a>
-              <a href="#website-ads" className="whitespace-nowrap px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider text-[#ccc] hover:text-white hover:bg-white/10 transition-all">
-                Ad Placements
-              </a>
-              <a href="#ad-pricing-list" className="whitespace-nowrap px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-[#b31b1b] text-white hover:bg-[#991b1b] transition-all">
-                Advertising Rates
-              </a>
-            </nav>
-          </div>
-        </header>
+        {/* Erogram global navigation */}
+        <Navbar username={username} setUsername={setUsername} />
 
-        <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 pt-12 sm:pt-20 pb-20">
+        {/* Page-specific sub-nav for quick section jumps */}
+        <div className="sticky top-[64px] z-20 border-b border-[#2a2a2a] bg-[#111111]/95 backdrop-blur-md">
+          <div className="max-w-5xl mx-auto px-4 sm:px-8 flex items-center gap-1 sm:gap-2 overflow-x-auto scrollbar-none py-2">
+            <span className="shrink-0 text-[10px] font-black uppercase tracking-widest text-[#b31b1b] mr-2 hidden sm:block">Media Kit</span>
+            <a href="#audience-stats" className="whitespace-nowrap px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider text-[#ccc] hover:text-white hover:bg-white/10 transition-all">
+              Audience Stats
+            </a>
+            <a href="#website-ads" className="whitespace-nowrap px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider text-[#ccc] hover:text-white hover:bg-white/10 transition-all">
+              Ad Placements
+            </a>
+            <a href="#ad-pricing-list" className="whitespace-nowrap px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-[#b31b1b] text-white hover:bg-[#991b1b] transition-all">
+              Advertising Rates
+            </a>
+            <a href="#ad-pricing-list" className="whitespace-nowrap px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider text-[#ccc] hover:text-white hover:bg-white/10 transition-all">
+              Contact
+            </a>
+          </div>
+        </div>
+
+        <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 pt-8 sm:pt-14 pb-20">
           {/* Hero */}
           <HeroSection />
 
@@ -138,6 +143,17 @@ export default function MediaKitClient() {
               </p>
             </div>
             <AdShop />
+
+            {/* Contact form — right below pricing */}
+            <div className="mt-10 max-w-2xl mx-auto rounded-xl border border-[#2a2a2a] bg-[#161616] p-6 sm:p-8" style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.02), 0 20px 50px rgba(0,0,0,0.5)' }}>
+              <div className="text-center mb-6">
+                <h3 className="text-xl sm:text-2xl font-black text-[#f5f5f5]">Have a question?</h3>
+                <p className="mt-1 text-sm text-[#999]">
+                  Send us a message and we&apos;ll get back to you shortly.
+                </p>
+              </div>
+              <AdvertiseContactForm />
+            </div>
           </motion.section>
 
           {/* Ad specs */}

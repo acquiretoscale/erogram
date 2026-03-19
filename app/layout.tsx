@@ -35,7 +35,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: { default: title, template: "%s | Erogram" },
     description,
-    keywords: "telegram groups, telegram channels, communities, messaging, NSFW telegram groups",
+    keywords: "porn telegram, telegram porn, best porn telegram groups, nsfw telegram, nsfw telegram groups, adult telegram directory, porn telegram channels, telegram porn groups",
     icons: { icon: '/favicon.ico?v=2', shortcut: '/favicon.ico?v=2' },
     metadataBase: new URL(siteUrl),
     alternates: {

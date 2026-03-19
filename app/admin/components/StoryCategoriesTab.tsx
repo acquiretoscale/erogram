@@ -18,10 +18,18 @@ interface StoryCategoryConfig {
   r2Folder?: string;
 }
 
+interface PremiumGroupEntry {
+  name: string;
+  slug: string;
+  image: string;
+  memberCount: number;
+  category: string;
+}
+
 interface StorySlide {
   _id?: string;
   categorySlug: string;
-  mediaType: 'image' | 'video';
+  mediaType: 'image' | 'video' | 'premium-grid';
   mediaUrl: string;
   ctaText: string;
   ctaUrl: string;
@@ -35,6 +43,7 @@ interface StorySlide {
   views?: number;
   likes?: number;
   clicks?: number;
+  premiumGroups?: PremiumGroupEntry[];
 }
 
 interface StoryGroupItem {
@@ -559,6 +568,16 @@ export default function StoryCategoriesTab() {
         </div>
       )}
 
+      {/* ── EROGRAM: premium-grid slide editor ── */}
+      {activeCat.filterType === 'erogram' && (
+        <PremiumGridEditor
+          slides={slides.filter(s => s.categorySlug === 'erogram' && s.mediaType === 'premium-grid')}
+          onUpdate={(id, updates) => id && updateSlide(id, updates)}
+          onDelete={(id) => id && deleteSlide(id)}
+          onReload={loadData}
+        />
+      )}
+
       {/* ── EROGRAM: group stories ── */}
       {activeCat.filterType === 'erogram' && storyGroups.length > 0 && (
         <div className="rounded-xl bg-white/[0.03] border border-white/10 p-4 space-y-2">
@@ -716,6 +735,280 @@ function StoryCard({ slide, index, total, isEditing, onToggleEdit, onUpdate, onD
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Premium Grid Slide Editor ──
+function PremiumGridEditor({
+  slides,
+  onUpdate,
+  onDelete,
+  onReload,
+}: {
+  slides: StorySlide[];
+  onUpdate: (id: string | undefined, updates: Partial<StorySlide>) => void;
+  onDelete: (id: string | undefined) => void;
+  onReload: () => void;
+}) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<PremiumGroupEntry[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [editingSlideId, setEditingSlideId] = useState<string | null>(null);
+  const [replacingIdx, setReplacingIdx] = useState<number | null>(null);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function token(): string {
+    try { return localStorage.getItem('token') ?? ''; } catch { return ''; }
+  }
+
+  const searchGroups = (q: string) => {
+    setSearchQuery(q);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    if (q.length < 2) { setSearchResults([]); return; }
+    searchTimeout.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await axios.get(`/api/vault?search=${encodeURIComponent(q)}&limit=12&premiumOnly=true`, {
+          headers: { Authorization: `Bearer ${token()}` },
+        });
+        const groups = (res.data?.groups || []).map((g: any) => ({
+          name: g.name || '',
+          slug: g.slug || '',
+          image: g.image || '',
+          memberCount: g.memberCount || 0,
+          category: g.category || '',
+        }));
+        setSearchResults(groups);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+  };
+
+  const replaceGroup = async (slide: StorySlide, idx: number, newGroup: PremiumGroupEntry) => {
+    const updated = [...(slide.premiumGroups || [])];
+    updated[idx] = newGroup;
+    try {
+      await axios.put(`/api/admin/story-content/${slide._id}`, { premiumGroups: updated }, {
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      onReload();
+    } catch (err) {
+      console.error('Replace group failed:', err);
+    }
+    setReplacingIdx(null);
+    setEditingSlideId(null);
+    setSearchQuery('');
+    setSearchResults([]);
+  };
+
+  const removeGroup = async (slide: StorySlide, idx: number) => {
+    const updated = (slide.premiumGroups || []).filter((_, i) => i !== idx);
+    try {
+      await axios.put(`/api/admin/story-content/${slide._id}`, { premiumGroups: updated }, {
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      onReload();
+    } catch (err) {
+      console.error('Remove group failed:', err);
+    }
+  };
+
+  const addGroup = async (slide: StorySlide, newGroup: PremiumGroupEntry) => {
+    if ((slide.premiumGroups || []).length >= 4) return;
+    const updated = [...(slide.premiumGroups || []), newGroup];
+    try {
+      await axios.put(`/api/admin/story-content/${slide._id}`, { premiumGroups: updated }, {
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      onReload();
+    } catch (err) {
+      console.error('Add group failed:', err);
+    }
+    setSearchQuery('');
+    setSearchResults([]);
+  };
+
+  const updateCaption = async (slide: StorySlide, caption: string) => {
+    try {
+      await axios.put(`/api/admin/story-content/${slide._id}`, { caption }, {
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      onReload();
+    } catch (err) {
+      console.error('Update caption failed:', err);
+    }
+  };
+
+  const fmtNum = (n: number) => n >= 1_000_000 ? (n/1_000_000).toFixed(1)+'M' : n >= 1_000 ? (n/1_000).toFixed(n>=10_000?0:1)+'K' : String(n);
+
+  if (slides.length === 0) {
+    return (
+      <div className="rounded-xl bg-white/[0.03] border border-white/10 p-4">
+        <h4 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Premium Story Slides</h4>
+        <p className="text-white/30 text-sm">No premium-grid slides yet. Click &quot;Generate Now&quot; above to create them from your favourited vault groups.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl bg-white/[0.03] border border-white/10 p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-semibold text-white/50 uppercase tracking-wider">Premium Story Slides ({slides.length})</h4>
+        <p className="text-[10px] text-white/25">Click any group to replace it, or use + to add</p>
+      </div>
+
+      {slides.map(slide => {
+        const groups = slide.premiumGroups || [];
+        const isEditing = editingSlideId === slide._id;
+
+        return (
+          <div key={slide._id} className={`rounded-xl border p-3 space-y-3 transition-all ${isEditing ? 'border-purple-500/30 bg-purple-500/5' : 'border-white/[0.06] bg-white/[0.02]'}`}>
+            {/* Slide header */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-purple-500/20 text-purple-400">GRID</span>
+                <input
+                  className="bg-transparent text-white/80 text-sm font-semibold outline-none border-b border-transparent focus:border-white/20 transition flex-1 min-w-0"
+                  defaultValue={slide.caption || ''}
+                  onBlur={e => { if (e.target.value !== slide.caption) updateCaption(slide, e.target.value); }}
+                  placeholder="Slide caption..."
+                />
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[10px] text-white/20">{(slide.views ?? 0).toLocaleString()} views</span>
+                <button
+                  onClick={() => setEditingSlideId(isEditing ? null : (slide._id ?? null))}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition ${isEditing ? 'bg-purple-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+                >
+                  {isEditing ? 'Done' : 'Edit Groups'}
+                </button>
+                <button onClick={() => onDelete(slide._id)} className="p-1 rounded-lg text-red-400/40 hover:bg-red-500/20 hover:text-red-400 transition">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Group grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {groups.map((g, idx) => (
+                <div
+                  key={`${g.slug}-${idx}`}
+                  onClick={() => {
+                    if (isEditing) { setReplacingIdx(idx); setSearchQuery(''); setSearchResults([]); }
+                  }}
+                  className={`rounded-lg overflow-hidden border transition-all ${
+                    isEditing
+                      ? replacingIdx === idx
+                        ? 'border-purple-500 ring-1 ring-purple-500/50'
+                        : 'border-white/10 cursor-pointer hover:border-purple-500/40'
+                      : 'border-white/[0.06]'
+                  }`}
+                >
+                  <div className="relative aspect-square bg-white/5">
+                    {g.image ? (
+                      <img src={g.image} alt="" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-white/10 text-2xl">?</div>
+                    )}
+                    <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 50%)' }} />
+                    {isEditing && (
+                      <button
+                        onClick={e => { e.stopPropagation(); removeGroup(slide, idx); }}
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/80 flex items-center justify-center hover:bg-red-500 transition"
+                      >
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    )}
+                    <div className="absolute bottom-0 left-0 right-0 p-1.5">
+                      <p className="text-[9px] font-bold text-white truncate leading-tight">{g.name}</p>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[8px] font-bold text-orange-400">{fmtNum(g.memberCount)}</span>
+                        <span className="text-[7px] text-white/40">· {g.category}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Add slot if < 4 groups */}
+              {isEditing && groups.length < 4 && (
+                <div
+                  onClick={() => { setReplacingIdx(null); setSearchQuery(''); setSearchResults([]); }}
+                  className="rounded-lg border-2 border-dashed border-white/10 hover:border-purple-500/30 aspect-square flex items-center justify-center cursor-pointer transition-all"
+                >
+                  <div className="text-center">
+                    <svg className="mx-auto mb-1" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <span className="text-[9px] text-purple-400/60 font-medium">Add Group</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Search to replace/add */}
+            {isEditing && (
+              <div className="space-y-2">
+                <div className="relative">
+                  <svg className="absolute left-3 top-1/2 -translate-y-1/2" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                  <input
+                    value={searchQuery}
+                    onChange={e => searchGroups(e.target.value)}
+                    placeholder="Search vault groups to add/replace..."
+                    className={INPUT + ' pl-8'}
+                    autoFocus
+                  />
+                  {searching && <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-purple-400/30 border-t-purple-400 rounded-full animate-spin" />}
+                </div>
+
+                {searchResults.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto">
+                    {searchResults.map(g => (
+                      <div
+                        key={g.slug}
+                        onClick={() => {
+                          if (replacingIdx !== null) {
+                            replaceGroup(slide, replacingIdx, g);
+                          } else {
+                            addGroup(slide, g);
+                          }
+                        }}
+                        className="rounded-lg overflow-hidden border border-white/10 hover:border-green-500/40 cursor-pointer transition-all hover:scale-[1.02]"
+                      >
+                        <div className="relative aspect-square bg-white/5">
+                          {g.image ? (
+                            <img src={g.image} alt="" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-white/10">?</div>
+                          )}
+                          <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 50%)' }} />
+                          <div className="absolute top-1 right-1">
+                            <div className="w-4 h-4 rounded-full bg-green-500/80 flex items-center justify-center">
+                              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            </div>
+                          </div>
+                          <div className="absolute bottom-0 left-0 right-0 p-1.5">
+                            <p className="text-[9px] font-bold text-white truncate">{g.name}</p>
+                            <span className="text-[8px] text-orange-400 font-bold">{fmtNum(g.memberCount)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {replacingIdx !== null && (
+                  <p className="text-[10px] text-purple-400">
+                    Replacing slot {replacingIdx + 1} — search and click a group above to swap it in
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

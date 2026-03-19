@@ -97,6 +97,7 @@ export const groupSchema = new Schema(
     importBatchId: { type: String, default: null },
     importSource: { type: String, default: null },
     sourceImageUrl: { type: String, default: null },
+    publishedAt: { type: Date, default: null },
     views: { type: Number, default: 0 },
     weeklyViews: { type: Number, default: 0 },
     weeklyClicks: { type: Number, default: 0 },
@@ -125,6 +126,7 @@ export const groupSchema = new Schema(
 );
 
 groupSchema.index({ status: 1, scheduledPublishAt: 1 });
+groupSchema.index({ publishedAt: 1 });
 groupSchema.index({ premiumOnly: 1, status: 1 });
 groupSchema.index({ showOnVaultTeaser: 1, vaultTeaserOrder: 1 });
 groupSchema.index({ categories: 1, status: 1 });
@@ -289,6 +291,7 @@ export const botSchema = new Schema(
     boostDuration: { type: String, enum: ['1d', '7d', '14d', '30d', null], default: null },
     paidBoost: { type: Boolean, default: false },
     paidBoostStars: { type: Number, default: null },
+    publishedAt: { type: Date, default: null },
     views: { type: Number, default: 0 },
     isAdvertisement: { type: Boolean, default: false },
     advertisementUrl: { type: String },
@@ -470,7 +473,7 @@ export const campaignSchema = new Schema(
     internalName: { type: String, default: '' },
     slot: {
       type: String,
-      enum: ['top-banner', 'homepage-hero', 'feed', 'navbar-cta', 'join-cta', 'filter-cta', 'sidebar-feed'],
+      enum: ['top-banner', 'homepage-hero', 'feed', 'navbar-cta', 'join-cta', 'filter-cta', 'sidebar-feed', 'article-link'],
       required: true,
     },
     creative: { type: String, required: false, default: '' },
@@ -549,8 +552,8 @@ campaignImpressionDailySchema.index({ date: 1 });
 export const storySlideContentSchema = new Schema(
   {
     categorySlug: { type: String, required: true, index: true },
-    mediaType: { type: String, enum: ['image', 'video'], required: true },
-    mediaUrl: { type: String, required: true },
+    mediaType: { type: String, enum: ['image', 'video', 'premium-grid'], required: true },
+    mediaUrl: { type: String, default: '' },
     ctaText: { type: String, default: '' },
     ctaUrl: { type: String, default: '' },
     duration: { type: Number, default: 24 },
@@ -562,6 +565,13 @@ export const storySlideContentSchema = new Schema(
     caption: { type: String, default: '' },
     likes: { type: Number, default: 0 },
     clicks: { type: Number, default: 0 },
+    premiumGroups: [{
+      name: String,
+      slug: String,
+      image: String,
+      memberCount: Number,
+      category: String,
+    }],
   },
   { timestamps: true }
 );

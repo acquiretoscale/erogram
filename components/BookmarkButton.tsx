@@ -78,11 +78,11 @@ export default function BookmarkButton({
         title={bookmarked ? 'Remove from saved' : 'Save'}
       >
         {bookmarked ? (
-          <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="#f97316" className="drop-shadow-[0_0_6px_rgba(249,115,22,0.5)]">
+          <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="#f97316" className="drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]">
             <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
           </svg>
         ) : (
-          <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2" className="opacity-80 hover:opacity-100 transition-opacity">
+          <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="rgba(255,255,255,0.15)" stroke="#f97316" strokeWidth="2" className="drop-shadow-[0_0_4px_rgba(0,0,0,0.5)]">
             <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         )}

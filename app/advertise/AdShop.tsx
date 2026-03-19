@@ -378,10 +378,10 @@ function CampaignTotal({ cart, onRemove }: { cart: Map<string, CartItem>; onRemo
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to send order');
+      if (!res.ok) throw new Error(data.error || 'Failed to send quote request');
       setSent(true);
     } catch (err) {
-      setSendError(err instanceof Error ? err.message : 'Failed to send order. Please try again.');
+      setSendError(err instanceof Error ? err.message : 'Failed to send quote request. Please try again.');
     } finally {
       setSending(false);
     }
@@ -489,6 +489,17 @@ function CampaignTotal({ cart, onRemove }: { cart: Map<string, CartItem>; onRemo
           </button>
           <span className="text-[10px] font-bold text-[#666] uppercase tracking-wider">{items.length} placement{items.length !== 1 ? 's' : ''}</span>
         </div>
+      </div>
+
+      {/* Quick contact — always visible */}
+      <div className="px-5 py-3 bg-gradient-to-r from-[#f0ece5] to-[#faf9f7] border-b border-[#e8e3dc] flex flex-col sm:flex-row sm:items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
+          <svg className="w-4 h-4 text-[#888]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          <span className="text-[11px] font-bold text-[#555]">Email us directly:</span>
+        </div>
+        <a href="mailto:erogrampro@gmail.com" className="text-[13px] font-black text-[#1a1a1a] hover:text-[#b31b1b] transition-colors underline underline-offset-2">
+          erogrampro@gmail.com
+        </a>
       </div>
 
       {/* Line items */}
@@ -635,7 +646,7 @@ function CampaignTotal({ cart, onRemove }: { cart: Map<string, CartItem>; onRemo
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-100 mb-3">
               <svg className="w-6 h-6 text-emerald-600" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 8l3.5 3.5L13 5"/></svg>
             </div>
-            <p className="text-sm font-black text-[#1a1a1a] uppercase tracking-widest">Order Sent</p>
+            <p className="text-sm font-black text-[#1a1a1a] uppercase tracking-widest">Quote Request Sent</p>
             <p className="text-xs text-[#888] mt-1">We&apos;ll get back to you shortly to confirm details and next steps.</p>
           </div>
         ) : (
@@ -653,10 +664,10 @@ function CampaignTotal({ cart, onRemove }: { cart: Map<string, CartItem>; onRemo
                   <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                 </svg>
               )}
-              {sending ? 'Sending…' : 'Send Order'}
+              {sending ? 'Sending…' : 'Send Quote Request'}
             </button>
             {sendError && <p className="text-[11px] text-red-500 text-center mt-1">{sendError}</p>}
-            <p className="text-[10px] text-[#bbb] text-center">Your order will be sent directly to our team.</p>
+            <p className="text-[10px] text-[#bbb] text-center">Your quote request will be sent directly to our team.</p>
           </>
         )}
       </div>

@@ -43,11 +43,22 @@ if (process.env.NODE_ENV === 'development') {
 // Export a module-scoped MongoClient promise. By doing this in a
 // separate module, the client can be shared across functions.
 async function connectDB() {
-  // If the connection is already established, return the mongoose instance
   if (mongoose.connection.readyState === 1) {
     return mongoose;
   }
-  return await clientPromise;
+
+  await clientPromise;
+
+  // With bufferCommands: false, wait until connection is truly ready
+  const state = mongoose.connection.readyState as number;
+  if (state !== 1) {
+    await new Promise<void>((resolve, reject) => {
+      mongoose.connection.once('connected', resolve);
+      mongoose.connection.once('error', reject);
+    });
+  }
+
+  return mongoose;
 }
 
 export default connectDB;

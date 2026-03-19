@@ -40,6 +40,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         ? new Date(Date.now() + body.duration * 60 * 60 * 1000)
         : null;
     }
+    if (body.premiumGroups !== undefined) update.premiumGroups = body.premiumGroups;
 
     const slide = await StorySlideContent.findByIdAndUpdate(id, update, { new: true });
     if (!slide) return NextResponse.json({ message: 'Not found' }, { status: 404 });

@@ -32,33 +32,41 @@ async function handleGenerate(req: NextRequest) {
     const admin = await authenticate(req);
     if (!admin) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-    // Fetch the last 8 premium channels (premiumOnly: true)
+    // Prefer favourited vault groups (showOnVaultTeaser: true) first, then fall back to premiumOnly
     let groups = await Group.find({
       status: 'approved',
       premiumOnly: true,
+      showOnVaultTeaser: true,
     })
-      .sort({ createdAt: -1 })
-      .limit(8)
+      .sort({ vaultTeaserOrder: 1, memberCount: -1 })
       .select('name slug image memberCount category')
       .lean();
 
-    // Fallback: if fewer than 8 premiumOnly, fill with latest approved groups
+    // If not enough favourited, fill with remaining premiumOnly groups
     if (groups.length < 8) {
-      const existingSlugs = groups.map((g: any) => g.slug);
-      const filler = await Group.find({
+      const existingIds = new Set(groups.map((g: any) => g._id.toString()));
+      const more = await Group.find({
         status: 'approved',
-        slug: { $nin: existingSlugs },
-        isAdvertisement: { $ne: true },
+        premiumOnly: true,
+        _id: { $nin: Array.from(existingIds) },
       })
-        .sort({ createdAt: -1 })
+        .sort({ memberCount: -1 })
         .limit(8 - groups.length)
         .select('name slug image memberCount category')
         .lean();
-      groups = [...groups, ...filler];
+      groups = [...groups, ...more];
     }
 
     if (groups.length === 0) {
       return NextResponse.json({ message: 'No groups found', slidesCreated: 0, groupsUsed: 0 });
+    }
+
+    // Group by category to create niche-specific slides
+    const byCategory: Record<string, any[]> = {};
+    for (const g of groups) {
+      const cat = (g as any).category || 'Mixed';
+      if (!byCategory[cat]) byCategory[cat] = [];
+      byCategory[cat].push(g);
     }
 
     // Remove previous premium-grid slides
@@ -69,20 +77,23 @@ async function handleGenerate(req: NextRequest) {
 
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     const created: string[] = [];
-    const batches = [groups.slice(0, 4), groups.slice(4, 8)].filter((b) => b.length > 0);
+    let slideOrder = -100;
 
-    for (let i = 0; i < batches.length; i++) {
-      const batch = batches[i];
+    // Create one slide per category (up to 4 groups each)
+    for (const [cat, catGroups] of Object.entries(byCategory)) {
+      const batch = catGroups.slice(0, 4);
+      if (batch.length === 0) continue;
+
       const slide = await StorySlideContent.create({
         categorySlug: 'erogram',
         mediaType: 'premium-grid',
         mediaUrl: '',
         ctaText: 'Unlock Premium',
         ctaUrl: '/premium',
-        caption: 'Latest additions to premium',
+        caption: `Best ${cat} in Premium`,
         enabled: true,
         expiresAt,
-        sortOrder: -(batches.length - i),
+        sortOrder: slideOrder++,
         premiumGroups: batch.map((g: any) => ({
           name: g.name,
           slug: g.slug,
@@ -92,6 +103,36 @@ async function handleGenerate(req: NextRequest) {
         })),
       });
       created.push(slide._id.toString());
+    }
+
+    // If we have fewer than 2 slides, create a "Mixed" catch-all from any remaining
+    if (created.length < 2 && groups.length >= 4) {
+      const usedSlugs = new Set<string>();
+      for (const [, catGroups] of Object.entries(byCategory)) {
+        for (const g of catGroups.slice(0, 4)) usedSlugs.add((g as any).slug);
+      }
+      const remaining = groups.filter((g: any) => !usedSlugs.has(g.slug)).slice(0, 4);
+      if (remaining.length > 0) {
+        const slide = await StorySlideContent.create({
+          categorySlug: 'erogram',
+          mediaType: 'premium-grid',
+          mediaUrl: '',
+          ctaText: 'Unlock Premium',
+          ctaUrl: '/premium',
+          caption: 'Latest additions to premium',
+          enabled: true,
+          expiresAt,
+          sortOrder: slideOrder++,
+          premiumGroups: remaining.map((g: any) => ({
+            name: g.name,
+            slug: g.slug,
+            image: g.image || '',
+            memberCount: g.memberCount ?? 0,
+            category: g.category || '',
+          })),
+        });
+        created.push(slide._id.toString());
+      }
     }
 
     return NextResponse.json({

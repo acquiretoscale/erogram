@@ -119,12 +119,34 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
             transition={{ duration: 0.5, delay: isIndex * 0.1 }}
             onHoverStart={() => setIsHovered(true)}
             onHoverEnd={() => setIsHovered(false)}
-            className="h-full"
+            className="h-full relative"
         >
-            <div className={`glass rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col backdrop-blur-xl border transition-all duration-500 group relative ${isFeatured
+            {/* Bookmark + admin actions — anchored to motion.div, bookmark always on top */}
+            <div className="absolute top-2 right-2 z-30 flex flex-col gap-1.5 items-end">
+                <BookmarkButton
+                    itemId={group._id}
+                    itemType={itemType}
+                    initialBookmarked={isBookmarked}
+                    initialBookmarkId={bookmarkId}
+                    size="md"
+                    className="w-11 h-11 sm:w-10 sm:h-10 rounded-full bg-black/70 backdrop-blur-md border border-white/15 hover:bg-black/90 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.5)]"
+                />
+                {isAdmin && (
+                    <button
+                        onClick={handleAdminDelete}
+                        className="w-7 h-7 flex items-center justify-center rounded-full bg-red-600/80 hover:bg-red-600 text-white text-xs backdrop-blur-sm transition-all"
+                        title="Delete group"
+                    >
+                        🗑️
+                    </button>
+                )}
+            </div>
+
+            <div className={`glass rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col backdrop-blur-xl border transition-all duration-500 group ${isFeatured
                 ? 'border-yellow-500/30 shadow-[0_0_30px_rgba(234,179,8,0.1)] hover:border-yellow-500/60 hover:shadow-[0_0_50px_rgba(234,179,8,0.2)]'
                 : 'border-white/5 hover:border-white/20 hover:shadow-2xl hover:shadow-black/50'
                 }`}>
+
                 {/* Group Image */}
                 <div ref={imgRef} className="relative w-full h-32 sm:h-52 overflow-hidden bg-[#1a1a1a]">
                     {isAbsoluteUrl(imageSrc) ? (
@@ -161,27 +183,6 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                                 <span>📌</span> Pinned
                             </div>
                         )}
-                    </div>
-
-                    {/* Top-right actions */}
-                    <div className="absolute top-2 right-2 z-20 flex flex-col gap-1.5 items-end">
-                        {isAdmin && (
-                            <button
-                                onClick={handleAdminDelete}
-                                className="w-7 h-7 flex items-center justify-center rounded-full bg-red-600/80 hover:bg-red-600 text-white text-xs backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100"
-                                title="Delete group"
-                            >
-                                🗑️
-                            </button>
-                        )}
-                        <BookmarkButton
-                            itemId={group._id}
-                            itemType={itemType}
-                            initialBookmarked={isBookmarked}
-                            initialBookmarkId={bookmarkId}
-                            size="sm"
-                            className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm hover:bg-black/70 transition-colors"
-                        />
                     </div>
 
                     {/* Stats Overlay */}

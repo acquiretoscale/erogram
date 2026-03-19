@@ -160,29 +160,6 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
             {t('nav.add', 'Add')}
           </Link>
 
-          {/* Erogram Premium */}
-          {!isPremium && (
-            <Link
-              href="/premium"
-              target="_blank"
-              className="relative overflow-hidden text-[12px] px-3 py-1.5 rounded-lg font-bold tracking-wide whitespace-nowrap inline-flex items-center gap-1 transition-all hover:scale-[1.03]"
-              style={{
-                background: 'linear-gradient(135deg, #c9973a 0%, #e8ba5a 40%, #c9973a 60%, #a67c2e 100%)',
-                color: '#0d0c0a',
-                border: '1px solid rgba(232,186,90,0.5)',
-                boxShadow: '0 2px 12px rgba(201,151,58,0.25)',
-              }}
-            >
-              <span className="absolute inset-0 overflow-hidden rounded-lg pointer-events-none">
-                <span className="absolute inset-0 -translate-x-full animate-[shimmer_2.5s_ease-in-out_infinite]" style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 50%, transparent 100%)' }} />
-              </span>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="relative">
-                <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-              </svg>
-              <span className="relative">Premium</span>
-            </Link>
-          )}
-
           {/* Language Switcher */}
           <div className="relative" ref={langRef}>
             <button
@@ -401,29 +378,6 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
             {t('nav.addGroupOrBot', 'Add Group or Bot')}
           </Link>
-
-          {!isPremium && (
-            <Link
-              href="/premium"
-              target="_blank"
-              onClick={() => setIsMenuOpen(false)}
-              className="relative overflow-hidden flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg text-[14px] font-black tracking-wide transition-all"
-              style={{
-                background: 'linear-gradient(135deg, #c9973a 0%, #e8ba5a 40%, #c9973a 60%, #a67c2e 100%)',
-                color: '#0d0c0a',
-                border: '1px solid rgba(232,186,90,0.5)',
-                boxShadow: '0 2px 16px rgba(201,151,58,0.3)',
-              }}
-            >
-              <span className="absolute inset-0 overflow-hidden rounded-lg pointer-events-none">
-                <span className="absolute inset-0 -translate-x-full animate-[shimmer_2.5s_ease-in-out_infinite]" style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 50%, transparent 100%)' }} />
-              </span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="relative">
-                <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-              </svg>
-              <span className="relative">EROGRAM PREMIUM</span>
-            </Link>
-          )}
 
           {/* Mobile Language Switcher */}
           <div className="flex items-center gap-1.5 px-2 py-1">

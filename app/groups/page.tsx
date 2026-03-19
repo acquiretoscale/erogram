@@ -231,11 +231,18 @@ async function getStoryData(categories: StoryCategoryConfig[], locale: string = 
           const mediaSlides: StoryMediaSlide[] = (announcements as any[]).map((a) => ({
             _id: a._id.toString(),
             mediaType: a.mediaType,
-            mediaUrl: a.mediaUrl,
+            mediaUrl: a.mediaUrl || '',
             ctaText: a.ctaText || '',
             ctaUrl: a.ctaUrl || '',
             caption: a.caption || '',
             likes: a.likes ?? 0,
+            premiumGroups: a.premiumGroups?.map((g: any) => ({
+              name: g.name || '',
+              slug: g.slug || '',
+              image: g.image || '',
+              memberCount: g.memberCount ?? 0,
+              category: g.category || '',
+            })),
           }));
 
           const hasNewContent = finalGroups.some((g: any) => new Date(g.createdAt) > twentyFourHoursAgo) || mediaSlides.length > 0;

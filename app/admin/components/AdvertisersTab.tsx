@@ -82,6 +82,7 @@ const SLOT_LABELS: Record<string, string> = {
   'join-cta': 'Join CTA',
   'filter-cta': 'Filter CTA',
   'featured-groups': 'Featured Groups',
+  'article-link': 'Article Link',
 };
 
 const FEED_SLOTS = ['feed'];
@@ -1780,7 +1781,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                 >
                   All
                 </button>
-                {[...displaySlots.map((s) => s.slot).filter((sl) => sl !== 'filter-cta'), 'featured-groups'].map((sl) => {
+                {[...displaySlots.map((s) => s.slot).filter((sl) => sl !== 'filter-cta'), 'featured-groups', 'article-link'].map((sl) => {
                   const sel = dashboardSlots.includes(sl);
                   return (
                     <button
@@ -1910,6 +1911,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                   const SLOT_COLORS: Record<string, string> = {
                     'top-banner': '#3b82f6', 'homepage-hero': '#8b5cf6', feed: '#10b981',
                     'navbar-cta': '#f59e0b', 'join-cta': '#06b6d4', 'filter-cta': '#ec4899',
+                    'article-link': '#f97316',
                   };
 
                   const trendData: ChartDatum[] = current.map((row, idx) => {
