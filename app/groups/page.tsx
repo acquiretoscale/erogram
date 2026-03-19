@@ -368,6 +368,42 @@ async function getStoryData(categories: StoryCategoryConfig[], locale: string = 
   }
 }
 
+async function getVaultTeaser() {
+  try {
+    await connectDB();
+    let groups = await Group.find({ showOnVaultTeaser: true, premiumOnly: true, status: 'approved' })
+      .sort({ vaultTeaserOrder: 1 })
+      .select('name image category categories country memberCount vaultTeaserOrder vaultCategories')
+      .lean();
+
+    if (groups.length > 12) {
+      const shuffled = [...groups].sort(() => Math.random() - 0.5);
+      groups = shuffled.slice(0, 12);
+    }
+
+    if (groups.length === 0) {
+      groups = await Group.find({ premiumOnly: true, status: 'approved' })
+        .sort({ createdAt: -1 })
+        .limit(12)
+        .select('name image category categories country memberCount vaultCategories')
+        .lean();
+    }
+
+    return (groups as any[]).map(g => ({
+      _id: g._id.toString(),
+      name: (g.name || '') as string,
+      image: (g.image || '') as string,
+      category: (g.category || '') as string,
+      categories: (g as any).categories || [],
+      country: (g.country || '') as string,
+      memberCount: (g.memberCount || 0) as number,
+      vaultCategories: (g as any).vaultCategories || [],
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export default async function GroupsPage() {
   const ua = (await headers()).get('user-agent');
   const { isMobile, isTelegram } = detectDeviceFromUserAgent(ua);
@@ -385,11 +421,12 @@ export default async function GroupsPage() {
   let storyConfig = await getStoryCategories();
   if (storyConfig.length === 0) storyConfig = DEFAULT_STORY_CATEGORIES;
 
-  // In-feed ads + story data — all in parallel
-  const [topBannerCampaigns, feedCampaigns, storyData] = await Promise.all([
+  // In-feed ads + story data + vault teaser — all in parallel
+  const [topBannerCampaigns, feedCampaigns, storyData, vaultTeaserGroups] = await Promise.all([
     getActiveCampaigns('top-banner'),
     getActiveFeedCampaigns('groups'),
     storiesEnabled ? getStoryData(storyConfig, locale) : Promise.resolve([] as StoryCategory[]),
+    getVaultTeaser(),
   ]);
 
   const topBannerForPage =
@@ -414,6 +451,7 @@ export default async function GroupsPage() {
           initialIsTelegram={isTelegram}
           topBannerCampaigns={topBannerForPage}
           storyData={storyData}
+          vaultTeaserGroups={vaultTeaserGroups}
         />
       </ErrorBoundary>
     </>

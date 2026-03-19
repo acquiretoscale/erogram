@@ -99,15 +99,5 @@ export async function notifyAdminsOfNewUser(payload: NewUserNotificationPayload)
   const providerLabel = payload.provider === 'google' ? '📧 Google' : '✈️ Telegram';
   const body = `@${payload.username} · ${providerLabel}`;
 
-  await Promise.allSettled([
-    sendPushToAdmins({
-      title: '👤 New User Registered!',
-      body,
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
-      tag: 'erogram-new-user',
-      data: { url: '/admin/users' },
-    }),
-    sendTelegramDM(`👤 <b>New User!</b>\n${body}`),
-  ]);
+  await sendTelegramDM(`👤 <b>New User!</b>\n${body}`);
 }

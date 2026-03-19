@@ -14,6 +14,7 @@ import AdvertCard from './AdvertCard';
 import VirtualizedGroupGrid from './VirtualizedGroupGrid';
 import GroupCardSkeleton from './GroupCardSkeleton';
 import StoryBar from './StoryBar';
+import type { VaultTeaserItem } from './VaultTeaserFeed';
 import { useTranslation, useLocalePath, useLocale } from '@/lib/i18n';
 // Lazy load modals to reduce initial bundle size
 const ReviewModal = dynamic(() => import('./ReviewModal'), {
@@ -38,9 +39,10 @@ interface GroupsClientProps {
   initialIsTelegram?: boolean;
   topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string }>;
   storyData?: StoryCategory[];
+  vaultTeaserGroups?: VaultTeaserItem[];
 }
 
-export default function GroupsClient({ initialGroups, feedCampaigns = [], initialCountry, initialIsMobile = false, initialIsTelegram = false, topBannerCampaigns = [], storyData = [] }: GroupsClientProps) {
+export default function GroupsClient({ initialGroups, feedCampaigns = [], initialCountry, initialIsMobile = false, initialIsTelegram = false, topBannerCampaigns = [], storyData = [], vaultTeaserGroups = [] }: GroupsClientProps) {
   const STORY_SEEN_KEY = 'erogram:stories:seen:v1';
   const [username, setUsername] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState(initialCountry || 'All');
@@ -803,6 +805,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                   onOpenReviewModal={openReviewModal}
                   onOpenReportModal={openReportModal}
                   bookmarkedMap={bookmarkedMap}
+                  vaultTeaserGroups={vaultTeaserGroups}
                 />
               </div>
 

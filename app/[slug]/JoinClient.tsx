@@ -10,6 +10,7 @@ import HeaderBanner from '@/components/HeaderBanner';
 import BookmarkButton from '@/components/BookmarkButton';
 import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
+import VaultTeaserFeed from '@/app/groups/VaultTeaserFeed';
 import { useTranslation, useLocalePath } from '@/lib/i18n';
 
 interface Entity {
@@ -774,32 +775,12 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                   >
                     {(joinCtaCampaign?.description || joinCtaCampaign?.buttonText) || DEFAULT_JOIN_CTA.description}
                   </a>
-                  <Link
-                    href="/premiumvault"
-                    className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl text-lg font-black uppercase tracking-wide transition-all hover:scale-[1.02] hover:shadow-lg"
-                    style={{
-                      background: 'linear-gradient(135deg, #d4a94c 0%, #e8c66a 20%, #c9973a 40%, #b8860b 60%, #e8c66a 80%, #d4a94c 100%)',
-                      border: '1.5px solid rgba(232,198,106,0.5)',
-                      color: '#1a1000',
-                      boxShadow: '0 0 25px rgba(201,151,58,0.3), 0 3px 12px rgba(0,0,0,0.2)',
-                    }}
-                  >
-                    <div className="flex flex-col items-center">
-                      <div className="flex items-center gap-2">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                        </svg>
-                        <span>EROGRAM PREMIUM</span>
-                      </div>
-                      <span className="text-[12px] font-semibold tracking-normal normal-case opacity-75">Unlock thousands of curated Telegram groups</span>
-                    </div>
-                  </Link>
                 </div>
 
-                {/* Premium Vault Teaser — below CTA */}
-                {!isPremiumUser && vaultTeaser.length > 0 && (
-                  <div className="mt-8">
-                    <VaultTeaserBlock items={vaultTeaser} />
+                {/* Premium Vault Teaser — same as in-feed version */}
+                {vaultTeaser.length > 0 && (
+                  <div className="mt-6">
+                    <VaultTeaserFeed items={vaultTeaser} />
                   </div>
                 )}
               </div>

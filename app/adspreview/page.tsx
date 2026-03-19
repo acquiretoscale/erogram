@@ -9,9 +9,9 @@ export default function AdsPreviewPage() {
   const [activePeriod, setActivePeriod] = useState<Period>('mar10');
 
   const periods: { key: Period; label: string; date: string; salesInfo: string; color: string }[] = [
-    { key: 'mar10', label: 'Mar 10-11', date: 'Sales Period', salesInfo: '5 sales ($45)', color: '#22c55e' },
-    { key: 'mar15', label: 'Mar 15', date: 'Last Sale', salesInfo: '1 sale ($9)', color: '#f59e0b' },
-    { key: 'current', label: 'Now', date: 'Mar 16-18', salesInfo: '0 sales', color: '#ef4444' },
+    { key: 'mar10', label: 'Mar 10-11', date: 'Sales Period', salesInfo: '3 sales (monthly)', color: '#22c55e' },
+    { key: 'mar15', label: 'Mar 15', date: '2 Sales', salesInfo: '1 quarterly + 1 monthly', color: '#f59e0b' },
+    { key: 'current', label: 'Now (Mar 19)', date: 'Today', salesInfo: '3 sales today!', color: '#22c55e' },
   ];
 
   return (
@@ -62,25 +62,52 @@ export default function AdsPreviewPage() {
             </div>
           </PlacementSection>
 
-          {/* ── PLACEMENT 2: Trending Categories Pill ── */}
+          {/* ── PLACEMENT 2: In-Feed Vault Teaser (MAJOR — only during sales) ── */}
           <PlacementSection
-            title="2. Trending Categories — Premium Gold Pill"
-            location="/groups feed → below story bar → trending categories row"
-            existed={{ mar10: false, mar15: false, current: true }}
+            title="2. ⚡ In-Feed Vault Teaser (KEY DRIVER)"
+            location="/groups feed → injected inline between group cards in the feed"
+            existed={{ mar10: true, mar15: false, current: false }}
             activePeriod={activePeriod}
           >
-            {activePeriod === 'current' ? (
-              <TrendingPillPreview version="current" />
-            ) : activePeriod === 'mar15' ? (
+            {activePeriod === 'mar10' ? (
+              <VaultTeaserFeedPreview />
+            ) : (
+              <div className="text-center py-12 rounded-2xl border border-dashed border-white/10">
+                <p className="text-white/30 text-lg font-bold">REMOVED</p>
+                <p className="text-white/20 text-sm mt-1">
+                  The in-feed Vault Teaser was present during the sales period (Mar 10-11) but was
+                  <br />removed before Mar 15 and replaced with the PremiumMosaicCard ad system (0.33% CTR).
+                </p>
+                <div className="mt-4 px-4 py-3 mx-auto max-w-lg rounded-lg bg-red-500/10 border border-red-500/20">
+                  <p className="text-red-400 text-xs font-bold">🚨 This is likely the single biggest reason for the drop in premium clicks.</p>
+                  <p className="text-white/40 text-[11px] mt-1">
+                    The Vault Teaser was a large, organic-looking CTA embedded in the feed with blurred group previews + gold &quot;Unlock the Full Vault&quot; button.
+                    It felt like native content, not an ad.
+                  </p>
+                </div>
+              </div>
+            )}
+          </PlacementSection>
+
+          {/* ── PLACEMENT 3: Trending Categories Pill ── */}
+          <PlacementSection
+            title="3. Trending Categories — Premium Gold Pill"
+            location="/groups feed → below story bar → trending categories row"
+            existed={{ mar10: false, mar15: true, current: false }}
+            activePeriod={activePeriod}
+          >
+            {activePeriod === 'mar15' ? (
               <TrendingPillPreview version="mar15" />
+            ) : activePeriod === 'current' ? (
+              <TrendingPillPreview version="current" />
             ) : (
               <TrendingPillPreview version="mar10" />
             )}
           </PlacementSection>
 
-          {/* ── PLACEMENT 3: Story Viewer — Premium Grid Slide ── */}
+          {/* ── PLACEMENT 4: Story Viewer — Premium Grid Slide ── */}
           <PlacementSection
-            title="3. Story Viewer — Premium Grid Slide"
+            title="4. Story Viewer — Premium Grid Slide"
             location="Tap any story circle → premium grid slide shows 2×2 vault preview"
             existed={{ mar10: true, mar15: true, current: true }}
             activePeriod={activePeriod}
@@ -92,9 +119,9 @@ export default function AdsPreviewPage() {
             </div>
           </PlacementSection>
 
-          {/* ── PLACEMENT 4: Inside Group — Premium Gate ── */}
+          {/* ── PLACEMENT 5: Inside Group — Premium Gate ── */}
           <PlacementSection
-            title="4. Inside Group Page — Premium Gate"
+            title="5. Inside Group Page — Premium Gate"
             location="/[slug] → premium-only groups show lock gate for non-premium users"
             existed={{ mar10: true, mar15: true, current: true }}
             activePeriod={activePeriod}
@@ -105,9 +132,9 @@ export default function AdsPreviewPage() {
             </div>
           </PlacementSection>
 
-          {/* ── PLACEMENT 5: Inside Group — Vault Teaser Mosaic ── */}
+          {/* ── PLACEMENT 6: Inside Group — Vault Teaser Mosaic ── */}
           <PlacementSection
-            title="5. Inside Group Page — Vault Teaser Mosaic"
+            title="6. Inside Group Page — Vault Teaser Mosaic"
             location="/[slug] → below CTA buttons → 'Private Vault' section with blurred group previews"
             existed={{ mar10: true, mar15: true, current: true }}
             activePeriod={activePeriod}
@@ -118,9 +145,9 @@ export default function AdsPreviewPage() {
             </div>
           </PlacementSection>
 
-          {/* ── PLACEMENT 6: Profile — Unlock the Vault Banner ── */}
+          {/* ── PLACEMENT 7: Profile — Unlock the Vault Banner ── */}
           <PlacementSection
-            title="6. Profile Page — Unlock the Vault Banner"
+            title="7. Profile Page — Unlock the Vault Banner"
             location="/profile → below profile info → for non-premium users"
             existed={{ mar10: true, mar15: true, current: true }}
             activePeriod={activePeriod}
@@ -132,9 +159,9 @@ export default function AdsPreviewPage() {
             )}
           </PlacementSection>
 
-          {/* ── PLACEMENT 7: Vault Tab — Locked State ── */}
+          {/* ── PLACEMENT 8: Vault Tab — Locked State ── */}
           <PlacementSection
-            title="7. Vault Tab — Locked State"
+            title="8. Vault Tab — Locked State"
             location="/profile → 'Vault' tab → non-premium users see locked preview"
             existed={{ mar10: true, mar15: true, current: true }}
             activePeriod={activePeriod}
@@ -145,9 +172,9 @@ export default function AdsPreviewPage() {
             </div>
           </PlacementSection>
 
-          {/* ── PLACEMENT 8: In-Feed Premium Mosaic Card ── */}
+          {/* ── PLACEMENT 9: In-Feed Premium Mosaic Card ── */}
           <PlacementSection
-            title="8. In-Feed Premium Mosaic Card (NEW)"
+            title="9. In-Feed Premium Mosaic Card (REPLACED Vault Teaser)"
             location="/groups feed → injected between group cards at various positions"
             existed={{ mar10: false, mar15: false, current: true }}
             activePeriod={activePeriod}
@@ -165,9 +192,9 @@ export default function AdsPreviewPage() {
             )}
           </PlacementSection>
 
-          {/* ── PLACEMENT 9: Premium CTA on /premium page ── */}
+          {/* ── PLACEMENT 10: Premium CTA on /premium page ── */}
           <PlacementSection
-            title="9. Premium Landing Page (the destination)"
+            title="10. Premium Landing Page (the destination)"
             location="/premium — where all CTAs link to"
             existed={{ mar10: true, mar15: true, current: true }}
             activePeriod={activePeriod}
@@ -182,21 +209,22 @@ export default function AdsPreviewPage() {
             <thead>
               <tr className="bg-white/5">
                 <th className="text-left p-4 font-bold text-white/70">Placement</th>
-                <th className="text-center p-4 font-bold" style={{ color: '#22c55e' }}>Mar 10-11 (5 sales)</th>
-                <th className="text-center p-4 font-bold" style={{ color: '#f59e0b' }}>Mar 15 (1 sale)</th>
-                <th className="text-center p-4 font-bold" style={{ color: '#ef4444' }}>Now (0 sales)</th>
+                <th className="text-center p-4 font-bold" style={{ color: '#22c55e' }}>Mar 10-11 (3 sales)</th>
+                <th className="text-center p-4 font-bold" style={{ color: '#f59e0b' }}>Mar 15 (2 sales)</th>
+                <th className="text-center p-4 font-bold" style={{ color: '#22c55e' }}>Now — Mar 19 (3 sales today)</th>
               </tr>
             </thead>
             <tbody>
               {[
                 { name: 'Story Bar Circle', m10: '✅', m15: '✅', now: '✅', note: 'No change' },
-                { name: 'Trending Premium Pill', m10: '❌', m15: '❌', now: '✅ NEW', note: 'Added Mar 14' },
+                { name: '⚡ In-Feed Vault Teaser', m10: '✅ KEY', m15: '❌ REMOVED', now: '❌ REMOVED', note: 'REMOVED after Mar 11 — likely #1 conversion driver' },
+                { name: 'Trending Premium Pill', m10: '❌', m15: '✅ gold pill', now: '❌ removed', note: 'Added Mar 14, removed in current' },
                 { name: 'Story Premium Grid', m10: '✅', m15: '✅', now: '✅', note: 'No change' },
                 { name: 'Group Premium Gate', m10: '✅', m15: '✅', now: '✅', note: 'No change' },
-                { name: 'Group Vault Teaser', m10: '✅', m15: '✅', now: '✅', note: 'No change' },
+                { name: 'Group Page Vault Teaser', m10: '✅', m15: '✅', now: '✅', note: 'No change' },
                 { name: 'Profile Vault Banner', m10: '✅ simple', m15: '✅ gold', now: '✅ gold', note: 'Upgraded to gold CTA on Mar 14' },
                 { name: 'Vault Locked Tab', m10: '✅', m15: '✅', now: '✅', note: 'No change' },
-                { name: 'In-Feed Mosaic Ad', m10: '❌', m15: '❌', now: '✅ NEW', note: 'Added Mar 15 — 0.46% CTR' },
+                { name: 'In-Feed Mosaic Ad', m10: '❌', m15: '✅ NEW', now: '✅', note: 'Added Mar 15 — replaced Vault Teaser — 0.33% CTR' },
                 { name: 'Social Proof Toasts', m10: '✅', m15: '✅', now: '✅', note: 'Added Mar 11' },
               ].map((row, i) => (
                 <tr key={i} className="border-t border-white/5">
@@ -212,13 +240,18 @@ export default function AdsPreviewPage() {
 
         <div className="mt-12 rounded-2xl p-6 border border-amber-500/20" style={{ background: '#1a1408' }}>
           <h3 className="text-lg font-black text-amber-400 mb-3">Key Insight</h3>
+          <p className="text-white/70 text-sm leading-relaxed mb-3">
+            The <strong className="text-emerald-400">sales period (Mar 10-11)</strong> had a <strong className="text-white">large in-feed Vault Teaser</strong> that
+            appeared organically between group cards in the /groups feed. This was a full-width CTA showing blurred premium group previews
+            with a gold &quot;Unlock the Full Vault&quot; button — it looked like native content, not an ad.
+          </p>
+          <p className="text-white/70 text-sm leading-relaxed mb-3">
+            <strong className="text-red-400">This Vault Teaser was removed before Mar 15</strong> and replaced with the PremiumMosaicCard ad system,
+            which had only <strong className="text-white">0.33% CTR</strong>. The organic-looking Vault Teaser was likely the #1 driver of premium clicks
+            during the sales period — it appeared naturally in the feed where users were already browsing.
+          </p>
           <p className="text-white/70 text-sm leading-relaxed">
-            The sales period (Mar 10-11) had <strong className="text-white">fewer premium placements</strong> than today, yet converted better.
-            The core driver was the same set of organic placements — Story Bar circle, Story premium grid slide,
-            group premium gate, and the vault teaser inside group pages.
-            Since then, you <em>added</em> the trending pill and in-feed mosaic ads, but these haven&apos;t converted.
-            The difference is <strong className="text-white">on the landing page itself</strong> (/premium) — not the ads driving traffic to it.
-            Compare the landing pages directly at{' '}
+            <strong className="text-white">Recommendation:</strong> Restore the in-feed Vault Teaser to the /groups feed. Compare landing pages at{' '}
             <Link href="/premium10" className="text-amber-400 underline">/premium10</Link>,{' '}
             <Link href="/premium15" className="text-amber-400 underline">/premium15</Link>, and{' '}
             <Link href="/premium" className="text-amber-400 underline">/premium</Link>.
@@ -307,9 +340,11 @@ function TrendingPillPreview({ version }: { version: 'mar10' | 'mar15' | 'curren
   const categories =
     version === 'mar10'
       ? ['Lesbian', 'Threesome', 'Big Ass', 'Amateur', 'Onlyfans', 'Hentai', 'Thailand', 'Russia', 'UK', 'Germany', 'France']
-      : ['Russian', 'Amateur', 'Threesome', 'Lesbian', 'China', 'Cosplay', 'Blowjob', 'Colombia'];
+      : version === 'mar15'
+        ? ['Russian', 'Amateur', 'Threesome', 'Lesbian', 'China', 'Cosplay', 'Blowjob', 'Colombia']
+        : ['Telegram Porn', 'Lesbian', 'Threesome', 'Big Ass', 'Blowjob', 'Amateur', 'Onlyfans', 'Russia', 'UK', 'Germany'];
 
-  const hasPremiumPill = version === 'current';
+  const hasPremiumPill = version === 'mar15';
 
   return (
     <div>
@@ -319,7 +354,7 @@ function TrendingPillPreview({ version }: { version: 'mar10' | 'mar15' | 'curren
       >
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-[9px] font-black uppercase tracking-wider shrink-0 mr-0.5" style={{ color: '#f59e0b' }}>
-            🔥 Trending Categories
+            🔥 Trending{version !== 'current' ? ' Categories' : ''}
           </span>
           {categories.map(cat => (
             <span
@@ -348,12 +383,96 @@ function TrendingPillPreview({ version }: { version: 'mar10' | 'mar15' | 'curren
           )}
         </div>
       </div>
-      {!hasPremiumPill && (
-        <div className="mt-3 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-          <p className="text-yellow-400 text-xs font-bold">⚠️ No premium pill in trending categories during this period</p>
-          <p className="text-white/40 text-[11px] mt-0.5">The gold &quot;EROGRAM PREMIUM&quot; button was added on March 14</p>
+      <div className="mt-3 px-3 py-2 rounded-lg bg-white/5 border border-white/10">
+        {version === 'mar10' && <p className="text-white/40 text-xs">No premium pill — just regular category links. Premium traffic came from the in-feed Vault Teaser instead.</p>}
+        {version === 'mar15' && <p className="text-emerald-400 text-xs font-bold">✅ Gold &quot;⭐ EROGRAM PREMIUM&quot; pill added on Mar 14 — linked directly to /premium</p>}
+        {version === 'current' && <p className="text-white/40 text-xs">No premium pill — removed in current version. Categories updated.</p>}
+      </div>
+    </div>
+  );
+}
+
+function VaultTeaserFeedPreview() {
+  const groups = [
+    { name: 'Lesbian Paradise 🔞', category: 'Lesbian', country: '', members: '5.1K', vaultCats: ['Lesbian'] },
+    { name: '福利姬摩多 收藏夹', category: 'Amateur', country: 'China', members: '329K', vaultCats: ['Amateur', 'Asian'] },
+    { name: 'Itatijoss OnlyFans🔥', category: 'Amateur', country: '', members: '246K', vaultCats: ['Amateur', 'OnlyFans'] },
+    { name: 'MILF🎒', category: 'MILF', country: '', members: '223K', vaultCats: ['MILF'] },
+    { name: 'FemaleBlowjob 18+', category: 'Blowjob', country: '', members: '107K', vaultCats: ['Blowjob'] },
+    { name: 'suisai <3', category: 'Amateur', country: '', members: '52K', vaultCats: ['Amateur'] },
+  ];
+
+  return (
+    <div className="max-w-lg mx-auto">
+      <div className="mb-3 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+        <p className="text-emerald-400 text-xs font-bold">🔥 THIS was in the /groups feed between group cards during the sales period</p>
+        <p className="text-white/40 text-[11px] mt-0.5">It felt like native content — not an ad. Users scrolling through groups would naturally encounter it.</p>
+      </div>
+
+      {/* Exact reconstruction of the VaultTeaserSection from commit b14cc51 */}
+      <div className="rounded-xl overflow-hidden" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="text-center py-4">
+          <span
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.25em] mb-3"
+            style={{ background: 'rgba(201,151,58,0.08)', border: '1px solid rgba(201,151,58,0.2)', color: '#b8964e' }}
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            Private Vault
+          </span>
+          <h2 className="text-xl font-black text-white tracking-tight">
+            Premium <span style={{ background: 'linear-gradient(135deg, #c9973a, #e8ba5a)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Secret Vault</span>
+          </h2>
+          <p className="text-white/30 text-xs mt-1">Exclusive groups only visible to Premium members</p>
         </div>
-      )}
+
+        <div
+          className="relative rounded-2xl overflow-hidden p-3 mx-3"
+          style={{ background: 'linear-gradient(160deg, #0f0d09 0%, #110e08 60%, #0d0b07 100%)', border: '1px solid #2a1f0e' }}
+        >
+          <div className="absolute top-0 right-0 w-56 h-56 blur-3xl opacity-[0.06] rounded-full pointer-events-none" style={{ background: 'radial-gradient(ellipse, #c9973a 0%, transparent 60%)' }} />
+          <div className="relative grid grid-cols-2 gap-1.5">
+            {groups.map(g => (
+              <div
+                key={g.name}
+                className="relative rounded-lg flex items-center gap-2 px-2 py-1.5"
+                style={{ background: 'linear-gradient(135deg, #120f09 0%, #150f08 100%)', border: '1px solid #2a1f0e' }}
+              >
+                <div className="absolute left-0 top-0 bottom-0 w-px" style={{ background: 'linear-gradient(180deg, transparent, #c9973a44, transparent)' }} />
+                <div className="shrink-0 w-8 h-8 rounded-md overflow-hidden bg-gradient-to-br from-amber-900/30 to-orange-900/20" style={{ border: '1px solid #2e2010' }} />
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-[10px] truncate leading-tight mb-0.5">
+                    <span className="text-white">{g.name.slice(0, 4)}</span>
+                    <span style={{ filter: 'blur(4px)', color: '#fff' }}>{g.name.slice(4) || '····'}</span>
+                  </div>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {g.vaultCats.map((c, i) => (
+                      <span key={c} className="text-[7px] font-black uppercase tracking-[0.06em] px-1 py-0.5 rounded shrink-0" style={{ background: i === 0 ? '#1a1408' : '#12100a', border: '1px solid #c9973a22', color: i === 0 ? '#c9973a' : '#7a6040' }}>{c}</span>
+                    ))}
+                    {g.country && <span className="text-[8px] font-semibold truncate" style={{ color: '#5a4830' }}>{g.country}</span>}
+                    <span className="text-[8px] font-semibold shrink-0" style={{ color: '#4a3820' }}>· {g.members}</span>
+                  </div>
+                </div>
+                <svg className="shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#c9973a55" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+              </div>
+            ))}
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none" style={{ background: 'linear-gradient(to bottom, transparent, #0f0d09)' }} />
+        </div>
+
+        <div className="mx-3 mt-3 mb-4 flex items-center justify-center gap-2 py-2.5 rounded-xl font-black text-sm"
+          style={{ background: 'linear-gradient(135deg, #c9973a, #a67c2e)', color: '#0d0c0a' }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          Unlock the Full Vault
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+        <p className="text-center text-[10px] pb-3" style={{ color: '#4a3820' }}>100+ exclusive groups · Updated regularly</p>
+      </div>
     </div>
   );
 }

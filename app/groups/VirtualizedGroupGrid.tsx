@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Group, FeedCampaign } from './types';
 import GroupCard from './GroupCard';
 import AdvertCard from './AdvertCard';
+import VaultTeaserFeed, { type VaultTeaserItem } from './VaultTeaserFeed';
 
 interface VirtualizedGroupGridProps {
     groups: Group[];
@@ -10,9 +11,10 @@ interface VirtualizedGroupGridProps {
     onOpenReviewModal?: (group: Group) => void;
     onOpenReportModal?: (group: Group) => void;
     bookmarkedMap?: Record<string, string>;
+    vaultTeaserGroups?: VaultTeaserItem[];
 }
 
-type Item = { type: 'group' | 'campaign'; data: Group | FeedCampaign | null; index: number };
+type Item = { type: 'group' | 'campaign' | 'vault-teaser'; data: Group | FeedCampaign | null; index: number };
 
 // In-feed ad slot layout (by group count, 0-indexed):
 //   Slot 2 → after 2 groups  (gc=2)   — one-time fixed
@@ -23,9 +25,12 @@ const SLOT3_GC = 7;
 const SLOT4_GC = 12;
 const LOOP_GAP = 5;
 
-function buildFeedItems(groups: Group[], campaigns: FeedCampaign[]): Item[] {
+const VAULT_TEASER_GC = 6;
+const VAULT_TEASER_REPEAT = 20;
+
+function buildFeedItems(groups: Group[], campaigns: FeedCampaign[], hasVaultTeaser: boolean): Item[] {
     const items: Item[] = [];
-    if (campaigns.length === 0) {
+    if (campaigns.length === 0 && !hasVaultTeaser) {
         return groups.map((g, i) => ({ type: 'group' as const, data: g, index: i }));
     }
 
@@ -37,8 +42,18 @@ function buildFeedItems(groups: Group[], campaigns: FeedCampaign[]): Item[] {
     let groupIdx = 0;
     let groupCount = 0;
     let slot4Idx = 0;
+    let vaultInserted = false;
 
     while (groupIdx < groups.length) {
+        if (hasVaultTeaser && groupCount === VAULT_TEASER_GC && !vaultInserted) {
+            items.push({ type: 'vault-teaser', data: null, index: items.length });
+            vaultInserted = true;
+        }
+
+        if (hasVaultTeaser && vaultInserted && groupCount > VAULT_TEASER_GC && (groupCount - VAULT_TEASER_GC) % VAULT_TEASER_REPEAT === 0) {
+            items.push({ type: 'vault-teaser', data: null, index: items.length });
+        }
+
         if (groupCount === SLOT2_GC && slot2.length > 0) {
             items.push({ type: 'campaign', data: slot2[0], index: items.length });
         } else if (groupCount === SLOT3_GC && slot3.length > 0) {
@@ -70,16 +85,26 @@ const VirtualizedGroupGrid = React.memo(function VirtualizedGroupGrid({
     onOpenReviewModal,
     onOpenReportModal,
     bookmarkedMap = {},
+    vaultTeaserGroups = [],
 }: VirtualizedGroupGridProps) {
-    const [items, setItems] = useState<Item[]>(() => buildFeedItems(groups, feedCampaigns));
+    const hasVault = vaultTeaserGroups.length > 0;
+    const [items, setItems] = useState<Item[]>(() => buildFeedItems(groups, feedCampaigns, hasVault));
 
     useEffect(() => {
-        setItems(buildFeedItems(groups, feedCampaigns));
-    }, [groups, feedCampaigns]);
+        setItems(buildFeedItems(groups, feedCampaigns, hasVault));
+    }, [groups, feedCampaigns, hasVault]);
 
     return (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
             {items.map((item, idx) => {
+                if (item.type === 'vault-teaser') {
+                    return (
+                        <VaultTeaserFeed
+                            key={`vault-teaser-${idx}`}
+                            items={vaultTeaserGroups}
+                        />
+                    );
+                }
                 if (item.type === 'group') {
                     const groupData = item.data as Group;
                     const bmId = bookmarkedMap[groupData._id] || null;
