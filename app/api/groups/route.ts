@@ -80,6 +80,7 @@ export async function GET(req: NextRequest) {
         featured: true,
         boosted: { $ne: true },
         premiumOnly: { $ne: true },
+        category: { $ne: 'Hentai' },
       })
         .sort({ featuredOrder: 1, featuredAt: -1 })
         .limit(limit)
@@ -130,6 +131,7 @@ export async function GET(req: NextRequest) {
         boosted: true,
         boostExpiresAt: { $gt: now },
         premiumOnly: { $ne: true },
+        category: { $ne: 'Hentai' },
       })
         .sort({ boostExpiresAt: 1 })
         .limit(1)
@@ -192,6 +194,7 @@ export async function GET(req: NextRequest) {
         isAdvertisement: { $ne: true },
         premiumOnly: { $ne: true },
         pinned: { $ne: true },
+        category: { $ne: 'Hentai' },
       })
         .sort({ weeklyClicks: -1, views: -1 })
         .limit(POOL_SIZE)
@@ -238,7 +241,7 @@ export async function GET(req: NextRequest) {
 
     // Exclude image field to prevent maxSize errors - images loaded lazily via API.
     // Exclude Group-based adverts so in-feed ads come only from Campaigns (Advertisers).
-    let query: any = { status: 'approved', isAdvertisement: { $ne: true }, premiumOnly: { $ne: true } };
+    let query: any = { status: 'approved', isAdvertisement: { $ne: true }, premiumOnly: { $ne: true }, category: { $ne: 'Hentai' } };
     let sortCriteria: any = { createdAt: -1 };
 
     const andConditions: any[] = [];
@@ -305,7 +308,7 @@ export async function GET(req: NextRequest) {
       }
 
       // For top groups by views, exclude pinned and Group-based adverts
-      query = { status: 'approved', pinned: { $ne: true }, isAdvertisement: { $ne: true }, premiumOnly: { $ne: true } };
+      query = { status: 'approved', pinned: { $ne: true }, isAdvertisement: { $ne: true }, premiumOnly: { $ne: true }, category: { $ne: 'Hentai' } };
       sortCriteria = { weeklyViews: -1 };
       console.log('[API] Top groups query:', JSON.stringify(query));
     } else if (sortBy === 'newest') {

@@ -14,14 +14,7 @@ export const categories = [
     'Submission', 'Domination', 'Glasses', 'Hair Play', 'Oral', 'Lesbian Tribbing',
     'Masturbation', 'Latex', 'Squirting', 'Spanking', 'Tease & Denial',
     'Cosplay - Sci-Fi', 'Steampunk',
-    'Hentai', 'Anime', 'Hentai - Loli', 'Hentai - Shota', 'Hentai - Yaoi', 'Hentai - Yuri',
-    'Hentai - Tentacle', 'Hentai - Monster', 'Hentai - Futanari', 'Hentai - Incest',
-    'Hentai - Noncon', 'Hentai - Beast', 'Hentai - Ecchi', 'Anime Porn', 'Hentai - BDSM',
-    'Hentai - Schoolgirl', 'Hentai - Magical Girl', 'Hentai - Mecha', 'Hentai - Trap',
-    'Hentai - Ahegao', 'Hentai - Bondage', 'Hentai - Gangbang', 'Hentai - Milf',
-    'Hentai - Lolicon', 'Hentai - Shotacon', 'Anime Fetish', 'Hentai - Public',
-    'Hentai - Mind Break', 'Hentai - Domination', 'Hentai - Submission',
-    'Anime Cosplay Sex', 'Hentai - Pet Play', 'Hentai - Furry', 'Hentai - Monster Girl',
+    'Anime',
     'Russia', 'Spain',
 ];
 

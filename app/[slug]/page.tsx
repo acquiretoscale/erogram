@@ -423,6 +423,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       };
     }
 
+    if (group.category === 'Hentai') {
+      return {
+        title: `${group.name} — Erogram`,
+        robots: { index: false, follow: false },
+      };
+    }
+
     const groupUrl = `${BASE_URL}${pathname}`;
 
     const category = group.category || 'NSFW';

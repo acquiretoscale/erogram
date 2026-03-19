@@ -55,7 +55,7 @@ async function getGroups(limit: number, isMobile: boolean = false, locale: strin
     // Use random sampling for better discovery experience. Exclude Group-based "advert" rows
     // so in-feed ads come only from Campaigns (Advertisers → By slot → In-Feed).
     const groups = await Group.aggregate([
-      { $match: { status: 'approved', isAdvertisement: { $ne: true }, premiumOnly: { $ne: true } } },
+      { $match: { status: 'approved', isAdvertisement: { $ne: true }, premiumOnly: { $ne: true }, category: { $ne: 'Hentai' } } },
       { $sample: { size: limit } }, // Limit initial payload for mobile
       {
         $lookup: {

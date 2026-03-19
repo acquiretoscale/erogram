@@ -31,7 +31,7 @@ export const allCategories = [
     'Domination', 'Double Penetration', 'Ebony', 'Erotic Horror',
     'Fantasy', 'Feet', 'Fetish', 'France', 'Free-use', 'Furry', 'Gangbang', 'Gay',
     'Germany', 'Glasses', 'Group',
-    'Hair Play', 'Hardcore', 'Hentai', 'Interracial', 'Italy',
+    'Hair Play', 'Hardcore', 'Interracial', 'Italy',
     'Japan', 'Latex', 'Latina', 'Leaked', 'Lesbian', 'Lesbian Tribbing', 'LGBTQ+',
     'Masturbation', 'Mature', 'Medical', 'Mexico', 'MILF', 'Mind Control',
     'NSFW-Telegram', 'Office', 'Onlyfans', 'Onlyfans Leaks', 'Oral', 'Outdoor',
