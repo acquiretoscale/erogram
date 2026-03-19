@@ -543,7 +543,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
       />
 
       {/* Main Content */}
-      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-8 min-h-screen">
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 sm:pt-20 pb-8 min-h-screen">
         {/* Global top banner (single campaign) */}
         <div className="w-full mb-4">
           <HeaderBanner campaigns={topBannerCampaigns} />

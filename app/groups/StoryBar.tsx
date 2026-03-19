@@ -80,11 +80,11 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
         }} />
 
         {/* Left label — compact horizontal */}
-        <div className="relative z-[1] shrink-0 flex flex-col items-center justify-center px-2 py-2" style={{
+        <div className="relative z-[1] shrink-0 flex flex-col items-center justify-center px-1 py-1" style={{
           background: 'linear-gradient(180deg, #0d0d0d 0%, #111008 100%)',
           borderRight: '1px solid rgba(245,158,11,0.15)',
         }}>
-          <p className="text-[8px] font-black uppercase tracking-widest text-white/60 whitespace-nowrap" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>Stories</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-white/60 whitespace-nowrap" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>Stories</p>
         </div>
 
         {/* Scrollable circles */}
@@ -128,16 +128,15 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
               />
             ))}
             <PremiumUpgradeCircle />
+            <VisitingNowCard />
           </div>
         </div>
       </div>}
 
-      {/* Trending categories + Visiting Now — side by side */}
-      <div className="mt-1.5 rounded-lg px-2 py-1.5 shadow-sm flex items-stretch gap-1" style={{ background: 'linear-gradient(135deg, #1a1510, #191510)', border: '1px solid rgba(245,158,11,0.15)' }}>
-        {/* Trending pills — flex-wrap so they flow into 2 lines on mobile */}
-        <nav aria-label="Trending Telegram group categories" className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-1">
-            <span className="text-[8px] font-black uppercase tracking-wider shrink-0 mr-0.5" style={{ color: '#f59e0b' }}>🔥 Trending</span>
+      {/* Trending categories — always visible for SEO */}
+      <nav aria-label="Trending Telegram group categories" className="mt-1.5 rounded-lg px-2 py-1.5 shadow-sm" style={{ background: 'linear-gradient(135deg, #1a1510, #191510)', border: '1px solid rgba(245,158,11,0.15)' }}>
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="text-[8px] font-black uppercase tracking-wider shrink-0 mr-0.5" style={{ color: '#f59e0b' }}>🔥 Trending</span>
             {[
               { label: 'Telegram Porn', href: '/best-telegram-groups/porn-telegram' },
               { label: 'Lesbian', href: '/best-telegram-groups/lesbian' },
@@ -147,7 +146,7 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
               { label: 'Amateur', href: '/best-telegram-groups/amateur' },
               { label: 'Onlyfans', href: '/best-telegram-groups/onlyfans' },
               { label: 'Russia', href: '/groups/country/Russia' },
-              { label: 'UK', href: '/groups/country/UK' },
+              { label: 'BDSM', href: '/best-telegram-groups/bdsm' },
               { label: 'Germany', href: '/groups/country/Germany' },
             ].map(({ label, href }) => (
               <Link
@@ -163,12 +162,8 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
                 {label}
               </Link>
             ))}
-          </div>
-        </nav>
-
-        {/* Visiting now + Advertise — vertical column on the right */}
-        <VisitingNowCard />
-      </div>
+        </div>
+      </nav>
     </section>
   );
 }
@@ -228,17 +223,17 @@ function VisitingNowCard() {
   }, [fetchCount]);
 
   return (
-    <div className="shrink-0 flex flex-col items-center justify-center gap-1.5 pl-2.5 ml-0.5" style={{ borderLeft: '1px solid rgba(245,158,11,0.2)' }}>
-      {/* Number + "visiting now" label — stacked vertically */}
-      <div className="flex flex-col items-center leading-none gap-0.5">
-        <div className="flex items-center gap-1">
-          <span className="relative flex h-1.5 w-1.5 shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
-          </span>
-          <span className="text-[15px] font-black text-white/80 tabular-nums">{count > 0 ? count.toLocaleString('en-US') : '—'}</span>
+    <div className="shrink-0 flex flex-col justify-center gap-2 pl-3 ml-1" style={{ borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
+      {/* Visiting now — subtle stat */}
+      <div className="flex items-center gap-1.5">
+        <span className="relative flex h-1.5 w-1.5 shrink-0">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+        </span>
+        <div className="flex flex-col leading-none">
+          <span className="text-[17px] font-black text-white/80 tabular-nums">{count > 0 ? count.toLocaleString('en-US') : '—'}</span>
+          <span className="text-[10px] font-medium text-white/40 mt-0.5">visiting now</span>
         </div>
-        <span className="text-[8px] font-medium text-white/40 whitespace-nowrap">visiting now</span>
       </div>
 
       {/* Advertise CTA */}
