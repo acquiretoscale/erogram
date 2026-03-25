@@ -15,18 +15,20 @@ function getAdmin(req: NextRequest) {
   }
 }
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!getAdmin(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   await connectDB();
-  const creator = await OnlyFansCreator.findById(params.id).lean();
+  const { id } = await params;
+  const creator = await OnlyFansCreator.findById(id).lean();
   if (!creator) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   return NextResponse.json({ creator });
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!getAdmin(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   await connectDB();
 
+  const { id } = await params;
   const body = await req.json();
   const allowed = ['name', 'username', 'url', 'categories', 'bio', 'avatar', 'header',
     'price', 'isFree', 'isVerified', 'featured', 'subscriberCount', 'likesCount',
@@ -47,7 +49,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   const creator = await OnlyFansCreator.findByIdAndUpdate(
-    params.id,
+    id,
     { $set: update },
     { new: true, runValidators: true }
   ).lean();
@@ -56,10 +58,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   return NextResponse.json({ creator });
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!getAdmin(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   await connectDB();
-  const result = await OnlyFansCreator.findByIdAndDelete(params.id);
+  const { id } = await params;
+  const result = await OnlyFansCreator.findByIdAndDelete(id);
   if (!result) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   return NextResponse.json({ success: true });
 }
