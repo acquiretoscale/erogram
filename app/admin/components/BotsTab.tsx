@@ -174,6 +174,20 @@ export default function BotsTab() {
         }
     };
 
+    const handleMoveToGroup = async (id: string, name: string) => {
+        if (!confirm(`Move "${name}" from Bots to Groups?`)) return;
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.post(`/api/admin/bots/${id}/move-to-group`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            alert(`Moved to groups! New slug: /groups/${res.data.slug}`);
+            fetchBots();
+        } catch (err: any) {
+            alert(err.response?.data?.message || 'Failed to move to groups');
+        }
+    };
+
     const [isUploading, setIsUploading] = useState(false);
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -301,7 +315,7 @@ export default function BotsTab() {
                                             <td className="px-3 py-1.5 text-right tabular-nums">
                                                 <span className={(bot.clickCount || 0) > 0 ? 'text-[#888]' : 'text-[#444]'}>{(bot.clickCount || 0).toLocaleString()}</span>
                                             </td>
-                                            <td className="px-3 py-1.5 text-right">
+                                            <td className="px-3 py-1.5 text-right whitespace-nowrap">
                                                 <button onClick={() => handleEdit(bot)} className="text-blue-400 hover:underline mr-1.5">Edit</button>
                                                 <button onClick={() => handleDelete(bot._id)} className="text-red-400 hover:underline">Del</button>
                                             </td>
@@ -403,7 +417,16 @@ export default function BotsTab() {
                                 </div>
                             </div>
 
-                            <div className="p-6 border-t border-white/10 flex justify-end gap-3 bg-[#0a0a0a]">
+                            <div className="p-6 border-t border-white/10 flex items-center gap-3 bg-[#0a0a0a]">
+                                {editingBot && (
+                                    <button
+                                        onClick={() => { handleMoveToGroup(editingBot._id, editingBot.name); setShowEditor(false); }}
+                                        className="px-6 py-3.5 rounded-xl text-xl font-bold bg-cyan-600 text-white hover:bg-cyan-500 transition-colors shadow-lg shadow-cyan-600/20"
+                                    >
+                                        📁 Move to Groups
+                                    </button>
+                                )}
+                                <div className="flex-grow" />
                                 <button onClick={() => setShowEditor(false)} className="px-6 py-3 rounded-xl text-sm font-bold text-[#999] hover:text-white hover:bg-white/5 transition-colors">Cancel</button>
                                 <button onClick={handleSave} disabled={isSaving || isUploading} className="px-6 py-3 rounded-xl text-sm font-bold bg-[#b31b1b] text-white hover:bg-[#c42b2b] transition-colors shadow-lg shadow-[#b31b1b]/20 disabled:opacity-50">
                                     {isSaving ? 'Saving...' : isUploading ? 'Uploading...' : 'Save Changes'}

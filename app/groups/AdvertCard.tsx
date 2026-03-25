@@ -35,6 +35,7 @@ const BADGE_PRESETS: Record<string, { icon: string; color: string }> = {
     'popular':       { icon: '📈', color: 'bg-cyan-500' },
     'exclusive':     { icon: '🔒', color: 'bg-violet-500' },
     'limited':       { icon: '⏳', color: 'bg-amber-500' },
+    'featured bot':  { icon: '🤖', color: 'bg-gradient-to-r from-cyan-500 to-blue-600' },
 };
 
 function videoBadge(text: string): { label: string; icon: string; color: string } {
@@ -617,6 +618,61 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
     if (isTelegram) {
         return null;
+    }
+
+    // FEATURED BOT CARD — slot 5 bot spotlight
+    if (campaign?.adType === 'featured-bot') {
+        const botBadge = { label: 'Featured Bot', icon: '🤖', color: 'bg-gradient-to-r from-cyan-500 to-blue-600' };
+        return (
+            <motion.div
+                initial={{ opacity: 0, y: 60 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: isIndex * 0.1 }}
+                onHoverStart={() => setIsHovered(true)}
+                onHoverEnd={() => setIsHovered(false)}
+                className="h-full"
+            >
+                <div className={`glass rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col backdrop-blur-xl border transition-all duration-500 group relative border-cyan-500/20 hover:border-cyan-400/50 hover:shadow-2xl hover:shadow-cyan-500/20`}>
+                    {/* Featured Bot badge */}
+                    <div className="absolute top-2 sm:top-3 left-2 sm:left-3 z-10">
+                        <span className={`${botBadge.color} text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg uppercase tracking-wider flex items-center gap-1`}>
+                            <span>{botBadge.icon}</span> {botBadge.label}
+                        </span>
+                    </div>
+                    {/* Image */}
+                    <div ref={imgRef} className="relative w-full h-32 sm:h-52 overflow-hidden bg-[#1a1a1a]">
+                        <Image
+                            src={imageSrc}
+                            alt={ad.name}
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            className="object-cover transition-transform duration-700 group-hover:scale-110"
+                            priority={forceVisible || isIndex < 12}
+                            onError={() => setImageSrc('/assets/image.jpg')}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent opacity-80" />
+                    </div>
+                    {/* Content */}
+                    <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
+                        <h3 className="text-sm sm:text-xl font-black text-white mb-2 sm:mb-3 leading-tight group-hover:text-cyan-400 transition-colors flex items-center gap-1">
+                            <span className="truncate min-w-0">{ad.name}</span>
+                            {showVerified && (
+                                <svg className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
+                            )}
+                        </h3>
+                        <div className="mb-3 sm:mb-6 flex-grow">
+                            <p className="text-gray-400 text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed">{ad.description}</p>
+                        </div>
+                        <button
+                            onClick={handleClick}
+                            className="w-full py-2.5 sm:py-3.5 px-3 sm:px-4 rounded-xl font-black text-white text-xs sm:text-sm uppercase tracking-wide bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                            🤖 {ad.buttonText}
+                        </button>
+                    </div>
+                </div>
+            </motion.div>
+        );
     }
 
     // PREMIUM MOSAIC CARD — group grid for premium category ads

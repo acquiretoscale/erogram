@@ -166,7 +166,7 @@ export default function AdvertiseStats() {
                 {typeof data.activeVisitors === 'number' && data.activeVisitors > 0 && (
                   <>
                     <div className="hidden sm:block w-px h-5 bg-white/25" />
-                    <StatCard label="Active users (last 60 min)" value={data.activeVisitors} gradient="" delay={0} ready full live compact />
+                    <StatCard label="Active users (last 30 min)" value={data.activeVisitors} gradient="" delay={0} ready full live compact />
                   </>
                 )}
               </div>
@@ -190,7 +190,7 @@ export default function AdvertiseStats() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard label="Total visits" value={data.totalViews} gradient="bg-gradient-to-br from-red-950/50 to-rose-950/40" delay={0.1} ready full live />
           {typeof data.activeVisitors === 'number' && data.activeVisitors > 0 && (
-            <StatCard label="Active users (last 60 min)" value={data.activeVisitors} gradient="bg-gradient-to-br from-red-900/40 to-red-950/30" delay={0.21} ready full live />
+            <StatCard label="Active users (last 30 min)" value={data.activeVisitors} gradient="bg-gradient-to-br from-red-900/40 to-red-950/30" delay={0.21} ready full live />
           )}
           {tg && tg.totalSubscribers > 0 && (
             <StatCard label="Telegram subscribers" value={tg.totalSubscribers} suffix="+" gradient="bg-gradient-to-br from-rose-900/40 to-red-950/30" delay={0.24} ready />

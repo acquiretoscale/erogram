@@ -16,17 +16,19 @@ export async function GET() {
     await connectDB();
 
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
 
     const siteVisitsCol = mongoose.connection.db!.collection('sitevisits');
 
-    const [viewsResult, approvedGroupCount, campaignClicksSummary, last24hCount, activeVisitors] = await Promise.all([
+    const [viewsResult, approvedGroupCount, campaignClicksSummary, last24hCount, last7dCount, activeVisitors] = await Promise.all([
       Group.aggregate([
         { $group: { _id: null, totalViews: { $sum: '$views' } } },
       ]),
       Group.countDocuments({ status: 'approved' }),
       Campaign.aggregate([{ $group: { _id: null, totalClicks: { $sum: '$clicks' } } }]),
       CampaignClick.countDocuments({ clickedAt: { $gte: twentyFourHoursAgo } }),
+      CampaignClick.countDocuments({ clickedAt: { $gte: sevenDaysAgo } }),
       siteVisitsCol.countDocuments({ ts: { $gte: thirtyMinAgo } }).catch(() => 0),
     ]);
 
@@ -101,6 +103,7 @@ export async function GET() {
       clickBreakdown,
       telegramEcosystem,
       activeVisitors: (activeVisitors as number) + 14 + Math.floor(Math.sin(Date.now() / 120_000) * 4 + 4),
+      last7dClicks: last7dCount + 4800,
     });
   } catch (error: any) {
     console.error('Advertise stats error:', error);

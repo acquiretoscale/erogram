@@ -111,7 +111,7 @@ function useCountUp(target: number, duration = 1800) {
   return { value, ref };
 }
 
-function LiveStatCard({ target, label, icon, liveNow }: { target: number; label: string; icon: string; liveNow?: boolean }) {
+function LiveStatCard({ target, label, icon }: { target: number; label: string; icon: string }) {
   const { value, ref } = useCountUp(target);
   const [display, setDisplay] = useState(target);
 
@@ -130,44 +130,11 @@ function LiveStatCard({ target, label, icon, liveNow }: { target: number; label:
     return () => clearInterval(interval);
   }, [value, target]);
 
-  if (liveNow) {
-    return (
-      <div
-        ref={ref}
-        className="relative rounded-xl sm:rounded-2xl px-3 py-3 sm:p-5 text-center transition-all duration-300 overflow-hidden"
-        style={{
-          background: 'linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(5,150,105,0.08) 100%)',
-          border: '1px solid rgba(52,211,153,0.25)',
-          boxShadow: '0 0 20px rgba(16,185,129,0.1), inset 0 1px 0 rgba(52,211,153,0.1)',
-        }}
-      >
-        {/* Pulsing glow ring */}
-        <div className="absolute inset-0 rounded-xl sm:rounded-2xl animate-pulse" style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(52,211,153,0.08) 0%, transparent 70%)' }} />
-        {/* LIVE badge */}
-        <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 flex items-center gap-1 px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(52,211,153,0.3)' }}>
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
-          </span>
-          <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-emerald-400">Live</span>
-        </div>
-        <div className="text-lg sm:text-2xl mb-0.5 sm:mb-1">{icon}</div>
-        <div className="text-[17px] sm:text-2xl md:text-3xl font-black text-emerald-300 mb-0.5 tracking-tight tabular-nums leading-tight">
-          {display.toLocaleString('en-US')}
-        </div>
-        <div className="text-emerald-400/70 text-[10px] sm:text-xs font-black uppercase tracking-wider leading-tight">
-          {label}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
       ref={ref}
       className="glass rounded-xl sm:rounded-2xl px-3 py-3 sm:p-5 text-center hover-glow transition-all duration-300 border-white/5 bg-white/[0.02]"
     >
-      <div className="text-lg sm:text-2xl mb-0.5 sm:mb-1.5">{icon}</div>
       <div className="text-[17px] sm:text-2xl md:text-3xl font-bold text-white mb-0.5 tracking-tight tabular-nums leading-tight">
         {display.toLocaleString('en-US')}
       </div>
@@ -323,9 +290,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
 
           {useLightAnimations ? (
             <p className={`text-base sm:text-xl md:text-2xl text-[#999] mb-6 sm:mb-10 max-w-3xl mx-auto px-4 leading-relaxed ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.2s' }}>
-              {t('home.heroDesc1', 'The #1 directory for adult Telegram groups.')} <span className="text-white font-medium">{t('home.heroDesc2', '10,000+ verified')}</span> {t('home.heroDesc3', 'best 2026 communities across dozens of categories.')}
-              <br className="hidden sm:block" />
-              {t('home.heroDesc4', 'Explore and indulge —')} <span className="text-white/80">{t('home.heroDesc5', 'safely and anonymously')}</span>.
+              {t('home.heroDesc1', 'The #1 directory for adult Telegram groups.')} <span className="text-white font-medium">{t('home.heroDesc2', 'Over 5,000 verified')}</span> {t('home.heroDesc3', 'best 2026 communities across dozens of categories.')}
             </p>
           ) : (
             <motion.p
@@ -335,9 +300,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
               transition={{ duration: 0.8, ease: [0.2, 0.8, 0.2, 1], delay: 0.2 }}
               style={{ willChange: 'transform, opacity' }}
             >
-              {t('home.heroDesc1', 'The #1 directory for adult Telegram groups.')} <span className="text-white font-medium">{t('home.heroDesc2', '10,000+ verified')}</span> {t('home.heroDesc3', 'best 2026 communities across dozens of categories.')}
-              <br className="hidden sm:block" />
-              {t('home.heroDesc4', 'Explore and indulge —')} <span className="text-white/80">{t('home.heroDesc5', 'safely and anonymously')}</span>.
+              {t('home.heroDesc1', 'The #1 directory for adult Telegram groups.')} <span className="text-white font-medium">{t('home.heroDesc2', 'Over 5,000 verified')}</span> {t('home.heroDesc3', 'best 2026 communities across dozens of categories.')}
             </motion.p>
           )}
 
@@ -347,16 +310,31 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(lp('/groups')), 0); }}
                 className="w-full sm:w-auto px-8 py-4 bg-[#b31b1b] hover-glow text-white rounded-lg text-lg font-semibold transition-all hover:scale-105"
               >
-                {t('home.exploreGroups', 'Explore Groups')}
+                Explore Telegram Groups &amp; Bots
               </button>
               <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(lp('/bots')), 0); }}
-                className="w-full sm:w-auto px-8 py-4 bg-[#229ED9] hover:bg-[#1e8bc0] text-white rounded-lg text-lg font-semibold transition-all hover:scale-105"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push('/onlyfans-search'), 0); }}
+                className="relative w-full sm:w-auto px-4 py-3.5 sm:px-6 bg-[#00AFF0] hover:bg-[#009dd9] text-white rounded-lg transition-all hover:scale-105 flex flex-col items-center gap-0.5 text-center leading-snug"
               >
-                {t('home.exploreBots', 'Explore Bots')}
+                <span className="text-lg sm:text-sm font-semibold text-white/95">
+                  {t('home.ofSearchLineStart', 'Explore +1.8M ')}
+                  <span
+                    className="inline-block font-black text-white align-baseline mx-0.5 text-[1.35rem] sm:text-lg tracking-tight"
+                    style={{
+                      textShadow: '0 0 24px rgba(255,255,255,0.55), 0 0 8px rgba(255,255,255,0.4), 0 2px 4px rgba(0,0,0,0.25)',
+                    }}
+                  >
+                    OnlyFans
+                  </span>
+                  {t('home.ofSearchLineEnd', ' Creators')}
+                </span>
+                <span className="text-[10px] sm:text-[11px] text-white/60 font-medium tracking-wide">
+                  {t('home.ofSearchParen', '(OFsearch)')}
+                </span>
+                <span className="absolute -top-2 -right-2 px-1.5 py-0.5 bg-rose-500 text-white text-[10px] font-black uppercase rounded-md leading-none tracking-wider">BETA</span>
               </button>
             </div>
-          ) : (
+                      ) : (
             <motion.div
               className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center w-full mb-6 sm:mb-8"
               initial={{ opacity: 0, y: 60 }}
@@ -368,35 +346,58 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(lp('/groups')), 0); }}
                 className="w-full sm:w-auto px-8 py-4 bg-[#b31b1b] hover-glow text-white rounded-lg text-lg font-semibold transition-all hover:scale-105"
               >
-                {t('home.exploreGroups', 'Explore Groups')}
+                Explore Telegram Groups &amp; Bots
               </button>
               <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(lp('/bots')), 0); }}
-                className="w-full sm:w-auto px-8 py-4 bg-[#229ED9] hover:bg-[#1e8bc0] text-white rounded-lg text-lg font-semibold transition-all hover:scale-105"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push('/onlyfans-search'), 0); }}
+                className="relative w-full sm:w-auto px-4 py-3.5 sm:px-6 bg-[#00AFF0] hover:bg-[#009dd9] text-white rounded-lg transition-all hover:scale-105 flex flex-col items-center gap-0.5 text-center leading-snug"
               >
-                {t('home.exploreBots', 'Explore Bots')}
+                <span className="text-lg sm:text-sm font-semibold text-white/95">
+                  {t('home.ofSearchLineStart', 'Explore +1.8M ')}
+                  <span
+                    className="inline-block font-black text-white align-baseline mx-0.5 text-[1.35rem] sm:text-lg tracking-tight"
+                    style={{
+                      textShadow: '0 0 24px rgba(255,255,255,0.55), 0 0 8px rgba(255,255,255,0.4), 0 2px 4px rgba(0,0,0,0.25)',
+                    }}
+                  >
+                    OnlyFans
+                  </span>
+                  {t('home.ofSearchLineEnd', ' Creators')}
+                </span>
+                <span className="text-[10px] sm:text-[11px] text-white/60 font-medium tracking-wide">
+                  {t('home.ofSearchParen', '(OFsearch)')}
+                </span>
+                <span className="absolute -top-2 -right-2 px-1.5 py-0.5 bg-rose-500 text-white text-[10px] font-black uppercase rounded-md leading-none tracking-wider">BETA</span>
               </button>
             </motion.div>
           )}
 
           {/* Stats — live counters, tight under CTA */}
           {useLightAnimations ? (
-            <div className={`grid grid-cols-3 gap-2 sm:gap-4 max-w-3xl mx-auto ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.5s' }}>
-              <LiveStatCard target={GROUP_BASE + (stats?.groupCount ?? 0)} label={t('home.statsGroups', 'Groups')} icon="🔥" />
-              <LiveStatCard target={activeUsers} label="Visiting Now" icon="🟢" liveNow />
-              <LiveStatCard target={stats?.totalViews ?? 0} label={t('home.statsViews', 'Views')} icon="👁️" />
+            <div className={`grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 max-w-4xl mx-auto ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.5s' }}>
+              <LiveStatCard target={GROUP_BASE + (stats?.groupCount ?? 0)} label={t('home.statsGroups', 'Groups')} icon="" />
+              <LiveStatCard target={activeUsers} label="Visiting Now" icon="" />
+              <LiveStatCard target={stats?.totalViews ?? 0} label={t('home.statsViews', 'Views')} icon="" />
+              <div className="glass rounded-xl sm:rounded-2xl px-3 py-3 sm:p-5 text-center hover-glow transition-all duration-300 border-white/5 bg-white/[0.02]">
+                <div className="text-[17px] sm:text-2xl md:text-3xl font-bold text-white mb-0.5 tracking-tight leading-tight">+1.8M</div>
+                <div className="text-white/40 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">OnlyFans Creators</div>
+              </div>
             </div>
           ) : (
             <motion.div
-              className="grid grid-cols-3 gap-2 sm:gap-4 max-w-3xl mx-auto"
+              className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 max-w-4xl mx-auto"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: 'easeOut', delay: 0.5 }}
               style={{ willChange: 'transform, opacity' }}
             >
-              <LiveStatCard target={GROUP_BASE + (stats?.groupCount ?? 0)} label={t('home.statsGroups', 'Groups')} icon="🔥" />
-              <LiveStatCard target={activeUsers} label="Visiting Now" icon="🟢" liveNow />
-              <LiveStatCard target={stats?.totalViews ?? 0} label={t('home.statsViews', 'Views')} icon="👁️" />
+              <LiveStatCard target={GROUP_BASE + (stats?.groupCount ?? 0)} label={t('home.statsGroups', 'Groups')} icon="" />
+              <LiveStatCard target={activeUsers} label="Visiting Now" icon="" />
+              <LiveStatCard target={stats?.totalViews ?? 0} label={t('home.statsViews', 'Views')} icon="" />
+              <div className="glass rounded-xl sm:rounded-2xl px-3 py-3 sm:p-5 text-center hover-glow transition-all duration-300 border-white/5 bg-white/[0.02]">
+                <div className="text-[17px] sm:text-2xl md:text-3xl font-bold text-white mb-0.5 tracking-tight leading-tight">+1.8M</div>
+                <div className="text-white/40 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">OnlyFans Creators</div>
+              </div>
             </motion.div>
           )}
 

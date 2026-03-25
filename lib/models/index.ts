@@ -35,6 +35,7 @@ export const userSchema = new Schema(
     premiumExpiresAt: { type: Date, default: null },
     paymentMethod: { type: String, enum: ['stars', 'crypto', null], default: null },
     lastPaymentChargeId: { type: String, default: null },
+    savedCreators: [{ type: Schema.Types.ObjectId, ref: 'OnlyFansCreator' }],
     stats: {
       groupsCreated: { type: Number, default: 0 },
       groupsSaved: { type: Number, default: 0 },
@@ -496,7 +497,7 @@ export const campaignSchema = new Schema(
     // Feed-specific fields
     position: { type: Number, default: null },
     feedTier: { type: Number, default: null }, // 1=top, 2=middle, 3=bottom (only for slot=feed)
-    tierSlot: { type: Number, default: null }, // 1-3 within tier (1=Top Groups, 2=Discover NSFW Telegram, 3=Discover NSFW Groups)
+    tierSlot: { type: Number, default: null }, // 1-5 within tier (1=Top Groups, 2=after 2 groups, 3=after 7, 4=after 12+loops, 5=Featured Bot)
     description: { type: String, default: '' },
     category: { type: String, default: 'All' },
     country: { type: String, default: 'All' },
@@ -509,8 +510,8 @@ export const campaignSchema = new Schema(
     badgeText: { type: String, default: '' },
     // Show a verified checkmark next to the ad title (like Instagram verified)
     verified: { type: Boolean, default: false },
-    // Ad type: 'advertiser' (image/video) or 'premium' (group mosaic from a category)
-    adType: { type: String, enum: ['advertiser', 'premium'], default: 'advertiser' },
+    // Ad type: 'advertiser' (image/video), 'premium' (group mosaic), or 'featured-bot' (slot-5 bot spotlight)
+    adType: { type: String, enum: ['advertiser', 'premium', 'featured-bot'], default: 'advertiser' },
     // For premium ads: which category to pull featured groups from
     premiumCategory: { type: String, default: '' },
     // For premium ads: hand-picked group IDs to show (overrides automatic category query)
@@ -790,3 +791,127 @@ bestGroupPickSchema.index({ targetType: 1, targetValue: 1, position: 1 }, { uniq
 bestGroupPickSchema.index({ targetType: 1, targetValue: 1, group: 1 }, { unique: true });
 
 export const BestGroupPick = models.BestGroupPick || model('BestGroupPick', bestGroupPickSchema);
+
+// OnlyFans Creator Schema — scraped via Apify
+export const onlyFansCreatorSchema = new Schema(
+  {
+    name: { type: String, required: true },
+    username: { type: String, required: true },
+    slug: { type: String, required: true, unique: true },
+    categories: { type: [String], default: [] },
+    avatar: { type: String, default: '' },
+    header: { type: String, default: '' },
+    bio: { type: String, default: '' },
+    subscriberCount: { type: Number, default: 0 },
+    likesCount: { type: Number, default: 0 },
+    mediaCount: { type: Number, default: 0 },
+    photosCount: { type: Number, default: 0 },
+    videosCount: { type: Number, default: 0 },
+    price: { type: Number, default: 0 },
+    isFree: { type: Boolean, default: false },
+    isVerified: { type: Boolean, default: false },
+    url: { type: String, required: true },
+    gender: { type: String, enum: ['female', 'male', 'unknown'], default: 'unknown' },
+    clicks: { type: Number, default: 0 },
+    featured: { type: Boolean, default: false },
+    scrapedAt: { type: Date, default: Date.now },
+  },
+  { timestamps: true }
+);
+onlyFansCreatorSchema.index({ categories: 1 });
+onlyFansCreatorSchema.index({ clicks: -1 });
+onlyFansCreatorSchema.index({ featured: 1 });
+onlyFansCreatorSchema.index({ subscriberCount: -1 });
+
+export const OnlyFansCreator = models.OnlyFansCreator || model('OnlyFansCreator', onlyFansCreatorSchema);
+
+// Trending OF Creator — paid promoted spots shown on all onlyfans-search pages
+const trendingOFCreatorSchema = new Schema(
+  {
+    name:       { type: String, required: true },
+    username:   { type: String, required: true },
+    avatar:     { type: String, default: '' },
+    url:        { type: String, required: true },
+    bio:        { type: String, default: '' },
+    categories: { type: [String], default: [] },
+    position:   { type: Number, min: 1, max: 12, required: true },
+    active:     { type: Boolean, default: true },
+    clicks:     { type: Number, default: 0 },
+    note:       { type: String, default: '' },
+    dealPrice:  { type: Number, default: 0 },
+  },
+  { timestamps: true },
+);
+trendingOFCreatorSchema.index({ position: 1 }, { unique: true });
+
+export const TrendingOFCreator = models.TrendingOFCreator || model('TrendingOFCreator', trendingOFCreatorSchema);
+
+// OFM Settings — stores Apify API keys for rotation (when one is burned, next is used)
+export const ofmSettingsSchema = new Schema(
+  {
+    key: { type: String, default: 'default', unique: true },
+    apifyKeys: [
+      {
+        label: { type: String, default: '' },
+        apiKey: { type: String, required: true },
+        active: { type: Boolean, default: true },
+        burned: { type: Boolean, default: false },
+        usageCount: { type: Number, default: 0 },
+        lastUsedAt: { type: Date, default: null },
+        addedAt: { type: Date, default: Date.now },
+      },
+    ],
+    apifyActor: { type: String, default: 'igolaizola/onlyfans-scraper' },
+  },
+  { timestamps: true },
+);
+
+export const OFMSettings = models.OFMSettings || model('OFMSettings', ofmSettingsSchema);
+
+// Search Query Schema — logs every user search on /onlyfans-search
+export const searchQuerySchema = new Schema(
+  {
+    query: { type: String, required: true },
+    queryNormalized: { type: String, required: true, unique: true },
+    searchCount: { type: Number, default: 1 },
+    lastSearchedAt: { type: Date, default: Date.now },
+    scraped: { type: Boolean, default: false },
+    scrapeStatus: { type: String, enum: ['pending', 'scraping', 'done', 'failed'], default: 'pending' },
+    scrapedAt: { type: Date, default: null },
+    resultsCount: { type: Number, default: 0 },
+  },
+  { timestamps: true },
+);
+searchQuerySchema.index({ searchCount: -1 });
+searchQuerySchema.index({ scraped: 1 });
+searchQuerySchema.index({ createdAt: -1 });
+
+export const SearchQuery = models.SearchQuery || model('SearchQuery', searchQuerySchema);
+
+// Scrape Run Log — persists every Apify scrape run for cost tracking
+export const scrapeRunSchema = new Schema(
+  {
+    source: { type: String, enum: ['bulk', 'search', 'import'], required: true },
+    query: { type: String, required: true },
+    runId: { type: String, default: '' },
+    actorId: { type: String, default: '' },
+    status: { type: String, enum: ['running', 'succeeded', 'failed', 'aborted', 'timed-out'], default: 'running' },
+    maxItems: { type: Number, default: 200 },
+    totalItems: { type: Number, default: 0 },
+    saved: { type: Number, default: 0 },
+    skipped: { type: Number, default: 0 },
+    clean: { type: Boolean, default: false },
+    error: { type: String, default: '' },
+    apiKeyHint: { type: String, default: '' },
+    startedAt: { type: Date, default: Date.now },
+    completedAt: { type: Date, default: null },
+    durationMs: { type: Number, default: 0 },
+  },
+  { timestamps: true },
+);
+scrapeRunSchema.index({ createdAt: -1 });
+scrapeRunSchema.index({ source: 1 });
+scrapeRunSchema.index({ status: 1 });
+scrapeRunSchema.index({ query: 1 });
+
+export const ScrapeRun = models.ScrapeRun || model('ScrapeRun', scrapeRunSchema);

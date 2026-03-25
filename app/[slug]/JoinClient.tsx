@@ -11,6 +11,7 @@ import BookmarkButton from '@/components/BookmarkButton';
 import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 import VaultTeaserFeed from '@/app/groups/VaultTeaserFeed';
+import OnlyFansShowcase from './OnlyFansShowcase';
 import { useTranslation, useLocalePath } from '@/lib/i18n';
 
 interface Entity {
@@ -783,6 +784,8 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                     <VaultTeaserFeed items={vaultTeaser} />
                   </div>
                 )}
+
+                <OnlyFansShowcase />
               </div>
               )}
 

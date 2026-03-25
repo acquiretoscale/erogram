@@ -77,6 +77,16 @@ export default function Footer() {
                                     {t('footer.topLists', 'Top Lists')}
                                 </Link>
                             </li>
+                            <li>
+                                <Link href="/ainsfw" className="text-[#999] hover:text-[#b31b1b] transition-colors">
+                                    AI NSFW Tools
+                                </Link>
+                            </li>
+                            <li>
+                                <Link href="/ofmads" className="text-[#999] hover:text-[#b31b1b] transition-colors">
+                                    OFM Boost
+                                </Link>
+                            </li>
                         </ul>
                     </div>
 
@@ -101,7 +111,7 @@ export default function Footer() {
                             </li>
                             <li>
                                 <Link href={lp('/contact')} className="text-[#999] hover:text-[#b31b1b] transition-colors">
-                                    {t('footer.contact', 'Contact')}
+                                    {t('footer.support', 'Support')}
                                 </Link>
                             </li>
                         </ul>

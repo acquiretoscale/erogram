@@ -146,9 +146,9 @@ export async function createCampaign(
 
   if (data.slot === 'feed') {
     const slot = data.tierSlot != null ? Number(data.tierSlot) : null;
-    if (slot != null) {
-      if (slot < 1 || slot > 4) {
-        throw new Error('Feed Slot must be 1–4.');
+      if (slot != null) {
+      if (slot < 1 || slot > 5) {
+        throw new Error('Feed Slot must be 1–5.');
       }
       (data as any).feedTier = 1; // all feed ads live in tier 1
       const variantCount = await Campaign.countDocuments({
@@ -399,15 +399,21 @@ export async function getFeedTierCapacity(token: string) {
         startDate: { $lte: now },
         endDate: { $gte: now },
         feedTier: 1,
-        tierSlot: { $gte: 1, $lte: 4 },
+        tierSlot: { $gte: 1, $lte: 5 },
       },
     },
     { $group: { _id: '$tierSlot', count: { $sum: 1 } } },
   ]);
 
-  const TIER_LABELS = ['Top Groups — Position 2', 'Discover NSFW Telegram — Position 3', 'Discover NSFW Groups — Position 8', 'After 12 Groups — Position 12+'];
+  const TIER_LABELS = [
+    'Top Groups — Position 2',
+    'Discover NSFW Telegram — Position 3',
+    'Discover NSFW Groups — Position 8',
+    'After 12 Groups — Position 12+',
+    'Featured Bot — Position 5 (Groups feed)',
+  ];
   const countBySlot = new Map(counts.map((c: any) => [c._id, c.count]));
-  return [1, 2, 3, 4].map((s) => ({
+  return [1, 2, 3, 4, 5].map((s) => ({
     tier: 1,
     label: TIER_LABELS[s - 1],
     max: 4,
@@ -435,7 +441,7 @@ async function normalizeFeedPositions(): Promise<void> {
   const withKey = allFeed.map((c: any) => {
     const slot = c.tierSlot as number | null;
     const stored = c.position != null ? Number(c.position) : 999;
-    const sortKey = slot != null && slot >= 1 && slot <= 4 ? slot : stored;
+    const sortKey = slot != null && slot >= 1 && slot <= 5 ? slot : stored;
     const isActive = c.status === 'active';
     return { c, sortKey, isActive };
   });
@@ -475,7 +481,7 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
     startDate: { $lte: now },
     endDate: { $gte: startOfToday },
     feedTier: 1,
-    tierSlot: { $gte: 1, $lte: 4 },
+    tierSlot: { $gte: 1, $lte: 5 },
     $or: [
       { feedPlacement: placement },
       { feedPlacement: 'both' },
@@ -495,8 +501,9 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
 
   // Slots 1-3: pick one random variant (A/B test).
   // Slot 4: return ALL active campaigns so the frontend can cycle through them as the user scrolls.
+  // Slot 5: Featured Bot — pick one random variant (shown at position 5 in groups feed).
   const results: any[] = [];
-  for (let s = 1; s <= 4; s++) {
+  for (let s = 1; s <= 5; s++) {
     const variants = slotGroups.get(s);
     if (!variants || variants.length === 0) continue;
 

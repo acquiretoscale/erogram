@@ -10,6 +10,8 @@ import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import { getActiveCampaigns } from '@/lib/actions/campaigns';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { LOCALES, localePath } from '@/lib/i18n';
+import { getToolBySlug, getToolsByCategory } from '@/app/ainsfw/data';
+import ToolDetailClient from '@/app/ainsfw/[slug]/ToolDetailClient';
 
 // ISR for public join pages (keeps SSR output crawlable while avoiding per-request rendering)
 export const revalidate = 300;
@@ -551,7 +553,42 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  // If neither found
+  // If neither found, try AI NSFW tool
+  const aiTool = getToolBySlug(slug);
+  if (aiTool) {
+    const toolPageUrl = `${BASE_URL}/${aiTool.slug}`;
+    const toolImgUrl = aiTool.image.startsWith('http') ? aiTool.image : `${BASE_URL}${aiTool.image}`;
+    const title = `${aiTool.name} Review — Best ${aiTool.category} Tool 2026`;
+    let toolDesc = aiTool.description;
+    if (toolDesc.length < 140) {
+      toolDesc += ` Explore ${aiTool.name} on Erogram.pro — the best ${aiTool.category} directory with curated reviews and direct links.`;
+    }
+    if (toolDesc.length > 160) toolDesc = toolDesc.slice(0, 157) + '...';
+
+    return {
+      title,
+      description: toolDesc,
+      keywords: `${aiTool.name}, ${aiTool.category}, ai nsfw tools, ${aiTool.tags.slice(0, 5).join(', ')}, erogram, best ${aiTool.category.toLowerCase()} 2026`,
+      other: { rating: 'adult' },
+      alternates: { canonical: toolPageUrl },
+      openGraph: {
+        title,
+        description: toolDesc,
+        type: 'website',
+        siteName: 'Erogram',
+        url: toolPageUrl,
+        images: [{ url: toolImgUrl, width: 1200, height: 630, alt: `${aiTool.name} — ${aiTool.category}` }],
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title,
+        description: toolDesc,
+        images: [toolImgUrl],
+      },
+    };
+  }
+
+  // If nothing found
   return {
     title: 'Not Found - Discover NSFW Telegram Communities',
     description: 'The requested NSFW Telegram community or bot could not be found. Discover thousands of adult communities and bots on Erogram.pro.',
@@ -767,6 +804,64 @@ export default async function JoinPage({ params }: PageProps) {
     );
   }
 
-  // If neither found, show not found
+  // If neither found, try AI NSFW tool
+  const aiTool = getToolBySlug(slug);
+  if (aiTool) {
+    const similar = getToolsByCategory(aiTool.category)
+      .filter((t) => t.slug !== aiTool.slug)
+      .slice(0, 6);
+
+    const toolPageUrl = `${BASE_URL}/${aiTool.slug}`;
+    const toolImgUrl = aiTool.image.startsWith('http') ? aiTool.image : `${BASE_URL}${aiTool.image}`;
+
+    const toolBreadcrumb = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
+        { '@type': 'ListItem', position: 2, name: 'AI NSFW Tools', item: `${BASE_URL}/ainsfw` },
+        { '@type': 'ListItem', position: 3, name: aiTool.name, item: toolPageUrl },
+      ],
+    };
+
+    const toolWebPage = {
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: `${aiTool.name} — ${aiTool.category} Tool Review`,
+      description: aiTool.description,
+      url: toolPageUrl,
+      isPartOf: { '@type': 'WebSite', name: 'Erogram', url: BASE_URL },
+      author: { '@type': 'Organization', name: 'Erogram.pro', url: BASE_URL },
+    };
+
+    const toolSoftware = {
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      name: aiTool.name,
+      description: aiTool.description,
+      url: toolPageUrl,
+      applicationCategory: 'EntertainmentApplication',
+      operatingSystem: 'Web',
+      offers: {
+        '@type': 'Offer',
+        price: aiTool.subscription.toLowerCase().includes('free') ? '0' : undefined,
+        priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
+      },
+      provider: { '@type': 'Organization', name: 'Erogram.pro', url: BASE_URL },
+      image: toolImgUrl,
+    };
+
+    return (
+      <>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(toolBreadcrumb) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(toolWebPage) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(toolSoftware) }} />
+        <ToolDetailClient tool={aiTool} similar={similar} />
+      </>
+    );
+  }
+
+  // If nothing found, show not found
   notFound();
 }

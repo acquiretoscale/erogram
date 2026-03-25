@@ -81,7 +81,10 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
     useEffect(() => {
         if (isInView && needsFetch && group._id && !hasFetchedRef.current) {
             hasFetchedRef.current = true;
-            fetch(`/api/groups/${group._id}/image`)
+            const endpoint = itemType === 'bot'
+                ? `/api/bots/${group._id}/image`
+                : `/api/groups/${group._id}/image`;
+            fetch(endpoint)
                 .then(res => res.json())
                 .then(data => {
                     const url = data?.image;
@@ -91,7 +94,7 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                 })
                 .catch(() => {});
         }
-    }, [isInView, needsFetch, group._id]);
+    }, [isInView, needsFetch, group._id, itemType]);
 
     const handleAdminDelete = async (e: React.MouseEvent) => {
         e.preventDefault();
@@ -173,12 +176,17 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
 
                     {/* Badges */}
                     <div className="absolute top-3 left-3 flex gap-2 flex-wrap">
-                        {isFeatured && (
+                        {itemType === 'bot' && (
+                            <div className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-[10px] font-black px-2 py-1 rounded-md shadow-lg uppercase tracking-wider flex items-center gap-1">
+                                <span>🤖</span> Bot
+                            </div>
+                        )}
+                        {isFeatured && itemType !== 'bot' && (
                             <div className="bg-yellow-500 text-black text-[10px] font-black px-2 py-1 rounded-md shadow-lg uppercase tracking-wider flex items-center gap-1">
                                 <span>⭐</span> Featured
                             </div>
                         )}
-                        {group.pinned && !isFeatured && (
+                        {group.pinned && !isFeatured && itemType !== 'bot' && (
                             <div className="bg-blue-500 text-white text-[10px] font-black px-2 py-1 rounded-md shadow-lg uppercase tracking-wider flex items-center gap-1">
                                 <span>📌</span> Pinned
                             </div>
@@ -266,12 +274,16 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                         <a
                             href={group.isAdvertisement && group.advertisementUrl
                                 ? `/redirect.html?url=${encodeURIComponent(group.advertisementUrl)}&group=${group._id}`
-                                : `/${group.slug}`}
+                                : itemType === 'bot'
+                                    ? `/bots/${group.slug}`
+                                    : `/${group.slug}`}
                             target="_blank"
                             rel={group.isAdvertisement ? "sponsored noopener noreferrer" : "noopener noreferrer"}
                             className={`group/btn relative flex items-center justify-center w-full overflow-hidden rounded-xl py-2.5 sm:py-3.5 px-3 sm:px-4 font-black text-white shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${isFeatured
                                 ? 'bg-gradient-to-r from-yellow-500 to-red-600 hover:shadow-orange-500/40'
-                                : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-blue-500/40'
+                                : itemType === 'bot'
+                                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:shadow-cyan-500/40'
+                                    : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-blue-500/40'
                                 }`}
                         >
                             <div className="absolute inset-0 bg-white/20 opacity-0 transition-opacity duration-300 group-hover/btn:opacity-100" />
@@ -280,6 +292,10 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                                 {group.isAdvertisement ? (
                                     <>
                                         <span>🔗</span> Visit
+                                    </>
+                                ) : itemType === 'bot' ? (
+                                    <>
+                                        <span className="text-base sm:text-lg">🤖</span> Open Bot
                                     </>
                                 ) : (
                                     <>

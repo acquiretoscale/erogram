@@ -2,14 +2,14 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { headers } from 'next/headers';
 import connectDB from '@/lib/db/mongodb';
-import { Group, Bot, StorySlideContent, SiteConfig } from '@/lib/models';
+import { Group, Bot, StorySlideContent, SiteConfig, TrendingOFCreator } from '@/lib/models';
 import GroupsClient from './GroupsClient';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { getActiveCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
 import { getStoryCategories, DEFAULT_STORY_CATEGORIES, type StoryCategoryConfig } from '@/lib/actions/siteConfig';
 import { listR2Files } from '@/lib/r2';
-import type { StoryCategory, StoryMediaSlide } from './types';
+import type { StoryCategory, StoryCreator, StoryMediaSlide } from './types';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
 
@@ -195,9 +195,9 @@ async function getStoryData(categories: StoryCategoryConfig[], locale: string = 
       categories.map(async (cat): Promise<StoryCategory> => {
         const limit = cat.maxItems ?? 3;
 
-        // ── EROGRAM: newest groups (24h) + admin announcements ──
+        // ── EROGRAM: newest groups (24h) + admin announcements + 2 OF creators ──
         if (cat.filterType === 'erogram') {
-          const [groups, announcements] = await Promise.all([
+          const [groups, announcements, trendingCreators, bgVideos] = await Promise.all([
             Group.find({
               status: 'approved',
               isAdvertisement: { $ne: true },
@@ -216,6 +216,18 @@ async function getStoryData(categories: StoryCategoryConfig[], locale: string = 
             })
               .sort({ sortOrder: 1, createdAt: -1 })
               .lean(),
+            TrendingOFCreator.find({ active: true })
+              .select('name username avatar url bio categories position')
+              .sort({ position: 1 })
+              .limit(2)
+              .lean(),
+            (async () => {
+              const folder = cat.r2Folder || 'tgempire/instabaddies';
+              try {
+                const files = await listR2Files(folder, { maxSizeMB: 8 });
+                return files.filter(f => /\.(mp4|webm|mov)$/i.test(f));
+              } catch { return []; }
+            })(),
           ]);
 
           // Fallback if no groups in last 24h
@@ -245,14 +257,30 @@ async function getStoryData(categories: StoryCategoryConfig[], locale: string = 
             })),
           }));
 
+          const promoCreators: StoryCreator[] = (trendingCreators as any[]).map((c) => ({
+            _id: c._id.toString(),
+            name: (c.name || '').slice(0, 80),
+            username: (c.username || '').slice(0, 60),
+            slug: c.username || '',
+            avatar: c.avatar || '',
+            header: '',
+            bio: (c.bio || '').slice(0, 200),
+            subscriberCount: 0, likesCount: 0, mediaCount: 0,
+            price: 0, isFree: true, isVerified: false,
+            url: c.url || '',
+            categories: c.categories || [],
+          }));
+
           const hasNewContent = finalGroups.some((g: any) => new Date(g.createdAt) > twentyFourHoursAgo) || mediaSlides.length > 0;
 
           return {
             slug: cat.slug, label: cat.label, profileImage: cat.profileImage || '',
             hasNewContent, verified: cat.verified, ctaText: cat.ctaText, ctaUrl: cat.ctaUrl,
-            r2Folder: cat.r2Folder, storyType: 'erogram',
+            r2Folder: cat.r2Folder || 'tgempire/instabaddies', storyType: 'erogram',
             groups: finalGroups.map(g => mapGroup(g, locale)),
             mediaSlides,
+            creators: promoCreators,
+            bgVideoUrls: bgVideos,
           };
         }
 
@@ -348,6 +376,58 @@ async function getStoryData(categories: StoryCategoryConfig[], locale: string = 
             r2Folder: cat.r2Folder, storyType: 'advert',
             groups: [],
             mediaSlides,
+          };
+        }
+
+        // ── CREATORS: featured OnlyFans creators (from TrendingOFCreator) ──
+        if (cat.filterType === 'creators') {
+          const creatorLimit = cat.maxItems ?? 30;
+
+          const [rawCreators, bgVideos] = await Promise.all([
+            TrendingOFCreator.find({ active: true })
+              .select('name username avatar url bio categories position')
+              .sort({ position: 1 })
+              .limit(creatorLimit)
+              .lean(),
+            (async () => {
+              const folder = cat.r2Folder || 'tgempire/instabaddies';
+              try {
+                const files = await listR2Files(folder, { maxSizeMB: 8 });
+                return files.filter(f => /\.(mp4|webm|mov)$/i.test(f));
+              } catch { return []; }
+            })(),
+          ]);
+
+          const creators: StoryCreator[] = (rawCreators as any[]).map((c) => ({
+            _id: c._id.toString(),
+            name: (c.name || '').slice(0, 80),
+            username: (c.username || '').slice(0, 60),
+            slug: c.username || '',
+            avatar: c.avatar || '',
+            header: '',
+            bio: (c.bio || '').slice(0, 200),
+            subscriberCount: 0,
+            likesCount: 0,
+            mediaCount: 0,
+            price: 0,
+            isFree: true,
+            isVerified: false,
+            url: c.url || '',
+            categories: c.categories || [],
+            bgVideoUrl: bgVideos.length > 0
+              ? bgVideos[Math.floor(Math.random() * bgVideos.length)]
+              : undefined,
+          }));
+
+          return {
+            slug: cat.slug, label: cat.label, profileImage: '',
+            hasNewContent: creators.length > 0, verified: cat.verified,
+            ctaText: cat.ctaText, ctaUrl: cat.ctaUrl,
+            storyType: 'creators',
+            r2Folder: cat.r2Folder,
+            groups: [],
+            mediaSlides: [],
+            creators,
           };
         }
 

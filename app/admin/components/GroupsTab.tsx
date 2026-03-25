@@ -159,6 +159,20 @@ export default function GroupsTab() {
         }
     };
 
+    const handleMoveToBot = async (id: string, name: string) => {
+        if (!confirm(`Move "${name}" from Groups to Bots? The group will be deleted and recreated as a bot.`)) return;
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.post(`/api/admin/groups/${id}/move-to-bot`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            alert(`Moved to bots! New slug: /bots/${res.data.slug}`);
+            fetchGroups();
+        } catch (err: any) {
+            alert(err.response?.data?.message || 'Failed to move to bots');
+        }
+    };
+
     const [isUploading, setIsUploading] = useState(false);
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -803,24 +817,17 @@ export default function GroupsTab() {
                                                 <span className={`text-sm tabular-nums ${getRecentClicks(group) > 0 ? 'text-green-400' : 'text-gray-500'}`}>{getRecentClicks(group).toLocaleString()}</span>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button
-                                                        onClick={() => handleSendPremiumNotification(group._id)}
-                                                        className="p-2 hover:bg-yellow-500/20 text-yellow-500 rounded-lg transition-colors"
-                                                        title="Send Premium Notification"
-                                                    >
-                                                        ⭐
-                                                    </button>
+                                                <div className="flex justify-end gap-2">
                                                     <button
                                                         onClick={() => handleEdit(group)}
-                                                        className="p-2 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-colors"
+                                                        className="p-1.5 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-colors"
                                                         title="Edit"
                                                     >
                                                         ✏️
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(group._id)}
-                                                        className="p-2 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
+                                                        className="p-1.5 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
                                                         title="Delete"
                                                     >
                                                         🗑️
@@ -1023,7 +1030,16 @@ export default function GroupsTab() {
                                 </div>
                             </div>
 
-                            <div className="p-6 border-t border-white/10 flex justify-end gap-3 bg-[#0a0a0a]">
+                            <div className="p-6 border-t border-white/10 flex items-center gap-3 bg-[#0a0a0a]">
+                                {editingGroup && (
+                                    <button
+                                        onClick={() => { handleMoveToBot(editingGroup._id, editingGroup.name); setShowEditor(false); }}
+                                        className="px-6 py-3.5 rounded-xl text-xl font-bold bg-cyan-600 text-white hover:bg-cyan-500 transition-colors shadow-lg shadow-cyan-600/20"
+                                    >
+                                        🤖 Move to Bots
+                                    </button>
+                                )}
+                                <div className="flex-grow" />
                                 <button
                                     onClick={() => setShowEditor(false)}
                                     className="px-6 py-3 rounded-xl text-sm font-bold text-[#999] hover:text-white hover:bg-white/5 transition-colors"

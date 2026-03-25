@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
-import { Group, User, Post, SystemConfig, Article } from '@/lib/models';
+import { Group, Bot, User, Post, SystemConfig, Article } from '@/lib/models';
 import { slugify } from '@/lib/utils/slugify';
 import { uploadToR2, getR2PublicUrl } from '@/lib/r2';
 
@@ -65,6 +65,7 @@ export async function GET(req: NextRequest) {
     const topGroup = searchParams.get('topGroup') === 'true';
     const featuredParam = searchParams.get('featured') === 'true';
     const boostedParam = searchParams.get('boosted') === 'true';
+    const typeParam = searchParams.get('type') || 'groups'; // 'all' = groups + bots mixed, 'groups' = groups only
     const locale = req.headers.get('x-locale') || searchParams.get('locale') || 'en';
 
     // Fast path: featured groups (non-boosted, ordered by featuredOrder)
@@ -480,6 +481,7 @@ export async function GET(req: NextRequest) {
         verified: g.verified || false,
         reviewCount: stats.reviewCount,
         averageRating: stats.averageRating,
+        itemType: 'group' as const,
         createdBy: g.createdBy
           ? {
             username: g.createdBy.username,
@@ -488,6 +490,56 @@ export async function GET(req: NextRequest) {
           : null,
       };
     });
+
+    // When type=all, mix in a random sample of bots (roughly 1 bot per 4 groups)
+    if (typeParam === 'all' && !search) {
+      try {
+        const botCount = Math.max(1, Math.floor(sanitized.length / 4));
+        const bots = await Bot.aggregate([
+          { $match: { status: 'approved' } },
+          { $sample: { size: botCount } },
+          { $project: { _id: 1, name: 1, slug: 1, category: 1, country: 1, description: 1, image: 1, telegramLink: 1, memberCount: 1, clickCount: 1, verified: 1 } },
+        ]);
+
+        const PLACEHOLDER = process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png';
+        const botItems = (bots as any[]).map((b: any) => ({
+          _id: b._id.toString(),
+          name: (b.name || '').slice(0, 150),
+          slug: b.slug || '',
+          category: b.category || '',
+          country: b.country || '',
+          categories: [b.category].filter(Boolean),
+          description: (b.description || '').slice(0, 300),
+          image: (b.image && typeof b.image === 'string' && b.image.startsWith('https://')) ? b.image : PLACEHOLDER,
+          telegramLink: b.telegramLink || '',
+          isAdvertisement: false,
+          advertisementUrl: null,
+          pinned: false,
+          clickCount: b.clickCount || 0,
+          views: 0,
+          memberCount: b.memberCount || 0,
+          verified: b.verified || false,
+          reviewCount: 0,
+          averageRating: 0,
+          itemType: 'bot' as const,
+          createdBy: null,
+        }));
+
+        // Interleave: insert one bot after every ~3 groups
+        const mixed: typeof sanitized = [];
+        let botIdx = 0;
+        for (let i = 0; i < sanitized.length; i++) {
+          mixed.push(sanitized[i]);
+          if ((i + 1) % 3 === 0 && botIdx < botItems.length) {
+            mixed.push(botItems[botIdx++] as any);
+          }
+        }
+
+        return NextResponse.json({ groups: mixed, hasMore: sanitized.length === limit });
+      } catch {
+        // Fall through to return groups only if bot fetch fails
+      }
+    }
 
     return NextResponse.json({
       groups: sanitized,

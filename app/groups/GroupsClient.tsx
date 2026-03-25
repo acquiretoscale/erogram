@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import dynamic from 'next/dynamic';
 import Navbar from '@/components/Navbar';
@@ -11,7 +12,7 @@ import { filterOptions, filterCategories } from './constants';
 import { Group, FeedCampaign, StoryCategory } from './types';
 import GroupCard from './GroupCard';
 import AdvertCard from './AdvertCard';
-import VirtualizedGroupGrid from './VirtualizedGroupGrid';
+import VirtualizedGroupGrid, { type TrendingOFCreator } from './VirtualizedGroupGrid';
 import GroupCardSkeleton from './GroupCardSkeleton';
 import StoryBar from './StoryBar';
 import type { VaultTeaserItem } from './VaultTeaserFeed';
@@ -46,8 +47,9 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   const STORY_SEEN_KEY = 'erogram:stories:seen:v1';
   const [username, setUsername] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState(initialCountry || 'All');
-  const [selectedSubcategory, setSelectedSubcategory] = useState('All');
+  const [selectedType, setSelectedType] = useState<'all' | 'groups' | 'bots'>('all');
   const [selectedSort, setSelectedSort] = useState('random');
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [showAddGroupModal, setShowAddGroupModal] = useState(false);
@@ -98,6 +100,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   const [featuredGroups, setFeaturedGroups] = useState<Group[]>([]);
   const [featuredLoading, setFeaturedLoading] = useState(true);
   const [boostedGroup, setBoostedGroup] = useState<Group | null>(null);
+  const [trendingOFCreator, setTrendingOFCreator] = useState<TrendingOFCreator | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedGroupForReview, setSelectedGroupForReview] = useState<Group | null>(null);
   const [groupReviews, setGroupReviews] = useState<any[]>([]);
@@ -134,6 +137,16 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
       .then(data => { if (data.groups) setFeaturedGroups(data.groups); })
       .catch(err => console.error('Failed to fetch featured groups:', err))
       .finally(() => setFeaturedLoading(false));
+
+    fetch('/api/onlyfans/trending')
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          const pick = data[Math.floor(Math.random() * data.length)];
+          setTrendingOFCreator(pick);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const allGroupIds = useMemo(() => {
@@ -393,7 +406,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
         selectedSort === 'random' &&
         !debouncedSearchQuery &&
         selectedCategory === (initialCountry || 'All') &&
-        selectedSubcategory === 'All' &&
+        selectedType === 'all' &&
         regularGroups.length > 0
       ) {
         isFirstLoad.current = false;
@@ -406,8 +419,8 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
       try {
         const searchParam = debouncedSearchQuery ? `&search=${encodeURIComponent(debouncedSearchQuery)}` : '';
         const categoryParam = selectedCategory !== 'All' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
-        const subcategoryParam = selectedSubcategory !== 'All' ? `&subcategory=${encodeURIComponent(selectedSubcategory)}` : '';
-        const response = await fetch(`/api/groups?skip=0&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${subcategoryParam}&locale=${locale}`, { cache: 'no-store' });
+        const typeParam = selectedType === 'all' ? '&type=all' : '';
+        const response = await fetch(`/api/groups?skip=0&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${typeParam}&locale=${locale}`, { cache: 'no-store' });
         const data = await response.json();
         if (!response.ok || !Array.isArray(data.groups)) {
           setGroupsLoadError(true);
@@ -438,7 +451,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
     fetchGroups();
     lastVisibleIndexRef.current = -1;
-  }, [selectedSort, debouncedSearchQuery, selectedCategory, selectedSubcategory]);
+  }, [selectedSort, debouncedSearchQuery, selectedCategory, selectedType]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -450,8 +463,8 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
         setLoading(true);
         const searchParam = debouncedSearchQuery ? `&search=${encodeURIComponent(debouncedSearchQuery)}` : '';
         const categoryParam = selectedCategory !== 'All' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
-        const subcategoryParam = selectedSubcategory !== 'All' ? `&subcategory=${encodeURIComponent(selectedSubcategory)}` : '';
-        fetch(`/api/groups?skip=${skip}&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${subcategoryParam}&locale=${locale}`)
+        const typeParam = selectedType === 'all' ? '&type=all' : '';
+        fetch(`/api/groups?skip=${skip}&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${typeParam}&locale=${locale}`)
           .then(res => res.json())
           .then(data => {
             if (data.groups && data.groups.length > 0) {
@@ -473,7 +486,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [skip, loading, hasMore, selectedSort, debouncedSearchQuery, selectedCategory, selectedSubcategory]);
+  }, [skip, loading, hasMore, selectedSort, debouncedSearchQuery, selectedCategory, selectedType]);
 
   const displayGroups = useMemo(() => {
     return regularGroups;
@@ -487,12 +500,14 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
   // Split feed campaigns by tier:
   // Tier 1 → Top Groups section (position 2)
-  // Tier 2+3 → main grid (positions 3 and 8, then looping)
+  // Tier 2/3/4 → main grid (positions after 2, 7, 12 groups)
+  // Tier 5 → Featured Bot (position after 4 groups, groups feed only)
   const tier1Campaign = useMemo(() => {
     return feedCampaigns.find(c => c.tierSlot === 1) ?? null;
   }, [feedCampaigns]);
 
   const gridCampaigns = useMemo(() => {
+    // Tier 1 goes to the Top Section; slots 2-5 go into the main grid
     return feedCampaigns.filter(c => c.tierSlot !== 1);
   }, [feedCampaigns]);
 
@@ -596,23 +611,28 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                 </select>
               </div>
 
-              {/* Subcategory */}
+              {/* Type filter: All / Groups / Bots */}
               <div className="mb-6">
                 <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
                   <span className="mr-2" suppressHydrationWarning>🏷️</span>
-                  {t('common.subcategory')}
+                  Type
                 </label>
                 <select
-                  value={selectedSubcategory}
-                  onChange={(e) => setSelectedSubcategory(e.target.value)}
+                  value={selectedType}
+                  onChange={(e) => {
+                    const val = e.target.value as 'all' | 'groups' | 'bots';
+                    if (val === 'bots') {
+                      const searchSuffix = debouncedSearchQuery ? `?search=${encodeURIComponent(debouncedSearchQuery)}` : '';
+                      router.push(`/bots${searchSuffix}`);
+                    } else {
+                      setSelectedType(val);
+                    }
+                  }}
                   className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none transition-all"
                 >
-                  <option value="All" className="bg-[#222]">All</option>
-                  {filterOptions.map((opt) => (
-                    <option key={`sub-${opt.value}`} value={opt.value} className="bg-[#222]">
-                      {opt.label}
-                    </option>
-                  ))}
+                  <option value="all" className="bg-[#222]">All (Groups & Bots)</option>
+                  <option value="groups" className="bg-[#222]">Groups only</option>
+                  <option value="bots" className="bg-[#222]">Bots only</option>
                 </select>
               </div>
 
@@ -641,16 +661,16 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                   className="w-full px-4 py-3 bg-[#b31b1b] hover:bg-[#c42b2b] text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
                 >
                   <span className="text-lg">🔍</span>
-                  {filterValue !== 'All' || selectedSubcategory !== 'All' || searchQuery
+                  {filterValue !== 'All' || selectedType !== 'all' || searchQuery
                     ? t('groups.applyFilters')
                     : t('groups.showResults')}
                 </button>
 
-                {(filterValue !== 'All' || selectedSubcategory !== 'All' || searchQuery) && (
+                {(filterValue !== 'All' || selectedType !== 'all' || searchQuery) && (
                   <button
                     onClick={() => {
                       handleFilterChange('All');
-                      setSelectedSubcategory('All');
+                      setSelectedType('all');
                       setSearchQuery('');
                     }}
                     className="w-full px-4 py-3 bg-white/5 hover:bg-white/10 text-[#999] hover:text-white rounded-xl font-bold transition-colors border border-white/10"
@@ -667,25 +687,44 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
             <div className="relative">
               {/* Top Groups — boosted group takes Spot 1 when active (hidden during search) */}
               {!debouncedSearchQuery && (topGroups.length > 0 || topGroupsLoading) && (
-                <div className="mb-10 relative rounded-3xl p-[2px]">
-                  <div className="absolute inset-0 rounded-3xl overflow-hidden">
-                    <div style={{
-                      position: 'absolute',
-                      inset: '-80%',
-                      background: 'conic-gradient(from 0deg, transparent 0deg, transparent 60deg, #f59e0b 80deg, #ea580c 90deg, #ffffff 100deg, #ea580c 110deg, #f59e0b 120deg, transparent 140deg, transparent 360deg)',
-                      animation: 'vault-led-spin 12s linear infinite',
-                    }} />
+                <div className="mb-10 relative rounded-3xl p-[2px]" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706, #92400e, #d97706, #f59e0b, #fcd34d, #f59e0b)' }}>
+                  {/* Shimmer sweep */}
+                  <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
+                    <div className="absolute inset-0 opacity-30" style={{ background: 'linear-gradient(105deg, transparent 40%, rgba(252,211,77,0.4) 50%, transparent 60%)', animation: 'shimmer 3s infinite' }} />
                   </div>
-                  <div className="relative rounded-[22px] bg-[#111111] overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-amber-900/20 via-orange-900/10 to-red-900/10" />
-                    <div className="relative p-4 sm:p-6">
-                      <div className="text-center mb-4 sm:mb-6">
-                        <h2 className="text-2xl sm:text-3xl font-black text-[#f5f5f5] drop-shadow-2xl">
-                          🏆 {t('groups.topGroups')}
-                        </h2>
-                        <p className="text-amber-300/60 text-sm mt-1 font-medium">{t('groups.topGroupsDesc')}</p>
+                  <style>{`@keyframes shimmer { 0%,100%{transform:translateX(-100%)} 50%{transform:translateX(100%)} }`}</style>
+
+                  <div className="relative rounded-[22px] overflow-hidden" style={{ background: 'linear-gradient(145deg, #0f0f0f 0%, #141008 40%, #0f0f0f 100%)' }}>
+                    {/* Subtle gold glow in corners */}
+                    <div className="absolute top-0 left-0 w-64 h-64 rounded-full opacity-10 pointer-events-none" style={{ background: 'radial-gradient(circle, #f59e0b, transparent 70%)', transform: 'translate(-30%, -30%)' }} />
+                    <div className="absolute bottom-0 right-0 w-64 h-64 rounded-full opacity-10 pointer-events-none" style={{ background: 'radial-gradient(circle, #f59e0b, transparent 70%)', transform: 'translate(30%, 30%)' }} />
+
+                    <div className="relative p-4 sm:p-6 lg:p-8">
+                      {/* Header */}
+                      <div className="flex items-center justify-between mb-5 sm:mb-7">
+                        <div className="flex items-center gap-3">
+                          {/* Crown icon */}
+                          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', boxShadow: '0 4px 14px rgba(245,158,11,0.5)' }}>
+                            <svg className="w-5 h-5 sm:w-6 sm:h-6 text-black" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm2 3a1 1 0 000 2h10a1 1 0 000-2H7z"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <h2 className="text-lg sm:text-2xl font-black text-white leading-none">{t('groups.topGroups')}</h2>
+                            <p className="text-amber-400/70 text-xs sm:text-sm mt-0.5 font-medium">{t('groups.topGroupsDesc')}</p>
+                          </div>
+                        </div>
+                        {/* "Top Rated" pill */}
+                        <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-amber-500/30 bg-amber-500/10">
+                          <svg className="w-3 h-3 text-amber-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                          <span className="text-amber-400 text-xs font-black uppercase tracking-widest">Top Rated</span>
+                        </div>
                       </div>
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+
+                      {/* Gold divider */}
+                      <div className="h-px mb-5 sm:mb-7" style={{ background: 'linear-gradient(90deg, transparent, #f59e0b, #fcd34d, #f59e0b, transparent)' }} />
+
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
                       {topGroupsLoading ? (
                         Array.from({ length: 4 }, (_, i) => (
                           <GroupCardSkeleton key={`top-skeleton-${i}`} />
@@ -698,9 +737,29 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                           ? [boostedGroup, ...organicGroups].slice(0, 4)
                           : organicGroups;
 
+                        const RANK_STYLES = [
+                          { bg: 'linear-gradient(135deg,#f59e0b,#d97706)', shadow: 'rgba(245,158,11,0.7)', label: '🥇' },
+                          { bg: 'linear-gradient(135deg,#9ca3af,#6b7280)', shadow: 'rgba(156,163,175,0.7)', label: '🥈' },
+                          { bg: 'linear-gradient(135deg,#cd7c2f,#92400e)', shadow: 'rgba(180,83,9,0.7)', label: '🥉' },
+                          { bg: 'linear-gradient(135deg,#6366f1,#4f46e5)', shadow: 'rgba(99,102,241,0.5)', label: '#4' },
+                        ];
+
+                        const wrapWithRank = (node: React.ReactNode, rank: number) => (
+                          <div key={rank} className="relative">
+                            {/* Rank badge */}
+                            <div
+                              className="absolute top-2 left-2 z-40 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-black shadow-lg border border-white/20 select-none"
+                              style={{ background: RANK_STYLES[rank].bg, boxShadow: `0 2px 12px ${RANK_STYLES[rank].shadow}` }}
+                            >
+                              {RANK_STYLES[rank].label}
+                            </div>
+                            {node}
+                          </div>
+                        );
+
                         return (
                           <>
-                            {finalGroups[0] && (
+                            {finalGroups[0] && wrapWithRank(
                               <GroupCard
                                 key={`top-${finalGroups[0]._id}`}
                                 group={finalGroups[0]}
@@ -709,17 +768,17 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                                 onOpenReportModal={openReportModal}
                                 isBookmarked={!!bookmarkedMap[finalGroups[0]._id]}
                                 bookmarkId={bookmarkedMap[finalGroups[0]._id] || null}
-                              />
+                              />, 0
                             )}
-                            {tier1Campaign && !isTelegram ? (
+                            {tier1Campaign && !isTelegram ? wrapWithRank(
                               <AdvertCard
                                 key={`tier1-${tier1Campaign._id}`}
                                 campaign={tier1Campaign}
                                 isIndex={1}
                                 shouldPreload={true}
                                 onVisible={undefined}
-                              />
-                            ) : finalGroups[1] ? (
+                              />, 1
+                            ) : finalGroups[1] ? wrapWithRank(
                               <GroupCard
                                 key={`top-${finalGroups[1]._id}`}
                                 group={finalGroups[1]}
@@ -728,9 +787,9 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                                 onOpenReportModal={openReportModal}
                                 isBookmarked={!!bookmarkedMap[finalGroups[1]._id]}
                                 bookmarkId={bookmarkedMap[finalGroups[1]._id] || null}
-                              />
+                              />, 1
                             ) : null}
-                            {(tier1Campaign && !isTelegram ? finalGroups.slice(1, 3) : finalGroups.slice(2, 4)).map((g, i) => (
+                            {(tier1Campaign && !isTelegram ? finalGroups.slice(1, 3) : finalGroups.slice(2, 4)).map((g, i) => wrapWithRank(
                               <GroupCard
                                 key={`top-${g._id}`}
                                 group={g}
@@ -739,7 +798,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                                 onOpenReportModal={openReportModal}
                                 isBookmarked={!!bookmarkedMap[g._id]}
                                 bookmarkId={bookmarkedMap[g._id] || null}
-                              />
+                              />, i + 2
                             ))}
                           </>
                         );
@@ -783,7 +842,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
               <div className="text-center mb-6">
                 <h1 className="text-2xl md:text-3xl font-black text-[#f5f5f5]">
-                  {t('groups.title')}
+                  {selectedType === 'groups' ? t('groups.title') : selectedType === 'all' ? 'Telegram Groups & Bots' : t('groups.title')}
                 </h1>
               </div>
 
@@ -806,6 +865,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                   onOpenReportModal={openReportModal}
                   bookmarkedMap={bookmarkedMap}
                   vaultTeaserGroups={vaultTeaserGroups}
+                  trendingOFCreator={trendingOFCreator}
                 />
               </div>
 

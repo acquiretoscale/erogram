@@ -1,0 +1,362 @@
+'use client';
+
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { motion } from 'framer-motion';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
+import ToolCard from './ToolCard';
+import type { AINsfwTool, AINsfwCategory, PaymentOption } from './types';
+import { AINSFW_CATEGORIES, ALL_PAYMENT_OPTIONS } from './types';
+import { useTranslation } from '@/lib/i18n';
+
+const INITIAL_LOAD = 12;
+const LOAD_MORE = 8;
+
+interface AINsfwClientProps {
+  tools: AINsfwTool[];
+}
+
+const CATEGORY_ACTIVE: Record<AINsfwCategory, string> = {
+  All: 'bg-black text-white border-black shadow-[2px_2px_0_#555]',
+  'AI Girlfriend': 'bg-blue-700 text-white border-black shadow-[2px_2px_0_#000]',
+  'Undress AI': 'bg-slate-700 text-white border-black shadow-[2px_2px_0_#000]',
+  'AI Chat': 'bg-emerald-700 text-white border-black shadow-[2px_2px_0_#000]',
+  'AI Image': 'bg-amber-600 text-white border-black shadow-[2px_2px_0_#000]',
+  'AI Roleplay': 'bg-zinc-800 text-white border-black shadow-[2px_2px_0_#000]',
+};
+
+const PAYMENT_ICON: Record<string, string> = {
+  'Credit Cards': '💳',
+  'Crypto': '₿',
+  'PayPal': 'P',
+};
+
+function ToolCardSkeleton() {
+  return (
+    <div className="bg-white rounded-xl overflow-hidden h-full flex flex-col border-2 border-black/10 animate-pulse">
+      <div className="w-full h-32 sm:h-36 bg-gray-200" />
+      <div className="p-2.5 sm:p-3 flex-grow flex flex-col">
+        <div className="h-4 bg-gray-200 rounded mb-2 w-3/4" />
+        <div className="h-3 bg-gray-100 rounded mb-2 w-1/2" />
+        <div className="space-y-1.5 mb-3 flex-grow">
+          <div className="h-3 bg-gray-100 rounded" />
+          <div className="h-3 bg-gray-100 rounded w-5/6" />
+        </div>
+        <div className="h-7 bg-gray-200 rounded border-2 border-gray-200" />
+      </div>
+    </div>
+  );
+}
+
+function getScore(slug: string, scores: Record<string, number>): number {
+  return scores[slug] ?? 0;
+}
+
+function loadAllScores(tools: AINsfwTool[]): Record<string, number> {
+  const map: Record<string, number> = {};
+  try {
+    tools.forEach((t) => {
+      const saved = localStorage.getItem(`ainsfw_votes_${t.slug}`);
+      if (saved) {
+        const v = JSON.parse(saved) as { up: number; down: number };
+        map[t.slug] = (v.up ?? 0) - (v.down ?? 0);
+      } else {
+        map[t.slug] = 0;
+      }
+    });
+  } catch {}
+  return map;
+}
+
+function TopAINsfwBlock({ tools, onVoteChange }: { tools: AINsfwTool[]; onVoteChange: (slug: string, score: number) => void }) {
+  const [topTools, setTopTools] = useState<AINsfwTool[]>([]);
+  const { t } = useTranslation();
+
+  useEffect(() => {
+    try {
+      const clickMap: Record<string, number> = {};
+      tools.forEach((tool) => {
+        const raw = localStorage.getItem(`ainsfw_clicks_${tool.slug}`);
+        clickMap[tool.slug] = raw ? parseInt(raw, 10) : 0;
+      });
+      const sorted = [...tools]
+        .filter((tool) => (clickMap[tool.slug] ?? 0) > 0)
+        .sort((a, b) => (clickMap[b.slug] ?? 0) - (clickMap[a.slug] ?? 0))
+        .slice(0, 4);
+      setTopTools(sorted.length >= 2 ? sorted : tools.slice(0, 4));
+    } catch {
+      setTopTools(tools.slice(0, 4));
+    }
+  }, [tools]);
+
+  if (topTools.length === 0) return null;
+
+  return (
+    <section className="mb-10 sm:mb-14">
+      <div className="bg-white rounded-2xl border-2 border-black shadow-[4px_4px_0_#000] p-4 sm:p-5">
+        <div className="flex items-center justify-between mb-4 sm:mb-5">
+          <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-black">{t('ainsfw.topTitle')}</h2>
+          <span className="text-[10px] sm:text-xs font-black bg-blue-700 text-white border-2 border-black rounded px-2 py-0.5 shadow-[2px_2px_0_#000]">
+            {t('ainsfw.topBadge')}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {topTools.map((tool, i) => (
+            <ToolCard key={tool.slug} tool={tool} index={i} onVoteChange={onVoteChange} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default function AINsfwClient({ tools }: AINsfwClientProps) {
+  const [activeCategory, setActiveCategory] = useState<AINsfwCategory>('All');
+  const [activePayment, setActivePayment] = useState<PaymentOption | 'All'>('All');
+  const [search, setSearch] = useState('');
+  const [scores, setScores] = useState<Record<string, number>>({});
+  const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD);
+  const [loading, setLoading] = useState(false);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
+
+  useEffect(() => {
+    setScores(loadAllScores(tools));
+  }, [tools]);
+
+  const handleVoteChange = useCallback((slug: string, score: number) => {
+    setScores((prev) => ({ ...prev, [slug]: score }));
+  }, []);
+
+  const filtered = tools
+    .filter((t) => {
+      const q = search.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        t.name.toLowerCase().includes(q) ||
+        t.vendor.toLowerCase().includes(q) ||
+        t.category.toLowerCase().includes(q) ||
+        t.tags.some((tag) => tag.toLowerCase().includes(q))
+      );
+    })
+    .filter((t) => activeCategory === 'All' || t.category === activeCategory)
+    .filter((t) => activePayment === 'All' || t.payment.includes(activePayment))
+    .slice()
+    .sort((a, b) => getScore(b.slug, scores) - getScore(a.slug, scores));
+
+  const hasMore = visibleCount < filtered.length;
+  const displayed = filtered.slice(0, visibleCount);
+
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleCount(INITIAL_LOAD);
+  }, [activeCategory, activePayment, search]);
+
+  // Infinite scroll — load more when sentinel enters viewport
+  useEffect(() => {
+    if (!loadMoreRef.current || !hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loading && hasMore) {
+          setLoading(true);
+          setTimeout(() => {
+            setVisibleCount((prev) => Math.min(prev + LOAD_MORE, filtered.length));
+            setLoading(false);
+          }, 600);
+        }
+      },
+      { rootMargin: '400px', threshold: 0.01 }
+    );
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, loading, filtered.length]);
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0a]">
+      <Navbar />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-8">
+        {/* Hero */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-10 sm:mb-12"
+        >
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white mb-4 leading-tight">
+            {t('ainsfw.heroTitle', 'Best AI NSFW Tools').split('AI NSFW')[0]}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-sky-500 to-emerald-500">AI NSFW</span>
+            {t('ainsfw.heroTitle', 'Best AI NSFW Tools').split('AI NSFW')[1]}
+          </h1>
+          <p className="text-gray-400 text-sm sm:text-lg max-w-2xl mx-auto leading-relaxed">
+            {t('ainsfw.heroSubtitle')}
+          </p>
+        </motion.div>
+
+        {/* Top AI NSFW Block */}
+        <TopAINsfwBlock tools={tools} onVoteChange={handleVoteChange} />
+
+        {/* Filters row */}
+        <div className="bg-[#111] rounded-2xl border-2 border-white/10 p-4 flex flex-col gap-3 mb-6 sm:mb-8">
+          {/* Search */}
+          <div className="w-full">
+            <div className="bg-white rounded-xl border-2 border-black shadow-[3px_3px_0_#000] px-3 py-2.5 flex items-center gap-2">
+              <svg className="w-4 h-4 text-gray-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.3-4.3"></path>
+              </svg>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t('ainsfw.searchPlaceholder')}
+                className="w-full bg-transparent text-sm text-black placeholder:text-gray-400 outline-none font-semibold"
+              />
+              {search && (
+                <button onClick={() => setSearch('')} className="shrink-0 text-gray-400 hover:text-black transition-colors">
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Category filters */}
+          <div className="flex flex-wrap gap-2">
+            {AINSFW_CATEGORIES.map((cat) => {
+              const isActive = activeCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide border-2 transition-all duration-100 shadow-[2px_2px_0_#000] ${
+                    isActive ? CATEGORY_ACTIVE[cat] : 'bg-white text-black border-black hover:bg-gray-100'
+                  }`}
+                >
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Payment filters */}
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setActivePayment('All')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide border-2 shadow-[2px_2px_0_#000] transition-all duration-100 ${
+                activePayment === 'All'
+                  ? 'bg-black text-white border-black'
+                  : 'bg-white text-black border-black hover:bg-gray-100'
+              }`}
+            >
+              {t('ainsfw.allPayments')}
+            </button>
+            {ALL_PAYMENT_OPTIONS.map((pay) => (
+              <button
+                key={pay}
+                onClick={() => setActivePayment(pay)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black border-2 shadow-[2px_2px_0_#000] transition-all duration-100 ${
+                  activePayment === pay
+                    ? 'bg-black text-white border-black'
+                    : 'bg-white text-black border-black hover:bg-gray-100'
+                }`}
+              >
+                <span>{PAYMENT_ICON[pay]}</span>
+                {pay}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tool Grid — progressive loading */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {displayed.map((tool, i) => (
+            <ToolCard key={tool.slug} tool={tool} index={i} onVoteChange={handleVoteChange} />
+          ))}
+        </div>
+
+        {/* Skeleton loading placeholders */}
+        {(loading || hasMore) && (
+          <>
+            {loading && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mt-3">
+                {Array.from({ length: LOAD_MORE }, (_, i) => (
+                  <ToolCardSkeleton key={`skeleton-${i}`} />
+                ))}
+              </div>
+            )}
+            <div ref={loadMoreRef} className="h-4" />
+          </>
+        )}
+
+        {filtered.length === 0 && (
+          <div className="text-center py-20">
+            <p className="text-gray-500 text-sm">{t('ainsfw.noResults')}</p>
+          </div>
+        )}
+
+        {/* SEO Content Block */}
+        <section className="mt-16 sm:mt-24 max-w-4xl mx-auto">
+          <div className="bg-white rounded-2xl border-2 border-black shadow-[4px_4px_0_#000] p-5 sm:p-7">
+            <h2 className="text-2xl sm:text-3xl font-black text-black mb-2 text-center">{t('ainsfw.guideTitle')}</h2>
+            <p className="text-center text-gray-600 text-sm sm:text-base mb-6">{t('ainsfw.guideSubtitle')}</p>
+
+            <div className="text-gray-700 text-sm sm:text-base leading-relaxed space-y-4 text-left">
+              <h3 className="text-black font-bold text-lg">{t('ainsfw.guideWelcomeH')}</h3>
+              <p>{t('ainsfw.guideWelcomeP')}</p>
+
+              <h3 className="text-black font-bold text-lg pt-2">{t('ainsfw.guideExploreH')}</h3>
+              <p>{t('ainsfw.guideExploreP')}</p>
+
+              <h3 className="text-black font-bold text-lg pt-2">{t('ainsfw.guideGfH')}</h3>
+              <p>{t('ainsfw.guideGfP')}</p>
+
+              <h3 className="text-black font-bold text-lg pt-2">{t('ainsfw.guideUndressH')}</h3>
+              <p>{t('ainsfw.guideUndressP')}</p>
+
+              <h3 className="text-black font-bold text-lg pt-2">{t('ainsfw.guideChatH')}</h3>
+              <p>{t('ainsfw.guideChatP')}</p>
+
+              <h3 className="text-black font-bold text-lg pt-2">{t('ainsfw.guideImageH')}</h3>
+              <p>{t('ainsfw.guideImageP')}</p>
+
+              <h3 className="text-black font-bold text-lg pt-2">{t('ainsfw.guideRpH')}</h3>
+              <p>{t('ainsfw.guideRpP')}</p>
+
+              <h3 className="text-black font-bold text-lg pt-2">{t('ainsfw.guidePicksH')}</h3>
+              <ul className="list-disc pl-5 space-y-1">
+                <li><span className="font-bold">DreamGF</span>: {t('ainsfw.guidePick1')}</li>
+                <li><span className="font-bold">Clothoff.net</span>: {t('ainsfw.guidePick2')}</li>
+                <li><span className="font-bold">SpicyChat</span>: {t('ainsfw.guidePick3')}</li>
+              </ul>
+
+              <h3 className="text-black font-bold text-lg pt-2">{t('ainsfw.guideAboutH')}</h3>
+              <p>{t('ainsfw.guideAboutP')}</p>
+            </div>
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section className="mt-12 sm:mt-16 max-w-4xl mx-auto">
+          <h2 className="text-xl sm:text-2xl font-black text-white mb-6 text-center">{t('ainsfw.faqTitle')}</h2>
+          <div className="space-y-4">
+            {[
+              { q: t('ainsfw.faqQ1'), a: t('ainsfw.faqA1') },
+              { q: t('ainsfw.faqQ2'), a: t('ainsfw.faqA2') },
+              { q: t('ainsfw.faqQ3'), a: t('ainsfw.faqA3') },
+              { q: t('ainsfw.faqQ4'), a: t('ainsfw.faqA4') },
+            ].map((faq) => (
+              <details key={faq.q} className="group bg-white rounded-xl border-2 border-black shadow-[3px_3px_0_#000] overflow-hidden">
+                <summary className="flex items-center justify-between cursor-pointer px-5 py-4 text-black font-semibold text-sm sm:text-base">
+                  {faq.q}
+                  <svg className="w-4 h-4 text-gray-500 transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
+                </summary>
+                <p className="px-5 pb-4 text-gray-700 text-sm leading-relaxed">{faq.a}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <Footer />
+    </div>
+  );
+}

@@ -585,6 +585,34 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
   const [premiumGroupsLoaded, setPremiumGroupsLoaded] = useState(false);
   const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
 
+  // Featured bot picker
+  const [botPickerList, setBotPickerList] = useState<{ _id: string; name: string; slug: string; image: string; telegramLink: string; description: string; memberCount: number; category: string }[]>([]);
+  const [botPickerLoaded, setBotPickerLoaded] = useState(false);
+  const [botPickerSearch, setBotPickerSearch] = useState('');
+  const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
+
+  const fetchBotsForPicker = async () => {
+    if (botPickerLoaded) return;
+    try {
+      const res = await axios.get('/api/admin/bots', authHeaders());
+      const approved = (res.data || []).filter((b: any) => b.status === 'approved');
+      setBotPickerList(approved.map((b: any) => ({ _id: b._id, name: b.name, slug: b.slug, image: b.image, telegramLink: b.telegramLink, description: b.description || '', memberCount: b.memberCount || 0, category: b.category || '' })));
+      setBotPickerLoaded(true);
+    } catch { /* ignore */ }
+  };
+
+  const pickBot = (bot: typeof botPickerList[number]) => {
+    setSelectedBotId(bot._id);
+    setCampForm(prev => ({
+      ...prev,
+      name: bot.name,
+      creative: bot.image || '',
+      destinationUrl: bot.telegramLink || `https://erogram.pro/bots/${bot.slug}`,
+      description: bot.description || '',
+      buttonText: 'Open Bot',
+    }));
+  };
+
   // Data fetching. skipLoading=true = refresh without full-page loading (e.g. after save).
   const fetchAll = async (skipLoading = false) => {
     if (!skipLoading) setIsLoading(true);
@@ -766,8 +794,9 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
   const openEditCampaign = (camp: CampaignRow) => {
     setEditingCampaign(camp);
     const isCta = isTextOnlySlot(camp.slot);
-    const isPremium = (camp as any).adType === 'premium';
-    setCampaignType(isPremium ? 'premium' : isCta ? 'text' : 'image');
+    const campAdType = (camp as any).adType || 'advertiser';
+    const campTypeVal: any = campAdType === 'premium' ? 'premium' : campAdType === 'featured-bot' ? 'featured-bot' : isCta ? 'text' : 'image';
+    setCampaignType(campTypeVal);
     const normalizedSlot = isCta ? (String(camp.slot).trim().toLowerCase() as 'navbar-cta' | 'join-cta' | 'filter-cta') : camp.slot;
     const premCat = (camp as any).premiumCategory || '';
     setCampForm({
@@ -806,6 +835,9 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
     } else {
       setPremiumPreviewGroups([]);
     }
+    if (campAdType === 'featured-bot') {
+      fetchBotsForPicker();
+    }
     setView('editCampaign');
   };
 
@@ -820,7 +852,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       alert('Name and destination URL are required');
       return;
     }
-    if (!isCta && campForm.adType !== 'premium' && !campForm.creative) {
+    if (!isCta && campForm.adType !== 'premium' && (campForm.adType as string) !== 'featured-bot' && !campForm.creative) {
       alert('Creative image is required for this slot');
       return;
     }
@@ -1257,6 +1289,30 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                 <span className="text-white">Premium</span>
                 <span className="text-xs text-[#666]">— group mosaic by category</span>
               </label>
+              <label className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 cursor-pointer hover:bg-white/[0.05] transition-colors">
+                <input
+                  type="radio"
+                  name="campaignType"
+                  checked={campaignType === 'featured-bot' as any}
+                  onChange={() => {
+                    (setCampaignType as any)('featured-bot');
+                    setCampForm({
+                      ...campForm,
+                      slot: 'feed',
+                      adType: 'featured-bot' as any,
+                      position: 5,
+                      feedTier: 1,
+                      tierSlot: 5,
+                      buttonText: campForm.buttonText || 'Open Bot',
+                      feedPlacement: 'groups',
+                    });
+                    fetchBotsForPicker();
+                  }}
+                  className="w-4 h-4 text-cyan-500 focus:ring-cyan-500"
+                />
+                <span className="text-white">🤖 Featured Bot</span>
+                <span className="text-xs text-[#666]">— slot 5, groups feed only</span>
+              </label>
             </div>
           </div>
 
@@ -1486,6 +1542,67 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                 </div>
               )}
             </div>
+          ) : (campaignType as string) === 'featured-bot' ? (
+            /* --- FEATURED BOT: pick existing bot from DB --- */
+            <div className="rounded-xl bg-cyan-500/10 border border-cyan-500/30 p-4 space-y-4">
+              <p className="text-sm font-semibold text-cyan-200">Pick an existing bot to feature. All fields auto-fill.</p>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">🔍</span>
+                <input
+                  type="text"
+                  placeholder="Search bots by name..."
+                  value={botPickerSearch}
+                  onChange={(e) => setBotPickerSearch(e.target.value)}
+                  onFocus={() => fetchBotsForPicker()}
+                  className="w-full pl-9 pr-4 py-2.5 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-cyan-500 outline-none text-sm"
+                />
+              </div>
+              {botPickerLoaded && (() => {
+                const q = botPickerSearch.toLowerCase();
+                const filtered = q ? botPickerList.filter(b => b.name.toLowerCase().includes(q)) : botPickerList;
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-[360px] overflow-y-auto pr-1">
+                    {filtered.slice(0, 40).map((bot) => {
+                      const isSelected = selectedBotId === bot._id;
+                      return (
+                        <button
+                          key={bot._id}
+                          type="button"
+                          onClick={() => pickBot(bot)}
+                          className={`flex flex-col items-center gap-1 p-1.5 rounded-lg text-center transition-all ${
+                            isSelected
+                              ? 'bg-cyan-500/20 border-2 border-cyan-500/60'
+                              : 'bg-white/[0.03] border-2 border-transparent hover:border-white/15'
+                          }`}
+                        >
+                          <div className="relative shrink-0">
+                            <img src={bot.image || '/assets/placeholder-no-image.png'} alt="" className={`w-20 h-20 rounded-lg object-cover ${isSelected ? 'ring-2 ring-cyan-500' : ''}`} onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
+                            {isSelected && (
+                              <div className="absolute top-1 right-1 w-5 h-5 rounded border-2 border-cyan-500 bg-cyan-500 flex items-center justify-center">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                              </div>
+                            )}
+                          </div>
+                          <p className={`text-[11px] font-semibold truncate w-full leading-tight ${isSelected ? 'text-cyan-200' : 'text-white'}`}>{bot.name}</p>
+                          <p className="text-[10px] text-white/30 truncate w-full leading-tight">{bot.category}</p>
+                        </button>
+                      );
+                    })}
+                    {filtered.length === 0 && <p className="col-span-full text-sm text-white/30 py-4 text-center">No bots match your search</p>}
+                  </div>
+                );
+              })()}
+              {!botPickerLoaded && <p className="text-cyan-300/60 text-sm py-3">Loading bots...</p>}
+              {selectedBotId && campForm.creative && (
+                <div className="flex items-center gap-3 pt-2 border-t border-white/10">
+                  <img src={campForm.creative} alt="" className="w-16 h-16 rounded-lg object-cover border border-cyan-500/30" />
+                  <div className="min-w-0">
+                    <p className="text-white font-bold text-sm truncate">{campForm.name}</p>
+                    <p className="text-[#666] text-xs truncate">{campForm.destinationUrl}</p>
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
             /* --- IMAGE AD: only image upload + URL (no CTA text block here) --- */
             <div>
@@ -1510,7 +1627,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                     className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] outline-none"
                     placeholder="1"
                   />
-                  <p className="text-xs text-[#666] mt-1">Order in feed: 1 = first, higher numbers = later. One ad every 5 entries on Groups/Bots.</p>
+                  <p className="text-xs text-[#666] mt-1">Slot 1=Top Section, 2=after 2 groups, 3=after 7 groups, 4=after 12+ (loops), 5=🤖 Featured Bot (after 4 groups). Each slot holds up to 4 A/B variants.</p>
                 </div>
               )}
 
@@ -2756,9 +2873,9 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
               return s;
             };
 
-            // Build 4 slots (tier 1, tierSlot 1-4), populate from filtered campaigns
+            // Build 5 slots (tier 1, tierSlot 1-5), populate from filtered campaigns
             const posGroups: Record<string, { feedTier: number; tierSlot: number; campaigns: CampaignRow[] }> = {};
-            for (let ts = 1; ts <= 4; ts++) {
+            for (let ts = 1; ts <= 5; ts++) {
               posGroups[`1-${ts}`] = { feedTier: 1, tierSlot: ts, campaigns: [] };
             }
             for (const c of filteredByShowOn) {
@@ -2857,7 +2974,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
               <>
                 <div className="mb-6">
                   <h2 className="text-xl font-bold text-white mb-2">Feed Ads — A/B Testing</h2>
-                  <p className="text-[#999] text-sm">3 slots (Top Groups pos 2, Discover NSFW Telegram pos 3, Discover NSFW Groups pos 8), each holding up to 4 A/B variants. Slots loop in the feed (1→2→3→1→2→...). One random variant shown per impression. Click a slot to manage its ads.</p>
+                  <p className="text-[#999] text-sm">5 slots (Slot 1: Top Section, Slot 2: after 2 groups, Slot 3: after 7 groups, Slot 4: after 12+ groups, Slot 5: 🤖 Featured Bot after 4 groups). Each holds up to 4 A/B variants. One random variant shown per impression. Click a slot to manage its ads.</p>
                 </div>
 
                 {/* KPI row */}
@@ -3048,7 +3165,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                         >
                           <svg className={`w-4 h-4 text-[#999] transition-transform shrink-0 ${isExpanded ? 'rotate-90' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6" /></svg>
                           <span className="text-white font-bold text-sm min-w-[52px]">Slot {slotNum}</span>
-                          <span className="text-[#555] text-[10px] shrink-0">{slotNum === 1 ? 'Top Section' : slotNum === 2 ? 'After 2 groups' : slotNum === 3 ? 'After 7 groups' : 'After 12 groups + loops'}</span>
+                          <span className="text-[#555] text-[10px] shrink-0">{slotNum === 1 ? 'Top Section' : slotNum === 2 ? 'After 2 groups' : slotNum === 3 ? 'After 7 groups' : slotNum === 5 ? '🤖 Featured Bot (after 4 groups)' : 'After 12 groups + loops'}</span>
                           {variantCount > 0 ? (
                             <span className="text-[#666] text-xs truncate">{advNames.join(', ')}</span>
                           ) : (
@@ -3194,7 +3311,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                                                 <div className="border-t border-white/5" />
                                                 <div className="px-4 py-1.5 text-[10px] text-white/30 uppercase tracking-wider font-bold">Duplicate to slot…</div>
                                                 <div className="flex gap-1 px-4 pb-2">
-                                                  {[1, 2, 3, 4].map(ts => {
+                                                  {[1, 2, 3, 4, 5].map(ts => {
                                                     const isCurrent = (c.tierSlot ?? 1) === ts;
                                                     return (
                                                       <button
@@ -3219,7 +3336,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                                                 <button
                                                   onClick={async () => {
                                                     setFeedAdsMenuOpen(null);
-                                                    const otherSlots = [1, 2, 3, 4].filter(ts => ts !== (c.tierSlot ?? 1));
+                                                    const otherSlots = [1, 2, 3, 4, 5].filter(ts => ts !== (c.tierSlot ?? 1));
                                                     try { await duplicateCampaigns([c._id], otherSlots); } catch (err: any) { alert(err.response?.data?.message || 'Duplicate failed'); }
                                                   }}
                                                   className="w-full text-left px-4 py-2 text-xs text-purple-300 hover:bg-purple-600/20 transition-colors flex items-center gap-2 font-medium"
