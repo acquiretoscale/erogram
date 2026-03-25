@@ -4,6 +4,8 @@ import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator } from '@/lib/models';
 import CategoryClient from '../../[category]/CategoryClient';
 import { OF_COUNTRY_SLUGS, OF_COUNTRY_MAP, OF_CATEGORIES, ofCountryUrl, ofCountryCategoryUrl } from '../../constants';
+
+const canonicalBase = 'https://erogram.pro';
 import { getLocale } from '@/lib/i18n/server';
 import { countryOfMeta } from '../../ofMeta';
 

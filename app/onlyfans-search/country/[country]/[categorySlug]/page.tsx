@@ -12,6 +12,8 @@ import {
 import { getLocale } from '@/lib/i18n/server';
 import { countryCategoryOfMeta } from '../../../ofMeta';
 
+const canonicalBase = 'https://erogram.pro';
+
 interface PageProps {
   params: Promise<{ country: string; categorySlug: string }>;
 }

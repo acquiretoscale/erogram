@@ -56,12 +56,12 @@ export const OF_COUNTRIES = [
   { name: 'Netherlands', slug: 'netherlands', flag: '🇳🇱' },
 ] as const;
 
-export const OF_CATEGORY_SLUGS = new Set(OF_CATEGORIES.map((c) => c.slug));
-export const OF_COUNTRY_SLUGS = new Set(OF_COUNTRIES.map((c) => c.slug));
+export const OF_CATEGORY_SLUGS: Set<string> = new Set(OF_CATEGORIES.map((c) => c.slug));
+export const OF_COUNTRY_SLUGS: Set<string> = new Set(OF_COUNTRIES.map((c) => c.slug));
 
 // Slug lookup maps
-export const OF_CATEGORY_MAP = new Map(OF_CATEGORIES.map((c) => [c.slug, c]));
-export const OF_COUNTRY_MAP = new Map(OF_COUNTRIES.map((c) => [c.slug, c]));
+export const OF_CATEGORY_MAP: Map<string, (typeof OF_CATEGORIES)[number]> = new Map(OF_CATEGORIES.map((c) => [c.slug, c]));
+export const OF_COUNTRY_MAP: Map<string, (typeof OF_COUNTRIES)[number]> = new Map(OF_COUNTRIES.map((c) => [c.slug, c]));
 
 /** Build the public SEO URL for a category page: /blondeonlyfans */
 export function ofCategoryUrl(catSlug: string) {

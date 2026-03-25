@@ -25,6 +25,7 @@ export interface Group {
     reviewCount?: number;
     memberCount?: number;
     verified?: boolean;
+    itemType?: 'group' | 'bot';
 }
 
 
@@ -71,7 +72,7 @@ export interface FeedCampaign {
     /** Tier slot (1-3): determines which section the ad appears in */
     tierSlot?: number;
     /** 'advertiser' (image/video) or 'premium' (group mosaic from a category) */
-    adType?: 'advertiser' | 'premium';
+    adType?: 'advertiser' | 'premium' | 'featured-bot';
     /** For premium ads: which category the groups are from */
     premiumCategory?: string;
     /** For premium ads: top featured groups to show in the mosaic */

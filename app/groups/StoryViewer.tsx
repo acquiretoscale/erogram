@@ -374,7 +374,7 @@ export default function StoryViewer({
         {currentSlide.type === 'creator' ? (
           <CreatorSlideView
             creator={currentSlide.data}
-            secondCreator={slides[slideIndex + 1]?.type === 'creator' ? slides[slideIndex + 1].data : undefined}
+            secondCreator={slides[slideIndex + 1]?.type === 'creator' ? slides[slideIndex + 1].data as StoryCreator : undefined}
             bgVideoUrl={bgVideoUrl}
             bgVideoRef={bgVideoRef}
             stopPointer={stopPointer}
