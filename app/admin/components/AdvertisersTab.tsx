@@ -829,7 +829,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
     });
     const savedIds: string[] = (camp as any).premiumGroupIds || [];
     setSelectedGroupIds(new Set(savedIds));
-    if (isPremium) {
+    if (campAdType === 'premium') {
       fetchAllPremiumGroups();
       if (premCat) setPremiumCategoryFilter(premCat);
     } else {
