@@ -689,7 +689,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
           <div className="lg:w-3/4 min-w-0 shrink-0">
             <div className="relative">
               {/* Top Groups — boosted group takes Spot 1 when active (hidden during search) */}
-              {!debouncedSearchQuery && (topGroups.length > 0 || topGroupsLoading) && (
+              {!debouncedSearchQuery && topGroups.length > 0 && (
                 <div className="mb-5 relative rounded-2xl p-[2px]" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706, #92400e, #d97706, #f59e0b, #fcd34d, #f59e0b)' }}>
                   {/* Shimmer sweep */}
                   <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
@@ -710,11 +710,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                       </div>
 
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
-                      {topGroupsLoading ? (
-                        Array.from({ length: 4 }, (_, i) => (
-                          <GroupCardSkeleton key={`top-skeleton-${i}`} />
-                        ))
-                      ) : (() => {
+                      {(() => {
                         const organicGroups = boostedGroup
                           ? topGroups.filter(g => g._id !== boostedGroup._id).slice(0, 3)
                           : topGroups.slice(0, 4);

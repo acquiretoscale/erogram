@@ -19,6 +19,8 @@ import {
     LogOut,
     ArrowLeft,
     Bell,
+    Sparkles,
+    Crown,
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -40,6 +42,8 @@ const tabs: TabItem[] = [
     { href: '/admin/bots',             name: 'Bots',            icon: Bot },
     { href: '/admin/stories',          name: 'Stories',         icon: BookOpen },
     { href: '/admin/articles',         name: 'Articles',        icon: FileText },
+    { href: '/admin/ainsfw',            name: 'AI NSFW',         icon: Sparkles },
+    { href: '/admin/onlyfans',         name: 'OFM',             icon: Crown },
     { href: '/admin/advertisers',      name: 'Advertisers',     icon: Briefcase },
     { href: '/admin/users',            name: 'Users',           icon: User },
     { href: '/admin/settings',         name: 'Settings',        icon: Settings },

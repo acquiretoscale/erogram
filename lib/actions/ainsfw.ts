@@ -66,6 +66,40 @@ export async function unvoteOnTool(slug: string, direction: 'up' | 'down'): Prom
   return { upvotes, downvotes };
 }
 
+export async function adminSetToolVotes(
+  slug: string,
+  upvotes: number,
+  downvotes: number,
+): Promise<{ upvotes: number; downvotes: number }> {
+  await connectDB();
+  const doc = await AINsfwToolStats.findOneAndUpdate(
+    { slug },
+    { $set: { upvotes: Math.max(0, upvotes), downvotes: Math.max(0, downvotes) } },
+    { upsert: true, new: true },
+  ).lean() as any;
+  return { upvotes: doc.upvotes || 0, downvotes: doc.downvotes || 0 };
+}
+
+export async function adminDeleteReview(slug: string, reviewIdx: number): Promise<ToolStatsData> {
+  await connectDB();
+  const doc = await AINsfwToolStats.findOne({ slug });
+  if (!doc) return { upvotes: 0, downvotes: 0, reviews: [] };
+  if (doc.reviews && reviewIdx >= 0 && reviewIdx < doc.reviews.length) {
+    doc.reviews.splice(reviewIdx, 1);
+    await doc.save();
+  }
+  const plain = doc.toObject();
+  return {
+    upvotes: plain.upvotes || 0,
+    downvotes: plain.downvotes || 0,
+    reviews: (plain.reviews || []).map((r: any) => ({
+      text: r.text,
+      rating: r.rating,
+      createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '',
+    })),
+  };
+}
+
 export async function submitReview(slug: string, text: string, rating: number): Promise<ToolStatsData> {
   if (!text.trim() || rating < 1 || rating > 5) throw new Error('Invalid review');
   await connectDB();

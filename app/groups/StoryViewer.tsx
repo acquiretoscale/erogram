@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import type { StoryCategory, StorySlide, StoryMediaSlide, StoryGroup, StoryCreator, PremiumGroupItem } from './types';
+import type { StoryCategory, StorySlide, StoryMediaSlide, StoryGroup, PremiumGroupItem } from './types';
 
 interface StoryViewerProps {
   storyData: StoryCategory[];
@@ -50,13 +50,12 @@ export default function StoryViewer({
 
   const cat = storyData[catIndex];
 
-  // Build slides: groups, media slides, or creators
+  // Build slides: groups first, then media slides
   const slides: StorySlide[] = useMemo(() => {
     if (!cat) return [];
     const result: StorySlide[] = [];
     for (const g of cat.groups) result.push({ type: 'group', data: g });
     for (const m of cat.mediaSlides ?? []) result.push({ type: 'media', data: m });
-    for (const c of cat.creators ?? []) result.push({ type: 'creator', data: c });
     return result;
   }, [cat]);
 
@@ -78,19 +77,10 @@ export default function StoryViewer({
     durationRef.current = SLIDE_DURATION;
   }
 
-  // Background video for group/creator slides
+  // Background video for group slides without their own video
   const bgVideoUrl = useMemo(() => {
-    if (!currentSlide) return null;
-    if (currentSlide.type === 'creator') {
-      return currentSlide.data.bgVideoUrl || null;
-    }
-    if (currentSlide.type !== 'group') return null;
-    const hasPromoCreators = cat?.creators && cat.creators.length > 0;
-    // For erogram with promo creators, always use R2 background video (ignore group's own video)
-    if (!hasPromoCreators && currentSlide.data.videoUrl) return null;
-    if (cat?.bgVideoUrls && cat.bgVideoUrls.length > 0) {
-      return cat.bgVideoUrls[Math.floor(Math.random() * cat.bgVideoUrls.length)];
-    }
+    if (!currentSlide || currentSlide.type !== 'group') return null;
+    if (currentSlide.data.videoUrl) return null;
     if (cat?.r2Folder) return `${R2_BASE}/${cat.r2Folder}/wmremove-transformed.mp4`;
     return FALLBACK_BG_VIDEO;
   }, [currentSlide, cat]);
@@ -112,10 +102,10 @@ export default function StoryViewer({
     }
   }, [catIndex, storyData, onCategorySeen]);
 
-  // Track story slide views (creator slides tracked separately via CTA)
+  // Track story slide views
   const trackedSlidesRef = useRef(new Set<string>());
   useEffect(() => {
-    if (!currentSlide || currentSlide.type === 'creator') return;
+    if (!currentSlide) return;
     const key = currentSlide.type === 'group'
       ? `g:${currentSlide.data._id}`
       : `s:${currentSlide.data._id}`;
@@ -371,15 +361,7 @@ export default function StoryViewer({
         onPointerCancel={handlePointerCancel}
       >
         {/* ── Slide content ── */}
-        {currentSlide.type === 'creator' ? (
-          <CreatorSlideView
-            creator={currentSlide.data}
-            secondCreator={slides[slideIndex + 1]?.type === 'creator' ? slides[slideIndex + 1].data as StoryCreator : undefined}
-            bgVideoUrl={bgVideoUrl}
-            bgVideoRef={bgVideoRef}
-            stopPointer={stopPointer}
-          />
-        ) : currentSlide.type === 'group' ? (
+        {currentSlide.type === 'group' ? (
           <GroupSlideView
             slide={currentSlide.data}
             cat={cat}
@@ -388,7 +370,6 @@ export default function StoryViewer({
             videoRef={videoRef}
             onVideoMeta={handleVideoMeta}
             stopPointer={stopPointer}
-            promoCreators={cat?.creators}
           />
         ) : currentSlide.data.mediaType === 'premium-grid' ? (
           <PremiumGridSlideView
@@ -434,33 +415,23 @@ export default function StoryViewer({
         <div className="absolute top-5 left-0 right-0 z-20 flex items-center justify-between px-3 pt-2">
           <div className="flex items-center gap-2.5">
             <div className="relative w-9 h-9 shrink-0">
-              {cat?.storyType === 'creators' ? (
-                <>
-                  <div className="absolute inset-0 rounded-full" style={{ background: 'linear-gradient(135deg, #0088cc, #4ab3f4)' }} />
-                  <div className="absolute inset-[2px] rounded-full bg-black" />
-                  <div className="absolute inset-[3px] rounded-full flex items-center justify-center" style={{ background: 'rgba(0, 136, 204, 0.15)' }}>
-                    <span className="text-[#4ab3f4] font-black text-[5px] leading-[1.1] text-center select-none">OnlyFans<br/>Search</span>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div
-                    className="absolute inset-0 rounded-full"
-                    style={{ background: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)' }}
-                  />
-                  <div className="absolute inset-[2px] rounded-full bg-black" />
-                  <div className="absolute inset-[3px] rounded-full overflow-hidden bg-[#1a1a1a]">
-                    <img src={profileImg} alt={cat?.label || ''} className="w-full h-full object-cover" />
-                  </div>
-                </>
-              )}
+              <div
+                className="absolute inset-0 rounded-full"
+                style={{ background: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)' }}
+              />
+              <div className="absolute inset-[2px] rounded-full bg-black" />
+              <div className="absolute inset-[3px] rounded-full overflow-hidden bg-[#1a1a1a]">
+                <img src={profileImg} alt={cat?.label || ''} className="w-full h-full object-cover" />
+              </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className={`text-[13px] font-bold drop-shadow-lg ${cat?.storyType === 'creators' ? 'text-[#4ab3f4]' : 'text-white'}`}>{cat?.label}</span>
+              <span className="text-white text-[13px] font-bold drop-shadow-lg">{cat?.label}</span>
               {currentSlide.type === 'group' && currentSlide.data.createdAt && (
                 <span className="text-white/50 text-[11px] font-medium">{timeAgo(currentSlide.data.createdAt)}</span>
               )}
-              
+              {cat?.storyType === 'advert' && (
+                <span className="text-white/40 text-[10px] font-medium">Sponsored</span>
+              )}
             </div>
             {/* 24h countdown — like Instagram */}
             {(() => {
@@ -567,7 +538,7 @@ export default function StoryViewer({
 
 // ── Group slide (EROGRAM newest additions) ──
 function GroupSlideView({
-  slide, cat, bgVideoUrl, bgVideoRef, videoRef, onVideoMeta, stopPointer, promoCreators,
+  slide, cat, bgVideoUrl, bgVideoRef, videoRef, onVideoMeta, stopPointer,
 }: {
   slide: StoryGroup;
   cat: StoryCategory | undefined;
@@ -575,33 +546,35 @@ function GroupSlideView({
   bgVideoRef: React.RefObject<HTMLVideoElement | null>;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   onVideoMeta: (e: React.SyntheticEvent<HTMLVideoElement>) => void;
-  promoCreators?: StoryCreator[];
   stopPointer: (e: React.PointerEvent) => void;
 }) {
-  const hasPromoOverlay = bgVideoUrl && promoCreators && promoCreators.length > 0;
-
   return (
     <div className="absolute inset-0">
-      {/* Dark base */}
-      <div className="absolute inset-0 bg-black" />
+      {/* Animated gradient background */}
+      <div className="absolute inset-0" style={{
+        background: 'linear-gradient(135deg, #0f0c29 0%, #302b63 40%, #24243e 100%)',
+      }} />
+      <div className="absolute inset-0 opacity-30" style={{
+        background: 'radial-gradient(ellipse at 30% 20%, rgba(88,60,255,0.4) 0%, transparent 60%), radial-gradient(ellipse at 70% 80%, rgba(0,180,255,0.3) 0%, transparent 60%)',
+      }} />
 
-      {/* Background video layer — full visibility */}
+      {/* Background video layer */}
       {bgVideoUrl && (
         <video
           key={bgVideoUrl}
           ref={bgVideoRef}
           src={bgVideoUrl}
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover opacity-25"
           autoPlay muted loop playsInline preload="auto"
         />
       )}
 
-      {!hasPromoOverlay && slide.videoUrl ? (
+      {slide.videoUrl ? (
         <video
           key={slide.videoUrl}
           src={slide.videoUrl}
           poster={slide.image}
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover opacity-25"
           autoPlay muted playsInline preload="metadata"
           ref={videoRef}
           onLoadedMetadata={onVideoMeta}
@@ -611,7 +584,7 @@ function GroupSlideView({
           <img
             src={slide.image}
             alt={slide.name}
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover opacity-20 blur-sm scale-110"
             draggable={false}
           />
         </div>
@@ -621,141 +594,100 @@ function GroupSlideView({
       <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-transparent h-32 pointer-events-none" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
 
-      {/* When promo overlay is active: video + caption + 2 OF cards only — no group card */}
-      {hasPromoOverlay ? (
-        <>
-          {/* Caption */}
-          <div className="absolute top-20 left-0 right-0 z-20 flex justify-center pointer-events-none">
-            <span className="px-4 py-1.5 rounded-full text-white/90 text-[12px] font-bold tracking-wide"
-              style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)' }}>
-              Trending on Erogram OFsearch
-            </span>
+      {/* Centered group card */}
+      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-5 pointer-events-none">
+
+        {/* NEW badge */}
+        <div className="mb-5 flex flex-col items-center gap-2.5">
+          <div className="relative">
+            <div className="absolute -inset-1 rounded-full opacity-60 blur-md" style={{ background: 'linear-gradient(135deg, #f97316, #ef4444)' }} />
+            <div className="relative flex items-center gap-2.5 px-6 py-2.5 rounded-full border border-orange-400/40 shadow-lg shadow-orange-500/20"
+              style={{ background: 'linear-gradient(135deg, rgba(249,115,22,0.3) 0%, rgba(239,68,68,0.25) 100%)', backdropFilter: 'blur(16px)' }}
+            >
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500" />
+              </span>
+              <span className="text-white font-black text-[14px] tracking-[0.2em] uppercase">
+                NEW
+              </span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-orange-400 shrink-0">
+                <path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z" fill="currentColor"/>
+              </svg>
+            </div>
+          </div>
+          <span className="text-white/50 text-[11px] font-semibold tracking-wider uppercase">
+            Just added to {cat?.label || 'Erogram'}
+          </span>
+        </div>
+
+        {/* Card */}
+        <div className="w-full max-w-[320px] rounded-2xl overflow-hidden border border-white/[0.12] shadow-2xl pointer-events-auto"
+          style={{ background: 'linear-gradient(180deg, rgba(30,30,36,0.95) 0%, rgba(22,22,28,0.98) 100%)', backdropFilter: 'blur(20px)' }}
+          onPointerDown={stopPointer}
+        >
+          {/* Group image */}
+          <div className="relative w-full aspect-[16/10] bg-[#1a1a20] overflow-hidden">
+            <img src={slide.image} alt={slide.name} className="w-full h-full object-cover" draggable={false} />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#16161c] via-transparent to-transparent" />
+            {/* Floating category pill on image */}
+            <div className="absolute top-3 left-3 flex gap-1.5">
+              <span className="px-2.5 py-1 rounded-full text-white text-[9px] font-bold uppercase tracking-wider shadow-lg"
+                style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)' }}>
+                {slide.category}
+              </span>
+              {slide.country && (
+                <span className="px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm text-white/80 text-[9px] font-bold uppercase tracking-wider">
+                  {slide.country}
+                </span>
+              )}
+            </div>
           </div>
 
-          {/* 2 OF creator cards on the right */}
-          <div
-            className="absolute z-10 flex flex-col gap-1.5 pointer-events-auto"
-            style={{ width: '132px', top: 'calc(5rem + 30px)', right: 'calc(0.75rem + 10px)' }}
-            onPointerDown={stopPointer}
-          >
-            <a
-              href="/onlyfans-search"
-              target="_blank"
-              rel="noopener noreferrer"
+          {/* Info section */}
+          <div className="px-4 pt-3 pb-1">
+            <h3 className="text-white font-bold text-[17px] truncate leading-tight">{slide.name}</h3>
+            <div className="flex items-center gap-3 mt-2">
+              {(slide.memberCount ?? 0) > 0 && (
+                <span className="flex items-center gap-1.5 text-blue-300/80 text-[12px] font-semibold">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="opacity-80">
+                    <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+                  </svg>
+                  {formatMembers(slide.memberCount!)} members
+                </span>
+              )}
+              {slide.createdAt && (
+                <span className="text-white/30 text-[11px]">
+                  {(() => {
+                    const h = Math.floor((Date.now() - new Date(slide.createdAt).getTime()) / 3600000);
+                    return h < 1 ? 'Just now' : h < 24 ? `${h}h ago` : `${Math.floor(h / 24)}d ago`;
+                  })()}
+                </span>
+              )}
+            </div>
+            {slide.description && (
+              <p className="text-white/30 text-[12px] mt-2 line-clamp-2 leading-relaxed">{slide.description}</p>
+            )}
+          </div>
+
+          {/* CTA button */}
+          <div className="px-4 pt-2.5 pb-4">
+            <Link
+              href={`/${slide.slug}`}
               onClick={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}
-              className="block text-center text-[9px] font-bold text-white/90 px-2 py-1 rounded-lg"
-              style={{ background: 'rgba(0,175,240,0.75)', backdropFilter: 'blur(6px)' }}
+              className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-bold text-white text-[15px] transition-all duration-200 active:scale-[0.96] shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:brightness-110"
+              style={{ background: 'linear-gradient(135deg, #2AABEE 0%, #229ED9 100%)' }}
             >
-              Explore more on<br />Erogram OFsearch ↗
-            </a>
-            {promoCreators!.slice(0, 2).map((c) => (
-              <MiniCreatorCard
-                key={c._id}
-                creator={c}
-                onTrack={() => { fetch(`/api/onlyfans/trending/${c._id}/click`, { method: 'POST', keepalive: true }).catch(() => {}); }}
-                stopPointer={stopPointer}
-              />
-            ))}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/>
+              </svg>
+              View &amp; Join Group
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="opacity-70"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </Link>
           </div>
-        </>
-      ) : (
-        <>
-          {/* Centered group card (shown when no promo overlay) */}
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-5 pointer-events-none">
-
-            {/* NEW badge */}
-            <div className="mb-5 flex flex-col items-center gap-2.5">
-              <div className="relative">
-                <div className="absolute -inset-1 rounded-full opacity-60 blur-md" style={{ background: 'linear-gradient(135deg, #f97316, #ef4444)' }} />
-                <div className="relative flex items-center gap-2.5 px-6 py-2.5 rounded-full border border-orange-400/40 shadow-lg shadow-orange-500/20"
-                  style={{ background: 'linear-gradient(135deg, rgba(249,115,22,0.3) 0%, rgba(239,68,68,0.25) 100%)', backdropFilter: 'blur(16px)' }}
-                >
-                  <span className="relative flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500" />
-                  </span>
-                  <span className="text-white font-black text-[14px] tracking-[0.2em] uppercase">
-                    NEW
-                  </span>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-orange-400 shrink-0">
-                    <path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z" fill="currentColor"/>
-                  </svg>
-                </div>
-              </div>
-              <span className="text-white/50 text-[11px] font-semibold tracking-wider uppercase">
-                Just added to {cat?.label || 'Erogram'}
-              </span>
-            </div>
-
-            {/* Card */}
-            <div className="w-full max-w-[320px] rounded-2xl overflow-hidden border border-white/[0.12] shadow-2xl pointer-events-auto"
-              style={{ background: 'linear-gradient(180deg, rgba(30,30,36,0.95) 0%, rgba(22,22,28,0.98) 100%)', backdropFilter: 'blur(20px)' }}
-              onPointerDown={stopPointer}
-            >
-              {/* Group image */}
-              <div className="relative w-full aspect-[16/10] bg-[#1a1a20] overflow-hidden">
-                <img src={slide.image} alt={slide.name} className="w-full h-full object-cover" draggable={false} />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#16161c] via-transparent to-transparent" />
-                <div className="absolute top-3 left-3 flex gap-1.5">
-                  <span className="px-2.5 py-1 rounded-full text-white text-[9px] font-bold uppercase tracking-wider shadow-lg"
-                    style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)' }}>
-                    {slide.category}
-                  </span>
-                  {slide.country && (
-                    <span className="px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm text-white/80 text-[9px] font-bold uppercase tracking-wider">
-                      {slide.country}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Info section */}
-              <div className="px-4 pt-3 pb-1">
-                <h3 className="text-white font-bold text-[17px] truncate leading-tight">{slide.name}</h3>
-                <div className="flex items-center gap-3 mt-2">
-                  {(slide.memberCount ?? 0) > 0 && (
-                    <span className="flex items-center gap-1.5 text-blue-300/80 text-[12px] font-semibold">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="opacity-80">
-                        <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
-                      </svg>
-                      {formatMembers(slide.memberCount!)} members
-                    </span>
-                  )}
-                  {slide.createdAt && (
-                    <span className="text-white/30 text-[11px]">
-                      {(() => {
-                        const h = Math.floor((Date.now() - new Date(slide.createdAt).getTime()) / 3600000);
-                        return h < 1 ? 'Just now' : h < 24 ? `${h}h ago` : `${Math.floor(h / 24)}d ago`;
-                      })()}
-                    </span>
-                  )}
-                </div>
-                {slide.description && (
-                  <p className="text-white/30 text-[12px] mt-2 line-clamp-2 leading-relaxed">{slide.description}</p>
-                )}
-              </div>
-
-              {/* CTA button */}
-              <div className="px-4 pt-2.5 pb-4">
-                <Link
-                  href={`/${slide.slug}`}
-                  onClick={(e) => e.stopPropagation()}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-bold text-white text-[15px] transition-all duration-200 active:scale-[0.96] shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:brightness-110"
-                  style={{ background: 'linear-gradient(135deg, #2AABEE 0%, #229ED9 100%)' }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/>
-                  </svg>
-                  View &amp; Join Group
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="opacity-70"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -1022,119 +954,6 @@ function PremiumChannelCard({
             </svg>
             {formatMembers(group.memberCount!)}
           </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Creator Slide (matches /onlyfans-search feed card style) ──
-function MiniCreatorCard({ creator, onTrack, stopPointer }: { creator: StoryCreator; onTrack: () => void; stopPointer: (e: React.PointerEvent) => void }) {
-  return (
-    <a
-      href={creator.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={(e) => { e.stopPropagation(); onTrack(); }}
-      onPointerDown={(e) => e.stopPropagation()}
-      className="block rounded-xl bg-white overflow-hidden shadow-[0_4px_20px_-4px_rgba(0,0,0,0.5)] ring-1 ring-[#00AFF0]/30"
-    >
-      <div className="relative aspect-[3/4] bg-gray-100">
-        {creator.avatar ? (
-          <img
-            src={creator.avatar}
-            alt={creator.name}
-            className="absolute inset-0 w-full h-full object-cover"
-            draggable={false}
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-lg font-black text-[#00AFF0]/40 bg-gradient-to-br from-[#00AFF0]/15 to-[#00AFF0]/5">
-            {creator.name.charAt(0)}
-          </div>
-        )}
-      </div>
-      <div className="px-1.5 pt-1 pb-1.5">
-        <p className="font-black text-[9px] text-gray-900 truncate leading-tight">{creator.name}</p>
-        <p className="text-[8px] text-[#00AFF0] font-bold truncate">@{creator.username}</p>
-        <div className="w-full mt-1 py-1 rounded-md bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-[8px] font-black text-center">
-          View profile
-        </div>
-      </div>
-    </a>
-  );
-}
-
-function CreatorSlideView({
-  creator,
-  secondCreator,
-  bgVideoUrl,
-  bgVideoRef,
-  stopPointer,
-}: {
-  creator: StoryCreator;
-  secondCreator?: StoryCreator;
-  bgVideoUrl: string | null;
-  bgVideoRef: React.RefObject<HTMLVideoElement | null>;
-  stopPointer: (e: React.PointerEvent) => void;
-}) {
-  const track = (id: string) => {
-    fetch(`/api/onlyfans/trending/${id}/click`, { method: 'POST', keepalive: true }).catch(() => {});
-  };
-
-  return (
-    <div className="absolute inset-0">
-      {/* Dark base */}
-      <div className="absolute inset-0 bg-black" />
-
-      {/* Background video — full visibility */}
-      {bgVideoUrl && (
-        <video
-          key={bgVideoUrl}
-          ref={bgVideoRef}
-          src={bgVideoUrl}
-          className="absolute inset-0 w-full h-full object-cover"
-          autoPlay muted loop playsInline preload="auto"
-        />
-      )}
-
-      {/* Subtle top/bottom gradients */}
-      <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/70 to-transparent pointer-events-none" />
-      <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/50 to-transparent pointer-events-none" />
-
-      {/* Caption */}
-      <div className="absolute top-20 left-0 right-0 z-20 flex justify-center pointer-events-none">
-        <span className="px-4 py-1.5 rounded-full text-white/90 text-[12px] font-bold tracking-wide"
-          style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)' }}>
-          Trending on Erogram OFsearch
-        </span>
-      </div>
-
-      {/* Right-side column: link + 2 cards */}
-      <div
-        className="absolute z-10 flex flex-col gap-1.5 pointer-events-auto"
-        style={{ width: '132px', top: 'calc(5rem + 30px)', right: 'calc(0.75rem + 10px)' }}
-        onPointerDown={stopPointer}
-      >
-        {/* "Explore more" link */}
-        <a
-          href="/onlyfans-search"
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-          className="block text-center text-[9px] font-bold text-white/90 px-2 py-1 rounded-lg"
-          style={{ background: 'rgba(0,175,240,0.75)', backdropFilter: 'blur(6px)' }}
-        >
-          Explore more on<br />Erogram OFsearch ↗
-        </a>
-
-        {/* Card 1 — current creator */}
-        <MiniCreatorCard creator={creator} onTrack={() => track(creator._id)} stopPointer={stopPointer} />
-
-        {/* Card 2 — next creator if available */}
-        {secondCreator && (
-          <MiniCreatorCard creator={secondCreator} onTrack={() => track(secondCreator._id)} stopPointer={stopPointer} />
         )}
       </div>
     </div>

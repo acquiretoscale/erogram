@@ -289,7 +289,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
         fetch('/api/onlyfans/scrape', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ category: data.scrapeQuery, maxItems: 200, source: 'search' }),
+          body: JSON.stringify({ category: data.scrapeQuery, maxItems: 6, source: 'search' }),
         }).catch(() => {});
       }
     } catch (e: any) {

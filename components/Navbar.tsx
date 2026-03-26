@@ -266,6 +266,12 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                           {t('nav.adminPanel', 'Admin Panel')}
                         </Link>
                       )}
+                      {isAdminUser && (
+                        <Link href="/OFM" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-pink-400 hover:text-pink-300 hover:bg-pink-500/5 transition font-semibold">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M8 12h8M12 8v8"/></svg>
+                          OFM Admin
+                        </Link>
+                      )}
                       <Link href={lp('/profile')} onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-white/70 hover:text-white hover:bg-white/5 transition">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>
                         {t('nav.profile', 'Profile')}
@@ -492,6 +498,12 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                   <Link href="/admin" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-[14px] font-semibold text-amber-400 bg-amber-500/[0.08] border border-amber-500/20 hover:bg-amber-500/[0.14] transition">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
                     {t('nav.adminPanel', 'Admin Panel')}
+                  </Link>
+                )}
+                {isAdminUser && (
+                  <Link href="/OFM" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-[14px] font-semibold text-pink-400 bg-pink-500/[0.08] border border-pink-500/20 hover:bg-pink-500/[0.14] transition">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M8 12h8M12 8v8"/></svg>
+                    OFM Admin
                   </Link>
                 )}
                 <Link href={lp('/profile')} onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 rounded-lg text-[14px] text-white/70 hover:text-white hover:bg-white/5 transition">

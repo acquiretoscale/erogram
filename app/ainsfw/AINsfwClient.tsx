@@ -64,26 +64,13 @@ function loadAllScores(allStats?: Record<string, ToolStatsData>): Record<string,
   return map;
 }
 
-function TopAINsfwBlock({ tools, allStats, onVoteChange }: { tools: AINsfwTool[]; allStats?: Record<string, ToolStatsData>; onVoteChange: (slug: string, score: number) => void }) {
-  const [topTools, setTopTools] = useState<AINsfwTool[]>([]);
+function TopAINsfwBlock({ tools, allStats, scores, onVoteChange }: { tools: AINsfwTool[]; allStats?: Record<string, ToolStatsData>; scores: Record<string, number>; onVoteChange: (slug: string, score: number) => void }) {
   const { t } = useTranslation();
 
-  useEffect(() => {
-    try {
-      const clickMap: Record<string, number> = {};
-      tools.forEach((tool) => {
-        const raw = localStorage.getItem(`ainsfw_clicks_${tool.slug}`);
-        clickMap[tool.slug] = raw ? parseInt(raw, 10) : 0;
-      });
-      const sorted = [...tools]
-        .filter((tool) => (clickMap[tool.slug] ?? 0) > 0)
-        .sort((a, b) => (clickMap[b.slug] ?? 0) - (clickMap[a.slug] ?? 0))
-        .slice(0, 4);
-      setTopTools(sorted.length >= 2 ? sorted : tools.slice(0, 4));
-    } catch {
-      setTopTools(tools.slice(0, 4));
-    }
-  }, [tools]);
+  const topTools = [...tools]
+    .filter((tool) => (scores[tool.slug] ?? 0) > 0)
+    .sort((a, b) => (scores[b.slug] ?? 0) - (scores[a.slug] ?? 0))
+    .slice(0, 4);
 
   if (topTools.length === 0) return null;
 
@@ -328,7 +315,7 @@ export default function AINsfwClient({ tools, allStats }: AINsfwClientProps) {
           {/* Main Content */}
           <div className="lg:w-3/4 min-w-0 shrink-0">
             {/* Top AI NSFW Block */}
-            <TopAINsfwBlock tools={tools} allStats={allStats} onVoteChange={handleVoteChange} />
+            <TopAINsfwBlock tools={tools} allStats={allStats} scores={scores} onVoteChange={handleVoteChange} />
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3">
               {displayed.map((tool, i) => (

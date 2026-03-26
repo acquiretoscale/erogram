@@ -120,25 +120,6 @@ export interface StoryMediaSlide {
     premiumGroups?: PremiumGroupItem[];
 }
 
-export interface StoryCreator {
-    _id: string;
-    name: string;
-    username: string;
-    slug: string;
-    avatar: string;
-    header: string;
-    bio: string;
-    subscriberCount: number;
-    likesCount: number;
-    mediaCount: number;
-    price: number;
-    isFree: boolean;
-    isVerified: boolean;
-    url: string;
-    categories: string[];
-    bgVideoUrl?: string;
-}
-
 export interface StoryCategory {
     slug: string;
     label: string;
@@ -148,19 +129,14 @@ export interface StoryCategory {
     groups: StoryGroup[];
     /** R2/admin media slides (for random-girl, AI GF, erogram announcements) */
     mediaSlides?: StoryMediaSlide[];
-    /** Featured OnlyFans creators (from TrendingOFCreator) */
-    creators?: StoryCreator[];
     ctaText?: string;
     ctaUrl?: string;
     verified?: boolean;
     r2Folder?: string;
-    /** 'erogram' | 'random-girl' | 'advert' | 'creators' — passed from config so viewer knows the type */
+    /** 'erogram' | 'random-girl' | 'advert' — passed from config so viewer knows the type */
     storyType?: string;
-    /** Pre-fetched R2 video URLs for background rotation */
-    bgVideoUrls?: string[];
 }
 
 export type StorySlide =
     | { type: 'group'; data: StoryGroup }
-    | { type: 'media'; data: StoryMediaSlide }
-    | { type: 'creator'; data: StoryCreator };
+    | { type: 'media'; data: StoryMediaSlide };

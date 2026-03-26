@@ -7,7 +7,6 @@ const isDev = process.env.NODE_ENV === 'development';
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: !isDev,
-  ...(port && port !== '3000' ? { distDir: `.next-${port}` } : {}),
 
   reactStrictMode: false,
 

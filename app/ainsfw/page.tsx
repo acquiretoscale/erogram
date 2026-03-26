@@ -1,15 +1,14 @@
 import { Metadata } from 'next';
 import { AI_NSFW_TOOLS } from './data';
 import AINsfwClient from './AINsfwClient';
-import { getLocale, getPathname } from '@/lib/i18n/server';
-import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
+import { getLocale } from '@/lib/i18n/server';
+import { getDictionary } from '@/lib/i18n';
 import { getAllToolStats } from '@/lib/actions/ainsfw';
 
 const BASE_URL = 'https://erogram.pro';
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
-  const pathname = await getPathname();
   const dict = await getDictionary(locale);
 
   return {
@@ -19,16 +18,13 @@ export async function generateMetadata(): Promise<Metadata> {
       'ai girlfriend, undress ai, ai chat nsfw, ai companion, ai nsfw tools, best ai girlfriend 2026, ai undress, ai chatbot nsfw, erogram',
     other: { rating: 'adult' },
     alternates: {
-      canonical: `${BASE_URL}${pathname === '/' ? '' : pathname}`,
-      languages: Object.fromEntries(
-        LOCALES.map(l => [l, `${BASE_URL}${localePath('/ainsfw', l)}`])
-      ),
+      canonical: `${BASE_URL}/ainsfw`,
     },
     openGraph: {
       title: dict.meta.ainsfwTitle,
       description: dict.meta.ainsfwDesc,
       type: 'website',
-      url: `${BASE_URL}${pathname}`,
+      url: `${BASE_URL}/ainsfw`,
       siteName: 'Erogram',
       images: [
         {

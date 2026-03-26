@@ -80,11 +80,11 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
         }} />
 
         {/* Left label — compact horizontal */}
-        <div className="relative z-[1] shrink-0 flex flex-col items-center justify-center px-0.5 md:px-1 py-1" style={{
+        <div className="relative z-[1] shrink-0 flex flex-col items-center justify-center px-1 py-1" style={{
           background: 'linear-gradient(180deg, #0d0d0d 0%, #111008 100%)',
           borderRight: '1px solid rgba(245,158,11,0.15)',
         }}>
-          <p className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-white/60 whitespace-nowrap" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>Stories</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-white/60 whitespace-nowrap" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>Stories</p>
         </div>
 
         {/* Scrollable circles */}
@@ -117,7 +117,7 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
 
           <div
             ref={scrollRef}
-            className="flex gap-1.5 md:gap-3 overflow-x-auto scrollbar-hide px-1.5 md:px-2.5 py-2"
+            className="flex gap-3 overflow-x-auto scrollbar-hide px-2.5 py-2"
           >
             {storyData.map((cat, i) => (
               <StoryCircle
@@ -176,7 +176,7 @@ function PremiumUpgradeCircle() {
       className="flex flex-col items-center gap-1 shrink-0 group outline-none"
       aria-label="Upgrade to Erogram Premium"
     >
-      <div className="relative w-[64px] h-[64px] md:w-[84px] md:h-[84px]">
+      <div className="relative w-[76px] h-[76px] md:w-[84px] md:h-[84px]">
         {/* Spinning golden ring */}
         <div className="absolute inset-0 rounded-full overflow-hidden">
           <div
@@ -223,7 +223,7 @@ function VisitingNowCard() {
   }, [fetchCount]);
 
   return (
-    <div className="shrink-0 flex flex-col justify-center gap-2 pl-2 md:pl-3 ml-0.5 md:ml-1" style={{ borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
+    <div className="shrink-0 flex flex-col justify-center gap-2 pl-3 ml-1" style={{ borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
       {/* Visiting now — subtle stat */}
       <div className="flex items-center gap-1.5">
         <span className="relative flex h-1.5 w-1.5 shrink-0">
@@ -264,11 +264,9 @@ function StoryCircle({
   seenAt?: string;
   onClick: () => void;
 }) {
-  const isCreators = category.storyType === 'creators';
-  const hasContent = category.groups.length > 0 || (category.mediaSlides && category.mediaSlides.length > 0) || (category.creators && category.creators.length > 0);
+  const hasContent = category.groups.length > 0 || (category.mediaSlides && category.mediaSlides.length > 0);
   const hasUnseen = (() => {
     if (!hasContent) return false;
-    if (isCreators) return !seenAt;
     if (seenAt) {
       const seenMs = new Date(seenAt).getTime();
       const latestAt = category.groups[0]?.createdAt;
@@ -291,28 +289,26 @@ function StoryCircle({
       className="flex flex-col items-center gap-1 shrink-0 group outline-none"
       aria-label={`View ${category.label} stories`}
     >
-      <div className="relative w-[64px] h-[64px] md:w-[84px] md:h-[84px]">
+      <div className="relative w-[76px] h-[76px] md:w-[84px] md:h-[84px]">
 
         {/* Spinning neon ring layer — clipped to circle */}
         <div className="absolute inset-0 rounded-full overflow-hidden">
           {hasUnseen ? (
+            /* Unseen: spinning pink-orange-yellow neon */
             <div
               className="story-neon-ring absolute"
               style={{
                 inset: '-24px',
-                background: isCreators
-                  ? 'conic-gradient(from 0deg, #0088cc, #4ab3f4, #0088cc, #4ab3f4, #0088cc)'
-                  : 'conic-gradient(from 0deg, #ff006e, #fb5607, #ffbe0b, #ff6b35, #e91e8c, #ff006e)',
+                background: 'conic-gradient(from 0deg, #ff006e, #fb5607, #ffbe0b, #ff6b35, #e91e8c, #ff006e)',
               }}
             />
           ) : (
+            /* Seen: slow-spinning golden/amber — dimmed */
             <div
               className="story-neon-ring-slow absolute"
               style={{
                 inset: '-24px',
-                background: isCreators
-                  ? 'conic-gradient(from 0deg, #004466, #006699, #0088cc, #006699, #004466)'
-                  : 'conic-gradient(from 0deg, #92400e, #d97706, #f59e0b, #ea580c, #92400e)',
+                background: 'conic-gradient(from 0deg, #92400e, #d97706, #f59e0b, #ea580c, #92400e)',
                 opacity: 0.55,
               }}
             />
@@ -325,29 +321,20 @@ function StoryCircle({
           style={{ background: '#1a1008' }}
         />
 
-        {/* Content: dark blue 18+ for creators, profile image for others */}
-        {isCreators ? (
-          <div className="absolute inset-[5px] rounded-full flex items-center justify-center"
-            style={{ background: 'rgba(0, 136, 204, 0.15)' }}>
-            <span className="text-[#4ab3f4] font-black text-[9px] leading-[1.1] text-center select-none">OnlyFans<br/>Search</span>
-          </div>
-        ) : (
-          <div className="absolute inset-[5px] rounded-full overflow-hidden" style={{ background: '#2a1a0a' }}>
-            <img
-              src={imgSrc}
-              alt={category.label}
-              loading="lazy"
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-            />
-          </div>
-        )}
+        {/* Profile image */}
+        <div className="absolute inset-[5px] rounded-full overflow-hidden" style={{ background: '#2a1a0a' }}>
+          <img
+            src={imgSrc}
+            alt={category.label}
+            loading="lazy"
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+          />
+        </div>
       </div>
 
       {/* Label + verified badge */}
-      <span className={`flex items-center gap-0.5 text-[10px] md:text-[11px] font-semibold transition-colors duration-200 max-w-[64px] md:max-w-[84px] ${
-        isCreators
-          ? (hasUnseen ? 'text-[#4ab3f4] group-hover:text-[#6ec6f7]' : 'text-[#4ab3f4]/40 group-hover:text-[#4ab3f4]/60')
-          : (hasUnseen ? 'text-amber-200/90 group-hover:text-amber-100' : 'text-amber-200/30 group-hover:text-amber-200/50')
+      <span className={`flex items-center gap-0.5 text-[10px] md:text-[11px] font-semibold transition-colors duration-200 max-w-[76px] md:max-w-[84px] ${
+        hasUnseen ? 'text-amber-200/90 group-hover:text-amber-100' : 'text-amber-200/30 group-hover:text-amber-200/50'
       }`}>
         <span className="truncate">{category.label}</span>
         {category.verified && <VerifiedBadge size={11} />}

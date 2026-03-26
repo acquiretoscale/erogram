@@ -8,7 +8,7 @@ interface StoryCategoryConfig {
   label: string;
   enabled: boolean;
   profileImage: string;
-  filterType: 'erogram' | 'random-girl' | 'advert' | 'creators';
+  filterType: 'erogram' | 'random-girl' | 'advert';
   filterValue: string;
   sortOrder: number;
   maxItems?: number;
@@ -58,11 +58,10 @@ interface StoryGroupItem {
 }
 
 const DEFAULT_CATEGORIES: StoryCategoryConfig[] = [
-  { slug: 'erogram', label: 'EROGRAM', enabled: true, profileImage: '', filterType: 'erogram', filterValue: '', sortOrder: 0, maxItems: 6, verified: true, r2Folder: 'tgempire/instabaddies' },
-  { slug: 'of-creators', label: 'OnlyFans', enabled: true, profileImage: '', filterType: 'creators', filterValue: '', sortOrder: 1, maxItems: 30, verified: true, r2Folder: 'tgempire/instabaddies' },
-  { slug: 'random-girl-1', label: 'Vicky', enabled: true, profileImage: '', filterType: 'random-girl', filterValue: '', sortOrder: 2, maxItems: 3, r2Folder: 'tgempire/instabaddies' },
-  { slug: 'ai-gf', label: 'AI GF', enabled: true, profileImage: '', filterType: 'advert', filterValue: '', sortOrder: 3, maxItems: 4, ctaText: 'Try AI Girlfriend', ctaUrl: '/bots', r2Folder: 'stories/AI-GF' },
-  { slug: 'random-girl-2', label: 'Carla', enabled: true, profileImage: '', filterType: 'random-girl', filterValue: '', sortOrder: 4, maxItems: 3, r2Folder: 'tgempire/instabaddies' },
+  { slug: 'erogram', label: 'EROGRAM', enabled: true, profileImage: '', filterType: 'erogram', filterValue: '', sortOrder: 0, maxItems: 6, verified: true, r2Folder: 'stories/AI-GF' },
+  { slug: 'random-girl-1', label: 'Vicky', enabled: true, profileImage: '', filterType: 'random-girl', filterValue: '', sortOrder: 1, maxItems: 3, r2Folder: 'tgempire/instabaddies' },
+  { slug: 'ai-gf', label: 'AI GF', enabled: true, profileImage: '', filterType: 'advert', filterValue: '', sortOrder: 2, maxItems: 4, ctaText: 'Try AI Girlfriend', ctaUrl: '/bots', r2Folder: 'stories/AI-GF' },
+  { slug: 'random-girl-2', label: 'Carla', enabled: true, profileImage: '', filterType: 'random-girl', filterValue: '', sortOrder: 3, maxItems: 3, r2Folder: 'tgempire/instabaddies' },
 ];
 
 const INPUT = 'w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder-white/30 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 outline-none transition';
@@ -98,13 +97,7 @@ export default function StoryCategoriesTab() {
       ]);
       const gs = configRes.data?.generalSettings || {};
       const saved: StoryCategoryConfig[] = Array.isArray(gs.storyCategories) ? gs.storyCategories : [];
-      // Merge: inject any missing defaults
-      const merged = saved.length > 0 ? [...saved] : [];
-      const existingSlugs = new Set(merged.map(c => c.slug));
-      for (const def of DEFAULT_CATEGORIES) {
-        if (!existingSlugs.has(def.slug)) merged.push(def);
-      }
-      setCategories(merged.length > 0 ? merged : DEFAULT_CATEGORIES);
+      setCategories(saved.length > 0 ? saved : DEFAULT_CATEGORIES);
       setStoriesVisible(gs.showStories !== false);
       setSlides(slidesRes.data || []);
       setStoryGroups(groupsRes.data?.groups || []);
@@ -318,8 +311,8 @@ export default function StoryCategoriesTab() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {sorted.map((cat, i) => {
             const stats = getProfileStats(cat.slug);
-            const typeLabel = cat.filterType === 'advert' ? 'AD' : cat.filterType === 'erogram' ? 'EROGRAM' : cat.filterType === 'creators' ? 'CREATORS' : 'NORMAL';
-            const typeColor = cat.filterType === 'advert' ? 'bg-orange-500/20 text-orange-400' : cat.filterType === 'erogram' ? 'bg-blue-500/20 text-blue-400' : cat.filterType === 'creators' ? 'bg-sky-500/20 text-sky-400' : 'bg-purple-500/20 text-purple-400';
+            const typeLabel = cat.filterType === 'advert' ? 'AD' : cat.filterType === 'erogram' ? 'EROGRAM' : 'NORMAL';
+            const typeColor = cat.filterType === 'advert' ? 'bg-orange-500/20 text-orange-400' : cat.filterType === 'erogram' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400';
             return (
               <div key={cat.slug}
                 className="rounded-xl bg-white/[0.03] border border-white/[0.08] hover:border-white/20 hover:bg-white/[0.05] transition-all cursor-pointer group relative"
@@ -372,7 +365,7 @@ export default function StoryCategoriesTab() {
                           )}
                         </>
                       )}
-                      {(cat.filterType === 'random-girl' || cat.filterType === 'creators' || cat.filterType === 'erogram') && <span>R2: {cat.r2Folder || '—'}</span>}
+                      {cat.filterType === 'random-girl' && <span>R2: {cat.r2Folder || '—'}</span>}
                     </div>
                   </div>
                 </div>
@@ -447,8 +440,8 @@ export default function StoryCategoriesTab() {
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-bold text-white truncate">{activeCat.label}</h2>
             <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
-              activeCat.filterType === 'advert' ? 'bg-orange-500/20 text-orange-400' : activeCat.filterType === 'erogram' ? 'bg-blue-500/20 text-blue-400' : activeCat.filterType === 'creators' ? 'bg-sky-500/20 text-sky-400' : 'bg-purple-500/20 text-purple-400'
-            }`}>{activeCat.filterType === 'advert' ? 'AD' : activeCat.filterType === 'erogram' ? 'EROGRAM' : activeCat.filterType === 'creators' ? 'CREATORS' : 'NORMAL'}</span>
+              activeCat.filterType === 'advert' ? 'bg-orange-500/20 text-orange-400' : activeCat.filterType === 'erogram' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'
+            }`}>{activeCat.filterType === 'advert' ? 'AD' : activeCat.filterType === 'erogram' ? 'EROGRAM' : 'NORMAL'}</span>
           </div>
           {stats.stories > 0 && (
             <span className="text-[11px] text-white/30">
@@ -510,11 +503,11 @@ export default function StoryCategoriesTab() {
           </div>
         </div>
 
-        {/* R2 folder (background videos) + max items */}
-        {activeCat.filterType !== 'advert' && (
+        {/* R2 folder + max items for non-advert */}
+        {activeCat.filterType !== 'advert' && activeCat.filterType !== 'erogram' && (
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[10px] text-white/40 mb-1">R2 Folder (background videos)</label>
+              <label className="block text-[10px] text-white/40 mb-1">R2 Folder</label>
               <input value={activeCat.r2Folder || ''} onChange={e => updateCat(activeCat.slug, 'r2Folder', e.target.value)} onBlur={saveCurrent} placeholder="e.g. tgempire/instabaddies" className={INPUT} />
             </div>
             <div>

@@ -140,14 +140,17 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // English-only sections: articles are never translated.
-  // 301 redirect /de/articles* and /es/articles* → /articles*
+  // English-only sections: articles and AI NSFW are never translated.
+  // 301 redirect /de/... and /es/... → /... for these paths.
+  const englishOnlySections = ['articles', 'ainsfw'];
   for (const locale of LOCALE_PREFIXES) {
-    if (pathname.startsWith(`/${locale}/articles`)) {
-      const englishPath = pathname.replace(`/${locale}`, '');
-      const url = request.nextUrl.clone();
-      url.pathname = englishPath;
-      return NextResponse.redirect(url, 301);
+    for (const section of englishOnlySections) {
+      if (pathname === `/${locale}/${section}` || pathname.startsWith(`/${locale}/${section}/`)) {
+        const englishPath = pathname.replace(`/${locale}`, '');
+        const url = request.nextUrl.clone();
+        url.pathname = englishPath;
+        return NextResponse.redirect(url, 301);
+      }
     }
   }
 
