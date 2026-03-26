@@ -213,14 +213,13 @@ function PremiumMosaicCard({ campaign, handleClick }: { campaign: FeedCampaign; 
     };
     const seed = `premium-${campaign._id}`;
 
-    // Social proof
     const proofSetting = campaign.socialProof || 'random';
     let resolvedProof = proofSetting;
     if (resolvedProof === 'random') {
         const r = seededRandom(seed + 'stats');
         if (r > 0.7) {
             const t = seededRandom(seed + 'statsType');
-            resolvedProof = t < 0.33 ? 'visiting' : t < 0.66 ? 'clicks' : 'trending';
+            resolvedProof = t < 0.5 ? 'visiting' : 'trending';
         } else {
             resolvedProof = 'none';
         }
@@ -232,8 +231,6 @@ function PremiumMosaicCard({ campaign, handleClick }: { campaign: FeedCampaign; 
         if (liveCount === 0) setLiveCount(Math.floor(seededRandom(seed + 'count1') * 400 + 120));
         isLiveCount = true;
         fakeCount = `${liveCount} visiting now`;
-    } else if (resolvedProof === 'clicks') {
-        fakeCount = `${(seededRandom(seed + 'count2') * 5 + 1).toFixed(1)}k clicks today`;
     } else if (resolvedProof === 'trending') {
         fakeCount = `Trending #${Math.floor(seededRandom(seed + 'count3') * 5 + 1)}`;
     }
@@ -563,20 +560,18 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
         badge = badges[Math.floor(seededRandom(seed + 'badgeType') * badges.length)];
     }
 
+
     // Social Proof — controlled via campaign.socialProof
     const proofSetting = campaign?.socialProof || 'random';
     let fakeCount: string | null = null;
     let isLiveCount = false;
 
-    // Resolve which type to show
     let resolvedProof = proofSetting;
     if (resolvedProof === 'random') {
         const statsRand = seededRandom(seed + 'stats');
         if (statsRand > 0.7) {
             const type = seededRandom(seed + 'statsType');
-            if (type < 0.33) resolvedProof = 'visiting';
-            else if (type < 0.66) resolvedProof = 'clicks';
-            else resolvedProof = 'trending';
+            resolvedProof = type < 0.5 ? 'visiting' : 'trending';
         } else {
             resolvedProof = 'none';
         }
@@ -588,8 +583,6 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
         }
         isLiveCount = true;
         fakeCount = `${liveCount} visiting now`;
-    } else if (resolvedProof === 'clicks') {
-        fakeCount = `${(seededRandom(seed + 'count2') * 5 + 1).toFixed(1)}k clicks today`;
     } else if (resolvedProof === 'trending') {
         fakeCount = `Trending #${Math.floor(seededRandom(seed + 'count3') * 5 + 1)}`;
     }
@@ -612,9 +605,6 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
     // Verified checkmark: controlled from admin panel (campaign.verified field)
     const showVerified = campaign?.verified === true;
-
-    // Sponsored Badge Logic for Native Ads (10% chance)
-    const showSponsored = seededRandom(seed + 'sponsored') < 0.1;
 
     if (isTelegram) {
         return null;
@@ -710,28 +700,6 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent opacity-80" />
 
-                        {/* Badges - Subtle "Sponsored" */}
-                        {showSponsored && (
-                            <div className="absolute top-3 left-3 flex gap-2 flex-wrap">
-                                <div className="bg-black/50 backdrop-blur-md border border-white/20 text-white text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider flex items-center gap-1">
-                                    <span>📢</span> Sponsored
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Stats Overlay */}
-                        <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end">
-                            <div className="flex gap-2 flex-wrap">
-                                <div className="bg-black/50 backdrop-blur-md border border-white/20 px-2 py-1 rounded-lg flex items-center gap-1.5">
-                                    <span className="text-xs">👁️</span>
-                                    <span className="text-xs font-bold text-white">{Math.floor(seededRandom(seed + 'views') * 50000 + 5000).toLocaleString()}</span>
-                                </div>
-                                <div className="bg-black/50 backdrop-blur-md border border-white/20 px-2 py-1 rounded-lg flex items-center gap-1.5">
-                                    <span className="text-xs">👥</span>
-                                    <span className="text-xs font-bold text-white">{Math.floor(seededRandom(seed + 'members') * 10000 + 1000).toLocaleString()}</span>
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
                     {/* Card Content */}
@@ -753,7 +721,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
                         {/* Footer Actions */}
                         <div className="mt-auto space-y-2 sm:space-y-3">
-                            {/* Rating Row (Fake) */}
+                            {/* Rating Row */}
                             <div className="flex items-center justify-between px-1">
                                 <div className="flex items-center gap-1">
                                     <span className="text-yellow-500 text-[10px] sm:text-sm">⭐</span>
@@ -816,7 +784,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                     {/* Gradient Overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent opacity-80"></div>
 
-                    {/* Fake Stats Overlay */}
+                    {/* Social Proof Overlay */}
                     {fakeCount && (
                         <div className="absolute bottom-3 left-3 flex gap-2">
                             <div className="bg-black/60 backdrop-blur-md border border-white/20 px-2 py-1 rounded-lg flex items-center gap-1.5 shadow-lg">

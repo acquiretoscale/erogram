@@ -915,3 +915,23 @@ scrapeRunSchema.index({ status: 1 });
 scrapeRunSchema.index({ query: 1 });
 
 export const ScrapeRun = models.ScrapeRun || model('ScrapeRun', scrapeRunSchema);
+
+// AI NSFW Tool — votes + reviews (per-tool aggregate)
+const ainsfwToolStatsSchema = new Schema(
+  {
+    slug: { type: String, required: true, unique: true, index: true },
+    upvotes: { type: Number, default: 0 },
+    downvotes: { type: Number, default: 0 },
+    reviews: [
+      {
+        text: { type: String, required: true, maxlength: 1000 },
+        rating: { type: Number, required: true, min: 1, max: 5 },
+        ip: { type: String, default: '' },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+  },
+  { timestamps: true },
+);
+
+export const AINsfwToolStats = models.AINsfwToolStats || model('AINsfwToolStats', ainsfwToolStatsSchema);

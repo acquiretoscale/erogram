@@ -220,12 +220,8 @@ export default function CategoryClient({ creators: initialCreators, category, la
 
       <main className="pt-20">
         {/* Hero */}
-        <section className="relative bg-gradient-to-b from-[#00AFF0]/10 via-[#00AFF0]/[0.04] to-[#111111] pt-6 pb-4 sm:pt-8 sm:pb-6 z-20">
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-[#00AFF0]/[0.08] blur-[120px]" />
-          </div>
-
-          <div className="relative max-w-2xl mx-auto px-4 sm:px-6 text-center">
+        <section className="bg-gradient-to-b from-[#00AFF0]/10 via-[#00AFF0]/[0.04] to-[#111111] pt-6 pb-4 sm:pt-8 sm:pb-6">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <Link
               href="/onlyfans-search"
               className="inline-flex items-center gap-1.5 text-sm text-white/40 hover:text-[#00AFF0] transition-colors mb-3"
@@ -340,7 +336,7 @@ export default function CategoryClient({ creators: initialCreators, category, la
         </section>
 
         {/* Results Grid */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Filter bar */}
           <div className="flex justify-center mb-4 sm:mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto scrollbar-hide">
             <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.08] flex-shrink-0">
@@ -379,7 +375,7 @@ export default function CategoryClient({ creators: initialCreators, category, la
               <p className="text-white/30 text-lg">No creators in this category yet.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-4 gap-2.5 sm:gap-4 lg:gap-5">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
               {(() => {
                 const TRENDING_INTERVAL = 20;
                 const FIRST_INSERT = 2;
@@ -667,7 +663,7 @@ export default function CategoryClient({ creators: initialCreators, category, la
 
         {/* Browse by country */}
         {countryLinks.length > 0 && (
-          <section className="max-w-7xl mx-auto px-4 sm:px-6 pb-20">
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
             <div className="border-t border-white/[0.06] pt-10">
               <div className="flex items-center gap-2 mb-5">
                 <Globe size={18} className="text-[#00AFF0]" />

@@ -12,6 +12,7 @@ import { getLocale, getPathname } from '@/lib/i18n/server';
 import { LOCALES, localePath } from '@/lib/i18n';
 import { getToolBySlug, getToolsByCategory } from '@/app/ainsfw/data';
 import ToolDetailClient from '@/app/ainsfw/[slug]/ToolDetailClient';
+import { getToolStats } from '@/lib/actions/ainsfw';
 
 // ISR for public join pages (keeps SSR output crawlable while avoiding per-request rendering)
 export const revalidate = 300;
@@ -807,9 +808,10 @@ export default async function JoinPage({ params }: PageProps) {
   // If neither found, try AI NSFW tool
   const aiTool = getToolBySlug(slug);
   if (aiTool) {
-    const similar = getToolsByCategory(aiTool.category)
-      .filter((t) => t.slug !== aiTool.slug)
-      .slice(0, 6);
+    const [similar, toolStats] = await Promise.all([
+      Promise.resolve(getToolsByCategory(aiTool.category).filter((t) => t.slug !== aiTool.slug).slice(0, 6)),
+      getToolStats(aiTool.slug),
+    ]);
 
     const toolPageUrl = `${BASE_URL}/${aiTool.slug}`;
     const toolImgUrl = aiTool.image.startsWith('http') ? aiTool.image : `${BASE_URL}${aiTool.image}`;
@@ -857,7 +859,7 @@ export default async function JoinPage({ params }: PageProps) {
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(toolBreadcrumb) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(toolWebPage) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(toolSoftware) }} />
-        <ToolDetailClient tool={aiTool} similar={similar} />
+        <ToolDetailClient tool={aiTool} similar={similar} initialStats={toolStats} />
       </>
     );
   }

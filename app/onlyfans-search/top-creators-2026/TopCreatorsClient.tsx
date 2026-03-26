@@ -126,12 +126,8 @@ export default function TopCreatorsClient({ creators }: Props) {
       <Navbar variant="onlyfans" />
 
       <main className="pt-20">
-        <section className="relative bg-gradient-to-b from-[#00AFF0]/10 via-[#00AFF0]/[0.04] to-[#111111] pt-6 pb-4 sm:pt-8 sm:pb-6 z-20">
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-[#00AFF0]/[0.08] blur-[120px]" />
-          </div>
-
-          <div className="relative max-w-2xl mx-auto px-4 sm:px-6 text-center">
+        <section className="bg-gradient-to-b from-[#00AFF0]/10 via-[#00AFF0]/[0.04] to-[#111111] pt-6 pb-4 sm:pt-8 sm:pb-6">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <Link
               href="/onlyfans-search"
               className="inline-flex items-center gap-1.5 text-sm text-white/40 hover:text-[#00AFF0] transition-colors mb-3"
@@ -274,7 +270,7 @@ export default function TopCreatorsClient({ creators }: Props) {
               <p className="text-white/30 text-lg">No top creators loaded yet.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-2.5 sm:gap-4 lg:gap-5">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
               {sorted.map((creator, i) => (
                 <motion.div
                   key={creator._id}

@@ -120,15 +120,14 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
     setTopGroupsLoading(true);
     setFeaturedLoading(true);
 
-    fetch(`/api/groups?boosted=true&locale=${locale}`)
-      .then(res => res.json())
-      .then(data => {
-        const boosted = data.groups?.[0] || null;
-        setBoostedGroup(boosted);
-        return fetch(`/api/groups?topGroup=true&limit=4&locale=${locale}`);
+    Promise.all([
+      fetch(`/api/groups?boosted=true&locale=${locale}`).then(r => r.json()),
+      fetch(`/api/groups?topGroup=true&limit=4&locale=${locale}`).then(r => r.json()),
+    ])
+      .then(([boostedData, topData]) => {
+        setBoostedGroup(boostedData.groups?.[0] || null);
+        if (topData.groups) setTopGroups(topData.groups);
       })
-      .then(res => res.json())
-      .then(data => { if (data.groups) setTopGroups(data.groups); })
       .catch(err => console.error('Failed to fetch top groups:', err))
       .finally(() => setTopGroupsLoading(false));
 
@@ -464,7 +463,11 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
         const searchParam = debouncedSearchQuery ? `&search=${encodeURIComponent(debouncedSearchQuery)}` : '';
         const categoryParam = selectedCategory !== 'All' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
         const typeParam = selectedType === 'all' ? '&type=all' : '';
-        fetch(`/api/groups?skip=${skip}&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${typeParam}&locale=${locale}`)
+        const excludeParam = selectedSort === 'random' && regularGroups.length > 0
+          ? `&exclude=${encodeURIComponent(regularGroups.map(g => g._id).join(','))}`
+          : '';
+        const skipParam = selectedSort === 'random' ? 0 : skip;
+        fetch(`/api/groups?skip=${skipParam}&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${typeParam}${excludeParam}&locale=${locale}`)
           .then(res => res.json())
           .then(data => {
             if (data.groups && data.groups.length > 0) {
@@ -486,7 +489,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [skip, loading, hasMore, selectedSort, debouncedSearchQuery, selectedCategory, selectedType]);
+  }, [skip, loading, hasMore, selectedSort, debouncedSearchQuery, selectedCategory, selectedType, regularGroups]);
 
   const displayGroups = useMemo(() => {
     return regularGroups;
@@ -687,42 +690,24 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
             <div className="relative">
               {/* Top Groups — boosted group takes Spot 1 when active (hidden during search) */}
               {!debouncedSearchQuery && (topGroups.length > 0 || topGroupsLoading) && (
-                <div className="mb-10 relative rounded-3xl p-[2px]" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706, #92400e, #d97706, #f59e0b, #fcd34d, #f59e0b)' }}>
+                <div className="mb-5 relative rounded-2xl p-[2px]" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706, #92400e, #d97706, #f59e0b, #fcd34d, #f59e0b)' }}>
                   {/* Shimmer sweep */}
                   <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
                     <div className="absolute inset-0 opacity-30" style={{ background: 'linear-gradient(105deg, transparent 40%, rgba(252,211,77,0.4) 50%, transparent 60%)', animation: 'shimmer 3s infinite' }} />
                   </div>
                   <style>{`@keyframes shimmer { 0%,100%{transform:translateX(-100%)} 50%{transform:translateX(100%)} }`}</style>
 
-                  <div className="relative rounded-[22px] overflow-hidden" style={{ background: 'linear-gradient(145deg, #0f0f0f 0%, #141008 40%, #0f0f0f 100%)' }}>
-                    {/* Subtle gold glow in corners */}
-                    <div className="absolute top-0 left-0 w-64 h-64 rounded-full opacity-10 pointer-events-none" style={{ background: 'radial-gradient(circle, #f59e0b, transparent 70%)', transform: 'translate(-30%, -30%)' }} />
-                    <div className="absolute bottom-0 right-0 w-64 h-64 rounded-full opacity-10 pointer-events-none" style={{ background: 'radial-gradient(circle, #f59e0b, transparent 70%)', transform: 'translate(30%, 30%)' }} />
+                  <div className="relative rounded-[20px] overflow-hidden" style={{ background: 'linear-gradient(145deg, #0f0f0f 0%, #141008 40%, #0f0f0f 100%)' }}>
 
-                    <div className="relative p-4 sm:p-6 lg:p-8">
+                    <div className="relative p-3 sm:p-4">
                       {/* Header */}
-                      <div className="flex items-center justify-between mb-5 sm:mb-7">
-                        <div className="flex items-center gap-3">
-                          {/* Crown icon */}
-                          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', boxShadow: '0 4px 14px rgba(245,158,11,0.5)' }}>
-                            <svg className="w-5 h-5 sm:w-6 sm:h-6 text-black" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm2 3a1 1 0 000 2h10a1 1 0 000-2H7z"/>
-                            </svg>
-                          </div>
-                          <div>
-                            <h2 className="text-lg sm:text-2xl font-black text-white leading-none">{t('groups.topGroups')}</h2>
-                            <p className="text-amber-400/70 text-xs sm:text-sm mt-0.5 font-medium">{t('groups.topGroupsDesc')}</p>
-                          </div>
-                        </div>
-                        {/* "Top Rated" pill */}
-                        <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-amber-500/30 bg-amber-500/10">
-                          <svg className="w-3 h-3 text-amber-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                          <span className="text-amber-400 text-xs font-black uppercase tracking-widest">Top Rated</span>
-                        </div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <svg className="w-4 h-4 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm2 3a1 1 0 000 2h10a1 1 0 000-2H7z"/>
+                        </svg>
+                        <h2 className="text-sm font-black text-white leading-none">{t('groups.topGroups')}</h2>
+                        <span className="text-amber-400/60 text-xs font-medium">{t('groups.topGroupsDesc')}</span>
                       </div>
-
-                      {/* Gold divider */}
-                      <div className="h-px mb-5 sm:mb-7" style={{ background: 'linear-gradient(90deg, transparent, #f59e0b, #fcd34d, #f59e0b, transparent)' }} />
 
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
                       {topGroupsLoading ? (
@@ -737,29 +722,9 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                           ? [boostedGroup, ...organicGroups].slice(0, 4)
                           : organicGroups;
 
-                        const RANK_STYLES = [
-                          { bg: 'linear-gradient(135deg,#f59e0b,#d97706)', shadow: 'rgba(245,158,11,0.7)', label: '🥇' },
-                          { bg: 'linear-gradient(135deg,#9ca3af,#6b7280)', shadow: 'rgba(156,163,175,0.7)', label: '🥈' },
-                          { bg: 'linear-gradient(135deg,#cd7c2f,#92400e)', shadow: 'rgba(180,83,9,0.7)', label: '🥉' },
-                          { bg: 'linear-gradient(135deg,#6366f1,#4f46e5)', shadow: 'rgba(99,102,241,0.5)', label: '#4' },
-                        ];
-
-                        const wrapWithRank = (node: React.ReactNode, rank: number) => (
-                          <div key={rank} className="relative">
-                            {/* Rank badge */}
-                            <div
-                              className="absolute top-2 left-2 z-40 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-black shadow-lg border border-white/20 select-none"
-                              style={{ background: RANK_STYLES[rank].bg, boxShadow: `0 2px 12px ${RANK_STYLES[rank].shadow}` }}
-                            >
-                              {RANK_STYLES[rank].label}
-                            </div>
-                            {node}
-                          </div>
-                        );
-
                         return (
                           <>
-                            {finalGroups[0] && wrapWithRank(
+                            {finalGroups[0] && (
                               <GroupCard
                                 key={`top-${finalGroups[0]._id}`}
                                 group={finalGroups[0]}
@@ -768,17 +733,17 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                                 onOpenReportModal={openReportModal}
                                 isBookmarked={!!bookmarkedMap[finalGroups[0]._id]}
                                 bookmarkId={bookmarkedMap[finalGroups[0]._id] || null}
-                              />, 0
+                              />
                             )}
-                            {tier1Campaign && !isTelegram ? wrapWithRank(
+                            {tier1Campaign && !isTelegram ? (
                               <AdvertCard
                                 key={`tier1-${tier1Campaign._id}`}
                                 campaign={tier1Campaign}
                                 isIndex={1}
                                 shouldPreload={true}
                                 onVisible={undefined}
-                              />, 1
-                            ) : finalGroups[1] ? wrapWithRank(
+                              />
+                            ) : finalGroups[1] ? (
                               <GroupCard
                                 key={`top-${finalGroups[1]._id}`}
                                 group={finalGroups[1]}
@@ -787,9 +752,9 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                                 onOpenReportModal={openReportModal}
                                 isBookmarked={!!bookmarkedMap[finalGroups[1]._id]}
                                 bookmarkId={bookmarkedMap[finalGroups[1]._id] || null}
-                              />, 1
+                              />
                             ) : null}
-                            {(tier1Campaign && !isTelegram ? finalGroups.slice(1, 3) : finalGroups.slice(2, 4)).map((g, i) => wrapWithRank(
+                            {(tier1Campaign && !isTelegram ? finalGroups.slice(1, 3) : finalGroups.slice(2, 4)).map((g, i) => (
                               <GroupCard
                                 key={`top-${g._id}`}
                                 group={g}
@@ -798,7 +763,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                                 onOpenReportModal={openReportModal}
                                 isBookmarked={!!bookmarkedMap[g._id]}
                                 bookmarkId={bookmarkedMap[g._id] || null}
-                              />, i + 2
+                              />
                             ))}
                           </>
                         );

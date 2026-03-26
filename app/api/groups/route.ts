@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 import connectDB from '@/lib/db/mongodb';
 import { Group, Bot, User, Post, SystemConfig, Article } from '@/lib/models';
 import { slugify } from '@/lib/utils/slugify';
@@ -62,6 +63,8 @@ export async function GET(req: NextRequest) {
     const category = searchParams.get('category') || '';
     const subcategory = searchParams.get('subcategory') || '';
     const country = searchParams.get('country') || '';
+    const excludeRaw = searchParams.get('exclude') || '';
+    const excludeIds = excludeRaw ? excludeRaw.split(',').filter(Boolean) : [];
     const topGroup = searchParams.get('topGroup') === 'true';
     const featuredParam = searchParams.get('featured') === 'true';
     const boostedParam = searchParams.get('boosted') === 'true';
@@ -175,18 +178,20 @@ export async function GET(req: NextRequest) {
     // Fast path: top groups by recent clicks
     // Fetches a larger candidate pool then randomly picks `limit` for variety.
     if (topGroup) {
-      // Also trigger the periodic reset check here (shared with sortBy=views)
-      try {
-        const resetConfig = await SystemConfig.findOne({ key: 'view_reset' });
-        const now = new Date();
-        const resetInterval = 24 * 60 * 60 * 1000; // 24 hours
-        if (!resetConfig || (now.getTime() - new Date(resetConfig.lastUpdated).getTime() > resetInterval)) {
-          await Group.updateMany({}, { $set: { weeklyViews: 0, weeklyClicks: 0 } });
-          await Article.updateMany({}, { $set: { weeklyViews: 0 } });
-          if (resetConfig) { resetConfig.lastUpdated = now; await resetConfig.save(); }
-          else { await SystemConfig.create({ key: 'view_reset', value: { intervalDays: 1 }, lastUpdated: now }); }
-        }
-      } catch (err) { console.error('[API] Error checking/resetting views:', err); }
+      // Fire-and-forget: periodic view reset runs in background, never blocks the response
+      (async () => {
+        try {
+          const resetConfig = await SystemConfig.findOne({ key: 'view_reset' });
+          const now = new Date();
+          const resetInterval = 24 * 60 * 60 * 1000;
+          if (!resetConfig || (now.getTime() - new Date(resetConfig.lastUpdated).getTime() > resetInterval)) {
+            await Group.updateMany({}, { $set: { weeklyViews: 0, weeklyClicks: 0 } });
+            await Article.updateMany({}, { $set: { weeklyViews: 0 } });
+            if (resetConfig) { resetConfig.lastUpdated = now; await resetConfig.save(); }
+            else { await SystemConfig.create({ key: 'view_reset', value: { intervalDays: 1 }, lastUpdated: now }); }
+          }
+        } catch (err) { console.error('[API] Error checking/resetting views:', err); }
+      })();
 
       const topLimit = parseInt(searchParams.get('limit') || '3', 10);
       const POOL_SIZE = Math.max(topLimit * 5, 20);
@@ -326,11 +331,19 @@ export async function GET(req: NextRequest) {
     let groups: any[];
 
     if (sortBy === 'random') {
-      // Use aggregation pipeline for random sampling
-      // First get a larger sample, then sort pinned to top, then slice
+      const matchStage: any = { ...query };
+      if (excludeIds.length > 0) {
+        const objectIds = excludeIds
+          .filter(id => mongoose.Types.ObjectId.isValid(id))
+          .map(id => new mongoose.Types.ObjectId(id));
+        if (objectIds.length > 0) {
+          matchStage._id = { $nin: objectIds };
+        }
+      }
+
       const pipeline = [
-        { $match: query },
-        { $sample: { size: Math.min(200, skip + limit * 2) } }, // Sample more than needed
+        { $match: matchStage },
+        { $sample: { size: limit } },
         {
           $lookup: {
             from: 'users',
@@ -372,11 +385,7 @@ export async function GET(req: NextRequest) {
         }
       ];
 
-      const sampledGroups = await Group.aggregate(pipeline);
-
-      // Keep random order (pinned no longer promoted in main grid)
-
-      groups = sampledGroups.slice(skip, skip + limit);
+      groups = await Group.aggregate(pipeline);
 
       // Get review statistics for random groups too
       const randomGroupIds = groups.map((g: any) => g._id);

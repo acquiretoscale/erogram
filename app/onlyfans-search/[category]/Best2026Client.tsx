@@ -111,13 +111,8 @@ export default function Best2026Client({ category, label, top10, trending, allCr
 
       <main className="pt-20">
         {/* Hero */}
-        <section className="relative bg-gradient-to-b from-amber-900/20 via-[#111111]/80 to-[#111111] pt-8 pb-6">
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-amber-500/[0.07] blur-[100px]" />
-            <div className="absolute -top-16 left-1/3 w-64 h-64 rounded-full bg-[#00AFF0]/[0.05] blur-[80px]" />
-          </div>
-
-          <div className="relative max-w-3xl mx-auto px-4 sm:px-6 text-center">
+        <section className="bg-gradient-to-b from-amber-900/20 via-[#111111]/80 to-[#111111] pt-8 pb-6">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <Link
               href={categoryUrl}
               className="inline-flex items-center gap-1.5 text-sm text-white/40 hover:text-[#00AFF0] transition-colors mb-4"
@@ -300,7 +295,7 @@ export default function Best2026Client({ category, label, top10, trending, allCr
                 View all →
               </Link>
             </div>
-            <div className="grid grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
               {allCreators.slice(0, 20).map((creator, i) => (
                 <motion.div
                   key={creator._id}

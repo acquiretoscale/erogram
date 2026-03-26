@@ -7,6 +7,10 @@ import { Search, Bookmark, Crown, Trash2, Star, Flame, X, TrendingUp } from 'luc
 import Navbar from '@/components/Navbar';
 import { OF_CATEGORIES, ofCategoryUrl } from './constants';
 
+const HIDDEN_SHORTCUT_SLUGS = new Set([
+  'twerk', 'streamer', 'squirt', 'fitness', 'curvy', 'thick', 'lingerie', 'brunette',
+]);
+
 
 interface Creator {
   _id: string;
@@ -142,7 +146,7 @@ function CreatorCard({
             onClick={() => onClickTrack(creator.slug)}
             className="block w-full py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-[13px] sm:text-sm font-bold text-center shadow-sm group-hover:shadow-md group-hover:from-[#009ADB] group-hover:to-[#00BFE8] transition-all"
           >
-            Try now
+            View profile
           </a>
         </div>
       </div>
@@ -552,12 +556,8 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
 
       <main className="pt-20">
         {/* Hero — compact */}
-        <section className="relative bg-gradient-to-b from-[#00AFF0]/10 via-[#00AFF0]/[0.04] to-[#111111] pt-6 pb-4 sm:pt-8 sm:pb-6 z-20">
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-[#00AFF0]/[0.08] blur-[120px]" />
-          </div>
-
-          <div className="relative max-w-2xl mx-auto px-4 sm:px-6 text-center">
+        <section className="bg-gradient-to-b from-[#00AFF0]/10 via-[#00AFF0]/[0.04] to-[#111111] pt-6 pb-4 sm:pt-8 sm:pb-6">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <motion.h1
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
@@ -659,7 +659,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                   >
                     All
                   </Link>
-                  {OF_CATEGORIES.map((cat) => (
+                  {OF_CATEGORIES.filter((cat) => !HIDDEN_SHORTCUT_SLUGS.has(cat.slug)).map((cat) => (
                     <Link
                       key={cat.slug}
                       href={ofCategoryUrl(cat.slug)}
@@ -676,7 +676,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
 
         {/* ── SEARCH MODE ─────────────────────────────────────────── */}
         {isSearchMode ? (
-          <section className="max-w-7xl mx-auto px-4 sm:px-6 pb-12">
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
             <div className="flex items-start sm:items-center justify-between gap-3 mb-4 sm:mb-6">
               <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                 <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-[#00AFF0] to-[#00D4FF] flex items-center justify-center flex-shrink-0">
@@ -709,7 +709,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
             )}
 
             {progress && searchResults.length === 0 ? (
-              <div className="grid grid-cols-4 gap-2.5 sm:gap-4 lg:gap-5">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
                 {Array.from({ length: 8 }, (_, i) => (
                   <CreatorCardSkeleton key={`sk-${i}`} />
                 ))}
@@ -720,7 +720,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                 <p className="text-white/20 text-sm mt-2">Try a different search term</p>
               </div>
             ) : searchResults.length > 0 ? (
-              <div className="grid grid-cols-4 gap-2.5 sm:gap-4 lg:gap-5">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
                 {(() => {
                   const TRENDING_INTERVAL = 20;
                   const FIRST_INSERT = 2;
@@ -843,7 +843,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
           /* ── DEFAULT BROWSE MODE ──────────────────────────────── */
           <>
             {/* All Creators — trending inline then infinite scroll */}
-            <section className="max-w-7xl mx-auto px-4 sm:px-6 pb-12">
+            <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
               <div className="flex items-center gap-2 sm:gap-2.5 mb-4 sm:mb-6">
                 <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-[#00AFF0] to-[#00D4FF] flex items-center justify-center">
                   <Crown size={14} className="text-white sm:hidden" />
@@ -863,7 +863,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
 
                 return chunks.map((chunk, chunkIdx) => (
                   <div key={`chunk-${chunkIdx}`}>
-                    <div className="grid grid-cols-4 gap-2.5 sm:gap-4 lg:gap-5">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
                       {(() => {
                         const items: React.ReactNode[] = [];
 
@@ -877,7 +877,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                               transition={{ duration: 0.4 }}
                               className="col-span-2 relative rounded-xl sm:rounded-2xl overflow-hidden border-2 border-orange-400/80 bg-gradient-to-br from-orange-500 via-orange-600 to-rose-600 p-0.5 shadow-[0_0_40px_-5px_rgba(249,115,22,0.80)]"
                             >
-                              <div className="absolute inset-0 pointer-events-none">
+                              <div className="absolute inset-0 pointer-events-none overflow-hidden">
                                 <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-orange-500/20 blur-[80px]" />
                                 <div className="absolute -bottom-12 -left-12 w-40 h-40 rounded-full bg-rose-500/15 blur-[70px]" />
                               </div>
@@ -1037,7 +1037,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
 
       {/* ── Footer with Categories ── */}
       <footer className="border-t border-white/[0.06] bg-[#0a0a0a]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 lg:py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
           <h3 className="text-base sm:text-lg font-black text-white/70 mb-4 sm:mb-6">Browse by Category</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-8 gap-x-3 sm:gap-x-4 gap-y-1 sm:gap-y-2">
             {OF_CATEGORIES.map((cat) => (

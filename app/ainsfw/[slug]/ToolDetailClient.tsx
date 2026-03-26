@@ -7,10 +7,13 @@ import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import type { AINsfwTool } from '../types';
+import { voteOnTool, unvoteOnTool, submitReview } from '@/lib/actions/ainsfw';
+import type { ToolStatsData } from '@/lib/actions/ainsfw';
 
 interface ToolDetailClientProps {
   tool: AINsfwTool;
   similar: AINsfwTool[];
+  initialStats?: ToolStatsData;
 }
 
 const CATEGORY_COLOR: Record<string, string> = {
@@ -36,10 +39,8 @@ const PAYMENT_ICON: Record<string, string> = {
 };
 
 function getBookmarkKey(slug: string) { return `ainsfw_bookmark_${slug}`; }
-function getVoteKey(slug: string) { return `ainsfw_vote_${slug}`; }
-function getVotesKey(slug: string) { return `ainsfw_votes_${slug}`; }
 
-export default function ToolDetailClient({ tool, similar }: ToolDetailClientProps) {
+export default function ToolDetailClient({ tool, similar, initialStats }: ToolDetailClientProps) {
   const placeholder = '/assets/image.jpg';
   const [imageSrc, setImageSrc] = useState(
     tool.image && (tool.image.startsWith('https://') || tool.image.startsWith('/'))
@@ -49,7 +50,7 @@ export default function ToolDetailClient({ tool, similar }: ToolDetailClientProp
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   // Votes & bookmark
-  const [votes, setVotes] = useState({ up: 0, down: 0 });
+  const [votes, setVotes] = useState({ up: initialStats?.upvotes ?? 0, down: initialStats?.downvotes ?? 0 });
   const [userVote, setUserVote] = useState<'up' | 'down' | null>(null);
   const [bookmarked, setBookmarked] = useState(false);
 
@@ -59,7 +60,9 @@ export default function ToolDetailClient({ tool, similar }: ToolDetailClientProp
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
 
   // Reviews
-  const [reviews, setReviews] = useState<{ text: string; rating: number; date: string }[]>([]);
+  const [reviews, setReviews] = useState<{ text: string; rating: number; date: string }[]>(
+    initialStats?.reviews?.map(r => ({ text: r.text, rating: r.rating, date: r.createdAt })) ?? []
+  );
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviewText, setReviewText] = useState('');
   const [reviewRating, setReviewRating] = useState(5);
@@ -67,12 +70,8 @@ export default function ToolDetailClient({ tool, similar }: ToolDetailClientProp
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(getVotesKey(tool.slug));
-      if (saved) setVotes(JSON.parse(saved));
-      const savedVote = localStorage.getItem(getVoteKey(tool.slug)) as 'up' | 'down' | null;
+      const savedVote = localStorage.getItem(`ainsfw_vote_${tool.slug}`) as 'up' | 'down' | null;
       if (savedVote) setUserVote(savedVote);
-      const savedReviews = localStorage.getItem(`ainsfw_reviews_${tool.slug}`);
-      if (savedReviews) setReviews(JSON.parse(savedReviews));
       setBookmarked(localStorage.getItem(getBookmarkKey(tool.slug)) === '1');
     } catch {}
 
@@ -95,20 +94,19 @@ export default function ToolDetailClient({ tool, similar }: ToolDetailClientProp
     window.open(tool.tryNowUrl, '_blank', 'noopener,noreferrer');
   };
 
-  const handleVote = (dir: 'up' | 'down') => {
-    const nv = { ...votes };
+  const handleVote = async (dir: 'up' | 'down') => {
     if (userVote === dir) {
-      nv[dir] = Math.max(0, nv[dir] - 1);
       setUserVote(null);
-      localStorage.setItem(getVoteKey(tool.slug), '');
+      localStorage.setItem(`ainsfw_vote_${tool.slug}`, '');
+      const result = await unvoteOnTool(tool.slug, dir);
+      setVotes({ up: result.upvotes, down: result.downvotes });
     } else {
-      if (userVote) nv[userVote] = Math.max(0, nv[userVote] - 1);
-      nv[dir]++;
+      if (userVote) await unvoteOnTool(tool.slug, userVote);
       setUserVote(dir);
-      localStorage.setItem(getVoteKey(tool.slug), dir);
+      localStorage.setItem(`ainsfw_vote_${tool.slug}`, dir);
+      const result = await voteOnTool(tool.slug, dir);
+      setVotes({ up: result.upvotes, down: result.downvotes });
     }
-    setVotes(nv);
-    localStorage.setItem(getVotesKey(tool.slug), JSON.stringify(nv));
   };
 
   const handleBookmark = () => {
@@ -117,12 +115,11 @@ export default function ToolDetailClient({ tool, similar }: ToolDetailClientProp
     try { localStorage.setItem(getBookmarkKey(tool.slug), next ? '1' : '0'); } catch {}
   };
 
-  const handleReviewSubmit = () => {
+  const handleReviewSubmit = async () => {
     if (!reviewText.trim()) return;
-    const nr = { text: reviewText.trim(), rating: reviewRating, date: new Date().toLocaleDateString() };
-    const updated = [nr, ...reviews];
-    setReviews(updated);
-    localStorage.setItem(`ainsfw_reviews_${tool.slug}`, JSON.stringify(updated));
+    const result = await submitReview(tool.slug, reviewText.trim(), reviewRating);
+    setReviews(result.reviews.map(r => ({ text: r.text, rating: r.rating, date: r.createdAt })));
+    setVotes({ up: result.upvotes, down: result.downvotes });
     setReviewSubmitted(true);
     setTimeout(() => { setShowReviewForm(false); setReviewText(''); setReviewRating(5); setReviewSubmitted(false); }, 1200);
   };

@@ -8,12 +8,14 @@ import ToolCard from './ToolCard';
 import type { AINsfwTool, AINsfwCategory, PaymentOption } from './types';
 import { AINSFW_CATEGORIES, ALL_PAYMENT_OPTIONS } from './types';
 import { useTranslation } from '@/lib/i18n';
+import type { ToolStatsData } from '@/lib/actions/ainsfw';
 
 const INITIAL_LOAD = 12;
 const LOAD_MORE = 8;
 
 interface AINsfwClientProps {
   tools: AINsfwTool[];
+  allStats?: Record<string, ToolStatsData>;
 }
 
 const CATEGORY_ACTIVE: Record<AINsfwCategory, string> = {
@@ -52,23 +54,17 @@ function getScore(slug: string, scores: Record<string, number>): number {
   return scores[slug] ?? 0;
 }
 
-function loadAllScores(tools: AINsfwTool[]): Record<string, number> {
+function loadAllScores(allStats?: Record<string, ToolStatsData>): Record<string, number> {
   const map: Record<string, number> = {};
-  try {
-    tools.forEach((t) => {
-      const saved = localStorage.getItem(`ainsfw_votes_${t.slug}`);
-      if (saved) {
-        const v = JSON.parse(saved) as { up: number; down: number };
-        map[t.slug] = (v.up ?? 0) - (v.down ?? 0);
-      } else {
-        map[t.slug] = 0;
-      }
-    });
-  } catch {}
+  if (allStats) {
+    for (const [slug, stats] of Object.entries(allStats)) {
+      map[slug] = (stats.upvotes ?? 0) - (stats.downvotes ?? 0);
+    }
+  }
   return map;
 }
 
-function TopAINsfwBlock({ tools, onVoteChange }: { tools: AINsfwTool[]; onVoteChange: (slug: string, score: number) => void }) {
+function TopAINsfwBlock({ tools, allStats, onVoteChange }: { tools: AINsfwTool[]; allStats?: Record<string, ToolStatsData>; onVoteChange: (slug: string, score: number) => void }) {
   const [topTools, setTopTools] = useState<AINsfwTool[]>([]);
   const { t } = useTranslation();
 
@@ -102,7 +98,7 @@ function TopAINsfwBlock({ tools, onVoteChange }: { tools: AINsfwTool[]; onVoteCh
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {topTools.map((tool, i) => (
-            <ToolCard key={tool.slug} tool={tool} index={i} onVoteChange={onVoteChange} />
+            <ToolCard key={tool.slug} tool={tool} index={i} initialStats={allStats?.[tool.slug]} onVoteChange={onVoteChange} />
           ))}
         </div>
       </div>
@@ -110,19 +106,20 @@ function TopAINsfwBlock({ tools, onVoteChange }: { tools: AINsfwTool[]; onVoteCh
   );
 }
 
-export default function AINsfwClient({ tools }: AINsfwClientProps) {
+export default function AINsfwClient({ tools, allStats }: AINsfwClientProps) {
   const [activeCategory, setActiveCategory] = useState<AINsfwCategory>('All');
   const [activePayment, setActivePayment] = useState<PaymentOption | 'All'>('All');
   const [search, setSearch] = useState('');
   const [scores, setScores] = useState<Record<string, number>>({});
   const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD);
   const [loading, setLoading] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
 
   useEffect(() => {
-    setScores(loadAllScores(tools));
-  }, [tools]);
+    setScores(loadAllScores(allStats));
+  }, [allStats]);
 
   const handleVoteChange = useCallback((slug: string, score: number) => {
     setScores((prev) => ({ ...prev, [slug]: score }));
@@ -183,115 +180,183 @@ export default function AINsfwClient({ tools }: AINsfwClientProps) {
           transition={{ duration: 0.6 }}
           className="text-center mb-10 sm:mb-12"
         >
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-600/15 border border-blue-500/25 text-blue-300 text-xs font-bold uppercase tracking-widest mb-5">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+            Curated &amp; Reviewed
+          </div>
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white mb-4 leading-tight">
             {t('ainsfw.heroTitle', 'Best AI NSFW Tools').split('AI NSFW')[0]}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-sky-500 to-emerald-500">AI NSFW</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-sky-400 to-emerald-400">AI NSFW</span>
             {t('ainsfw.heroTitle', 'Best AI NSFW Tools').split('AI NSFW')[1]}
           </h1>
-          <p className="text-gray-400 text-sm sm:text-lg max-w-2xl mx-auto leading-relaxed">
+          <p className="text-white/40 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
             {t('ainsfw.heroSubtitle')}
           </p>
         </motion.div>
 
-        {/* Top AI NSFW Block */}
-        <TopAINsfwBlock tools={tools} onVoteChange={handleVoteChange} />
-
-        {/* Filters row */}
-        <div className="bg-[#111] rounded-2xl border-2 border-white/10 p-4 flex flex-col gap-3 mb-6 sm:mb-8">
-          {/* Search */}
-          <div className="w-full">
-            <div className="bg-white rounded-xl border-2 border-black shadow-[3px_3px_0_#000] px-3 py-2.5 flex items-center gap-2">
-              <svg className="w-4 h-4 text-gray-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="m21 21-4.3-4.3"></path>
-              </svg>
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={t('ainsfw.searchPlaceholder')}
-                className="w-full bg-transparent text-sm text-black placeholder:text-gray-400 outline-none font-semibold"
-              />
-              {search && (
-                <button onClick={() => setSearch('')} className="shrink-0 text-gray-400 hover:text-black transition-colors">
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Category filters */}
-          <div className="flex flex-wrap gap-2">
-            {AINSFW_CATEGORIES.map((cat) => {
-              const isActive = activeCategory === cat;
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCategory(cat)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide border-2 transition-all duration-100 shadow-[2px_2px_0_#000] ${
-                    isActive ? CATEGORY_ACTIVE[cat] : 'bg-white text-black border-black hover:bg-gray-100'
-                  }`}
-                >
-                  {cat}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Payment filters */}
-          <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+          {/* Mobile: Filter toggle */}
+          <div className="lg:hidden">
             <button
-              onClick={() => setActivePayment('All')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide border-2 shadow-[2px_2px_0_#000] transition-all duration-100 ${
-                activePayment === 'All'
-                  ? 'bg-black text-white border-black'
-                  : 'bg-white text-black border-black hover:bg-gray-100'
-              }`}
+              onClick={() => setShowFilters(!showFilters)}
+              className="w-full px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-700 hover:to-sky-600 text-white shadow-lg shadow-blue-900/30"
             >
-              {t('ainsfw.allPayments')}
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+              {showFilters ? 'Hide Filters' : 'Filter Tools'}
             </button>
-            {ALL_PAYMENT_OPTIONS.map((pay) => (
-              <button
-                key={pay}
-                onClick={() => setActivePayment(pay)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black border-2 shadow-[2px_2px_0_#000] transition-all duration-100 ${
-                  activePayment === pay
-                    ? 'bg-black text-white border-black'
-                    : 'bg-white text-black border-black hover:bg-gray-100'
-                }`}
-              >
-                <span>{PAYMENT_ICON[pay]}</span>
-                {pay}
-              </button>
-            ))}
           </div>
-        </div>
 
-        {/* Tool Grid — progressive loading */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {displayed.map((tool, i) => (
-            <ToolCard key={tool.slug} tool={tool} index={i} onVoteChange={handleVoteChange} />
-          ))}
-        </div>
+          {/* Sidebar Filters */}
+          <aside className={`${showFilters ? 'block' : 'hidden'} lg:block lg:w-1/4 min-w-0 shrink-0`}>
+            <div className="rounded-2xl border border-white/[0.08] bg-[#111]/80 backdrop-blur-lg overflow-hidden">
+              {/* Sidebar header */}
+              <div className="px-5 py-4 border-b border-white/[0.06] bg-gradient-to-r from-blue-600/20 to-sky-500/10">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center shrink-0">
+                    <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-black text-white leading-none">Filter Tools</h2>
+                    <p className="text-[11px] text-white/40 mt-0.5">Find the perfect AI</p>
+                  </div>
+                </div>
+              </div>
 
-        {/* Skeleton loading placeholders */}
-        {(loading || hasMore) && (
-          <>
-            {loading && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mt-3">
-                {Array.from({ length: LOAD_MORE }, (_, i) => (
-                  <ToolCardSkeleton key={`skeleton-${i}`} />
-                ))}
+              <div className="p-5 space-y-5">
+                {/* Category */}
+                <div>
+                  <label className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-white/40 mb-2">
+                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h8v8H3zm10 0h8v8h-8zM3 13h8v8H3zm10 0h8v8h-8z"/></svg>
+                    Category
+                  </label>
+                  <select
+                    value={activeCategory}
+                    onChange={(e) => setActiveCategory(e.target.value as AINsfwCategory)}
+                    className="w-full px-3 py-2.5 rounded-xl bg-white/[0.06] border border-white/[0.10] text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/40 transition-all appearance-none cursor-pointer"
+                  >
+                    {AINSFW_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat} className="bg-[#1a1a1a]">{cat}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Payment */}
+                <div>
+                  <label className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-white/40 mb-2">
+                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg>
+                    Payment
+                  </label>
+                  <select
+                    value={activePayment}
+                    onChange={(e) => setActivePayment(e.target.value as PaymentOption | 'All')}
+                    className="w-full px-3 py-2.5 rounded-xl bg-white/[0.06] border border-white/[0.10] text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/40 transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="All" className="bg-[#1a1a1a]">All Payments</option>
+                    {ALL_PAYMENT_OPTIONS.map((pay) => (
+                      <option key={pay} value={pay} className="bg-[#1a1a1a]">{pay}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Search */}
+                <div>
+                  <label className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-white/40 mb-2">
+                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    Search
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Search by name..."
+                      className="w-full pl-3 pr-8 py-2.5 rounded-xl bg-white/[0.06] border border-white/[0.10] text-white text-sm placeholder:text-white/25 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/40 transition-all"
+                    />
+                    {search && (
+                      <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 transition-colors">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Active filter badges */}
+                {(activeCategory !== 'All' || activePayment !== 'All' || search) && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {activeCategory !== 'All' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-300 text-[11px] font-semibold">
+                        {activeCategory}
+                        <button onClick={() => setActiveCategory('All')} className="hover:text-white transition-colors"><svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                      </span>
+                    )}
+                    {activePayment !== 'All' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-sky-600/20 border border-sky-500/30 text-sky-300 text-[11px] font-semibold">
+                        {activePayment}
+                        <button onClick={() => setActivePayment('All')} className="hover:text-white transition-colors"><svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                      </span>
+                    )}
+                    {search && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-600/20 border border-emerald-500/30 text-emerald-300 text-[11px] font-semibold">
+                        &ldquo;{search}&rdquo;
+                        <button onClick={() => setSearch('')} className="hover:text-white transition-colors"><svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex flex-col gap-2 pt-1">
+                  <button
+                    onClick={() => { setShowFilters(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    className="w-full py-2.5 rounded-xl font-bold text-sm transition-all bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-700 hover:to-sky-600 text-white shadow-md shadow-blue-900/30"
+                  >
+                    {activeCategory !== 'All' || activePayment !== 'All' || search ? 'Apply Filters' : 'Show All'}
+                  </button>
+                  {(activeCategory !== 'All' || activePayment !== 'All' || search) && (
+                    <button
+                      onClick={() => { setActiveCategory('All'); setActivePayment('All'); setSearch(''); }}
+                      className="w-full py-2.5 rounded-xl font-bold text-sm text-white/40 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.07] transition-all"
+                    >
+                      Reset All
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          {/* Main Content */}
+          <div className="lg:w-3/4 min-w-0 shrink-0">
+            {/* Top AI NSFW Block */}
+            <TopAINsfwBlock tools={tools} allStats={allStats} onVoteChange={handleVoteChange} />
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3">
+              {displayed.map((tool, i) => (
+                <ToolCard key={tool.slug} tool={tool} index={i} initialStats={allStats?.[tool.slug]} onVoteChange={handleVoteChange} />
+              ))}
+            </div>
+
+            {/* Skeleton loading placeholders */}
+            {(loading || hasMore) && (
+              <>
+                {loading && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 mt-3">
+                    {Array.from({ length: LOAD_MORE }, (_, i) => (
+                      <ToolCardSkeleton key={`skeleton-${i}`} />
+                    ))}
+                  </div>
+                )}
+                <div ref={loadMoreRef} className="h-4" />
+              </>
+            )}
+
+            {filtered.length === 0 && (
+              <div className="text-center py-20">
+                <p className="text-gray-500 text-sm">{t('ainsfw.noResults')}</p>
               </div>
             )}
-            <div ref={loadMoreRef} className="h-4" />
-          </>
-        )}
-
-        {filtered.length === 0 && (
-          <div className="text-center py-20">
-            <p className="text-gray-500 text-sm">{t('ainsfw.noResults')}</p>
           </div>
-        )}
+        </div>
 
         {/* SEO Content Block */}
         <section className="mt-16 sm:mt-24 max-w-4xl mx-auto">

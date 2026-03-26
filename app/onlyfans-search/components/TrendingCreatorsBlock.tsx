@@ -76,7 +76,7 @@ export default function TrendingCreatorsBlock({ creators }: { creators: Trending
   return (
     <section className="relative max-w-7xl mx-auto px-3 sm:px-6 pb-10 sm:pb-14">
       <div className="relative rounded-2xl sm:rounded-[1.75rem] overflow-hidden border border-[#00AFF0]/40 bg-gradient-to-br from-[#00AFF0]/20 via-[#062a3d]/90 to-[#0a1620] p-0.5 sm:p-1 shadow-[0_0_80px_-20px_rgba(0,175,240,0.50)]">
-        <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-[#00AFF0]/20 blur-[100px]" />
           <div className="absolute -bottom-20 -left-16 w-64 h-64 rounded-full bg-[#00D4FF]/15 blur-[90px]" />
         </div>

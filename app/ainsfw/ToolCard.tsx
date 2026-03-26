@@ -4,10 +4,13 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import type { AINsfwTool } from './types';
+import { voteOnTool, unvoteOnTool, submitReview } from '@/lib/actions/ainsfw';
+import type { ToolStatsData } from '@/lib/actions/ainsfw';
 
 interface ToolCardProps {
   tool: AINsfwTool;
   index: number;
+  initialStats?: ToolStatsData;
   onVoteChange?: (slug: string, score: number) => void;
 }
 
@@ -27,11 +30,9 @@ const CATEGORY_BTN: Record<string, string> = {
   'AI Roleplay': 'bg-zinc-800 hover:bg-zinc-700 text-white',
 };
 
-function getVoteKey(slug: string) { return `ainsfw_vote_${slug}`; }
-function getVotesKey(slug: string) { return `ainsfw_votes_${slug}`; }
 function getBookmarkKey(slug: string) { return `ainsfw_bookmark_${slug}`; }
 
-export default function ToolCard({ tool, index, onVoteChange }: ToolCardProps) {
+export default function ToolCard({ tool, index, initialStats, onVoteChange }: ToolCardProps) {
   const placeholder = '/assets/image.jpg';
   const mainImg = tool.image && (tool.image.startsWith('https://') || tool.image.startsWith('/'))
     ? tool.image : placeholder;
@@ -45,24 +46,22 @@ export default function ToolCard({ tool, index, onVoteChange }: ToolCardProps) {
   const [galleryFetched, setGalleryFetched] = useState(false);
   const touchStartX = useRef(0);
 
-  const [votes, setVotes] = useState({ up: 0, down: 0 });
+  const [votes, setVotes] = useState({ up: initialStats?.upvotes ?? 0, down: initialStats?.downvotes ?? 0 });
   const [userVote, setUserVote] = useState<'up' | 'down' | null>(null);
   const [bookmarked, setBookmarked] = useState(false);
 
   const [showReview, setShowReview] = useState(false);
   const [reviewText, setReviewText] = useState('');
   const [reviewRating, setReviewRating] = useState(5);
-  const [reviews, setReviews] = useState<{ text: string; rating: number; date: string }[]>([]);
+  const [reviews, setReviews] = useState<{ text: string; rating: number; date: string }[]>(
+    initialStats?.reviews?.map(r => ({ text: r.text, rating: r.rating, date: r.createdAt })) ?? []
+  );
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(getVotesKey(tool.slug));
-      if (saved) setVotes(JSON.parse(saved));
-      const savedVote = localStorage.getItem(getVoteKey(tool.slug)) as 'up' | 'down' | null;
+      const savedVote = localStorage.getItem(`ainsfw_vote_${tool.slug}`) as 'up' | 'down' | null;
       if (savedVote) setUserVote(savedVote);
-      const savedReviews = localStorage.getItem(`ainsfw_reviews_${tool.slug}`);
-      if (savedReviews) setReviews(JSON.parse(savedReviews));
       setBookmarked(localStorage.getItem(getBookmarkKey(tool.slug)) === '1');
     } catch {}
   }, [tool.slug]);
@@ -108,23 +107,23 @@ export default function ToolCard({ tool, index, onVoteChange }: ToolCardProps) {
     if (Math.abs(dx) > 40) goSlide(dx < 0 ? 1 : -1);
   };
 
-  const handleVote = (e: React.MouseEvent, dir: 'up' | 'down') => {
+  const handleVote = async (e: React.MouseEvent, dir: 'up' | 'down') => {
     e.preventDefault();
     e.stopPropagation();
-    const nv = { ...votes };
     if (userVote === dir) {
-      nv[dir] = Math.max(0, nv[dir] - 1);
       setUserVote(null);
-      localStorage.setItem(getVoteKey(tool.slug), '');
+      localStorage.setItem(`ainsfw_vote_${tool.slug}`, '');
+      const result = await unvoteOnTool(tool.slug, dir);
+      setVotes({ up: result.upvotes, down: result.downvotes });
+      onVoteChange?.(tool.slug, result.upvotes - result.downvotes);
     } else {
-      if (userVote) nv[userVote] = Math.max(0, nv[userVote] - 1);
-      nv[dir]++;
+      if (userVote) await unvoteOnTool(tool.slug, userVote);
       setUserVote(dir);
-      localStorage.setItem(getVoteKey(tool.slug), dir);
+      localStorage.setItem(`ainsfw_vote_${tool.slug}`, dir);
+      const result = await voteOnTool(tool.slug, dir);
+      setVotes({ up: result.upvotes, down: result.downvotes });
+      onVoteChange?.(tool.slug, result.upvotes - result.downvotes);
     }
-    setVotes(nv);
-    localStorage.setItem(getVotesKey(tool.slug), JSON.stringify(nv));
-    onVoteChange?.(tool.slug, nv.up - nv.down);
   };
 
   const handleBookmark = (e: React.MouseEvent) => {
@@ -137,14 +136,13 @@ export default function ToolCard({ tool, index, onVoteChange }: ToolCardProps) {
 
   const handleReviewOpen = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); setShowReview(true); };
 
-  const handleReviewSubmit = (e: React.MouseEvent) => {
+  const handleReviewSubmit = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!reviewText.trim()) return;
-    const nr = { text: reviewText.trim(), rating: reviewRating, date: new Date().toLocaleDateString() };
-    const updated = [nr, ...reviews];
-    setReviews(updated);
-    localStorage.setItem(`ainsfw_reviews_${tool.slug}`, JSON.stringify(updated));
+    const result = await submitReview(tool.slug, reviewText.trim(), reviewRating);
+    setReviews(result.reviews.map(r => ({ text: r.text, rating: r.rating, date: r.createdAt })));
+    setVotes({ up: result.upvotes, down: result.downvotes });
     setReviewSubmitted(true);
     setTimeout(() => { setShowReview(false); setReviewText(''); setReviewRating(5); setReviewSubmitted(false); }, 1200);
   };

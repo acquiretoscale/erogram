@@ -1,0 +1,56 @@
+---
+description: STOP creating API routes unless absolutely necessary. Use server actions and direct DB writes instead.
+alwaysApply: true
+---
+
+# NO UNNECESSARY API ROUTES
+
+This project already has 176+ API routes. Most should have been server actions. STOP adding more.
+
+## When to use a server action (DEFAULT)
+
+- Saving a vote, review, rating, bookmark
+- Incrementing a counter (clicks, views, likes)
+- Sending an email or contact form
+- Any simple DB read/write triggered by a user action
+- Any CRUD that only your own components consume
+
+```typescript
+// GOOD: server action in lib/actions/
+'use server';
+import connectDB from '@/lib/db/mongodb';
+import { SomeModel } from '@/lib/models';
+
+export async function trackClick(id: string) {
+  await connectDB();
+  await SomeModel.findByIdAndUpdate(id, { $inc: { clicks: 1 } });
+}
+```
+
+## When an API route is ACTUALLY needed
+
+- External webhooks (payment providers, cron services POST to your URL)
+- `sendBeacon()` tracking (only works with URLs, not server actions)
+- Endpoints consumed by external systems (mobile apps, third-party integrations)
+- File uploads requiring special request body handling
+- Infinite scroll / pagination fetched client-side with `fetch()`
+
+## PROHIBITED
+
+- Creating an API route "just in case" or "for flexibility"
+- Creating an API route for a simple DB insert that one component uses
+- Creating multiple API routes that do the same thing (e.g. 8 separate "increment counter" routes)
+- Creating an API route when a server component prop or server action works
+
+## Why this matters
+
+- Every API route = a separate Vercel serverless function = cold start cost
+- Every API route = a file to maintain, debug, and read context for
+- Every `fetch()` call = HTTP round-trip overhead vs direct server action call
+- More files = slower builds, higher Cursor token usage, harder debugging
+- API routes are public endpoints = security surface to protect
+
+## Rule of thumb
+
+If the data flows from YOUR component to YOUR database and back, use a server action.
+If an EXTERNAL system needs to call you, use an API route.

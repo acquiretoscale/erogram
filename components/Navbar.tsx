@@ -432,10 +432,10 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
               <Link
                 href="/onlyfans-search"
                 onClick={() => setIsMenuOpen(false)}
-                className="flex items-center justify-between px-4 py-2.5 rounded-lg text-[14px] bg-[#00AFF0] text-white font-bold"
+                className="flex items-center justify-between px-4 py-2.5 rounded-lg text-[14px] bg-white border border-gray-200 font-bold"
               >
-                <span>OFsearch — Browse 1.8M+ creators</span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                <span className="text-[#00AFF0]">OFsearch</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00AFF0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
               </Link>
               <button
                 onClick={() => setMobileOfOpen(!mobileOfOpen)}
