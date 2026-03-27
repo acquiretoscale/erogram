@@ -308,9 +308,21 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
             <div className={`flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center w-full mb-6 sm:mb-8 ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.4s' }}>
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(lp('/groups')), 0); }}
-                className="w-full sm:w-auto px-8 py-4 bg-[#b31b1b] hover-glow text-white rounded-lg text-lg font-semibold transition-all hover:scale-105"
+                className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-8 py-4 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg text-lg font-semibold transition-all hover:scale-105"
               >
-                Explore Telegram Groups &amp; Bots
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
+                  <path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/>
+                </svg>
+                Explore Groups
+              </button>
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(lp('/bots')), 0); }}
+                className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-8 py-4 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg text-lg font-semibold transition-all hover:scale-105"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                  <rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="9" cy="16" r="1"/><circle cx="15" cy="16" r="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+                </svg>
+                Explore Bots
               </button>
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push('/onlyfanssearch'), 0); }}
@@ -344,9 +356,21 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
             >
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(lp('/groups')), 0); }}
-                className="w-full sm:w-auto px-8 py-4 bg-[#b31b1b] hover-glow text-white rounded-lg text-lg font-semibold transition-all hover:scale-105"
+                className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-8 py-4 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg text-lg font-semibold transition-all hover:scale-105"
               >
-                Explore Telegram Groups &amp; Bots
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
+                  <path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/>
+                </svg>
+                Explore Groups
+              </button>
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(lp('/bots')), 0); }}
+                className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-8 py-4 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg text-lg font-semibold transition-all hover:scale-105"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                  <rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="9" cy="16" r="1"/><circle cx="15" cy="16" r="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+                </svg>
+                Explore Bots
               </button>
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push('/onlyfanssearch'), 0); }}
