@@ -427,13 +427,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
       setSearchResults(unique);
       setProgress({ loaded: unique.length, total: data.total || 0 });
 
-      if (data.shouldScrape && data.scrapeQuery) {
-        fetch('/api/onlyfans/scrape', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ category: data.scrapeQuery, maxItems: 6, source: 'search' }),
-        }).catch(() => {});
-      }
+      // Auto-scrape disabled — serve existing DB results only (re-enable when isolated cluster is ready)
     } catch (e: any) {
       console.error('Search error:', e);
     } finally {

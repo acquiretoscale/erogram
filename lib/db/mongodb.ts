@@ -8,6 +8,9 @@ if (!process.env.MONGODB_URI) {
 const uri = process.env.MONGODB_URI;
 const options: mongoose.ConnectOptions = {
   family: 4,
+  maxPoolSize: 15,
+  minPoolSize: 0,
+  maxIdleTimeMS: 10000,
   serverSelectionTimeoutMS: 8000,
   connectTimeoutMS: 8000,
   socketTimeoutMS: 20000,

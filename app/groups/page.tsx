@@ -45,8 +45,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-// Always fetch fresh data so new banner/feed campaigns show immediately after admin adds them
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 async function getGroups(limit: number, isMobile: boolean = false, locale: string = 'en') {
   try {
