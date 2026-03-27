@@ -6,59 +6,45 @@ if (!process.env.MONGODB_URI) {
 }
 
 const uri = process.env.MONGODB_URI;
-const options = {
+const options: mongoose.ConnectOptions = {
   family: 4,
-  serverSelectionTimeoutMS: 30000,
-  connectTimeoutMS: 30000,
-  socketTimeoutMS: 45000,
+  serverSelectionTimeoutMS: 8000,
+  connectTimeoutMS: 8000,
+  socketTimeoutMS: 20000,
   bufferCommands: false,
 };
 
-let clientPromise: Promise<typeof mongoose>;
-
-if (process.env.NODE_ENV === 'development') {
-  // In development mode, use a global variable so that the value
-  // is preserved across module reloads caused by HMR (Hot Module Replacement).
-  let globalWithMongoose = global as typeof globalThis & {
-    mongoose: { conn: typeof mongoose | null; promise: Promise<typeof mongoose> | null };
-  };
-
-  if (!globalWithMongoose.mongoose) {
-    globalWithMongoose.mongoose = { conn: null, promise: null };
-  }
-
-  if (!globalWithMongoose.mongoose.promise) {
-    globalWithMongoose.mongoose.promise = mongoose.connect(uri, options).then((mongoose) => {
-      return mongoose;
-    });
-  }
-  clientPromise = globalWithMongoose.mongoose.promise;
-} else {
-  // In production mode, it's best to not use a global variable.
-  clientPromise = mongoose.connect(uri, options).then((mongoose) => {
-    return mongoose;
-  });
+interface MongooseCache {
+  conn: typeof mongoose | null;
+  promise: Promise<typeof mongoose> | null;
 }
 
-// Export a module-scoped MongoClient promise. By doing this in a
-// separate module, the client can be shared across functions.
+const g = global as typeof globalThis & { __mongoose: MongooseCache };
+if (!g.__mongoose) {
+  g.__mongoose = { conn: null, promise: null };
+}
+
 async function connectDB() {
-  if (mongoose.connection.readyState === 1) {
-    return mongoose;
+  // Fast path: already connected
+  if (g.__mongoose.conn && mongoose.connection.readyState === 1) {
+    return g.__mongoose.conn;
   }
 
-  await clientPromise;
+  // Connection dropped or never established — reset and reconnect
+  if (mongoose.connection.readyState !== 1) {
+    g.__mongoose.conn = null;
+    g.__mongoose.promise = null;
+  }
 
-  // With bufferCommands: false, wait until connection is truly ready
-  const state = mongoose.connection.readyState as number;
-  if (state !== 1) {
-    await new Promise<void>((resolve, reject) => {
-      mongoose.connection.once('connected', resolve);
-      mongoose.connection.once('error', reject);
+  if (!g.__mongoose.promise) {
+    g.__mongoose.promise = mongoose.connect(uri, options).then((m) => {
+      g.__mongoose.conn = m;
+      return m;
     });
   }
 
-  return mongoose;
+  g.__mongoose.conn = await g.__mongoose.promise;
+  return g.__mongoose.conn;
 }
 
 export default connectDB;

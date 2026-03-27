@@ -1,7 +1,8 @@
 import { Metadata } from 'next';
 import ArticlesListing from './ArticlesListing';
 import { getActiveCampaigns } from '@/lib/actions/campaigns';
-import { getArticlesForListing } from '@/lib/getArticlesForListing';
+import connectDB from '@/lib/db/mongodb';
+import { Article, User } from '@/lib/models';
 import Navbar from '@/components/Navbar';
 
 const baseUrl = 'https://erogram.pro';
@@ -29,26 +30,62 @@ export const metadata: Metadata = {
   },
 };
 
-// Cache the page for 60s so most requests are fast; list still refreshes every minute
 export const revalidate = 60;
 
-export default async function ArticlesPage() {
-  let initialArticles: Awaited<ReturnType<typeof getArticlesForListing>> = [];
+async function getArticles() {
   try {
-    initialArticles = await getArticlesForListing();
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[articles] Loaded', initialArticles.length, 'articles from DB');
-    }
-  } catch (e) {
-    console.error('[articles] getArticlesForListing failed', e);
-  }
+    await connectDB();
+    const articlesRaw = await Article.find({})
+      .select('title slug excerpt featuredImage tags publishedAt views author status createdAt updatedAt')
+      .sort({ publishedAt: -1, createdAt: -1 })
+      .limit(100)
+      .lean();
 
-  let topBannerForPage: { _id: string; creative: string; destinationUrl: string; slot: string }[] = [];
-  try {
-    const topBannerCampaigns = await getActiveCampaigns('top-banner');
-    topBannerForPage =
-      topBannerCampaigns.length > 0 && (topBannerCampaigns[0] as any).creative ? topBannerCampaigns : [];
-  } catch (_) { }
+    const authorIds = new Set<string>();
+    (articlesRaw as any[]).forEach((a: any) => {
+      if (a.author) authorIds.add(a.author.toString());
+    });
+    const authorsMap = new Map<string, { _id: string; username: string }>();
+    if (authorIds.size > 0) {
+      const authors = await User.find({ _id: { $in: Array.from(authorIds) } })
+        .select('username _id')
+        .lean();
+      (authors as any[]).forEach((a: any) =>
+        authorsMap.set(a._id.toString(), { _id: a._id.toString(), username: a.username || 'erogram' })
+      );
+    }
+
+    return (articlesRaw as any[]).map((a: any) => ({
+      _id: a._id.toString(),
+      title: a.title || '',
+      slug: a.slug || '',
+      excerpt: a.excerpt || '',
+      featuredImage: a.featuredImage || '',
+      status: a.status || 'published',
+      tags: a.tags || [],
+      publishedAt: a.publishedAt || null,
+      views: a.views || 0,
+      createdAt: a.createdAt,
+      author: a.author
+        ? authorsMap.get(a.author.toString()) || { _id: '', username: 'erogram' }
+        : { _id: '', username: 'erogram' },
+    }));
+  } catch (error) {
+    console.error('[articles] fetch failed:', error);
+    return [];
+  }
+}
+
+export default async function ArticlesPage() {
+  const [initialArticles, topBannerCampaigns] = await Promise.all([
+    getArticles(),
+    getActiveCampaigns('top-banner').catch(() => []),
+  ]);
+
+  const topBannerForPage =
+    topBannerCampaigns.length > 0 && (topBannerCampaigns[0] as any).creative
+      ? topBannerCampaigns
+      : [];
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">

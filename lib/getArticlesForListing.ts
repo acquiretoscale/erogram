@@ -1,6 +1,5 @@
 import connectDB from '@/lib/db/mongodb';
 import { Article, User } from '@/lib/models';
-import mongoose from 'mongoose';
 
 export interface ArticleForListing {
   _id: string;
@@ -22,27 +21,13 @@ export interface ArticleForListing {
  */
 export async function getArticlesForListing(): Promise<ArticleForListing[]> {
   try {
-    const MONGODB_URI = process.env.MONGODB_URI;
-    if (!MONGODB_URI) throw new Error('MONGODB_URI missing');
-
-    // Force strict connection for this specific function to ensure it works like the script
-    if (mongoose.connection.readyState !== 1) {
-      console.log('[getArticlesForListing] Connecting explicitly...');
-      await mongoose.connect(MONGODB_URI, {
-        family: 4,
-        serverSelectionTimeoutMS: 5000,
-        bufferCommands: false,
-      });
-      console.log('[getArticlesForListing] Connected!');
-    }
+    await connectDB();
 
     const articlesRaw = await Article.find({})
       .select('-content')
       .sort({ publishedAt: -1, createdAt: -1 })
       .limit(500)
       .lean();
-
-    console.log(`[getArticlesForListing] Fetched ${articlesRaw.length} articles`);
 
     const authorIds = new Set<string>();
     (articlesRaw as any[]).forEach((a: any) => {
