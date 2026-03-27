@@ -176,7 +176,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-1.5 lg:gap-2">
 
-          {/* Pillar 1 — Telegram: Groups, Bots, +Add */}
+          {/* Pillar 1 — Telegram: Groups, Bots */}
           <Link href={lp('/groups')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold text-[#4ab3f4] bg-[#0088cc]/[0.10] border border-[#0088cc]/25 hover:bg-[#0088cc]/[0.18] hover:text-[#6ec6f7] transition-all whitespace-nowrap">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" className="shrink-0 opacity-80">
               <path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/>
@@ -189,12 +189,12 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
             </svg>
             {t('nav.bots', 'Bots')}
           </Link>
-          <Link href={lp('/add')} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[13px] font-semibold text-emerald-400 bg-emerald-500/[0.10] border border-emerald-500/25 hover:bg-emerald-500/[0.18] hover:text-emerald-300 transition-all whitespace-nowrap">
-            <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
-            {t('nav.add', 'Add')}
+          <Link href={lp('/ainsfw')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${TELEGRAM_BLUE_NAV}`}>
+            <span className="text-sm leading-none shrink-0">🔞</span>
+            AI NSFW
           </Link>
 
-          {/* Pillar 2 — OnlyFans Search */}
+          {/* OnlyFans Search */}
           <div className="relative" ref={ofRef} onMouseEnter={() => setOfOpen(true)} onMouseLeave={() => setOfOpen(false)}>
             <Link
               href="/onlyfanssearch"
@@ -212,7 +212,6 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                   transition={{ duration: 0.1 }}
                   className="absolute left-0 mt-1.5 w-[260px] bg-white rounded-xl shadow-[0_12px_36px_-6px_rgba(0,0,0,0.2)] border border-gray-200 z-50 overflow-hidden"
                 >
-                  {/* Categories — 3 columns */}
                   <div className="px-2.5 pt-2 pb-0.5">
                     <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Best OnlyFans Accounts</p>
                   </div>
@@ -234,13 +233,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
             </AnimatePresence>
           </div>
 
-          {/* Pillar 3 — AI NSFW */}
-          <Link href={lp('/ainsfw')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${TELEGRAM_BLUE_NAV}`}>
-            <span className="text-sm leading-none shrink-0">🔞</span>
-            AI NSFW
-          </Link>
-
-          {/* Pillar 4 — AI CTA */}
+          {/* AI CTA */}
           <a
             href={navbarCta?.destinationUrl ?? DEFAULT_NAVBAR_CTA.destinationUrl}
             target="_blank"
@@ -250,6 +243,11 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
           >
             {(navbarCta?.description || navbarCta?.buttonText) || DEFAULT_NAVBAR_CTA.description}
           </a>
+
+          <Link href={lp('/add')} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[13px] font-semibold text-[#4ab3f4] bg-[#0088cc]/[0.10] border border-[#0088cc]/25 hover:bg-[#0088cc]/[0.18] hover:text-[#6ec6f7] transition-all whitespace-nowrap">
+            <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            {t('nav.add', 'Add')}
+          </Link>
 
           {/* Utility — User menu */}
           {currentUsername ? (
@@ -454,7 +452,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
           {/* Section: Directories */}
           <div className="space-y-1.5">
             <p className="px-1 text-[10px] font-black uppercase tracking-widest text-white/25">Explore</p>
-            {/* Groups, Bots, +Add (trio) */}
+            {/* Groups, Bots, AI NSFW (trio) */}
             <div className="flex items-stretch rounded-lg overflow-hidden border border-[#0088cc]/25 divide-x divide-[#0088cc]/25">
               <Link
                 href={lp('/groups')}
@@ -477,24 +475,14 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                 {t('nav.bots', 'Bots')}
               </Link>
               <Link
-                href={lp('/add')}
+                href={lp('/ainsfw')}
                 onClick={() => setIsMenuOpen(false)}
-                className="flex items-center gap-1 px-3 py-2.5 text-[14px] font-semibold text-emerald-400 bg-emerald-500/[0.10] hover:bg-emerald-500/[0.18] hover:text-emerald-300 transition-all whitespace-nowrap"
+                className="flex items-center gap-1.5 px-3 py-2.5 text-[14px] font-semibold text-[#4ab3f4] bg-[#0088cc]/[0.10] hover:bg-[#0088cc]/[0.18] hover:text-[#6ec6f7] transition-all whitespace-nowrap"
               >
-                <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
-                {t('nav.add', 'Add')}
+                <span className="text-sm leading-none shrink-0">🔞</span>
+                AI NSFW
               </Link>
             </div>
-
-            {/* AI NSFW */}
-            <Link
-              href={lp('/ainsfw')}
-              onClick={() => setIsMenuOpen(false)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg ${TELEGRAM_BLUE_NAV} text-[14px]`}
-            >
-              <span className="text-base leading-none shrink-0">🔞</span>
-              AI NSFW
-            </Link>
 
             {/* OFsearch mobile */}
             <div>
@@ -541,6 +529,15 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
             >
               {(navbarCta?.description || navbarCta?.buttonText) || DEFAULT_NAVBAR_CTA.description}
             </a>
+
+            <Link
+              href={lp('/add')}
+              onClick={() => setIsMenuOpen(false)}
+              className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-[14px] font-semibold text-[#4ab3f4] bg-[#0088cc]/[0.10] border border-[#0088cc]/25 hover:bg-[#0088cc]/[0.18] hover:text-[#6ec6f7] transition-all whitespace-nowrap"
+            >
+              <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              {t('nav.add', 'Add')}
+            </Link>
           </div>
 
           <div className="h-px bg-white/[0.06]" />
