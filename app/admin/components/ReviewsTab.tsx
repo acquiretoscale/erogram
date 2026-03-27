@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { getReviews, updateReview, deleteReview } from '@/lib/actions/adminReviews';
 
 export default function ReviewsTab() {
     const [reviews, setReviews] = useState<any[]>([]);
@@ -18,14 +18,12 @@ export default function ReviewsTab() {
 
     const fetchReviews = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.get('/api/admin/reviews', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setReviews(res.data);
+            const token = localStorage.getItem('token') || '';
+            const data = await getReviews(token);
+            setReviews(data);
             setError('');
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to load reviews');
+            setError(err.message || 'Failed to load reviews');
         } finally {
             setIsLoading(false);
         }
@@ -35,16 +33,11 @@ export default function ReviewsTab() {
         if (!confirm('Approve this review and make it public?')) return;
 
         try {
-            const token = localStorage.getItem('token');
-            await axios.put(`/api/admin/reviews/${id}`, {
-                status: 'approved',
-                reviewedAt: new Date()
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const token = localStorage.getItem('token') || '';
+            await updateReview(token, id, { status: 'approved' });
             fetchReviews();
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to approve review');
+            alert(err.message || 'Failed to approve review');
         }
     };
 
@@ -52,16 +45,11 @@ export default function ReviewsTab() {
         if (!confirm('Reject this review? It will not be published.')) return;
 
         try {
-            const token = localStorage.getItem('token');
-            await axios.put(`/api/admin/reviews/${id}`, {
-                status: 'rejected',
-                reviewedAt: new Date()
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const token = localStorage.getItem('token') || '';
+            await updateReview(token, id, { status: 'rejected' });
             fetchReviews();
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to reject review');
+            alert(err.message || 'Failed to reject review');
         }
     };
 
@@ -69,13 +57,11 @@ export default function ReviewsTab() {
         if (!confirm('Are you sure you want to delete this review?')) return;
 
         try {
-            const token = localStorage.getItem('token');
-            await axios.delete(`/api/admin/reviews/${id}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const token = localStorage.getItem('token') || '';
+            await deleteReview(token, id);
             fetchReviews();
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to delete review');
+            alert(err.message || 'Failed to delete review');
         }
     };
 
@@ -94,14 +80,12 @@ export default function ReviewsTab() {
 
         setIsSaving(true);
         try {
-            const token = localStorage.getItem('token');
-            await axios.put(`/api/admin/reviews/${editingReview}`, editFormData, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const token = localStorage.getItem('token') || '';
+            await updateReview(token, editingReview, editFormData);
             setEditingReview(null);
             fetchReviews();
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to update review');
+            alert(err.message || 'Failed to update review');
         } finally {
             setIsSaving(false);
         }

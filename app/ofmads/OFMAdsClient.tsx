@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { getAdvertiseStats } from '@/lib/actions/publicData';
 
 /* ─── palette ──────────────────────────────────────────────────────────────
    bg:       #080c14   (near-black navy)
@@ -134,8 +135,7 @@ export default function OFMAdsClient() {
   const [submitError, setSubmitError] = useState('');
 
   const fetchStats = useCallback(() => {
-    fetch('/api/advertise-stats', { cache: 'no-store' })
-      .then((r) => r.json())
+    getAdvertiseStats()
       .then((d) => {
         setStats({ totalViews: d.totalViews ?? 0, activeVisitors: d.activeVisitors ?? 0, last7dClicks: d.last7dClicks ?? 0 });
         setStatsReady(true);

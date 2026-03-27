@@ -60,7 +60,7 @@ export default function TopClicksPage() {
                       <div>
                         <div className="text-white font-medium leading-tight">{c.name}</div>
                         <a
-                          href={`/onlyfans-search/${c.slug}`}
+                          href={`/onlyfanssearch/${c.slug}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-white/30 text-xs hover:text-[#00AFF0] transition"

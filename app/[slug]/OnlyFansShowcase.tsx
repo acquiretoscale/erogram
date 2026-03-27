@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useLocalePath } from '@/lib/i18n';
+import { trackTrendingClick } from '@/lib/actions/onlyfansTracking';
+import { getTrendingCreators } from '@/lib/actions/publicData';
 
 interface ShowcaseCreator {
   id: string;
@@ -19,15 +21,7 @@ interface ShowcaseCreator {
 
 function FeedCard({ creator }: { creator: ShowcaseCreator }) {
   const handleClick = () => {
-    if (creator.source === 'trending') {
-      fetch(`/api/onlyfans/trending/${creator.id}/click`, { method: 'POST' }).catch(() => {});
-    } else if (creator.slug) {
-      fetch('/api/onlyfans/click', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug: creator.slug }),
-      }).catch(() => {});
-    }
+    trackTrendingClick(creator.id);
     window.open(creator.url, '_blank', 'noopener,noreferrer');
   };
 
@@ -98,16 +92,12 @@ export default function OnlyFansShowcase() {
 
     async function load() {
       try {
-        const [trendingRes, topRes] = await Promise.all([
-          fetch('/api/onlyfans/trending'),
-          fetch('/api/onlyfans/top?trending=4'),
-        ]);
+        const data = await getTrendingCreators();
 
-        const trendingData = trendingRes.ok ? await trendingRes.json() : [];
-        const topData = topRes.ok ? await topRes.json() : { trending: [] };
+        if (cancelled) return;
 
-        const trendingMapped: ShowcaseCreator[] = (trendingData as any[])
-          .slice(0, 4)
+        const mapped: ShowcaseCreator[] = (data as any[])
+          .slice(0, 3)
           .map((c: any) => ({
             id: c._id,
             name: c.name,
@@ -120,33 +110,7 @@ export default function OnlyFansShowcase() {
             source: 'trending' as const,
           }));
 
-        const usedUsernames = new Set(trendingMapped.map(c => c.username.toLowerCase()));
-
-        const clickedMapped: ShowcaseCreator[] = ((topData.trending || []) as any[])
-          .filter((c: any) => !usedUsernames.has((c.username || '').toLowerCase()))
-          .slice(0, 4)
-          .map((c: any) => ({
-            id: c._id,
-            name: c.name,
-            username: c.username,
-            avatar: c.avatar || '',
-            url: c.url,
-            bio: c.bio || '',
-            price: c.price ?? 0,
-            isFree: c.isFree ?? c.price === 0,
-            source: 'clicked' as const,
-            slug: c.slug,
-          }));
-
-        if (cancelled) return;
-
-        const merged = [...trendingMapped, ...clickedMapped];
-        for (let i = merged.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [merged[i], merged[j]] = [merged[j], merged[i]];
-        }
-
-        setCreators(merged);
+        setCreators(mapped);
         setLoaded(true);
       } catch {
         setLoaded(true);
@@ -190,7 +154,7 @@ export default function OnlyFansShowcase() {
           {/* Creator grid */}
           {!loaded ? (
             <div className="relative grid grid-cols-3 gap-1.5 sm:gap-3">
-              {Array.from({ length: 6 }).map((_, i) => (
+              {Array.from({ length: 3 }).map((_, i) => (
                 <SkeletonCard key={i} />
               ))}
             </div>
@@ -204,7 +168,7 @@ export default function OnlyFansShowcase() {
 
           {/* CTA button */}
           <Link
-            href={lp('/onlyfans-search')}
+            href={lp('/onlyfanssearch')}
             className="relative block mt-3 w-full text-center py-2.5 rounded-xl font-black text-[13px] transition-all hover:scale-[1.02]"
             style={{ background: 'linear-gradient(135deg, #00AFF0, #00D4FF)', color: '#001820' }}
           >

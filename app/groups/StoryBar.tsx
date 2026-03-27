@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import type { StoryCategory } from './types';
+import { getAdvertiseStats } from '@/lib/actions/publicData';
 
 interface StoryBarProps {
   storyData: StoryCategory[];
@@ -210,8 +211,7 @@ function VisitingNowCard() {
   const [count, setCount] = useState(0);
 
   const fetchCount = useCallback(() => {
-    fetch('/api/advertise-stats', { cache: 'no-store' })
-      .then(r => r.json())
+    getAdvertiseStats()
       .then(d => { if (typeof d.activeVisitors === 'number') setCount(d.activeVisitors); })
       .catch(() => {});
   }, []);

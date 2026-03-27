@@ -111,7 +111,9 @@
     "aboutTitle": "Über Erogram – Das #1 Porno- & NSFW-Telegram-Verzeichnis",
     "aboutDesc": "Erfahre mehr über Erogram, das ultimative Verzeichnis für Porno-Telegram-Gruppen, NSFW-Kanäle und KI-Companion. Sicher, verifiziert und täglich aktualisiert.",
     "ainsfwTitle": "Beste KI-NSFW-Tools 2026 — KI-Freundin, Undress KI & KI-Chat",
-    "ainsfwDesc": "Entdecken Sie die besten KI-NSFW-Tools 2026. Kuratierte KI-Freundin-Apps, Undress-KI-Generatoren und KI-Chat-Begleiter — bewertet und gerankt von Erogram.pro."
+    "ainsfwDesc": "Entdecken Sie die besten KI-NSFW-Tools 2026. Kuratierte KI-Freundin-Apps, Undress-KI-Generatoren und KI-Chat-Begleiter — bewertet und gerankt von Erogram.pro.",
+    "bestOnlyfansIndexTitle": "Beste OnlyFans-Accounts & Creator-Listen – Erogram",
+    "bestOnlyfansIndexDesc": "Entdecke unsere kuratierten Rankings der besten OnlyFans-Accounts und Creator nach Kategorie. Finde die Top-OnlyFans-Profile — täglich aktualisiert."
   },
   "common": {
     "members": "Mitglieder",
@@ -221,6 +223,41 @@
     "wantMore": "Mehr entdecken?",
     "wantMoreDesc": "Tausende weitere Gruppen warten auf dich.",
     "browseAll": "Alle Gruppen durchsuchen"
+  },
+  "bestOnlyfans": {
+    "curatedTitle": "Kuratiert",
+    "topLists": "Top-Listen",
+    "indexDesc": "Entdecke unsere handverlesenen Rankings der besten OnlyFans-Accounts und Creator für jede Kategorie.",
+    "bestCategory": "Beste {category} OnlyFans",
+    "top10": "Top 10 {category}-Creator",
+    "updated": "Aktualisiert im {month} {year}",
+    "theBest": "Die {count} besten {category} OnlyFans-Accounts",
+    "theBestFallback": "Die besten {category} OnlyFans-Accounts",
+    "lookingFor": "Auf der Suche nach den besten {category} OnlyFans-Accounts in {year}? Wir haben die beliebtesten und bestbewerteten Creator für dich zusammengestellt.",
+    "viewProfile": "Profil ansehen",
+    "curatingMsg": "Wir ranken gerade die besten Creator für diese Kategorie. Schau bald wieder vorbei!",
+    "otherCategories": "Creator aus anderen Kategorien",
+    "view": "Ansehen",
+    "wantMore": "Mehr entdecken?",
+    "wantMoreDesc": "Tausende weitere OnlyFans-Creator warten auf dich.",
+    "browseAll": "Alle Creator durchsuchen",
+    "free": "Kostenlos",
+    "likes": "Likes",
+    "media": "Medien",
+    "faq": [
+      {
+        "q": "Wie ranken wir die besten {category} OnlyFans-Accounts?",
+        "a": "Unser Ranking basiert auf echten Nutzerklicks, Trending-Signalen, Likes und Community-Popularität. Die Liste wird täglich aktualisiert."
+      },
+      {
+        "q": "Sind diese {category} OnlyFans-Accounts verifiziert?",
+        "a": "Ja, alle auf Erogram gelisteten Creator sind verifizierte OnlyFans-Accounts. Wir prüfen Profildaten und Aktivität auf Echtheit."
+      },
+      {
+        "q": "Wie oft wird diese Liste aktualisiert?",
+        "a": "Unser bestes {category} OnlyFans-Ranking wird täglich aktualisiert. Neue Creator werden hinzugefügt und Positionen neu berechnet."
+      }
+    ]
   },
   "add": {
     "title": "Gruppe oder Bot hinzufügen",

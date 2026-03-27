@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { shouldUseLightAnimations, animationClasses, getStaggerDelay } from '@/lib/utils/animations';
 import Footer from '@/components/Footer';
+import { getAdvertiseStats } from '@/lib/actions/publicData';
 import AdBanner from '@/components/AdBanner';
 import HeaderBanner from '@/components/HeaderBanner';
 import { formatDate } from '@/lib/i18n/date';
@@ -153,8 +154,7 @@ function useActiveUsers() {
   const [count, setCount] = useState<number>(0);
   useEffect(() => {
     const fetchActive = () => {
-      fetch('/api/advertise-stats', { cache: 'no-store' })
-        .then(r => r.json())
+      getAdvertiseStats()
         .then(d => { if (typeof d.activeVisitors === 'number') setCount(d.activeVisitors); })
         .catch(() => {});
     };
@@ -313,7 +313,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                 Explore Telegram Groups &amp; Bots
               </button>
               <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push('/onlyfans-search'), 0); }}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push('/onlyfanssearch'), 0); }}
                 className="relative w-full sm:w-auto px-4 py-3.5 sm:px-6 bg-[#00AFF0] hover:bg-[#009dd9] text-white rounded-lg transition-all hover:scale-105 flex flex-col items-center gap-0.5 text-center leading-snug"
               >
                 <span className="text-lg sm:text-sm font-semibold text-white/95">
@@ -349,7 +349,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                 Explore Telegram Groups &amp; Bots
               </button>
               <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push('/onlyfans-search'), 0); }}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push('/onlyfanssearch'), 0); }}
                 className="relative w-full sm:w-auto px-4 py-3.5 sm:px-6 bg-[#00AFF0] hover:bg-[#009dd9] text-white rounded-lg transition-all hover:scale-105 flex flex-col items-center gap-0.5 text-center leading-snug"
               >
                 <span className="text-lg sm:text-sm font-semibold text-white/95">

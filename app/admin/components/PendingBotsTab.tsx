@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { getBots, updateBot } from '@/lib/actions/adminBots';
 
 export default function PendingBotsTab() {
     const [bots, setBots] = useState<any[]>([]);
@@ -20,19 +20,17 @@ export default function PendingBotsTab() {
                 setIsLoading(false);
                 return;
             }
-            const res = await axios.get('/api/admin/bots', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setBots(res.data.filter((b: any) => b.status === 'pending'));
+            const data = await getBots(token);
+            setBots(data.filter((b: any) => b.status === 'pending'));
             setError('');
         } catch (err: any) {
-            if (err.response?.status === 401) {
+            if (err.message === 'Unauthorized') {
                 localStorage.removeItem('token');
                 setError('Session expired or admin access required. Please log in again.');
                 window.location.href = '/admin';
                 return;
             }
-            setError(err.response?.data?.message || 'Failed to load pending bots');
+            setError(err.message || 'Failed to load pending bots');
         } finally {
             setIsLoading(false);
         }
@@ -44,13 +42,11 @@ export default function PendingBotsTab() {
             const bot = bots.find(b => b._id === id);
             if (!bot) return;
 
-            await axios.put(`/api/admin/bots/${id}`, { ...bot, status }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await updateBot(token || '', id, { ...bot, status });
 
             setBots(bots.filter(b => b._id !== id));
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to update status');
+            alert(err.message || 'Failed to update status');
         }
     };
 

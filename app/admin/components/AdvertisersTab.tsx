@@ -3,6 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { compressImage } from '@/lib/utils/compressImage';
+import { createAdvertiser, updateAdvertiser, deleteAdvertiser } from '@/lib/actions/advertisers';
+import { adminCreateCampaign, adminUpdateCampaign, adminDeleteCampaign, getAdvertisersDashboard, getAdvertiserDashboardStats } from '@/lib/actions/adminCampaigns';
+import { getBots } from '@/lib/actions/adminBots';
 
 interface AdvertiserRow {
   _id: string;
@@ -594,8 +597,9 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
   const fetchBotsForPicker = async () => {
     if (botPickerLoaded) return;
     try {
-      const res = await axios.get('/api/admin/bots', authHeaders());
-      const approved = (res.data || []).filter((b: any) => b.status === 'approved');
+      const token = localStorage.getItem('token');
+      const allBots = await getBots(token || '');
+      const approved = (allBots || []).filter((b: any) => b.status === 'approved');
       setBotPickerList(approved.map((b: any) => ({ _id: b._id, name: b.name, slug: b.slug, image: b.image, telegramLink: b.telegramLink, description: b.description || '', memberCount: b.memberCount || 0, category: b.category || '' })));
       setBotPickerLoaded(true);
     } catch { /* ignore */ }
@@ -617,19 +621,20 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
   const fetchAll = async (skipLoading = false) => {
     if (!skipLoading) setIsLoading(true);
     try {
-      const res = await axios.get('/api/admin/advertisers-dashboard', authHeaders());
-      setAdvertisers(res.data.advertisers ?? []);
-      setCampaigns(res.data.campaigns ?? []);
-      setSlots(res.data.slots ?? []);
-      setFeedTierCapacity(res.data.feedTierCapacity ?? []);
-      setGlobalStats(res.data.globalStats ?? null);
-      setSlotTotals(res.data.slotTotals ?? []);
-      setClicksByAdvertiser(res.data.clicksByAdvertiser ?? []);
-      setFeedClickStats(res.data.feedClickStats ?? {});
-      setFeedABStats(res.data.feedABStats ?? {});
+      const token = getToken();
+      const res = await getAdvertisersDashboard(token);
+      setAdvertisers(res.advertisers ?? []);
+      setCampaigns(res.campaigns ?? []);
+      setSlots(res.slots ?? []);
+      setFeedTierCapacity(res.feedTierCapacity ?? []);
+      setGlobalStats(res.globalStats ?? null);
+      setSlotTotals(res.slotTotals ?? []);
+      setClicksByAdvertiser(res.clicksByAdvertiser ?? []);
+      setFeedClickStats(res.feedClickStats ?? {});
+      setFeedABStats(res.feedABStats ?? {});
       setError('');
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to load data');
+      setError(err.message || 'Failed to load data');
     } finally {
       if (!skipLoading) setIsLoading(false);
     }
@@ -670,14 +675,15 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
     if (sectionTab !== 'overview') return;
     setDashboardLoading(true);
     try {
-      const params = new URLSearchParams();
-      params.set('range', dashboardRange);
-      if (dashboardSlots.length) params.set('slots', dashboardSlots.join(','));
-      if (dashboardAdvertiserIds.length) params.set('advertiserIds', dashboardAdvertiserIds.join(','));
-      if (dashboardRange === 'custom' && dashboardFrom) params.set('from', dashboardFrom);
-      if (dashboardRange === 'custom' && dashboardTo) params.set('to', dashboardTo);
-      const res = await axios.get(`/api/admin/advertiser-dashboard-stats?${params.toString()}`, authHeaders());
-      setDashboardStats(res.data);
+      const token = getToken();
+      const res = await getAdvertiserDashboardStats(token, {
+        advertiserIds: dashboardAdvertiserIds,
+        slots: dashboardSlots,
+        range: dashboardRange,
+        from: dashboardRange === 'custom' ? dashboardFrom : undefined,
+        to: dashboardRange === 'custom' ? dashboardTo : undefined,
+      });
+      setDashboardStats(res);
     } catch {
       setDashboardStats(null);
     } finally {
@@ -723,15 +729,16 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
     }
     setIsSaving(true);
     try {
+      const token = getToken();
       if (editingAdvertiser) {
-        await axios.put(`/api/admin/advertisers/${editingAdvertiser._id}`, advForm, authHeaders());
+        await updateAdvertiser(token, editingAdvertiser._id, advForm);
       } else {
-        await axios.post('/api/admin/advertisers', advForm, authHeaders());
+        await createAdvertiser(token, advForm);
       }
       setView('list');
       await fetchAll();
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Failed to save');
+      alert(err.message || 'Failed to save');
     } finally {
       setIsSaving(false);
     }
@@ -740,10 +747,11 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
   const handleDeleteAdvertiser = async (id: string) => {
     if (!confirm('Delete this advertiser and ALL their campaigns?')) return;
     try {
-      await axios.delete(`/api/admin/advertisers/${id}`, authHeaders());
+      const token = getToken();
+      await deleteAdvertiser(token, id);
       await fetchAll();
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Failed to delete');
+      alert(err.message || 'Failed to delete');
     }
   };
 
@@ -917,7 +925,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       const assignableSlots = FEED_SLOTS.includes(campForm.slot) || CTA_SLOTS.includes(campForm.slot) || ['homepage-hero', 'top-banner'].includes(campForm.slot);
       if (assignableSlots && campForm.advertiserId) payload.advertiserId = String(campForm.advertiserId).trim();
       if (editingCampaign) {
-        const { data: updated } = await axios.put(`/api/admin/campaigns/${editingCampaign._id}`, payload, authHeaders());
+        const updated = await adminUpdateCampaign(token, editingCampaign._id, payload);
         if (updated && updated._id) {
           setCampaigns((prev) => prev.map((c) => (c._id === updated._id ? { ...c, ...updated } : c)));
         }
@@ -930,7 +938,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
           return;
         }
         const postPayload = { ...payload, advertiserId };
-        await axios.post('/api/admin/campaigns', postPayload, authHeaders());
+        await adminCreateCampaign(token, postPayload);
       }
       await fetchAll(true);
       setEditingCampaign(null);
@@ -966,10 +974,9 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       setView('list');
       alert('Campaign saved successfully.');
     } catch (err: any) {
-      const data = err.response?.data;
-      const msg = data?.message ?? data?.error ?? err?.message;
+      const msg = err?.message;
       const message = typeof msg === 'string' ? msg : 'Failed to save campaign';
-      console.error('Save campaign error:', message, data || err);
+      console.error('Save campaign error:', message, err);
       alert(`Save failed: ${message}`);
     } finally {
       setIsSaving(false);
@@ -980,20 +987,22 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
   const handleDeleteCampaign = async (id: string) => {
     if (!confirm('Delete this campaign?')) return;
     try {
-      await axios.delete(`/api/admin/campaigns/${id}`, authHeaders());
+      const token = getToken();
+      await adminDeleteCampaign(token, id);
       await fetchAll();
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Failed to delete');
+      alert(err.message || 'Failed to delete');
     }
   };
 
   const toggleCampaignStatus = async (camp: CampaignRow) => {
     const next = camp.status === 'active' ? 'paused' : 'active';
     try {
-      await axios.put(`/api/admin/campaigns/${camp._id}`, { status: next }, authHeaders());
+      const token = getToken();
+      await adminUpdateCampaign(token, camp._id, { status: next });
       await fetchAll();
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Failed to update');
+      alert(err.message || 'Failed to update');
     }
   };
 
@@ -2962,7 +2971,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                     premiumCategory: (c as any).premiumCategory || '',
                     premiumGroupIds: (c as any).premiumGroupIds || [],
                   };
-                  await axios.post('/api/admin/campaigns', payload, authHeaders());
+                  await adminCreateCampaign(getToken(), payload);
                   nextPos++;
                 }
               }
@@ -3077,7 +3086,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                       try {
                         await duplicateCampaigns(Array.from(feedAdsSelectedIds));
                       } catch (err: any) {
-                        alert(err.response?.data?.message || err.message || 'Duplicate failed');
+                        alert(err.message || 'Duplicate failed');
                       } finally {
                         setFeedAdsBulkSaving(false);
                       }
@@ -3085,13 +3094,14 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                     onBulkStatus={async (status: string) => {
                       setFeedAdsBulkSaving(true);
                       try {
+                        const token = getToken();
                         for (const id of feedAdsSelectedIds) {
-                          await axios.put(`/api/admin/campaigns/${id}`, { status }, authHeaders());
+                          await adminUpdateCampaign(token, id, { status });
                         }
                         await fetchAll();
                         clearFeedAdsSelection();
                       } catch (err: any) {
-                        alert(err.response?.data?.message || err.message || 'Bulk update failed');
+                        alert(err.message || 'Bulk update failed');
                       } finally {
                         setFeedAdsBulkSaving(false);
                       }
@@ -3099,13 +3109,14 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                     onBulkShowOn={async (feedPlacement: 'groups' | 'bots' | 'both') => {
                       setFeedAdsBulkSaving(true);
                       try {
+                        const token = getToken();
                         for (const id of feedAdsSelectedIds) {
-                          await axios.put(`/api/admin/campaigns/${id}`, { feedPlacement }, authHeaders());
+                          await adminUpdateCampaign(token, id, { feedPlacement });
                         }
                         await fetchAll();
                         clearFeedAdsSelection();
                       } catch (err: any) {
-                        alert(err.response?.data?.message || err.message || 'Bulk update failed');
+                        alert(err.message || 'Bulk update failed');
                       } finally {
                         setFeedAdsBulkSaving(false);
                       }
@@ -3113,13 +3124,14 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                     onBulkLink={async (destinationUrl: string) => {
                       setFeedAdsBulkSaving(true);
                       try {
+                        const token = getToken();
                         for (const id of feedAdsSelectedIds) {
-                          await axios.put(`/api/admin/campaigns/${id}`, { destinationUrl }, authHeaders());
+                          await adminUpdateCampaign(token, id, { destinationUrl });
                         }
                         await fetchAll();
                         clearFeedAdsSelection();
                       } catch (err: any) {
-                        alert(err.response?.data?.message || err.message || 'Bulk link update failed');
+                        alert(err.message || 'Bulk link update failed');
                       } finally {
                         setFeedAdsBulkSaving(false);
                       }

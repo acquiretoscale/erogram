@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { getReports, updateReportStatus, deleteReport } from '@/lib/actions/adminReports';
 
 export default function ReportsTab() {
     const [reports, setReports] = useState<any[]>([]);
@@ -16,14 +16,12 @@ export default function ReportsTab() {
 
     const fetchReports = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.get('/api/admin/reports', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setReports(res.data);
+            const token = localStorage.getItem('token') || '';
+            const data = await getReports(token);
+            setReports(data);
             setError('');
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to load reports');
+            setError(err.message || 'Failed to load reports');
         } finally {
             setIsLoading(false);
         }
@@ -33,25 +31,21 @@ export default function ReportsTab() {
         if (!confirm('Mark this report as resolved?')) return;
 
         try {
-            const token = localStorage.getItem('token');
-            await axios.put(`/api/admin/reports/${id}`, { status: 'resolved' }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const token = localStorage.getItem('token') || '';
+            await updateReportStatus(token, id, 'resolved');
             fetchReports();
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to resolve report');
+            alert(err.message || 'Failed to resolve report');
         }
     };
 
     const handleMarkPending = async (id: string) => {
         try {
-            const token = localStorage.getItem('token');
-            await axios.put(`/api/admin/reports/${id}`, { status: 'pending' }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const token = localStorage.getItem('token') || '';
+            await updateReportStatus(token, id, 'pending');
             fetchReports();
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to update report');
+            alert(err.message || 'Failed to update report');
         }
     };
 
@@ -59,13 +53,11 @@ export default function ReportsTab() {
         if (!confirm('Are you sure you want to delete this report?')) return;
 
         try {
-            const token = localStorage.getItem('token');
-            await axios.delete(`/api/admin/reports/${id}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const token = localStorage.getItem('token') || '';
+            await deleteReport(token, id);
             fetchReports();
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to delete report');
+            alert(err.message || 'Failed to delete report');
         }
     };
 

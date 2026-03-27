@@ -506,12 +506,6 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
                           <div className="absolute -top-1 sm:-top-2 -left-1 sm:-left-2 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg z-20 border-2 border-white">
                             <span className="text-black font-bold text-xs sm:text-sm">#{idx + 1}</span>
                           </div>
-                          {(bot.clickCount || 0) > 0 && (
-                            <div className="absolute -top-1 sm:-top-2 -right-1 sm:-right-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full shadow-lg z-20 border border-white/20 max-w-[60px] sm:max-w-none truncate">
-                              <span className="hidden sm:inline">{bot.clickCount} {t('common.uses')}</span>
-                              <span className="sm:hidden">{bot.clickCount}</span>
-                            </div>
-                          )}
                         </motion.div>
                       ))}
                       {feedCampaigns.length > 0 && (

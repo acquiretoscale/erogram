@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { getScrapeLogs, deleteScrapeLog, backfillScrapeLogs } from '@/lib/actions/ofmAdmin';
 
 interface ScrapeLog {
   _id: string;
@@ -103,11 +104,7 @@ export default function LogsPage() {
     setBackfillResult(null);
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch('/api/OFM/scrape-logs/backfill', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
+      const data = await backfillScrapeLogs(token || '');
       if (data.success) {
         const failedNote = data.failedSearchQueries > 0
           ? ` (${data.failedSearchQueries} failed search queries skipped — they didn't cost credits)`
@@ -117,10 +114,10 @@ export default function LogsPage() {
         );
         fetchLogs();
       } else {
-        setBackfillResult(`Error: ${data.error}`);
+        setBackfillResult('Error: Backfill failed');
       }
-    } catch (e: any) {
-      setBackfillResult(`Error: ${e.message}`);
+    } catch (e: unknown) {
+      setBackfillResult(`Error: ${e instanceof Error ? e.message : 'Unknown error'}`);
     } finally {
       setBackfilling(false);
     }
@@ -130,22 +127,19 @@ export default function LogsPage() {
     setLoading(true);
     const token = localStorage.getItem('token');
     try {
-      const params = new URLSearchParams({
-        page: String(page),
-        limit: '50',
+      const data = await getScrapeLogs(token || '', {
+        page,
+        limit: 50,
         source: sourceFilter,
         status: statusFilter,
       });
-      const res = await fetch(`/api/OFM/scrape-logs?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
       setLogs(data.logs || []);
       setTotal(data.total || 0);
       setPages(data.pages || 1);
       if (data.stats) setStats(data.stats);
-    } catch {
+    } catch (err: unknown) {
       setLogs([]);
+      alert(err instanceof Error ? err.message : 'Failed to load logs');
     } finally {
       setLoading(false);
     }
@@ -159,15 +153,11 @@ export default function LogsPage() {
     if (!confirm('Delete this log entry?')) return;
     const token = localStorage.getItem('token');
     try {
-      await fetch('/api/OFM/scrape-logs', {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
-      });
+      await deleteScrapeLog(token || '', id);
       setLogs((prev) => prev.filter((l) => l._id !== id));
       setTotal((prev) => prev - 1);
-    } catch {
-      alert('Failed to delete');
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to delete');
     }
   };
 
@@ -175,19 +165,14 @@ export default function LogsPage() {
     if (!confirm('Delete ALL scrape logs? This cannot be undone.')) return;
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch('/api/OFM/scrape-logs', {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clearAll: true }),
-      });
-      const data = await res.json();
+      const data = await deleteScrapeLog(token || '', undefined, true);
       if (data.success) {
         setLogs([]);
         setTotal(0);
         setStats(null);
       }
-    } catch {
-      alert('Failed to clear logs');
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to clear logs');
     }
   };
 

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import {
   Bell, Bot, MessageSquareWarning, Flag, Users, Star, User, Layers, X, Check,
 } from 'lucide-react';
+import { getAdminNotifications } from '@/lib/actions/adminStats';
 
 type NotifType = 'pending_group' | 'pending_bot' | 'pending_review' | 'pending_report' | 'new_user' | 'new_sale' | 'new_bot';
 
@@ -67,16 +68,11 @@ export default function NotificationBell() {
     if (!token) return;
     if (!silent) setLoading(true);
     try {
-      const res = await fetch('/api/admin/notifications', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return;
-      const data = await res.json();
+      const data = await getAdminNotifications(token);
       const incoming: Notif[] = data.notifications || [];
       setNotifs(incoming);
       setUrgentCount(data.urgentCount || 0);
 
-      // Compute unread = items not in seenIds
       setSeenIds(prev => {
         const newUnseen = incoming.filter(n => !prev.has(n.id)).length;
         setUnread(newUnseen);

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { getOFMStats } from '@/lib/actions/ofm';
 
 type CategoryCount = { _id: string; count: number };
 type TopCreator = { _id: string; name: string; username: string; subscriberCount: number; avatar: string; isFree: boolean; price: number };
@@ -30,12 +31,17 @@ export default function OFMOverview() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    fetch('/api/OFM/stats', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
-      .then(d => setStats(d))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    const token = localStorage.getItem('token') || '';
+    (async () => {
+      try {
+        const data = await getOFMStats(token);
+        setStats(data);
+      } catch {
+        /* silent */
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
   if (loading) {
@@ -135,7 +141,7 @@ export default function OFMOverview() {
         {[
           { href: '/OFM/creators', label: 'Manage Creators', desc: 'Browse, edit, delete', icon: '👥' },
           { href: '/OFM/scrape', label: 'Scrape Data', desc: 'Pull from OnlyFans', icon: '🔄' },
-          { href: '/onlyfans-search', label: 'View Public Page', desc: 'See live search page', icon: '🌐' },
+          { href: '/onlyfanssearch', label: 'View Public Page', desc: 'See live search page', icon: '🌐' },
         ].map((item) => (
           <Link
             key={item.href}

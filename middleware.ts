@@ -12,9 +12,9 @@ import { NextRequest, NextResponse } from 'next/server';
  * existing Google rankings are 100% preserved.
  *
  * OnlyFans SEO rewrites:
- * - /{cat}onlyfans               → /onlyfans-search/{cat}
- * - /onlyfans{country}           → /onlyfans-search/country/{country}
- * - /onlyfans{country}/{cat}onlyfans → /onlyfans-search/country/{country}/{cat}
+ * - /{cat}onlyfans               → /onlyfanssearch/{cat}
+ * - /onlyfans{country}           → /onlyfanssearch/country/{country}
+ * - /onlyfans{country}/{cat}onlyfans → /onlyfanssearch/country/{country}/{cat}
  */
 
 // Block referral traffic from Turkish Yandex only. Russian Yandex (.ru) is kept.
@@ -38,7 +38,8 @@ const LOCALE_PREFIXES = ['de', 'es'] as const;
 const OF_CAT_SLUGS = new Set([
   'asian','blonde','teen','milf','amateur','redhead','fitness','joi',
   'lesbian','streamer','petite','big-ass','big-boobs','brunette',
-  'ahegao','alt','cosplay','goth','latina',
+  'ahegao','alt','cosplay','goth','latina','tattoo','curvy','ebony',
+  'feet','lingerie','thick','twerk','squirt','piercing',
 ]);
 const OF_COUNTRY_SLUGS = new Set([
   'france','germany','spain','italy','uk','usa','brazil','colombia',
@@ -61,7 +62,7 @@ export function middleware(request: NextRequest) {
     const [, country, cat] = combo;
     if (OF_COUNTRY_SLUGS.has(country) && OF_CAT_SLUGS.has(cat)) {
       const url = request.nextUrl.clone();
-      url.pathname = `/onlyfans-search/country/${country}/${cat}`;
+      url.pathname = `/onlyfanssearch/country/${country}/${cat}`;
       const res = NextResponse.rewrite(url);
       res.headers.set('x-locale', 'en');
       res.headers.set('x-pathname', pathname);
@@ -69,13 +70,13 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Pattern: /{cat}onlyfans → /onlyfans-search/{cat}
+  // Pattern: /{cat}onlyfans → /onlyfanssearch/{cat}
   const catMatch = pathname.match(/^\/([a-z]+(?:-[a-z]+)*)onlyfans$/);
   if (catMatch) {
     const cat = catMatch[1];
     if (OF_CAT_SLUGS.has(cat)) {
       const url = request.nextUrl.clone();
-      url.pathname = `/onlyfans-search/${cat}`;
+      url.pathname = `/onlyfanssearch/${cat}`;
       const res = NextResponse.rewrite(url);
       res.headers.set('x-locale', 'en');
       res.headers.set('x-pathname', pathname);
@@ -83,13 +84,13 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Pattern: /onlyfans{country} → /onlyfans-search/country/{country}
+  // Pattern: /onlyfans{country} → /onlyfanssearch/country/{country}
   const countryMatch = pathname.match(/^\/onlyfans([a-z]+)$/);
   if (countryMatch) {
     const country = countryMatch[1];
     if (OF_COUNTRY_SLUGS.has(country)) {
       const url = request.nextUrl.clone();
-      url.pathname = `/onlyfans-search/country/${country}`;
+      url.pathname = `/onlyfanssearch/country/${country}`;
       const res = NextResponse.rewrite(url);
       res.headers.set('x-locale', 'en');
       res.headers.set('x-pathname', pathname);
@@ -108,8 +109,8 @@ export function middleware(request: NextRequest) {
   }
 
   // ── Localized OnlyFans search paths ─────────────────────────────────────────
-  // /de/onlyfans-suche* → rewrite to /onlyfans-search*, x-locale: de
-  // /es/onlyfans-busca* → rewrite to /onlyfans-search*, x-locale: es
+  // /de/onlyfans-suche* → rewrite to /onlyfanssearch*, x-locale: de
+  // /es/onlyfans-busca* → rewrite to /onlyfanssearch*, x-locale: es
   const OF_LOCALE_SEGMENTS: Record<string, string> = {
     de: 'onlyfans-suche',
     es: 'onlyfans-busca',
@@ -120,7 +121,7 @@ export function middleware(request: NextRequest) {
     if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
       const rest = pathname.slice(prefix.length);
       const url = request.nextUrl.clone();
-      url.pathname = `/onlyfans-search${rest}`;
+      url.pathname = `/onlyfanssearch${rest}`;
       const res = NextResponse.rewrite(url);
       res.headers.set('x-locale', loc);
       res.headers.set('x-pathname', pathname);
@@ -128,16 +129,23 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // 301: /de/onlyfans-search* → /de/onlyfans-suche* (and ES equivalent)
-  // Catches any old links or direct access to the non-localized path.
+  // 301: /de/onlyfanssearch* → /de/onlyfans-suche* (and ES equivalent)
   for (const [loc, seg] of Object.entries(OF_LOCALE_SEGMENTS)) {
-    const oldPrefix = `/${loc}/onlyfans-search`;
+    const oldPrefix = `/${loc}/onlyfanssearch`;
     if (pathname === oldPrefix || pathname.startsWith(`${oldPrefix}/`)) {
       const rest = pathname.slice(oldPrefix.length);
       const url = request.nextUrl.clone();
       url.pathname = `/${loc}/${seg}${rest}`;
       return NextResponse.redirect(url, 301);
     }
+  }
+
+  // 301: old /onlyfans-search* → /onlyfanssearch* (preserve old links)
+  if (pathname === '/onlyfans-search' || pathname.startsWith('/onlyfans-search/')) {
+    const rest = pathname.slice('/onlyfans-search'.length);
+    const url = request.nextUrl.clone();
+    url.pathname = `/onlyfanssearch${rest}`;
+    return NextResponse.redirect(url, 301);
   }
 
   // English-only sections: articles and AI NSFW are never translated.

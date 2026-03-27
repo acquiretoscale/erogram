@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { getSiteConfig, updateSiteConfig } from '@/lib/actions/adminConfig';
 
 export default function SettingsTab() {
     const [config, setConfig] = useState<any>({
@@ -28,29 +28,27 @@ export default function SettingsTab() {
 
     const fetchConfig = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.get('/api/admin/site-config', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const token = localStorage.getItem('token') ?? '';
+            const data = await getSiteConfig(token);
 
-            if (res.data && res.data.generalSettings) {
+            if (data && data.generalSettings) {
                 setConfig((prev: any) => ({
                     ...prev,
-                    ...res.data.generalSettings
+                    ...data.generalSettings
                 }));
             }
-            if (res.data?.filterButton) {
+            if (data?.filterButton) {
                 setConfig((prev: any) => ({
                     ...prev,
-                    filterButtonText: res.data.filterButton.text || '',
-                    filterButtonUrl: res.data.filterButton.url || '',
+                    filterButtonText: data.filterButton.text || '',
+                    filterButtonUrl: data.filterButton.url || '',
                 }));
             }
-            if (res.data?.topBanner) {
+            if (data?.topBanner) {
                 setConfig((prev: any) => ({
                     ...prev,
-                    topBannerImageUrl: res.data.topBanner.imageUrl || '',
-                    topBannerUrl: res.data.topBanner.url || '',
+                    topBannerImageUrl: data.topBanner.imageUrl || '',
+                    topBannerUrl: data.topBanner.url || '',
                 }));
             }
             setError('');
@@ -67,14 +65,12 @@ export default function SettingsTab() {
         setSuccess(false);
 
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('token') ?? '';
             // Fetch current config first to avoid overwriting other settings
-            const currentConfigRes = await axios.get('/api/admin/site-config', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const currentConfig = await getSiteConfig(token);
 
             const newConfig = {
-                ...currentConfigRes.data,
+                ...currentConfig,
                 generalSettings: config,
                 filterButton: {
                     text: config.filterButtonText ?? '',
@@ -86,14 +82,12 @@ export default function SettingsTab() {
                 },
             };
 
-            await axios.put('/api/admin/site-config', newConfig, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await updateSiteConfig(token, newConfig);
 
             setSuccess(true);
             setTimeout(() => setSuccess(false), 3000);
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to save settings');
+            setError(err.message || 'Failed to save settings');
         } finally {
             setIsSaving(false);
         }

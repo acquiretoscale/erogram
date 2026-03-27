@@ -5,6 +5,8 @@ import axios from 'axios';
 import { compressImage } from '@/lib/utils/compressImage';
 import { categories, countries } from '@/app/groups/constants';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
+import { getAdverts, createAdvert, updateAdvert, deleteAdvert } from '@/lib/actions/adminAdverts';
+import { getSiteConfig, updateSiteConfig } from '@/lib/actions/adminConfig';
 
 // Component for rendering advert row with lazy-loaded image
 function AdvertRow({ advert, onEdit, onDelete }: { advert: any; onEdit: (advert: any) => void; onDelete: (id: string) => void }) {
@@ -128,13 +130,11 @@ export default function AdvertsTab() {
     const fetchAdverts = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.get('/api/admin/adverts', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setAdverts(res.data);
+            const data = await getAdverts(token || '');
+            setAdverts(data);
             setError('');
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to load adverts');
+            setError(err.message || 'Failed to load adverts');
         } finally {
             setIsLoading(false);
         }
@@ -143,14 +143,12 @@ export default function AdvertsTab() {
     const fetchSiteConfig = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.get('/api/admin/site-config', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (res.data) {
+            const data = await getSiteConfig(token || '');
+            if (data) {
                 // Normalize config data (handle backward compatibility)
-                const config = { ...siteConfig, ...res.data };
-                if (res.data.filterBanner && !res.data.filterBanner1) {
-                    config.filterBanner1 = res.data.filterBanner;
+                const config = { ...siteConfig, ...data };
+                if (data.filterBanner && !data.filterBanner1) {
+                    config.filterBanner1 = data.filterBanner;
                 }
                 // Remove navbarButton fields if they exist in response
                 delete config.navbarButton1;
@@ -168,13 +166,11 @@ export default function AdvertsTab() {
         setIsSavingConfig(true);
         try {
             const token = localStorage.getItem('token');
-            await axios.put('/api/admin/site-config', siteConfig, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await updateSiteConfig(token || '', siteConfig);
             alert('Site configuration saved successfully!');
             setShowSiteConfig(false);
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to save site config');
+            alert(err.message || 'Failed to save site config');
         } finally {
             setIsSavingConfig(false);
         }
@@ -298,20 +294,16 @@ export default function AdvertsTab() {
             const token = localStorage.getItem('token');
 
             if (editingAdvert) {
-                await axios.put(`/api/admin/adverts/${editingAdvert._id}`, advertData, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                await updateAdvert(token || '', editingAdvert._id, advertData);
             } else {
-                await axios.post('/api/admin/adverts', advertData, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                await createAdvert(token || '', advertData);
             }
 
             setShowEditor(false);
             fetchAdverts();
         } catch (err: any) {
             console.error('Save error:', err);
-            alert(err.response?.data?.message || 'Failed to save advert');
+            alert(err.message || 'Failed to save advert');
         } finally {
             setIsSaving(false);
         }
@@ -322,12 +314,10 @@ export default function AdvertsTab() {
 
         try {
             const token = localStorage.getItem('token');
-            await axios.delete(`/api/admin/adverts/${id}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await deleteAdvert(token || '', id);
             fetchAdverts();
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to delete advert');
+            alert(err.message || 'Failed to delete advert');
         }
     };
 

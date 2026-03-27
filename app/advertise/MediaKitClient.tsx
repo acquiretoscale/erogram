@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { getAdvertiseStats } from '@/lib/actions/publicData';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import AdvertiseStats from './AdvertiseStats';
@@ -27,8 +28,7 @@ export default function MediaKitClient() {
       const storedUsername = localStorage.getItem('username');
       if (storedUsername) setUsername(storedUsername);
     }
-    fetch('/api/advertise-stats', { cache: 'no-store' })
-      .then((r) => r.json())
+    getAdvertiseStats()
       .then((d) => { if (d.telegramEcosystem) setTgEcosystem(d.telegramEcosystem); })
       .catch(() => { });
   }, []);

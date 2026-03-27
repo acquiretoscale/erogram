@@ -1,3 +1,3 @@
 'use client';
-import AdminBotsPanel from '../components/AdminBotsPanel';
-export default function BotsPage() { return <AdminBotsPanel />; }
+import BotsTab from '../components/BotsTab';
+export default function BotsPage() { return <BotsTab />; }

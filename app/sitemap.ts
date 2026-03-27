@@ -3,7 +3,7 @@ import connectDB from '@/lib/db/mongodb';
 import { Group, Article, Bot } from '@/lib/models';
 import { categories, countries as constantCountries } from '@/app/groups/constants';
 import { LOCALES, LOCALE_HREFLANG, localePath } from '@/lib/i18n/config';
-import { OF_CATEGORIES, OF_COUNTRIES, ofCategoryUrl, ofCountryUrl, ofCountryCategoryUrl } from '@/app/onlyfans-search/constants';
+import { OF_CATEGORIES, OF_COUNTRIES, ofCategoryUrl, ofCountryUrl, ofCountryCategoryUrl } from '@/app/onlyfanssearch/constants';
 import { AI_NSFW_TOOLS } from '@/app/ainsfw/data';
 
 /** Build alternates object for a given path — tells Google about all language versions. */
@@ -169,30 +169,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Countries are stored as category tags — DE/ES paths treat them uniformly.
     const ofIndexRoute: MetadataRoute.Sitemap = [
       {
-        url: `${baseUrl}/onlyfans-search`,
+        url: `${baseUrl}/onlyfanssearch`,
         lastModified: new Date(),
         changeFrequency: 'daily',
         priority: 0.9,
         alternates: {
           languages: {
-            en: `${canonicalBase}/onlyfans-search`,
+            en: `${canonicalBase}/onlyfanssearch`,
             de: `${canonicalBase}/de/onlyfans-suche`,
             es: `${canonicalBase}/es/onlyfans-busca`,
-            'x-default': `${canonicalBase}/onlyfans-search`,
+            'x-default': `${canonicalBase}/onlyfanssearch`,
           },
         },
       },
       {
-        url: `${baseUrl}/onlyfans-search/top-creators-2026`,
+        url: `${baseUrl}/onlyfanssearch/top-creators-2026`,
         lastModified: new Date(),
         changeFrequency: 'daily',
         priority: 0.9,
         alternates: {
           languages: {
-            en: `${canonicalBase}/onlyfans-search/top-creators-2026`,
+            en: `${canonicalBase}/onlyfanssearch/top-creators-2026`,
             de: `${canonicalBase}/de/onlyfans-suche/top-creators-2026`,
             es: `${canonicalBase}/es/onlyfans-busca/top-creators-2026`,
-            'x-default': `${canonicalBase}/onlyfans-search/top-creators-2026`,
+            'x-default': `${canonicalBase}/onlyfanssearch/top-creators-2026`,
           },
         },
       },
@@ -246,20 +246,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       })),
     );
 
-    // Best {category} OnlyFans in 2026 pages
-    const of2026Routes: MetadataRoute.Sitemap = OF_CATEGORIES.map((cat) => ({
-      url: `${baseUrl}/onlyfans-search/${cat.slug}2026`,
+    // Best OnlyFans Accounts pages (/best-onlyfans-accounts/{category})
+    const bestOnlyfansIndexRoute: MetadataRoute.Sitemap = [
+      {
+        url: `${baseUrl}/best-onlyfans-accounts`,
+        lastModified: new Date(),
+        changeFrequency: 'daily',
+        priority: 0.9,
+        alternates: buildAlternates('/best-onlyfans-accounts', canonicalBase),
+      },
+    ];
+
+    const bestOnlyfansRoutes: MetadataRoute.Sitemap = OF_CATEGORIES.map((cat) => ({
+      url: `${baseUrl}/best-onlyfans-accounts/${cat.slug}`,
       lastModified: new Date(),
       changeFrequency: 'daily' as const,
       priority: 0.85,
-      alternates: {
-        languages: {
-          en: `${canonicalBase}/onlyfans-search/${cat.slug}2026`,
-          de: `${canonicalBase}/de/onlyfans-suche/${cat.slug}2026`,
-          es: `${canonicalBase}/es/onlyfans-busca/${cat.slug}2026`,
-          'x-default': `${canonicalBase}/onlyfans-search/${cat.slug}2026`,
-        },
-      },
+      alternates: buildAlternates(`/best-onlyfans-accounts/${cat.slug}`, canonicalBase),
     }));
 
     // ── AI NSFW Tools ──
@@ -294,7 +297,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ...ofCategoryRoutes,
       ...ofCountryRoutes,
       ...ofComboRoutes,
-      ...of2026Routes,
+      ...bestOnlyfansIndexRoute,
+      ...bestOnlyfansRoutes,
       ...ainsfwIndexRoute,
       ...ainsfwToolRoutes,
     ];

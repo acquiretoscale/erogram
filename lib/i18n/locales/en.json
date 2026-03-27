@@ -111,7 +111,9 @@
     "aboutTitle": "About Erogram - The #1 Porn & NSFW Telegram Directory",
     "aboutDesc": "Learn about Erogram, the ultimate directory for porn Telegram groups, NSFW channels, and AI companions. Safe, verified, and updated daily.",
     "ainsfwTitle": "Best AI NSFW Tools 2026 — AI Girlfriend, Undress AI & AI Chat",
-    "ainsfwDesc": "Discover the best AI NSFW tools of 2026. Browse curated AI Girlfriend apps, Undress AI generators, and AI Chat companions — reviewed and ranked by Erogram.pro."
+    "ainsfwDesc": "Discover the best AI NSFW tools of 2026. Browse curated AI Girlfriend apps, Undress AI generators, and AI Chat companions — reviewed and ranked by Erogram.pro.",
+    "bestOnlyfansIndexTitle": "Best OnlyFans Accounts & Creators Lists – Erogram",
+    "bestOnlyfansIndexDesc": "Browse our curated rankings of the best OnlyFans accounts and creators by category. Find the top OnlyFans profiles for every interest — updated daily."
   },
   "common": {
     "members": "Members",
@@ -221,6 +223,41 @@
     "wantMore": "Want to see more?",
     "wantMoreDesc": "We have thousands of other groups waiting for you.",
     "browseAll": "Browse All Groups"
+  },
+  "bestOnlyfans": {
+    "curatedTitle": "Curated",
+    "topLists": "Top Lists",
+    "indexDesc": "Explore our hand-picked rankings of the best OnlyFans accounts and creators for every category.",
+    "bestCategory": "Best {category} OnlyFans",
+    "top10": "Top 10 {category} creators",
+    "updated": "Updated {month} {year}",
+    "theBest": "The {count} Best {category} OnlyFans Accounts",
+    "theBestFallback": "The Best {category} OnlyFans Accounts",
+    "lookingFor": "Looking for the best {category} OnlyFans accounts in {year}? We've ranked the most popular, trending, and highest-rated creators for you to discover.",
+    "viewProfile": "View Profile",
+    "curatingMsg": "We are currently ranking the best creators for this category. Check back soon!",
+    "otherCategories": "Creators from other categories",
+    "view": "View",
+    "wantMore": "Want to see more?",
+    "wantMoreDesc": "We have thousands of other OnlyFans creators waiting for you.",
+    "browseAll": "Browse All Creators",
+    "free": "Free",
+    "likes": "likes",
+    "media": "media",
+    "faq": [
+      {
+        "q": "How do we rank the best {category} OnlyFans accounts?",
+        "a": "Our ranking is based on real user clicks, trending signals, likes count, and overall community popularity. The list is updated daily to reflect the most current data."
+      },
+      {
+        "q": "Are these {category} OnlyFans accounts verified?",
+        "a": "Yes, all creators listed on Erogram are verified OnlyFans accounts. We cross-reference profile data and activity to ensure authenticity."
+      },
+      {
+        "q": "How often is this list updated?",
+        "a": "Our best {category} OnlyFans ranking is updated daily. New creators are added and positions are recalculated based on the latest engagement data."
+      }
+    ]
   },
   "add": {
     "title": "Add Group or Bot",

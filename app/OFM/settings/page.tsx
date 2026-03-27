@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { getOFMSettings, updateOFMSettings } from '@/lib/actions/ofmAdmin';
 
 interface ApifyKey {
   _id: string;
@@ -29,34 +30,23 @@ export default function OFMSettingsPage() {
   const [newKey, setNewKey] = useState('');
   const [actorInput, setActorInput] = useState('');
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-
-  const headers = useCallback(
-    () => ({
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    }),
-    [token],
-  );
-
   const flash = (msg: string, ok: boolean) => {
     setToast({ msg, ok });
     setTimeout(() => setToast(null), 3000);
   };
 
   const fetchSettings = useCallback(async () => {
+    const token = localStorage.getItem('token');
     try {
-      const res = await fetch('/api/OFM/settings', { headers: headers() });
-      if (!res.ok) throw new Error('Failed to load');
-      const data = await res.json();
+      const data = await getOFMSettings(token || '');
       setSettings(data);
       setActorInput(data.apifyActor || '');
-    } catch {
-      flash('Failed to load settings', false);
+    } catch (err: unknown) {
+      flash(err instanceof Error ? err.message : 'Failed to load settings', false);
     } finally {
       setLoading(false);
     }
-  }, [headers]);
+  }, []);
 
   useEffect(() => {
     fetchSettings();
@@ -68,69 +58,55 @@ export default function OFMSettingsPage() {
       return;
     }
     setSaving(true);
+    const token = localStorage.getItem('token');
     try {
-      const res = await fetch('/api/OFM/settings', {
-        method: 'POST',
-        headers: headers(),
-        body: JSON.stringify({ action: 'add_key', label: newLabel.trim() || undefined, apiKey: newKey.trim() }),
+      const data = await updateOFMSettings(token || '', 'add_key', {
+        label: newLabel.trim() || undefined,
+        apiKey: newKey.trim(),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed');
       flash(`Key added (${data.total} total)`, true);
       setNewLabel('');
       setNewKey('');
       fetchSettings();
-    } catch (e: any) {
-      flash(e.message, false);
+    } catch (e: unknown) {
+      flash(e instanceof Error ? e.message : 'Failed', false);
     } finally {
       setSaving(false);
     }
   };
 
   const toggleKey = async (keyId: string, field: 'active' | 'burned') => {
+    const token = localStorage.getItem('token');
     try {
-      const res = await fetch('/api/OFM/settings', {
-        method: 'POST',
-        headers: headers(),
-        body: JSON.stringify({ action: 'toggle_key', keyId, field }),
-      });
-      if (!res.ok) throw new Error('Failed');
+      await updateOFMSettings(token || '', 'toggle_key', { keyId, field });
       fetchSettings();
-    } catch {
-      flash('Failed to update key', false);
+    } catch (err: unknown) {
+      flash(err instanceof Error ? err.message : 'Failed to update key', false);
     }
   };
 
   const removeKey = async (keyId: string) => {
     if (!confirm('Remove this API key?')) return;
+    const token = localStorage.getItem('token');
     try {
-      const res = await fetch('/api/OFM/settings', {
-        method: 'POST',
-        headers: headers(),
-        body: JSON.stringify({ action: 'remove_key', keyId }),
-      });
-      if (!res.ok) throw new Error('Failed');
+      await updateOFMSettings(token || '', 'remove_key', { keyId });
       flash('Key removed', true);
       fetchSettings();
-    } catch {
-      flash('Failed to remove key', false);
+    } catch (err: unknown) {
+      flash(err instanceof Error ? err.message : 'Failed to remove key', false);
     }
   };
 
   const updateActor = async () => {
     if (!actorInput.trim()) return;
     setSaving(true);
+    const token = localStorage.getItem('token');
     try {
-      const res = await fetch('/api/OFM/settings', {
-        method: 'POST',
-        headers: headers(),
-        body: JSON.stringify({ action: 'update_actor', actor: actorInput.trim() }),
-      });
-      if (!res.ok) throw new Error('Failed');
+      await updateOFMSettings(token || '', 'update_actor', { actor: actorInput.trim() });
       flash('Actor updated', true);
       fetchSettings();
-    } catch {
-      flash('Failed to update actor', false);
+    } catch (err: unknown) {
+      flash(err instanceof Error ? err.message : 'Failed to update actor', false);
     } finally {
       setSaving(false);
     }

@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
+import { getArticles, getArticle, createArticle, updateArticle, deleteArticle, getArticleStats } from '@/lib/actions/adminArticles';
+import { getAdvertisersDashboard } from '@/lib/actions/adminCampaigns';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { compressImage } from '@/lib/utils/compressImage';
@@ -79,11 +81,11 @@ export default function ArticlesTab() {
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (!token) return;
-        axios.get('/api/admin/advertisers-dashboard', { headers: { Authorization: `Bearer ${token}` } })
-            .then((res) => setAdvertisers(res.data?.advertisers ?? []))
+        getAdvertisersDashboard(token)
+            .then((data) => setAdvertisers(data?.advertisers ?? []))
             .catch(() => {});
-        axios.get('/api/admin/articles/stats', { headers: { Authorization: `Bearer ${token}` } })
-            .then((res) => setArticleStats({ totalClicks: res.data?.totalClicks ?? 0, totalClicks24h: res.data?.totalClicks24h ?? 0, totalClicks7d: res.data?.totalClicks7d ?? 0, totalClicks30d: res.data?.totalClicks30d ?? 0, count: res.data?.count ?? 0 }))
+        getArticleStats(token || '')
+            .then((data) => setArticleStats({ totalClicks: data?.totalClicks ?? 0, totalClicks24h: data?.totalClicks24h ?? 0, totalClicks7d: data?.totalClicks7d ?? 0, totalClicks30d: data?.totalClicks30d ?? 0, count: data?.count ?? 0 }))
             .catch(() => {});
     }, []);
 
@@ -91,16 +93,13 @@ export default function ArticlesTab() {
         setError('');
         setIsLoading(true);
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.get('/api/admin/articles', {
-                headers: { Authorization: `Bearer ${token}` },
-                params: { _: Date.now() },
-            });
-            setArticles(Array.isArray(res.data) ? res.data : []);
-        const statsRes = await axios.get('/api/admin/articles/stats', { headers: { Authorization: `Bearer ${token}` } });
-        setArticleStats({ totalClicks: statsRes.data?.totalClicks ?? 0, totalClicks24h: statsRes.data?.totalClicks24h ?? 0, totalClicks7d: statsRes.data?.totalClicks7d ?? 0, totalClicks30d: statsRes.data?.totalClicks30d ?? 0, count: statsRes.data?.count ?? 0 });
+            const token = localStorage.getItem('token') || '';
+            const list = await getArticles(token);
+            setArticles(Array.isArray(list) ? list : []);
+            const statsData = await getArticleStats(token);
+            setArticleStats({ totalClicks: statsData?.totalClicks ?? 0, totalClicks24h: statsData?.totalClicks24h ?? 0, totalClicks7d: statsData?.totalClicks7d ?? 0, totalClicks30d: statsData?.totalClicks30d ?? 0, count: statsData?.count ?? 0 });
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to load articles');
+            setError(err.message || 'Failed to load articles');
             setArticles([]);
         } finally {
             setIsLoading(false);
@@ -160,11 +159,8 @@ export default function ArticlesTab() {
             return;
         }
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.get(`/api/admin/articles/${article._id}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            const full = res.data;
+            const token = localStorage.getItem('token') || '';
+            const full = await getArticle(token, article._id);
             setArticleData((prev) => ({
                 ...prev,
                 content: full.content || '',
@@ -188,7 +184,7 @@ export default function ArticlesTab() {
             setEditingArticle(full);
         } catch (err: any) {
             console.error('Failed to load article:', err);
-            alert(err.response?.data?.message || 'Failed to load article');
+            alert(err.message || 'Failed to load article');
         }
     };
 
@@ -204,16 +200,12 @@ export default function ArticlesTab() {
         setIsSaving(true);
         setSaveSuccess('');
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('token') || '';
 
             if (editingArticle) {
-                await axios.put(`/api/admin/articles/${editingArticle._id}`, payload, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                await updateArticle(token, editingArticle._id, payload);
             } else {
-                await axios.post('/api/admin/articles', payload, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                await createArticle(token, payload);
             }
 
             setArticleData(prev => ({ ...prev, status: payload.status }));
@@ -223,7 +215,7 @@ export default function ArticlesTab() {
             setTimeout(() => setSaveSuccess(''), 3000);
         } catch (err: any) {
             console.error('Save error:', err);
-            alert(err.response?.data?.message || 'Failed to save article');
+            alert(err.message || 'Failed to save article');
         } finally {
             setIsSaving(false);
         }
@@ -237,13 +229,11 @@ export default function ArticlesTab() {
         if (!confirm('Are you sure you want to delete this article?')) return;
 
         try {
-            const token = localStorage.getItem('token');
-            await axios.delete(`/api/admin/articles/${id}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const token = localStorage.getItem('token') || '';
+            await deleteArticle(token, id);
             fetchArticles();
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to delete article');
+            alert(err.message || 'Failed to delete article');
         }
     };
 

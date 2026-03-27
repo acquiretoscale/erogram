@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Advert, FeedCampaign } from './types';
 import { useIsTelegramBrowser } from '../hooks/useIsTelegramBrowser';
+import { trackClick as trackCampaignClick, trackImpression } from '@/lib/actions/campaigns';
 
 interface AdvertCardProps {
     advert?: Advert;
@@ -80,11 +81,7 @@ function VideoAdCard({ campaign, handleClick }: { campaign: FeedCampaign; handle
                         video.play().catch(() => {});
                         if (!videoImpressionFiredRef.current) {
                             videoImpressionFiredRef.current = true;
-                            fetch('/api/campaigns/impression', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ campaignId: campaign._id }),
-                            }).catch(() => {});
+                            trackImpression(campaign._id);
                         }
                     } else {
                         video.pause();
@@ -258,11 +255,7 @@ function PremiumMosaicCard({ campaign, handleClick }: { campaign: FeedCampaign; 
         const observer = new IntersectionObserver(([entry]) => {
             if (entry.isIntersecting && !impressionFiredRef.current) {
                 impressionFiredRef.current = true;
-                fetch('/api/campaigns/impression', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ campaignId: campaign._id }),
-                }).catch(() => {});
+                trackImpression(campaign._id);
             }
         }, { threshold: 0.3 });
         observer.observe(el);
@@ -478,11 +471,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
     useEffect(() => {
         if (isInView && ad.isCampaign && ad._id && !impressionFiredRef.current) {
             impressionFiredRef.current = true;
-            fetch('/api/campaigns/impression', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ campaignId: ad._id }),
-            }).catch(() => {});
+            trackImpression(ad._id);
         }
     }, [isInView, ad.isCampaign, ad._id]);
 
@@ -520,11 +509,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
     const handleClick = () => {
         if (ad.isCampaign) {
-            fetch('/api/campaigns/track', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ campaignId: ad._id, placement: 'feed' }),
-            }).catch(() => {});
+            trackCampaignClick(ad._id, 'feed');
         } else {
             fetch('/api/adverts/track', {
                 method: 'POST',

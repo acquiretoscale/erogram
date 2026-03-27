@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
+import { getSiteConfig, updateSiteConfig } from '@/lib/actions/adminConfig';
 
 interface StoryCategoryConfig {
   slug: string;
@@ -90,12 +91,13 @@ export default function StoryCategoriesTab() {
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [configRes, slidesRes, groupsRes] = await Promise.all([
-        axios.get('/api/admin/site-config', authH()),
+      const t = token();
+      const [configData, slidesRes, groupsRes] = await Promise.all([
+        getSiteConfig(t),
         axios.get('/api/admin/story-content', authH()),
         axios.get('/api/admin/story-groups', authH()).catch(() => ({ data: { groups: [] } })),
       ]);
-      const gs = configRes.data?.generalSettings || {};
+      const gs = configData?.generalSettings || {};
       const saved: StoryCategoryConfig[] = Array.isArray(gs.storyCategories) ? gs.storyCategories : [];
       setCategories(saved.length > 0 ? saved : DEFAULT_CATEGORIES);
       setStoriesVisible(gs.showStories !== false);
@@ -118,12 +120,12 @@ export default function StoryCategoriesTab() {
       setIsSaving(true); setSaveMsg(null);
       const t = token();
       if (!t) { setSaveMsg({ ok: false, text: 'Not logged in' }); return; }
-      await axios.put('/api/admin/site-config', { generalSettings: { storyCategories: toSave } }, authH());
+      await updateSiteConfig(t, { generalSettings: { storyCategories: toSave } });
       setCategories(toSave);
       setSaveMsg({ ok: true, text: 'Saved!' });
       setTimeout(() => setSaveMsg(null), 2500);
     } catch (err: any) {
-      setSaveMsg({ ok: false, text: err?.response?.status === 401 ? 'Session expired' : 'Save failed' });
+      setSaveMsg({ ok: false, text: err?.message === 'Unauthorized' ? 'Session expired' : (err?.message || 'Save failed') });
     } finally {
       setIsSaving(false);
     }
@@ -133,7 +135,7 @@ export default function StoryCategoriesTab() {
     const newVal = !storiesVisible;
     setStoriesVisible(newVal);
     try {
-      await axios.put('/api/admin/site-config', { generalSettings: { showStories: newVal } }, authH());
+      await updateSiteConfig(token(), { generalSettings: { showStories: newVal } });
       setSaveMsg({ ok: true, text: newVal ? 'Stories visible' : 'Stories hidden' });
       setTimeout(() => setSaveMsg(null), 2500);
     } catch {

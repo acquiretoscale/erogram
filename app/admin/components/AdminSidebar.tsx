@@ -1,5 +1,6 @@
 'use client';
 
+import { getPendingCounts } from '@/lib/actions/adminStats';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -43,7 +44,7 @@ const tabs: TabItem[] = [
     { href: '/admin/stories',          name: 'Stories',         icon: BookOpen },
     { href: '/admin/articles',         name: 'Articles',        icon: FileText },
     { href: '/admin/ainsfw',            name: 'AI NSFW',         icon: Sparkles },
-    { href: '/admin/onlyfans',         name: 'OFM',             icon: Crown },
+    { href: '/OFM',                     name: 'OFM',             icon: Crown },
     { href: '/admin/advertisers',      name: 'Advertisers',     icon: Briefcase },
     { href: '/admin/users',            name: 'Users',           icon: User },
     { href: '/admin/settings',         name: 'Settings',        icon: Settings },
@@ -63,13 +64,8 @@ export default function AdminSidebar({
         try {
             const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
             if (!token) return;
-            const res = await fetch('/api/admin/pending-counts', {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setPendingTotal(data.total || 0);
-            }
+            const data = await getPendingCounts(token);
+            setPendingTotal(data.total || 0);
         } catch {}
     }, []);
 

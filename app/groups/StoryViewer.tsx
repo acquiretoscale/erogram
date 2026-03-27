@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import type { StoryCategory, StorySlide, StoryMediaSlide, StoryGroup, PremiumGroupItem } from './types';
+import { trackStoryClick, trackStoryLike } from '@/lib/actions/stories';
 
 interface StoryViewerProps {
   storyData: StoryCategory[];
@@ -265,12 +266,7 @@ export default function StoryViewer({
     setTimeout(() => setShowHeartAnim(false), 900);
 
     try {
-      fetch('/api/stories/like', {
-        method: 'POST',
-        body: JSON.stringify({ slideId: currentSlideId }),
-        headers: { 'Content-Type': 'application/json' },
-        keepalive: true,
-      }).catch(() => {});
+      trackStoryLike(currentSlideId);
     } catch { /* non-critical */ }
   }, [currentSlideId, likedSlides]);
 
@@ -386,12 +382,7 @@ export default function StoryViewer({
             onCtaClick={() => {
               const id = currentSlide.data._id;
               if (!id.startsWith('rg-') && !id.startsWith('ad-')) {
-                fetch('/api/stories/click', {
-                  method: 'POST',
-                  body: JSON.stringify({ slideId: id }),
-                  headers: { 'Content-Type': 'application/json' },
-                  keepalive: true,
-                }).catch(() => {});
+                trackStoryClick(id);
               }
             }}
           />

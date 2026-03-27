@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { getLatestSale } from '@/lib/actions/adminStats';
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -86,11 +87,7 @@ export default function AdminSaleAlert() {
     const token = localStorage.getItem('token');
     if (!token) return;
     try {
-      const res = await fetch(`/api/admin/push/latest-sale?since=${lastPollRef.current}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return;
-      const { sale, newUser } = await res.json();
+      const { sale, newUser } = await getLatestSale(token, lastPollRef.current);
       if (sale || newUser) lastPollRef.current = Date.now();
       if (sale) addToast({ type: 'sale', plan: sale.plan, method: sale.method, username: sale.username });
       if (newUser) addToast({ type: 'newUser', username: newUser.username, provider: newUser.provider });

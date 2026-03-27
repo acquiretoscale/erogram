@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { getOFMTrending } from '@/lib/actions/ofm';
+import { importOFMCreator } from '@/lib/actions/ofmAdmin';
 
 type TrendingSlot = { _id: string; position: number; name: string } | null;
 
@@ -30,10 +32,9 @@ export default function ImportPage() {
   const [slots, setSlots] = useState<TrendingSlot[]>([null, null, null, null]);
 
   const loadSlots = useCallback(async () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || '';
     try {
-      const res = await fetch('/api/OFM/trending', { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
+      const data = await getOFMTrending(token);
       const mapped: TrendingSlot[] = [null, null, null, null];
       if (Array.isArray(data)) {
         for (const s of data) if (s.position >= 1 && s.position <= 4) mapped[s.position - 1] = s;
@@ -55,29 +56,20 @@ export default function ImportPage() {
     setSource('');
     setWarning('');
 
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || '';
     try {
-      const res = await fetch('/api/OFM/import', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: cleaned,
-          categories: categories ? categories.split(',').map(s => s.trim()).filter(Boolean) : [],
-          trendingSlot: trendingSlot > 0 ? trendingSlot : undefined,
-        }),
+      const data = await importOFMCreator(token, {
+        username: cleaned,
+        categories: categories ? categories.split(',').map(s => s.trim()).filter(Boolean) : [],
+        trendingSlot: trendingSlot > 0 ? trendingSlot : undefined,
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Import failed');
-      } else {
-        setResult(data.creator);
-        setTrendingResult(data.trending || null);
-        setSource(data.source || 'manual');
-        setWarning(data.warning || '');
-        loadSlots();
-      }
-    } catch {
-      setError('Network error');
+      setResult(data.creator);
+      setTrendingResult(data.trending || null);
+      setSource(data.source || 'manual');
+      setWarning(data.warning || '');
+      loadSlots();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Import failed');
     } finally {
       setLoading(false);
     }

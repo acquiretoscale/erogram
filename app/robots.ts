@@ -14,7 +14,7 @@ export default function robots(): MetadataRoute.Robots {
       },
       {
         userAgent: 'GPTBot',
-        allow: ['/', '/groups', '/bots', '/articles', '/best-telegram-groups', '/about', '/onlyfans-search', '/ainsfw'],
+        allow: ['/', '/groups', '/bots', '/articles', '/best-telegram-groups', '/about', '/onlyfanssearch', '/ainsfw'],
         disallow: commonDisallow,
       },
       {

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { getBots, updateBot, deleteBot, moveBotToGroup } from '@/lib/actions/adminBots';
 import { compressImage } from '@/lib/utils/compressImage';
 import { categories, countries } from '@/app/bots/constants';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
@@ -44,13 +45,11 @@ export default function BotsTab() {
     const fetchBots = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.get('/api/admin/bots', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setBots(res.data);
+            const data = await getBots(token || '');
+            setBots(data);
             setError('');
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to load bots');
+            setError(err.message || 'Failed to load bots');
         } finally {
             setIsLoading(false);
         }
@@ -144,9 +143,7 @@ export default function BotsTab() {
         try {
             const token = localStorage.getItem('token');
             if (editingBot) {
-                await axios.put(`/api/admin/bots/${editingBot._id}`, botData, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                await updateBot(token || '', editingBot._id, botData);
             } else {
                 alert('Creating bots from admin panel is not supported.');
                 return;
@@ -155,7 +152,7 @@ export default function BotsTab() {
             fetchBots();
         } catch (err: any) {
             console.error('Save error:', err);
-            alert(err.response?.data?.message || 'Failed to save bot');
+            alert(err.message || 'Failed to save bot');
         } finally {
             setIsSaving(false);
         }
@@ -165,12 +162,10 @@ export default function BotsTab() {
         if (!confirm('Are you sure you want to delete this bot?')) return;
         try {
             const token = localStorage.getItem('token');
-            await axios.delete(`/api/admin/bots/${id}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await deleteBot(token || '', id);
             fetchBots();
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to delete bot');
+            alert(err.message || 'Failed to delete bot');
         }
     };
 
@@ -178,13 +173,11 @@ export default function BotsTab() {
         if (!confirm(`Move "${name}" from Bots to Groups?`)) return;
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.post(`/api/admin/bots/${id}/move-to-group`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            alert(`Moved to groups! New slug: /groups/${res.data.slug}`);
+            const res = await moveBotToGroup(token || '', id);
+            alert(`Moved to groups! New slug: /groups/${res.slug}`);
             fetchBots();
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to move to groups');
+            alert(err.message || 'Failed to move to groups');
         }
     };
 

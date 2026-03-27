@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getAdvertiseStats } from '@/lib/actions/publicData';
 
 interface TelegramGroup { name: string; memberCount: number }
 interface ClickSource { source: string; clicks: number }
@@ -94,8 +95,7 @@ export default function AdvertiseStats() {
   const statsRef = useRef<HTMLDivElement>(null);
 
   const fetchStats = useCallback(() => {
-    fetch('/api/advertise-stats', { cache: 'no-store' })
-      .then((r) => r.json())
+    getAdvertiseStats()
       .then((d) => {
         setData({
           totalViews: typeof d.totalViews === 'number' ? d.totalViews : 0,

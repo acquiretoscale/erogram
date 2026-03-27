@@ -1,5 +1,6 @@
 'use client';
 
+import { getPendingCounts } from '@/lib/actions/adminStats';
 import { useState, useEffect } from 'react';
 import PendingBotsTab from '../components/PendingBotsTab';
 import ReviewsTab from '../components/ReviewsTab';
@@ -23,13 +24,8 @@ export default function PendingActionsPage() {
       try {
         const token = localStorage.getItem('token');
         if (!token) return;
-        const res = await fetch('/api/admin/pending-counts', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setCounts({ bots: data.bots || 0, reviews: data.reviews || 0, reports: data.reports || 0 });
-        }
+        const data = await getPendingCounts(token);
+        setCounts({ bots: data.bots || 0, reviews: data.reviews || 0, reports: data.reports || 0 });
       } catch {}
     };
     fetchCounts();

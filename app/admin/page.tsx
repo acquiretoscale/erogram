@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import OverviewTab from './components/OverviewTab';
+import { getAdminOverview } from '@/lib/actions/adminOverview';
 
 type TrendPoint = { date: string; value: number };
 type Metric = { last24h?: number; lifetime?: number; trend30d?: TrendPoint[] };
@@ -34,12 +34,10 @@ export default function AdminOverviewPage() {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const res = await axios.get('/api/admin/overview', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setData(res.data);
+      if (!token) return;
+      const result = await getAdminOverview(token);
+      setData(result);
     } catch {
-      // Keep fallback UI defaults if request fails
     } finally {
       setLoading(false);
     }

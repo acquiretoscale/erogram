@@ -818,7 +818,7 @@ export const onlyFansCreatorSchema = new Schema(
   },
   { timestamps: true }
 );
-onlyFansCreatorSchema.index({ categories: 1 });
+onlyFansCreatorSchema.index({ categories: 1, clicks: -1 });
 onlyFansCreatorSchema.index({ clicks: -1 });
 onlyFansCreatorSchema.index({ featured: 1 });
 onlyFansCreatorSchema.index({ subscriberCount: -1 });
@@ -828,23 +828,40 @@ export const OnlyFansCreator = models.OnlyFansCreator || model('OnlyFansCreator'
 // Trending OF Creator — paid promoted spots shown on all onlyfans-search pages
 const trendingOFCreatorSchema = new Schema(
   {
-    name:       { type: String, required: true },
-    username:   { type: String, required: true },
-    avatar:     { type: String, default: '' },
-    url:        { type: String, required: true },
-    bio:        { type: String, default: '' },
-    categories: { type: [String], default: [] },
-    position:   { type: Number, min: 1, max: 12, required: true },
-    active:     { type: Boolean, default: true },
-    clicks:     { type: Number, default: 0 },
-    note:       { type: String, default: '' },
-    dealPrice:  { type: Number, default: 0 },
+    name:          { type: String, required: true },
+    username:      { type: String, required: true },
+    avatar:        { type: String, default: '' },
+    url:           { type: String, required: true },
+    bio:           { type: String, default: '' },
+    categories:    { type: [String], default: [] },
+    position:      { type: Number, min: 1, max: 12, required: true },
+    active:        { type: Boolean, default: true },
+    clicks:        { type: Number, default: 0 },
+    note:          { type: String, default: '' },
+    dealPrice:     { type: Number, default: 0 },
+    clickBudget:   { type: Number, default: 0 },   // 0 = unlimited; > 0 = auto-pause when clicks >= budget
+    dailyClickCap: { type: Number, default: 0 },   // 0 = unlimited; > 0 = stop counting after N clicks/day
+    isStarPick:    { type: Boolean, default: false }, // true = added by star button (NOT a paid client)
   },
   { timestamps: true },
 );
 trendingOFCreatorSchema.index({ position: 1 }, { unique: true });
 
 export const TrendingOFCreator = models.TrendingOFCreator || model('TrendingOFCreator', trendingOFCreatorSchema);
+
+// Daily click log for trending creators — powers the admin chart + daily cap enforcement
+const trendingClickDailySchema = new Schema(
+  {
+    creatorId: { type: Schema.Types.ObjectId, ref: 'TrendingOFCreator', required: true },
+    date:      { type: String, required: true }, // "YYYY-MM-DD"
+    clicks:    { type: Number, default: 0 },
+  },
+  { timestamps: false },
+);
+trendingClickDailySchema.index({ creatorId: 1, date: 1 }, { unique: true });
+trendingClickDailySchema.index({ date: 1 });
+
+export const TrendingClickDaily = models.TrendingClickDaily || model('TrendingClickDaily', trendingClickDailySchema);
 
 // OFM Settings — stores Apify API keys for rotation (when one is burned, next is used)
 export const ofmSettingsSchema = new Schema(

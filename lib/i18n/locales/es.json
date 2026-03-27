@@ -111,7 +111,9 @@
     "aboutTitle": "Sobre Erogram – El #1 Directorio Porno y NSFW de Telegram",
     "aboutDesc": "Conoce Erogram, el directorio definitivo de grupos porno de Telegram, canales NSFW y compañeros de IA. Seguro, verificado y actualizado diariamente.",
     "ainsfwTitle": "Mejores Herramientas AI NSFW 2026 — Novia IA, Undress AI & Chat IA",
-    "ainsfwDesc": "Descubre las mejores herramientas AI NSFW de 2026. Apps de novia IA, generadores Undress AI y compañeros de chat IA — curados y clasificados por Erogram.pro."
+    "ainsfwDesc": "Descubre las mejores herramientas AI NSFW de 2026. Apps de novia IA, generadores Undress AI y compañeros de chat IA — curados y clasificados por Erogram.pro.",
+    "bestOnlyfansIndexTitle": "Mejores Cuentas y Creadoras de OnlyFans – Erogram",
+    "bestOnlyfansIndexDesc": "Explora nuestros rankings de las mejores cuentas y creadoras de OnlyFans por categoría. Encuentra los mejores perfiles — actualizado diariamente."
   },
   "common": {
     "members": "Miembros",
@@ -221,6 +223,41 @@
     "wantMore": "¿Quieres ver más?",
     "wantMoreDesc": "Tenemos miles de otros grupos esperándote.",
     "browseAll": "Explorar todos los grupos"
+  },
+  "bestOnlyfans": {
+    "curatedTitle": "Seleccionados",
+    "topLists": "Listas destacadas",
+    "indexDesc": "Explora nuestros rankings seleccionados de las mejores cuentas y creadoras de OnlyFans para cada categoría.",
+    "bestCategory": "Mejores {category} OnlyFans",
+    "top10": "Top 10 creadoras de {category}",
+    "updated": "Actualizado en {month} {year}",
+    "theBest": "Las {count} mejores cuentas {category} de OnlyFans",
+    "theBestFallback": "Las mejores cuentas {category} de OnlyFans",
+    "lookingFor": "¿Buscas las mejores cuentas {category} de OnlyFans en {year}? Hemos clasificado las creadoras más populares y mejor valoradas para ti.",
+    "viewProfile": "Ver perfil",
+    "curatingMsg": "Estamos clasificando las mejores creadoras para esta categoría. ¡Vuelve pronto!",
+    "otherCategories": "Creadoras de otras categorías",
+    "view": "Ver",
+    "wantMore": "¿Quieres ver más?",
+    "wantMoreDesc": "Tenemos miles de otras creadoras de OnlyFans esperándote.",
+    "browseAll": "Explorar todas las creadoras",
+    "free": "Gratis",
+    "likes": "me gusta",
+    "media": "medios",
+    "faq": [
+      {
+        "q": "¿Cómo clasificamos las mejores cuentas {category} de OnlyFans?",
+        "a": "Nuestro ranking se basa en clics reales, señales de tendencia, cantidad de likes y popularidad. La lista se actualiza diariamente."
+      },
+      {
+        "q": "¿Están verificadas estas cuentas {category} de OnlyFans?",
+        "a": "Sí, todas las creadoras listadas en Erogram son cuentas verificadas de OnlyFans. Verificamos los datos de perfil y la actividad."
+      },
+      {
+        "q": "¿Con qué frecuencia se actualiza esta lista?",
+        "a": "Nuestro ranking de mejores {category} OnlyFans se actualiza diariamente con los datos de engagement más recientes."
+      }
+    ]
   },
   "add": {
     "title": "Añadir Grupo o Bot",

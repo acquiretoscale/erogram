@@ -9,19 +9,7 @@ import Navbar from '@/components/Navbar';
 import HeaderBanner from '@/components/HeaderBanner';
 import Footer from '@/components/Footer';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
-
-function trackArticleClick(slug: string, url: string, type: 'link' | 'cta') {
-  try {
-    fetch('/api/articles/track', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slug, url, type }),
-      keepalive: true,
-    });
-  } catch {
-    // fire-and-forget
-  }
-}
+import { trackArticleClick } from '@/lib/actions/articleTracking';
 
 interface Article {
   _id: string;

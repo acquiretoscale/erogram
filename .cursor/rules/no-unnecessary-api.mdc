@@ -1,56 +1,69 @@
 ---
-description: STOP creating API routes unless absolutely necessary. Use server actions and direct DB writes instead.
+description: "CRITICAL: NEVER create API routes. Use server actions. This is a hard constraint — violation breaks production costs."
 alwaysApply: true
 ---
 
-# NO UNNECESSARY API ROUTES
+# ABSOLUTE BAN ON NEW API ROUTES
 
-This project already has 176+ API routes. Most should have been server actions. STOP adding more.
+## STATUS: 116 routes remain after a painful cleanup. DO NOT ADD MORE.
 
-## When to use a server action (DEFAULT)
+This project was crippled by 176+ API routes that should have been server actions.
+We manually deleted 60 routes and migrated them. This took hours. DO NOT undo that work.
 
-- Saving a vote, review, rating, bookmark
-- Incrementing a counter (clicks, views, likes)
-- Sending an email or contact form
-- Any simple DB read/write triggered by a user action
-- Any CRUD that only your own components consume
+## THE RULE (non-negotiable)
+
+**NEVER create a file under `app/api/`** unless ALL of these are true:
+
+1. An external system (not our own frontend) must call this endpoint
+2. The caller cannot use a server action (e.g. webhook, sendBeacon, external mobile app)
+3. You have explicitly confirmed with the user that an API route is required
+
+If even ONE of those conditions is false → use a server action in `lib/actions/`.
+
+## BEFORE you write ANY `app/api/**/route.ts`
+
+STOP and ask yourself:
+
+- "Is this called by OUR OWN components?" → **Server action. Not an API route.**
+- "Is this a simple DB read/write?" → **Server action. Not an API route.**
+- "Could I import this function directly?" → **Server action. Not an API route.**
+- "Is this just a POST that returns JSON?" → **Server action. Not an API route.**
+
+## Server action pattern (ALWAYS use this)
 
 ```typescript
-// GOOD: server action in lib/actions/
+// lib/actions/myFeature.ts
 'use server';
 import connectDB from '@/lib/db/mongodb';
-import { SomeModel } from '@/lib/models';
+import { MyModel } from '@/lib/models';
 
-export async function trackClick(id: string) {
+export async function doSomething(id: string) {
   await connectDB();
-  await SomeModel.findByIdAndUpdate(id, { $inc: { clicks: 1 } });
+  return MyModel.findByIdAndUpdate(id, { $inc: { clicks: 1 } });
 }
 ```
 
-## When an API route is ACTUALLY needed
+Then import directly in your component — no fetch, no HTTP overhead, no new serverless function.
 
-- External webhooks (payment providers, cron services POST to your URL)
-- `sendBeacon()` tracking (only works with URLs, not server actions)
-- Endpoints consumed by external systems (mobile apps, third-party integrations)
-- File uploads requiring special request body handling
-- Infinite scroll / pagination fetched client-side with `fetch()`
+## The ONLY acceptable reasons for an API route
 
-## PROHIBITED
+- Webhook receiver (Stripe, Telegram, payment provider POSTs to us)
+- `sendBeacon()` target (browser API that only works with URLs)
+- Cron job endpoint (Vercel cron hits a URL)
+- External system integration (mobile app, third-party consumer)
+- Binary file serving (images, downloads)
+- File upload with special body handling
 
-- Creating an API route "just in case" or "for flexibility"
-- Creating an API route for a simple DB insert that one component uses
-- Creating multiple API routes that do the same thing (e.g. 8 separate "increment counter" routes)
-- Creating an API route when a server component prop or server action works
+## WHY this matters (real money)
 
-## Why this matters
+- Every `app/api/` file = a Vercel serverless function = cold start cost = $$$
+- Every API route = a file the AI reads = higher Cursor token usage = $$$
+- Every `fetch()` = HTTP round-trip vs direct function call = slower
+- More files = slower builds, harder debugging, more surface to secure
+- We already paid the price. Don't make us pay again.
 
-- Every API route = a separate Vercel serverless function = cold start cost
-- Every API route = a file to maintain, debug, and read context for
-- Every `fetch()` call = HTTP round-trip overhead vs direct server action call
-- More files = slower builds, higher Cursor token usage, harder debugging
-- API routes are public endpoints = security surface to protect
+## If you are uncertain
 
-## Rule of thumb
+Ask the user: "Should this be a server action in `lib/actions/` or do you specifically need an API route?"
 
-If the data flows from YOUR component to YOUR database and back, use a server action.
-If an EXTERNAL system needs to call you, use an API route.
+Default answer is ALWAYS server action.

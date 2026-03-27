@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import axios from 'axios';
+import { getUsers, updateUser, deleteUser } from '@/lib/actions/adminUsers';
 
 type PremiumFilter = 'all' | 'premium' | 'free';
 
@@ -25,14 +25,12 @@ export default function UsersTab() {
 
     const fetchUsers = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.get('/api/admin/users', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setUsers(res.data);
+            const token = localStorage.getItem('token') || '';
+            const data = await getUsers(token);
+            setUsers(data);
             setError('');
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to load users');
+            setError(err.message || 'Failed to load users');
         } finally {
             setIsLoading(false);
         }
@@ -47,14 +45,12 @@ export default function UsersTab() {
         if (!editingUser) return;
 
         try {
-            const token = localStorage.getItem('token');
-            await axios.put(`/api/admin/users/${editingUser}`, editFormData, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const token = localStorage.getItem('token') || '';
+            await updateUser(token, editingUser, editFormData);
             setEditingUser(null);
             fetchUsers();
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to update user');
+            alert(err.message || 'Failed to update user');
         }
     };
 
@@ -62,13 +58,11 @@ export default function UsersTab() {
         if (!confirm('Are you sure you want to delete this user?')) return;
 
         try {
-            const token = localStorage.getItem('token');
-            await axios.delete(`/api/admin/users/${id}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const token = localStorage.getItem('token') || '';
+            await deleteUser(token, id);
             fetchUsers();
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to delete user');
+            alert(err.message || 'Failed to delete user');
         }
     };
 

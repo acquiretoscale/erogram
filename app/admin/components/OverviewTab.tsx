@@ -1,5 +1,6 @@
 'use client';
 
+import { getLiveStats } from '@/lib/actions/adminStats';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -486,13 +487,9 @@ function useLiveStats(initialPageviews: number) {
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       if (!token) return;
-      const res = await fetch('/api/admin/live-stats', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return;
-      const json = await res.json();
-      if (json.totalPageviews) setTotalPageviews(json.totalPageviews);
-      if (json.activeVisitors != null) setActiveVisitors(json.activeVisitors);
+      const data = await getLiveStats(token);
+      if (data.totalPageviews) setTotalPageviews(data.totalPageviews);
+      if (data.activeVisitors != null) setActiveVisitors(data.activeVisitors);
     } catch {}
   }, []);
 

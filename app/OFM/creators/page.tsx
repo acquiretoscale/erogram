@@ -1,7 +1,15 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { OF_CATEGORIES } from '@/app/onlyfans-search/constants';
+import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
+import {
+  getOFMCreators,
+  deleteOFMCreator,
+  updateOFMCreator,
+  getOFMTrending,
+  createOFMTrendingSlot,
+} from '@/lib/actions/ofm';
+import { importOFMCreator } from '@/lib/actions/ofmAdmin';
 
 type Creator = {
   _id: string;
@@ -59,10 +67,9 @@ export default function CreatorsPage() {
   };
 
   const loadTrendingSlots = useCallback(async () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || '';
     try {
-      const res = await fetch('/api/OFM/trending', { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
+      const data = await getOFMTrending(token);
       const mapped: TrendingSlot[] = [null, null, null, null];
       if (Array.isArray(data)) {
         for (const s of data) {
@@ -75,23 +82,18 @@ export default function CreatorsPage() {
 
   const handleSendToSlot = async (creator: Creator, position: number) => {
     setSendingSlot(position);
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || '';
     try {
-      const res = await fetch('/api/OFM/trending', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: creator.name,
-          username: creator.username,
-          avatar: creator.avatar,
-          url: creator.url,
-          bio: creator.bio,
-          categories: creator.categories,
-          position,
-          active: true,
-        }),
+      await createOFMTrendingSlot(token, {
+        name: creator.name,
+        username: creator.username,
+        avatar: creator.avatar,
+        url: creator.url,
+        bio: creator.bio,
+        categories: creator.categories,
+        position,
+        active: true,
       });
-      if (!res.ok) throw new Error('Failed');
       showToast(`${creator.name} added to Trending Spot #${position}`);
       setSendToTrending(null);
       loadTrendingSlots();
@@ -106,23 +108,15 @@ export default function CreatorsPage() {
     const cleaned = importInput.trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?onlyfans\.com\//i, '').replace(/\/$/, '');
     if (!cleaned) return;
     setImporting(true);
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || '';
     try {
-      const res = await fetch('/api/OFM/import', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: cleaned }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        showToast(data.error || 'Import failed');
-      } else {
-        showToast(`Imported ${data.creator?.name || cleaned}`);
-        setImportInput('');
-        load(1);
-      }
-    } catch {
-      showToast('Import failed');
+      const data = await importOFMCreator(token, { username: cleaned });
+      showToast(`Imported ${data.creator?.name || cleaned}`);
+      setImportInput('');
+      load(1);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Import failed';
+      showToast(message);
     } finally {
       setImporting(false);
     }
@@ -130,21 +124,17 @@ export default function CreatorsPage() {
 
   const load = useCallback(async (p = page) => {
     setLoading(true);
-    const token = localStorage.getItem('token');
-    const params = new URLSearchParams({
-      page: String(p),
-      limit: '50',
-      sortBy,
-      sortDir,
-      ...(search && { search }),
-      ...(category && { category }),
-      ...(isFree && { isFree }),
-    });
+    const token = localStorage.getItem('token') || '';
     try {
-      const res = await fetch(`/api/OFM/creators?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const data = await getOFMCreators(token, {
+        page: p,
+        limit: 50,
+        sortBy,
+        sortDir,
+        ...(search && { search }),
+        ...(category && { category }),
+        ...(isFree && { isFree }),
       });
-      const data = await res.json();
       setCreators(data.creators || []);
       setTotal(data.total || 0);
       setPages(data.pages || 1);
@@ -160,32 +150,31 @@ export default function CreatorsPage() {
 
   const handleDelete = async () => {
     if (!deleteId) return;
-    const token = localStorage.getItem('token');
-    await fetch(`/api/OFM/creators/${deleteId}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    setDeleteId(null);
-    showToast('Creator deleted');
-    load(page);
+    const token = localStorage.getItem('token') || '';
+    try {
+      await deleteOFMCreator(token, deleteId);
+      setDeleteId(null);
+      showToast('Creator deleted');
+      load(page);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Delete failed';
+      showToast(message);
+    }
   };
 
   const handleSave = async () => {
     if (!editCreator?._id) return;
     setEditLoading(true);
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || '';
+    const { _id, ...patch } = editCreator;
     try {
-      const res = await fetch(`/api/OFM/creators/${editCreator._id}`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(editCreator),
-      });
-      if (!res.ok) throw new Error('Save failed');
+      await updateOFMCreator(token, _id, patch);
       showToast('Creator updated');
       setEditCreator(null);
       load(page);
-    } catch {
-      showToast('Failed to save');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to save';
+      showToast(message);
     } finally {
       setEditLoading(false);
     }

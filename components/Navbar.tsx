@@ -5,7 +5,9 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useTranslation, useLocalePath, useLocale } from '@/lib/i18n/client';
 import { LOCALES, type Locale, localePath as buildLocalePath } from '@/lib/i18n/config';
-import { OF_CATEGORIES } from '@/app/onlyfans-search/constants';
+import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
+import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
+import { getCampaignPlacement } from '@/lib/actions/publicData';
 
 const OF_SEARCH_VOLUMES: Record<string, string> = {
   asian:     '165K', blonde:   '142K', teen:    '128K',
@@ -83,8 +85,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
   }, []);
 
   useEffect(() => {
-    fetch('/api/campaigns/placement?slot=navbar-cta', { cache: 'no-store' })
-      .then(r => r.json())
+    getCampaignPlacement('navbar-cta')
       .then(d => { if (d?.campaign?.destinationUrl) setNavbarCta(d.campaign); })
       .catch(() => {});
   }, []);
@@ -164,18 +165,28 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-1.5 lg:gap-2">
 
-          {/* Pillar 1 — Telegram */}
+          {/* Pillar 1 — Telegram: Groups, Bots, +Add */}
           <Link href={lp('/groups')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold text-[#4ab3f4] bg-[#0088cc]/[0.10] border border-[#0088cc]/25 hover:bg-[#0088cc]/[0.18] hover:text-[#6ec6f7] transition-all whitespace-nowrap">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" className="shrink-0 opacity-80">
               <path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/>
             </svg>
-            {t('nav.groupsAndBots', 'Telegram NSFW')}
+            {t('nav.groups', 'Groups')}
+          </Link>
+          <Link href={lp('/bots')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold text-[#4ab3f4] bg-[#0088cc]/[0.10] border border-[#0088cc]/25 hover:bg-[#0088cc]/[0.18] hover:text-[#6ec6f7] transition-all whitespace-nowrap">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-80">
+              <rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="9" cy="16" r="1"/><circle cx="15" cy="16" r="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+            </svg>
+            {t('nav.bots', 'Bots')}
+          </Link>
+          <Link href={lp('/add')} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[13px] font-semibold text-emerald-400 bg-emerald-500/[0.10] border border-emerald-500/25 hover:bg-emerald-500/[0.18] hover:text-emerald-300 transition-all whitespace-nowrap">
+            <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            {t('nav.add', 'Add')}
           </Link>
 
           {/* Pillar 2 — OnlyFans Search */}
           <div className="relative" ref={ofRef} onMouseEnter={() => setOfOpen(true)} onMouseLeave={() => setOfOpen(false)}>
             <Link
-              href="/onlyfans-search"
+              href="/onlyfanssearch"
               className="inline-block px-3.5 py-1.5 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 shadow-sm transition-all whitespace-nowrap"
             >
               <span className="text-sm font-bold text-[#00AFF0]">OFsearch</span>
@@ -192,13 +203,13 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                 >
                   {/* Categories — 3 columns */}
                   <div className="px-2.5 pt-2 pb-0.5">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Best OnlyFans 2026</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Best OnlyFans Accounts</p>
                   </div>
                   <div className="grid grid-cols-3 px-1.5 pb-2 gap-px">
                     {OF_CATEGORIES.map((cat) => (
                       <Link
                         key={cat.slug}
-                        href={`/onlyfans-search/${cat.slug}2026`}
+                        href={`/best-onlyfans-accounts/${cat.slug}`}
                         onClick={() => setOfOpen(false)}
                         className="group flex items-center justify-between gap-0.5 px-2 py-1 rounded-lg hover:bg-[#00AFF0]/[0.07] transition-colors"
                       >
@@ -223,7 +234,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
             href={navbarCta?.destinationUrl ?? DEFAULT_NAVBAR_CTA.destinationUrl}
             target="_blank"
             rel="sponsored noopener noreferrer"
-            onClick={() => { if (navbarCta?._id) fetch('/api/campaigns/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campaignId: navbarCta._id, placement: 'navbar-cta' }) }).catch(() => {}); }}
+            onClick={() => { if (navbarCta?._id) trackCampaignClick(navbarCta._id, 'navbar-cta'); }}
             className={`px-3 py-1.5 rounded-lg ${PINK_CTA_NAV}`}
           >
             {(navbarCta?.description || navbarCta?.buttonText) || DEFAULT_NAVBAR_CTA.description}
@@ -267,7 +278,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                         </Link>
                       )}
                       {isAdminUser && (
-                        <Link href="/OFM" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-pink-400 hover:text-pink-300 hover:bg-pink-500/5 transition font-semibold">
+                        <Link href="/OFM" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-[#4ab3f4] hover:text-[#6ec6f7] hover:bg-[#0088cc]/5 transition font-semibold">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M8 12h8M12 8v8"/></svg>
                           OFM Admin
                         </Link>
@@ -327,12 +338,6 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
               </Link>
             </span>
           )}
-
-          {/* Add button */}
-          <Link href={lp('/add')} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[13px] font-semibold text-white/80 bg-white/[0.07] border border-white/[0.10] hover:bg-white/[0.13] hover:text-white transition-all whitespace-nowrap">
-            <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
-            {t('nav.add', 'Add')}
-          </Link>
 
           {/* Utility — Language switcher (far right) */}
           <div className="relative" ref={langRef}>
@@ -401,7 +406,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
           {/* Section: Directories */}
           <div className="space-y-1.5">
             <p className="px-1 text-[10px] font-black uppercase tracking-widest text-white/25">Explore</p>
-            {/* Telegram NSFW + Add (paired) */}
+            {/* Groups, Bots, +Add (trio) */}
             <div className="flex items-stretch rounded-lg overflow-hidden border border-[#0088cc]/25 divide-x divide-[#0088cc]/25">
               <Link
                 href={lp('/groups')}
@@ -411,12 +416,22 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="shrink-0 opacity-80">
                   <path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/>
                 </svg>
-                {t('nav.groupsAndBots', 'Telegram NSFW')}
+                {t('nav.groups', 'Groups')}
+              </Link>
+              <Link
+                href={lp('/bots')}
+                onClick={() => setIsMenuOpen(false)}
+                className="flex-1 flex items-center gap-2 px-4 py-2.5 text-[14px] font-semibold text-[#4ab3f4] bg-[#0088cc]/[0.10] hover:bg-[#0088cc]/[0.18] hover:text-[#6ec6f7] transition-all whitespace-nowrap"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-80">
+                  <rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="9" cy="16" r="1"/><circle cx="15" cy="16" r="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+                </svg>
+                {t('nav.bots', 'Bots')}
               </Link>
               <Link
                 href={lp('/add')}
                 onClick={() => setIsMenuOpen(false)}
-                className="flex items-center gap-1 px-3 py-2.5 text-[14px] font-semibold text-[#4ab3f4] bg-[#0088cc]/[0.10] hover:bg-[#0088cc]/[0.18] hover:text-[#6ec6f7] transition-all whitespace-nowrap"
+                className="flex items-center gap-1 px-3 py-2.5 text-[14px] font-semibold text-emerald-400 bg-emerald-500/[0.10] hover:bg-emerald-500/[0.18] hover:text-emerald-300 transition-all whitespace-nowrap"
               >
                 <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
                 {t('nav.add', 'Add')}
@@ -436,7 +451,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
             {/* OFsearch mobile */}
             <div>
               <Link
-                href="/onlyfans-search"
+                href="/onlyfanssearch"
                 onClick={() => setIsMenuOpen(false)}
                 className="flex items-center justify-between px-4 py-2.5 rounded-lg text-[14px] bg-white border border-gray-200 font-bold"
               >
@@ -447,7 +462,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                 onClick={() => setMobileOfOpen(!mobileOfOpen)}
                 className="w-full flex items-center justify-between px-4 py-2 mt-1 rounded-lg text-[12px] font-semibold text-white/50 hover:text-white/80 transition-colors"
               >
-                <span className="uppercase tracking-widest text-[9px] font-black">Best OnlyFans 2026</span>
+                <span className="uppercase tracking-widest text-[9px] font-black">Best OnlyFans Accounts</span>
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform ${mobileOfOpen ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6"/></svg>
               </button>
               {mobileOfOpen && (
@@ -455,7 +470,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                   {OF_CATEGORIES.map((cat) => (
                     <Link
                       key={cat.slug}
-                      href={`/onlyfans-search/${cat.slug}2026`}
+                      href={`/best-onlyfans-accounts/${cat.slug}`}
                       onClick={() => { setIsMenuOpen(false); setMobileOfOpen(false); }}
                       className="px-2 py-1.5 rounded-lg text-[11px] font-semibold text-white/60 hover:text-[#00AFF0] hover:bg-white/5 transition-colors truncate"
                     >
@@ -471,7 +486,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
               target="_blank"
               rel="sponsored noopener noreferrer"
               onClick={() => {
-                if (navbarCta?._id) fetch('/api/campaigns/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campaignId: navbarCta._id, placement: 'navbar-cta' }) }).catch(() => {});
+                if (navbarCta?._id) trackCampaignClick(navbarCta._id, 'navbar-cta');
                 setIsMenuOpen(false);
               }}
               className={`flex items-center justify-center px-4 py-2.5 rounded-lg ${PINK_CTA_NAV} text-[14px]`}
@@ -501,7 +516,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                   </Link>
                 )}
                 {isAdminUser && (
-                  <Link href="/OFM" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-[14px] font-semibold text-pink-400 bg-pink-500/[0.08] border border-pink-500/20 hover:bg-pink-500/[0.14] transition">
+                  <Link href="/OFM" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-[14px] font-semibold text-[#4ab3f4] bg-[#0088cc]/[0.08] border border-[#0088cc]/20 hover:bg-[#0088cc]/[0.14] transition">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M8 12h8M12 8v8"/></svg>
                     OFM Admin
                   </Link>

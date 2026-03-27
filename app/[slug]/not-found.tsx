@@ -149,7 +149,7 @@ export default async function NotFound() {
                   <span className="text-sm">🔥</span>
                   <h2 className="text-sm font-black text-white/90">Top OnlyFans Creators</h2>
                 </div>
-                <Link href="/onlyfans-search" className="text-[11px] font-bold text-[#00AFF0] hover:text-white transition">
+                <Link href="/onlyfanssearch" className="text-[11px] font-bold text-[#00AFF0] hover:text-white transition">
                   View all →
                 </Link>
               </div>
@@ -188,7 +188,7 @@ export default async function NotFound() {
                 ))}
               </div>
               <Link
-                href="/onlyfans-search"
+                href="/onlyfanssearch"
                 className="block mt-2.5 w-full text-center py-2.5 bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] hover:from-[#009ADB] hover:to-[#00BFE8] text-white font-bold text-xs rounded-xl transition-all"
               >
                 Search OnlyFans Creators

@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import dynamic from 'next/dynamic';
 import Navbar from '@/components/Navbar';
@@ -12,7 +11,8 @@ import { filterOptions, filterCategories } from './constants';
 import { Group, FeedCampaign, StoryCategory } from './types';
 import GroupCard from './GroupCard';
 import AdvertCard from './AdvertCard';
-import VirtualizedGroupGrid, { type TrendingOFCreator } from './VirtualizedGroupGrid';
+import VirtualizedGroupGrid from './VirtualizedGroupGrid';
+import { checkBookmarks } from '@/lib/actions/publicData';
 import GroupCardSkeleton from './GroupCardSkeleton';
 import StoryBar from './StoryBar';
 import type { VaultTeaserItem } from './VaultTeaserFeed';
@@ -47,9 +47,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   const STORY_SEEN_KEY = 'erogram:stories:seen:v1';
   const [username, setUsername] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState(initialCountry || 'All');
-  const [selectedType, setSelectedType] = useState<'all' | 'groups' | 'bots'>('all');
   const [selectedSort, setSelectedSort] = useState('random');
-  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [showAddGroupModal, setShowAddGroupModal] = useState(false);
@@ -100,7 +98,6 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   const [featuredGroups, setFeaturedGroups] = useState<Group[]>([]);
   const [featuredLoading, setFeaturedLoading] = useState(true);
   const [boostedGroup, setBoostedGroup] = useState<Group | null>(null);
-  const [trendingOFCreator, setTrendingOFCreator] = useState<TrendingOFCreator | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedGroupForReview, setSelectedGroupForReview] = useState<Group | null>(null);
   const [groupReviews, setGroupReviews] = useState<any[]>([]);
@@ -137,15 +134,6 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
       .catch(err => console.error('Failed to fetch featured groups:', err))
       .finally(() => setFeaturedLoading(false));
 
-    fetch('/api/onlyfans/trending')
-      .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          const pick = data[Math.floor(Math.random() * data.length)];
-          setTrendingOFCreator(pick);
-        }
-      })
-      .catch(() => {});
   }, []);
 
   const allGroupIds = useMemo(() => {
@@ -165,10 +153,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
     const uncheckedIds = allGroupIds.filter(id => !(id in bookmarkedMap));
     if (uncheckedIds.length === 0) return;
 
-    fetch(`/api/bookmarks/check?ids=${uncheckedIds.join(',')}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(res => res.json())
+    checkBookmarks(token, uncheckedIds)
       .then(data => {
         if (data.bookmarked) {
           setBookmarkedMap(prev => ({ ...prev, ...data.bookmarked }));
@@ -405,7 +390,6 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
         selectedSort === 'random' &&
         !debouncedSearchQuery &&
         selectedCategory === (initialCountry || 'All') &&
-        selectedType === 'all' &&
         regularGroups.length > 0
       ) {
         isFirstLoad.current = false;
@@ -418,8 +402,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
       try {
         const searchParam = debouncedSearchQuery ? `&search=${encodeURIComponent(debouncedSearchQuery)}` : '';
         const categoryParam = selectedCategory !== 'All' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
-        const typeParam = selectedType === 'all' ? '&type=all' : '';
-        const response = await fetch(`/api/groups?skip=0&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${typeParam}&locale=${locale}`, { cache: 'no-store' });
+        const response = await fetch(`/api/groups?skip=0&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}&locale=${locale}`, { cache: 'no-store' });
         const data = await response.json();
         if (!response.ok || !Array.isArray(data.groups)) {
           setGroupsLoadError(true);
@@ -450,7 +433,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
     fetchGroups();
     lastVisibleIndexRef.current = -1;
-  }, [selectedSort, debouncedSearchQuery, selectedCategory, selectedType]);
+  }, [selectedSort, debouncedSearchQuery, selectedCategory]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -462,12 +445,11 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
         setLoading(true);
         const searchParam = debouncedSearchQuery ? `&search=${encodeURIComponent(debouncedSearchQuery)}` : '';
         const categoryParam = selectedCategory !== 'All' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
-        const typeParam = selectedType === 'all' ? '&type=all' : '';
         const excludeParam = selectedSort === 'random' && regularGroups.length > 0
           ? `&exclude=${encodeURIComponent(regularGroups.map(g => g._id).join(','))}`
           : '';
         const skipParam = selectedSort === 'random' ? 0 : skip;
-        fetch(`/api/groups?skip=${skipParam}&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${typeParam}${excludeParam}&locale=${locale}`)
+        fetch(`/api/groups?skip=${skipParam}&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${excludeParam}&locale=${locale}`)
           .then(res => res.json())
           .then(data => {
             if (data.groups && data.groups.length > 0) {
@@ -489,7 +471,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [skip, loading, hasMore, selectedSort, debouncedSearchQuery, selectedCategory, selectedType, regularGroups]);
+  }, [skip, loading, hasMore, selectedSort, debouncedSearchQuery, selectedCategory, regularGroups]);
 
   const displayGroups = useMemo(() => {
     return regularGroups;
@@ -502,16 +484,19 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   };
 
   // Split feed campaigns by tier:
-  // Tier 1 → Top Groups section (position 2)
+  // Tier 1 → Top Groups section (slot 2)
+  // Tier 5 → Top Groups section (slot 4, Featured Bot)
   // Tier 2/3/4 → main grid (positions after 2, 7, 12 groups)
-  // Tier 5 → Featured Bot (position after 4 groups, groups feed only)
   const tier1Campaign = useMemo(() => {
     return feedCampaigns.find(c => c.tierSlot === 1) ?? null;
   }, [feedCampaigns]);
 
+  const tier5Campaign = useMemo(() => {
+    return feedCampaigns.find(c => c.tierSlot === 5) ?? null;
+  }, [feedCampaigns]);
+
   const gridCampaigns = useMemo(() => {
-    // Tier 1 goes to the Top Section; slots 2-5 go into the main grid
-    return feedCampaigns.filter(c => c.tierSlot !== 1);
+    return feedCampaigns.filter(c => c.tierSlot !== 1 && c.tierSlot !== 5);
   }, [feedCampaigns]);
 
   return (
@@ -614,31 +599,6 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                 </select>
               </div>
 
-              {/* Type filter: All / Groups / Bots */}
-              <div className="mb-6">
-                <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
-                  <span className="mr-2" suppressHydrationWarning>🏷️</span>
-                  Type
-                </label>
-                <select
-                  value={selectedType}
-                  onChange={(e) => {
-                    const val = e.target.value as 'all' | 'groups' | 'bots';
-                    if (val === 'bots') {
-                      const searchSuffix = debouncedSearchQuery ? `?search=${encodeURIComponent(debouncedSearchQuery)}` : '';
-                      router.push(`/bots${searchSuffix}`);
-                    } else {
-                      setSelectedType(val);
-                    }
-                  }}
-                  className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none transition-all"
-                >
-                  <option value="all" className="bg-[#222]">All (Groups & Bots)</option>
-                  <option value="groups" className="bg-[#222]">Groups only</option>
-                  <option value="bots" className="bg-[#222]">Bots only</option>
-                </select>
-              </div>
-
               {/* Search */}
               <div className="mb-6">
                 <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
@@ -664,16 +624,15 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                   className="w-full px-4 py-3 bg-[#b31b1b] hover:bg-[#c42b2b] text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
                 >
                   <span className="text-lg">🔍</span>
-                  {filterValue !== 'All' || selectedType !== 'all' || searchQuery
+                  {filterValue !== 'All' || searchQuery
                     ? t('groups.applyFilters')
                     : t('groups.showResults')}
                 </button>
 
-                {(filterValue !== 'All' || selectedType !== 'all' || searchQuery) && (
+                {(filterValue !== 'All' || searchQuery) && (
                   <button
                     onClick={() => {
                       handleFilterChange('All');
-                      setSelectedType('all');
                       setSearchQuery('');
                     }}
                     className="w-full px-4 py-3 bg-white/5 hover:bg-white/10 text-[#999] hover:text-white rounded-xl font-bold transition-colors border border-white/10"
@@ -750,7 +709,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                                 bookmarkId={bookmarkedMap[finalGroups[1]._id] || null}
                               />
                             ) : null}
-                            {(tier1Campaign && !isTelegram ? finalGroups.slice(1, 3) : finalGroups.slice(2, 4)).map((g, i) => (
+                            {(tier1Campaign && !isTelegram ? finalGroups.slice(1, 2) : finalGroups.slice(2, 3)).map((g, i) => (
                               <GroupCard
                                 key={`top-${g._id}`}
                                 group={g}
@@ -761,6 +720,28 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                                 bookmarkId={bookmarkedMap[g._id] || null}
                               />
                             ))}
+                            {tier5Campaign && !isTelegram ? (
+                              <AdvertCard
+                                key={`tier5-${tier5Campaign._id}`}
+                                campaign={tier5Campaign}
+                                isIndex={3}
+                                shouldPreload={true}
+                                onVisible={undefined}
+                              />
+                            ) : (() => {
+                              const fallback = tier1Campaign && !isTelegram ? finalGroups[2] : finalGroups[3];
+                              return fallback ? (
+                                <GroupCard
+                                  key={`top-${fallback._id}`}
+                                  group={fallback}
+                                  isIndex={3}
+                                  onOpenReviewModal={openReviewModal}
+                                  onOpenReportModal={openReportModal}
+                                  isBookmarked={!!bookmarkedMap[fallback._id]}
+                                  bookmarkId={bookmarkedMap[fallback._id] || null}
+                                />
+                              ) : null;
+                            })()}
                           </>
                         );
                       })()}
@@ -803,7 +784,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
               <div className="text-center mb-6">
                 <h1 className="text-2xl md:text-3xl font-black text-[#f5f5f5]">
-                  {selectedType === 'groups' ? t('groups.title') : selectedType === 'all' ? 'Telegram Groups & Bots' : t('groups.title')}
+                  Discover NSFW Telegram Groups
                 </h1>
               </div>
 
@@ -826,7 +807,6 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                   onOpenReportModal={openReportModal}
                   bookmarkedMap={bookmarkedMap}
                   vaultTeaserGroups={vaultTeaserGroups}
-                  trendingOFCreator={trendingOFCreator}
                 />
               </div>
 

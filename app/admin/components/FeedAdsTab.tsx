@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import { adminCreateCampaign, adminUpdateCampaign, adminDeleteCampaign, getAdvertisersDashboard } from '@/lib/actions/adminCampaigns';
 
 const FEED_SLOT_MAX = 12;
 
@@ -58,27 +58,24 @@ export default function FeedAdsTab() {
     feedPlacement: 'both' as 'groups' | 'bots' | 'both',
   });
 
-  const authHeaders = () => ({
-    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-  });
-
   const fetchData = async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await axios.get('/api/admin/advertisers-dashboard', authHeaders());
-      const allCampaigns: CampaignRow[] = res.data.campaigns ?? [];
+      const token = localStorage.getItem('token') || '';
+      const data = await getAdvertisersDashboard(token);
+      const allCampaigns: CampaignRow[] = data.campaigns ?? [];
       const feedOnly = allCampaigns.filter((c) => c.slot === 'feed');
       feedOnly.sort((a, b) => (a.position ?? 999) - (b.position ?? 999));
       setCampaigns(feedOnly);
-      setAdvertisers(res.data.advertisers ?? []);
+      setAdvertisers(data.advertisers ?? []);
     } catch (err: any) {
-      if (err.response?.status === 401) {
+      if (err.message === 'Unauthorized') {
         localStorage.removeItem('token');
         window.location.reload();
         return;
       }
-      setError(err.response?.data?.message || err.message || 'Failed to load');
+      setError(err.message || 'Failed to load');
     } finally {
       setLoading(false);
     }
@@ -150,6 +147,7 @@ export default function FeedAdsTab() {
     }
     setSaving(true);
     try {
+      const token = localStorage.getItem('token') || '';
       let position = slotToPosition(form.slot);
       const feedTier = Math.ceil(position / 3) as 1 | 2 | 3;
       const tierSlot = ((position - 1) % 3) + 1;
@@ -189,8 +187,7 @@ export default function FeedAdsTab() {
         payload.tierSlot = finalSlot;
       }
       if (editing) {
-        const res = await axios.put(`/api/admin/campaigns/${editing._id}`, payload, authHeaders());
-        if (res.status !== 200) throw new Error(res.data?.message || 'Update failed');
+        await adminUpdateCampaign(token, editing._id, payload);
       } else {
         const advertiserId = advertisers[0]?._id;
         if (!advertiserId) {
@@ -198,14 +195,14 @@ export default function FeedAdsTab() {
           setSaving(false);
           return;
         }
-        await axios.post('/api/admin/campaigns', { ...payload, advertiserId }, authHeaders());
+        await adminCreateCampaign(token, { ...payload, advertiserId });
       }
       await fetchData();
       setEditing(undefined);
       alert('Saved. Refresh the Groups page (or open it in a new tab) to see changes.');
     } catch (err: any) {
-      const msg = err.response?.data?.message ?? err.response?.data?.error ?? err.message ?? 'Save failed';
-      console.error('Feed ad save error:', err.response?.data ?? err);
+      const msg = err.message ?? 'Save failed';
+      console.error('Feed ad save error:', err);
       alert(typeof msg === 'string' ? msg : 'Save failed');
     } finally {
       setSaving(false);
@@ -215,10 +212,11 @@ export default function FeedAdsTab() {
   const remove = async (id: string) => {
     if (!confirm('Remove this ad from the feed?')) return;
     try {
-      await axios.delete(`/api/admin/campaigns/${id}`, authHeaders());
+      const token = localStorage.getItem('token') || '';
+      await adminDeleteCampaign(token, id);
       await fetchData();
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Delete failed');
+      alert(err.message || 'Delete failed');
     }
   };
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { getSearchQueries, deleteSearchQuery, resetStuckQueries } from '@/lib/actions/ofmAdmin';
 
 interface SearchQueryItem {
   _id: string;
@@ -47,19 +48,14 @@ export default function QueriesPage() {
     setResetting(true);
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch('/api/OFM/search-queries', {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reset-stuck' }),
-      });
-      const data = await res.json();
+      const data = await resetStuckQueries(token || '');
       if (data.success) {
         setResetResult(`Reset ${data.reset} stuck queries to pending`);
         fetchQueries();
         setTimeout(() => setResetResult(''), 4000);
       }
-    } catch {
-      setResetResult('Failed to reset');
+    } catch (err: unknown) {
+      setResetResult(err instanceof Error ? err.message : 'Failed to reset');
     } finally {
       setResetting(false);
     }
@@ -69,16 +65,19 @@ export default function QueriesPage() {
     setLoading(true);
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(
-        `/api/OFM/search-queries?page=${page}&limit=50&sort=${sort}&order=desc&filter=${filter}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      const data = await res.json();
+      const data = await getSearchQueries(token || '', {
+        page,
+        limit: 50,
+        sort,
+        order: 'desc',
+        filter,
+      });
       setQueries(data.queries || []);
       setTotal(data.total || 0);
       setPages(data.pages || 1);
-    } catch {
+    } catch (err: unknown) {
       setQueries([]);
+      alert(err instanceof Error ? err.message : 'Failed to load queries');
     } finally {
       setLoading(false);
     }
@@ -93,15 +92,11 @@ export default function QueriesPage() {
     setDeletingId(id);
     const token = localStorage.getItem('token');
     try {
-      await fetch('/api/OFM/search-queries', {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
-      });
+      await deleteSearchQuery(token || '', id);
       setQueries((prev) => prev.filter((q) => q._id !== id));
       setTotal((prev) => prev - 1);
-    } catch {
-      alert('Failed to delete');
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to delete');
     } finally {
       setDeletingId(null);
     }

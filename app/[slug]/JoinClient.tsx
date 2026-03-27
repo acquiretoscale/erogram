@@ -8,6 +8,7 @@ import axios from 'axios';
 import Navbar from '@/components/Navbar';
 import HeaderBanner from '@/components/HeaderBanner';
 import BookmarkButton from '@/components/BookmarkButton';
+import { getButtonConfig } from '@/lib/actions/publicData';
 import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 import VaultTeaserFeed from '@/app/groups/VaultTeaserFeed';
@@ -226,8 +227,8 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
 
   const fetchButtonConfig = async () => {
     try {
-      const res = await axios.get('/api/button-config');
-      setButtonConfig(res.data);
+      const data = await getButtonConfig();
+      setButtonConfig(data);
     } catch (err) {
       console.error('Error fetching button config:', err);
     }

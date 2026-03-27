@@ -72,7 +72,7 @@ export default function SavedModelsTab() {
         <h3 className="text-lg font-bold text-white/60 mb-1">No saved models yet</h3>
         <p className="text-sm text-white/30 max-w-sm mx-auto">
           Browse the{' '}
-          <a href="/onlyfans-search" className="text-[#00AFF0] hover:underline">
+          <a href="/onlyfanssearch" className="text-[#00AFF0] hover:underline">
             OnlyFans directory
           </a>{' '}
           and tap the heart icon to save your favorite creators here.

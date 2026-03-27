@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { OF_CATEGORIES } from '@/app/onlyfans-search/constants';
+import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
+import { browseOFMCreators, purgeOFMCreators } from '@/lib/actions/ofm';
 
 const MAX_PER_SCRAPE = 2000;
 
@@ -65,18 +66,18 @@ export default function ScrapePage() {
     setBrowseLoading(true);
     const token = localStorage.getItem('token');
     try {
-      const params = new URLSearchParams({ limit: String(BROWSE_LIMIT), skip: String(skip) });
-      if (cat) params.set('category', cat);
-      const res = await fetch(`/api/OFM/creators/browse?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const data = await browseOFMCreators(token || '', {
+        category: cat || undefined,
+        limit: BROWSE_LIMIT,
+        skip,
       });
-      const data = await res.json();
       const list: BrowseCreator[] = data.creators || [];
       setBrowseResults(prev => append ? [...prev, ...list] : list);
       setBrowseHasMore(list.length >= BROWSE_LIMIT);
       setBrowseSkip(skip + list.length);
-    } catch {
+    } catch (err: unknown) {
       setBrowseResults([]);
+      alert(err instanceof Error ? err.message : 'Failed to load browse');
     } finally {
       setBrowseLoading(false);
       setBrowseLoaded(true);
@@ -115,19 +116,17 @@ export default function ScrapePage() {
     setPurgeResult(null);
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch('/api/OFM/creators/purge', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
+      const data = await purgeOFMCreators(token || '');
       if (data.success) {
-        setPurgeResult(`Purged ${data.deleted.total} profiles (${data.deleted.nonFemaleGender} non-female gender, ${data.deleted.blockedKeywords} blocked keywords, ${data.deleted.noAvatar} no avatar)`);
+        setPurgeResult(
+          `Purged ${data.deleted.total} profiles (${data.deleted.nonFemaleGender} non-female gender, ${data.deleted.blockedKeywordsInBioOrName} blocked keywords, ${data.deleted.noAvatar} no avatar)`,
+        );
         if (browseLoaded) handleBrowse(browseCategory);
       } else {
-        setPurgeResult(`Error: ${data.error}`);
+        setPurgeResult('Error: Purge failed');
       }
-    } catch (e: any) {
-      setPurgeResult(`Error: ${e.message}`);
+    } catch (e: unknown) {
+      setPurgeResult(`Error: ${e instanceof Error ? e.message : 'Unknown error'}`);
     } finally {
       setPurging(false);
     }
