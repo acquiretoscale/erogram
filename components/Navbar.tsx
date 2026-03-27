@@ -59,6 +59,8 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
   const { locale } = useLocale();
   const [mounted, setMounted] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
+  const [mobileLangOpen, setMobileLangOpen] = useState(false);
+  const mobileLangRef = useRef<HTMLDivElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
   const [ofOpen, setOfOpen] = useState(false);
   const ofRef = useRef<HTMLDivElement>(null);
@@ -116,6 +118,15 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
     const t = setTimeout(() => document.addEventListener('mousedown', handler, true), 100);
     return () => { clearTimeout(t); document.removeEventListener('mousedown', handler, true); };
   }, [langOpen, mounted]);
+
+  useEffect(() => {
+    if (!mobileLangOpen || !mounted) return;
+    const handler = (e: MouseEvent) => {
+      if (mobileLangRef.current && !mobileLangRef.current.contains(e.target as Node)) setMobileLangOpen(false);
+    };
+    const t = setTimeout(() => document.addEventListener('mousedown', handler, true), 100);
+    return () => { clearTimeout(t); document.removeEventListener('mousedown', handler, true); };
+  }, [mobileLangOpen, mounted]);
 
   useEffect(() => {
     if (!ofOpen || !mounted) return;
@@ -380,8 +391,8 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
 
         </div>
 
-        {/* Mobile: burger only */}
-        <div className="md:hidden flex items-center">
+        {/* Mobile: burger + language dropdown */}
+        <div className="md:hidden flex items-center gap-2">
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className="flex flex-col gap-1.5 w-8 h-8 items-center justify-center"
@@ -391,6 +402,43 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
             <motion.span className="w-5 h-0.5 bg-white/70 rounded-full" animate={{ opacity: isMenuOpen ? 0 : 1 }} transition={{ duration: 0.2 }} />
             <motion.span className="w-5 h-0.5 bg-white/70 rounded-full" animate={{ rotate: isMenuOpen ? -45 : 0, y: isMenuOpen ? -6 : 0 }} transition={{ duration: 0.2 }} />
           </button>
+          <div className="relative" ref={mobileLangRef}>
+            <button
+              onClick={() => setMobileLangOpen(!mobileLangOpen)}
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-white/10 transition-colors"
+              aria-label="Change language"
+            >
+              <span className="text-lg leading-none">{LOCALE_FLAGS[locale]}</span>
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`text-white/50 transition-transform ${mobileLangOpen ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <AnimatePresence>
+              {mounted && mobileLangOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.12 }}
+                  className="absolute right-0 mt-1 w-32 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden py-1"
+                >
+                  {LOCALES.map(l => {
+                    const currentPath = typeof window !== 'undefined' ? window.location.pathname.replace(/^\/(de|es)/, '') || '/' : '/';
+                    const href = buildLocalePath(currentPath, l);
+                    return (
+                      <a
+                        key={l}
+                        href={href}
+                        onClick={() => setMobileLangOpen(false)}
+                        className={`flex items-center gap-2.5 px-3.5 py-2 text-[13px] transition-colors ${locale === l ? 'text-white bg-white/5 font-medium' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
+                      >
+                        <span className="text-base leading-none">{LOCALE_FLAGS[l]}</span>
+                        {l === 'en' ? 'English' : l === 'de' ? 'Deutsch' : 'Español'}
+                      </a>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 

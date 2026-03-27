@@ -105,11 +105,12 @@ export async function getAdvertisersDashboard(token: string) {
 
 export async function getAdvertiserDashboardStats(
   token: string,
-  params: { advertiserIds?: string; slots?: string; range?: string; from?: string; to?: string },
+  params: { advertiserIds?: string | string[]; slots?: string | string[]; range?: string; from?: string; to?: string },
 ) {
+  const toArr = (v?: string | string[]) => Array.isArray(v) ? v.filter(Boolean) : v ? v.split(',').filter(Boolean) : undefined;
   const filters: DashboardFilters = {
-    advertiserIds: params.advertiserIds ? params.advertiserIds.split(',').filter(Boolean) : undefined,
-    slots: params.slots ? params.slots.split(',').filter(Boolean) : undefined,
+    advertiserIds: toArr(params.advertiserIds),
+    slots: toArr(params.slots),
     range: (['today', '7d', '30d', 'custom', 'lifetime'].includes(params.range || '') ? params.range : '30d') as DashboardFilters['range'],
     from: params.from,
     to: params.to,
