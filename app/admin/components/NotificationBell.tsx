@@ -69,7 +69,7 @@ export default function NotificationBell() {
     if (!silent) setLoading(true);
     try {
       const data = await getAdminNotifications(token);
-      const incoming: Notif[] = data.notifications || [];
+      const incoming = (data.notifications || []) as Notif[];
       setNotifs(incoming);
       setUrgentCount(data.urgentCount || 0);
 
