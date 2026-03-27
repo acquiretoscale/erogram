@@ -36,7 +36,7 @@ export default function AdminOverviewPage() {
       const token = localStorage.getItem('token');
       if (!token) return;
       const result = await getAdminOverview(token);
-      setData(result);
+      setData(result as DashboardData);
     } catch {
     } finally {
       setLoading(false);
