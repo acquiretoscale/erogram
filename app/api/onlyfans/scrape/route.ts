@@ -3,7 +3,9 @@ import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator, ScrapeRun, SearchQuery } from '@/lib/models';
 import { getApifyCredentials, markKeyBurned } from '@/lib/apify-key';
 
-const MAX_PROFILES_PER_SCRAPE = 2000;
+const MAX_PROFILES_PER_SCRAPE = 15;
+
+export const maxDuration = 120;
 
 /**
  * DELETE /api/onlyfans/scrape
@@ -309,7 +311,7 @@ async function processRun(
   await ScrapeRun.findByIdAndUpdate(logId, { runId });
 
   let status = runData.data?.status;
-  const maxWait = 10 * 60 * 1000;
+  const maxWait = 2 * 60 * 1000;
   const start = Date.now();
 
   while (!['SUCCEEDED', 'FAILED', 'ABORTED', 'TIMED-OUT'].includes(status)) {

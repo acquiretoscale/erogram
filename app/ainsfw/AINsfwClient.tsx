@@ -16,6 +16,8 @@ const LOAD_MORE = 8;
 interface AINsfwClientProps {
   tools: AINsfwTool[];
   allStats?: Record<string, ToolStatsData>;
+  featuredSlugs?: string[];
+  featuredCampaignMap?: Record<string, string>;
 }
 
 const CATEGORY_ACTIVE: Record<AINsfwCategory, string> = {
@@ -64,13 +66,21 @@ function loadAllScores(allStats?: Record<string, ToolStatsData>): Record<string,
   return map;
 }
 
-function TopAINsfwBlock({ tools, allStats, scores, onVoteChange }: { tools: AINsfwTool[]; allStats?: Record<string, ToolStatsData>; scores: Record<string, number>; onVoteChange: (slug: string, score: number) => void }) {
+function TopAINsfwBlock({ tools, allStats, scores, featuredSlugs, featuredCampaignMap, onVoteChange }: { tools: AINsfwTool[]; allStats?: Record<string, ToolStatsData>; scores: Record<string, number>; featuredSlugs: string[]; featuredCampaignMap: Record<string, string>; onVoteChange: (slug: string, score: number) => void }) {
   const { t } = useTranslation();
+  const featuredSet = new Set(featuredSlugs);
 
-  const topTools = [...tools]
+  const scoreSorted = [...tools]
     .filter((tool) => (scores[tool.slug] ?? 0) > 0)
-    .sort((a, b) => (scores[b.slug] ?? 0) - (scores[a.slug] ?? 0))
-    .slice(0, 4);
+    .sort((a, b) => (scores[b.slug] ?? 0) - (scores[a.slug] ?? 0));
+
+  // Build top 4: first 3 by score, 4th slot reserved for a featured tool
+  const top3 = scoreSorted.filter((t) => !featuredSet.has(t.slug)).slice(0, 3);
+  const featuredTool = tools.find((t) => featuredSet.has(t.slug));
+
+  const topTools = featuredTool
+    ? [...top3, featuredTool].slice(0, 4)
+    : scoreSorted.slice(0, 4);
 
   if (topTools.length === 0) return null;
 
@@ -85,7 +95,7 @@ function TopAINsfwBlock({ tools, allStats, scores, onVoteChange }: { tools: AINs
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {topTools.map((tool, i) => (
-            <ToolCard key={tool.slug} tool={tool} index={i} initialStats={allStats?.[tool.slug]} onVoteChange={onVoteChange} />
+            <ToolCard key={tool.slug} tool={tool} index={i} initialStats={allStats?.[tool.slug]} onVoteChange={onVoteChange} featured={featuredSet.has(tool.slug)} campaignId={featuredCampaignMap[tool.slug]} />
           ))}
         </div>
       </div>
@@ -93,7 +103,7 @@ function TopAINsfwBlock({ tools, allStats, scores, onVoteChange }: { tools: AINs
   );
 }
 
-export default function AINsfwClient({ tools, allStats }: AINsfwClientProps) {
+export default function AINsfwClient({ tools, allStats, featuredSlugs = [], featuredCampaignMap = {} }: AINsfwClientProps) {
   const [activeCategory, setActiveCategory] = useState<AINsfwCategory>('All');
   const [activePayment, setActivePayment] = useState<PaymentOption | 'All'>('All');
   const [search, setSearch] = useState('');
@@ -315,12 +325,32 @@ export default function AINsfwClient({ tools, allStats }: AINsfwClientProps) {
           {/* Main Content */}
           <div className="lg:w-3/4 min-w-0 shrink-0">
             {/* Top AI NSFW Block */}
-            <TopAINsfwBlock tools={tools} allStats={allStats} scores={scores} onVoteChange={handleVoteChange} />
+            <TopAINsfwBlock tools={tools} allStats={allStats} scores={scores} featuredSlugs={featuredSlugs} featuredCampaignMap={featuredCampaignMap} onVoteChange={handleVoteChange} />
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3">
-              {displayed.map((tool, i) => (
-                <ToolCard key={tool.slug} tool={tool} index={i} initialStats={allStats?.[tool.slug]} onVoteChange={handleVoteChange} />
-              ))}
+              {(() => {
+                const featuredTools = tools.filter((t) => featuredSlugs.includes(t.slug));
+                const displayedSet = new Set(displayed.map((t) => t.slug));
+                const items: React.ReactNode[] = [];
+                let featuredIdx = 0;
+
+                displayed.forEach((tool, i) => {
+                  if (i > 0 && i % 8 === 0 && featuredTools.length > 0) {
+                    const ft = featuredTools[featuredIdx % featuredTools.length];
+                    if (!displayedSet.has(ft.slug) || featuredSlugs.includes(ft.slug)) {
+                      items.push(
+                        <ToolCard key={`featured-${i}-${ft.slug}`} tool={ft} index={i} initialStats={allStats?.[ft.slug]} onVoteChange={handleVoteChange} featured campaignId={featuredCampaignMap[ft.slug]} />
+                      );
+                      featuredIdx++;
+                    }
+                  }
+                  items.push(
+                    <ToolCard key={tool.slug} tool={tool} index={i} initialStats={allStats?.[tool.slug]} onVoteChange={handleVoteChange} featured={featuredSlugs.includes(tool.slug)} campaignId={featuredCampaignMap[tool.slug]} />
+                  );
+                });
+
+                return items;
+              })()}
             </div>
 
             {/* Skeleton loading placeholders */}

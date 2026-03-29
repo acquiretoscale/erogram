@@ -1,21 +1,25 @@
 'use server';
 
 import connectDB from '@/lib/db/mongodb';
-import { AINsfwToolStats } from '@/lib/models';
+import { AINsfwToolStats, Campaign, Advertiser } from '@/lib/models';
 
 export interface ToolStatsData {
   upvotes: number;
   downvotes: number;
+  featured: boolean;
+  campaignId?: string;
   reviews: { text: string; rating: number; createdAt: string }[];
 }
 
 export async function getToolStats(slug: string): Promise<ToolStatsData> {
   await connectDB();
   const doc = await AINsfwToolStats.findOne({ slug }).lean() as any;
-  if (!doc) return { upvotes: 0, downvotes: 0, reviews: [] };
+  if (!doc) return { upvotes: 0, downvotes: 0, featured: false, reviews: [] };
   return {
     upvotes: doc.upvotes || 0,
     downvotes: doc.downvotes || 0,
+    featured: !!doc.featured,
+    campaignId: doc.campaignId?.toString() || undefined,
     reviews: (doc.reviews || []).map((r: any) => ({
       text: r.text,
       rating: r.rating,
@@ -32,6 +36,8 @@ export async function getAllToolStats(slugs: string[]): Promise<Record<string, T
     map[doc.slug] = {
       upvotes: doc.upvotes || 0,
       downvotes: doc.downvotes || 0,
+      featured: !!doc.featured,
+      campaignId: doc.campaignId?.toString() || undefined,
       reviews: (doc.reviews || []).map((r: any) => ({
         text: r.text,
         rating: r.rating,
@@ -83,7 +89,7 @@ export async function adminSetToolVotes(
 export async function adminDeleteReview(slug: string, reviewIdx: number): Promise<ToolStatsData> {
   await connectDB();
   const doc = await AINsfwToolStats.findOne({ slug });
-  if (!doc) return { upvotes: 0, downvotes: 0, reviews: [] };
+  if (!doc) return { upvotes: 0, downvotes: 0, featured: false, reviews: [] };
   if (doc.reviews && reviewIdx >= 0 && reviewIdx < doc.reviews.length) {
     doc.reviews.splice(reviewIdx, 1);
     await doc.save();
@@ -92,6 +98,7 @@ export async function adminDeleteReview(slug: string, reviewIdx: number): Promis
   return {
     upvotes: plain.upvotes || 0,
     downvotes: plain.downvotes || 0,
+    featured: !!plain.featured,
     reviews: (plain.reviews || []).map((r: any) => ({
       text: r.text,
       rating: r.rating,
@@ -119,10 +126,105 @@ export async function submitReview(slug: string, text: string, rating: number): 
   return {
     upvotes: doc.upvotes || 0,
     downvotes: doc.downvotes || 0,
+    featured: !!doc.featured,
     reviews: (doc.reviews || []).map((r: any) => ({
       text: r.text,
       rating: r.rating,
       createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '',
     })),
   };
+}
+
+async function getOrCreateNsfwAdvertiser() {
+  let adv = await Advertiser.findOne({ name: 'AI NSFW Featured' }).lean() as any;
+  if (!adv) {
+    adv = await Advertiser.create({ name: 'AI NSFW Featured', email: 'internal@erogram.pro', company: 'Internal', status: 'active' });
+  }
+  return adv._id;
+}
+
+export async function adminSetFeatured(slug: string, featured: boolean): Promise<boolean> {
+  await connectDB();
+
+  const doc = await AINsfwToolStats.findOneAndUpdate(
+    { slug },
+    { $set: { featured } },
+    { upsert: true, new: true },
+  ) as any;
+
+  if (featured) {
+    if (doc.campaignId) {
+      await Campaign.findByIdAndUpdate(doc.campaignId, { $set: { status: 'active', isVisible: true } });
+    } else {
+      const advertiserId = await getOrCreateNsfwAdvertiser();
+      const now = new Date();
+      const endDate = new Date(now.getFullYear() + 2, now.getMonth(), now.getDate());
+      const campaign = await Campaign.create({
+        advertiserId,
+        name: `Featured NSFW: ${slug}`,
+        internalName: slug,
+        slot: 'ainsfw',
+        creative: '',
+        destinationUrl: `/${slug}`,
+        startDate: now,
+        endDate,
+        status: 'active',
+        isVisible: true,
+        adType: 'featured-nsfw',
+        description: `Featured AI NSFW tool: ${slug}`,
+        buttonText: 'Try Now',
+      });
+      await AINsfwToolStats.findOneAndUpdate({ slug }, { $set: { campaignId: campaign._id } });
+    }
+  } else {
+    if (doc.campaignId) {
+      await Campaign.findByIdAndUpdate(doc.campaignId, { $set: { status: 'paused', isVisible: false } });
+    }
+  }
+
+  return featured;
+}
+
+export interface FeaturedToolInfo {
+  slug: string;
+  campaignId?: string;
+}
+
+export async function getFeaturedSlugs(): Promise<string[]> {
+  await connectDB();
+  const docs = await AINsfwToolStats.find({ featured: true }, { slug: 1 }).lean() as any[];
+  return docs.map((d: any) => d.slug);
+}
+
+export async function getFeaturedTools(): Promise<FeaturedToolInfo[]> {
+  await connectDB();
+  const docs = await AINsfwToolStats.find({ featured: true }, { slug: 1, campaignId: 1 }).lean() as any[];
+  const results: FeaturedToolInfo[] = [];
+  for (const d of docs) {
+    if (!d.campaignId) {
+      const advertiserId = await getOrCreateNsfwAdvertiser();
+      const now = new Date();
+      const endDate = new Date(now.getFullYear() + 2, now.getMonth(), now.getDate());
+      const campaign = await Campaign.create({
+        advertiserId,
+        name: `Featured NSFW: ${d.slug}`,
+        internalName: d.slug,
+        slot: 'ainsfw',
+        creative: '',
+        destinationUrl: `/${d.slug}`,
+        startDate: now,
+        endDate,
+        status: 'active',
+        isVisible: true,
+        adType: 'featured-nsfw',
+        description: `Featured AI NSFW tool: ${d.slug}`,
+        buttonText: 'Try Now',
+      });
+      await AINsfwToolStats.findOneAndUpdate({ slug: d.slug }, { $set: { campaignId: campaign._id } });
+      results.push({ slug: d.slug, campaignId: campaign._id.toString() });
+    } else {
+      results.push({ slug: d.slug, campaignId: d.campaignId.toString() });
+    }
+  }
+  return results;
 }

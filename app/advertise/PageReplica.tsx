@@ -57,48 +57,21 @@ const CATEGORIES = ['All', 'Anal', 'Oral', 'MILF', 'BBC', 'Anime', 'Asian', 'Lat
 
 const PAGE_DESCRIPTIONS: Record<PageView, { title: string; subtitle: string; body: React.ReactNode; accent: string; accentBorder: string; accentBg: string; icon: string }> = {
   listing: {
-    title: 'IN-FEED',
-    subtitle: 'PREMIUM IN-FEED ADVERTISING',
+    title: 'FEATURED IN FEED',
+    subtitle: 'GET FEATURED IN THE FEED',
     body: (
-      <div className="mt-2 space-y-3 text-[11px] sm:text-xs text-gray-600 max-w-2xl leading-relaxed">
-        <p className="text-gray-700">Maximize visibility with native placements designed to capture user attention immediately. In-Feed shows on Groups and Bots page, website main pages with <span className="font-bold text-gray-900">over 400K monthly page views</span>.</p>
-
-        {/* Placement Tiers */}
-        <div>
-          <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">Placement Tiers</span>
-          <div className="mt-1.5 space-y-1.5">
-            <div className="flex items-start gap-2">
-              <span className="shrink-0 mt-0.5 bg-gradient-to-r from-gray-200 to-gray-400 text-gray-900 text-[8px] font-black px-1.5 py-[1px] rounded uppercase tracking-wider shadow-sm">Platinum</span>
-              <p>Show on Top Groups / Top bots on Bots and Groups page. The first asset seen by visitors. Generates <span className="font-semibold text-gray-800">50–60% higher CTR</span> than lower tiers.</p>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="shrink-0 mt-0.5 bg-gradient-to-r from-amber-400 to-yellow-300 text-amber-900 text-[8px] font-black px-1.5 py-[1px] rounded uppercase tracking-wider shadow-sm">Gold</span>
-              <p>Recent Groups. First position in the feed.</p>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="shrink-0 mt-0.5 bg-gradient-to-r from-gray-400 to-gray-300 text-gray-800 text-[8px] font-black px-1.5 py-[1px] rounded uppercase tracking-wider shadow-sm">Silver</span>
-              <p>High-visibility 3rd position in the feed.</p>
-            </div>
-          </div>
+      <div className="mt-2 space-y-2 text-[11px] sm:text-xs text-gray-600 max-w-2xl">
+        <div className="flex items-start gap-2">
+          <span className="shrink-0 mt-0.5 bg-gradient-to-r from-gray-200 to-gray-400 text-gray-900 text-[8px] font-black px-1.5 py-[1px] rounded uppercase tracking-wider shadow-sm">Platinum</span>
+          <p>Top positions across all Erogram feeds. Optional: video ads for max impact. Also featured in AI NSFW Recommendations.</p>
         </div>
-
-        {/* Delivery Models */}
-        <div>
-          <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">Delivery Models</span>
-          <div className="mt-1 space-y-0.5">
-            <p><span className="font-bold text-gray-800">Rotational</span> : Your ad shares the slot with 3 other advertisers. You receive <span className="font-semibold text-gray-800">25% of the traffic</span>.</p>
-            <p><span className="font-bold text-gray-800">Exclusive</span> : Your ad is the only one shown in that tier. You receive <span className="font-semibold text-gray-800">100% of the traffic and Share of Voice</span>.</p>
-          </div>
+        <div className="flex items-start gap-2">
+          <span className="shrink-0 mt-0.5 bg-gradient-to-r from-amber-400 to-yellow-300 text-amber-900 text-[8px] font-black px-1.5 py-[1px] rounded uppercase tracking-wider shadow-sm">Gold</span>
+          <p>Second in-feed position across all Erogram feeds.</p>
         </div>
-
-        {/* Exclusive Add-ons */}
-        <div>
-          <p className="text-gray-700">With exclusive, we can run <span className="font-semibold text-gray-800">A/B split testing</span> and <span className="font-semibold text-gray-800">video ads</span> at no additional cost.</p>
-          <div className="mt-1 space-y-0.5">
-            <p><span className="font-bold text-gray-800">Video Creative</span>: Available on request. Video ads generate up to <span className="font-semibold text-gray-800">3x more engagement</span> than static images.</p>
-            <p><span className="font-bold text-gray-800">Creative Split-Testing</span>: We can run a 48-hour test across 4 ad slots to identify the highest-performing creative before scaling.</p>
-          </div>
-          <p className="mt-1 text-[10px] text-gray-400 italic">Note: Feature availability depends on current campaign inventory.*</p>
+        <div className="flex items-start gap-2">
+          <span className="shrink-0 mt-0.5 bg-gradient-to-r from-gray-400 to-gray-300 text-gray-800 text-[8px] font-black px-1.5 py-[1px] rounded uppercase tracking-wider shadow-sm">Silver</span>
+          <p>Third position across all Erogram feeds.</p>
         </div>
       </div>
     ),
@@ -131,6 +104,8 @@ type PageView = 'listing' | 'individual' | 'homepage';
 
 const DESKTOP_SCALE = 0.3;
 const DESKTOP_W = 1400;
+const MOBILE_SCALE = 0.82;
+const MOBILE_W = 375;
 
 function fmtK(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
@@ -324,29 +299,31 @@ function IndividualPageContent({ activeId, setActiveId, group, mobile }: { activ
 
 function ListingPageContent({ activeId, setActiveId, groups, mobile }: { activeId: string | null; setActiveId: (id: string | null) => void; groups: GroupData[]; mobile: boolean }) {
   let groupCounter = 0;
-  const cols = 3;
-  const feedCount = 12;
+  const cols = mobile ? 2 : 3;
+  const feedCount = mobile ? 9 : 12;
 
   return (
     <div className="bg-[#0d0d0d]">
       <MiniTopMenu mobile={mobile} showMenuCta={false} />
 
-      <div className="px-5 pt-4 pb-5">
-        <div className="flex gap-4">
-          <aside className="w-[260px] shrink-0 rounded-xl border border-white/10 bg-[#141414] p-3" style={BLUR_STYLE}>
-            <div className="h-[34px] rounded-lg bg-white/5 border border-white/10 flex items-center px-3 mb-3"><span className="text-[11px] text-gray-400 font-semibold">Search groups...</span></div>
-            <div className="space-y-2">
-              <p className="text-[11px] font-bold text-gray-300 uppercase tracking-wider">Filters</p>
-              {CATEGORIES.map((item, i) => (
-                <div key={item} className={`h-[30px] rounded-md border px-3 flex items-center ${i === 0 ? 'border-gray-300 bg-gray-300/15 text-gray-200' : 'border-white/10 bg-white/[0.02] text-gray-500'}`}><span className="text-[11px] font-semibold">{item}</span></div>
-              ))}
-            </div>
-          </aside>
+      <div className={mobile ? 'px-3 pt-3 pb-4' : 'px-5 pt-4 pb-5'}>
+        <div className={mobile ? '' : 'flex gap-4'}>
+          {!mobile && (
+            <aside className="w-[260px] shrink-0 rounded-xl border border-white/10 bg-[#141414] p-3" style={BLUR_STYLE}>
+              <div className="h-[34px] rounded-lg bg-white/5 border border-white/10 flex items-center px-3 mb-3"><span className="text-[11px] text-gray-400 font-semibold">Search groups...</span></div>
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold text-gray-300 uppercase tracking-wider">Filters</p>
+                {CATEGORIES.map((item, i) => (
+                  <div key={item} className={`h-[30px] rounded-md border px-3 flex items-center ${i === 0 ? 'border-gray-300 bg-gray-300/15 text-gray-200' : 'border-white/10 bg-white/[0.02] text-gray-500'}`}><span className="text-[11px] font-semibold">{item}</span></div>
+                ))}
+              </div>
+            </aside>
+          )}
 
           <section className="flex-1 rounded-xl border border-white/10 bg-[#111] overflow-hidden">
             <div className="px-4 py-3 border-b border-white/10" style={BLUR_STYLE}>
-              <p className="text-2xl font-black text-white/90">All Groups</p>
-              <p className="text-xs text-gray-500 mt-1">Desktop feed preview for ad placement showcase</p>
+              <p className={`${mobile ? 'text-lg' : 'text-2xl'} font-black text-white/90`}>All Groups</p>
+              <p className="text-xs text-gray-500 mt-1">{mobile ? 'Mobile feed preview' : 'Desktop feed preview for ad placement showcase'}</p>
             </div>
 
             <div className="px-3 py-2.5 border-b border-white/10 flex gap-1.5 overflow-hidden items-center">
@@ -465,7 +442,7 @@ function HomePageContent({ activeId, setActiveId, mobile }: { activeId: string |
 
           {/* CTA buttons */}
           <div className="flex flex-row gap-2.5 justify-center mb-10">
-            <span className="px-5 py-3 bg-[#b31b1b] text-white rounded-lg text-[13px] font-semibold" style={BLUR_STYLE}>Explore Groups</span>
+            <span className="px-5 py-3 bg-[#0ea5e9] text-white rounded-lg text-[13px] font-semibold" style={BLUR_STYLE}>Explore Groups</span>
             <span className="px-5 py-3 bg-white/5 border border-white/20 text-white rounded-lg text-[13px] font-semibold" style={BLUR_STYLE}>Explore Bots</span>
             <span
               onClick={() => setActiveId(activeId === 'home-page-cta' ? null : 'home-page-cta')}
@@ -523,19 +500,19 @@ function AdFormatComparison() {
   }, []);
 
   return (
-    <div className="mt-8">
+    <div className="mt-6 sm:mt-8">
       {/* Header */}
-      <div className="text-center mb-6">
-        <h3 className="text-lg sm:text-xl font-black text-gray-900 leading-tight">
+      <div className="text-center mb-4 sm:mb-6">
+        <h3 className="text-base sm:text-lg md:text-xl font-black text-gray-900 leading-tight">
           In-Feed Video Ads generate <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-500">2-3x more clicks</span> than static images
         </h3>
-        <p className="text-xs text-gray-500 mt-1.5 max-w-md mx-auto">Autoplay motion captures attention instantly — here is exactly how both formats appear to users in the feed.</p>
+        <p className="text-[11px] sm:text-xs text-gray-500 mt-1 sm:mt-1.5 max-w-md mx-auto">Unlocked with Featured Platinum — here is exactly how both formats appear to users in the feed.</p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-6 justify-center items-start">
+      <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center sm:items-start">
 
         {/* ── VIDEO AD — Premium ── */}
-        <div className="w-full sm:w-[280px] shrink-0">
+        <div className="w-full max-w-[280px] sm:w-[280px] shrink-0">
           <div className="relative rounded-3xl p-[2px] bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 shadow-[0_0_30px_rgba(245,158,11,0.25)]">
             <div className="rounded-[22px] overflow-hidden bg-[#0a0a0a] flex flex-col min-h-[480px]">
               <div className="relative flex-1 min-h-[320px] overflow-hidden bg-gradient-to-br from-[#1a1020] via-[#1a0a1a] to-[#0d0d18]">
@@ -589,7 +566,7 @@ function AdFormatComparison() {
         </div>
 
         {/* ── IMAGE AD — Standard (fetches real creative) ── */}
-        <div className="w-full sm:w-[280px] shrink-0">
+        <div className="w-full max-w-[280px] sm:w-[280px] shrink-0">
           <div className="rounded-3xl overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-2xl shadow-black/50 flex flex-col min-h-[480px]">
             <div className="relative h-52 overflow-hidden bg-[#1a1a1a]">
               {imageAd?.creative ? (
@@ -646,14 +623,18 @@ function AdFormatComparison() {
 /* ─── Miniature screen wrapper ─── */
 
 function MiniScreen({ children, innerW, innerH, scale }: { children: React.ReactNode; innerW: number; innerH: number; scale: number }) {
+  const outerW = innerW * scale;
+  const outerH = innerH * scale;
   return (
-    <div
-      className="rounded-2xl border border-gray-200 bg-[#0d0d0d] shadow-2xl shadow-black/30 overflow-hidden"
-      style={{ width: innerW * scale, height: innerH * scale }}
-    >
-      <div style={{ width: innerW * scale, height: innerH * scale, position: 'relative' }}>
-        <div style={{ width: innerW, height: innerH, transform: `scale(${scale})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0 }} className="overflow-hidden">
-          {children}
+    <div className="w-full lg:w-auto mx-auto lg:mx-0">
+      <div
+        className="rounded-2xl border border-gray-200 bg-[#0d0d0d] shadow-2xl shadow-black/30 overflow-hidden mx-auto lg:mx-0"
+        style={{ width: outerW, maxWidth: '100%', height: outerH, aspectRatio: `${outerW} / ${outerH}` }}
+      >
+        <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+          <div style={{ width: innerW, height: innerH, transform: `scale(${scale})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0 }} className="overflow-hidden">
+            {children}
+          </div>
         </div>
       </div>
     </div>
@@ -699,6 +680,14 @@ const VIEWS: { id: PageView; title: string; subtitle: string; body: React.ReactN
 export default function PageReplica() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [groups, setGroups] = useState<GroupData[]>([]);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   useEffect(() => {
     fetch('/api/groups?limit=15&sortBy=popular')
@@ -719,8 +708,8 @@ export default function PageReplica() {
       .catch(() => {});
   }, []);
 
-  const scale = DESKTOP_SCALE;
-  const innerW = DESKTOP_W;
+  const scale = isMobile ? MOBILE_SCALE : DESKTOP_SCALE;
+  const innerW = isMobile ? MOBILE_W : DESKTOP_W;
 
   const activeSlot = AD_SLOTS.find((s) => s.id === activeId) ?? null;
 
@@ -738,8 +727,8 @@ export default function PageReplica() {
       .ad-pulse:not(.ad-active) { animation: adGlow 1.6s ease-in-out infinite; }
     `}</style>
     <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-14">
-      <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm">
-        <div className="space-y-14">
+      <div className="bg-white rounded-2xl p-4 sm:p-6 md:p-8 shadow-sm">
+        <div className="space-y-10 sm:space-y-14">
           {VIEWS.map((view, viewIdx) => {
             const slotsForView = AD_SLOTS.filter((s) => s.page === view.id);
             const activeInView = activeSlot && activeSlot.page === view.id ? activeSlot : null;
@@ -748,49 +737,47 @@ export default function PageReplica() {
               <div key={view.id}>
                 {viewIdx > 0 && (
                   view.id === 'homepage' ? (
-                    <div className="my-10 py-6 border-y-2 border-amber-400/30 bg-gradient-to-r from-transparent via-amber-50 to-transparent text-center">
-                      <span className="text-xs sm:text-sm font-black uppercase tracking-[0.3em] text-amber-600">Homepage Placements</span>
+                    <div className="my-6 sm:my-10 py-4 sm:py-6 border-y-2 border-amber-400/30 bg-gradient-to-r from-transparent via-amber-50 to-transparent text-center">
+                      <span className="text-[10px] sm:text-xs md:text-sm font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-amber-600">Homepage Placements</span>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-3 mb-8">
+                    <div className="flex items-center gap-3 mb-6 sm:mb-8">
                       <div className="h-px flex-1 bg-gray-200" />
-                      <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-300">Next Placement</span>
+                      <span className="text-[8px] sm:text-[9px] font-bold uppercase tracking-[0.3em] text-gray-300">Next Placement</span>
                       <div className="h-px flex-1 bg-gray-200" />
                     </div>
                   )
                 )}
                 {/* Section header */}
-                <div className={`mb-6 rounded-xl ${view.accentBg} border-l-4 ${view.accentBorder} px-5 py-5`}>
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg ${view.accent} bg-white font-black text-sm border border-gray-200 shadow-sm`}>{view.icon}</span>
-                    <div>
-                      <h2 className="text-lg sm:text-xl font-black text-gray-900 uppercase tracking-wide leading-tight">{view.title}</h2>
-                      <span className={`text-[11px] font-bold uppercase tracking-[0.2em] ${view.accent}`}>{view.subtitle}</span>
+                <div className={`mb-4 sm:mb-6 rounded-xl ${view.accentBg} border-l-4 ${view.accentBorder} px-3 sm:px-5 py-3 sm:py-5`}>
+                  <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
+                    <span className={`inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg ${view.accent} bg-white font-black text-xs sm:text-sm border border-gray-200 shadow-sm shrink-0`}>{view.icon}</span>
+                    <div className="min-w-0">
+                      <h2 className="text-base sm:text-lg md:text-xl font-black text-gray-900 uppercase tracking-wide leading-tight">{view.title}</h2>
+                      <span className={`text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.15em] sm:tracking-[0.2em] ${view.accent} leading-tight`}>{view.subtitle}</span>
                     </div>
                   </div>
-                  <div className="mt-2 text-sm text-gray-700 leading-relaxed">{view.body}</div>
+                  <div className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-gray-700 leading-relaxed">{view.body}</div>
                 </div>
 
                 {/* Miniature + detail side by side */}
                 {view.id === 'individual' ? (
-                  <div className="space-y-6">
-                    {/* Individual page miniature + its detail */}
-                    <div className="flex flex-col lg:flex-row gap-5 items-start">
-                      <MiniScreen innerW={innerW} innerH={view.innerH} scale={scale}>
-                        <IndividualPageContent activeId={activeId} setActiveId={setActiveId} group={groups[0] ?? null} mobile={false} />
+                  <div className="space-y-4 sm:space-y-6">
+                    <div className="flex flex-col lg:flex-row gap-4 sm:gap-5 items-start">
+                      <MiniScreen innerW={innerW} innerH={isMobile ? 1200 : view.innerH} scale={scale}>
+                        <IndividualPageContent activeId={activeId} setActiveId={setActiveId} group={groups[0] ?? null} mobile={isMobile} />
                       </MiniScreen>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 w-full">
                         <AnimatePresence mode="wait">
                           {(activeId === 'join-cta' || activeId === 'vip-cta') && activeInView && <DetailPanel slot={activeInView} />}
                         </AnimatePresence>
                       </div>
                     </div>
-                    {/* Menu CTA miniature + its detail */}
-                    <div className="flex flex-col lg:flex-row gap-5 items-start">
-                      <MiniScreen innerW={innerW} innerH={400} scale={scale}>
+                    <div className="flex flex-col lg:flex-row gap-4 sm:gap-5 items-start">
+                      <MiniScreen innerW={innerW} innerH={isMobile ? 300 : 400} scale={scale}>
                         <MenuCtaContent activeId={activeId} setActiveId={setActiveId} />
                       </MiniScreen>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 w-full">
                         <AnimatePresence mode="wait">
                           {activeId === 'home-menu-cta' && activeInView && <DetailPanel slot={activeInView} />}
                         </AnimatePresence>
@@ -798,12 +785,12 @@ export default function PageReplica() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col lg:flex-row gap-5 items-start">
-                    <MiniScreen innerW={innerW} innerH={view.innerH} scale={scale}>
-                      {view.id === 'listing' && <ListingPageContent activeId={activeId} setActiveId={setActiveId} groups={groups} mobile={false} />}
-                      {view.id === 'homepage' && <HomePageContent activeId={activeId} setActiveId={setActiveId} mobile={false} />}
+                  <div className="flex flex-col lg:flex-row gap-4 sm:gap-5 items-start">
+                    <MiniScreen innerW={innerW} innerH={isMobile ? (view.id === 'listing' ? 1600 : 900) : view.innerH} scale={scale}>
+                      {view.id === 'listing' && <ListingPageContent activeId={activeId} setActiveId={setActiveId} groups={groups} mobile={isMobile} />}
+                      {view.id === 'homepage' && <HomePageContent activeId={activeId} setActiveId={setActiveId} mobile={isMobile} />}
                     </MiniScreen>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 w-full">
                       <AnimatePresence mode="wait">
                         {activeInView && <DetailPanel slot={activeInView} />}
                       </AnimatePresence>
@@ -812,65 +799,7 @@ export default function PageReplica() {
                 )}
 
                 {view.id === 'listing' && (
-                  <>
-                    <AdFormatComparison />
-
-                    {/* ── EROGRAM STORY SECTION ── */}
-                    <div className="mt-10">
-                      <div className="flex items-center gap-3 mb-8">
-                        <div className="h-px flex-1 bg-gray-200" />
-                        <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-300">Next Placement</span>
-                        <div className="h-px flex-1 bg-gray-200" />
-                      </div>
-
-                      <div className="mb-6 rounded-xl bg-rose-50 border-l-4 border-rose-400 px-5 py-5">
-                        <div className="flex items-center gap-3 mb-4">
-                          <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-rose-600 bg-white font-black text-sm border border-gray-200 shadow-sm">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-                              <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><path d="M17.66 6.344l-.828.828M6.344 17.66l-.828.828M17.66 17.66l-.828-.828M6.344 6.344l-.828-.828"/>
-                            </svg>
-                          </span>
-                          <div>
-                            <h2 className="text-lg sm:text-xl font-black text-gray-900 uppercase tracking-wide leading-tight">Erogram Story</h2>
-                            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-rose-600">Instagram-Style — Groups Page</span>
-                          </div>
-                          <span className="ml-auto text-[9px] font-black px-2 py-1 rounded-full bg-rose-500 text-white uppercase tracking-wider">New</span>
-                        </div>
-
-                        {/* Screenshot — right below title */}
-                        <div className="rounded-xl overflow-hidden border border-rose-100 shadow-md mb-4">
-                          <Image
-                            src="/assets/erogram-stories.png"
-                            alt="Erogram Story placement on Groups page"
-                            width={1400}
-                            height={600}
-                            className="w-full h-auto"
-                          />
-                        </div>
-
-                        <div className="space-y-3 text-[11px] sm:text-xs text-gray-600 max-w-2xl leading-relaxed">
-                          <p className="text-gray-700">One of the <span className="font-bold text-gray-900">highest-engagement formats on Erogram</span>. We create a dedicated brand profile and publish Stories — video or image — directly on the Groups page, exactly where users land first.</p>
-                          <p className="text-gray-700">It works just like Instagram Stories: a circular profile preview at the top of the page, tapped to reveal your full creative with a <span className="font-bold text-gray-900">CTA button</span>. The format is instantly familiar, impossible to miss, and drives exceptional interaction rates.</p>
-                          <div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-rose-600">Why it works</span>
-                            <div className="mt-1.5 space-y-1">
-                              {[
-                                ['First thing visible', 'on the main Groups page — above the fold, before any group card.'],
-                                ['Familiar format', '— users already know how to interact with Stories. No learning curve, instant engagement.'],
-                                ['Video & image', 'supported. Motion content drives up to 3× more engagement than static banners.'],
-                                ['Direct CTA', 'embedded in the Story — one tap goes straight to your destination.'],
-                              ].map(([bold, rest]) => (
-                                <div key={bold} className="flex items-start gap-2">
-                                  <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-rose-400 mt-1.5" />
-                                  <p><span className="font-semibold text-gray-800">{bold}</span> {rest}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </>
+                  <AdFormatComparison />
                 )}
               </div>
             );

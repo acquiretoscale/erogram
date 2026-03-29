@@ -5,34 +5,39 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 // ─── DATA ────────────────────────────────────────────────────────────────────
 
-type PackageType = 'basic' | 'exclusive';
 type PaymentMethod = 'usdt' | 'wise' | '';
 
 interface InFeedProduct {
   id: string;
-  tier: 'platinum' | 'gold' | 'silver';
+  tier: 'diamond' | 'platinum' | 'gold' | 'silver';
   name: string;
   description: string;
-  basicPrice: number;
-  exclusivePrice: number;
+  weekPrice: number;
+  monthPrice: number;
+  visits: string;
+  monthlyClicks: number;
 }
 
 const IN_FEED_PRODUCTS: InFeedProduct[] = [
-  { id: 'feed-platinum', tier: 'platinum', name: 'Platinum In-Feed Slot', basicPrice: 350, exclusivePrice: 700,
-    description: 'Prime placement in top groups; the first asset seen by visitors. Basic = Rotational (25% traffic share). Exclusive = 100% traffic share · 4X volume.' },
-  { id: 'feed-gold', tier: 'gold', name: 'Gold In-Feed Slot', basicPrice: 300, exclusivePrice: 600,
-    description: 'First position in recent groups. Includes eligibility for Video Ads (up to 3X higher CTR than static images). Basic = Rotational (25% traffic share). Exclusive = 100% traffic share · 4X volume.' },
-  { id: 'feed-silver', tier: 'silver', name: 'Silver In-Feed Slot', basicPrice: 220, exclusivePrice: 440,
-    description: 'High-visibility 3rd position in the feed. Basic = Rotational (25% traffic share). Exclusive = 100% traffic share · 4X volume.' },
+  { id: 'feed-diamond', tier: 'diamond', name: 'Diamond In-Feed Slot', weekPrice: 600, monthPrice: 1600, visits: 'up to 30,000 visits/mo', monthlyClicks: 30000,
+    description: 'Maximum exposure — top positions across every Erogram feed simultaneously. Unlocks video ads (up to 3X higher CTR). Priority placement in AI NSFW Recommendations. Highest traffic volume available.' },
+  { id: 'feed-platinum', tier: 'platinum', name: 'Platinum In-Feed Slot', weekPrice: 400, monthPrice: 990, visits: 'up to 12,000 visits/mo', monthlyClicks: 12000,
+    description: 'Featured across all categories simultaneously. The first asset seen by visitors on every section. Unlocks video ads (up to 3X higher CTR than static images).' },
+  { id: 'feed-gold', tier: 'gold', name: 'Gold In-Feed Slot', weekPrice: 200, monthPrice: 400, visits: 'up to 3,000 visits/mo', monthlyClicks: 3000,
+    description: 'Featured in your chosen category — Telegram Groups, Telegram Bots, OnlyFans, or AI NSFW. First position in the feed.' },
+  { id: 'feed-silver', tier: 'silver', name: 'Silver In-Feed Slot', weekPrice: 97, monthPrice: 197, visits: 'up to 1,000 visits/mo', monthlyClicks: 1000,
+    description: 'High-visibility placement in your chosen category. Great value for sustained visibility campaigns.' },
 ];
 
 const TIER_BADGE: Record<string, string> = {
+  diamond:  'bg-gradient-to-r from-sky-300 via-cyan-200 to-blue-300 text-sky-900',
   platinum: 'bg-gradient-to-r from-gray-300 to-gray-500 text-gray-900',
   gold:     'bg-gradient-to-r from-amber-400 to-yellow-300 text-amber-900',
   silver:   'bg-gradient-to-r from-gray-500 to-gray-400 text-gray-900',
 };
 
 const TIER_ACCENT: Record<string, string> = {
+  diamond:  'border-l-2 border-l-sky-400/60',
   platinum: 'border-l-2 border-l-gray-500/40',
   gold:     'border-l-2 border-l-amber-500/40',
   silver:   'border-l-2 border-l-gray-600/40',
@@ -40,30 +45,19 @@ const TIER_ACCENT: Record<string, string> = {
 
 interface Product {
   id: string; name: string; description: string;
-  category: 'cta' | 'homepage' | 'telegram' | 'content';
+  category: 'cta' | 'homepage' | 'content';
   monthly?: number; oneTime?: number;
 }
 
-const IN_FEED_EXTRAS: Product[] = [
-  { id: 'story-7',  name: 'Erogram Stories Profile — 7 Days',  category: 'in-feed' as Product['category'], oneTime: 100,
-    description: 'Instagram-style Story with CTA visible on the Groups page. High engagement due to the familiar swipeable format.' },
-  { id: 'story-30', name: 'Erogram Stories Profile — 30 Days', category: 'in-feed' as Product['category'], monthly: 300,
-    description: 'Instagram-style Story with CTA visible on the Groups page for 30 days. Very high engagement due to the familiar swipeable format.' },
-];
-
 const PRODUCTS: Product[] = [
-  { id: 'cta-menu',      name: 'Menu CTA',               category: 'cta',      monthly: 200,
+  { id: 'cta-menu',      name: 'Menu CTA',               category: 'cta',      monthly: 400,
     description: 'Permanent link in the main navigation bar. Visible on every single page across the entire site — groups, bots, articles, and join pages.' },
-  { id: 'cta-top',       name: 'In-Page CTA (Top)',       category: 'cta',      monthly: 200,
+  { id: 'cta-top',       name: 'In-Page CTA (Top)',       category: 'cta',      monthly: 400,
     description: 'The largest, most prominent call-to-action on every group and bot page. Positioned above the fold for maximum click-through.' },
-  { id: 'cta-secondary', name: 'In-Page CTA (Secondary)', category: 'cta',      monthly: 200,
-    description: 'Highly visible secondary call-to-action on group and bot pages. Great complement to the top CTA or as a standalone placement.' },
-  { id: 'hero-img',      name: 'Hero Banner — Image',     category: 'homepage', monthly: 400,
+  { id: 'home-cta',      name: 'Home Page CTA',           category: 'homepage', monthly: 600,
+    description: 'Exclusive slot — only 1 advertiser. Shown on our most visited page next to the Erogram CTA. Every single visitor sees and can click it.' },
+  { id: 'hero-img',      name: 'Hero Banner — Image',     category: 'homepage', monthly: 600,
     description: 'Full-width banner above the fold on the homepage. The first thing every visitor sees. Image creative with direct link.' },
-  { id: 'hero-vid',      name: 'Hero Banner — Video',     category: 'homepage', monthly: 500,
-    description: 'Full-width video banner above the fold on the homepage. Autoplay video captures instant attention and drives action.' },
-  { id: 'home-cta',      name: 'Home Page CTA',           category: 'homepage', monthly: 250,
-    description: 'Call-to-action button in the hero section, next to "Explore Groups" and "Explore Bots". Direct traffic from homepage visitors.' },
   { id: 'tg-pinned',    name: 'All Groups Pinned Post',                       category: 'telegram', monthly: 200,
     description: 'Your message pinned at the very top of every Telegram channel in our network for the entire duration.' },
   { id: 'tg-blast-1',   name: 'Single Post Blast',                            category: 'telegram', oneTime: 60,
@@ -72,22 +66,24 @@ const PRODUCTS: Product[] = [
     description: 'Persistent button link with CTA on every video and image post across our groups for 7 days. 1 to 4 posts daily on each group.' },
   { id: 'tg-blast-30',  name: '30-Day Full Blast (Button CTA on all our posts)', category: 'telegram', monthly: 400,
     description: 'Persistent button link with CTA on every post across our groups for 30 days. 1 to 4 posts daily on each group.' },
-  { id: 'guest-post',   name: 'Guest Post (up to 3,000 words)', category: 'content', oneTime: 100,
-    description: 'Publish your own high-quality article on Erogram.pro. Permanent backlink, SEO juice, and brand authority.' },
-  { id: 'seo-gold',     name: 'SEO Article — 500 words',        category: 'content', oneTime: 150,
+  { id: 'seo-gold',     name: 'SEO Review — 500 words',              category: 'content', oneTime: 200,
     description: 'Professionally written 500-word search-optimized article. We handle research, writing, and publishing.' },
-  { id: 'seo-plat',     name: 'SEO Article — 1,500 words',      category: 'content', oneTime: 400,
-    description: 'Premium 1,500-word long-form article. Deeply optimized content for maximum search visibility.' },
+  { id: 'seo-plat',     name: 'Authority SEO Article — 1,500 words', category: 'content', oneTime: 400,
+    description: 'Premium 1,500-word long-form article. Optimized for search & conversion.' },
 ];
 
 const CATEGORIES = [
-  { id: 'cta'      as const, label: 'CTA Placements', sub: 'Text + Link — Monthly' },
-  { id: 'homepage' as const, label: 'Homepage',       sub: 'Hero Banner & CTA — Monthly' },
-  { id: 'telegram' as const, label: 'Telegram Ads',   sub: 'Pinned Posts & Blasts' },
-  { id: 'content'  as const, label: 'Content & SEO',  sub: 'Permanent Articles' },
+  { id: 'cta'      as const, label: 'CTA Placements', sub: 'Turbocharge your backlink & SEO strategy with high-quality backlinks & traffic' },
+  { id: 'homepage' as const, label: 'Homepage',       sub: 'Premium traffic while enhancing your branding & authority' },
+  { id: 'content'  as const, label: 'Content & SEO',  sub: 'SEO-optimized articles to generate sales and traffic' },
 ];
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
+
+const IN_FEED_DURATIONS = [
+  { d: 'week'  as const, label: '1 Week'  },
+  { d: 'month' as const, label: '1 Month' },
+];
 
 const DURATIONS = [
   { m: 1, label: '1 mo',  discount: null },
@@ -95,16 +91,13 @@ const DURATIONS = [
   { m: 3, label: '3 mo',  discount: '-30%' },
 ] as const;
 
+function getInFeedPrice(p: InFeedProduct, d: 'week' | 'month'): number {
+  return d === 'week' ? p.weekPrice : p.monthPrice;
+}
+
 function getPrice(p: Product, months: number): number {
   if (p.oneTime != null) return p.oneTime;
   const base = (p.monthly ?? 0) * months;
-  if (months === 2) return Math.round(base * 0.85);
-  if (months === 3) return Math.round(base * 0.70);
-  return base;
-}
-
-function getInFeedPrice(p: InFeedProduct, pkg: PackageType, months: number): number {
-  const base = (pkg === 'exclusive' ? p.exclusivePrice : p.basicPrice) * months;
   if (months === 2) return Math.round(base * 0.85);
   if (months === 3) return Math.round(base * 0.70);
   return base;
@@ -123,7 +116,7 @@ function DurationDropdown({ months, setMonths }: { months: number; setMonths: (m
     <div className="relative shrink-0">
       <button onClick={() => setOpen(!open)}
         className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold border transition-all ${
-          open ? 'bg-[#2a1a1a] border-[#b31b1b]/50 text-[#ff8080]' : 'bg-[#222] border-[#333] text-[#aaa] hover:border-[#444] hover:text-[#ccc]'
+          open ? 'bg-[#0c2d48] border-[#0ea5e9]/50 text-[#7dd3fc]' : 'bg-[#222] border-[#333] text-[#aaa] hover:border-[#444] hover:text-[#ccc]'
         }`}
       >
         {cur.label}
@@ -140,7 +133,7 @@ function DurationDropdown({ months, setMonths }: { months: number; setMonths: (m
               {DURATIONS.map((d) => (
                 <button key={d.m} onClick={() => { setMonths(d.m); setOpen(false); }}
                   className={`w-full flex items-center justify-between px-3 py-2 text-left transition-colors ${
-                    months === d.m ? 'bg-[#2a1a1a] text-[#f0f0f0]'
+                    months === d.m ? 'bg-[#0c2d48] text-[#f0f0f0]'
                     : d.m === 3 ? 'bg-emerald-950/40 text-[#ddd] hover:bg-emerald-900/40'
                     : 'text-[#aaa] hover:bg-[#252525] hover:text-[#ddd]'
                   }`}
@@ -183,7 +176,7 @@ function DetailsBtn({ open, onClick }: { open: boolean; onClick: () => void }) {
   return (
     <button onClick={onClick}
       className={`shrink-0 px-2 py-1 rounded text-[10px] font-semibold border transition-all ${
-        open ? 'bg-[#2a1a1a] border-[#b31b1b]/40 text-[#ff8080]' : 'bg-[#1e1e1e] border-[#2e2e2e] text-[#666] hover:text-[#999] hover:border-[#3e3e3e]'
+        open ? 'bg-[#0c2d48] border-[#0ea5e9]/40 text-[#7dd3fc]' : 'bg-[#1e1e1e] border-[#2e2e2e] text-[#666] hover:text-[#999] hover:border-[#3e3e3e]'
       }`}
     >{open ? 'Hide' : 'Details'}</button>
   );
@@ -200,12 +193,12 @@ const SECTION_STYLES: Record<string, { bg: string; text: string; sub: string; do
 
 function SectionHeader({ label, sub }: { label: string; sub?: string; sectionId?: string }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-2.5 border-b border-[#2a2a2a] bg-[#181818]">
-      <span className="text-[11px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md"
-        style={{ background: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 50%, #7f1d1d 100%)', color: '#fecaca' }}>
+    <div className="flex items-center gap-3 px-4 py-2.5 border-b border-[#1e1e1e] bg-[#0c1a2a]">
+      <span className="text-[11px] font-black uppercase tracking-widest px-2.5 py-1"
+        style={{ background: 'linear-gradient(135deg, #0c2d48 0%, #0369a1 50%, #0c2d48 100%)', color: '#7dd3fc', border: '1px solid #0ea5e9' }}>
         {label}
       </span>
-      {sub && <span className="text-[10px] text-[#555]">{sub}</span>}
+      {sub && <span className="text-[10px] text-white font-bold">{sub}</span>}
     </div>
   );
 }
@@ -222,55 +215,87 @@ function InfoPanel({ text }: { text: string }) {
   );
 }
 
-// ─── IN-FEED ROW ─────────────────────────────────────────────────────────────
+function InFeedDurationDropdown({ dur, setDur }: { dur: 'week' | 'month'; setDur: (d: 'week' | 'month') => void }) {
+  const [open, setOpen] = useState(false);
+  const cur = IN_FEED_DURATIONS.find((x) => x.d === dur)!;
+  return (
+    <div className="relative shrink-0">
+      <button onClick={() => setOpen(!open)}
+        className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold border transition-all whitespace-nowrap ${
+          open ? 'bg-[#0c2d48] border-[#0ea5e9]/50 text-[#7dd3fc]' : 'bg-[#222] border-[#333] text-[#aaa] hover:border-[#444] hover:text-[#ccc]'
+        }`}
+      >
+        {cur.label}
+        <svg className={`w-2.5 h-2.5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+            <motion.div initial={{ opacity: 0, y: -3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }} transition={{ duration: 0.1 }}
+              className="absolute right-0 top-full mt-1 z-20 bg-[#1e1e1e] border border-[#333] rounded-lg shadow-2xl overflow-hidden min-w-[90px]"
+            >
+              {IN_FEED_DURATIONS.map((opt) => (
+                <button key={opt.d} onClick={() => { setDur(opt.d); setOpen(false); }}
+                  className={`w-full px-3 py-2 text-left text-[11px] font-semibold whitespace-nowrap transition-colors ${
+                    dur === opt.d ? 'bg-[#0c2d48] text-[#f0f0f0]' : 'text-[#aaa] hover:bg-[#252525] hover:text-[#ddd]'
+                  }`}
+                >{opt.label}</button>
+              ))}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 
 function InFeedPricingRow({ product, isLast, cart, onCartChange }: {
   product: InFeedProduct; isLast: boolean;
   cart: Map<string, CartItem>;
   onCartChange: (id: string, item: CartItem | null) => void;
 }) {
-  const [infoOpen, setInfoOpen] = useState(false);
-  const [months, setMonths] = useState(1);
-  const [pkg, setPkg] = useState<PackageType>('basic');
+  const [dur, setDur] = useState<'week' | 'month'>('month');
 
   const inCart = cart.has(product.id);
-  const price  = getInFeedPrice(product, pkg, months);
-  const base   = (pkg === 'exclusive' ? product.exclusivePrice : product.basicPrice) * months;
-  const savings = base - price;
+  const price  = getInFeedPrice(product, dur);
+  const weeklyFull = product.weekPrice * 4;
+  const savings = dur === 'month' ? weeklyFull - product.monthPrice : 0;
 
-  const build = useCallback((p: PackageType, m: number): CartItem => {
-    const pr = getInFeedPrice(product, p, m);
-    const bt = (p === 'exclusive' ? product.exclusivePrice : product.basicPrice) * m;
-    const d  = DURATIONS.find((x) => x.m === m)!;
+  const build = useCallback((d: 'week' | 'month'): CartItem => {
+    const pr = getInFeedPrice(product, d);
+    const bt = d === 'month' ? product.weekPrice * 4 : pr;
+    const lbl = IN_FEED_DURATIONS.find((x) => x.d === d)!;
     return { id: product.id, name: product.name, price: pr, baseTotal: bt,
-      sublabel: `${p === 'exclusive' ? 'Exclusive' : 'Basic'} · ${d.label}${d.discount ? ` ${d.discount}` : ''}` };
+      sublabel: lbl.label };
   }, [product]);
 
-  const handlePkg = (p: PackageType) => { setPkg(p); if (inCart) onCartChange(product.id, build(p, months)); };
-  const handleMo  = (m: number)      => { setMonths(m); if (inCart) onCartChange(product.id, build(pkg, m)); };
-  const toggle    = () => inCart ? onCartChange(product.id, null) : onCartChange(product.id, build(pkg, months));
+  const handleDur = (d: 'week' | 'month') => { setDur(d); if (inCart) onCartChange(product.id, build(d)); };
+  const toggle    = () => inCart ? onCartChange(product.id, null) : onCartChange(product.id, build(dur));
 
   return (
     <div className={`${!isLast ? 'border-b border-[#222]' : ''} ${TIER_ACCENT[product.tier]} ${inCart ? 'bg-emerald-950/20' : 'hover:bg-[#1c1c1c]'} transition-colors`}>
       <div className="flex items-center gap-2 py-2 px-3">
         <span className={`shrink-0 ${TIER_BADGE[product.tier]} text-[8px] font-black px-1.5 py-[2px] rounded uppercase tracking-wider`}>{product.tier}</span>
         <span className="flex-1 min-w-0 text-xs font-semibold text-[#d0d0d0] truncate">{product.name}</span>
-        <DetailsBtn open={infoOpen} onClick={() => setInfoOpen(!infoOpen)} />
-        <div className="flex shrink-0 rounded overflow-hidden border border-[#333] text-[10px] font-black uppercase">
-          {(['basic', 'exclusive'] as PackageType[]).map((p) => (
-            <button key={p} onClick={() => handlePkg(p)}
-              className={`px-2 py-1 transition-colors ${pkg === p ? (p === 'exclusive' ? 'bg-[#b31b1b] text-white' : 'bg-[#2e2e2e] text-[#e0e0e0]') : 'text-[#555] hover:text-[#999]'}`}
-            >{p === 'basic' ? 'Basic' : 'Excl.'}</button>
-          ))}
-        </div>
-        <DurationDropdown months={months} setMonths={handleMo} />
+        <span className="hidden sm:block shrink-0 text-[9px] font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-2 py-[3px] rounded whitespace-nowrap">
+          up to {(dur === 'week' ? product.monthlyClicks / 4 : product.monthlyClicks).toLocaleString()} {dur === 'week' ? 'visits/wk' : 'visits/mo'}
+        </span>
+        <span className="hidden sm:block shrink-0 text-[9px] font-bold text-[#aaa] bg-[#1e1e1e] border border-[#333] px-2 py-[3px] rounded whitespace-nowrap">
+          ${(price / (dur === 'week' ? product.monthlyClicks / 4 : product.monthlyClicks)).toFixed(2)}/visit
+        </span>
+        <InFeedDurationDropdown dur={dur} setDur={handleDur} />
         <div className="text-right shrink-0 min-w-[52px]">
           <span className="text-sm font-black text-[#f0f0f0] tabular-nums">{fmt(price)}</span>
-          <span className="block text-[9px] text-[#555]">{months > 1 ? `total${savings > 0 ? ` · save ${fmt(savings)}` : ''}` : '/mo'}</span>
+          <span className="block text-[9px]">
+            {dur === 'month' && savings > 0
+              ? <span className="text-emerald-400">save {fmt(savings)}</span>
+              : <span className="text-[#555]">/{dur}</span>}
+          </span>
         </div>
         <AddBtn inCart={inCart} onClick={toggle} />
       </div>
-      <AnimatePresence>{infoOpen && <InfoPanel text={product.description} />}</AnimatePresence>
     </div>
   );
 }
@@ -283,37 +308,26 @@ function PricingRow({ product, isLast, cart, onCartChange }: {
   onCartChange: (id: string, item: CartItem | null) => void;
 }) {
   const [infoOpen, setInfoOpen] = useState(false);
-  const [months,   setMonths]   = useState(1);
 
-  const inCart  = cart.has(product.id);
-  const isSub   = product.monthly != null;
-  const price   = getPrice(product, months);
-  const base    = (product.monthly ?? 0) * months;
-  const savings = isSub && months > 1 ? base - price : 0;
+  const inCart = cart.has(product.id);
+  const price  = product.oneTime ?? (product.monthly ?? 0);
 
-  const build = useCallback((m: number): CartItem => {
-    const pr = getPrice(product, m);
-    const bt = (product.monthly ?? 0) * m;
-    const d  = DURATIONS.find((x) => x.m === m)!;
-    return { id: product.id, name: product.name, price: pr,
-      baseTotal: product.oneTime != null ? pr : bt,
-      sublabel: product.oneTime != null ? 'One-time' : `${d.label}${d.discount ? ` ${d.discount}` : ''}` };
-  }, [product]);
+  const build = useCallback((): CartItem => ({
+    id: product.id, name: product.name, price,
+    baseTotal: price,
+    sublabel: product.oneTime != null ? 'One-time' : '1 mo',
+  }), [product, price]);
 
-  const handleMo = (m: number) => { setMonths(m); if (inCart) onCartChange(product.id, build(m)); };
-  const toggle   = () => inCart ? onCartChange(product.id, null) : onCartChange(product.id, build(months));
+  const toggle = () => inCart ? onCartChange(product.id, null) : onCartChange(product.id, build());
 
   return (
     <div className={`${!isLast ? 'border-b border-[#222]' : ''} ${inCart ? 'bg-emerald-950/20' : 'hover:bg-[#1c1c1c]'} transition-colors`}>
       <div className="flex items-center gap-2 py-2 px-3">
         <span className="flex-1 min-w-0 text-xs font-semibold text-[#d0d0d0] truncate">{product.name}</span>
         <DetailsBtn open={infoOpen} onClick={() => setInfoOpen(!infoOpen)} />
-        {isSub && <DurationDropdown months={months} setMonths={handleMo} />}
         <div className="text-right shrink-0 min-w-[52px]">
           <span className="text-sm font-black text-[#f0f0f0] tabular-nums">{fmt(price)}</span>
-          <span className="block text-[9px] text-[#555]">
-            {product.oneTime != null ? 'one-time' : months > 1 ? `total${savings > 0 ? ` · save ${fmt(savings)}` : ''}` : '/mo'}
-          </span>
+          <span className="block text-[9px] text-[#555]">{product.oneTime != null ? 'one-time' : '/mo'}</span>
         </div>
         <AddBtn inCart={inCart} onClick={toggle} />
       </div>
@@ -321,7 +335,6 @@ function PricingRow({ product, isLast, cart, onCartChange }: {
     </div>
   );
 }
-
 // ─── CAMPAIGN TOTAL ──────────────────────────────────────────────────────────
 
 function CampaignTotal({ cart, onRemove }: { cart: Map<string, CartItem>; onRemove: (id: string) => void }) {
@@ -474,7 +487,7 @@ function CampaignTotal({ cart, onRemove }: { cart: Map<string, CartItem>; onRemo
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-3.5 bg-[#1a1a1a] border-b border-[#2a2a2a]">
         <div className="flex items-center gap-2.5">
-          <div className="w-0.5 h-5 rounded-full bg-gradient-to-b from-[#ff3366] to-[#b31b1b]" />
+          <div className="w-0.5 h-5 rounded-full bg-gradient-to-b from-[#0ea5e9] to-[#0369a1]" />
           <h3 className="text-sm font-black uppercase tracking-widest text-white">Campaign Total</h3>
         </div>
         <div className="flex items-center gap-3">
@@ -497,7 +510,7 @@ function CampaignTotal({ cart, onRemove }: { cart: Map<string, CartItem>; onRemo
           <svg className="w-4 h-4 text-[#888]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
           <span className="text-[11px] font-bold text-[#555]">Email us directly:</span>
         </div>
-        <a href="mailto:erogrampro@gmail.com" className="text-[13px] font-black text-[#1a1a1a] hover:text-[#b31b1b] transition-colors underline underline-offset-2">
+        <a href="mailto:erogrampro@gmail.com" className="text-[13px] font-black text-[#1a1a1a] hover:text-[#0ea5e9] transition-colors underline underline-offset-2">
           erogrampro@gmail.com
         </a>
       </div>
@@ -701,19 +714,16 @@ export default function AdShop() {
     <div className="max-w-2xl mx-auto space-y-5">
 
       {/* Pricing table */}
-      <div className="rounded-xl overflow-hidden border border-[#2a2a2a] bg-[#161616]"
-        style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.02), 0 20px 50px rgba(0,0,0,0.5)' }}
+      <div className="rounded-xl overflow-hidden border border-[#0ea5e9]/20 bg-[#0c0f14]"
+        style={{ boxShadow: '0 0 0 1px rgba(14,165,233,0.05), 0 20px 50px rgba(0,0,0,0.5)' }}
       >
         <div>
-          <SectionHeader label="In-Feed Advertising Packages" sub="Basic & Exclusive — Monthly" sectionId="in-feed" />
+          <SectionHeader label="Featured In-Feed" sub="Unlock Tier 1 & Tier 2 high-intent traffic at up to $0.05/visit" sectionId="in-feed" />
           {IN_FEED_PRODUCTS.map((p, i) => (
-            <InFeedPricingRow key={p.id} product={p} isLast={false} cart={cart} onCartChange={handleCartChange} />
-          ))}
-          {IN_FEED_EXTRAS.map((p, i) => (
-            <PricingRow key={p.id} product={p} isLast={i === IN_FEED_EXTRAS.length - 1} cart={cart} onCartChange={handleCartChange} />
+            <InFeedPricingRow key={p.id} product={p} isLast={i === IN_FEED_PRODUCTS.length - 1} cart={cart} onCartChange={handleCartChange} />
           ))}
         </div>
-        <div className="h-px bg-gradient-to-r from-transparent via-[#b31b1b]/15 to-transparent" />
+        <div className="h-px bg-gradient-to-r from-transparent via-[#0ea5e9]/15 to-transparent" />
         {CATEGORIES.map((cat) => {
           const products = PRODUCTS.filter((p) => p.category === cat.id);
           return (
@@ -733,7 +743,7 @@ export default function AdShop() {
       </AnimatePresence>
 
       {/* How it works */}
-      <div className="rounded-xl overflow-hidden border border-[#2a2a2a] bg-[#161616]">
+      <div className="rounded-xl overflow-hidden border border-[#0ea5e9]/20 bg-[#0c0f14]">
         <SectionHeader label="How It Works" />
         <div className="grid grid-cols-2 sm:grid-cols-4">
           {STEPS.map((step, i) => (
@@ -741,8 +751,8 @@ export default function AdShop() {
               {i < STEPS.length - 1 && (
                 <div className="absolute right-0 top-1/2 -translate-y-1/2 w-px h-8 bg-[#2a2a2a]" />
               )}
-              <div className="w-5 h-5 rounded-full bg-[#b31b1b]/20 border border-[#b31b1b]/40 flex items-center justify-center mb-3">
-                <span className="text-[9px] font-black text-[#ff3366]">{i + 1}</span>
+              <div className="w-5 h-5 flex items-center justify-center mb-3" style={{ background: 'rgba(14,165,233,0.15)', border: '1px solid rgba(14,165,233,0.4)' }}>
+                <span className="text-[9px] font-black text-[#38bdf8]">{i + 1}</span>
               </div>
               <p className="text-[11px] font-black text-[#e0e0e0] mb-1.5 leading-snug">{step.title}</p>
               <p className="text-[10px] text-[#666] leading-relaxed">{step.desc}</p>

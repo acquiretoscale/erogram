@@ -61,7 +61,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const dict = await getDictionary(locale);
   const m = dict.meta || {};
 
-  const title = m.homeTitle || 'Erogram | Best NSFW & Porn Telegram Groups Directory (2026)';
+  const title = m.homeTitle || 'Erogram | Best NSFW Telegram Groups, Bots & AI Tools Directory (2026)';
   const description = m.homeDesc || 'The best NSFW & Porn Telegram groups directory. Browse thousands of verified adult Telegram communities and AI bots by category — amateur, anal, lesbian, MILF, onlyfans & more. Updated daily.';
   const imgUrl = process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${siteUrl}/assets/placeholder-no-image.png`;
   const canonicalBase = 'https://erogram.pro';

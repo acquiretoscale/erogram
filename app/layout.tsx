@@ -26,7 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const dict = await getDictionary(locale);
   const m = dict.meta || {};
 
-  const title = m.homeTitle || "Erogram | Best NSFW Telegram Groups & Channels Directory 2026";
+  const title = m.homeTitle || "Erogram | Best NSFW Telegram Groups, Bots & AI Tools Directory (2026)";
   const description = m.homeDesc || "Find and explore the best Telegram groups from around the world. Connect with communities that match your interests.";
 
   // Self-referencing canonical — each locale owns its own URL

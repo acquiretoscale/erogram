@@ -14,7 +14,7 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
   return (
     <ErrorBoundary>
       <Suspense fallback={null}><SiteBeacon /></Suspense>
-      <AdminSaleAlert />
+      <Suspense fallback={null}><AdminSaleAlert /></Suspense>
       {children}
       <CookieBanner />
     </ErrorBoundary>

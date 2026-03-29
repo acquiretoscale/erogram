@@ -3,7 +3,7 @@ import { AI_NSFW_TOOLS } from './data';
 import AINsfwClient from './AINsfwClient';
 import { getLocale } from '@/lib/i18n/server';
 import { getDictionary } from '@/lib/i18n';
-import { getAllToolStats } from '@/lib/actions/ainsfw';
+import { getAllToolStats, getFeaturedTools } from '@/lib/actions/ainsfw';
 
 const BASE_URL = 'https://erogram.pro';
 
@@ -48,7 +48,15 @@ export default async function AINsfwPage() {
   const locale = await getLocale();
   const dict = await getDictionary(locale);
   const a = dict.ainsfw ?? {};
-  const allStats = await getAllToolStats(AI_NSFW_TOOLS.map(t => t.slug));
+  const [allStats, featuredInfos] = await Promise.all([
+    getAllToolStats(AI_NSFW_TOOLS.map(t => t.slug)),
+    getFeaturedTools(),
+  ]);
+  const featuredSlugs = featuredInfos.map(f => f.slug);
+  const featuredCampaignMap: Record<string, string> = {};
+  for (const f of featuredInfos) {
+    if (f.campaignId) featuredCampaignMap[f.slug] = f.campaignId;
+  }
 
   const itemListJsonLd = {
     '@context': 'https://schema.org',
@@ -115,7 +123,7 @@ export default async function AINsfwPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
-      <AINsfwClient tools={AI_NSFW_TOOLS} allStats={allStats} />
+      <AINsfwClient tools={AI_NSFW_TOOLS} allStats={allStats} featuredSlugs={featuredSlugs} featuredCampaignMap={featuredCampaignMap} />
     </>
   );
 }

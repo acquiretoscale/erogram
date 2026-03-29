@@ -7,6 +7,7 @@ import {
   getAllToolStats,
   adminSetToolVotes,
   adminDeleteReview,
+  adminSetFeatured,
   type ToolStatsData,
 } from '@/lib/actions/ainsfw';
 
@@ -47,7 +48,7 @@ export default function AINsfwTab() {
   useEffect(() => { fetchStats(); }, [fetchStats]);
 
   const getStats = (slug: string): ToolStatsData =>
-    stats[slug] || { upvotes: 0, downvotes: 0, reviews: [] };
+    stats[slug] || { upvotes: 0, downvotes: 0, featured: false, reviews: [] };
 
   const score = (slug: string) => {
     const s = getStats(slug);
@@ -92,6 +93,23 @@ export default function AINsfwTab() {
     }
   };
 
+  const handleToggleFeatured = async (slug: string) => {
+    const current = getStats(slug).featured;
+    setSaving(slug);
+    try {
+      const newVal = await adminSetFeatured(slug, !current);
+      setStats((prev) => ({
+        ...prev,
+        [slug]: { ...getStats(slug), featured: newVal },
+      }));
+      showToast(newVal ? 'Marked as featured' : 'Removed from featured');
+    } catch {
+      showToast('Failed to update featured');
+    } finally {
+      setSaving(null);
+    }
+  };
+
   const categories = ['All', ...new Set(AI_NSFW_TOOLS.map((t) => t.category))];
 
   const filtered = AI_NSFW_TOOLS.filter((t) => {
@@ -126,6 +144,7 @@ export default function AINsfwTab() {
   const totalDown = Object.values(stats).reduce((s, v) => s + (v.downvotes || 0), 0);
   const totalReviews = Object.values(stats).reduce((s, v) => s + (v.reviews?.length || 0), 0);
   const toolsWithVotes = Object.values(stats).filter((v) => v.upvotes > 0 || v.downvotes > 0).length;
+  const featuredCount = Object.values(stats).filter((v) => v.featured).length;
 
   return (
     <div className="space-y-6">
@@ -155,7 +174,7 @@ export default function AINsfwTab() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Total Tools', value: AI_NSFW_TOOLS.length, color: 'text-blue-400' },
-          { label: 'Tools with Votes', value: toolsWithVotes, color: 'text-emerald-400' },
+          { label: 'Featured', value: featuredCount, color: 'text-purple-400' },
           { label: 'Total Upvotes', value: totalUp, color: 'text-green-400' },
           { label: 'Total Reviews', value: totalReviews, color: 'text-yellow-400' },
         ].map((c) => (
@@ -207,6 +226,7 @@ export default function AINsfwTab() {
                   {col.label}{sortIcon(col.key)}
                 </th>
               ))}
+              <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/50">Featured</th>
               <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/50">Actions</th>
             </tr>
           </thead>
@@ -214,11 +234,11 @@ export default function AINsfwTab() {
             {loading ? (
               Array.from({ length: 6 }).map((_, i) => (
                 <tr key={i} className="animate-pulse">
-                  <td className="px-4 py-3" colSpan={7}><div className="h-4 bg-white/[0.06] rounded w-full" /></td>
+                  <td className="px-4 py-3" colSpan={8}><div className="h-4 bg-white/[0.06] rounded w-full" /></td>
                 </tr>
               ))
             ) : filtered.length === 0 ? (
-              <tr><td className="px-4 py-8 text-center text-white/30" colSpan={7}>No tools found</td></tr>
+              <tr><td className="px-4 py-8 text-center text-white/30" colSpan={8}>No tools found</td></tr>
             ) : (
               filtered.map((tool) => {
                 const s = getStats(tool.slug);
@@ -259,6 +279,19 @@ export default function AINsfwTab() {
                       ) : (
                         <span className="text-white/20">0</span>
                       )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => handleToggleFeatured(tool.slug)}
+                        disabled={saving === tool.slug}
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-all disabled:opacity-40 ${
+                          s.featured
+                            ? 'bg-purple-600/30 text-purple-300 border-purple-500/30 hover:bg-purple-600/40'
+                            : 'bg-white/[0.04] text-white/30 border-white/[0.08] hover:bg-white/[0.08] hover:text-white/50'
+                        }`}
+                      >
+                        {s.featured ? '★ Featured' : '☆ Set'}
+                      </button>
                     </td>
                     <td className="px-4 py-3">
                       <button

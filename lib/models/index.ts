@@ -474,7 +474,7 @@ export const campaignSchema = new Schema(
     internalName: { type: String, default: '' },
     slot: {
       type: String,
-      enum: ['top-banner', 'homepage-hero', 'feed', 'navbar-cta', 'join-cta', 'filter-cta', 'sidebar-feed', 'article-link'],
+      enum: ['top-banner', 'homepage-hero', 'feed', 'navbar-cta', 'join-cta', 'filter-cta', 'sidebar-feed', 'article-link', 'ainsfw'],
       required: true,
     },
     creative: { type: String, required: false, default: '' },
@@ -511,7 +511,7 @@ export const campaignSchema = new Schema(
     // Show a verified checkmark next to the ad title (like Instagram verified)
     verified: { type: Boolean, default: false },
     // Ad type: 'advertiser' (image/video), 'premium' (group mosaic), or 'featured-bot' (slot-5 bot spotlight)
-    adType: { type: String, enum: ['advertiser', 'premium', 'featured-bot'], default: 'advertiser' },
+    adType: { type: String, enum: ['advertiser', 'premium', 'featured-bot', 'featured-nsfw'], default: 'advertiser' },
     // For premium ads: which category to pull featured groups from
     premiumCategory: { type: String, default: '' },
     // For premium ads: hand-picked group IDs to show (overrides automatic category query)
@@ -939,6 +939,8 @@ const ainsfwToolStatsSchema = new Schema(
     slug: { type: String, required: true, unique: true, index: true },
     upvotes: { type: Number, default: 0 },
     downvotes: { type: Number, default: 0 },
+    featured: { type: Boolean, default: false, index: true },
+    campaignId: { type: Schema.Types.ObjectId, ref: 'Campaign', default: null },
     reviews: [
       {
         text: { type: String, required: true, maxlength: 1000 },
@@ -952,3 +954,39 @@ const ainsfwToolStatsSchema = new Schema(
 );
 
 export const AINsfwToolStats = models.AINsfwToolStats || model('AINsfwToolStats', ainsfwToolStatsSchema);
+
+// AI NSFW Submission — user-submitted AI tools for listing
+const ainsfwSubmissionSchema = new Schema(
+  {
+    name: { type: String, required: true },
+    slug: { type: String, required: true, unique: true },
+    category: { type: String, required: true },
+    categories: { type: [String], default: [] },
+    vendor: { type: String, default: '' },
+    description: { type: String, required: true },
+    image: { type: String, default: '/assets/image.jpg' },
+    websiteUrl: { type: String, required: true },
+    tags: { type: [String], default: [] },
+    subscription: { type: String, default: '' },
+    payment: { type: [String], default: [] },
+    tryNowUrl: { type: String, default: '' },
+    contactEmail: { type: String, default: '' },
+    status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+    submissionTier: { type: String, enum: ['basic', 'boost', 'free', 'instant', 'platinum'], default: 'basic' },
+    paymentStatus: { type: String, enum: ['pending', 'paid', 'none'], default: 'none' },
+    paymentId: { type: String, default: null },
+    boosted: { type: Boolean, default: false },
+    boostExpiresAt: { type: Date, default: null },
+    featured: { type: Boolean, default: false },
+    featuredExpiresAt: { type: Date, default: null },
+    views: { type: Number, default: 0 },
+    clickCount: { type: Number, default: 0 },
+  },
+  { timestamps: true },
+);
+
+ainsfwSubmissionSchema.index({ status: 1 });
+ainsfwSubmissionSchema.index({ featured: 1 });
+ainsfwSubmissionSchema.index({ boosted: 1, boostExpiresAt: 1 });
+
+export const AINsfwSubmission = models.AINsfwSubmission || model('AINsfwSubmission', ainsfwSubmissionSchema);

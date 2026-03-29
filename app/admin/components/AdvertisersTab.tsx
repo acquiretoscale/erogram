@@ -86,6 +86,7 @@ const SLOT_LABELS: Record<string, string> = {
   'filter-cta': 'Filter CTA',
   'featured-groups': 'Featured Groups',
   'article-link': 'Article Link',
+  ainsfw: 'AI NSFW Featured',
 };
 
 const FEED_SLOTS = ['feed'];
@@ -2038,6 +2039,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                     'top-banner': '#3b82f6', 'homepage-hero': '#8b5cf6', feed: '#10b981',
                     'navbar-cta': '#f59e0b', 'join-cta': '#06b6d4', 'filter-cta': '#ec4899',
                     'article-link': '#f97316',
+                    ainsfw: '#a855f7',
                   };
 
                   const trendData: ChartDatum[] = current.map((row, idx) => {
@@ -3389,6 +3391,61 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                 {sortedPositions.length === 0 && (
                   <div className="p-8 text-center text-[#666]">No feed ads match the current filters. Create one with &quot;+ New feed ad&quot;.</div>
                 )}
+
+                {/* ─── AI NSFW Featured section ─── */}
+                {(() => {
+                  const nsfwCampaigns = campaigns.filter((c) => c.slot === 'ainsfw');
+                  if (nsfwCampaigns.length === 0) return null;
+                  return (
+                    <div className="mt-10">
+                      <div className="flex items-center gap-3 mb-4">
+                        <h2 className="text-lg font-bold text-white">AI NSFW Featured</h2>
+                        <span className="text-[10px] font-bold bg-purple-600/30 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded">{nsfwCampaigns.length} campaign{nsfwCampaigns.length !== 1 ? 's' : ''}</span>
+                      </div>
+                      <div className="overflow-x-auto rounded-lg border border-white/10">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-white/10 text-left">
+                              <th className="px-4 py-2 text-[#999] text-xs font-semibold">Tool</th>
+                              <th className="px-4 py-2 text-[#999] text-xs font-semibold">Status</th>
+                              <th className="px-4 py-2 text-[#999] text-xs font-semibold text-right">Impressions</th>
+                              <th className="px-4 py-2 text-[#999] text-xs font-semibold text-right">Clicks (24h)</th>
+                              <th className="px-4 py-2 text-[#999] text-xs font-semibold text-right">Clicks (7d)</th>
+                              <th className="px-4 py-2 text-[#999] text-xs font-semibold text-right">Clicks (30d)</th>
+                              <th className="px-4 py-2 text-[#999] text-xs font-semibold text-right">Total Clicks</th>
+                              <th className="px-4 py-2 text-[#999] text-xs font-semibold text-right">CTR</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {nsfwCampaigns.map((c) => {
+                              const s = feedClickStats[c._id] || { total: c.clicks ?? 0, last24h: 0, last7d: 0, last30d: 0, impressions: c.impressions ?? 0, ctr: 0 };
+                              const ctr = s.impressions ? ((s.total / s.impressions) * 100).toFixed(2) : '0.00';
+                              return (
+                                <tr key={c._id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                                  <td className="px-4 py-2.5">
+                                    <div className="font-semibold text-white text-xs">{c.name}</div>
+                                    <div className="text-[10px] text-[#666]">{c.internalName || c.destinationUrl}</div>
+                                  </td>
+                                  <td className="px-4 py-2.5">
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${c.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>{c.status}</span>
+                                  </td>
+                                  <td className="px-4 py-2.5 text-right text-[#999] text-xs">{(s.impressions || 0).toLocaleString()}</td>
+                                  <td className="px-4 py-2.5 text-right text-[#999] text-xs">{s.last24h.toLocaleString()}</td>
+                                  <td className="px-4 py-2.5 text-right text-[#999] text-xs">{s.last7d.toLocaleString()}</td>
+                                  <td className="px-4 py-2.5 text-right text-[#999] text-xs">{s.last30d.toLocaleString()}</td>
+                                  <td className="px-4 py-2.5 text-right font-semibold text-white text-xs">{s.total.toLocaleString()}</td>
+                                  <td className="px-4 py-2.5 text-right text-xs">
+                                    <span className={`font-bold ${Number(ctr) > 0 ? 'text-green-400' : 'text-[#666]'}`}>{ctr}%</span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })()}
               </>
             );
           })()}

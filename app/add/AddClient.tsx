@@ -122,13 +122,14 @@ const BOT_TIER_STARS: Record<string, number> = {
 interface AddClientProps {
   categories: string[];
   countries: string[];
+  defaultTab?: 'group' | 'bot';
 }
 
-export default function AddClient({ categories, countries }: AddClientProps) {
+export default function AddClient({ categories, countries, defaultTab }: AddClientProps) {
   const { t } = useTranslation();
   const lp = useLocalePath();
 
-  const [tab, setTab] = useState<'group' | 'bot'>('group');
+  const [tab, setTab] = useState<'group' | 'bot'>(defaultTab || 'group');
   const [groupData, setGroupData] = useState({
     name: '',
     category: 'NSFW-Telegram',
@@ -497,32 +498,37 @@ export default function AddClient({ categories, countries }: AddClientProps) {
     <main className="pt-24 pb-16 px-4 max-w-2xl mx-auto">
       <div className="text-center mb-8">
         <h1 className="text-3xl md:text-4xl font-black text-white mb-2">
-          {t('add.title')}
+          {tab === 'group' ? 'Add Telegram Group' : 'Add Telegram Bot'}
         </h1>
-        <p className="text-[#999]">
-          {t('add.subtitle')}
-        </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex rounded-full bg-white/5 border border-white/10 p-1 mb-8">
-        <button
-          type="button"
-          onClick={() => { setTab('group'); setSelectedTier('free'); setError(''); }}
-          className={`flex-1 py-2.5 rounded-full font-bold text-sm transition-all ${tab === 'group' ? 'text-white' : 'text-[#999] hover:text-white'}`}
-          style={tab === 'group' ? { backgroundColor: TELEGRAM_BLUE } : {}}
-        >
-          {t('add.group')}
-        </button>
-        <button
-          type="button"
-          onClick={() => { setTab('bot'); setSelectedTier('normal_listing'); setError(''); }}
-          className={`flex-1 py-2.5 rounded-full font-bold text-sm transition-all ${tab === 'bot' ? 'text-white' : 'text-[#999] hover:text-white'}`}
-          style={tab === 'bot' ? { backgroundColor: TELEGRAM_BLUE } : {}}
-        >
-          {t('add.bot')}
-        </button>
-      </div>
+      {/* Tabs — only shown when no specific defaultTab (i.e. the old combined page) */}
+      {!defaultTab && (
+        <div className="flex rounded-full bg-white/5 border border-white/10 p-1 mb-8">
+          <button
+            type="button"
+            onClick={() => { setTab('group'); setSelectedTier('free'); setError(''); }}
+            className={`flex-1 py-2.5 rounded-full font-bold text-sm transition-all ${tab === 'group' ? 'text-white' : 'text-[#999] hover:text-white'}`}
+            style={tab === 'group' ? { backgroundColor: TELEGRAM_BLUE } : {}}
+          >
+            {t('add.group')}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setTab('bot'); setSelectedTier('normal_listing'); setError(''); }}
+            className={`flex-1 py-2.5 rounded-full font-bold text-sm transition-all ${tab === 'bot' ? 'text-white' : 'text-[#999] hover:text-white'}`}
+            style={tab === 'bot' ? { backgroundColor: TELEGRAM_BLUE } : {}}
+          >
+            {t('add.bot')}
+          </button>
+          <Link
+            href="/add/ainsfw"
+            className="flex-1 py-2.5 rounded-full font-bold text-sm transition-all text-[#999] hover:text-white text-center no-underline"
+          >
+            🔞 AI NSFW
+          </Link>
+        </div>
+      )}
 
       {/* Form */}
       <>
@@ -773,10 +779,29 @@ export default function AddClient({ categories, countries }: AddClientProps) {
           )}
       </>
 
-      <p className="mt-8 text-center text-[#666] text-sm">
+      {/* AI NSFW CTA */}
+      <div className="mt-10 max-w-2xl mx-auto">
+        <Link
+          href="/add/ainsfw"
+          className="block p-5 rounded-2xl border-2 border-[#06b6d4]/30 bg-gradient-to-r from-[#06b6d4]/10 to-[#8b5cf6]/10 hover:border-[#06b6d4]/60 transition-all group no-underline"
+        >
+          <div className="flex items-center gap-4">
+            <span className="text-3xl shrink-0">{'\u{1F9E0}'}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-black text-white group-hover:text-[#22d3ee] transition-colors">List your AI NSFW Tool</p>
+              <p className="text-xs text-[#888] mt-0.5">Get featured across Erogram&apos;s AI NSFW directory &mdash; from $39</p>
+            </div>
+            <svg className="w-5 h-5 text-[#06b6d4] shrink-0 group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+        </Link>
+      </div>
+
+      <p className="mt-6 text-center text-[#666] text-sm">
         <Link href={lp('/groups')} className="text-[#0088cc] hover:underline">{t('add.browseGroups')}</Link>
-        {' · '}
+        {' \u00B7 '}
         <Link href={lp('/bots')} className="text-[#0088cc] hover:underline">{t('add.browseBots')}</Link>
+        {' \u00B7 '}
+        <Link href="/ainsfw" className="text-[#0088cc] hover:underline">Browse AI NSFW</Link>
       </p>
     </main>
   );

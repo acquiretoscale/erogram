@@ -13,11 +13,10 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 interface ToastData {
-  type: 'sale' | 'newUser';
+  type: 'sale';
   plan?: string;
   method?: string;
   username?: string | null;
-  provider?: string;
 }
 
 export default function AdminSaleAlert() {
@@ -87,10 +86,11 @@ export default function AdminSaleAlert() {
     const token = localStorage.getItem('token');
     if (!token) return;
     try {
-      const { sale, newUser } = await getLatestSale(token, lastPollRef.current);
-      if (sale || newUser) lastPollRef.current = Date.now();
-      if (sale) addToast({ type: 'sale', plan: sale.plan, method: sale.method, username: sale.username });
-      if (newUser) addToast({ type: 'newUser', username: newUser.username, provider: newUser.provider });
+      const { sale } = await getLatestSale(token, lastPollRef.current);
+      if (sale) {
+        lastPollRef.current = Date.now();
+        addToast({ type: 'sale', plan: sale.plan, method: sale.method, username: sale.username });
+      }
     } catch {}
   }, [isAdmin]);
 
@@ -111,7 +111,7 @@ export default function AdminSaleAlert() {
           className="fixed right-4 z-[9999] max-w-xs transition-all"
           style={{
             top: `${16 + i * 72}px`,
-            background: toast.type === 'sale' ? '#16a34a' : '#2563eb',
+            background: '#16a34a',
             color: '#fff',
             borderRadius: '12px',
             padding: '12px 16px',
@@ -119,24 +119,14 @@ export default function AdminSaleAlert() {
           }}
         >
           <div className="flex items-center gap-2">
-            <span className="text-lg">{toast.type === 'sale' ? '💰' : '👤'}</span>
+            <span className="text-lg">💰</span>
             <div>
-              <p className="text-sm font-bold">{toast.type === 'sale' ? 'New Sale!' : 'New User!'}</p>
+              <p className="text-sm font-bold">New Sale!</p>
               <p className="text-xs opacity-90">
-                {toast.type === 'sale' ? (
-                  <>
-                    {toast.plan === 'yearly' ? 'Yearly' : toast.plan === 'monthly' ? 'Monthly' : 'Lifetime'}
-                    {' · '}
-                    {toast.method === 'stars' ? '⭐ Stars' : '₿ Crypto'}
-                    {toast.username ? ` · @${toast.username}` : ''}
-                  </>
-                ) : (
-                  <>
-                    @{toast.username}
-                    {' · '}
-                    {toast.provider === 'google' ? '📧 Google' : toast.provider === 'telegram' ? '✈️ Telegram' : '🔑 Other'}
-                  </>
-                )}
+                {toast.plan === 'yearly' ? 'Yearly' : toast.plan === 'monthly' ? 'Monthly' : 'Lifetime'}
+                {' · '}
+                {toast.method === 'stars' ? '⭐ Stars' : '₿ Crypto'}
+                {toast.username ? ` · @${toast.username}` : ''}
               </p>
             </div>
             <button onClick={() => setToasts(prev => prev.filter((_, j) => j !== i))} className="ml-auto text-white/70 hover:text-white text-lg leading-none">&times;</button>

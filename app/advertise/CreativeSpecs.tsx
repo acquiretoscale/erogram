@@ -2,10 +2,10 @@
 
 export default function CreativeSpecs() {
     return (
-        <div className="glass rounded-2xl p-6 sm:p-8">
+        <div className="p-6 sm:p-8" style={{ background: 'linear-gradient(180deg, #0c2d48 0%, #0a1929 100%)', border: '3px solid #0ea5e9', boxShadow: '4px 4px 0px #0ea5e9' }}>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
-                <div className="rounded-xl border border-[#b31b1b]/20 bg-[#b31b1b]/5 p-5">
-                    <h3 className="text-sm font-black text-[#ff3366] uppercase tracking-wider mb-2">In-Feed Image</h3>
+                <div className="p-5" style={{ border: '2px solid rgba(14,165,233,0.4)', background: 'rgba(14,165,233,0.05)' }}>
+                    <h3 className="text-sm font-black text-sky-400 uppercase tracking-wider mb-2">In-Feed Image</h3>
                     <ul className="space-y-1.5 text-sm text-[#999]">
                         <li>Live card media area: full card width x ~208px visible image area.</li>
                         <li>Best formats: 1080x1080 (square) or 1080x1350 (portrait).</li>
@@ -14,7 +14,7 @@ export default function CreativeSpecs() {
                     </ul>
                 </div>
 
-                <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-5">
+                <div className="p-5" style={{ border: '2px solid rgba(168,85,247,0.4)', background: 'rgba(168,85,247,0.05)' }}>
                     <h3 className="text-sm font-black text-purple-400 uppercase tracking-wider mb-2">In-Feed Video</h3>
                     <ul className="space-y-1.5 text-sm text-[#999]">
                         <li>Video can run as square style or full-card background format.</li>
@@ -25,7 +25,7 @@ export default function CreativeSpecs() {
                 </div>
             </div>
 
-            <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-5 mb-5">
+            <div className="p-5 mb-5" style={{ border: '2px solid rgba(14,165,233,0.3)', background: 'rgba(14,165,233,0.05)' }}>
                 <h3 className="text-sm font-black text-sky-400 uppercase tracking-wider mb-3">CTA Text Length (Current UI)</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2">
@@ -51,7 +51,7 @@ export default function CreativeSpecs() {
                 </div>
             </div>
 
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5">
+            <div className="p-5" style={{ border: '2px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)' }}>
                 <h3 className="text-sm font-black text-[#f5f5f5] uppercase tracking-wider mb-2">Homepage / Banner Creative</h3>
                 <ul className="space-y-1.5 text-sm text-[#999]">
                     <li>Homepage hero and top banners are rendered full-width and responsive.</li>

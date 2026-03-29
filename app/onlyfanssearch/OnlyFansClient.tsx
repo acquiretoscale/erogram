@@ -7,7 +7,7 @@ import { Search, Bookmark, Crown, Trash2, Star, X, TrendingUp, Heart } from 'luc
 import Navbar from '@/components/Navbar';
 import { OF_CATEGORIES, ofCategoryUrl } from './constants';
 import { trackCreatorClick, trackTrendingClick } from '@/lib/actions/onlyfansTracking';
-import { getAdvertiseStats, getTrendingCreators } from '@/lib/actions/publicData';
+import { getTrendingCreators } from '@/lib/actions/publicData';
 import OFFooter from '@/components/OFFooter';
 import { browseCreators, searchCreators, deleteCreatorBySlug } from '@/lib/actions/ofCreatorsBrowse';
 import { getOFMTrending, createOFMTrendingSlot } from '@/lib/actions/ofm';
@@ -427,7 +427,13 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
       setSearchResults(unique);
       setProgress({ loaded: unique.length, total: data.total || 0 });
 
-      // Auto-scrape disabled — serve existing DB results only (re-enable when isolated cluster is ready)
+      if (data.shouldScrape && data.scrapeQuery) {
+        fetch('/api/onlyfans/scrape', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ category: data.scrapeQuery, maxItems: 15, source: 'search' }),
+        }).catch(() => {});
+      }
     } catch (e: any) {
       console.error('Search error:', e);
     } finally {
@@ -496,7 +502,8 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
 
   useEffect(() => {
     const fetchActive = () => {
-      getAdvertiseStats()
+      fetch('/api/advertise-stats', { cache: 'no-store' })
+        .then(r => r.json())
         .then(d => { if (typeof d.activeVisitors === 'number') setLiveUsers(d.activeVisitors); })
         .catch(() => {});
     };

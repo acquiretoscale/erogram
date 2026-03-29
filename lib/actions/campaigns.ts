@@ -16,6 +16,7 @@ const SLOT_LIMITS: Record<string, number> = {
   'join-cta': 1,
   'filter-cta': 1,
   'vault-premium': 1, // internal EROGRAM premium vault ad
+  ainsfw: 10,
 };
 
 async function authenticateAdmin(token: string) {
@@ -715,7 +716,7 @@ export async function getFeedCampaignClickStats(token: string) {
   const admin = await authenticateAdmin(token);
   if (!admin) throw new Error('Unauthorized');
   await connectDB();
-  const feedCampaigns = await Campaign.find({ slot: 'feed' }).select('_id clicks impressions').lean();
+  const feedCampaigns = await Campaign.find({ slot: { $in: ['feed', 'ainsfw'] } }).select('_id clicks impressions slot').lean();
   const campaignIds = feedCampaigns.map((c: any) => c._id);
   const now = new Date();
   const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);

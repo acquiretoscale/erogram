@@ -45,65 +45,67 @@ export default function AdvertiseContactForm() {
     }
   }
 
+  const inputCls = 'w-full px-4 py-3 text-sm font-semibold bg-white text-black placeholder-black/30 focus:outline-none focus:ring-2 focus:ring-sky-500/60 rounded-none disabled:opacity-60';
+
   return (
     <form onSubmit={handleSubmit} className="max-w-lg mx-auto text-left space-y-4">
       <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">
+        <label htmlFor="adv-name" className="block text-xs font-black uppercase tracking-widest text-sky-300 mb-1">
           Name *
         </label>
         <input
-          id="name"
+          id="adv-name"
           name="name"
           type="text"
           required
           disabled={status === 'sending'}
-          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none disabled:opacity-60"
+          className={inputCls}
           placeholder="Your name"
         />
       </div>
       <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
+        <label htmlFor="adv-email" className="block text-xs font-black uppercase tracking-widest text-sky-300 mb-1">
           Email *
         </label>
         <input
-          id="email"
+          id="adv-email"
           name="email"
           type="email"
           required
           disabled={status === 'sending'}
-          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none disabled:opacity-60"
+          className={inputCls}
           placeholder="your@email.com"
         />
       </div>
       <div>
-        <label htmlFor="company" className="block text-sm font-medium text-gray-300 mb-1">
-          Company (optional)
+        <label htmlFor="adv-company" className="block text-xs font-black uppercase tracking-widest text-sky-300 mb-1">
+          Company <span className="normal-case font-normal text-white/30">(optional)</span>
         </label>
         <input
-          id="company"
+          id="adv-company"
           name="company"
           type="text"
           disabled={status === 'sending'}
-          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none disabled:opacity-60"
+          className={inputCls}
           placeholder="Company or brand"
         />
       </div>
       <div>
-        <label htmlFor="message" className="block text-sm font-medium text-gray-300 mb-1">
+        <label htmlFor="adv-message" className="block text-xs font-black uppercase tracking-widest text-sky-300 mb-1">
           Message *
         </label>
         <textarea
-          id="message"
+          id="adv-message"
           name="message"
           required
           rows={4}
           disabled={status === 'sending'}
-          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none disabled:opacity-60"
+          className={`${inputCls} resize-none`}
           placeholder="Tell us about your campaign, goals, or questions..."
         />
       </div>
       {status === 'success' && (
-        <p className="text-green-400 text-sm">Thanks! Your message was sent. We’ll get back to you soon.</p>
+        <p className="text-emerald-400 text-sm font-bold">Thanks! Your message was sent. We&apos;ll get back to you soon.</p>
       )}
       {status === 'error' && errorMessage && (
         <p className="text-red-400 text-sm">{errorMessage}</p>
@@ -111,10 +113,27 @@ export default function AdvertiseContactForm() {
       <button
         type="submit"
         disabled={status === 'sending'}
-        className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:from-gray-600 disabled:to-gray-600 text-white font-black px-8 py-4 rounded-xl text-lg transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg hover:shadow-blue-500/30 disabled:cursor-not-allowed"
+        className="w-full flex items-center justify-center gap-2 text-white font-black px-8 py-4 text-sm uppercase tracking-widest transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+        style={{ background: '#0ea5e9', border: '3px solid #000', boxShadow: '4px 4px 0px #000' }}
       >
-        {status === 'sending' ? 'Sending...' : 'Send message'}
+        {status === 'sending' ? 'Sending...' : 'Send Message'}
       </button>
+
+      <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row items-center justify-center gap-3 text-[11px] text-white/30 font-semibold">
+        <span>Questions? Reach us at:</span>
+        <a href="mailto:erogram@gmail.com" className="text-sky-400 hover:text-sky-300 transition-colors">
+          erogram@gmail.com
+        </a>
+        <span className="hidden sm:inline text-white/15">·</span>
+        <a
+          href="https://t.me/RVN8888"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sky-400 hover:text-sky-300 transition-colors"
+        >
+          @RVN8888 on Telegram
+        </a>
+      </div>
     </form>
   );
 }

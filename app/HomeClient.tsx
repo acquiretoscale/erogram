@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { shouldUseLightAnimations, animationClasses, getStaggerDelay } from '@/lib/utils/animations';
 import Footer from '@/components/Footer';
-import { getAdvertiseStats } from '@/lib/actions/publicData';
+
 import AdBanner from '@/components/AdBanner';
 import HeaderBanner from '@/components/HeaderBanner';
 import { formatDate } from '@/lib/i18n/date';
@@ -154,7 +154,8 @@ function useActiveUsers() {
   const [count, setCount] = useState<number>(0);
   useEffect(() => {
     const fetchActive = () => {
-      getAdvertiseStats()
+      fetch('/api/advertise-stats', { cache: 'no-store' })
+        .then(r => r.json())
         .then(d => { if (typeof d.activeVisitors === 'number') setCount(d.activeVisitors); })
         .catch(() => {});
     };
@@ -255,12 +256,12 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
             <>
               <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full glass border-white/10 bg-white/5 mb-4 sm:mb-8 ${animationClasses.fadeInUp}`}>
                 <span className="w-2 h-2 rounded-full bg-[#ff3366] animate-pulse"></span>
-                <span className="text-sm font-medium text-white/80">{t('home.badge', 'The #1 Verified NSFW Directory')}</span>
+                <span className="text-sm font-medium text-white/80">{t('home.badge', 'The #1 NSFW Directory')}</span>
               </div>
               <h1 className={`text-3xl sm:text-5xl md:text-6xl font-black mb-4 sm:mb-8 leading-tight tracking-tight ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.1s' }}>
-                {t('home.heroTitle1', 'Discover Best')} <span className="gradient-text">{t('home.heroTitle2', 'NSFW')}</span>
-                <br />
-                <span className="text-[#f5f5f5]">{t('home.heroTitle3', 'Telegram Groups')}</span>
+                <span className="text-[#f5f5f5]">{t('home.heroTitle1', 'Discover NSFW Telegram groups,')}</span>
+                <span className="block sm:inline"> </span>
+                <span className="gradient-text">{t('home.heroTitle2', 'bots & AI')}</span>
               </h1>
             </>
           ) : (
@@ -272,7 +273,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border-white/10 bg-white/5 mb-4 sm:mb-8"
               >
                 <span className="w-2 h-2 rounded-full bg-[#ff3366] animate-pulse"></span>
-                <span className="text-sm font-medium text-white/80">{t('home.badge', 'The #1 Verified NSFW Directory')}</span>
+                <span className="text-sm font-medium text-white/80">{t('home.badge', 'The #1 NSFW Directory')}</span>
               </motion.div>
               <motion.h1
                 className="text-3xl sm:text-5xl md:text-6xl font-black mb-4 sm:mb-8 leading-tight tracking-tight"
@@ -281,16 +282,17 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                 transition={{ duration: 0.8, ease: [0.2, 0.8, 0.2, 1], delay: 0.1 }}
                 style={{ willChange: 'transform, opacity' }}
               >
-                {t('home.heroTitle1', 'Discover Best')} <span className="gradient-text">{t('home.heroTitle2', 'NSFW')}</span>
-                <br />
-                <span className="text-[#f5f5f5]">{t('home.heroTitle3', 'Telegram Groups')}</span>
+                <span className="text-[#f5f5f5]">{t('home.heroTitle1', 'Discover NSFW Telegram groups,')}</span>
+                <span className="block sm:inline"> </span>
+                <span className="gradient-text">{t('home.heroTitle2', 'bots & AI')}</span>
               </motion.h1>
             </>
           )}
 
           {useLightAnimations ? (
             <p className={`text-base sm:text-xl md:text-2xl text-[#999] mb-6 sm:mb-10 max-w-3xl mx-auto px-4 leading-relaxed ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.2s' }}>
-              {t('home.heroDesc1', 'The #1 directory for adult Telegram groups.')} <span className="text-white font-medium">{t('home.heroDesc2', 'Over 5,000 verified')}</span> {t('home.heroDesc3', 'best 2026 communities across dozens of categories.')}
+              {t('home.heroDesc1', 'Your #1 hub for NSFW Telegram groups & bots, AI companions & tools, and 1.8M+ OnlyFans creators.')}{' '}
+              {t('home.heroDesc2', 'Explore and save your favorites all in one place.')}
             </p>
           ) : (
             <motion.p
@@ -300,55 +302,52 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
               transition={{ duration: 0.8, ease: [0.2, 0.8, 0.2, 1], delay: 0.2 }}
               style={{ willChange: 'transform, opacity' }}
             >
-              {t('home.heroDesc1', 'The #1 directory for adult Telegram groups.')} <span className="text-white font-medium">{t('home.heroDesc2', 'Over 5,000 verified')}</span> {t('home.heroDesc3', 'best 2026 communities across dozens of categories.')}
+              {t('home.heroDesc1', 'Your #1 hub for NSFW Telegram groups & bots, AI companions & tools, and 1.8M+ OnlyFans creators.')}{' '}
+              {t('home.heroDesc2', 'Explore and save your favorites all in one place.')}
             </motion.p>
           )}
 
           {useLightAnimations ? (
-            <div className={`flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center w-full mb-6 sm:mb-8 ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.4s' }}>
+            <div className={`flex flex-wrap sm:flex-nowrap gap-2 sm:gap-2.5 justify-center items-center w-full mb-6 sm:mb-8 ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.4s' }}>
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(lp('/groups')), 0); }}
-                className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-8 py-4 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg text-lg font-semibold transition-all hover:scale-105"
+                className="flex-1 sm:flex-initial sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg text-[14px] font-semibold transition-all hover:scale-105 whitespace-nowrap"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
                   <path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/>
                 </svg>
                 Explore Groups
               </button>
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(lp('/bots')), 0); }}
-                className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-8 py-4 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg text-lg font-semibold transition-all hover:scale-105"
+                className="flex-1 sm:flex-initial sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg text-[14px] font-semibold transition-all hover:scale-105 whitespace-nowrap"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
                   <rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="9" cy="16" r="1"/><circle cx="15" cy="16" r="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
                 </svg>
                 Explore Bots
               </button>
               <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push('/onlyfanssearch'), 0); }}
-                className="relative w-full sm:w-auto px-4 py-3.5 sm:px-6 bg-[#00AFF0] hover:bg-[#009dd9] text-white rounded-lg transition-all hover:scale-105 flex flex-col items-center gap-0.5 text-center leading-snug"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(lp('/ainsfw')), 0); }}
+                className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg text-[14px] font-semibold transition-all hover:scale-105 whitespace-nowrap"
               >
-                <span className="text-lg sm:text-sm font-semibold text-white/95">
+                <span className="text-sm leading-none shrink-0">🔞</span>
+                Explore AI NSFW
+              </button>
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push('/onlyfanssearch'), 0); }}
+                className="relative w-full sm:w-auto px-4 py-2.5 sm:px-5 bg-[#00AFF0] hover:bg-[#009dd9] text-white rounded-lg transition-all hover:scale-105 flex items-center justify-center gap-1.5 whitespace-nowrap"
+              >
+                <span className="text-[14px] font-semibold">
                   {t('home.ofSearchLineStart', 'Explore +1.8M ')}
-                  <span
-                    className="inline-block font-black text-white align-baseline mx-0.5 text-[1.35rem] sm:text-lg tracking-tight"
-                    style={{
-                      textShadow: '0 0 24px rgba(255,255,255,0.55), 0 0 8px rgba(255,255,255,0.4), 0 2px 4px rgba(0,0,0,0.25)',
-                    }}
-                  >
-                    OnlyFans
-                  </span>
-                  {t('home.ofSearchLineEnd', ' Creators')}
+                  <span className="font-black">{t('home.ofSearchParen', 'OnlyFans')}</span>
                 </span>
-                <span className="text-[10px] sm:text-[11px] text-white/60 font-medium tracking-wide">
-                  {t('home.ofSearchParen', '(OFsearch)')}
-                </span>
-                <span className="absolute -top-2 -right-2 px-1.5 py-0.5 bg-rose-500 text-white text-[10px] font-black uppercase rounded-md leading-none tracking-wider">BETA</span>
+                <span className="absolute -top-1.5 -right-1.5 px-1 py-0.5 bg-rose-500 text-white text-[8px] font-black uppercase rounded leading-none tracking-wider">BETA</span>
               </button>
             </div>
                       ) : (
             <motion.div
-              className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center w-full mb-6 sm:mb-8"
+              className="flex flex-wrap sm:flex-nowrap gap-2 sm:gap-2.5 justify-center items-center w-full mb-6 sm:mb-8"
               initial={{ opacity: 0, y: 60 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: 'easeOut', delay: 0.4 }}
@@ -356,42 +355,38 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
             >
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(lp('/groups')), 0); }}
-                className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-8 py-4 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg text-lg font-semibold transition-all hover:scale-105"
+                className="flex-1 sm:flex-initial sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg text-[14px] font-semibold transition-all hover:scale-105 whitespace-nowrap"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
                   <path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/>
                 </svg>
                 Explore Groups
               </button>
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(lp('/bots')), 0); }}
-                className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-8 py-4 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg text-lg font-semibold transition-all hover:scale-105"
+                className="flex-1 sm:flex-initial sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg text-[14px] font-semibold transition-all hover:scale-105 whitespace-nowrap"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
                   <rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="9" cy="16" r="1"/><circle cx="15" cy="16" r="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
                 </svg>
                 Explore Bots
               </button>
               <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push('/onlyfanssearch'), 0); }}
-                className="relative w-full sm:w-auto px-4 py-3.5 sm:px-6 bg-[#00AFF0] hover:bg-[#009dd9] text-white rounded-lg transition-all hover:scale-105 flex flex-col items-center gap-0.5 text-center leading-snug"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(lp('/ainsfw')), 0); }}
+                className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg text-[14px] font-semibold transition-all hover:scale-105 whitespace-nowrap"
               >
-                <span className="text-lg sm:text-sm font-semibold text-white/95">
+                <span className="text-sm leading-none shrink-0">🔞</span>
+                Explore AI NSFW
+              </button>
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push('/onlyfanssearch'), 0); }}
+                className="relative w-full sm:w-auto px-4 py-2.5 sm:px-5 bg-[#00AFF0] hover:bg-[#009dd9] text-white rounded-lg transition-all hover:scale-105 flex items-center justify-center gap-1.5 whitespace-nowrap"
+              >
+                <span className="text-[14px] font-semibold">
                   {t('home.ofSearchLineStart', 'Explore +1.8M ')}
-                  <span
-                    className="inline-block font-black text-white align-baseline mx-0.5 text-[1.35rem] sm:text-lg tracking-tight"
-                    style={{
-                      textShadow: '0 0 24px rgba(255,255,255,0.55), 0 0 8px rgba(255,255,255,0.4), 0 2px 4px rgba(0,0,0,0.25)',
-                    }}
-                  >
-                    OnlyFans
-                  </span>
-                  {t('home.ofSearchLineEnd', ' Creators')}
+                  <span className="font-black">{t('home.ofSearchParen', 'OnlyFans')}</span>
                 </span>
-                <span className="text-[10px] sm:text-[11px] text-white/60 font-medium tracking-wide">
-                  {t('home.ofSearchParen', '(OFsearch)')}
-                </span>
-                <span className="absolute -top-2 -right-2 px-1.5 py-0.5 bg-rose-500 text-white text-[10px] font-black uppercase rounded-md leading-none tracking-wider">BETA</span>
+                <span className="absolute -top-1.5 -right-1.5 px-1 py-0.5 bg-rose-500 text-white text-[8px] font-black uppercase rounded leading-none tracking-wider">BETA</span>
               </button>
             </motion.div>
           )}
@@ -399,7 +394,10 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
           {/* Stats — live counters, tight under CTA */}
           {useLightAnimations ? (
             <div className={`grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 max-w-4xl mx-auto ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.5s' }}>
-              <LiveStatCard target={GROUP_BASE + (stats?.groupCount ?? 0)} label={t('home.statsGroups', 'Groups')} icon="" />
+              <div className="glass rounded-xl sm:rounded-2xl px-3 py-3 sm:p-5 text-center hover-glow transition-all duration-300 border-white/5 bg-white/[0.02]">
+                <div className="text-[17px] sm:text-2xl md:text-3xl font-bold text-white mb-0.5 tracking-tight leading-tight">+5K</div>
+                <div className="text-white/40 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">{t('home.statsGroups', 'Groups')}</div>
+              </div>
               <LiveStatCard target={activeUsers} label="Visiting Now" icon="" />
               <LiveStatCard target={stats?.totalViews ?? 0} label={t('home.statsViews', 'Views')} icon="" />
               <div className="glass rounded-xl sm:rounded-2xl px-3 py-3 sm:p-5 text-center hover-glow transition-all duration-300 border-white/5 bg-white/[0.02]">
@@ -415,7 +413,10 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
               transition={{ duration: 0.6, ease: 'easeOut', delay: 0.5 }}
               style={{ willChange: 'transform, opacity' }}
             >
-              <LiveStatCard target={GROUP_BASE + (stats?.groupCount ?? 0)} label={t('home.statsGroups', 'Groups')} icon="" />
+              <div className="glass rounded-xl sm:rounded-2xl px-3 py-3 sm:p-5 text-center hover-glow transition-all duration-300 border-white/5 bg-white/[0.02]">
+                <div className="text-[17px] sm:text-2xl md:text-3xl font-bold text-white mb-0.5 tracking-tight leading-tight">+5K</div>
+                <div className="text-white/40 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">{t('home.statsGroups', 'Groups')}</div>
+              </div>
               <LiveStatCard target={activeUsers} label="Visiting Now" icon="" />
               <LiveStatCard target={stats?.totalViews ?? 0} label={t('home.statsViews', 'Views')} icon="" />
               <div className="glass rounded-xl sm:rounded-2xl px-3 py-3 sm:p-5 text-center hover-glow transition-all duration-300 border-white/5 bg-white/[0.02]">

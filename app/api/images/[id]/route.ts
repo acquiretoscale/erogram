@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
-import { Image } from '@/lib/models';
+import mongoose from 'mongoose';
 
 export async function GET(
     req: NextRequest,
@@ -8,18 +8,26 @@ export async function GET(
 ) {
     try {
         const { id } = await params;
-
         await connectDB();
-        const image = await Image.findById(id).lean() as any;
+
+        const redirect = await mongoose.connection.db
+            .collection('imageredirects')
+            .findOne({ _id: new mongoose.Types.ObjectId(id) });
+
+        if (redirect?.url) {
+            return NextResponse.redirect(redirect.url, 301);
+        }
+
+        const image = await mongoose.connection.db
+            .collection('images')
+            .findOne({ _id: new mongoose.Types.ObjectId(id) });
 
         if (!image || !image.data) {
             return new NextResponse('Image not found', { status: 404 });
         }
 
-        // Convert Binary/Buffer to Buffer if needed
-        const buffer = Buffer.isBuffer(image.data)
-            ? image.data
-            : Buffer.from(image.data.buffer || image.data);
+        const raw = image.data.buffer || image.data;
+        const buffer = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
 
         return new NextResponse(buffer, {
             status: 200,

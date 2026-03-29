@@ -140,14 +140,6 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // 301: old /onlyfans-search* → /onlyfanssearch* (preserve old links)
-  if (pathname === '/onlyfans-search' || pathname.startsWith('/onlyfans-search/')) {
-    const rest = pathname.slice('/onlyfans-search'.length);
-    const url = request.nextUrl.clone();
-    url.pathname = `/onlyfanssearch${rest}`;
-    return NextResponse.redirect(url, 301);
-  }
-
   // English-only sections: articles and AI NSFW are never translated.
   // 301 redirect /de/... and /es/... → /... for these paths.
   const englishOnlySections = ['articles', 'ainsfw'];
