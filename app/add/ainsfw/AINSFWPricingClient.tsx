@@ -255,12 +255,17 @@ export default function AINSFWPricingClient() {
             </div>
             <p className="text-xs font-bold mb-4" style={{ color: ACCENT }}>Instant approval + 1 Month Featured</p>
             <ul className="space-y-3 mb-8 flex-1">
-              {/* Prominent featured line */}
+              {/* Prominent featured lines */}
               <li
-                className="flex items-center gap-2.5 px-3 py-2 text-sm font-black whitespace-nowrap"
+                className="px-3 py-2.5 space-y-1.5"
                 style={{ background: '#facc15', color: '#000', border: '2px solid #000' }}
               >
-                <Check /> 1 Month featured in Top AI NSFW
+                <span className="flex items-center gap-2.5 text-sm font-black">
+                  <Check /> Up to 10× more views than Basic
+                </span>
+                <span className="flex items-center gap-2.5 text-sm font-black">
+                  <Check /> 1 Month featured in &ldquo;Top AI NSFW&rdquo;
+                </span>
               </li>
               {[
                 'Everything in Basic',
