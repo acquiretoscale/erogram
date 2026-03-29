@@ -52,9 +52,32 @@ function CategoryCreatorCard({ creator, onTrack, onSave, onDelete, onSendToTrend
   isAdmin: boolean;
 }) {
   const [showHeader, setShowHeader] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
+  const [countdown, setCountdown] = useState(0);
   const hasHeader = !!creator.header;
   const currentImg = showHeader && hasHeader ? creator.header : creator.avatar;
   const isSaved = savedIds.has(creator._id);
+
+  useEffect(() => {
+    if (!redirecting || countdown <= 0) return;
+    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [redirecting, countdown]);
+
+  useEffect(() => {
+    if (redirecting && countdown === 0) {
+      window.open(creator.url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => setRedirecting(false), 500);
+    }
+  }, [redirecting, countdown, creator.url]);
+
+  const handleViewProfile = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (redirecting) return;
+    onTrack(creator.slug);
+    setRedirecting(true);
+    setCountdown(2);
+  };
 
   return (
     <div className="relative">
@@ -103,15 +126,18 @@ function CategoryCreatorCard({ creator, onTrack, onSave, onDelete, onSendToTrend
           )}
         </div>
         <div className="px-2.5 pb-2.5 pt-2 sm:px-4 sm:pb-4 sm:pt-3">
-          <a
-            href={creator.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => onTrack(creator.slug)}
-            className="block w-full py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-[13px] sm:text-sm font-bold text-center shadow-sm group-hover:shadow-md group-hover:from-[#009ADB] group-hover:to-[#00BFE8] transition-all"
+          <button
+            onClick={handleViewProfile}
+            disabled={redirecting}
+            className="flex items-center justify-center gap-2 w-full py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-[13px] sm:text-sm font-bold text-center shadow-sm group-hover:shadow-md group-hover:from-[#009ADB] group-hover:to-[#00BFE8] transition-all"
           >
-            View profile
-          </a>
+            {redirecting ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin shrink-0" />
+                Redirecting in {countdown}s...
+              </>
+            ) : 'View profile'}
+          </button>
         </div>
       </div>
       <button

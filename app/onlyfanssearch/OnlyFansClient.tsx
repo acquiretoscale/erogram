@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Search, Bookmark, Crown, Trash2, Star, X, TrendingUp, Heart } from 'lucide-react';
@@ -45,6 +45,15 @@ interface Props {
   top10Lists?: Top10List[];
 }
 
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 function formatCount(n: number) {
   if (!n) return '';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -73,7 +82,30 @@ function CreatorCard({
 }) {
   const [deleted, setDeleted] = useState(false);
   const [showHeader, setShowHeader] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
+  const [countdown, setCountdown] = useState(0);
   const hasHeader = !!creator.header;
+
+  useEffect(() => {
+    if (!redirecting || countdown <= 0) return;
+    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [redirecting, countdown]);
+
+  useEffect(() => {
+    if (redirecting && countdown === 0) {
+      window.open(creator.url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => setRedirecting(false), 500);
+    }
+  }, [redirecting, countdown, creator.url]);
+
+  const handleViewProfile = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (redirecting) return;
+    onClickTrack(creator.slug);
+    setRedirecting(true);
+    setCountdown(2);
+  };
 
   if (deleted) return null;
 
@@ -186,15 +218,18 @@ function CreatorCard({
           </div>
         </div>
         <div className="px-2.5 pb-2.5 pt-2 sm:px-4 sm:pb-4 sm:pt-3">
-          <a
-            href={creator.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => onClickTrack(creator.slug)}
-            className="block w-full py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-[13px] sm:text-sm font-bold text-center shadow-sm group-hover:shadow-md group-hover:from-[#009ADB] group-hover:to-[#00BFE8] transition-all"
+          <button
+            onClick={handleViewProfile}
+            disabled={redirecting}
+            className="flex items-center justify-center gap-2 w-full py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-[13px] sm:text-sm font-bold text-center shadow-sm group-hover:shadow-md group-hover:from-[#009ADB] group-hover:to-[#00BFE8] transition-all"
           >
-            View profile
-          </a>
+            {redirecting ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin shrink-0" />
+                Redirecting in {countdown}s...
+              </>
+            ) : 'View profile'}
+          </button>
         </div>
       </div>
     </div>
@@ -202,6 +237,9 @@ function CreatorCard({
 }
 
 function CreatorPostModal({ creator, onClose }: { creator: Creator; onClose: () => void }) {
+  const [redirecting, setRedirecting] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
@@ -211,6 +249,19 @@ function CreatorPostModal({ creator, onClose }: { creator: Creator; onClose: () 
       document.body.style.overflow = '';
     };
   }, [onClose]);
+
+  useEffect(() => {
+    if (!redirecting || countdown <= 0) return;
+    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [redirecting, countdown]);
+
+  useEffect(() => {
+    if (redirecting && countdown === 0) {
+      window.open(creator.url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => setRedirecting(false), 500);
+    }
+  }, [redirecting, countdown, creator.url]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -249,15 +300,18 @@ function CreatorPostModal({ creator, onClose }: { creator: Creator; onClose: () 
           </div>
         </div>
         <div className="p-4">
-          <a
-            href={creator.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => {}}
-            className="block w-full py-3 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-sm font-bold text-center hover:from-[#009ADB] hover:to-[#00BFE8] transition-all shadow-md"
+          <button
+            onClick={(e) => { e.preventDefault(); if (!redirecting) { setRedirecting(true); setCountdown(2); } }}
+            disabled={redirecting}
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-sm font-bold text-center hover:from-[#009ADB] hover:to-[#00BFE8] transition-all shadow-md"
           >
-            View on OnlyFans
-          </a>
+            {redirecting ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin shrink-0" />
+                Redirecting in {countdown}s...
+              </>
+            ) : 'View on OnlyFans'}
+          </button>
         </div>
       </div>
     </div>
@@ -359,6 +413,23 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
   const searchAbortRef = useRef<AbortController | null>(null);
   const searchBoxRef = useRef<HTMLDivElement>(null);
   const isLiveVisitors = liveUsers > 0;
+
+  const categoryPicks = useMemo(() => {
+    const map: Record<string, Creator[]> = {};
+    for (const list of top10Lists) {
+      const feat = blockFeatured.find((f: any) =>
+        Array.isArray(f.categories) && f.categories.some((c: string) => c.toLowerCase() === list.category.toLowerCase())
+      );
+      const pool = shuffle(list.creators);
+      if (feat) {
+        const rest = pool.filter((c) => c._id !== feat._id).slice(0, 2);
+        map[list.category] = [feat as Creator, ...rest];
+      } else {
+        map[list.category] = pool.slice(0, 3);
+      }
+    }
+    return map;
+  }, [top10Lists, blockFeatured]);
 
   const TRENDING_CATEGORIES = OF_CATEGORIES.slice(0, 10);
 
@@ -985,7 +1056,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                 </div>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
                   <Top10CategoryCard list={list} onSelectCreator={setSelectedCreator} />
-                  {list.creators.slice(0, 3).map((creator) => (
+                  {(categoryPicks[list.category] || list.creators.slice(0, 3)).map((creator) => (
                     <CreatorCard
                       key={`top3-${creator._id}`}
                       creator={creator}
@@ -993,7 +1064,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                       isAdmin={isAdmin}
                       onDelete={handleDelete}
                       onSendToTrending={handleSendToTrending}
-                          onSendToFeatured={handleSendToFeatured}
+                      onSendToFeatured={handleSendToFeatured}
                       isSaved={savedIds.has(creator._id)}
                       onToggleSave={handleToggleSave}
                     />

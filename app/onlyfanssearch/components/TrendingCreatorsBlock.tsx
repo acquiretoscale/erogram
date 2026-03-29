@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { trackTrendingClick } from '@/lib/actions/onlyfansTracking';
 
@@ -15,9 +16,27 @@ interface TrendingCreator {
 }
 
 function TrendingCard({ creator, index }: { creator: TrendingCreator; index: number }) {
+  const [redirecting, setRedirecting] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+
+  useEffect(() => {
+    if (!redirecting || countdown <= 0) return;
+    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [redirecting, countdown]);
+
+  useEffect(() => {
+    if (redirecting && countdown === 0) {
+      window.open(creator.url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => setRedirecting(false), 500);
+    }
+  }, [redirecting, countdown, creator.url]);
+
   const handleClick = () => {
+    if (redirecting) return;
     trackTrendingClick(creator._id);
-    window.open(creator.url, '_blank', 'noopener,noreferrer');
+    setRedirecting(true);
+    setCountdown(2);
   };
 
   return (
@@ -63,8 +82,13 @@ function TrendingCard({ creator, index }: { creator: TrendingCreator; index: num
             ))}
           </div>
         )}
-        <div className="w-full mt-2 sm:mt-3 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] via-[#00B8F0] to-[#00D4FF] text-white text-[13px] sm:text-sm font-black text-center shadow-md shadow-[#00AFF0]/30 group-hover:shadow-lg group-hover:shadow-[#00AFF0]/45 group-hover:from-[#0099d9] group-hover:to-[#00c4f0] transition-all duration-300">
-          View profile
+        <div className="flex items-center justify-center gap-2 w-full mt-2 sm:mt-3 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] via-[#00B8F0] to-[#00D4FF] text-white text-[13px] sm:text-sm font-black text-center shadow-md shadow-[#00AFF0]/30 group-hover:shadow-lg group-hover:shadow-[#00AFF0]/45 group-hover:from-[#0099d9] group-hover:to-[#00c4f0] transition-all duration-300">
+          {redirecting ? (
+            <>
+              <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin shrink-0" />
+              Redirecting in {countdown}s...
+            </>
+          ) : 'View profile'}
         </div>
       </div>
     </motion.button>

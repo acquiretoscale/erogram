@@ -25,6 +25,81 @@ interface Creator {
   url: string;
 }
 
+function TopCreatorCard({ creator, index, savedIds, onToggleSave, onTrack }: {
+  creator: Creator; index: number; savedIds: Set<string>; onToggleSave: (id: string) => void; onTrack: (slug: string) => void;
+}) {
+  const [redirecting, setRedirecting] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+
+  useEffect(() => {
+    if (!redirecting || countdown <= 0) return;
+    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [redirecting, countdown]);
+
+  useEffect(() => {
+    if (redirecting && countdown === 0) {
+      window.open(creator.url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => setRedirecting(false), 500);
+    }
+  }, [redirecting, countdown, creator.url]);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (redirecting) return;
+    onTrack(creator.slug);
+    setRedirecting(true);
+    setCountdown(2);
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={handleClick}
+        className="group block w-full text-left rounded-2xl bg-white overflow-hidden shadow-md hover:shadow-xl transition-shadow"
+      >
+        <div className="relative aspect-[3/4] bg-gray-100">
+          {creator.avatar ? (
+            <img src={creator.avatar} alt={`${creator.name} OnlyFans`} className="absolute inset-0 w-full h-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-gray-300 bg-gradient-to-br from-gray-100 to-gray-200">{creator.name.charAt(0)}</div>
+          )}
+          {index < 10 && (
+            <div className="absolute top-2 left-2 sm:top-3 sm:left-3">
+              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-md sm:rounded-lg bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center text-[10px] sm:text-[11px] font-black text-white shadow-sm">{index + 1}</div>
+            </div>
+          )}
+        </div>
+        <div className="px-2.5 pt-2 pb-2.5 sm:px-4 sm:pt-3 sm:pb-4">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <h3 className="font-bold text-[13px] sm:text-[15px] text-gray-900 truncate leading-tight">{creator.name}</h3>
+            <span className={`flex-shrink-0 px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wide ${creator.isFree ? 'bg-emerald-400 text-white' : 'bg-[#00AFF0] text-white'}`}>
+              {creator.isFree ? 'Free' : `$${creator.price.toFixed(0)}`}
+            </span>
+          </div>
+          <p className="text-[11px] sm:text-[13px] text-[#00AFF0] mt-0.5">@{creator.username}</p>
+          {creator.bio && <p className="mt-1.5 sm:mt-2 text-[11px] sm:text-[12px] text-gray-500 line-clamp-2 leading-relaxed">{creator.bio}</p>}
+          <div className="flex items-center justify-center gap-2 w-full mt-2 sm:mt-3 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-[13px] sm:text-sm font-bold text-center shadow-sm group-hover:shadow-md group-hover:from-[#009ADB] group-hover:to-[#00BFE8] transition-all">
+            {redirecting ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin shrink-0" />
+                Redirecting in {countdown}s...
+              </>
+            ) : 'View profile'}
+          </div>
+        </div>
+      </button>
+      <button
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleSave(creator._id); }}
+        className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 w-10 h-10 sm:w-9 sm:h-9 rounded-full bg-black/20 backdrop-blur-sm flex items-center justify-center transition-all hover:scale-110"
+        title={savedIds.has(creator._id) ? 'Remove from saved' : 'Save creator'}
+      >
+        <Heart size={18} className={savedIds.has(creator._id) ? 'text-rose-500' : 'text-white/80'} fill={savedIds.has(creator._id) ? 'currentColor' : 'none'} />
+      </button>
+    </div>
+  );
+}
+
 interface Props {
   creators: Creator[];
 }
@@ -275,72 +350,13 @@ export default function TopCreatorsClient({ creators }: Props) {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.25, delay: Math.min(i * 0.008, 0.3) }}
                 >
-                  <div className="relative">
-                    <a
-                      href={creator.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => trackClick(creator.slug)}
-                      className="group block rounded-2xl bg-white overflow-hidden shadow-md hover:shadow-xl transition-shadow"
-                    >
-                      <div className="relative aspect-[3/4] bg-gray-100">
-                        {creator.avatar ? (
-                          <img
-                            src={creator.avatar}
-                            alt={`${creator.name} OnlyFans`}
-                            className="absolute inset-0 w-full h-full object-cover"
-                            loading="lazy"
-                            referrerPolicy="no-referrer"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-gray-300 bg-gradient-to-br from-gray-100 to-gray-200">
-                            {creator.name.charAt(0)}
-                          </div>
-                        )}
-                        {i < 10 && (
-                          <div className="absolute top-2 left-2 sm:top-3 sm:left-3">
-                            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-md sm:rounded-lg bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center text-[10px] sm:text-[11px] font-black text-white shadow-sm">
-                              {i + 1}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      <div className="px-2.5 pt-2 pb-2.5 sm:px-4 sm:pt-3 sm:pb-4">
-                        <div className="flex items-center gap-1.5 sm:gap-2">
-                          <h3 className="font-bold text-[13px] sm:text-[15px] text-gray-900 truncate leading-tight">
-                            {creator.name}
-                          </h3>
-                          <span className={`flex-shrink-0 px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wide ${
-                            creator.isFree ? 'bg-emerald-400 text-white' : 'bg-[#00AFF0] text-white'
-                          }`}>
-                            {creator.isFree ? 'Free' : `$${creator.price.toFixed(0)}`}
-                          </span>
-                        </div>
-                        <p className="text-[11px] sm:text-[13px] text-[#00AFF0] mt-0.5">@{creator.username}</p>
-                        {creator.bio && (
-                          <p className="mt-1.5 sm:mt-2 text-[11px] sm:text-[12px] text-gray-500 line-clamp-2 leading-relaxed">{creator.bio}</p>
-                        )}
-                        <button className="w-full mt-2 sm:mt-3 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-[13px] sm:text-sm font-bold shadow-sm group-hover:shadow-md group-hover:from-[#009ADB] group-hover:to-[#00BFE8] transition-all">
-                          View profile
-                        </button>
-                      </div>
-                    </a>
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleToggleSave(creator._id);
-                      }}
-                      className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 w-10 h-10 sm:w-9 sm:h-9 rounded-full bg-black/20 backdrop-blur-sm flex items-center justify-center transition-all hover:scale-110"
-                      title={savedIds.has(creator._id) ? 'Remove from saved' : 'Save creator'}
-                    >
-                      <Heart
-                        size={18}
-                        className={savedIds.has(creator._id) ? 'text-rose-500' : 'text-white/80'}
-                        fill={savedIds.has(creator._id) ? 'currentColor' : 'none'}
-                      />
-                    </button>
-                  </div>
+                  <TopCreatorCard
+                    creator={creator}
+                    index={i}
+                    savedIds={savedIds}
+                    onToggleSave={handleToggleSave}
+                    onTrack={trackClick}
+                  />
                 </motion.div>
               ))}
             </div>
