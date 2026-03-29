@@ -237,36 +237,52 @@ export default function AINSFWPricingClient() {
             </button>
           </div>
 
-          {/* BOOST — white bg, blue border */}
+          {/* BOOST */}
           <div
-            className="relative flex flex-col bg-white p-6"
-            style={{ border: `3px solid ${ACCENT}`, boxShadow: `6px 6px 0px ${ACCENT}`, color: '#000' }}
+            className="relative flex flex-col p-6 overflow-hidden"
+            style={{
+              background: 'linear-gradient(160deg, #2d1a00 0%, #78350f 60%, #1c1200 100%)',
+              border: '3px solid #facc15',
+              boxShadow: '6px 6px 0px #facc15',
+            }}
           >
             {/* Big BOOST label */}
             <p
               className="font-black uppercase leading-none mb-1 tracking-tight"
-              style={{ fontSize: '3rem', color: ACCENT, textShadow: `2px 2px 0px rgba(0,0,0,0.15)` }}
+              style={{ fontSize: '3rem', color: '#facc15', textShadow: '2px 2px 0px rgba(0,0,0,0.5)' }}
             >
               BOOST
             </p>
-            <div className="mb-1">
-              <span className="text-4xl font-black text-black">$297</span>
-              <span className="text-sm font-bold text-black/40 ml-2">one-time</span>
+
+            {/* Giant 10× */}
+            <div className="mb-3">
+              <span
+                className="font-black leading-none block text-white"
+                style={{ fontSize: '5.5rem', textShadow: '3px 3px 0px rgba(0,0,0,0.5)', lineHeight: 1 }}
+              >
+                10<span style={{ color: '#facc15' }}>×</span>
+              </span>
+              <span
+                className="font-black uppercase tracking-tight block"
+                style={{ fontSize: '1.4rem', color: '#fde68a', lineHeight: 1.1 }}
+              >
+                More Exposure
+              </span>
             </div>
-            <p className="text-xs font-bold mb-4" style={{ color: ACCENT }}>Instant approval + 1 Month Featured</p>
-            <ul className="space-y-3 mb-8 flex-1">
-              {/* Prominent featured lines */}
+
+            {/* Price */}
+            <div className="mb-4">
+              <span className="text-4xl font-black text-white">$297</span>
+              <span className="text-sm font-bold text-white/40 ml-2">one-time</span>
+            </div>
+
+            <ul className="space-y-2.5 mb-8 flex-1">
+              {/* Yellow featured highlight */}
               <li
-                className="px-3 pt-2.5 pb-3 space-y-1"
+                className="flex items-center gap-2 px-3 py-2 text-[12px] font-black uppercase tracking-wide"
                 style={{ background: '#facc15', color: '#000', border: '2px solid #000' }}
               >
-                <div className="flex items-baseline gap-1.5 leading-none">
-                  <span style={{ fontSize: '2.8rem', fontWeight: 900, lineHeight: 1 }}>10×</span>
-                  <span className="text-sm font-black leading-tight">More<br />Exposure</span>
-                </div>
-                <span className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide">
-                  <Check /> 1 Month featured in &ldquo;Top AI NSFW&rdquo;
-                </span>
+                <Check /> 1 Month featured in &ldquo;Top AI NSFW&rdquo;
               </li>
               {[
                 'Everything in Basic',
@@ -274,18 +290,19 @@ export default function AINSFWPricingClient() {
                 'Priority placement in directory',
                 'Up to 5 category listings',
               ].map((f) => (
-                <li key={f} className="flex items-start gap-2.5 text-sm font-semibold text-black/80">
-                  <span style={{ color: ACCENT }} className="mt-0.5 shrink-0"><Check /></span>
+                <li key={f} className="flex items-start gap-2.5 text-sm font-semibold text-white/90">
+                  <span style={{ color: '#facc15' }} className="mt-0.5 shrink-0"><Check /></span>
                   {f}
                 </li>
               ))}
             </ul>
+
             <button
               onClick={() => openForm('boost')}
-              className="w-full py-3.5 text-sm font-black uppercase tracking-widest transition-all active:translate-x-[2px] active:translate-y-[2px]"
+              className="w-full py-4 text-sm font-black uppercase tracking-widest text-black transition-all hover:opacity-95 active:translate-x-[2px] active:translate-y-[2px]"
               style={selectedPlan === 'boost'
-                ? { background: ACCENT_DARK, color: '#fff', border: BORDER, boxShadow: 'none', transform: 'translate(2px,2px)' }
-                : { background: ACCENT, color: '#fff', border: BORDER, boxShadow: SHADOW }
+                ? { background: '#ca8a04', color: '#000', border: '3px solid #000', boxShadow: 'none', transform: 'translate(2px,2px)' }
+                : { background: '#facc15', border: '3px solid #000', boxShadow: '4px 4px 0px #000' }
               }
             >
               {selectedPlan === 'boost' ? '✓ Selected — scroll down' : 'Boost My Tool — $297'}
