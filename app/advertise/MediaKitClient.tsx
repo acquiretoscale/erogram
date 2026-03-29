@@ -8,27 +8,18 @@ import AdvertiseStats from './AdvertiseStats';
 import HeroSection from './HeroSection';
 import AudienceCountries from './AudienceCountries';
 import OrganicGrowth from './OrganicGrowth';
-import TelegramEcosystem from './TelegramEcosystem';
 import PageReplica from './PageReplica';
 import AdShop from './AdShop';
 import AdvertiseContactForm from './AdvertiseContactForm';
 
-interface TgGroup { name: string; memberCount: number }
-interface TgEcosystem { groups: TgGroup[]; totalSubscribers: number; groupCount: number }
-
 export default function MediaKitClient() {
   const [username, setUsername] = useState<string | null>(null);
-  const [tgEcosystem, setTgEcosystem] = useState<TgEcosystem | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const storedUsername = localStorage.getItem('username');
       if (storedUsername) setUsername(storedUsername);
     }
-    fetch('/api/advertise-stats', { cache: 'no-store' })
-      .then(r => r.json())
-      .then((d) => { if (d.telegramEcosystem) setTgEcosystem(d.telegramEcosystem); })
-      .catch(() => { });
   }, []);
 
   return (
@@ -85,15 +76,6 @@ export default function MediaKitClient() {
             </div>
             <AudienceCountries />
             <OrganicGrowth />
-
-            {/* PART 2: Telegram Ecosystem */}
-            {tgEcosystem && tgEcosystem.groups.length > 0 && (
-              <TelegramEcosystem
-                groups={tgEcosystem.groups}
-                totalSubscribers={tgEcosystem.totalSubscribers}
-                groupCount={tgEcosystem.groupCount}
-              />
-            )}
           </motion.div>
 
           {/* ── Section divider ── */}

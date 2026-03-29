@@ -4,7 +4,7 @@ import { useState, useRef } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { createAINSFWSubmission, type AINSFWPlan, type AINSFWFormData } from '@/lib/actions/ainswfPayment';
+import { createAINSFWSubmission, type AINSFWPlan, type AINSFWFormData } from '@/lib/actions/ainsfwPayment';
 
 const ACCENT      = '#0ea5e9';
 const ACCENT_DARK = '#0369a1';

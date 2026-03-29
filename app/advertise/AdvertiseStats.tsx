@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-interface TelegramGroup { name: string; memberCount: number }
 interface ClickSource { source: string; clicks: number }
 interface StatsData {
   totalViews: number;
@@ -11,7 +10,6 @@ interface StatsData {
   totalGroups: number;
   last24hClicks: number;
   clickBreakdown?: ClickSource[];
-  telegramEcosystem?: { groups: TelegramGroup[]; totalSubscribers: number; groupCount: number } | null;
   activeVisitors?: number;
 }
 
@@ -146,7 +144,6 @@ export default function AdvertiseStats() {
   }
 
   if (!data) return null;
-  const tg = data.telegramEcosystem;
 
   return (
     <>
@@ -191,13 +188,10 @@ export default function AdvertiseStats() {
       </AnimatePresence>
 
       <div ref={statsRef} className="space-y-8 mb-16">
-        <div className={`grid grid-cols-2 gap-2 sm:gap-4 ${(typeof data.activeVisitors === 'number' && data.activeVisitors > 0 && tg && tg.totalSubscribers > 0) ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
+        <div className={`grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3`}>
           <StatCard label="Total visits" value={data.totalViews} gradient="bg-gradient-to-br from-sky-950/50 to-sky-900/40" delay={0.1} ready full live />
           {typeof data.activeVisitors === 'number' && data.activeVisitors > 0 && (
             <StatCard label="Active users (30 min)" value={data.activeVisitors} gradient="bg-gradient-to-br from-sky-900/40 to-sky-950/30" delay={0.21} ready full live />
-          )}
-          {tg && tg.totalSubscribers > 0 && (
-            <StatCard label="Telegram subscribers" value={tg.totalSubscribers} suffix="+" gradient="bg-gradient-to-br from-sky-800/30 to-sky-950/40" delay={0.24} ready />
           )}
           <StatCard label="Page views/mo" value={400000} suffix="+" gradient="bg-gradient-to-br from-sky-950/50 to-sky-900/40" delay={0.3} ready />
         </div>
