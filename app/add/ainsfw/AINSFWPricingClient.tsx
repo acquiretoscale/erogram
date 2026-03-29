@@ -239,17 +239,13 @@ export default function AINSFWPricingClient() {
 
           {/* BOOST */}
           <div
-            className="relative flex flex-col p-6 overflow-hidden"
-            style={{
-              background: 'linear-gradient(160deg, #2d1a00 0%, #78350f 60%, #1c1200 100%)',
-              border: '3px solid #facc15',
-              boxShadow: '6px 6px 0px #facc15',
-            }}
+            className="relative flex flex-col bg-white p-6 overflow-hidden"
+            style={{ border: `3px solid ${ACCENT}`, boxShadow: `6px 6px 0px ${ACCENT}`, color: '#000' }}
           >
             {/* Big BOOST label */}
             <p
               className="font-black uppercase leading-none mb-1 tracking-tight"
-              style={{ fontSize: '3rem', color: '#facc15', textShadow: '2px 2px 0px rgba(0,0,0,0.5)' }}
+              style={{ fontSize: '3rem', color: ACCENT, textShadow: '2px 2px 0px rgba(0,0,0,0.15)' }}
             >
               BOOST
             </p>
@@ -257,14 +253,14 @@ export default function AINSFWPricingClient() {
             {/* Giant 10× */}
             <div className="mb-3">
               <span
-                className="font-black leading-none block text-white"
-                style={{ fontSize: '5.5rem', textShadow: '3px 3px 0px rgba(0,0,0,0.5)', lineHeight: 1 }}
+                className="font-black leading-none block text-black"
+                style={{ fontSize: '5.5rem', textShadow: '3px 3px 0px rgba(0,0,0,0.15)', lineHeight: 1 }}
               >
-                10<span style={{ color: '#facc15' }}>×</span>
+                10<span style={{ color: '#000' }}>×</span>
               </span>
               <span
-                className="font-black uppercase tracking-tight block"
-                style={{ fontSize: '1.4rem', color: '#fde68a', lineHeight: 1.1 }}
+                className="font-black uppercase tracking-tight block text-black"
+                style={{ fontSize: '1.4rem', lineHeight: 1.1 }}
               >
                 More Exposure
               </span>
@@ -272,15 +268,15 @@ export default function AINSFWPricingClient() {
 
             {/* Price */}
             <div className="mb-4">
-              <span className="text-4xl font-black text-white">$297</span>
-              <span className="text-sm font-bold text-white/40 ml-2">one-time</span>
+              <span className="text-4xl font-black text-black">$297</span>
+              <span className="text-sm font-bold text-black/40 ml-2">one-time</span>
             </div>
 
             <ul className="space-y-2.5 mb-8 flex-1">
               {/* Yellow featured highlight */}
               <li
                 className="flex items-center gap-2 px-3 py-2 text-[12px] font-black uppercase tracking-wide"
-                style={{ background: '#facc15', color: '#000', border: '2px solid #000' }}
+                style={{ background: '#0ea5e9', color: '#fff', border: '2px solid #000' }}
               >
                 <Check /> 1 Month featured in &ldquo;Top AI NSFW&rdquo;
               </li>
@@ -290,8 +286,8 @@ export default function AINSFWPricingClient() {
                 'Priority placement in directory',
                 'Up to 5 category listings',
               ].map((f) => (
-                <li key={f} className="flex items-start gap-2.5 text-sm font-semibold text-white/90">
-                  <span style={{ color: '#facc15' }} className="mt-0.5 shrink-0"><Check /></span>
+                <li key={f} className="flex items-start gap-2.5 text-sm font-semibold text-black/80">
+                  <span style={{ color: ACCENT }} className="mt-0.5 shrink-0"><Check /></span>
                   {f}
                 </li>
               ))}
@@ -299,10 +295,10 @@ export default function AINSFWPricingClient() {
 
             <button
               onClick={() => openForm('boost')}
-              className="w-full py-4 text-sm font-black uppercase tracking-widest text-black transition-all hover:opacity-95 active:translate-x-[2px] active:translate-y-[2px]"
+              className="w-full py-3.5 text-sm font-black uppercase tracking-widest transition-all active:translate-x-[2px] active:translate-y-[2px]"
               style={selectedPlan === 'boost'
-                ? { background: '#ca8a04', color: '#000', border: '3px solid #000', boxShadow: 'none', transform: 'translate(2px,2px)' }
-                : { background: '#facc15', border: '3px solid #000', boxShadow: '4px 4px 0px #000' }
+                ? { background: ACCENT_DARK, color: '#fff', border: BORDER, boxShadow: 'none', transform: 'translate(2px,2px)' }
+                : { background: ACCENT, color: '#fff', border: BORDER, boxShadow: SHADOW }
               }
             >
               {selectedPlan === 'boost' ? '✓ Selected — scroll down' : 'Boost My Tool — $297'}

@@ -42,6 +42,8 @@ interface CampaignRow {
   country: string;
   buttonText: string;
   feedPlacement?: 'groups' | 'bots' | 'both';
+  internalName?: string;
+  videoUrl?: string;
 }
 
 interface SlotInfo {

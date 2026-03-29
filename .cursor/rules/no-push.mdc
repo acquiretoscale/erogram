@@ -1,0 +1,30 @@
+---
+description: NEVER run git push unless the user explicitly says to push
+alwaysApply: true
+---
+
+# ABSOLUTE BAN ON git push
+
+## THE RULE (non-negotiable)
+
+**NEVER run `git push` or any command that pushes to remote** unless the user explicitly says one of:
+- "push"
+- "push it"
+- "now push"
+- or any other clear direct instruction to push
+
+## What you CAN do without asking
+
+- `git add`
+- `git commit`
+- Any local git operations
+
+## What requires EXPLICIT user instruction
+
+- `git push` — NEVER do this on your own
+- `git push --force` — NEVER
+- Any `gh` command that pushes or publishes
+
+## Why
+
+This is a production site with 1M+ monthly visitors. Unauthorized pushes go live immediately and can break things for real users.
