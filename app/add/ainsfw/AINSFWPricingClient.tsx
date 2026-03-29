@@ -257,13 +257,14 @@ export default function AINSFWPricingClient() {
             <ul className="space-y-3 mb-8 flex-1">
               {/* Prominent featured lines */}
               <li
-                className="px-3 py-2.5 space-y-1.5"
+                className="px-3 pt-2.5 pb-3 space-y-1"
                 style={{ background: '#facc15', color: '#000', border: '2px solid #000' }}
               >
-                <span className="flex items-center gap-2.5 text-sm font-black">
-                  <Check /> Up to 10× more views than Basic
-                </span>
-                <span className="flex items-center gap-2.5 text-sm font-black">
+                <div className="flex items-baseline gap-1.5 leading-none">
+                  <span style={{ fontSize: '2.8rem', fontWeight: 900, lineHeight: 1 }}>10×</span>
+                  <span className="text-sm font-black leading-tight">More<br />Exposure</span>
+                </div>
+                <span className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide">
                   <Check /> 1 Month featured in &ldquo;Top AI NSFW&rdquo;
                 </span>
               </li>
