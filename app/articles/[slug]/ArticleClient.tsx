@@ -357,11 +357,11 @@ export default function ArticleClient({ article, relatedArticles = [], topGroups
                     onClick={(e) => { e.stopPropagation(); onCtaClick(url); }}
                     style={{ textDecoration: 'none', pointerEvents: 'auto', cursor: 'pointer' }}
                     className="group inline-flex w-full sm:w-auto sm:min-w-[340px] max-w-[520px] items-center justify-center gap-3 px-10 py-5 rounded-2xl font-black text-base uppercase tracking-[0.1em] text-white
-                      bg-gradient-to-b from-[#ff4d4d] to-[#b31b1b]
-                      border border-[#ff6b6b]/50
+                      bg-gradient-to-b from-[#22c55e] to-[#15803d]
+                      border border-[#4ade80]/50
                       ring-1 ring-white/10
-                      hover:from-[#ff5d5d] hover:to-[#c61f1f]
-                      shadow-[0_18px_44px_rgba(179,27,27,0.56),inset_0_1px_0_rgba(255,255,255,0.25)] hover:shadow-[0_24px_54px_rgba(179,27,27,0.68),inset_0_1px_0_rgba(255,255,255,0.3)]
+                      hover:from-[#16a34a] hover:to-[#166534]
+                      shadow-[0_18px_44px_rgba(21,128,61,0.56),inset_0_1px_0_rgba(255,255,255,0.25)] hover:shadow-[0_24px_54px_rgba(21,128,61,0.68),inset_0_1px_0_rgba(255,255,255,0.3)]
                       transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] active:scale-[0.985]"
                   >
                     {text}
@@ -485,7 +485,6 @@ export default function ArticleClient({ article, relatedArticles = [], topGroups
 
                 {part2 && (
                   <>
-                    <MidArticleAd />
                     <ReactMarkdown components={markdownComponents} remarkPlugins={[remarkGfm]}>
                       {part2}
                     </ReactMarkdown>

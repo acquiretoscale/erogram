@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || 'erogramimages';
 
@@ -88,6 +88,15 @@ export async function listR2Files(
   } while (continuationToken);
 
   return urls;
+}
+
+export async function deleteFromR2(publicUrl: string): Promise<void> {
+  if (!isR2Configured() || !publicUrl) return;
+  const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || '';
+  if (!publicUrl.startsWith(R2_PUBLIC_URL)) return;
+  const key = publicUrl.replace(`${R2_PUBLIC_URL}/`, '');
+  const client = getR2Client();
+  await client.send(new DeleteObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key }));
 }
 
 export { R2_BUCKET_NAME };

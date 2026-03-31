@@ -19,15 +19,15 @@ type Item = { type: 'group' | 'campaign' | 'vault-teaser'; data: Group | FeedCam
 // In-feed ad slot layout (by group count, 0-indexed):
 //   Slot 2 → after 2 groups  (gc=2)   — one-time fixed
 //   Slot 5 → after 4 groups  (gc=4)   — Featured Bot, one-time fixed (groups feed only)
-//   Slot 3 → after 7 groups  (gc=7)   — one-time fixed
+//   Slot 3 → after 8 groups  (gc=8)   — one-time fixed
 //   Slot 4 → after 12 groups (gc=12)  — first occurrence, then loops every 5
 const SLOT2_GC = 2;
 const SLOT5_GC = 4;
-const SLOT3_GC = 7;
+const SLOT3_GC = 8;
 const SLOT4_GC = 12;
 const LOOP_GAP = 5;
 
-const VAULT_TEASER_GC = 6;
+const VAULT_TEASER_GC = 7;
 const VAULT_TEASER_REPEAT = 20;
 
 function buildFeedItems(groups: Group[], campaigns: FeedCampaign[], hasVaultTeaser: boolean): Item[] {

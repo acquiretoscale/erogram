@@ -10,9 +10,12 @@ import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import { getActiveCampaigns } from '@/lib/actions/campaigns';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { LOCALES, localePath } from '@/lib/i18n';
+import type { Locale } from '@/lib/i18n';
 import { getToolBySlug, getToolsByCategory } from '@/app/ainsfw/data';
 import ToolDetailClient from '@/app/ainsfw/[slug]/ToolDetailClient';
 import { getToolStats } from '@/lib/actions/ainsfw';
+import { getCreatorBySlug, getRelatedCreators } from '@/lib/actions/ofCreatorProfile';
+import CreatorProfileClient from '@/app/onlyfanssearch/CreatorProfileClient';
 
 // ISR for public join pages (keeps SSR output crawlable while avoiding per-request rendering)
 export const revalidate = 300;
@@ -589,6 +592,100 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
+  // Try OnlyFans creator
+  const creator = await getCreatorBySlug(slug);
+  if (creator) {
+    const creatorPath = `/${creator.slug}`;
+    const pageUrl = `${BASE_URL}${creatorPath}`;
+    const name = creator.name;
+    const username = creator.username;
+    const primaryCat = creator.categories[0] || 'onlyfans';
+
+    const fmtNum = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(0)}K` : `${n}`;
+
+    const statsLabels: Record<Locale, { likes: string; fans: string; photos: string; videos: string }> = {
+      en: { likes: 'likes', fans: 'fans', photos: 'photos', videos: 'videos' },
+      de: { likes: 'Likes', fans: 'Fans', photos: 'Fotos', videos: 'Videos' },
+      es: { likes: 'me gusta', fans: 'fans', photos: 'fotos', videos: 'videos' },
+    };
+    const sl = statsLabels[locale] || statsLabels.en;
+    const statsSnippet = [
+      creator.likesCount > 0 ? `${fmtNum(creator.likesCount)} ${sl.likes}` : '',
+      creator.subscriberCount > 0 ? `${fmtNum(creator.subscriberCount)} ${sl.fans}` : '',
+      creator.photosCount > 0 ? `${creator.photosCount.toLocaleString()} ${sl.photos}` : '',
+      creator.videosCount > 0 ? `${creator.videosCount.toLocaleString()} ${sl.videos}` : '',
+    ].filter(Boolean).join(', ');
+
+    const priceTexts: Record<Locale, { free: string; perMonth: string }> = {
+      en: { free: 'Free subscription', perMonth: '/month' },
+      de: { free: 'Kostenloses Abo', perMonth: '/Monat' },
+      es: { free: 'Suscripción gratis', perMonth: '/mes' },
+    };
+    const pt = priceTexts[locale] || priceTexts.en;
+    const priceText = creator.isFree ? pt.free : creator.price > 0 ? `$${creator.price.toFixed(2)}${pt.perMonth}` : '';
+
+    const socialHint = [
+      creator.instagramUrl ? 'Instagram' : '',
+      creator.twitterUrl ? 'Twitter' : '',
+      creator.tiktokUrl ? 'TikTok' : '',
+    ].filter(Boolean);
+    const alsoOn: Record<Locale, string> = {
+      en: 'Also on',
+      de: 'Auch auf',
+      es: 'También en',
+    };
+    const socialText = socialHint.length > 0 ? ` ${alsoOn[locale] || alsoOn.en} ${socialHint.join(', ')}.` : '';
+
+    const descTemplates: Record<Locale, string> = {
+      en: `${name} OnlyFans profile (@${username}). ${statsSnippet ? `${statsSnippet}. ` : ''}${priceText ? `${priceText}. ` : ''}${socialText}Browse verified OnlyFans creators on Erogram — the #1 OnlyFans search tool.`,
+      de: `${name} OnlyFans-Profil (@${username}). ${statsSnippet ? `${statsSnippet}. ` : ''}${priceText ? `${priceText}. ` : ''}${socialText}Verifizierte OnlyFans Creator auf Erogram entdecken — das #1 OnlyFans Suchtool.`,
+      es: `${name} OnlyFans perfil (@${username}). ${statsSnippet ? `${statsSnippet}. ` : ''}${priceText ? `${priceText}. ` : ''}${socialText}Explora creadoras verificadas en Erogram — el #1 buscador de OnlyFans.`,
+    };
+    let desc = descTemplates[locale] || descTemplates.en;
+    if (desc.length > 160) desc = desc.slice(0, 157) + '...';
+
+    const ogImage = creator.header && creator.header.startsWith('https://')
+      ? { url: creator.header, width: 1200, height: 630, alt: `${name} OnlyFans` }
+      : creator.avatar && creator.avatar.startsWith('https://')
+        ? { url: creator.avatar, width: 400, height: 400, alt: `${name} OnlyFans` }
+        : null;
+
+    const titleTemplates: Record<Locale, string> = {
+      en: `${name} OnlyFans — @${username} Profile, Photos & Videos (2026)`,
+      de: `${name} OnlyFans — @${username} Profil, Fotos & Videos (2026)`,
+      es: `${name} OnlyFans — @${username} Perfil, Fotos y Videos (2026)`,
+    };
+    const ogTitleTemplates: Record<Locale, string> = {
+      en: `${name} OnlyFans — @${username} | Erogram`,
+      de: `${name} OnlyFans — @${username} | Erogram`,
+      es: `${name} OnlyFans — @${username} | Erogram`,
+    };
+
+    return {
+      title: titleTemplates[locale] || titleTemplates.en,
+      description: desc,
+      keywords: `${name} OnlyFans, @${username} OnlyFans, ${primaryCat} OnlyFans creator, OnlyFans profile, ${creator.categories.join(', ')}, best OnlyFans 2026`,
+      robots: { index: false, follow: true },
+      other: { rating: 'adult' },
+      // No hreflang on noindex creator profiles — avoids contradicting robots and duplicate /de /es URLs.
+      alternates: { canonical: pageUrl },
+      openGraph: {
+        title: ogTitleTemplates[locale] || ogTitleTemplates.en,
+        description: desc,
+        type: 'profile',
+        url: pageUrl,
+        siteName: 'Erogram',
+        images: ogImage ? [ogImage] : [],
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: ogTitleTemplates[locale] || ogTitleTemplates.en,
+        description: desc,
+        images: ogImage ? [ogImage.url] : [],
+      },
+    };
+  }
+
   // If nothing found
   return {
     title: 'Not Found - Discover NSFW Telegram Communities',
@@ -860,6 +957,31 @@ export default async function JoinPage({ params }: PageProps) {
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(toolWebPage) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(toolSoftware) }} />
         <ToolDetailClient tool={aiTool} similar={similar} initialStats={toolStats} />
+      </>
+    );
+  }
+
+  // Try OnlyFans creator profile
+  const creator = await getCreatorBySlug(slug);
+  if (creator) {
+    const related = await getRelatedCreators(creator.categories, creator.slug, 6);
+    const pageUrl = `${BASE_URL}/${creator.slug}`;
+
+    const ofSearchLabel: Record<Locale, string> = { en: 'OnlyFans Search', de: 'OnlyFans Suche', es: 'Buscador de OnlyFans' };
+    const breadcrumbJsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
+        { '@type': 'ListItem', position: 2, name: ofSearchLabel[locale] || ofSearchLabel.en, item: `${BASE_URL}/onlyfanssearch` },
+        { '@type': 'ListItem', position: 3, name: creator.name, item: pageUrl },
+      ],
+    };
+
+    return (
+      <>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+        <CreatorProfileClient creator={creator} related={related} />
       </>
     );
   }

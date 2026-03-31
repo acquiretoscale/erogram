@@ -212,7 +212,7 @@ export default function AINSFWPricingClient() {
             <ul className="space-y-3 mb-8 flex-1">
               {[
                 'Listed in 1 category',
-                '24–48h approval',
+                'Instant approval',
                 'Tool page with backlink',
               ].map((f) => (
                 <li key={f} className="flex items-start gap-2.5 text-sm font-semibold text-black/80">
@@ -220,10 +220,6 @@ export default function AINSFWPricingClient() {
                   {f}
                 </li>
               ))}
-              <li className="flex items-start gap-2.5 text-sm font-semibold text-black/80">
-                <span style={{ color: ACCENT }}><Check /></span>
-                <span>Listed on Erogram</span>
-              </li>
             </ul>
             <button
               onClick={() => openForm('basic')}
@@ -250,35 +246,19 @@ export default function AINSFWPricingClient() {
               BOOST
             </p>
 
-            {/* Giant 10× */}
-            <div className="mb-3">
-              <span
-                className="font-black leading-none block text-black"
-                style={{ fontSize: '5.5rem', textShadow: '3px 3px 0px rgba(0,0,0,0.15)', lineHeight: 1 }}
-              >
-                10<span style={{ color: '#000' }}>×</span>
-              </span>
-              <span
-                className="font-black uppercase tracking-tight block text-black"
-                style={{ fontSize: '1.4rem', lineHeight: 1.1 }}
-              >
-                More Exposure
-              </span>
-            </div>
-
             {/* Price */}
             <div className="mb-4">
-              <span className="text-4xl font-black text-black">$297</span>
+              <span className="text-4xl font-black text-black">$197</span>
               <span className="text-sm font-bold text-black/40 ml-2">one-time</span>
             </div>
 
             <ul className="space-y-2.5 mb-8 flex-1">
-              {/* Yellow featured highlight */}
+              {/* Featured highlight */}
               <li
                 className="flex items-center gap-2 px-3 py-2 text-[12px] font-black uppercase tracking-wide"
                 style={{ background: '#0ea5e9', color: '#fff', border: '2px solid #000' }}
               >
-                <Check /> 1 Month featured in &ldquo;Top AI NSFW&rdquo;
+                <Check /> 2 Weeks featured in &ldquo;Top AI NSFW&rdquo;
               </li>
               {[
                 'Everything in Basic',
@@ -301,7 +281,7 @@ export default function AINSFWPricingClient() {
                 : { background: ACCENT, color: '#fff', border: BORDER, boxShadow: SHADOW }
               }
             >
-              {selectedPlan === 'boost' ? '✓ Selected — scroll down' : 'Boost My Tool — $297'}
+              {selectedPlan === 'boost' ? '✓ Selected — scroll down' : 'Boost My Tool — $197'}
             </button>
           </div>
 
@@ -342,7 +322,6 @@ export default function AINSFWPricingClient() {
               {[
                 'CPC campaigns',
                 'Blog posts / reviews',
-                'Multiple placements',
                 'SEO Backlinks',
               ].map((f) => (
                 <li key={f} className="flex items-start gap-2.5 text-sm font-semibold text-white/90">
@@ -632,23 +611,31 @@ export default function AINSFWPricingClient() {
           </div>
         )}
 
-        {/* TRUST SIGNALS */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-16">
-          {[
-            { icon: '₿', label: 'Crypto Only', desc: 'BTC, ETH, USDT & 100+ coins. No cards, no banks.' },
-            { icon: '⚡', label: 'Instant (Boost)', desc: 'Boost tier goes live instantly. Basic reviewed in 24h.' },
-            { icon: '👁', label: '400K+ Monthly', desc: 'Massive high-intent adult audience. Tier-1 markets.' },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className="bg-white px-5 py-4"
-              style={{ border: BORDER, boxShadow: SHADOW, color: '#000' }}
+        {/* Contact block */}
+        <div
+          className="flex flex-col items-center gap-4 px-8 py-6 mb-16"
+          style={{ background: 'linear-gradient(135deg, #0c1e35 0%, #0c2d48 100%)', border: `3px solid ${ACCENT}`, boxShadow: `4px 4px 0px ${ACCENT}` }}
+        >
+          <p className="text-sm font-black text-white">Need help?</p>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <a
+              href="mailto:erogram@gmail.com"
+              className="flex items-center gap-2 px-5 py-3 text-sm font-black text-white transition-all hover:opacity-90"
+              style={{ background: 'rgba(255,255,255,0.08)', border: '2px solid rgba(255,255,255,0.15)' }}
             >
-              <span className="text-xl font-black block mb-2" style={{ color: ACCENT }}>{item.icon}</span>
-              <p className="text-sm font-black text-black mb-1">{item.label}</p>
-              <p className="text-xs text-black/50 leading-relaxed">{item.desc}</p>
-            </div>
-          ))}
+              ✉️ erogram@gmail.com
+            </a>
+            <a
+              href="https://t.me/RVN8888"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-5 py-3 text-sm font-black text-white transition-all hover:opacity-90"
+              style={{ background: ACCENT, border: `2px solid ${ACCENT}` }}
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.820 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+              @RVN8888 on Telegram
+            </a>
+          </div>
         </div>
 
         {/* SCALE BANNER */}

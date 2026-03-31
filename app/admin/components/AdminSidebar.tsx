@@ -44,7 +44,7 @@ const tabs: TabItem[] = [
     { href: '/admin/stories',          name: 'Stories',         icon: BookOpen },
     { href: '/admin/articles',         name: 'Articles',        icon: FileText },
     { href: '/admin/ainsfw',            name: 'AI NSFW',         icon: Sparkles },
-    { href: '/OFM',                     name: 'OFM',             icon: Crown },
+    { href: '/OF',                      name: 'OF Admin',        icon: Crown },
     { href: '/admin/advertisers',      name: 'Advertisers',     icon: Briefcase },
     { href: '/admin/users',            name: 'Users',           icon: User },
     { href: '/admin/settings',         name: 'Settings',        icon: Settings },

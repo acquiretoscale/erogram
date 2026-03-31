@@ -30,7 +30,7 @@ export default async function BestOnlyFansCreatorsPage() {
   await connectDB();
 
   const categoryCounts = await OnlyFansCreator.aggregate([
-    { $match: { avatar: { $ne: '' }, gender: 'female' } },
+    { $match: { avatar: { $ne: '' }, gender: 'female', deleted: { $ne: true } } },
     { $unwind: '$categories' },
     { $group: { _id: '$categories', count: { $sum: 1 } } },
   ]);
@@ -39,7 +39,7 @@ export default async function BestOnlyFansCreatorsPage() {
   const previews: CategoryPreview[] = await Promise.all(
     OF_CATEGORIES.map(async (cat) => {
       const top = await OnlyFansCreator.find(
-        { categories: cat.slug, avatar: { $ne: '' }, gender: 'female' },
+        { categories: cat.slug, avatar: { $ne: '' }, gender: 'female', deleted: { $ne: true } },
         'name avatar',
       )
         .sort({ clicks: -1 })

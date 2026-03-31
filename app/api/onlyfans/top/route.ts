@@ -15,12 +15,12 @@ export async function GET(req: NextRequest) {
     await connectDB();
 
     const [top, trending] = await Promise.all([
-      OnlyFansCreator.find({ categories: 'top', gender: 'female' })
+      OnlyFansCreator.find({ categories: 'top', gender: 'female', deleted: { $ne: true } })
         .sort({ likesCount: -1 })
         .limit(limit)
         .select('-__v')
         .lean(),
-      OnlyFansCreator.find({ clicks: { $gt: 0 }, gender: 'female' })
+      OnlyFansCreator.find({ clicks: { $gt: 0 }, gender: 'female', deleted: { $ne: true } })
         .sort({ clicks: -1 })
         .limit(trendingLimit)
         .select('-__v')

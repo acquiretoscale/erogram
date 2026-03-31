@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
       avatar: { $ne: '' },
       gender: 'female',
       categories: { $exists: true, $ne: [] },
+      deleted: { $ne: true },
     };
 
     if (excludeIds.length > 0) {

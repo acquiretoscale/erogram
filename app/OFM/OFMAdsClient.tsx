@@ -95,13 +95,6 @@ const COUNTRIES = [
 ];
 const MAX_PCT = 31.0;
 
-const DEVICES = [
-  { os: 'iOS',       pct: 52.9 },
-  { os: 'Android',   pct: 38.7 },
-  { os: 'Windows',   pct: 4.4  },
-  { os: 'macOS',     pct: 3.3  },
-  { os: 'GNU/Linux', pct: 0.6  },
-];
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -226,58 +219,6 @@ export default function OFMAdsClient() {
           <SectionLabel>Erogram Website Audience</SectionLabel>
           <div className="space-y-2.5">
 
-            {/* Device breakdown */}
-            <Card>
-              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-gray-800">Device &amp; OS</p>
-                  <p className="text-[10px] text-gray-400">Where your ads are seen</p>
-                </div>
-                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#00AFF0]/10 text-[#00AFF0] border border-[#00AFF0]/20 uppercase tracking-wider">91.6% Mobile</span>
-              </div>
-              <div className="p-4">
-                <div className="flex items-center gap-4 mb-4 pb-4 border-b border-gray-100">
-                  <div className="relative w-16 h-16 shrink-0">
-                    <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-                      <circle cx="18" cy="18" r="14" fill="none" stroke="#f3f4f6" strokeWidth="4" />
-                      <circle cx="18" cy="18" r="14" fill="none" stroke="#00AFF0" strokeWidth="4" strokeDasharray="52.9 100" strokeLinecap="butt" />
-                      <circle cx="18" cy="18" r="14" fill="none" stroke="#d1d5db" strokeWidth="4" strokeDasharray="38.7 100" strokeDashoffset="-52.9" strokeLinecap="butt" />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-[11px] font-black text-gray-800 leading-none">91.6%</span>
-                      <span className="text-[7px] text-gray-400 uppercase tracking-wider">mobile</span>
-                    </div>
-                  </div>
-                  <div className="space-y-1.5 flex-1">
-                    {[
-                      { label: 'iOS', pct: '52.9%', color: 'bg-[#00AFF0]' },
-                      { label: 'Android', pct: '38.7%', color: 'bg-gray-300' },
-                      { label: 'Desktop', pct: '8.3%', color: 'bg-gray-200' },
-                    ].map((d) => (
-                      <div key={d.label} className="flex items-center gap-2">
-                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${d.color}`} />
-                        <span className="text-xs text-gray-500 flex-1">{d.label}</span>
-                        <span className="text-xs font-bold text-gray-700 tabular-nums">{d.pct}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  {DEVICES.map((d) => (
-                    <div key={d.os}>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-xs text-gray-500">{d.os}</span>
-                        <span className="text-xs font-bold text-gray-700 tabular-nums">{d.pct}%</span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-gray-100">
-                        <div className="h-1.5 rounded-full" style={{ width: `${d.pct}%`, background: d.os === 'iOS' ? '#00AFF0' : '#d1d5db' }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Card>
-
             {/* Geo Distribution */}
             <Card>
               <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
@@ -363,8 +304,6 @@ export default function OFMAdsClient() {
           <SectionLabel>Targeting &amp; Pricing</SectionLabel>
           <div className="grid grid-cols-2 gap-2.5">
             {[
-              { icon: '🎯', title: 'Keyword targeting', desc: 'Exact & broad match. Negative keywords supported.' },
-              { icon: '🌍', title: 'Location targeting', desc: 'Target or exclude any country.' },
               { icon: '🎬', title: 'Video ads', desc: 'TikTok-style autoplay. 2–3x higher CTR.' },
               { icon: '💸', title: 'CPC only', desc: 'Pay per click. Every 100 clicks ≈ 33 subscribers.' },
             ].map((f) => (

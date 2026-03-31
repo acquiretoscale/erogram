@@ -65,7 +65,7 @@ export function mainOfMeta(locale: Locale): Metadata {
   const current = mainPath(locale);
 
   const title: Record<Locale, string> = {
-    en: 'OnlyFans Search Tool — Find the Best OnlyFans Creators by Category & Country',
+    en: 'OnlyFans Search Tool - Explore the Best OnlyFans Creators',
     de: 'OnlyFans Suchtool — Die besten OnlyFans Creator nach Kategorie & Land finden',
     es: 'Buscador de OnlyFans — Encuentra las Mejores Creadoras por Categoría y País',
   };

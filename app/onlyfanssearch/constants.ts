@@ -20,17 +20,6 @@ export const OF_CATEGORIES = [
   { name: 'Ahegao', emoji: '😜', slug: 'ahegao' },
   { name: 'Alt', emoji: '🦇', slug: 'alt' },
   { name: 'Cosplay', emoji: '🎭', slug: 'cosplay' },
-  { name: 'Fitness', emoji: '💪', slug: 'fitness' },
-  { name: 'Tattoo', emoji: '🖊️', slug: 'tattoo' },
-  { name: 'Curvy', emoji: '🔥', slug: 'curvy' },
-  { name: 'Ebony', emoji: '👑', slug: 'ebony' },
-  { name: 'Feet', emoji: '🦶', slug: 'feet' },
-  { name: 'Lingerie', emoji: '🩱', slug: 'lingerie' },
-  { name: 'Thick', emoji: '🍑', slug: 'thick' },
-  { name: 'Twerk', emoji: '💃', slug: 'twerk' },
-  { name: 'Squirt', emoji: '💦', slug: 'squirt' },
-  { name: 'Streamer', emoji: '🎮', slug: 'streamer' },
-  { name: 'Piercing', emoji: '💎', slug: 'piercing' },
 ] as const;
 
 export const OF_COUNTRIES = [

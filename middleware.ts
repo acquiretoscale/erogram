@@ -55,18 +55,37 @@ export function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // If locale was already resolved by a previous middleware pass (rewrite), keep it
+  const existingLocale = request.headers.get('x-locale');
+  if (existingLocale && (existingLocale === 'de' || existingLocale === 'es')) {
+    return NextResponse.next({ request: { headers: request.headers } });
+  }
+
+  // Helper: create a rewrite that forwards locale info via REQUEST headers
+  // so that headers() in server components can read them.
+  function rewriteWithLocale(dest: string, locale: string, originalPath: string) {
+    const reqHeaders = new Headers(request.headers);
+    reqHeaders.set('x-locale', locale);
+    reqHeaders.set('x-pathname', originalPath);
+    const url = request.nextUrl.clone();
+    url.pathname = dest;
+    return NextResponse.rewrite(url, { request: { headers: reqHeaders } });
+  }
+
+  function nextWithLocale(locale: string, originalPath: string) {
+    const reqHeaders = new Headers(request.headers);
+    reqHeaders.set('x-locale', locale);
+    reqHeaders.set('x-pathname', originalPath);
+    return NextResponse.next({ request: { headers: reqHeaders } });
+  }
+
   // ── OnlyFans SEO rewrites (before locale logic) ──
   // Pattern: /onlyfans{country}/{cat}onlyfans → /onlyfans-search/country/{country}/{cat}
   const combo = pathname.match(/^\/onlyfans([a-z]+)\/([a-z]+(?:-[a-z]+)*)onlyfans$/);
   if (combo) {
     const [, country, cat] = combo;
     if (OF_COUNTRY_SLUGS.has(country) && OF_CAT_SLUGS.has(cat)) {
-      const url = request.nextUrl.clone();
-      url.pathname = `/onlyfanssearch/country/${country}/${cat}`;
-      const res = NextResponse.rewrite(url);
-      res.headers.set('x-locale', 'en');
-      res.headers.set('x-pathname', pathname);
-      return res;
+      return rewriteWithLocale(`/onlyfanssearch/country/${country}/${cat}`, 'en', pathname);
     }
   }
 
@@ -75,12 +94,7 @@ export function middleware(request: NextRequest) {
   if (catMatch) {
     const cat = catMatch[1];
     if (OF_CAT_SLUGS.has(cat)) {
-      const url = request.nextUrl.clone();
-      url.pathname = `/onlyfanssearch/${cat}`;
-      const res = NextResponse.rewrite(url);
-      res.headers.set('x-locale', 'en');
-      res.headers.set('x-pathname', pathname);
-      return res;
+      return rewriteWithLocale(`/onlyfanssearch/${cat}`, 'en', pathname);
     }
   }
 
@@ -89,12 +103,7 @@ export function middleware(request: NextRequest) {
   if (countryMatch) {
     const country = countryMatch[1];
     if (OF_COUNTRY_SLUGS.has(country)) {
-      const url = request.nextUrl.clone();
-      url.pathname = `/onlyfanssearch/country/${country}`;
-      const res = NextResponse.rewrite(url);
-      res.headers.set('x-locale', 'en');
-      res.headers.set('x-pathname', pathname);
-      return res;
+      return rewriteWithLocale(`/onlyfanssearch/country/${country}`, 'en', pathname);
     }
   }
 
@@ -120,12 +129,7 @@ export function middleware(request: NextRequest) {
     const prefix = `/${loc}/${seg}`;
     if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
       const rest = pathname.slice(prefix.length);
-      const url = request.nextUrl.clone();
-      url.pathname = `/onlyfanssearch${rest}`;
-      const res = NextResponse.rewrite(url);
-      res.headers.set('x-locale', loc);
-      res.headers.set('x-pathname', pathname);
-      return res;
+      return rewriteWithLocale(`/onlyfanssearch${rest}`, loc, pathname);
     }
   }
 
@@ -157,23 +161,13 @@ export function middleware(request: NextRequest) {
   // Check if the path starts with a supported locale prefix
   for (const locale of LOCALE_PREFIXES) {
     if (pathname === `/${locale}` || pathname.startsWith(`/${locale}/`)) {
-      // Strip locale prefix and rewrite to the real page
       const strippedPath = pathname.replace(`/${locale}`, '') || '/';
-      const url = request.nextUrl.clone();
-      url.pathname = strippedPath;
-
-      const response = NextResponse.rewrite(url);
-      response.headers.set('x-locale', locale);
-      response.headers.set('x-pathname', pathname);
-      return response;
+      return rewriteWithLocale(strippedPath, locale, pathname);
     }
   }
 
   // English: no rewrite, just tag the locale header
-  const response = NextResponse.next();
-  response.headers.set('x-locale', 'en');
-  response.headers.set('x-pathname', pathname);
-  return response;
+  return nextWithLocale('en', pathname);
 }
 
 export const config = {
@@ -189,10 +183,10 @@ export const config = {
    * - /robots.txt       (SEO)
    * - /sitemap.xml      (SEO)
    * - /admin/...        (admin panel — stays English only)
-   * - /OFM/...          (OFM admin panel — stays English only)
+   * - /OF/...           (OF admin panel — stays English only)
    * - /advert/...       (advertiser panel — stays English only)
    */
   matcher: [
-    '/((?!api|_next|assets|icons|fonts|favicon|manifest|robots|sitemap|admin|OFM|advert).*)',
+    '/((?!api|_next|assets|icons|fonts|favicon|manifest|robots|sitemap|admin|OF|advert).*)',
   ],
 };

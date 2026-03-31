@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ creators: [] });
   }
 
-  const creators = await OnlyFansCreator.find({ _id: { $in: savedIds } })
+  const creators = await OnlyFansCreator.find({ _id: { $in: savedIds }, deleted: { $ne: true } })
     .select('name username slug avatar bio price isFree url clicks')
     .lean();
 

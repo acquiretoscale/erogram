@@ -3,7 +3,7 @@
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import {
-  Campaign, TrendingOFCreator,
+  Campaign, TrendingOFCreator, OnlyFansCreator,
   Bookmark, ButtonConfig, User,
 } from '@/lib/models';
 
@@ -17,8 +17,16 @@ export async function getTrendingCreators(category?: string) {
 
   const creators = await TrendingOFCreator.find(filter)
     .limit(12)
-    .select('_id name username avatar url bio categories position dealPrice isStarPick')
+    .select('_id name username avatar url bio categories position dealPrice')
     .lean();
+
+  const usernames = (creators as any[]).map((c) => c.username).filter(Boolean);
+  const ofDocs = usernames.length
+    ? await OnlyFansCreator.find({ username: { $in: usernames } })
+        .select('username likesCount')
+        .lean()
+    : [];
+  const likesMap = new Map((ofDocs as any[]).map((d) => [d.username, d.likesCount ?? 0]));
 
   const mapped = (creators as any[]).map((c) => ({
     _id: c._id.toString(),
@@ -30,16 +38,7 @@ export async function getTrendingCreators(category?: string) {
     categories: c.categories || [],
     position: c.position,
     dealPrice: c.dealPrice || 0,
-    // isStarPick === true  → new star pick (saved after schema update)
-    // isStarPick undefined → old entry: treat as star pick if it has 0 clicks and no campaign data
-    isStarPick: c.isStarPick === true || (
-      c.isStarPick == null &&
-      !c.clicks &&
-      !c.dealPrice &&
-      !c.clickBudget &&
-      !c.dailyClickCap &&
-      !c.note
-    ),
+    likesCount: likesMap.get(c.username) ?? 0,
   }));
 
   for (let i = mapped.length - 1; i > 0; i--) {

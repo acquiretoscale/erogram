@@ -303,22 +303,56 @@ export default function OFMSettingsPage() {
       <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-5 space-y-4">
         <h2 className="text-sm font-bold text-white">Apify Actor</h2>
         <p className="text-white/30 text-xs">
-          The actor used for scraping. Default: <code className="bg-white/5 px-1 rounded">igolaizola/onlyfans-scraper</code>
+          Select which Apify actor to use for scraping. Different actors return different data quality.
         </p>
-        <div className="flex gap-3">
+
+        {/* Preset buttons */}
+        <div className="space-y-2">
+          {[
+            { id: 'hello.datawizards/onlyfans-scraper', label: 'DataWizards', desc: 'Best data — header, photos, videos, location, join date, verified, tips, streams. Use for profile enrichment.' },
+            { id: 'sentry/onlyfans-finder-pro', label: 'Sentry Finder Pro', desc: 'Social links (Instagram, Twitter, TikTok, Fansly, Pornhub). Good for discovery + social data.' },
+            { id: 'igolaizola/onlyfans-scraper', label: 'Igolaizola', desc: 'Basic scraper — categories, likes, price. Cheapest option for bulk discovery.' },
+          ].map((preset) => (
+            <button
+              key={preset.id}
+              onClick={() => setActorInput(preset.id)}
+              className={`w-full text-left px-4 py-3 rounded-xl border transition ${
+                actorInput === preset.id
+                  ? 'bg-[#00AFF0]/10 border-[#00AFF0]/40 ring-1 ring-[#00AFF0]/30'
+                  : 'bg-white/[0.03] border-white/[0.08] hover:border-white/20'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <div className={`w-3 h-3 rounded-full border-2 flex items-center justify-center ${
+                  actorInput === preset.id ? 'border-[#00AFF0] bg-[#00AFF0]' : 'border-white/30'
+                }`}>
+                  {actorInput === preset.id && <div className="w-1 h-1 rounded-full bg-white" />}
+                </div>
+                <span className={`text-sm font-bold ${actorInput === preset.id ? 'text-[#00AFF0]' : 'text-white'}`}>
+                  {preset.label}
+                </span>
+                <code className="text-[10px] text-white/25 font-mono ml-auto">{preset.id}</code>
+              </div>
+              <p className="text-[11px] text-white/35 mt-1 ml-5">{preset.desc}</p>
+            </button>
+          ))}
+        </div>
+
+        {/* Custom input fallback */}
+        <div className="flex gap-3 pt-2 border-t border-white/[0.06]">
           <input
             type="text"
             value={actorInput}
             onChange={(e) => setActorInput(e.target.value)}
-            placeholder="igolaizola/onlyfans-scraper"
+            placeholder="or paste custom actor ID"
             className="flex-1 px-3 py-2.5 bg-white/[0.05] border border-white/10 rounded-xl text-white text-sm font-mono placeholder-white/25 outline-none focus:border-[#00AFF0]/40 transition"
           />
           <button
             onClick={updateActor}
             disabled={saving || actorInput === settings?.apifyActor}
-            className="px-5 py-2.5 bg-white/[0.06] hover:bg-white/[0.10] text-white font-bold text-sm rounded-xl transition border border-white/[0.10] disabled:opacity-30 disabled:cursor-not-allowed"
+            className="px-5 py-2.5 bg-[#00AFF0] hover:bg-[#009dd9] text-white font-bold text-sm rounded-xl transition shadow-sm shadow-[#00AFF0]/20 disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            Save
+            {saving ? 'Saving…' : 'Save Actor'}
           </button>
         </div>
       </div>

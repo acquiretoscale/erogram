@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator, ScrapeRun, SearchQuery } from '@/lib/models';
 import { getApifyCredentials, markKeyBurned } from '@/lib/apify-key';
+import { processCreatorImages } from '@/lib/actions/creatorImages';
 
 const MAX_PROFILES_PER_SCRAPE = 15;
 
@@ -47,10 +48,10 @@ export async function DELETE(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const scrapeStart = Date.now();
   try {
-    const { category, maxItems: rawMax = 200, clean = false, country, source = 'bulk' } = await req.json();
+    const { category, maxItems: rawMax = 200, clean = false, country, source = 'bulk', usernames } = await req.json();
     const maxItems = Math.min(Math.max(1, rawMax), MAX_PROFILES_PER_SCRAPE);
-    if (!category) {
-      return NextResponse.json({ error: 'category is required' }, { status: 400 });
+    if (!category && !usernames) {
+      return NextResponse.json({ error: 'category or usernames is required' }, { status: 400 });
     }
 
     const creds = await getApifyCredentials();
@@ -60,12 +61,19 @@ export async function POST(req: NextRequest) {
 
     const { token: APIFY_TOKEN, actor: APIFY_ACTOR } = creds;
     const actorId = APIFY_ACTOR.replace('/', '~');
-    const catLower = category.toLowerCase();
+    const catLower = (category || 'profile-update').toLowerCase();
     const isTopBrowse = catLower === 'top';
     const isSentry = APIFY_ACTOR.includes('sentry');
+    const isDatawizards = APIFY_ACTOR.includes('datawizards');
     const keyHint = APIFY_TOKEN.slice(-4);
 
-    const input = isSentry
+    // Username-based scrape: pass usernames directly to the actor
+    const isUsernameScrape = Array.isArray(usernames) && usernames.length > 0;
+    const input = isUsernameScrape
+      ? { search_queries: usernames }
+      : isDatawizards
+      ? buildDatawizardsInput(category, maxItems, isTopBrowse, country)
+      : isSentry
       ? buildSentryInput(category, maxItems, isTopBrowse)
       : buildIgolaInput(category, maxItems, isTopBrowse, country);
 
@@ -131,7 +139,7 @@ export async function POST(req: NextRequest) {
           await updateSearchQueryStatus(source, catLower, 'failed', 0);
           return NextResponse.json({ error: 'Apify run failed after key rotation', details: retryBody }, { status: 502 });
         }
-        return await processRun(retryRes, creds2.token, actorId, maxItems, catLower, clean, isSentry, logEntry._id, scrapeStart, source);
+        return await processRun(retryRes, creds2.token, actorId, maxItems, catLower, clean, isSentry, isDatawizards, logEntry._id, scrapeStart, source);
       }
 
       await updateSearchQueryStatus(source, catLower, 'failed', 0);
@@ -139,7 +147,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Apify run failed to start', details: errMsg }, { status: 502 });
     }
 
-    return await processRun(runRes, APIFY_TOKEN, actorId, maxItems, catLower, clean, isSentry, logEntry._id, scrapeStart, source);
+    return await processRun(runRes, APIFY_TOKEN, actorId, maxItems, catLower, clean, isSentry, isDatawizards, logEntry._id, scrapeStart, source);
   } catch (error: any) {
     console.error('Scrape error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -171,6 +179,12 @@ function buildIgolaInput(category: string, maxItems: number, isTop: boolean, cou
   if (!isTop) input.category = category;
   if (country && country !== 'any') input.country = country;
   return input;
+}
+
+function buildDatawizardsInput(category: string, _maxItems: number, isTop: boolean, _country?: string) {
+  return {
+    search_queries: isTop ? ['top'] : [category],
+  };
 }
 
 // ── Output parsers per actor ────────────────────────────────────
@@ -223,18 +237,30 @@ function parseSentryItem(item: any) {
 
   if (containsBlockedContent(bio, name, username)) return null;
 
+  const firstLink = (arr: any[]) => (Array.isArray(arr) && arr[0]?.url) ? arr[0].url : '';
+
   return {
     name,
     username,
     avatar: item.profileImage || '',
     bio: bio.slice(0, 500),
     likesCount: parseInt(String(item.likes || '0').replace(/,/g, ''), 10) || 0,
+    subscriberCount: 0,
+    mediaCount: 0,
     photosCount: parseInt(String(item.photos || '0').replace(/,/g, ''), 10) || 0,
     videosCount: parseInt(String(item.videos || '0').replace(/,/g, ''), 10) || 0,
     price: parseFloat(String(item.price || '0').replace(/[^0-9.]/g, '')) || 0,
     isFree: String(item.price || '').toLowerCase() === 'free' || item.price === '0' || item.price === '0.00' || item.price === 0,
+    isVerified: false,
     url: item.onlyfansLink || `https://onlyfans.com/${username}`,
     gender: 'female' as const,
+    lastSeen: item.lastSeen || '',
+    instagramUrl: item.primaryInstagram || firstLink(item.instagramLinks),
+    instagramUsername: item.primaryInstagramUsername || '',
+    twitterUrl: firstLink(item.twitterLinks),
+    tiktokUrl: firstLink(item.tiktokLinks),
+    fanslyUrl: firstLink(item.fanslyLinks),
+    pornhubUrl: firstLink(item.pornhubLinks),
   };
 }
 
@@ -256,12 +282,70 @@ function parseIgolaItem(item: any) {
     avatar: item.image || (item.images?.[0]?.url) || '',
     bio: bio.slice(0, 500),
     likesCount: typeof item.likes === 'number' ? item.likes : parseInt(String(item.likes || '0').replace(/,/g, ''), 10) || 0,
+    subscriberCount: 0,
+    mediaCount: 0,
     photosCount: 0,
     videosCount: 0,
     price: typeof item.price === 'number' ? item.price : parseFloat(String(item.price || '0')) || 0,
     isFree: item.price === 0 || item.price === 'Free',
+    isVerified: false,
     url: item.link || `https://onlyfans.com/${username}`,
     gender: 'female' as const,
+  };
+}
+
+function parseDatawizardsItem(item: any) {
+  const username = item.username || '';
+  if (!username) return null;
+
+  const name = item.name || username;
+  const bio = item.about || '';
+
+  const subPrice = typeof item.subscribePrice === 'number' ? item.subscribePrice : parseFloat(String(item.subscribePrice || '0')) || 0;
+
+  return {
+    name,
+    username,
+    avatar: item.avatar || '',
+    avatarThumbC50: item.avatarThumbs?.c50 || '',
+    avatarThumbC144: item.avatarThumbs?.c144 || '',
+    header: item.header || '',
+    bio: bio.slice(0, 500),
+    likesCount: item.favoritedCount || 0,
+    photosCount: item.photosCount || 0,
+    videosCount: item.videosCount || 0,
+    audiosCount: item.audiosCount || 0,
+    mediaCount: item.mediasCount || 0,
+    postsCount: item.postsCount || 0,
+    privateArchivedPostsCount: item.privateArchivedPostsCount || 0,
+    subscriberCount: item.subscribersCount || 0,
+    favoritesCount: item.favoritesCount || 0,
+    price: subPrice,
+    isFree: subPrice === 0,
+    isVerified: item.isVerified || false,
+    isRestricted: item.isRestricted || false,
+    canEarn: item.canEarn || false,
+    canChat: item.canChat || false,
+    url: `https://onlyfans.com/${username}`,
+    gender: 'female' as const,
+    lastSeen: item.lastSeen || '',
+    location: item.location || '',
+    website: item.website || '',
+    joinDate: item.joinDate || '',
+    firstPublishedPostDate: item.firstPublishedPostDate || '',
+    onlyfansId: item.id || 0,
+    hasStories: item.hasStories || false,
+    hasStream: item.hasStream || false,
+    hasScheduledStream: item.hasScheduledStream || false,
+    tipsEnabled: item.tipsEnabled || false,
+    tipsTextEnabled: item.tipsTextEnabled || false,
+    tipsMin: item.tipsMin || 0,
+    tipsMinInternal: item.tipsMinInternal || 0,
+    tipsMax: item.tipsMax || 0,
+    finishedStreamsCount: item.finishedStreamsCount || 0,
+    showMediaCount: item.showMediaCount || false,
+    subscriptionBundles: item.subscription_bundles || null,
+    promotions: Array.isArray(item.promotions) ? item.promotions.filter(Boolean) : [],
   };
 }
 
@@ -296,6 +380,7 @@ async function processRun(
   catLower: string,
   clean: boolean,
   isSentry: boolean,
+  isDatawizards: boolean,
   logId: any,
   scrapeStart: number,
   source: string,
@@ -359,41 +444,92 @@ async function processRun(
   let skipped = 0;
 
   for (const item of items) {
-    const parsed = isSentry ? parseSentryItem(item) : parseIgolaItem(item);
+    const parsed = isDatawizards
+      ? parseDatawizardsItem(item)
+      : isSentry
+      ? parseSentryItem(item)
+      : parseIgolaItem(item);
     if (!parsed) { skipped++; continue; }
 
     const slug = parsed.username.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
 
     try {
+      const setFields: Record<string, any> = {
+        name: parsed.name,
+        username: parsed.username,
+        slug,
+        avatar: parsed.avatar,
+        bio: parsed.bio,
+        likesCount: parsed.likesCount,
+        mediaCount: parsed.mediaCount || (parsed.photosCount + parsed.videosCount),
+        photosCount: parsed.photosCount,
+        videosCount: parsed.videosCount,
+        price: parsed.price,
+        isFree: parsed.isFree,
+        isVerified: parsed.isVerified || false,
+        gender: parsed.gender,
+        url: parsed.url,
+        scrapedAt: new Date(),
+      };
+
+      if (parsed.subscriberCount) setFields.subscriberCount = parsed.subscriberCount;
+
+      // Datawizards-rich fields — save every field that exists in parsed
+      const dwFields = [
+        'header','avatarThumbC50','avatarThumbC144',
+        'audiosCount','postsCount','privateArchivedPostsCount','favoritesCount',
+        'location','website','joinDate','firstPublishedPostDate',
+        'onlyfansId','hasStories','hasStream','hasScheduledStream',
+        'tipsEnabled','tipsTextEnabled','tipsMin','tipsMinInternal','tipsMax',
+        'finishedStreamsCount','showMediaCount','isRestricted','canEarn','canChat',
+        'subscriptionBundles','promotions',
+      ] as const;
+      for (const f of dwFields) {
+        if (f in parsed && (parsed as any)[f] !== undefined && (parsed as any)[f] !== '') {
+          setFields[f] = (parsed as any)[f];
+        }
+      }
+
+      // Sentry social fields
+      if ('lastSeen' in parsed && parsed.lastSeen) setFields.lastSeen = parsed.lastSeen;
+      if ('instagramUrl' in parsed && parsed.instagramUrl) setFields.instagramUrl = parsed.instagramUrl;
+      if ('instagramUsername' in parsed && parsed.instagramUsername) setFields.instagramUsername = parsed.instagramUsername;
+      if ('twitterUrl' in parsed && parsed.twitterUrl) setFields.twitterUrl = parsed.twitterUrl;
+      if ('tiktokUrl' in parsed && parsed.tiktokUrl) setFields.tiktokUrl = parsed.tiktokUrl;
+      if ('fanslyUrl' in parsed && parsed.fanslyUrl) setFields.fanslyUrl = parsed.fanslyUrl;
+      if ('pornhubUrl' in parsed && parsed.pornhubUrl) setFields.pornhubUrl = parsed.pornhubUrl;
+
       await OnlyFansCreator.findOneAndUpdate(
         { slug },
         {
-          $set: {
-            name: parsed.name,
-            username: parsed.username,
-            slug,
-            avatar: parsed.avatar,
-            header: '',
-            bio: parsed.bio,
-            subscriberCount: 0,
-            likesCount: parsed.likesCount,
-            mediaCount: parsed.photosCount + parsed.videosCount,
-            photosCount: parsed.photosCount,
-            videosCount: parsed.videosCount,
-            price: parsed.price,
-            isFree: parsed.isFree,
-            isVerified: false,
-            gender: parsed.gender,
-            url: parsed.url,
-            scrapedAt: new Date(),
-          },
+          $set: setFields,
           $addToSet: { categories: catLower },
         },
-        { upsert: true },
+        { upsert: true, strict: false },
       );
       saved++;
     } catch (e: any) {
       if (e.code !== 11000) console.error(`Failed ${parsed.username}:`, e.message);
+    }
+  }
+
+  // Process images: download from OF CDN → optimize → EXIF brand → R2
+  const slugsToProcess: string[] = [];
+  for (const item of items) {
+    const parsed = isDatawizards
+      ? parseDatawizardsItem(item)
+      : isSentry ? parseSentryItem(item) : parseIgolaItem(item);
+    if (!parsed) continue;
+    const s = parsed.username.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    slugsToProcess.push(s);
+  }
+  let imagesProcessed = 0;
+  for (const s of slugsToProcess) {
+    try {
+      const r = await processCreatorImages(s);
+      if (r.avatarR2 || r.headerR2) imagesProcessed++;
+    } catch (e: any) {
+      console.error(`Image processing failed for ${s}:`, e.message);
     }
   }
 
@@ -409,5 +545,5 @@ async function processRun(
 
   await updateSearchQueryStatus(source, catLower, 'done', saved);
 
-  return NextResponse.json({ success: true, runId, totalItems: items.length, saved, skipped, category: catLower });
+  return NextResponse.json({ success: true, runId, totalItems: items.length, saved, skipped, imagesProcessed, category: catLower });
 }

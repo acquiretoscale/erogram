@@ -75,7 +75,7 @@ export default async function OnlyFansSlugPage({ params }: PageProps) {
 
   await connectDB();
 
-  const baseMatch = { categories: slug, gender: 'female', avatar: { $ne: '' } };
+  const baseMatch = { categories: slug, gender: 'female', avatar: { $ne: '' }, deleted: { $ne: true } };
 
   const creators = await OnlyFansCreator.find(baseMatch)
     .sort({ clicks: -1, likesCount: -1 })

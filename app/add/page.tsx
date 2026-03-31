@@ -58,6 +58,10 @@ export default function AddPage() {
           <Link href="/add/group" className={btnClass}><GroupIcon /> Submit your Telegram Group</Link>
           <Link href="/add/bot" className={btnClass}><BotIcon /> Submit your Telegram Bot</Link>
           <Link href="/add/ainsfw" className={btnClass}><AINsfwIcon /> Submit your AI NSFW Tool</Link>
+          <Link href="/submit" className="flex items-center justify-center gap-2 w-full px-5 py-4 rounded-xl text-base font-bold text-[#00AFF0] bg-[#00AFF0]/[0.10] border border-[#00AFF0]/25 hover:bg-[#00AFF0]/[0.18] hover:text-[#3dc4f7] transition-all no-underline">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="shrink-0"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            Submit OnlyFans Creator
+          </Link>
         </div>
       </main>
       <Footer />

@@ -24,6 +24,7 @@ export async function browseCreators(excludeIds: string[] = [], limit = 80) {
     avatar: { $ne: '' },
     gender: 'female',
     categories: { $exists: true, $ne: [] },
+    deleted: { $ne: true },
   };
 
   if (excludeIds.length > 0) {
@@ -152,6 +153,7 @@ export async function searchCreators(q: string, limit = 1000, skip = 0) {
     avatar: { $ne: '' },
     gender: 'female',
     categories: { $exists: true, $ne: [] },
+    deleted: { $ne: true },
     $or: [
       { name: regex },
       { username: regex },
@@ -199,7 +201,10 @@ export async function deleteCreatorBySlug(token: string, slug: string) {
   } catch {
     throw new Error('Unauthorized');
   }
-  const result = await OnlyFansCreator.findOneAndDelete({ slug });
+  const result = await OnlyFansCreator.findOneAndUpdate(
+    { slug },
+    { $set: { deleted: true, deletedAt: new Date() } },
+  );
   if (!result) throw new Error('Not found');
   return { success: true };
 }

@@ -236,21 +236,6 @@ function VisitingNowCard() {
         </div>
       </div>
 
-      {/* Advertise CTA */}
-      <Link
-        href="/advertise"
-        className="flex items-center gap-0.5 px-1.5 py-0.5 rounded font-black text-[7px] uppercase tracking-wider transition-all hover:opacity-90 active:scale-95 whitespace-nowrap"
-        style={{
-          background: 'linear-gradient(135deg, #b31b1b, #7f1d1d)',
-          color: 'white',
-          boxShadow: '0 1px 4px rgba(179,27,27,0.3)',
-        }}
-      >
-        <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-        </svg>
-        Advertise
-      </Link>
     </div>
   );
 }

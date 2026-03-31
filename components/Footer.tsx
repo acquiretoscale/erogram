@@ -83,7 +83,7 @@ export default function Footer() {
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/ofmads" className="text-[#999] hover:text-[#b31b1b] transition-colors">
+                                <Link href="/OFM" className="text-[#999] hover:text-[#b31b1b] transition-colors">
                                     OFM Boost
                                 </Link>
                             </li>

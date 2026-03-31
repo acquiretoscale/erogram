@@ -290,16 +290,6 @@ export default function TrendingAdminPage() {
     }
   };
 
-  const handleToggleType = async (slot: TrendingSlot) => {
-    try {
-      await updateOFMTrending(token(), slot._id, { isStarPick: !(slot as any).isStarPick });
-      showToast((slot as any).isStarPick ? `👑 ${slot.name} → Featured` : `⭐ ${slot.name} → Trending`);
-      load();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed');
-    }
-  };
-
   const handleResetClicks = async (slot: TrendingSlot) => {
     if (!confirm(`Reset all clicks for ${slot.name}? This cannot be undone.`)) return;
     try {
@@ -413,11 +403,6 @@ export default function TrendingAdminPage() {
                         PAUSED
                       </span>
                     )}
-                    {(slot as any).isStarPick && (
-                      <span className="px-1.5 py-0.5 bg-red-500/20 text-red-400 text-[9px] font-bold rounded-full flex-shrink-0">
-                        ⭐ FREE PICK — DELETE
-                      </span>
-                    )}
                     {slot.clickBudget > 0 && slot.clicks >= slot.clickBudget && (
                       <span className="px-1.5 py-0.5 bg-red-500/10 text-red-400 text-[9px] font-bold rounded-full flex-shrink-0">
                         BUDGET HIT
@@ -454,17 +439,6 @@ export default function TrendingAdminPage() {
 
                 {/* Actions */}
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    onClick={() => handleToggleType(slot)}
-                    title={(slot as any).isStarPick ? 'Switch to Featured (paid)' : 'Switch to Trending (free pick)'}
-                    className={`px-2 py-1 rounded-lg text-[10px] font-black transition border ${
-                      (slot as any).isStarPick
-                        ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20'
-                        : 'bg-[#FF6A00]/10 text-[#FF6A00] border-[#FF6A00]/20 hover:bg-[#FF6A00]/20'
-                    }`}
-                  >
-                    {(slot as any).isStarPick ? '⭐ TRENDING' : '👑 FEATURED'}
-                  </button>
                   <button
                     onClick={() => handleToggle(slot)}
                     title={slot.active ? 'Pause' : 'Activate'}
@@ -656,22 +630,34 @@ export default function TrendingAdminPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-white/40 mb-1.5">Categories</label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-bold text-white/40">Categories</label>
+                      <span className={`text-[10px] font-bold ${addCategories.length >= 6 ? 'text-amber-400' : 'text-white/25'}`}>
+                        {addCategories.length}/6
+                      </span>
+                    </div>
                     <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
-                      {OF_CATEGORIES.map((cat) => (
-                        <button
-                          key={cat.slug}
-                          type="button"
-                          onClick={() => setAddCategories((prev) => prev.includes(cat.slug) ? prev.filter((c) => c !== cat.slug) : [...prev, cat.slug])}
-                          className={`px-2 py-1 rounded-lg text-[11px] font-semibold border transition ${
-                            addCategories.includes(cat.slug)
-                              ? 'bg-[#00AFF0]/15 border-[#00AFF0]/40 text-[#00AFF0]'
-                              : 'bg-white/[0.03] border-white/[0.08] text-white/40 hover:text-white/60'
-                          }`}
-                        >
-                          {cat.emoji} {cat.name}
-                        </button>
-                      ))}
+                      {OF_CATEGORIES.map((cat) => {
+                        const selected = addCategories.includes(cat.slug);
+                        const atLimit = addCategories.length >= 6 && !selected;
+                        return (
+                          <button
+                            key={cat.slug}
+                            type="button"
+                            disabled={atLimit}
+                            onClick={() => setAddCategories((prev) => selected ? prev.filter((c) => c !== cat.slug) : prev.length >= 6 ? prev : [...prev, cat.slug])}
+                            className={`px-2 py-1 rounded-lg text-[11px] font-semibold border transition ${
+                              selected
+                                ? 'bg-[#00AFF0]/15 border-[#00AFF0]/40 text-[#00AFF0]'
+                                : atLimit
+                                  ? 'bg-white/[0.01] border-white/[0.04] text-white/15 cursor-not-allowed'
+                                  : 'bg-white/[0.03] border-white/[0.08] text-white/40 hover:text-white/60'
+                            }`}
+                          >
+                            {cat.emoji} {cat.name}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -772,22 +758,34 @@ export default function TrendingAdminPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-white/40 mb-1.5">Categories</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-white/40">Categories</label>
+                  <span className={`text-[10px] font-bold ${editCategories.length >= 6 ? 'text-amber-400' : 'text-white/25'}`}>
+                    {editCategories.length}/6
+                  </span>
+                </div>
                 <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
-                  {OF_CATEGORIES.map((cat) => (
-                    <button
-                      key={cat.slug}
-                      type="button"
-                      onClick={() => setEditCategories((prev) => prev.includes(cat.slug) ? prev.filter((c) => c !== cat.slug) : [...prev, cat.slug])}
-                      className={`px-2 py-1 rounded-lg text-[11px] font-semibold border transition ${
-                        editCategories.includes(cat.slug)
-                          ? 'bg-[#00AFF0]/15 border-[#00AFF0]/40 text-[#00AFF0]'
-                          : 'bg-white/[0.03] border-white/[0.08] text-white/40 hover:text-white/60'
-                      }`}
-                    >
-                      {cat.emoji} {cat.name}
-                    </button>
-                  ))}
+                  {OF_CATEGORIES.map((cat) => {
+                    const selected = editCategories.includes(cat.slug);
+                    const atLimit = editCategories.length >= 6 && !selected;
+                    return (
+                      <button
+                        key={cat.slug}
+                        type="button"
+                        disabled={atLimit}
+                        onClick={() => setEditCategories((prev) => selected ? prev.filter((c) => c !== cat.slug) : prev.length >= 6 ? prev : [...prev, cat.slug])}
+                        className={`px-2 py-1 rounded-lg text-[11px] font-semibold border transition ${
+                          selected
+                            ? 'bg-[#00AFF0]/15 border-[#00AFF0]/40 text-[#00AFF0]'
+                            : atLimit
+                              ? 'bg-white/[0.01] border-white/[0.04] text-white/15 cursor-not-allowed'
+                              : 'bg-white/[0.03] border-white/[0.08] text-white/40 hover:text-white/60'
+                        }`}
+                      >
+                        {cat.emoji} {cat.name}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>

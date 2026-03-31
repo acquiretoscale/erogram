@@ -383,7 +383,7 @@ export default function ScrapePage() {
           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/>
         </svg>
         <p className="text-amber-400/80 text-xs leading-relaxed">
-          Scraping runs synchronously and can take several minutes per category depending on Apify actor run time (up to 8 min timeout). API keys rotate automatically from your pool — manage them in <a href="/OFM/settings" className="underline hover:text-amber-300 transition">Settings</a>.
+          Scraping runs synchronously and can take several minutes per category depending on Apify actor run time (up to 8 min timeout). API keys rotate automatically from your pool — manage them in <a href="/OF/settings" className="underline hover:text-amber-300 transition">Settings</a>.
         </p>
       </div>
 

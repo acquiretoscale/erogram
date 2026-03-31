@@ -361,19 +361,19 @@ export default function ToolDetailClient({ tool, similar, initialStats }: ToolDe
                 <button
                   onClick={handleVisit}
                   disabled={isRedirecting}
-                  className="relative w-full group overflow-hidden rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-emerald-600 p-[2px] focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-[#111] disabled:opacity-70"
+                  className="relative w-full group rounded-2xl bg-yellow-400 hover:bg-yellow-300 active:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:ring-offset-2 focus:ring-offset-[#111] disabled:opacity-70 shadow-[0_6px_20px_-4px_rgba(250,204,21,0.5)] transition-all duration-150"
                 >
-                  <div className="relative w-full bg-[#111] rounded-[14px] px-8 py-5 transition-all group-hover:bg-transparent">
+                  <div className="relative w-full px-8 py-5">
                     <div className="flex items-center justify-center gap-3">
                       <span className="text-2xl">🚀</span>
-                      <span className="text-xl font-bold text-white">
+                      <span className="text-xl font-black text-black">
                         {isRedirecting ? 'Opening...' : `Visit ${tool.name} Now`}
                       </span>
                     </div>
                   </div>
                 </button>
                 <p className="text-center text-sm text-gray-500 mt-3">
-                  Opens {tool.vendor} in a new tab. Erogram.pro is not affiliated with this service.
+                  Opens {tool.vendor} in a new tab.
                 </p>
               </div>
 

@@ -55,8 +55,8 @@ export default function CreatorsPage() {
   const [editLoading, setEditLoading] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
-  const [trendingSlots, setTrendingSlots] = useState<TrendingSlot[]>([null, null, null, null]);
-  const [sendToTrending, setSendToTrending] = useState<Creator | null>(null);
+  const [featuredSlots, setFeaturedSlots] = useState<TrendingSlot[]>([null, null, null, null]);
+  const [sendToFeatured, setSendToFeatured] = useState<Creator | null>(null);
   const [sendingSlot, setSendingSlot] = useState<number | null>(null);
   const [importInput, setImportInput] = useState('');
   const [importing, setImporting] = useState(false);
@@ -66,7 +66,7 @@ export default function CreatorsPage() {
     setTimeout(() => setToast(''), 3000);
   };
 
-  const loadTrendingSlots = useCallback(async () => {
+  const loadFeaturedSlots = useCallback(async () => {
     const token = localStorage.getItem('token') || '';
     try {
       const data = await getOFMTrending(token);
@@ -76,7 +76,7 @@ export default function CreatorsPage() {
           if (s.position >= 1 && s.position <= 4) mapped[s.position - 1] = s;
         }
       }
-      setTrendingSlots(mapped);
+      setFeaturedSlots(mapped);
     } catch { /* silent */ }
   }, []);
 
@@ -94,11 +94,11 @@ export default function CreatorsPage() {
         position,
         active: true,
       });
-      showToast(`${creator.name} added to Trending Spot #${position}`);
-      setSendToTrending(null);
-      loadTrendingSlots();
+      showToast(`${creator.name} added to Featured Spot #${position}`);
+      setSendToFeatured(null);
+      loadFeaturedSlots();
     } catch {
-      showToast('Failed to add to trending');
+      showToast('Failed to add to Featured');
     } finally {
       setSendingSlot(null);
     }
@@ -146,7 +146,7 @@ export default function CreatorsPage() {
     }
   }, [page, search, category, isFree, sortBy, sortDir]);
 
-  useEffect(() => { load(1); loadTrendingSlots(); }, [search, category, isFree, sortBy, sortDir]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(1); loadFeaturedSlots(); }, [search, category, isFree, sortBy, sortDir]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -195,7 +195,7 @@ export default function CreatorsPage() {
           <h1 className="text-2xl font-black text-white">Creators</h1>
           <p className="text-white/40 text-sm mt-0.5">{total.toLocaleString()} total in database</p>
         </div>
-        <a href="/OFM/import" className="px-3.5 py-1.5 bg-white/[0.06] border border-white/10 rounded-xl text-white/50 text-xs font-semibold hover:bg-white/10 transition">
+        <a href="/OF/import" className="px-3.5 py-1.5 bg-white/[0.06] border border-white/10 rounded-xl text-white/50 text-xs font-semibold hover:bg-white/10 transition">
           Advanced Import →
         </a>
       </div>
@@ -333,9 +333,9 @@ export default function CreatorsPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
                         <button
-                          onClick={() => { setSendToTrending(c); loadTrendingSlots(); }}
+                          onClick={() => { setSendToFeatured(c); loadFeaturedSlots(); }}
                           className="p-1.5 text-white/30 hover:text-[#00AFF0] hover:bg-[#00AFF0]/10 rounded-lg transition"
-                          title="Send to Trending"
+                          title="Send to Featured"
                         >
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>
@@ -393,32 +393,32 @@ export default function CreatorsPage() {
         </div>
       )}
 
-      {/* Send to Trending modal */}
-      {sendToTrending && (
+      {/* Send to Featured modal */}
+      {sendToFeatured && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="bg-[#0e1419] border border-white/10 rounded-2xl p-6 w-full max-w-sm">
             <div className="flex items-center gap-3 mb-4">
-              {sendToTrending.avatar ? (
-                <img src={sendToTrending.avatar} alt={sendToTrending.name} className="w-10 h-10 rounded-xl object-cover bg-white/5 flex-shrink-0" />
+              {sendToFeatured.avatar ? (
+                <img src={sendToFeatured.avatar} alt={sendToFeatured.name} className="w-10 h-10 rounded-xl object-cover bg-white/5 flex-shrink-0" />
               ) : (
                 <div className="w-10 h-10 rounded-xl bg-[#00AFF0]/10 flex items-center justify-center text-[#00AFF0] font-black flex-shrink-0">
-                  {sendToTrending.name.charAt(0)}
+                  {sendToFeatured.name.charAt(0)}
                 </div>
               )}
               <div>
-                <div className="text-white font-bold text-sm">{sendToTrending.name}</div>
-                <div className="text-[#00AFF0] text-xs">@{sendToTrending.username}</div>
+                <div className="text-white font-bold text-sm">{sendToFeatured.name}</div>
+                <div className="text-[#00AFF0] text-xs">@{sendToFeatured.username}</div>
               </div>
             </div>
-            <p className="text-white/50 text-xs mb-4">Pick a trending spot. Occupied slots will be replaced.</p>
+            <p className="text-white/50 text-xs mb-4">Pick a Featured spot. Occupied slots will be replaced.</p>
             <div className="grid grid-cols-2 gap-2">
               {([1, 2, 3, 4] as const).map((pos) => {
-                const occupant = trendingSlots[pos - 1];
+                const occupant = featuredSlots[pos - 1];
                 const isBusy = sendingSlot === pos;
                 return (
                   <button
                     key={pos}
-                    onClick={() => handleSendToSlot(sendToTrending, pos)}
+                    onClick={() => handleSendToSlot(sendToFeatured, pos)}
                     disabled={sendingSlot !== null}
                     className={`relative flex flex-col items-start gap-1 p-3 rounded-xl border text-left transition disabled:opacity-50 ${
                       occupant
@@ -444,7 +444,7 @@ export default function CreatorsPage() {
               })}
             </div>
             <button
-              onClick={() => setSendToTrending(null)}
+              onClick={() => setSendToFeatured(null)}
               className="w-full mt-4 py-2 bg-white/[0.05] border border-white/10 rounded-xl text-white/40 text-sm hover:bg-white/10 transition"
             >
               Cancel

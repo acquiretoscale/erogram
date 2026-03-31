@@ -287,9 +287,9 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                         </Link>
                       )}
                       {isAdminUser && (
-                        <Link href="/OFM" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-[#4ab3f4] hover:text-[#6ec6f7] hover:bg-[#0088cc]/5 transition font-semibold">
+                        <Link href="/OF" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-[#4ab3f4] hover:text-[#6ec6f7] hover:bg-[#0088cc]/5 transition font-semibold">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M8 12h8M12 8v8"/></svg>
-                          OFM Admin
+                          OF Admin
                         </Link>
                       )}
                       <Link href={lp('/profile')} onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-white/70 hover:text-white hover:bg-white/5 transition">
@@ -563,9 +563,9 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                   </Link>
                 )}
                 {isAdminUser && (
-                  <Link href="/OFM" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-[14px] font-semibold text-[#4ab3f4] bg-[#0088cc]/[0.08] border border-[#0088cc]/20 hover:bg-[#0088cc]/[0.14] transition">
+                  <Link href="/OF" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-[14px] font-semibold text-[#4ab3f4] bg-[#0088cc]/[0.08] border border-[#0088cc]/20 hover:bg-[#0088cc]/[0.14] transition">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M8 12h8M12 8v8"/></svg>
-                    OFM Admin
+                    OF Admin
                   </Link>
                 )}
                 <Link href={lp('/profile')} onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[14px] font-semibold text-[#4ab3f4] bg-[#0088cc]/[0.10] border border-[#0088cc]/25 hover:bg-[#0088cc]/[0.18] hover:text-[#6ec6f7] transition-all">

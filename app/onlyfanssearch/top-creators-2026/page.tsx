@@ -17,7 +17,7 @@ export default async function TopCreatorsPage() {
 
   try {
     await connectDB();
-    const docs = await OnlyFansCreator.find({ categories: 'top' })
+    const docs = await OnlyFansCreator.find({ categories: 'top', deleted: { $ne: true } })
       .sort({ likesCount: -1 })
       .limit(500)
       .select('-__v')

@@ -308,37 +308,37 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
           )}
 
           {useLightAnimations ? (
-            <div className={`flex flex-wrap sm:flex-nowrap gap-2 sm:gap-2.5 justify-center items-center w-full mb-6 sm:mb-8 ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.4s' }}>
+            <div className={`flex flex-wrap sm:flex-nowrap gap-2 sm:gap-2.5 md:gap-4 justify-center items-center w-full mb-6 sm:mb-8 ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.4s' }}>
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(lp('/groups')), 0); }}
-                className="flex-1 sm:flex-initial sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg text-[14px] font-semibold transition-all hover:scale-105 whitespace-nowrap"
+                className="flex-1 sm:flex-initial sm:w-auto flex items-center justify-center gap-1.5 md:gap-2.5 px-4 py-2.5 md:px-8 md:py-4 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg md:rounded-xl text-[14px] md:text-lg font-semibold transition-all hover:scale-105 whitespace-nowrap"
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" className="shrink-0 md:!w-5 md:!h-5">
                   <path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/>
                 </svg>
                 Explore Groups
               </button>
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(lp('/bots')), 0); }}
-                className="flex-1 sm:flex-initial sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg text-[14px] font-semibold transition-all hover:scale-105 whitespace-nowrap"
+                className="flex-1 sm:flex-initial sm:w-auto flex items-center justify-center gap-1.5 md:gap-2.5 px-4 py-2.5 md:px-8 md:py-4 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg md:rounded-xl text-[14px] md:text-lg font-semibold transition-all hover:scale-105 whitespace-nowrap"
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 md:!w-5 md:!h-5">
                   <rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="9" cy="16" r="1"/><circle cx="15" cy="16" r="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
                 </svg>
                 Explore Bots
               </button>
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(lp('/ainsfw')), 0); }}
-                className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg text-[14px] font-semibold transition-all hover:scale-105 whitespace-nowrap"
+                className="w-full sm:w-auto flex items-center justify-center gap-1.5 md:gap-2.5 px-4 py-2.5 md:px-8 md:py-4 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg md:rounded-xl text-[14px] md:text-lg font-semibold transition-all hover:scale-105 whitespace-nowrap"
               >
-                <span className="text-sm leading-none shrink-0">🔞</span>
+                <span className="text-sm md:text-lg leading-none shrink-0">🔞</span>
                 Explore AI NSFW
               </button>
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push('/onlyfanssearch'), 0); }}
-                className="relative w-full sm:w-auto px-4 py-2.5 sm:px-5 bg-[#00AFF0] hover:bg-[#009dd9] text-white rounded-lg transition-all hover:scale-105 flex items-center justify-center gap-1.5 whitespace-nowrap"
+                className="relative w-full sm:w-auto px-4 py-2.5 sm:px-5 md:px-8 md:py-4 bg-[#00AFF0] hover:bg-[#009dd9] text-white rounded-lg md:rounded-xl transition-all hover:scale-105 flex items-center justify-center gap-1.5 md:gap-2.5 whitespace-nowrap"
               >
-                <span className="text-[14px] font-semibold">
+                <span className="text-[14px] md:text-lg font-semibold">
                   {t('home.ofSearchLineStart', 'Explore +1.8M ')}
                   <span className="font-black">{t('home.ofSearchParen', 'OnlyFans')}</span>
                 </span>
@@ -347,7 +347,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
             </div>
                       ) : (
             <motion.div
-              className="flex flex-wrap sm:flex-nowrap gap-2 sm:gap-2.5 justify-center items-center w-full mb-6 sm:mb-8"
+              className="flex flex-wrap sm:flex-nowrap gap-2 sm:gap-2.5 md:gap-4 justify-center items-center w-full mb-6 sm:mb-8"
               initial={{ opacity: 0, y: 60 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: 'easeOut', delay: 0.4 }}
@@ -355,34 +355,34 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
             >
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(lp('/groups')), 0); }}
-                className="flex-1 sm:flex-initial sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg text-[14px] font-semibold transition-all hover:scale-105 whitespace-nowrap"
+                className="flex-1 sm:flex-initial sm:w-auto flex items-center justify-center gap-1.5 md:gap-2.5 px-4 py-2.5 md:px-8 md:py-4 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg md:rounded-xl text-[14px] md:text-lg font-semibold transition-all hover:scale-105 whitespace-nowrap"
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" className="shrink-0 md:!w-5 md:!h-5">
                   <path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/>
                 </svg>
                 Explore Groups
               </button>
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(lp('/bots')), 0); }}
-                className="flex-1 sm:flex-initial sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg text-[14px] font-semibold transition-all hover:scale-105 whitespace-nowrap"
+                className="flex-1 sm:flex-initial sm:w-auto flex items-center justify-center gap-1.5 md:gap-2.5 px-4 py-2.5 md:px-8 md:py-4 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg md:rounded-xl text-[14px] md:text-lg font-semibold transition-all hover:scale-105 whitespace-nowrap"
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 md:!w-5 md:!h-5">
                   <rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="9" cy="16" r="1"/><circle cx="15" cy="16" r="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
                 </svg>
                 Explore Bots
               </button>
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(lp('/ainsfw')), 0); }}
-                className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg text-[14px] font-semibold transition-all hover:scale-105 whitespace-nowrap"
+                className="w-full sm:w-auto flex items-center justify-center gap-1.5 md:gap-2.5 px-4 py-2.5 md:px-8 md:py-4 bg-[#0088cc] border border-[#0088cc] text-white hover:bg-[#009dd9] hover:border-[#009dd9] rounded-lg md:rounded-xl text-[14px] md:text-lg font-semibold transition-all hover:scale-105 whitespace-nowrap"
               >
-                <span className="text-sm leading-none shrink-0">🔞</span>
+                <span className="text-sm md:text-lg leading-none shrink-0">🔞</span>
                 Explore AI NSFW
               </button>
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push('/onlyfanssearch'), 0); }}
-                className="relative w-full sm:w-auto px-4 py-2.5 sm:px-5 bg-[#00AFF0] hover:bg-[#009dd9] text-white rounded-lg transition-all hover:scale-105 flex items-center justify-center gap-1.5 whitespace-nowrap"
+                className="relative w-full sm:w-auto px-4 py-2.5 sm:px-5 md:px-8 md:py-4 bg-[#00AFF0] hover:bg-[#009dd9] text-white rounded-lg md:rounded-xl transition-all hover:scale-105 flex items-center justify-center gap-1.5 md:gap-2.5 whitespace-nowrap"
               >
-                <span className="text-[14px] font-semibold">
+                <span className="text-[14px] md:text-lg font-semibold">
                   {t('home.ofSearchLineStart', 'Explore +1.8M ')}
                   <span className="font-black">{t('home.ofSearchParen', 'OnlyFans')}</span>
                 </span>

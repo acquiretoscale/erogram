@@ -8,6 +8,7 @@ import { Search, ArrowLeft, Heart, Crown, X, TrendingUp } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { OF_CATEGORIES, ofCategoryUrl } from '../constants';
 import { trackCreatorClick } from '@/lib/actions/onlyfansTracking';
+import { useTranslation, useLocalePath } from '@/lib/i18n/client';
 
 interface Creator {
   _id: string;
@@ -28,19 +29,20 @@ interface Creator {
 function TopCreatorCard({ creator, index, savedIds, onToggleSave, onTrack }: {
   creator: Creator; index: number; savedIds: Set<string>; onToggleSave: (id: string) => void; onTrack: (slug: string) => void;
 }) {
+  const { t } = useTranslation();
   const [redirecting, setRedirecting] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
   useEffect(() => {
     if (!redirecting || countdown <= 0) return;
-    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
+    return () => clearTimeout(timer);
   }, [redirecting, countdown]);
 
   useEffect(() => {
     if (redirecting && countdown === 0) {
       window.open(creator.url, '_blank', 'noopener,noreferrer');
-      setTimeout(() => setRedirecting(false), 500);
+      setRedirecting(false);
     }
   }, [redirecting, countdown, creator.url]);
 
@@ -74,7 +76,7 @@ function TopCreatorCard({ creator, index, savedIds, onToggleSave, onTrack }: {
           <div className="flex items-center gap-1.5 sm:gap-2">
             <h3 className="font-bold text-[13px] sm:text-[15px] text-gray-900 truncate leading-tight">{creator.name}</h3>
             <span className={`flex-shrink-0 px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wide ${creator.isFree ? 'bg-emerald-400 text-white' : 'bg-[#00AFF0] text-white'}`}>
-              {creator.isFree ? 'Free' : `$${creator.price.toFixed(0)}`}
+              {creator.isFree ? t('ofSearch.free') : `$${creator.price.toFixed(0)}`}
             </span>
           </div>
           <p className="text-[11px] sm:text-[13px] text-[#00AFF0] mt-0.5">@{creator.username}</p>
@@ -83,16 +85,16 @@ function TopCreatorCard({ creator, index, savedIds, onToggleSave, onTrack }: {
             {redirecting ? (
               <>
                 <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin shrink-0" />
-                Redirecting in {countdown}s...
+                {t('ofSearch.redirectingIn').replace('{n}', String(countdown))}
               </>
-            ) : 'View profile'}
+            ) : t('ofSearch.viewProfile')}
           </div>
         </div>
       </button>
       <button
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleSave(creator._id); }}
         className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 w-10 h-10 sm:w-9 sm:h-9 rounded-full bg-black/20 backdrop-blur-sm flex items-center justify-center transition-all hover:scale-110"
-        title={savedIds.has(creator._id) ? 'Remove from saved' : 'Save creator'}
+        title={savedIds.has(creator._id) ? t('ofSearch.removeSaved') : t('ofSearch.saveCreator')}
       >
         <Heart size={18} className={savedIds.has(creator._id) ? 'text-rose-500' : 'text-white/80'} fill={savedIds.has(creator._id) ? 'currentColor' : 'none'} />
       </button>
@@ -105,6 +107,8 @@ interface Props {
 }
 
 export default function TopCreatorsClient({ creators }: Props) {
+  const { t } = useTranslation();
+  const lp = useLocalePath();
   const router = useRouter();
   const [navQuery, setNavQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'free' | 'paid' | 'price-low' | 'price-high'>('all');
@@ -189,7 +193,7 @@ export default function TopCreatorsClient({ creators }: Props) {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (navQuery.trim()) {
-      router.push(`/onlyfanssearch?q=${encodeURIComponent(navQuery.trim())}`);
+      router.push(`${lp('/onlyfanssearch')}?q=${encodeURIComponent(navQuery.trim())}`);
     }
   };
 
@@ -201,11 +205,11 @@ export default function TopCreatorsClient({ creators }: Props) {
         <section className="bg-gradient-to-b from-[#00AFF0]/10 via-[#00AFF0]/[0.04] to-[#111111] pt-6 pb-4 sm:pt-8 sm:pb-6">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <Link
-              href="/onlyfanssearch"
+              href={lp('/onlyfanssearch')}
               className="inline-flex items-center gap-1.5 text-sm text-white/40 hover:text-[#00AFF0] transition-colors mb-3"
             >
               <ArrowLeft size={14} />
-              OnlyFans Search
+              {t('ofSearch.onlyfansSearch')}
             </Link>
 
             <motion.h1
@@ -214,8 +218,8 @@ export default function TopCreatorsClient({ creators }: Props) {
               transition={{ duration: 0.4 }}
               className="text-2xl sm:text-3xl lg:text-4xl font-black leading-tight tracking-tight"
             >
-              Top OnlyFans Creators{' '}
-              <span className="text-[#00AFF0]">2026</span>
+              {t('ofSearch.topOnlyfansCreators')}{' '}
+              <span className="text-[#00AFF0]">{t('ofSearch.topCreatorsYear')}</span>
             </motion.h1>
             <motion.p
               initial={{ opacity: 0, y: 12 }}
@@ -224,8 +228,8 @@ export default function TopCreatorsClient({ creators }: Props) {
               className="mt-2 text-sm sm:text-base text-white/50 max-w-lg mx-auto"
             >
               {creators.length > 0
-                ? `The definitive list of the ${creators.length} most popular OnlyFans creators. Updated daily on Erogram.`
-                : 'No top creators loaded yet. Check back soon.'}
+                ? t('ofSearch.topCreatorsDesc').replace('{count}', String(creators.length))
+                : t('ofSearch.noTopCreators')}
             </motion.p>
 
             {/* Search bar — navigates to /onlyfanssearch */}
@@ -245,7 +249,7 @@ export default function TopCreatorsClient({ creators }: Props) {
                   value={navQuery}
                   onChange={(e) => setNavQuery(e.target.value)}
                   onFocus={() => setSearchFocused(true)}
-                  placeholder="Search by name, keyword, location, ethnicity..."
+                  placeholder={t('ofSearch.searchPlaceholderCategory')}
                   className={`w-full pl-10 pr-10 py-2.5 bg-white/[0.06] border border-white/[0.08] text-white placeholder-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-[#00AFF0]/40 focus:border-[#00AFF0]/30 transition-all ${searchFocused && !navQuery ? 'rounded-t-xl rounded-b-none border-b-0' : 'rounded-xl'}`}
                 />
                 {navQuery && (
@@ -267,7 +271,7 @@ export default function TopCreatorsClient({ creators }: Props) {
                           type="button"
                           onClick={() => {
                             setSearchFocused(false);
-                            router.push(`/onlyfanssearch?q=${encodeURIComponent(term)}`);
+                            router.push(`${lp('/onlyfanssearch')}?q=${encodeURIComponent(term)}`);
                           }}
                           className="flex items-center gap-2.5 px-3.5 py-2 text-left hover:bg-white/[0.05] transition-colors border-b border-r border-white/[0.04] last:border-b-0 [&:nth-last-child(2):nth-child(odd)]:border-b-0"
                         >
@@ -292,7 +296,7 @@ export default function TopCreatorsClient({ creators }: Props) {
                 {OF_CATEGORIES.map((cat) => (
                   <Link
                     key={cat.slug}
-                    href={ofCategoryUrl(cat.slug)}
+                    href={lp(ofCategoryUrl(cat.slug))}
                     className="px-2.5 py-1 sm:px-2 sm:py-0.5 rounded-full bg-white/[0.06] border border-white/[0.10] text-white/50 text-[11px] sm:text-[10px] font-semibold hover:bg-[#00AFF0]/10 hover:border-[#00AFF0]/30 hover:text-[#00AFF0] transition-all"
                   >
                     {cat.name}
@@ -304,42 +308,39 @@ export default function TopCreatorsClient({ creators }: Props) {
         </section>
 
         <section className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-          {/* Filter bar */}
-          <div className="flex justify-center mb-4 sm:mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto scrollbar-hide">
-            <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.08] flex-shrink-0">
-              {([
-                { key: 'all', label: 'All' },
-                { key: 'free', label: 'Free' },
-                { key: 'paid', label: 'Paid' },
-              ] as const).map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setFilter(key)}
-                  className={`px-3 py-2 sm:py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
-                    filter === key
-                      ? 'bg-[#00AFF0]/20 text-[#00AFF0]'
-                      : 'text-white/40 hover:text-white/70'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
+          <div className="flex flex-wrap gap-2 mb-6">
+            {([
+              { key: 'all' as const, label: t('ofSearch.all') },
+              { key: 'free' as const, label: t('ofSearch.free') },
+              { key: 'paid' as const, label: t('ofSearch.paid') },
+            ]).map(({ key, label }) => (
               <button
-                onClick={() => setFilter(filter === 'price-low' ? 'price-high' : 'price-low')}
+                key={key}
+                onClick={() => setFilter(key)}
                 className={`px-3 py-2 sm:py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
-                  filter === 'price-low' || filter === 'price-high'
+                  filter === key
                     ? 'bg-[#00AFF0]/20 text-[#00AFF0]'
                     : 'text-white/40 hover:text-white/70'
                 }`}
               >
-                {filter === 'price-high' ? 'Highest first' : 'Lowest first'}
+                {label}
               </button>
-            </div>
+            ))}
+            <button
+              onClick={() => setFilter(filter === 'price-low' ? 'price-high' : 'price-low')}
+              className={`px-3 py-2 sm:py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+                filter === 'price-low' || filter === 'price-high'
+                  ? 'bg-[#00AFF0]/20 text-[#00AFF0]'
+                  : 'text-white/40 hover:text-white/70'
+              }`}
+            >
+              {filter === 'price-high' ? t('ofSearch.highestFirst') : t('ofSearch.lowestFirst')}
+            </button>
           </div>
 
           {sorted.length === 0 ? (
             <div className="text-center py-20">
-              <p className="text-white/30 text-lg">No top creators loaded yet.</p>
+              <p className="text-white/30 text-lg">{t('ofSearch.noTopCreators')}</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">

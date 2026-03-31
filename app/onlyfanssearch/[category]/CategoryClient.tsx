@@ -11,6 +11,7 @@ import { getTrendingCreators } from '@/lib/actions/publicData';
 import { browseCreators, deleteCreatorBySlug } from '@/lib/actions/ofCreatorsBrowse';
 import { getOFMTrending, createOFMTrendingSlot } from '@/lib/actions/ofm';
 import OFFooter from '@/components/OFFooter';
+import { useTranslation, useLocalePath } from '@/lib/i18n/client';
 
 function formatCount(n: number) {
   if (!n) return '';
@@ -51,32 +52,21 @@ function CategoryCreatorCard({ creator, onTrack, onSave, onDelete, onSendToTrend
   savedIds: Set<string>;
   isAdmin: boolean;
 }) {
+  const { t } = useTranslation();
   const [showHeader, setShowHeader] = useState(false);
-  const [redirecting, setRedirecting] = useState(false);
-  const [countdown, setCountdown] = useState(0);
   const hasHeader = !!creator.header;
   const currentImg = showHeader && hasHeader ? creator.header : creator.avatar;
   const isSaved = savedIds.has(creator._id);
 
-  useEffect(() => {
-    if (!redirecting || countdown <= 0) return;
-    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [redirecting, countdown]);
-
-  useEffect(() => {
-    if (redirecting && countdown === 0) {
-      window.open(creator.url, '_blank', 'noopener,noreferrer');
-      setTimeout(() => setRedirecting(false), 500);
-    }
-  }, [redirecting, countdown, creator.url]);
-
   const handleViewProfile = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (redirecting) return;
     onTrack(creator.slug);
-    setRedirecting(true);
-    setCountdown(2);
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      window.location.href = `/join-erogram?redirect=/${creator.slug}`;
+      return;
+    }
+    window.open(`/${creator.slug}`, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -114,29 +104,23 @@ function CategoryCreatorCard({ creator, onTrack, onSave, onDelete, onSendToTrend
             <span className={`flex-shrink-0 px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wide ${
               creator.isFree ? 'bg-emerald-400 text-white' : 'bg-[#00AFF0] text-white'
             }`}>
-              {creator.isFree ? 'Free' : `$${creator.price.toFixed(0)}`}
+              {creator.isFree ? t('ofSearch.free') : `$${creator.price.toFixed(0)}`}
             </span>
           </div>
           <p className="text-[11px] sm:text-[13px] text-[#00AFF0] mt-0.5">@{creator.username}</p>
           {(creator.likesCount > 0 || creator.subscriberCount > 0) && (
             <div className="flex items-center gap-1.5 mt-0.5 text-[10px] sm:text-[11px] text-gray-400">
-              {creator.subscriberCount > 0 && <span>{formatCount(creator.subscriberCount)} subscribers</span>}
-              {creator.likesCount > 0 && <span>{creator.subscriberCount > 0 ? '· ' : ''}{formatCount(creator.likesCount)} likes</span>}
+              {creator.subscriberCount > 0 && <span>{formatCount(creator.subscriberCount)} {t('ofSearch.subscribers')}</span>}
+              {creator.likesCount > 0 && <span>{creator.subscriberCount > 0 ? '· ' : ''}{formatCount(creator.likesCount)} {t('ofSearch.likes')}</span>}
             </div>
           )}
         </div>
         <div className="px-2.5 pb-2.5 pt-2 sm:px-4 sm:pb-4 sm:pt-3">
           <button
             onClick={handleViewProfile}
-            disabled={redirecting}
             className="flex items-center justify-center gap-2 w-full py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-[13px] sm:text-sm font-bold text-center shadow-sm group-hover:shadow-md group-hover:from-[#009ADB] group-hover:to-[#00BFE8] transition-all"
           >
-            {redirecting ? (
-              <>
-                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin shrink-0" />
-                Redirecting in {countdown}s...
-              </>
-            ) : 'View profile'}
+            {t('ofSearch.viewProfile')}
           </button>
         </div>
       </div>
@@ -145,7 +129,7 @@ function CategoryCreatorCard({ creator, onTrack, onSave, onDelete, onSendToTrend
         className={`absolute top-2 right-2 sm:top-3 sm:right-3 z-10 w-10 h-10 sm:w-9 sm:h-9 rounded-full backdrop-blur-sm flex items-center justify-center transition-all hover:scale-110 ${
           isSaved ? 'bg-rose-500/80' : 'bg-black/20'
         }`}
-        title={isSaved ? 'Remove from saved' : 'Save creator'}
+        title={isSaved ? t('ofSearch.removeSaved') : t('ofSearch.saveCreator')}
       >
         <Heart size={18} className={isSaved ? 'text-white' : 'text-white/80'} fill={isSaved ? 'currentColor' : 'none'} />
       </button>
@@ -187,6 +171,8 @@ interface Props {
 }
 
 export default function CategoryClient({ creators: initialCreators, category, label }: Props) {
+  const { t } = useTranslation();
+  const lp = useLocalePath();
   const router = useRouter();
   const [creators, setCreators] = useState(initialCreators);
   const [navQuery, setNavQuery] = useState('');
@@ -373,7 +359,7 @@ export default function CategoryClient({ creators: initialCreators, category, la
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (navQuery.trim()) {
-      router.push(`/onlyfanssearch?q=${encodeURIComponent(navQuery.trim())}`);
+      router.push(`${lp('/onlyfanssearch')}?q=${encodeURIComponent(navQuery.trim())}`);
     }
   };
 
@@ -434,8 +420,8 @@ export default function CategoryClient({ creators: initialCreators, category, la
               transition={{ duration: 0.4 }}
               className="text-2xl sm:text-3xl lg:text-4xl font-black leading-tight tracking-tight"
             >
-              Best {label}{' '}
-              <span className="text-[#00AFF0]">OnlyFans</span> Creators
+              {t('ofSearch.bestLabel').replace('{label}', label)}{' '}
+              <span className="text-[#00AFF0]">OnlyFans</span>
             </motion.h1>
             <motion.p
               initial={{ opacity: 0, y: 12 }}
@@ -444,8 +430,8 @@ export default function CategoryClient({ creators: initialCreators, category, la
               className="mt-2 text-sm sm:text-base text-white/50 max-w-lg mx-auto"
             >
               {creators.length > 0
-                ? `Browse verified ${label.toLowerCase()} OnlyFans accounts. Compare prices and find the best ${label.toLowerCase()} creators.`
-                : `No ${label.toLowerCase()} creators yet. Check back soon.`}
+                ? t('ofSearch.browseVerified').replace(/\{label\}/g, label.toLowerCase())
+                : t('ofSearch.noCreatorsLabel').replace('{label}', label.toLowerCase())}
             </motion.p>
 
             {/* Search bar — navigates to /onlyfans-search */}
@@ -465,7 +451,7 @@ export default function CategoryClient({ creators: initialCreators, category, la
                   value={navQuery}
                   onChange={(e) => setNavQuery(e.target.value)}
                   onFocus={() => setSearchFocused(true)}
-                  placeholder="Search by name, keyword, location, ethnicity..."
+                  placeholder={t('ofSearch.searchPlaceholderCategory')}
                   className={`w-full pl-10 pr-10 py-2.5 bg-white/[0.06] border border-white/[0.08] text-white placeholder-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-[#00AFF0]/40 focus:border-[#00AFF0]/30 transition-all ${searchFocused && !navQuery ? 'rounded-t-xl rounded-b-none border-b-0' : 'rounded-xl'}`}
                 />
                 {navQuery && (
@@ -487,7 +473,7 @@ export default function CategoryClient({ creators: initialCreators, category, la
                           type="button"
                           onClick={() => {
                             setSearchFocused(false);
-                            router.push(`/onlyfanssearch?q=${encodeURIComponent(term)}`);
+                            router.push(`${lp('/onlyfanssearch')}?q=${encodeURIComponent(term)}`);
                           }}
                           className="flex items-center gap-2.5 px-3.5 py-2 text-left hover:bg-white/[0.05] transition-colors border-b border-r border-white/[0.04] last:border-b-0 [&:nth-last-child(2):nth-child(odd)]:border-b-0"
                         >
@@ -509,11 +495,11 @@ export default function CategoryClient({ creators: initialCreators, category, la
           {/* Back button */}
           <div className="flex justify-center mb-3">
             <Link
-              href="/onlyfanssearch"
+              href={lp('/onlyfanssearch')}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.08] text-white/50 hover:text-white/80 hover:bg-white/[0.08] text-xs font-medium transition-all"
             >
               <ArrowLeft size={13} />
-              OFSearch main
+              {t('ofSearch.ofSearchMain')}
             </Link>
           </div>
 
@@ -521,10 +507,10 @@ export default function CategoryClient({ creators: initialCreators, category, la
           <div className="flex justify-center mb-4 sm:mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto scrollbar-hide">
             <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.08] flex-shrink-0">
               {([
-                { key: 'all', label: 'Popular' },
-                { key: 'free', label: 'Free' },
-                { key: 'paid', label: 'Paid' },
-              ] as const).map(({ key, label }) => (
+                { key: 'all', label: t('ofSearch.all') },
+                { key: 'free', label: t('ofSearch.free') },
+                { key: 'paid', label: t('ofSearch.paid') },
+              ] as const).map(({ key, label: filterLabel }) => (
                 <button
                   key={key}
                   onClick={() => setFilter(key)}
@@ -534,7 +520,7 @@ export default function CategoryClient({ creators: initialCreators, category, la
                       : 'text-white/40 hover:text-white/70'
                   }`}
                 >
-                  {label}
+                  {filterLabel}
                 </button>
               ))}
               <button
@@ -545,7 +531,7 @@ export default function CategoryClient({ creators: initialCreators, category, la
                     : 'text-white/40 hover:text-white/70'
                 }`}
               >
-                {filter === 'least-liked' ? 'Least Likes' : 'Most Likes'}
+                {filter === 'least-liked' ? t('ofSearch.leastLikes') : t('ofSearch.mostLikes')}
               </button>
               <button
                 onClick={() => setFilter(filter === 'price-low' ? 'price-high' : 'price-low')}
@@ -555,7 +541,7 @@ export default function CategoryClient({ creators: initialCreators, category, la
                     : 'text-white/40 hover:text-white/70'
                 }`}
               >
-                {filter === 'price-high' ? 'Highest first' : 'Lowest first'}
+                {filter === 'price-high' ? t('ofSearch.highestFirst') : t('ofSearch.lowestFirst')}
               </button>
               <button
                 onClick={() => { setFilter('shuffle'); setShuffleKey((k) => k + 1); }}
@@ -567,14 +553,14 @@ export default function CategoryClient({ creators: initialCreators, category, la
                 title="Shuffle order"
               >
                 <Shuffle size={12} />
-                Shuffle
+                {t('ofSearch.shuffle')}
               </button>
             </div>
           </div>
 
           {sorted.length === 0 && allTrending.length === 0 ? (
             <div className="text-center py-20">
-              <p className="text-white/30 text-lg">No creators in this category yet.</p>
+              <p className="text-white/30 text-lg">{t('ofSearch.noCreatorsInCategory')}</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
@@ -625,7 +611,7 @@ export default function CategoryClient({ creators: initialCreators, category, la
                             <div className="absolute top-2 left-2 z-10">
                               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#EAF1FF] text-[#1F4076] text-[9px] font-black uppercase tracking-widest shadow-md ring-1 ring-white/70">
                                 <Crown size={8} fill="currentColor" className="text-[#1F4076]" />
-                                Featured
+                                {t('ofSearch.featured')}
                               </span>
                             </div>
                           </div>
@@ -637,7 +623,7 @@ export default function CategoryClient({ creators: initialCreators, category, la
                           </div>
                           <div className="px-2.5 pb-2.5 pt-2 sm:px-4 sm:pb-4 sm:pt-3">
                             <div className="w-full py-2 sm:py-2.5 rounded-xl bg-[#FF6A00] text-white text-[13px] sm:text-sm font-black text-center border border-[#FFC08A] shadow-[0_8px_18px_-8px_rgba(255,106,0,0.95)] hover:bg-[#FF7A1A] hover:border-[#FFD0A8] transition-all">
-                              View profile
+                              {t('ofSearch.viewProfile')}
                             </div>
                           </div>
                         </button>

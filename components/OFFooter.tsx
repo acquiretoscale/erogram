@@ -4,8 +4,12 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { RtaBadge } from './AgeGate';
 import { ofCategoryUrl, OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
+import { useTranslation, useLocalePath } from '@/lib/i18n/client';
 
 export default function OFFooter() {
+  const { t } = useTranslation();
+  const lp = useLocalePath();
+
   return (
     <motion.footer
       initial={{ opacity: 0, y: 40 }}
@@ -21,14 +25,14 @@ export default function OFFooter() {
 
           {/* Brand */}
           <div className="space-y-4 lg:col-span-1">
-            <Link href="/" className="block">
+            <Link href={lp('/')} className="block">
               <span className="text-2xl font-black tracking-tighter text-white">
                 ero<span className="text-[#00AFF0]">gram</span>
               </span>
             </Link>
             <p className="text-[#888] text-sm leading-relaxed">
-              The #1 NSFW Hub.<br />
-              Connect, explore, and indulge — safely and anonymously.
+              {t('ofSearch.footerTagline')}<br />
+              {t('ofSearch.footerTaglineSub')}
             </p>
             <a
               href="https://t.me/erogrampro"
@@ -45,27 +49,27 @@ export default function OFFooter() {
 
           {/* Discover */}
           <div>
-            <h3 className="text-white text-sm font-bold uppercase tracking-wider mb-5">Discover</h3>
+            <h3 className="text-white text-sm font-bold uppercase tracking-wider mb-5">{t('ofSearch.discover')}</h3>
             <ul className="space-y-3">
               <li>
-                <Link href="/onlyfanssearch" className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
-                  OnlyFans Search
+                <Link href={lp('/onlyfanssearch')} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
+                  {t('ofSearch.onlyfansSearchFooter')}
                 </Link>
               </li>
               <li>
-                <Link href="/best-onlyfans-creators" className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
-                  Best OnlyFans Creators
+                <Link href={lp('/best-onlyfans-creators')} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
+                  {t('ofSearch.bestOnlyfansCreators')}
                 </Link>
               </li>
               <li>
-                <Link href="/best-onlyfans-accounts" className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
-                  Best OnlyFans Accounts
+                <Link href={lp('/best-onlyfans-accounts')} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
+                  {t('ofSearch.bestOnlyfansAccounts')}
                 </Link>
               </li>
               {OF_CATEGORIES.slice(0, 6).map((cat) => (
                 <li key={cat.slug}>
-                  <Link href={ofCategoryUrl(cat.slug)} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
-                    {cat.name} OnlyFans
+                  <Link href={lp(ofCategoryUrl(cat.slug))} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
+                    {t('ofSearch.catOnlyfans').replace('{cat}', cat.name)}
                   </Link>
                 </li>
               ))}
@@ -74,16 +78,16 @@ export default function OFFooter() {
 
           {/* Advertise */}
           <div>
-            <h3 className="text-white text-sm font-bold uppercase tracking-wider mb-5">Advertise</h3>
+            <h3 className="text-white text-sm font-bold uppercase tracking-wider mb-5">{t('ofSearch.advertise')}</h3>
             <ul className="space-y-3">
               <li>
-                <Link href="/ofmads" className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
+                <Link href="/OFM" className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
                   OFM Boost
                 </Link>
               </li>
               <li>
-                <Link href="/advertise" className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
-                  Advertise with Us
+                <Link href={lp('/advertise')} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
+                  {t('ofSearch.advertiseWithUs')}
                 </Link>
               </li>
             </ul>
@@ -91,26 +95,26 @@ export default function OFFooter() {
 
           {/* Support */}
           <div>
-            <h3 className="text-white text-sm font-bold uppercase tracking-wider mb-5">Support</h3>
+            <h3 className="text-white text-sm font-bold uppercase tracking-wider mb-5">{t('ofSearch.support')}</h3>
             <ul className="space-y-3">
               <li>
-                <Link href="/about" className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
-                  About Us
+                <Link href={lp('/about')} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
+                  {t('ofSearch.aboutUs')}
                 </Link>
               </li>
               <li>
-                <Link href="/privacy" className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
-                  Privacy Policy
+                <Link href={lp('/privacy')} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
+                  {t('ofSearch.privacyPolicy')}
                 </Link>
               </li>
               <li>
-                <Link href="/terms" className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
-                  Terms of Service
+                <Link href={lp('/terms')} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
+                  {t('ofSearch.termsOfService')}
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
-                  Contact & Support
+                <Link href={lp('/contact')} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
+                  {t('ofSearch.contactSupport')}
                 </Link>
               </li>
             </ul>
@@ -120,7 +124,7 @@ export default function OFFooter() {
         {/* Bottom bar */}
         <div className="border-t border-white/[0.05] pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-[#555] text-xs">
-            © {new Date().getUTCFullYear()} Erogram.pro — OnlyFans Creator Directory
+            © {new Date().getUTCFullYear()} {t('ofSearch.footerCopyright')}
           </p>
           <RtaBadge size="lg" />
         </div>

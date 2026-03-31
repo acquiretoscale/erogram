@@ -35,6 +35,7 @@ async function getTopCreators() {
     const creators = await OnlyFansCreator.find({
       gender: 'female',
       avatar: { $ne: '' },
+      deleted: { $ne: true },
     })
       .sort({ clicks: -1, likesCount: -1 })
       .limit(6)

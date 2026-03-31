@@ -1,0 +1,34 @@
+# DO NOT MESS WITH EXISTING SCRAPE / SEARCH / CREATOR STRUCTURE
+
+## THE RULE (non-negotiable)
+
+The OnlyFans scraping, search, and creator pipeline is PRODUCTION and working. Do NOT touch it.
+
+## What you MUST NOT change
+
+- `app/api/onlyfans/scrape/route.ts` — the main scrape API route. Leave it alone.
+- `lib/apify-key.ts` — Apify key rotation logic. Leave it alone.
+- `lib/actions/creatorImages.ts` — image processing pipeline (download → sharp → R2). Leave it alone.
+- `lib/models/index.ts` — the `OnlyFansCreator` schema. Do NOT add/remove/rename fields without explicit user approval.
+- `app/onlyfanssearch/` — search pages, category pages, constants. Do NOT restructure.
+- `app/best-onlyfans-accounts/` — ranking pages. Do NOT restructure.
+- `app/[slug]/page.tsx` — dynamic route that serves creator profiles. Do NOT change how it resolves creators.
+
+## Adding NEW creators
+
+- Use standalone scripts in `scripts/` (e.g. `scripts/scrape-france.js`)
+- Scripts read Apify keys from DB, call the actor, upsert to `onlyfanscreators` collection, process images to R2
+- Always set `gender: 'female'` and add the country/category to the `categories` array via `$addToSet`
+- Always skip creators that already exist (check by slug)
+- Always process images through sharp with EXIF branding before uploading to R2
+
+## Adding NEW data fields to creators
+
+- If a new Apify actor returns extra fields, store them on the document but do NOT change the existing schema
+- Use `$set` for new fields, never `$unset` existing ones
+
+## Why
+
+- The scrape route handles OFM admin panel scraping, trending rotation, and image processing
+- Changing it risks breaking the admin workflow, burning Apify credits, or corrupting creator data
+- The search/category pages are indexed by Google — structural changes = SEO risk

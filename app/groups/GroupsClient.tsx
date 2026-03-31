@@ -97,7 +97,6 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   const [topGroupsLoading, setTopGroupsLoading] = useState(true);
   const [featuredGroups, setFeaturedGroups] = useState<Group[]>([]);
   const [featuredLoading, setFeaturedLoading] = useState(true);
-  const [boostedGroup, setBoostedGroup] = useState<Group | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedGroupForReview, setSelectedGroupForReview] = useState<Group | null>(null);
   const [groupReviews, setGroupReviews] = useState<any[]>([]);
@@ -117,14 +116,9 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
     setTopGroupsLoading(true);
     setFeaturedLoading(true);
 
-    Promise.all([
-      fetch(`/api/groups?boosted=true&locale=${locale}`).then(r => r.json()),
-      fetch(`/api/groups?topGroup=true&limit=4&locale=${locale}`).then(r => r.json()),
-    ])
-      .then(([boostedData, topData]) => {
-        setBoostedGroup(boostedData.groups?.[0] || null);
-        if (topData.groups) setTopGroups(topData.groups);
-      })
+    fetch(`/api/groups?topGroup=true&limit=4&locale=${locale}`)
+      .then(r => r.json())
+      .then(data => { if (data.groups) setTopGroups(data.groups); })
       .catch(err => console.error('Failed to fetch top groups:', err))
       .finally(() => setTopGroupsLoading(false));
 
@@ -141,9 +135,8 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
     regularGroups.forEach(g => ids.add(g._id));
     topGroups.forEach(g => ids.add(g._id));
     featuredGroups.forEach(g => ids.add(g._id));
-    if (boostedGroup) ids.add(boostedGroup._id);
     return Array.from(ids);
-  }, [regularGroups, topGroups, featuredGroups, boostedGroup]);
+  }, [regularGroups, topGroups, featuredGroups]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || allGroupIds.length === 0) return;
@@ -484,9 +477,14 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   };
 
   // Split feed campaigns by tier:
+  // Tier 6 → Top Groups section (slot 1, versatile: groups/bots/advertisers)
   // Tier 1 → Top Groups section (slot 2)
   // Tier 5 → Top Groups section (slot 4, Featured Bot)
-  // Tier 2/3/4 → main grid (positions after 2, 7, 12 groups)
+  // Tier 2/3/4 → main grid (positions after 2, 8, 12 groups)
+  const tier6Campaign = useMemo(() => {
+    return feedCampaigns.find(c => c.tierSlot === 6) ?? null;
+  }, [feedCampaigns]);
+
   const tier1Campaign = useMemo(() => {
     return feedCampaigns.find(c => c.tierSlot === 1) ?? null;
   }, [feedCampaigns]);
@@ -496,7 +494,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   }, [feedCampaigns]);
 
   const gridCampaigns = useMemo(() => {
-    return feedCampaigns.filter(c => c.tierSlot !== 1 && c.tierSlot !== 5);
+    return feedCampaigns.filter(c => c.tierSlot !== 1 && c.tierSlot !== 5 && c.tierSlot !== 6);
   }, [feedCampaigns]);
 
   return (
@@ -647,7 +645,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
           <div className="lg:w-3/4 min-w-0 shrink-0">
             <div className="relative">
-              {/* Top Groups — boosted group takes Spot 1 when active (hidden during search) */}
+              {/* Top Groups — hidden during search */}
               {!debouncedSearchQuery && topGroups.length > 0 && (
                 <div className="mb-5 relative rounded-2xl p-[2px]" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706, #92400e, #d97706, #f59e0b, #fcd34d, #f59e0b)' }}>
                   {/* Shimmer sweep */}
@@ -670,80 +668,106 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
                       {(() => {
-                        const organicGroups = boostedGroup
-                          ? topGroups.filter(g => g._id !== boostedGroup._id).slice(0, 3)
-                          : topGroups.slice(0, 4);
-                        const finalGroups = boostedGroup
-                          ? [boostedGroup, ...organicGroups].slice(0, 4)
-                          : organicGroups;
+                        const allOrganic = topGroups.slice(0, 4);
+                        let organicIdx = 0;
 
-                        return (
-                          <>
-                            {finalGroups[0] && (
-                              <GroupCard
-                                key={`top-${finalGroups[0]._id}`}
-                                group={finalGroups[0]}
-                                isIndex={0}
-                                onOpenReviewModal={openReviewModal}
-                                onOpenReportModal={openReportModal}
-                                isBookmarked={!!bookmarkedMap[finalGroups[0]._id]}
-                                bookmarkId={bookmarkedMap[finalGroups[0]._id] || null}
-                              />
-                            )}
-                            {tier1Campaign && !isTelegram ? (
-                              <AdvertCard
-                                key={`tier1-${tier1Campaign._id}`}
-                                campaign={tier1Campaign}
-                                isIndex={1}
-                                shouldPreload={true}
-                                onVisible={undefined}
-                              />
-                            ) : finalGroups[1] ? (
-                              <GroupCard
-                                key={`top-${finalGroups[1]._id}`}
-                                group={finalGroups[1]}
-                                isIndex={1}
-                                onOpenReviewModal={openReviewModal}
-                                onOpenReportModal={openReportModal}
-                                isBookmarked={!!bookmarkedMap[finalGroups[1]._id]}
-                                bookmarkId={bookmarkedMap[finalGroups[1]._id] || null}
-                              />
-                            ) : null}
-                            {(tier1Campaign && !isTelegram ? finalGroups.slice(1, 2) : finalGroups.slice(2, 3)).map((g, i) => (
-                              <GroupCard
-                                key={`top-${g._id}`}
-                                group={g}
-                                isIndex={i + 2}
-                                onOpenReviewModal={openReviewModal}
-                                onOpenReportModal={openReportModal}
-                                isBookmarked={!!bookmarkedMap[g._id]}
-                                bookmarkId={bookmarkedMap[g._id] || null}
-                              />
-                            ))}
-                            {tier5Campaign && !isTelegram ? (
-                              <AdvertCard
-                                key={`tier5-${tier5Campaign._id}`}
-                                campaign={tier5Campaign}
-                                isIndex={3}
-                                shouldPreload={true}
-                                onVisible={undefined}
-                              />
-                            ) : (() => {
-                              const fallback = tier1Campaign && !isTelegram ? finalGroups[2] : finalGroups[3];
-                              return fallback ? (
-                                <GroupCard
-                                  key={`top-${fallback._id}`}
-                                  group={fallback}
-                                  isIndex={3}
-                                  onOpenReviewModal={openReviewModal}
-                                  onOpenReportModal={openReportModal}
-                                  isBookmarked={!!bookmarkedMap[fallback._id]}
-                                  bookmarkId={bookmarkedMap[fallback._id] || null}
-                                />
-                              ) : null;
-                            })()}
-                          </>
-                        );
+                        const spots: React.ReactNode[] = [];
+
+                        // Spot 1 — versatile: tier 6 campaign (group/bot/advertiser) or organic
+                        if (tier6Campaign && !isTelegram) {
+                          spots.push(
+                            <AdvertCard
+                              key={`tier6-${tier6Campaign._id}`}
+                              campaign={tier6Campaign}
+                              isIndex={0}
+                              shouldPreload={true}
+                              onVisible={undefined}
+                            />
+                          );
+                        } else if (allOrganic[organicIdx]) {
+                          const g = allOrganic[organicIdx++];
+                          spots.push(
+                            <GroupCard
+                              key={`top-${g._id}`}
+                              group={g}
+                              isIndex={0}
+                              onOpenReviewModal={openReviewModal}
+                              onOpenReportModal={openReportModal}
+                              isBookmarked={!!bookmarkedMap[g._id]}
+                              bookmarkId={bookmarkedMap[g._id] || null}
+                            />
+                          );
+                        }
+
+                        // Spot 2 — tier 1 campaign or organic
+                        if (tier1Campaign && !isTelegram) {
+                          spots.push(
+                            <AdvertCard
+                              key={`tier1-${tier1Campaign._id}`}
+                              campaign={tier1Campaign}
+                              isIndex={1}
+                              shouldPreload={true}
+                              onVisible={undefined}
+                            />
+                          );
+                        } else if (allOrganic[organicIdx]) {
+                          const g = allOrganic[organicIdx++];
+                          spots.push(
+                            <GroupCard
+                              key={`top-${g._id}`}
+                              group={g}
+                              isIndex={1}
+                              onOpenReviewModal={openReviewModal}
+                              onOpenReportModal={openReportModal}
+                              isBookmarked={!!bookmarkedMap[g._id]}
+                              bookmarkId={bookmarkedMap[g._id] || null}
+                            />
+                          );
+                        }
+
+                        // Spot 3 — always organic
+                        if (allOrganic[organicIdx]) {
+                          const g = allOrganic[organicIdx++];
+                          spots.push(
+                            <GroupCard
+                              key={`top-${g._id}`}
+                              group={g}
+                              isIndex={2}
+                              onOpenReviewModal={openReviewModal}
+                              onOpenReportModal={openReportModal}
+                              isBookmarked={!!bookmarkedMap[g._id]}
+                              bookmarkId={bookmarkedMap[g._id] || null}
+                            />
+                          );
+                        }
+
+                        // Spot 4 — tier 5 campaign (Featured Bot) or organic
+                        if (tier5Campaign && !isTelegram) {
+                          spots.push(
+                            <AdvertCard
+                              key={`tier5-${tier5Campaign._id}`}
+                              campaign={tier5Campaign}
+                              isIndex={3}
+                              shouldPreload={true}
+                              onVisible={undefined}
+                            />
+                          );
+                        } else if (allOrganic[organicIdx]) {
+                          const g = allOrganic[organicIdx++];
+                          spots.push(
+                            <GroupCard
+                              key={`top-${g._id}`}
+                              group={g}
+                              isIndex={3}
+                              onOpenReviewModal={openReviewModal}
+                              onOpenReportModal={openReportModal}
+                              isBookmarked={!!bookmarkedMap[g._id]}
+                              bookmarkId={bookmarkedMap[g._id] || null}
+                            />
+                          );
+                        }
+
+                        return spots;
                       })()}
                     </div>
                   </div>

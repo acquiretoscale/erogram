@@ -32,7 +32,7 @@ export default async function OnlyFansCountryPage({ params }: PageProps) {
   const co = OF_COUNTRY_MAP.get(country)!;
   await connectDB();
 
-  const creators = await OnlyFansCreator.find({ categories: country, gender: 'female', avatar: { $ne: '' } })
+  const creators = await OnlyFansCreator.find({ categories: country, gender: 'female', avatar: { $ne: '' }, deleted: { $ne: true } })
     .sort({ likesCount: -1 })
     .limit(200)
     .lean();

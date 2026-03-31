@@ -21,7 +21,7 @@ export interface AINSFWFormData {
 
 const PLAN_PRICES: Record<AINSFWPlan, number> = {
   basic: 49,
-  boost: 297,
+  boost: 197,
 };
 
 const PLAN_DESCRIPTIONS: Record<AINSFWPlan, string> = {

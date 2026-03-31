@@ -200,6 +200,7 @@ export async function GET(req: NextRequest) {
         isAdvertisement: { $ne: true },
         premiumOnly: { $ne: true },
         pinned: { $ne: true },
+        featured: { $ne: true },
         category: { $ne: 'Hentai' },
       })
         .sort({ weeklyClicks: -1, views: -1 })

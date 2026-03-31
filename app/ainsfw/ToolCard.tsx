@@ -26,11 +26,11 @@ const CATEGORY_BADGE: Record<string, string> = {
 };
 
 const CATEGORY_BTN: Record<string, string> = {
-  'AI Girlfriend': 'bg-blue-700 hover:bg-blue-600 text-white',
-  'Undress AI': 'bg-slate-700 hover:bg-slate-600 text-white',
-  'AI Chat': 'bg-emerald-700 hover:bg-emerald-600 text-white',
-  'AI Image': 'bg-amber-600 hover:bg-amber-500 text-white',
-  'AI Roleplay': 'bg-zinc-800 hover:bg-zinc-700 text-white',
+  'AI Girlfriend': 'bg-yellow-400 hover:bg-yellow-300 text-black',
+  'Undress AI': 'bg-yellow-400 hover:bg-yellow-300 text-black',
+  'AI Chat': 'bg-yellow-400 hover:bg-yellow-300 text-black',
+  'AI Image': 'bg-yellow-400 hover:bg-yellow-300 text-black',
+  'AI Roleplay': 'bg-yellow-400 hover:bg-yellow-300 text-black',
 };
 
 function getBookmarkKey(slug: string) { return `ainsfw_bookmark_${slug}`; }
@@ -257,7 +257,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                   <div className="flex items-center gap-1 mb-1.5">
                     <div className="flex">
                       {[1,2,3,4,5].map((s) => (
-                        <svg key={s} className={`w-2.5 h-2.5 ${s <= avgRating ? 'text-[#FF6A00]' : 'text-white/15'}`} viewBox="0 0 24 24" fill="currentColor">
+                        <svg key={s} className={`w-2.5 h-2.5 ${s <= avgRating ? 'text-yellow-400' : 'text-white/15'}`} viewBox="0 0 24 24" fill="currentColor">
                           <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                         </svg>
                       ))}
@@ -312,7 +312,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                 </div>
 
                 {/* CTA */}
-                <div className="bg-[#FF6A00] hover:bg-[#FF7A1A] text-white text-[10px] sm:text-xs font-black uppercase tracking-widest text-center py-1.5 rounded-lg border border-[#FF9A50] shadow-[0_4px_12px_-4px_rgba(255,106,0,0.7)] transition-colors cursor-pointer">
+                <div className="bg-yellow-400 hover:bg-yellow-300 text-black text-[10px] sm:text-xs font-black uppercase tracking-widest text-center py-1.5 rounded-lg border border-yellow-300 shadow-[0_4px_12px_-4px_rgba(250,204,21,0.5)] transition-colors cursor-pointer">
                   TRY NOW →
                 </div>
               </div>
@@ -442,7 +442,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                 </span>
               </div>
 
-              <div className={`${btnCls} text-[10px] sm:text-xs font-black uppercase tracking-widest text-center py-1.5 rounded border-2 border-black shadow-[2px_2px_0_#000] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all duration-75 cursor-pointer`}>
+              <div className={`${btnCls} text-[10px] sm:text-xs font-black uppercase tracking-widest text-center py-1.5 rounded border-2 border-yellow-500 shadow-[2px_2px_0_#000] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all duration-75 cursor-pointer`}>
                 TRY NOW →
               </div>
             </div>

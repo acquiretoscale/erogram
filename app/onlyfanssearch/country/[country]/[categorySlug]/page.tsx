@@ -44,6 +44,7 @@ export default async function OnlyFansCountryCategoryPage({ params }: PageProps)
     categories: { $all: [country, categorySlug] },
     gender: 'female',
     avatar: { $ne: '' },
+    deleted: { $ne: true },
   })
     .sort({ likesCount: -1 })
     .limit(200)

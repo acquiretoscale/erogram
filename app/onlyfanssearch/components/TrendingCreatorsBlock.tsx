@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { trackTrendingClick } from '@/lib/actions/onlyfansTracking';
 
@@ -13,30 +12,20 @@ interface TrendingCreator {
   bio: string;
   categories: string[];
   position: number;
+  likesCount?: number;
+}
+
+function formatLikes(n: number) {
+  if (!n) return '';
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+  return `${n}`;
 }
 
 function TrendingCard({ creator, index }: { creator: TrendingCreator; index: number }) {
-  const [redirecting, setRedirecting] = useState(false);
-  const [countdown, setCountdown] = useState(0);
-
-  useEffect(() => {
-    if (!redirecting || countdown <= 0) return;
-    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [redirecting, countdown]);
-
-  useEffect(() => {
-    if (redirecting && countdown === 0) {
-      window.open(creator.url, '_blank', 'noopener,noreferrer');
-      setTimeout(() => setRedirecting(false), 500);
-    }
-  }, [redirecting, countdown, creator.url]);
-
   const handleClick = () => {
-    if (redirecting) return;
     trackTrendingClick(creator._id);
-    setRedirecting(true);
-    setCountdown(2);
+    window.open(creator.url, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -70,8 +59,8 @@ function TrendingCard({ creator, index }: { creator: TrendingCreator; index: num
           {creator.name}
         </h3>
         <p className="text-[11px] sm:text-sm text-[#00AFF0] mt-0.5 font-bold">@{creator.username}</p>
-        {creator.bio && (
-          <p className="mt-1 sm:mt-1.5 text-[11px] sm:text-[12px] text-gray-500 line-clamp-2 leading-relaxed">{creator.bio}</p>
+        {(creator.likesCount ?? 0) > 0 && (
+          <p className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5">{formatLikes(creator.likesCount!)} likes</p>
         )}
         {creator.categories.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-2">
@@ -82,13 +71,8 @@ function TrendingCard({ creator, index }: { creator: TrendingCreator; index: num
             ))}
           </div>
         )}
-        <div className="flex items-center justify-center gap-2 w-full mt-2 sm:mt-3 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] via-[#00B8F0] to-[#00D4FF] text-white text-[13px] sm:text-sm font-black text-center shadow-md shadow-[#00AFF0]/30 group-hover:shadow-lg group-hover:shadow-[#00AFF0]/45 group-hover:from-[#0099d9] group-hover:to-[#00c4f0] transition-all duration-300">
-          {redirecting ? (
-            <>
-              <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin shrink-0" />
-              Redirecting in {countdown}s...
-            </>
-          ) : 'View profile'}
+        <div className="w-full mt-2 sm:mt-3 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] via-[#00B8F0] to-[#00D4FF] text-white text-[13px] sm:text-sm font-black text-center shadow-md shadow-[#00AFF0]/30 group-hover:shadow-lg group-hover:shadow-[#00AFF0]/45 group-hover:from-[#0099d9] group-hover:to-[#00c4f0] transition-all duration-300">
+          View profile
         </div>
       </div>
     </motion.button>
@@ -109,7 +93,7 @@ export default function TrendingCreatorsBlock({ creators }: { creators: Trending
         <div className="relative rounded-[1.25rem] sm:rounded-[1.5rem] bg-[#0d1419]/95 backdrop-blur-sm border border-white/[0.07] px-3 py-5 sm:px-8 sm:py-9">
           <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-7">
             <h2 className="text-base sm:text-xl font-black text-white tracking-tight">
-              Trending <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00D4FF] to-[#00AFF0]">creators</span>
+              Featured <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00D4FF] to-[#00AFF0]">creators</span>
             </h2>
             <div className="flex-1 h-px bg-gradient-to-r from-[#00AFF0]/20 to-transparent" />
           </div>

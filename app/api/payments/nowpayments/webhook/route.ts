@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import connectDB from '@/lib/db/mongodb';
-import { User, Group, Bot, AINsfwSubmission, PremiumEvent } from '@/lib/models';
+import { User, Group, Bot, AINsfwSubmission, OnlyFansCreator, PremiumEvent } from '@/lib/models';
 import { notifyAdminsOfSale } from '@/lib/utils/notifyAdmins';
 import { getPremiumPricing } from '@/lib/premiumPricing';
 
@@ -90,6 +90,43 @@ async function handleSubmissionPayment(
   }).catch(() => {});
 }
 
+// ─── Handle featured creator payments (self-serve $97 featured listing) ───
+
+async function handleFeaturedCreatorPayment(creatorId: string, paymentId: string) {
+  const creator = await OnlyFansCreator.findById(creatorId);
+  if (!creator) {
+    console.error('NowPayments featured webhook: creator not found', creatorId);
+    return;
+  }
+
+  if (creator.featuredPaymentId === String(paymentId)) return;
+
+  const now = new Date();
+  const expiresAt = new Date(now);
+  expiresAt.setDate(expiresAt.getDate() + 30);
+
+  await OnlyFansCreator.findByIdAndUpdate(creatorId, {
+    featured: true,
+    featuredAt: now,
+    featuredExpiresAt: expiresAt,
+    featuredPaymentId: String(paymentId),
+  });
+
+  logEvent({
+    event: 'featured_creator_payment_success',
+    entityType: 'onlyfans_creator',
+    entityId: creatorId,
+    paymentId,
+    paymentMethod: 'crypto',
+  });
+
+  notifyAdminsOfSale({
+    plan: 'featured_creator',
+    method: 'crypto',
+    username: creator.name || creator.username || 'Unknown',
+  }).catch(() => {});
+}
+
 // ─── Main webhook handler ───
 
 export async function POST(req: NextRequest) {
@@ -135,6 +172,13 @@ export async function POST(req: NextRequest) {
 
   try {
     await connectDB();
+
+    // ─── Featured creator payments: order_id = featured__creatorId__ts ───
+    if (parts[0] === 'featured' && parts.length >= 3) {
+      const creatorId = parts[1];
+      await handleFeaturedCreatorPayment(creatorId, payment_id);
+      return NextResponse.json({ ok: true });
+    }
 
     // ─── Submission payments: order_id = sub__entityType__entityId__tier__ts ───
     if (parts[0] === 'sub' && parts.length >= 4) {

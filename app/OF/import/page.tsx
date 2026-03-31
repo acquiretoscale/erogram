@@ -22,12 +22,12 @@ type ImportedCreator = {
 export default function ImportPage() {
   const [input, setInput] = useState('');
   const [categories, setCategories] = useState('');
-  const [trendingSlot, setTrendingSlot] = useState(0);
+  const [featuredSlot, setFeaturedSlot] = useState(0);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ImportedCreator | null>(null);
   const [source, setSource] = useState('');
   const [warning, setWarning] = useState('');
-  const [trendingResult, setTrendingResult] = useState<{ position: number } | null>(null);
+  const [featuredResult, setFeaturedResult] = useState<{ position: number } | null>(null);
   const [error, setError] = useState('');
   const [slots, setSlots] = useState<TrendingSlot[]>([null, null, null, null]);
 
@@ -52,7 +52,7 @@ export default function ImportPage() {
     setLoading(true);
     setError('');
     setResult(null);
-    setTrendingResult(null);
+    setFeaturedResult(null);
     setSource('');
     setWarning('');
 
@@ -61,10 +61,10 @@ export default function ImportPage() {
       const data = await importOFMCreator(token, {
         username: cleaned,
         categories: categories ? categories.split(',').map(s => s.trim()).filter(Boolean) : [],
-        trendingSlot: trendingSlot > 0 ? trendingSlot : undefined,
+        trendingSlot: featuredSlot > 0 ? featuredSlot : undefined,
       });
       setResult(data.creator);
-      setTrendingResult(data.trending || null);
+      setFeaturedResult(data.trending || null);
       setSource(data.source || 'manual');
       setWarning(data.warning || '');
       loadSlots();
@@ -112,11 +112,11 @@ export default function ImportPage() {
 
         {/* Trending slot */}
         <div>
-          <label className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-2">Assign to Trending Spot (optional)</label>
+          <label className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-2">Assign to Featured Spot (optional)</label>
           <div className="flex gap-2">
             <button
-              onClick={() => setTrendingSlot(0)}
-              className={`px-3 py-2 rounded-xl text-xs font-bold border transition ${trendingSlot === 0 ? 'bg-white/10 border-white/20 text-white' : 'bg-white/[0.03] border-white/[0.07] text-white/40 hover:bg-white/[0.06]'}`}
+              onClick={() => setFeaturedSlot(0)}
+              className={`px-3 py-2 rounded-xl text-xs font-bold border transition ${featuredSlot === 0 ? 'bg-white/10 border-white/20 text-white' : 'bg-white/[0.03] border-white/[0.07] text-white/40 hover:bg-white/[0.06]'}`}
             >
               None
             </button>
@@ -125,16 +125,16 @@ export default function ImportPage() {
               return (
                 <button
                   key={pos}
-                  onClick={() => setTrendingSlot(pos)}
+                  onClick={() => setFeaturedSlot(pos)}
                   title={occupant ? `Replaces: ${occupant.name}` : 'Empty'}
                   className={`px-3 py-2 rounded-xl text-xs font-bold border transition ${
-                    trendingSlot === pos ? 'bg-[#00AFF0]/15 border-[#00AFF0]/40 text-[#00AFF0]'
+                    featuredSlot === pos ? 'bg-[#00AFF0]/15 border-[#00AFF0]/40 text-[#00AFF0]'
                       : occupant ? 'bg-amber-500/[0.06] border-amber-500/20 text-amber-400/70 hover:bg-amber-500/[0.12]'
                       : 'bg-white/[0.03] border-white/[0.07] text-white/40 hover:bg-white/[0.06]'
                   }`}
                 >
                   #{pos}
-                  {occupant && trendingSlot !== pos && <span className="block text-[9px] text-amber-400/50 font-normal truncate max-w-[60px]">{occupant.name}</span>}
+                  {occupant && featuredSlot !== pos && <span className="block text-[9px] text-amber-400/50 font-normal truncate max-w-[60px]">{occupant.name}</span>}
                 </button>
               );
             })}
@@ -185,8 +185,8 @@ export default function ImportPage() {
             }`}>
               {source === 'apify' ? 'scraped via Apify' : source === 'database' ? 'already in database' : 'basic entry'}
             </span>
-            {trendingResult && (
-              <span className="text-xs text-[#00AFF0] bg-[#00AFF0]/10 px-2 py-0.5 rounded-full font-bold">+ Trending #{trendingResult.position}</span>
+            {featuredResult && (
+              <span className="text-xs text-[#00AFF0] bg-[#00AFF0]/10 px-2 py-0.5 rounded-full font-bold">+ Featured #{featuredResult.position}</span>
             )}
           </div>
 

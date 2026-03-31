@@ -5,16 +5,20 @@ import { notFound } from 'next/navigation';
 import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator, TrendingOFCreator } from '@/lib/models';
 import Navbar from '@/components/Navbar';
-import { OF_CATEGORIES, OF_CATEGORY_MAP, ofCategoryUrl } from '@/app/onlyfanssearch/constants';
+import { OF_CATEGORIES, OF_CATEGORY_MAP, OF_COUNTRIES, OF_COUNTRY_MAP, ofCategoryUrl } from '@/app/onlyfanssearch/constants';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
+import type { Locale } from '@/lib/i18n';
 
 interface PageProps {
     params: Promise<{ category: string }>;
 }
 
 export async function generateStaticParams() {
-    return OF_CATEGORIES.map((cat) => ({ category: cat.slug }));
+    return [
+        ...OF_CATEGORIES.map((cat) => ({ category: cat.slug })),
+        ...OF_COUNTRIES.map((co) => ({ category: co.slug })),
+    ];
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -23,17 +27,36 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const { category: slug } = await params;
 
     const cat = OF_CATEGORY_MAP.get(slug);
-    if (!cat) return {};
+    const country = OF_COUNTRY_MAP.get(slug);
+    if (!cat && !country) return {};
 
     const year = new Date().getFullYear();
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
 
+    const label = cat?.name || country?.name || slug;
+    const l = label.toLowerCase();
+    const titleMap: Record<Locale, string> = {
+        en: `10 Best ${label} OnlyFans Accounts & Creators (${year})`,
+        de: `Die 10 besten ${label} OnlyFans-Accounts & Creator (${year})`,
+        es: `Las 10 mejores cuentas ${label} de OnlyFans (${year})`,
+    };
+    const descMap: Record<Locale, string> = {
+        en: `Discover the top 10 best ${l} OnlyFans accounts and creators in ${year}. Curated, verified ranking of the most popular ${l} OnlyFans profiles — updated daily on Erogram.`,
+        de: `Entdecke die Top 10 der besten ${l} OnlyFans-Accounts und Creator ${year}. Kuratiertes, verifiziertes Ranking der beliebtesten ${l} Profile — täglich aktualisiert auf Erogram.`,
+        es: `Descubre las 10 mejores cuentas ${l} de OnlyFans en ${year}. Ranking curado y verificado de los perfiles ${l} más populares — actualizado diariamente en Erogram.`,
+    };
+    const ogTitleMap: Record<Locale, string> = {
+        en: `10 Best ${label} OnlyFans Accounts (${year})`,
+        de: `Die 10 besten ${label} OnlyFans-Accounts (${year})`,
+        es: `Las 10 mejores cuentas ${label} de OnlyFans (${year})`,
+    };
+
     return {
-        title: `10 Best ${cat.name} OnlyFans Accounts & Creators (${year})`,
-        description: `Discover the top 10 best ${cat.name} OnlyFans accounts and creators in ${year}. Curated, verified ranking of the most popular ${cat.name.toLowerCase()} OnlyFans profiles — updated daily on Erogram.`,
+        title: titleMap[locale] || titleMap.en,
+        description: descMap[locale] || descMap.en,
         openGraph: {
-            title: `10 Best ${cat.name} OnlyFans Accounts (${year})`,
-            description: `Discover the top 10 best ${cat.name} OnlyFans accounts and creators in ${year}. Curated, verified ranking of the most popular ${cat.name.toLowerCase()} profiles.`,
+            title: ogTitleMap[locale] || ogTitleMap.en,
+            description: descMap[locale] || descMap.en,
         },
         alternates: {
             canonical: `${siteUrl}${pathname}`,
@@ -52,13 +75,14 @@ export default async function BestOnlyfansPage({ params }: PageProps) {
     const month = new Date().toLocaleString(localeMap[locale] || 'en-US', { month: 'long' });
 
     const cat = OF_CATEGORY_MAP.get(slug);
-    if (!cat) notFound();
+    const country = OF_COUNTRY_MAP.get(slug);
+    if (!cat && !country) notFound();
 
-    const label = cat.name;
+    const label = cat?.name || country?.name || slug;
 
     await connectDB();
 
-    const baseMatch = { categories: slug, gender: 'female', avatar: { $ne: '' } };
+    const baseMatch = { categories: slug, gender: 'female', avatar: { $ne: '' }, deleted: { $ne: true } };
 
     const [topByClicks, trendingRaw] = await Promise.all([
         OnlyFansCreator.find({ ...baseMatch, clicks: { $gt: 0 } })
@@ -89,6 +113,7 @@ export default async function BestOnlyfansPage({ params }: PageProps) {
             videosCount: 0,
             price: 0,
             isFree: false,
+            slug: tc.username?.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || '',
             url: tc.url || '',
             isTrending: true,
         });
@@ -102,6 +127,7 @@ export default async function BestOnlyfansPage({ params }: PageProps) {
             _id: (c._id as any).toString(),
             name: c.name || '',
             username: c.username || '',
+            slug: (c as any).slug || c.username || '',
             avatar: c.avatar || '',
             likesCount: c.likesCount || 0,
             mediaCount: c.mediaCount || 0,
@@ -121,7 +147,7 @@ export default async function BestOnlyfansPage({ params }: PageProps) {
         })
             .sort({ likesCount: -1 })
             .limit(10 - creators.length)
-            .select('_id name username avatar likesCount mediaCount photosCount videosCount price isFree url')
+            .select('_id name username slug avatar likesCount mediaCount photosCount videosCount price isFree url')
             .lean();
 
         for (const c of fillCreators) {
@@ -129,6 +155,7 @@ export default async function BestOnlyfansPage({ params }: PageProps) {
                 _id: (c._id as any).toString(),
                 name: c.name || '',
                 username: c.username || '',
+                slug: (c as any).slug || c.username || '',
                 avatar: c.avatar || '',
                 likesCount: c.likesCount || 0,
                 mediaCount: c.mediaCount || 0,
@@ -193,9 +220,7 @@ export default async function BestOnlyfansPage({ params }: PageProps) {
                                             : 'border-gray-200'
                                     }`}>
                                         <a
-                                            href={creator.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer nofollow sponsored"
+                                            href={`/join-erogram?redirect=/${creator.slug || creator.username}`}
                                             className="flex items-start gap-3 p-3 sm:p-3.5"
                                         >
                                             {/* Rank badge */}
