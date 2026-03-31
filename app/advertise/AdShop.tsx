@@ -45,7 +45,7 @@ const TIER_ACCENT: Record<string, string> = {
 
 interface Product {
   id: string; name: string; description: string;
-  category: 'cta' | 'homepage' | 'content';
+  category: 'cta' | 'homepage' | 'content' | 'telegram';
   monthly?: number; oneTime?: number;
 }
 
@@ -75,6 +75,7 @@ const PRODUCTS: Product[] = [
 const CATEGORIES = [
   { id: 'cta'      as const, label: 'CTA Placements', sub: 'Turbocharge your backlink & SEO strategy with high-quality backlinks & traffic' },
   { id: 'homepage' as const, label: 'Homepage',       sub: 'Premium traffic while enhancing your branding & authority' },
+  { id: 'telegram' as const, label: 'Telegram',       sub: 'Reach thousands of engaged users across our Telegram network' },
   { id: 'content'  as const, label: 'Content & SEO',  sub: 'SEO-optimized articles to generate sales and traffic' },
 ];
 

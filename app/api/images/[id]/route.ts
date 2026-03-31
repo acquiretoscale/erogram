@@ -10,7 +10,9 @@ export async function GET(
         const { id } = await params;
         await connectDB();
 
-        const redirect = await mongoose.connection.db
+        const db = mongoose.connection.db!;
+
+        const redirect = await db
             .collection('imageredirects')
             .findOne({ _id: new mongoose.Types.ObjectId(id) });
 
@@ -18,7 +20,7 @@ export async function GET(
             return NextResponse.redirect(redirect.url, 301);
         }
 
-        const image = await mongoose.connection.db
+        const image = await db
             .collection('images')
             .findOne({ _id: new mongoose.Types.ObjectId(id) });
 
