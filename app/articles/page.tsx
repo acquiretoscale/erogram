@@ -1,9 +1,11 @@
 import { Metadata } from 'next';
+import { headers } from 'next/headers';
 import ArticlesListing from './ArticlesListing';
 import { getActiveCampaigns } from '@/lib/actions/campaigns';
 import connectDB from '@/lib/db/mongodb';
 import { Article, User } from '@/lib/models';
 import Navbar from '@/components/Navbar';
+import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 
 const baseUrl = 'https://erogram.pro';
 
@@ -77,9 +79,12 @@ async function getArticles() {
 }
 
 export default async function ArticlesPage() {
+  const ua = (await headers()).get('user-agent');
+  const { isMobile } = detectDeviceFromUserAgent(ua);
+
   const [initialArticles, topBannerCampaigns] = await Promise.all([
     getArticles(),
-    getActiveCampaigns('top-banner').catch(() => []),
+    getActiveCampaigns('top-banner', { page: 'articles', device: isMobile ? 'mobile' : 'desktop' }).catch(() => []),
   ]);
 
   const topBannerForPage =

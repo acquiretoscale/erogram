@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
+import HeaderBanner from '@/components/HeaderBanner';
 import Footer from '@/components/Footer';
 import ToolCard from './ToolCard';
 import type { AINsfwTool, AINsfwCategory, PaymentOption } from './types';
@@ -18,6 +19,7 @@ interface AINsfwClientProps {
   allStats?: Record<string, ToolStatsData>;
   featuredSlugs?: string[];
   featuredCampaignMap?: Record<string, string>;
+  topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string; bannerDevice?: string }>;
 }
 
 const CATEGORY_ACTIVE: Record<AINsfwCategory, string> = {
@@ -103,7 +105,7 @@ function TopAINsfwBlock({ tools, allStats, scores, featuredSlugs, featuredCampai
   );
 }
 
-export default function AINsfwClient({ tools, allStats, featuredSlugs = [], featuredCampaignMap = {} }: AINsfwClientProps) {
+export default function AINsfwClient({ tools, allStats, featuredSlugs = [], featuredCampaignMap = {}, topBannerCampaigns = [] }: AINsfwClientProps) {
   const [activeCategory, setActiveCategory] = useState<AINsfwCategory>('All');
   const [activePayment, setActivePayment] = useState<PaymentOption | 'All'>('All');
   const [search, setSearch] = useState('');
@@ -190,6 +192,12 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], feat
             {t('ainsfw.heroSubtitle')}
           </p>
         </motion.div>
+
+        {topBannerCampaigns.length > 0 && (
+          <div className="w-full mb-6">
+            <HeaderBanner campaigns={topBannerCampaigns} />
+          </div>
+        )}
 
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
           {/* Mobile: Filter toggle */}

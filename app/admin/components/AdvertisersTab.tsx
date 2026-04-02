@@ -580,6 +580,8 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
     adType: 'advertiser' as 'advertiser' | 'premium',
     premiumCategory: '',
     socialProof: 'random',
+    bannerPages: [] as string[],
+    bannerDevice: 'all' as 'all' | 'mobile' | 'desktop',
   });
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
@@ -797,6 +799,8 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       adType: 'advertiser',
       premiumCategory: '',
       socialProof: 'random',
+      bannerPages: [],
+      bannerDevice: 'all',
     });
     setView('editCampaign');
   };
@@ -837,6 +841,8 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       adType: (camp as any).adType || 'advertiser',
       premiumCategory: premCat,
       socialProof: (camp as any).socialProof || 'random',
+      bannerPages: (camp as any).bannerPages || [],
+      bannerDevice: (camp as any).bannerDevice || 'all',
     });
     const savedIds: string[] = (camp as any).premiumGroupIds || [];
     setSelectedGroupIds(new Set(savedIds));
@@ -863,8 +869,9 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       alert('Name and destination URL are required');
       return;
     }
-    if (!isCta && campForm.adType !== 'premium' && (campForm.adType as string) !== 'featured-bot' && !campForm.creative) {
-      alert('Creative image is required for this slot');
+    const hasVideoUrl = FEED_SLOTS.includes(campForm.slot) && !!(campForm as any).videoUrl;
+    if (!isCta && campForm.adType !== 'premium' && (campForm.adType as string) !== 'featured-bot' && !campForm.creative && !hasVideoUrl) {
+      alert('Creative image is required (or provide a video URL for feed ads)');
       return;
     }
     const ctaLabel = (campForm.description || campForm.buttonText || '').trim();
@@ -877,6 +884,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       return;
     }
     const isFeed = FEED_SLOTS.includes(campForm.slot);
+    const isBannerSlot = campForm.slot === 'top-banner' || campForm.slot === 'homepage-hero';
     const feedPosition = campForm.slot === 'feed' ? (campForm.position != null ? Number(campForm.position) : 0) : 0;
     if (campForm.slot === 'feed' && feedPosition < 1) {
       alert('Position (1 or higher) is required for feed ads');
@@ -920,6 +928,8 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
         premiumCategory: campForm.adType === 'premium' ? (campForm.premiumCategory || '') : '',
         premiumGroupIds: campForm.adType === 'premium' ? [...selectedGroupIds] : [],
         socialProof: isFeed ? ((campForm as any).socialProof || 'random') : 'random',
+        bannerPages: isBannerSlot ? (campForm.bannerPages || []) : [],
+        bannerDevice: isBannerSlot ? (campForm.bannerDevice || 'all') : 'all',
       };
       if (isFeed && !editingCampaign) {
         payload.feedTier = 1;
@@ -973,6 +983,8 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
         adType: 'advertiser',
         premiumCategory: '',
         socialProof: 'random',
+        bannerPages: [],
+        bannerDevice: 'all',
       });
       setView('list');
       alert('Campaign saved successfully.');
@@ -1269,7 +1281,8 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                   checked={campaignType === 'image'}
                   onChange={() => {
                     setCampaignType('image');
-                    setCampForm({ ...campForm, slot: 'homepage-hero', adType: 'advertiser', premiumCategory: '' });
+                    const keepSlot = campForm.slot === 'top-banner' || campForm.slot === 'homepage-hero';
+                    setCampForm({ ...campForm, slot: keepSlot ? campForm.slot : 'homepage-hero', adType: 'advertiser', premiumCategory: '' });
                   }}
                   className="w-4 h-4 text-[#b31b1b] focus:ring-[#b31b1b]"
                 />
@@ -1374,6 +1387,68 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
               </div>
             )}
           </div>
+
+          {/* Banner targeting: pages + device (only for top-banner / homepage-hero) */}
+          {(campForm.slot === 'top-banner' || campForm.slot === 'homepage-hero') && (
+            <div className="border border-blue-500/20 rounded-xl p-4 bg-blue-500/5 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-blue-300 mb-2">Show on pages</label>
+                <p className="text-xs text-[#666] mb-3">Leave all unchecked to show everywhere. Check specific pages to restrict.</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {([
+                    { value: 'homepage', label: 'Homepage' },
+                    { value: 'groups', label: 'Groups' },
+                    { value: 'bots', label: 'Bots' },
+                    { value: 'onlyfanssearch', label: 'OnlyFans Search' },
+                    { value: 'ainsfw', label: 'AI NSFW' },
+                    { value: 'articles', label: 'Articles' },
+                    { value: 'join', label: 'Join Pages' },
+                  ] as const).map((pg) => {
+                    const checked = campForm.bannerPages.includes(pg.value);
+                    return (
+                      <label key={pg.value} className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer border transition-colors ${checked ? 'bg-blue-500/15 border-blue-500/30 text-white' : 'bg-[#1a1a1a] border-white/5 text-[#999] hover:border-white/20'}`}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => {
+                            const pages = checked
+                              ? campForm.bannerPages.filter((p) => p !== pg.value)
+                              : [...campForm.bannerPages, pg.value];
+                            setCampForm({ ...campForm, bannerPages: pages });
+                          }}
+                          className="w-4 h-4 rounded text-blue-500 focus:ring-blue-500"
+                        />
+                        <span className="text-sm font-medium">{pg.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-blue-300 mb-2">Device targeting</label>
+                <div className="flex gap-2">
+                  {([
+                    { value: 'all', label: 'All Devices' },
+                    { value: 'desktop', label: 'Desktop Only' },
+                    { value: 'mobile', label: 'Mobile Only' },
+                  ] as const).map((d) => (
+                    <button
+                      key={d.value}
+                      type="button"
+                      onClick={() => setCampForm({ ...campForm, bannerDevice: d.value })}
+                      className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                        campForm.bannerDevice === d.value
+                          ? 'bg-blue-500/20 border-blue-500/40 text-blue-300'
+                          : 'bg-[#1a1a1a] border-white/10 text-[#666] hover:border-white/20'
+                      }`}
+                    >
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-semibold text-[#999] mb-2">Destination URL *</label>
@@ -1616,11 +1691,14 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
               )}
             </div>
           ) : (
-            /* --- IMAGE AD: only image upload + URL (no CTA text block here) --- */
+            /* --- IMAGE AD: image upload + URL --- */
             <div>
-              <label className="block text-sm font-semibold text-[#999] mb-2">Creative Image *</label>
+              <label className="block text-sm font-semibold text-[#999] mb-2">
+                Creative Image {FEED_SLOTS.includes(campForm.slot) ? <span className="text-[#666] font-normal">(optional if video provided)</span> : '*'}
+              </label>
               <input type="file" accept="image/*" onChange={handleCreativeUpload} className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-[#b31b1b] file:text-white hover:file:bg-[#c42b2b]" />
               {isUploading && <p className="text-amber-400/80 text-xs mt-1">Uploading…</p>}
+              {FEED_SLOTS.includes(campForm.slot) && <p className="text-[#666] text-xs mt-1">For video ads, this is used as the poster/thumbnail. Leave empty for video-only.</p>}
               {campForm.creative && <img src={campForm.creative} alt="Creative" className="h-24 mt-2 rounded-lg object-cover" />}
             </div>
           )}
@@ -2679,10 +2757,22 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                             )}
                             <div className="min-w-0 flex-1">
                               <div className="text-sm text-[#999] truncate max-w-md" title={camp.destinationUrl}>URL: {camp.destinationUrl || '—'}</div>
-                              <div className="flex items-center gap-3 mt-1">
+                              <div className="flex flex-wrap items-center gap-2 mt-1">
                                 <span className="text-xs text-[#666]">Clicks: <span className="font-semibold text-white">{(camp.clicks ?? 0).toLocaleString()}</span></span>
                                 <span className={`px-2 py-0.5 rounded text-xs ${camp.status === 'active' ? 'bg-green-500/20 text-green-400' : 'text-[#666]'}`}>{camp.status}</span>
+                                {(camp as any).bannerDevice && (camp as any).bannerDevice !== 'all' && (
+                                  <span className="px-2 py-0.5 rounded text-xs bg-blue-500/15 text-blue-400 border border-blue-500/20">
+                                    {(camp as any).bannerDevice === 'mobile' ? '📱 Mobile' : '🖥 Desktop'}
+                                  </span>
+                                )}
                               </div>
+                              {(camp as any).bannerPages?.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1.5">
+                                  {((camp as any).bannerPages as string[]).map((p: string) => (
+                                    <span key={p} className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-white/5 text-[#999] border border-white/10">{p}</span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                             <div className="flex gap-2 shrink-0">
                               <button type="button" onClick={() => openEditCampaign(camp)} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold">Edit</button>
@@ -3888,6 +3978,9 @@ function ManualRevenueSection() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ amount: '', description: '', clientName: '', category: 'monthly_ad', recurring: false, paidAt: '' });
+  const [editSaving, setEditSaving] = useState(false);
   const [form, setForm] = useState({
     amount: '',
     description: '',
@@ -3935,6 +4028,39 @@ function ManualRevenueSection() {
     }
   };
 
+  const startEdit = (e: ManualRevenueEntry) => {
+    setEditingId(e._id);
+    setEditForm({
+      amount: String(e.amount),
+      description: e.description,
+      clientName: e.clientName,
+      category: e.category,
+      recurring: e.recurring,
+      paidAt: e.paidAt ? new Date(e.paidAt).toISOString().slice(0, 10) : '',
+    });
+  };
+
+  const handleEditSave = async () => {
+    if (!editingId || !editForm.amount || !editForm.description) return;
+    setEditSaving(true);
+    try {
+      await axios.put(`/api/admin/manual-revenue/${editingId}`, {
+        amount: parseFloat(editForm.amount),
+        description: editForm.description,
+        clientName: editForm.clientName,
+        category: editForm.category,
+        recurring: editForm.recurring,
+        paidAt: editForm.paidAt,
+      }, authHeaders());
+      setEditingId(null);
+      fetchEntries();
+    } catch (err) {
+      console.error('Failed to update:', err);
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this revenue entry?')) return;
     try {
@@ -3948,6 +4074,8 @@ function ManualRevenueSection() {
   const formatUsd = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v);
 
   const catLabel = (cat: string) => REVENUE_CATEGORIES.find(c => c.value === cat)?.label || cat;
+
+  const INPUT_CLS = 'w-full p-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder:text-[#555] focus:ring-2 focus:ring-green-500 outline-none';
 
   // Group by month for subtotals
   const byMonth = entries.reduce<Record<string, { entries: ManualRevenueEntry[]; total: number }>>((acc, e) => {
@@ -4074,7 +4202,7 @@ function ManualRevenueSection() {
       {/* Entries grouped by month */}
       {entries.length === 0 ? (
         <div className="p-10 text-center text-[#999] glass rounded-2xl border border-white/5">
-          No manual revenue entries yet. Click "+ Add Revenue" to log partner payments, affiliate income, etc.
+          No manual revenue entries yet. Click &quot;+ Add Revenue&quot; to log partner payments, affiliate income, etc.
         </div>
       ) : (
         <div className="space-y-6">
@@ -4088,8 +4216,48 @@ function ManualRevenueSection() {
                   <span className="text-green-400 font-bold text-sm">{formatUsd(group.total)}</span>
                 </div>
                 <div className="divide-y divide-white/5">
-                  {group.entries.map(e => (
-                    <div key={e._id} className="flex items-center gap-4 px-5 py-3 hover:bg-white/5 transition-colors">
+                  {group.entries.map(e => editingId === e._id ? (
+                    <div key={e._id} className="px-5 py-4 bg-white/[0.03] border-l-2 border-green-500 space-y-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div>
+                          <label className="block text-[10px] text-[#999] mb-1">Amount (USD)</label>
+                          <input type="number" step="0.01" value={editForm.amount} onChange={ev => setEditForm({ ...editForm, amount: ev.target.value })} className={INPUT_CLS} />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-[#999] mb-1">Client</label>
+                          <input type="text" value={editForm.clientName} onChange={ev => setEditForm({ ...editForm, clientName: ev.target.value })} className={INPUT_CLS} />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-[#999] mb-1">Category</label>
+                          <select value={editForm.category} onChange={ev => setEditForm({ ...editForm, category: ev.target.value })} className={INPUT_CLS + ' bg-[#1a1a1a]'}>
+                            {REVENUE_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-[#999] mb-1">Date Paid</label>
+                          <input type="date" value={editForm.paidAt} onChange={ev => setEditForm({ ...editForm, paidAt: ev.target.value })} className={INPUT_CLS} />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-[#999] mb-1">Description</label>
+                        <input type="text" value={editForm.description} onChange={ev => setEditForm({ ...editForm, description: ev.target.value })} className={INPUT_CLS} />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-2 text-xs text-[#ccc] cursor-pointer">
+                          <input type="checkbox" checked={editForm.recurring} onChange={ev => setEditForm({ ...editForm, recurring: ev.target.checked })} className="rounded accent-green-500" />
+                          Recurring
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => setEditingId(null)} className="px-3 py-1.5 text-xs text-[#999] hover:text-white transition">Cancel</button>
+                          <button onClick={handleEditSave} disabled={editSaving || !editForm.amount || !editForm.description}
+                            className="px-4 py-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-40 text-white rounded-lg text-xs font-bold transition">
+                            {editSaving ? 'Saving...' : 'Save'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div key={e._id} className="flex items-center gap-4 px-5 py-3 hover:bg-white/5 transition-colors group">
                       <div className="flex-grow min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
                           <span className="font-semibold text-white text-sm truncate">{e.description}</span>
@@ -4103,8 +4271,17 @@ function ManualRevenueSection() {
                       </div>
                       <span className="text-green-400 font-bold text-sm shrink-0">{formatUsd(e.amount)}</span>
                       <button
+                        onClick={() => startEdit(e)}
+                        className="text-white/30 hover:text-blue-400 transition-colors shrink-0 opacity-0 group-hover:opacity-100"
+                        title="Edit"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                        </svg>
+                      </button>
+                      <button
                         onClick={() => handleDelete(e._id)}
-                        className="text-red-400/60 hover:text-red-400 transition-colors shrink-0"
+                        className="text-red-400/40 hover:text-red-400 transition-colors shrink-0 opacity-0 group-hover:opacity-100"
                         title="Delete"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">

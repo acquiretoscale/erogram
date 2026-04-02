@@ -272,26 +272,31 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                     <button
                       onClick={(e) => handleVote(e, 'up')}
                       title="Upvote"
-                      className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold transition-all ${
+                      className={`flex items-center justify-center w-6 h-6 rounded text-[10px] font-bold transition-all ${
                         userVote === 'up'
                           ? 'bg-green-500 text-white shadow-sm'
                           : 'bg-white/[0.08] text-white/50 hover:bg-green-500/20 hover:text-green-300'
                       }`}
                     >
                       <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l8 8H4z"/></svg>
-                      {votes.up}
                     </button>
+                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${
+                      score > 0 ? 'bg-green-500/20 text-green-300' :
+                      score < 0 ? 'bg-red-500/20 text-red-300' :
+                      'bg-white/[0.06] text-white/30'
+                    }`}>
+                      {score > 0 ? `+${score}` : score}
+                    </span>
                     <button
                       onClick={(e) => handleVote(e, 'down')}
                       title="Downvote"
-                      className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold transition-all ${
+                      className={`flex items-center justify-center w-6 h-6 rounded text-[10px] font-bold transition-all ${
                         userVote === 'down'
                           ? 'bg-red-500 text-white shadow-sm'
                           : 'bg-white/[0.08] text-white/50 hover:bg-red-500/20 hover:text-red-300'
                       }`}
                     >
                       <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20l-8-8h16z"/></svg>
-                      {votes.down}
                     </button>
                     <button
                       onClick={handleReviewOpen}
@@ -302,13 +307,6 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                       {reviews.length > 0 ? reviews.length : '★'}
                     </button>
                   </div>
-                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
-                    score > 0 ? 'bg-green-500/20 text-green-300' :
-                    score < 0 ? 'bg-red-500/20 text-red-300' :
-                    'bg-white/[0.06] text-white/30'
-                  }`}>
-                    {score > 0 ? `+${score}` : score < 0 ? `${score}` : '0'}
-                  </span>
                 </div>
 
                 {/* CTA */}
@@ -427,19 +425,19 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
 
               <div className="flex items-center justify-between pt-1.5 border-t border-gray-100 mb-2">
                 <div className="flex items-center gap-1">
-                  <button onClick={(e) => handleVote(e, 'up')} title="Upvote" className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded border text-[10px] font-bold transition-all ${userVote === 'up' ? 'bg-green-500 border-black text-white shadow-[1px_1px_0_#000]' : 'bg-white border-gray-300 text-gray-500 hover:border-green-500 hover:text-green-600'}`}>
-                    <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l8 8H4z"/></svg>{votes.up}
+                  <button onClick={(e) => handleVote(e, 'up')} title="Upvote" className={`flex items-center justify-center w-6 h-6 rounded border text-[10px] font-bold transition-all ${userVote === 'up' ? 'bg-green-500 border-black text-white shadow-[1px_1px_0_#000]' : 'bg-white border-gray-300 text-gray-500 hover:border-green-500 hover:text-green-600'}`}>
+                    <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l8 8H4z"/></svg>
                   </button>
-                  <button onClick={(e) => handleVote(e, 'down')} title="Downvote" className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded border text-[10px] font-bold transition-all ${userVote === 'down' ? 'bg-red-500 border-black text-white shadow-[1px_1px_0_#000]' : 'bg-white border-gray-300 text-gray-500 hover:border-red-500 hover:text-red-600'}`}>
-                    <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20l-8-8h16z"/></svg>{votes.down}
+                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded border ${score > 0 ? 'bg-green-100 border-green-400 text-green-700' : score < 0 ? 'bg-red-100 border-red-400 text-red-600' : 'bg-gray-100 border-gray-300 text-gray-400'}`}>
+                    {score > 0 ? `+${score}` : score}
+                  </span>
+                  <button onClick={(e) => handleVote(e, 'down')} title="Downvote" className={`flex items-center justify-center w-6 h-6 rounded border text-[10px] font-bold transition-all ${userVote === 'down' ? 'bg-red-500 border-black text-white shadow-[1px_1px_0_#000]' : 'bg-white border-gray-300 text-gray-500 hover:border-red-500 hover:text-red-600'}`}>
+                    <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20l-8-8h16z"/></svg>
                   </button>
                   <button onClick={handleReviewOpen} title="Write a review" className="flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-gray-300 bg-white text-[10px] font-bold text-gray-500 hover:border-yellow-500 hover:text-yellow-600 transition-all">
                     <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>{reviews.length > 0 ? reviews.length : '★'}
                   </button>
                 </div>
-                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${score > 0 ? 'bg-green-100 border-green-400 text-green-700' : score < 0 ? 'bg-red-100 border-red-400 text-red-600' : 'bg-gray-100 border-gray-300 text-gray-400'}`}>
-                  {score > 0 ? `+${score}` : score < 0 ? `${score}` : '0'}
-                </span>
               </div>
 
               <div className={`${btnCls} text-[10px] sm:text-xs font-black uppercase tracking-widest text-center py-1.5 rounded border-2 border-yellow-500 shadow-[2px_2px_0_#000] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all duration-75 cursor-pointer`}>

@@ -518,6 +518,10 @@ export const campaignSchema = new Schema(
     premiumGroupIds: { type: [Schema.Types.ObjectId], default: [] },
     // Social proof indicator shown on the card: 'none' | 'visiting' | 'clicks' | 'trending' | 'random'
     socialProof: { type: String, enum: ['none', 'visiting', 'clicks', 'trending', 'random'], default: 'random' },
+    // Banner page targeting: which pages this top-banner/homepage-hero appears on (empty = all pages)
+    bannerPages: { type: [String], default: [] },
+    // Banner device targeting: 'all' | 'mobile' | 'desktop'
+    bannerDevice: { type: String, enum: ['all', 'mobile', 'desktop'], default: 'all' },
   },
   { timestamps: true }
 );
@@ -566,6 +570,8 @@ export const storySlideContentSchema = new Schema(
     caption: { type: String, default: '' },
     likes: { type: Number, default: 0 },
     clicks: { type: Number, default: 0 },
+    ctaPosition: { type: String, enum: ['top', 'middle', 'bottom'], default: 'bottom' },
+    ctaColor: { type: String, default: 'blue' },
     premiumGroups: [{
       name: String,
       slug: String,

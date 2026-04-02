@@ -21,6 +21,8 @@ export interface StoryCategoryConfig {
   maxItems?: number;
   ctaText?: string;
   ctaUrl?: string;
+  ctaPosition?: 'top' | 'middle' | 'bottom';
+  ctaColor?: string;
   verified?: boolean;
   /** R2 subfolder path for background videos, e.g. "stories/AI-GF" */
   r2Folder?: string;

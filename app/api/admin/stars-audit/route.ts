@@ -27,7 +27,7 @@ type NormalizedTx = {
   parsedPayload: any;
 };
 
-const VALID_PLANS = new Set(['monthly', 'yearly', 'lifetime']);
+const VALID_PLANS = new Set(['monthly', 'quarterly', 'yearly']);
 
 function safeJsonParse(s: unknown) {
   if (typeof s !== 'string' || !s.length) return null;

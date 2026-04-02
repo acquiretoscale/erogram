@@ -15,9 +15,15 @@ export default function JoinClient({ avatars }: { avatars: string[] }) {
 
   useEffect(() => {
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
-    const rd = searchParams.get('redirect') || '/onlyfanssearch';
+    const paramRd = searchParams.get('redirect');
+    const rd = paramRd || sessionStorage.getItem('joinRedirect') || '/onlyfanssearch';
+    if (paramRd) {
+      sessionStorage.setItem('joinRedirect', paramRd);
+      window.history.replaceState(null, '', '/join-erogram');
+    }
     setRedirect(rd);
     if (token) {
+      sessionStorage.removeItem('joinRedirect');
       router.replace(rd);
     }
   }, [router, searchParams]);

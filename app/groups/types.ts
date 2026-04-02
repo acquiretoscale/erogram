@@ -112,6 +112,8 @@ export interface StoryMediaSlide {
     mediaUrl: string;
     ctaText?: string;
     ctaUrl?: string;
+    ctaPosition?: 'top' | 'middle' | 'bottom';
+    ctaColor?: string;
     clientName?: string;
     caption?: string;
     likes?: number;

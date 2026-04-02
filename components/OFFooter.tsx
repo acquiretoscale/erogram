@@ -66,6 +66,11 @@ export default function OFFooter() {
                   {t('ofSearch.bestOnlyfansAccounts')}
                 </Link>
               </li>
+              <li>
+                <Link href="/articles" className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
+                  Articles &amp; Guides
+                </Link>
+              </li>
               {OF_CATEGORIES.slice(0, 6).map((cat) => (
                 <li key={cat.slug}>
                   <Link href={lp(ofCategoryUrl(cat.slug))} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">

@@ -1,9 +1,12 @@
 import { Metadata } from 'next';
+import { headers } from 'next/headers';
 import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator } from '@/lib/models';
 import OnlyFansClient from './OnlyFansClient';
 import { getLocale } from '@/lib/i18n/server';
 import { mainOfMeta } from './ofMeta';
+import { getActiveCampaigns } from '@/lib/actions/campaigns';
+import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
@@ -23,6 +26,8 @@ interface PageProps {
 }
 
 export default async function OnlyFansPage({ searchParams }: PageProps) {
+  const ua = (await headers()).get('user-agent');
+  const { isMobile } = detectDeviceFromUserAgent(ua);
   const { q } = await searchParams;
   let initialCreators: any[] = [];
   let totalCreators = 0;
@@ -47,7 +52,7 @@ export default async function OnlyFansPage({ searchParams }: PageProps) {
       OnlyFansCreator.countDocuments(baseMatch),
       OnlyFansCreator.find(baseMatch)
         .sort({ createdAt: -1 })
-        .limit(10)
+        .limit(30)
         .select('name username slug avatar header categories subscriberCount likesCount photosCount videosCount price isFree url clicks')
         .lean(),
       ...TOP10_CATEGORIES.flatMap((cat) => [
@@ -90,6 +95,8 @@ export default async function OnlyFansPage({ searchParams }: PageProps) {
     console.error('Failed to fetch OF creators:', e);
   }
 
+  const topBannerCampaigns = await getActiveCampaigns('top-banner', { page: 'onlyfanssearch', device: isMobile ? 'mobile' : 'desktop' }).catch(() => []);
+
   return (
     <OnlyFansClient
       initialCreators={initialCreators}
@@ -97,6 +104,7 @@ export default async function OnlyFansPage({ searchParams }: PageProps) {
       initialQuery={q || ''}
       top10Lists={top10Lists}
       recentlyAdded={recentlyAdded}
+      topBannerCampaigns={topBannerCampaigns}
     />
   );
 }

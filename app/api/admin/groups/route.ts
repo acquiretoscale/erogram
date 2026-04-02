@@ -60,8 +60,10 @@ export async function GET(req: NextRequest) {
       ];
     }
     
-    let q = Group.find(query).sort({ createdAt: -1 });
-    if (limit) q = q.limit(parseInt(limit, 10));
+    let q = Group.find(query)
+      .select('name slug image category country status createdAt updatedAt memberCount views description telegramLink isAdvertisement premiumOnly pinned')
+      .sort({ createdAt: -1 });
+    q = q.limit(limit ? parseInt(limit, 10) : 200);
     const groups = await q.lean();
     
     return NextResponse.json(groups);

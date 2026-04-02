@@ -545,16 +545,16 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
       {/* Main Content */}
       <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 sm:pt-20 pb-8 min-h-screen">
-        {/* Global top banner (single campaign) */}
-        <div className="w-full mb-4">
-          <HeaderBanner campaigns={topBannerCampaigns} />
-        </div>
         {/* Stories — always first on mobile, full-width on all sizes */}
         <StoryBar
           storyData={storyData}
           seenStoryMap={seenStoryMap}
           onOpenStory={handleOpenStory}
         />
+        {/* Global top banner (below stories) */}
+        <div className="w-full mb-4">
+          <HeaderBanner campaigns={topBannerCampaigns} />
+        </div>
 
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
           {/* Mobile: Filter toggle */}

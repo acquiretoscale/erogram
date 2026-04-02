@@ -312,7 +312,7 @@ export default async function CountryGroupsPage({ params }: PageProps) {
   const [groups, feedCampaigns, topBannerCampaigns] = await Promise.all([
     getGroupsByCountry(country),
     getActiveFeedCampaigns('groups'),
-    getActiveCampaigns('top-banner'),
+    getActiveCampaigns('top-banner', { page: 'groups', device: isMobile ? 'mobile' : 'desktop' }),
   ]);
 
   const topBannerForPage =

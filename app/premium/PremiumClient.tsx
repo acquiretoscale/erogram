@@ -120,6 +120,7 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
   const [premiumExpiresAt, setPremiumExpiresAt] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [awaitingPayment, setAwaitingPayment] = useState(false);
+  const [paymentJustCompleted, setPaymentJustCompleted] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const tracked = useRef(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -127,14 +128,16 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
   const [isIOSDevice, setIsIOSDevice] = useState(false);
   const [appInstalled, setAppInstalled] = useState(false);
 
-  const checkPremiumStatus = useCallback(async () => {
+  const checkPremiumStatus = useCallback(async (fromPoll = false) => {
     const token = localStorage.getItem('token');
     if (!token) return false;
     try {
       const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
       const d = await res.json();
       if (d.premium) {
-        setIsPremium(true); setPremiumPlan(d.premiumPlan || null); setPremiumSince(d.premiumSince || null); setPremiumExpiresAt(d.premiumExpiresAt || null); setAwaitingPayment(false);
+        setIsPremium(true); setPremiumPlan(d.premiumPlan || null); setPremiumSince(d.premiumSince || null); setPremiumExpiresAt(d.premiumExpiresAt || null);
+        if (fromPoll) setPaymentJustCompleted(true);
+        setAwaitingPayment(false);
         if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
         return true;
       }
@@ -172,7 +175,7 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
     try {
       const token = localStorage.getItem('token');
       const res = await axios.post('/api/payments/stars', { plan }, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.data?.url) { window.open(res.data.url, '_blank'); setAwaitingPayment(true); if (pollRef.current) clearInterval(pollRef.current); let a = 0; pollRef.current = setInterval(async () => { a++; await checkPremiumStatus(); if (a >= 120) { clearInterval(pollRef.current!); pollRef.current = null; setAwaitingPayment(false); } }, 5000); }
+      if (res.data?.url) { window.open(res.data.url, '_blank'); setAwaitingPayment(true); if (pollRef.current) clearInterval(pollRef.current); let a = 0; pollRef.current = setInterval(async () => { a++; await checkPremiumStatus(true); if (a >= 120) { clearInterval(pollRef.current!); pollRef.current = null; setAwaitingPayment(false); } }, 5000); }
     } catch (err: any) { if (err?.response?.data?.soldOut) setSoldOut(true); setError(err?.response?.data?.message || 'Failed to create payment'); } finally { setLoading(null); }
   };
 
@@ -325,6 +328,17 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-52 h-16 blur-3xl opacity-15 pointer-events-none" style={{ background: `linear-gradient(135deg, ${G.gold}, #ef4444)` }} />
 
           <div className="relative px-4 pt-5 pb-5">
+
+            {paymentJustCompleted && isPremium && (
+              <div className="mb-4 rounded-xl overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.08), rgba(16,185,129,0.04))', border: '1px solid rgba(34,197,94,0.25)' }}>
+                <div className="px-4 py-4 text-center space-y-2">
+                  <div className="text-3xl">🎉</div>
+                  <h3 className="text-lg font-black text-white">Payment Successful!</h3>
+                  <p className="text-emerald-400 text-sm font-semibold">Welcome to Erogram VIP</p>
+                  <p className="text-white/50 text-xs">Your premium access is now active. Enjoy the Vault and all VIP features.</p>
+                </div>
+              </div>
+            )}
 
             {awaitingPayment && !isPremium && (
               <div className="mb-3 px-3 py-2 rounded-lg flex items-center gap-2" style={{ background: `${G.gold}06`, border: `1px solid ${G.gold}25` }}>

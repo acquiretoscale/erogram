@@ -6,6 +6,8 @@ import { getActiveCampaigns } from '@/lib/actions/campaigns';
 import { Article, User, Group, Bot } from '@/lib/models';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary } from '@/lib/i18n';
+import { headers } from 'next/headers';
+import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 
 export const revalidate = 300;
 
@@ -97,9 +99,9 @@ async function getNewGroups(limit: number = 8) {
       isAdvertisement: { $ne: true },
       premiumOnly: { $ne: true },
     })
-      .sort({ createdAt: -1 })
+      .sort({ updatedAt: -1 })
       .limit(limit)
-      .select('name slug image category country description createdAt memberCount views')
+      .select('name slug image category country description createdAt updatedAt memberCount views')
       .lean();
 
     return (groups as any[]).map((g) => ({
@@ -148,6 +150,8 @@ async function getStats() {
 }
 
 export default async function Home() {
+  const ua = (await headers()).get('user-agent');
+  const { isMobile } = detectDeviceFromUserAgent(ua);
   const locale = await getLocale();
   const dict = await getDictionary(locale);
   const faq: { q: string; a: string }[] = dict.home?.faq || [];
@@ -155,7 +159,7 @@ export default async function Home() {
 
   const [featuredArticles, heroCampaigns, newGroups, stats] = await Promise.all([
     getFeaturedArticles(6),
-    getActiveCampaigns('homepage-hero'),
+    getActiveCampaigns('homepage-hero', { page: 'homepage', device: isMobile ? 'mobile' : 'desktop' }),
     getNewGroups(8),
     getStats(),
   ]);

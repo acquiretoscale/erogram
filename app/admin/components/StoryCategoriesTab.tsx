@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { getSiteConfig, updateSiteConfig } from '@/lib/actions/adminConfig';
+import { syncR2Stories } from '@/lib/actions/stories';
 
 interface StoryCategoryConfig {
   slug: string;
@@ -15,6 +16,8 @@ interface StoryCategoryConfig {
   maxItems?: number;
   ctaText?: string;
   ctaUrl?: string;
+  ctaPosition?: 'top' | 'middle' | 'bottom';
+  ctaColor?: string;
   verified?: boolean;
   r2Folder?: string;
 }
@@ -40,6 +43,8 @@ interface StorySlide {
   enabled: boolean;
   clientName: string;
   sortOrder: number;
+  ctaPosition: 'top' | 'middle' | 'bottom';
+  ctaColor: string;
   createdAt?: string;
   views?: number;
   likes?: number;
@@ -506,7 +511,7 @@ export default function StoryCategoriesTab() {
         </div>
 
         {/* R2 folder + max items for non-advert */}
-        {activeCat.filterType !== 'advert' && activeCat.filterType !== 'erogram' && (
+        {activeCat.filterType !== 'advert' && (
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[10px] text-white/40 mb-1">R2 Folder</label>
@@ -519,10 +524,10 @@ export default function StoryCategoriesTab() {
           </div>
         )}
 
-        {/* CTA for random-girl profiles */}
-        {activeCat.filterType === 'random-girl' && (
-          <div className="space-y-2">
-            <label className="block text-[10px] text-white/40 uppercase tracking-wider font-bold">CTA on all stories from this profile</label>
+        {/* CTA for random-girl and erogram profiles */}
+        {(activeCat.filterType === 'random-girl' || activeCat.filterType === 'erogram') && (
+          <div className="space-y-3">
+            <label className="block text-[10px] text-white/40 uppercase tracking-wider font-bold">CTA on all R2 stories from this profile</label>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[10px] text-white/40 mb-1">CTA Text</label>
@@ -533,7 +538,39 @@ export default function StoryCategoriesTab() {
                 <input value={activeCat.ctaUrl || ''} onChange={e => updateCat(activeCat.slug, 'ctaUrl', e.target.value)} onBlur={saveCurrent} placeholder="https://..." className={INPUT} />
               </div>
             </div>
-            <p className="text-white/20 text-[10px]">This CTA will show on every story from R2 folder <strong className="text-white/40">{activeCat.r2Folder || '—'}</strong></p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] text-white/40 mb-1">Position</label>
+                <div className="flex gap-1.5">
+                  {(['top', 'middle', 'bottom'] as const).map(p => (
+                    <button key={p} onClick={() => { updateCat(activeCat.slug, 'ctaPosition', p, true); }}
+                      className={`flex-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition capitalize ${(activeCat.ctaPosition || 'bottom') === p ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/30 hover:bg-white/10'}`}>
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] text-white/40 mb-1">Color</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { id: 'blue', bg: 'linear-gradient(135deg, #2AABEE, #229ED9)' },
+                    { id: 'pink', bg: 'linear-gradient(135deg, #f953c6, #b91d73)' },
+                    { id: 'gold', bg: 'linear-gradient(135deg, #c9973a, #e8ba5a)' },
+                    { id: 'green', bg: 'linear-gradient(135deg, #00b09b, #96c93d)' },
+                    { id: 'red', bg: 'linear-gradient(135deg, #ff416c, #ff4b2b)' },
+                    { id: 'purple', bg: 'linear-gradient(135deg, #7c3aed, #4f46e5)' },
+                    { id: 'orange', bg: 'linear-gradient(135deg, #f97316, #ea580c)' },
+                    { id: 'black', bg: 'linear-gradient(135deg, #2d2d2d, #0a0a0a)' },
+                  ].map(c => (
+                    <button key={c.id} onClick={() => updateCat(activeCat.slug, 'ctaColor', c.id, true)}
+                      className={`w-6 h-6 rounded-md transition-all ${(activeCat.ctaColor || 'blue') === c.id ? 'ring-2 ring-white ring-offset-1 ring-offset-[#1a1a1e] scale-110' : 'hover:scale-105'}`}
+                      style={{ background: c.bg }} title={c.id} />
+                  ))}
+                </div>
+              </div>
+            </div>
+            {activeCat.r2Folder && <p className="text-white/20 text-[10px]">Applied to R2 stories from <strong className="text-white/40">{activeCat.r2Folder}</strong></p>}
           </div>
         )}
       </div>
@@ -602,52 +639,67 @@ export default function StoryCategoriesTab() {
       )}
 
       {/* ══════════════════════════════
-          UPLOAD + MEDIA CARDS
+          SYNC R2 + UPLOAD + MEDIA CARDS
          ══════════════════════════════ */}
-      {activeCat.filterType !== 'random-girl' && (
-        <div className="space-y-4">
-          {/* Upload zone */}
-          <div className={`rounded-xl border-2 border-dashed transition-all p-6 text-center cursor-pointer ${
-            dragOver ? 'border-blue-500 bg-blue-500/10' : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
-          }`}
-            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={e => { e.preventDefault(); setDragOver(false); uploadFiles(e.dataTransfer.files); }}
-            onClick={() => fileInputRef.current?.click()}>
-            <input ref={fileInputRef} type="file" accept="image/*,video/mp4,video/webm,video/quicktime" multiple
-              className="hidden" onChange={e => { if (e.target.files) uploadFiles(e.target.files); e.target.value = ''; }} />
-            {uploadingCount > 0 ? (
-              <div className="flex items-center justify-center gap-3">
-                <div className="w-5 h-5 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
-                <span className="text-blue-400 text-sm font-medium">Uploading {uploadingCount} file{uploadingCount > 1 ? 's' : ''}...</span>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center gap-3">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round">
-                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
-                <span className="text-white/50 text-sm">Drop images & videos here, or click to browse</span>
-              </div>
-            )}
-          </div>
+      <div className="space-y-4">
+        {/* Sync R2 button — for profiles with an R2 folder */}
+        {activeCat.r2Folder && (
+          <SyncR2Button
+            categorySlug={activeCat.slug}
+            r2Folder={activeCat.r2Folder}
+            token={token()}
+            onSynced={loadData}
+          />
+        )}
 
-          {/* Media cards */}
-          {activeSlidesSorted.length === 0 ? (
-            <p className="text-center text-white/20 text-sm py-4">No stories yet. Upload media above.</p>
+        {/* Upload zone */}
+        <div className={`rounded-xl border-2 border-dashed transition-all p-6 text-center cursor-pointer ${
+          dragOver ? 'border-blue-500 bg-blue-500/10' : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
+        }`}
+          onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={e => { e.preventDefault(); setDragOver(false); uploadFiles(e.dataTransfer.files); }}
+          onClick={() => fileInputRef.current?.click()}>
+          <input ref={fileInputRef} type="file" accept="image/*,video/mp4,video/webm,video/quicktime" multiple
+            className="hidden" onChange={e => { if (e.target.files) uploadFiles(e.target.files); e.target.value = ''; }} />
+          {uploadingCount > 0 ? (
+            <div className="flex items-center justify-center gap-3">
+              <div className="w-5 h-5 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
+              <span className="text-blue-400 text-sm font-medium">Uploading {uploadingCount} file{uploadingCount > 1 ? 's' : ''}...</span>
+            </div>
           ) : (
-            <div className="space-y-2">
-              {activeSlidesSorted.map((slide, i) => (
-                <StoryCard key={slide._id} slide={slide} index={i} total={activeSlidesSorted.length}
-                  isEditing={editingSlideId === slide._id}
-                  onToggleEdit={() => setEditingSlideId(editingSlideId === slide._id ? null : (slide._id ?? null))}
-                  onUpdate={u => slide._id && updateSlide(slide._id, u)}
-                  onDelete={() => slide._id && deleteSlide(slide._id)}
-                  onMove={d => moveSlide(slide, d)} />
-              ))}
+            <div className="flex items-center justify-center gap-3">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <span className="text-white/50 text-sm">Drop images & videos here, or click to browse</span>
             </div>
           )}
         </div>
-      )}
+
+        {/* Media cards — all slides for this profile */}
+        {activeSlidesSorted.length === 0 ? (
+          <p className="text-center text-white/20 text-sm py-4">
+            {activeCat.r2Folder
+              ? 'No stories yet. Click "Sync from R2" above to import from your folder.'
+              : 'No stories yet. Upload media above.'}
+          </p>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-semibold text-white/50 uppercase tracking-wider">Stories ({activeSlidesSorted.length})</h4>
+            </div>
+            {activeSlidesSorted.map((slide, i) => (
+              <StoryCard key={slide._id} slide={slide} index={i} total={activeSlidesSorted.length}
+                isEditing={editingSlideId === slide._id}
+                onToggleEdit={() => setEditingSlideId(editingSlideId === slide._id ? null : (slide._id ?? null))}
+                onUpdate={u => slide._id && updateSlide(slide._id, u)}
+                onDelete={() => slide._id && deleteSlide(slide._id)}
+                onMove={d => moveSlide(slide, d)} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -660,9 +712,22 @@ function StoryCard({ slide, index, total, isEditing, onToggleEdit, onUpdate, onD
   const [cta, setCta] = useState({ text: slide.ctaText || '', url: slide.ctaUrl || '' });
   const [caption, setCaption] = useState(slide.caption || '');
   const [client, setClient] = useState(slide.clientName || '');
+  const [ctaPos, setCtaPos] = useState<'top' | 'middle' | 'bottom'>(slide.ctaPosition || 'bottom');
+  const [ctaColor, setCtaColor] = useState(slide.ctaColor || 'blue');
   const [overlay, setOverlay] = useState<'none' | 'cta' | 'caption'>(
     slide.ctaText ? 'cta' : slide.caption ? 'caption' : 'none'
   );
+
+  const CTA_COLOR_OPTIONS = [
+    { id: 'blue', label: 'Blue', bg: 'linear-gradient(135deg, #2AABEE, #229ED9)' },
+    { id: 'pink', label: 'Pink', bg: 'linear-gradient(135deg, #f953c6, #b91d73)' },
+    { id: 'gold', label: 'Gold', bg: 'linear-gradient(135deg, #c9973a, #e8ba5a)' },
+    { id: 'green', label: 'Green', bg: 'linear-gradient(135deg, #00b09b, #96c93d)' },
+    { id: 'red', label: 'Red', bg: 'linear-gradient(135deg, #ff416c, #ff4b2b)' },
+    { id: 'purple', label: 'Purple', bg: 'linear-gradient(135deg, #7c3aed, #4f46e5)' },
+    { id: 'orange', label: 'Orange', bg: 'linear-gradient(135deg, #f97316, #ea580c)' },
+    { id: 'black', label: 'Black', bg: 'linear-gradient(135deg, #2d2d2d, #0a0a0a)' },
+  ];
 
   const pickOverlay = (t: 'none' | 'cta' | 'caption') => {
     setOverlay(t);
@@ -723,13 +788,41 @@ function StoryCard({ slide, index, total, isEditing, onToggleEdit, onUpdate, onD
             </div>
           </div>
           {overlay === 'cta' && (
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="block text-[10px] text-white/30 mb-1">Button Text</label><input value={cta.text} onChange={e => setCta(p => ({...p, text: e.target.value}))} onBlur={() => onUpdate({ ctaText: cta.text, ctaUrl: cta.url })} placeholder="Visit Site" className={INPUT}/></div>
-              <div><label className="block text-[10px] text-white/30 mb-1">Button URL</label><input value={cta.url} onChange={e => setCta(p => ({...p, url: e.target.value}))} onBlur={() => onUpdate({ ctaText: cta.text, ctaUrl: cta.url })} placeholder="https://..." className={INPUT}/></div>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="block text-[10px] text-white/30 mb-1">Button Text</label><input value={cta.text} onChange={e => setCta(p => ({...p, text: e.target.value}))} onBlur={() => onUpdate({ ctaText: cta.text, ctaUrl: cta.url })} placeholder="Visit Site" className={INPUT}/></div>
+                <div><label className="block text-[10px] text-white/30 mb-1">Button URL</label><input value={cta.url} onChange={e => setCta(p => ({...p, url: e.target.value}))} onBlur={() => onUpdate({ ctaText: cta.text, ctaUrl: cta.url })} placeholder="https://..." className={INPUT}/></div>
+              </div>
+              <div>
+                <label className="block text-[10px] text-white/30 mb-2 uppercase tracking-wider font-bold">Position</label>
+                <div className="flex gap-2">
+                  {(['top', 'middle', 'bottom'] as const).map(p => (
+                    <button key={p} onClick={() => { setCtaPos(p); onUpdate({ ctaPosition: p }); }}
+                      className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition capitalize ${ctaPos === p ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/30 hover:bg-white/10'}`}>
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] text-white/30 mb-2 uppercase tracking-wider font-bold">Button Color</label>
+                <div className="flex flex-wrap gap-2">
+                  {CTA_COLOR_OPTIONS.map(c => (
+                    <button key={c.id} onClick={() => { setCtaColor(c.id); onUpdate({ ctaColor: c.id }); }}
+                      className={`group relative w-8 h-8 rounded-lg transition-all ${ctaColor === c.id ? 'ring-2 ring-white ring-offset-2 ring-offset-[#1a1a1e] scale-110' : 'hover:scale-105'}`}
+                      style={{ background: c.bg }}
+                      title={c.label}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           )}
           {overlay === 'caption' && (
-            <div><label className="block text-[10px] text-white/30 mb-1">Caption</label><textarea value={caption} onChange={e => setCaption(e.target.value)} onBlur={() => onUpdate({ caption })} placeholder="Text on this story..." rows={2} className={INPUT + ' resize-none'}/></div>
+            <div><label className="block text-[10px] text-white/30 mb-1">Caption</label><textarea value={caption} onChange={e => setCaption(e.target.value)} onBlur={() => onUpdate({ caption })} placeholder="Instagram-style caption text..." rows={2} className={INPUT + ' resize-none'}/></div>
+          )}
+          {overlay === 'cta' && (
+            <div><label className="block text-[10px] text-white/30 mb-1">Caption (shown above CTA)</label><textarea value={caption} onChange={e => setCaption(e.target.value)} onBlur={() => onUpdate({ caption })} placeholder="Optional text above the button..." rows={1} className={INPUT + ' resize-none'}/></div>
           )}
           <div className="flex items-center gap-4">
             <div className="flex-1"><label className="block text-[10px] text-white/30 mb-1">Client Name</label><input value={client} onChange={e => setClient(e.target.value)} onBlur={() => onUpdate({ clientName: client })} placeholder="Optional" className={INPUT}/></div>
@@ -1011,6 +1104,70 @@ function PremiumGridEditor({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ── Sync R2 Folder button ──
+function SyncR2Button({ categorySlug, r2Folder, token, onSynced }: {
+  categorySlug: string; r2Folder: string; token: string; onSynced: () => void;
+}) {
+  const [syncing, setSyncing] = useState(false);
+  const [result, setResult] = useState<{ created: number; existing: number; total: number } | null>(null);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    setResult(null);
+    try {
+      const res = await syncR2Stories(token, categorySlug, r2Folder);
+      setResult(res);
+      onSynced();
+      setTimeout(() => setResult(null), 5000);
+    } catch (err: any) {
+      setResult({ created: -1, existing: 0, total: 0 });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl bg-white/[0.03] border border-white/10 p-4">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h4 className="text-xs font-semibold text-white/70 uppercase tracking-wider mb-0.5">R2 Folder</h4>
+          <p className="text-[11px] text-white/30">
+            Import files from <strong className="text-white/50">{r2Folder}</strong> as individual story slides you can edit.
+          </p>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          {result && (
+            <span className={`text-xs ${result.created >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {result.created >= 0
+                ? `${result.created} new, ${result.existing} existing`
+                : 'Sync failed'}
+            </span>
+          )}
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-white disabled:opacity-50 transition active:scale-[0.97] bg-blue-600 hover:bg-blue-700"
+          >
+            {syncing ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Syncing…
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M13.5 2c-5.629 0-10.212 4.436-10.475 10h-3.025l4.537 5.917 4.463-5.917h-2.975c.26-3.902 3.508-7 7.475-7 4.136 0 7.5 3.364 7.5 7.5s-3.364 7.5-7.5 7.5c-2.381 0-4.502-1.119-5.876-2.854l-1.847 2.449c1.919 2.088 4.664 3.405 7.723 3.405 5.798 0 10.5-4.702 10.5-10.5s-4.702-10.5-10.5-10.5z"/>
+                </svg>
+                Sync from R2
+              </>
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

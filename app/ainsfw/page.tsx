@@ -1,9 +1,12 @@
 import { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { AI_NSFW_TOOLS } from './data';
 import AINsfwClient from './AINsfwClient';
 import { getLocale } from '@/lib/i18n/server';
 import { getDictionary } from '@/lib/i18n';
 import { getAllToolStats, getFeaturedTools } from '@/lib/actions/ainsfw';
+import { getActiveCampaigns } from '@/lib/actions/campaigns';
+import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 
 const BASE_URL = 'https://erogram.pro';
 
@@ -45,12 +48,15 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AINsfwPage() {
+  const ua = (await headers()).get('user-agent');
+  const { isMobile } = detectDeviceFromUserAgent(ua);
   const locale = await getLocale();
   const dict = await getDictionary(locale);
   const a = dict.ainsfw ?? {};
-  const [allStats, featuredInfos] = await Promise.all([
+  const [allStats, featuredInfos, topBannerCampaigns] = await Promise.all([
     getAllToolStats(AI_NSFW_TOOLS.map(t => t.slug)),
     getFeaturedTools(),
+    getActiveCampaigns('top-banner', { page: 'ainsfw', device: isMobile ? 'mobile' : 'desktop' }).catch(() => []),
   ]);
   const featuredSlugs = featuredInfos.map(f => f.slug);
   const featuredCampaignMap: Record<string, string> = {};
@@ -123,7 +129,7 @@ export default async function AINsfwPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
-      <AINsfwClient tools={AI_NSFW_TOOLS} allStats={allStats} featuredSlugs={featuredSlugs} featuredCampaignMap={featuredCampaignMap} />
+      <AINsfwClient tools={AI_NSFW_TOOLS} allStats={allStats} featuredSlugs={featuredSlugs} featuredCampaignMap={featuredCampaignMap} topBannerCampaigns={topBannerCampaigns} />
     </>
   );
 }

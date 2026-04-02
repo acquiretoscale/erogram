@@ -121,7 +121,7 @@ export default async function BotsPage() {
   const [bots, adverts, topBannerCampaigns, feedCampaigns] = await Promise.all([
     getBots(),
     getAdverts(),
-    getActiveCampaigns('top-banner'),
+    getActiveCampaigns('top-banner', { page: 'bots', device: isMobile ? 'mobile' : 'desktop' }),
     getActiveFeedCampaigns('bots'),
   ]);
 

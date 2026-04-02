@@ -39,6 +39,7 @@ export type DashboardData = {
     manualRevenueLifetime?: number;
     totalEarningsLifetimeUsd?: number;
     totalRevenueThisMonth?: number;
+    totalRevenuePrevMonth?: number;
     starsRevenueThisMonth?: number;
     manualRevenueThisMonth?: number;
   };
@@ -570,7 +571,16 @@ export default function OverviewTab({ data, loading, onRefresh }: Props) {
       {/* Stat cards — 6 cards, 2 col on mobile, 3 on md, 6 on lg */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
         <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0 }}
-          className="bg-emerald-950/40 border border-emerald-500/20 rounded-xl px-4 py-3.5 col-span-2 md:col-span-1">
+          className="bg-emerald-950/40 border border-emerald-500/20 rounded-xl px-4 py-3.5">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-semibold text-emerald-400/70 uppercase tracking-[0.12em]">Last Month</p>
+            <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/15">PREV</span>
+          </div>
+          <p className="text-[24px] font-bold text-emerald-300 leading-none tracking-tight tabular-nums">{fmtUsdWhole(h.totalRevenuePrevMonth || 0)}</p>
+          <p className="text-[11px] mt-1.5 text-emerald-400/50">Previous month total</p>
+        </motion.div>
+        <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.03 }}
+          className="bg-emerald-950/40 border border-emerald-500/20 rounded-xl px-4 py-3.5">
           <div className="flex items-center justify-between mb-2">
             <p className="text-[10px] font-semibold text-emerald-400/70 uppercase tracking-[0.12em]">This Month</p>
             <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/15">MTD</span>
@@ -578,20 +588,17 @@ export default function OverviewTab({ data, loading, onRefresh }: Props) {
           <p className="text-[24px] font-bold text-emerald-300 leading-none tracking-tight tabular-nums">{fmtUsdWhole(h.totalRevenueThisMonth || 0)}</p>
           <p className="text-[11px] mt-1.5 text-emerald-400/50">Total revenue this month</p>
         </motion.div>
-        <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.03 }}>
+        <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.06 }}>
           <StatCard label="Page Views" value={fmtFullNum(totalPageviews)} sub="Lifetime total" live />
         </motion.div>
-        <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.06 }}>
+        <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.09 }}>
           <StatCard label="Live Now" value={activeVisitors != null ? fmtFullNum(activeVisitors) : '—'} sub="Last 30 minutes" live />
         </motion.div>
-        <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.09 }}>
+        <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.12 }}>
           <StatCard label="Sales 24h" value={fmtUsd(summary.last24hUsd)} sub={`${summary.last24hCount} transaction${summary.last24hCount !== 1 ? 's' : ''}`} accent="#ef4444" />
         </motion.div>
-        <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.12 }}>
-          <StatCard label="Ad Clicks 24h" value={fmtNum(kpis.adClicks?.last24h || 0)} sub={`${fmtNum(kpis.adClicks?.lifetime || 0)} lifetime`} accent="#f59e0b" />
-        </motion.div>
         <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.15 }}>
-          <StatCard label="Bookmarks" value={fmtNum(kpis.engagement?.bookmarks || 0)} sub={`${fmtNum(kpis.engagement?.folders || 0)} folders`} accent="#ec4899" />
+          <StatCard label="Ad Clicks 24h" value={fmtNum(kpis.adClicks?.last24h || 0)} sub={`${fmtNum(kpis.adClicks?.lifetime || 0)} lifetime`} accent="#f59e0b" />
         </motion.div>
       </div>
 

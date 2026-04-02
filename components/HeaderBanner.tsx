@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { trackClick } from '@/lib/actions/campaigns';
 
 export interface HeaderBannerCampaign {
   _id: string;
   creative: string;
   destinationUrl: string;
+  bannerDevice?: 'all' | 'mobile' | 'desktop';
 }
 
 interface HeaderBannerProps {
@@ -13,9 +15,15 @@ interface HeaderBannerProps {
   className?: string;
 }
 
+const DEVICE_CLASS: Record<string, string> = {
+  mobile: 'md:hidden',
+  desktop: 'hidden md:block',
+};
+
 /**
  * Header banner: no max-width, no fixed height. Full width of container, image natural size.
  * Shows exactly one banner per page; a different one is picked each time the user views a page (on mount).
+ * Respects bannerDevice: 'mobile' renders only on <md, 'desktop' only on md+, 'all' everywhere.
  */
 export default function HeaderBanner({ campaigns = [], className = '' }: HeaderBannerProps) {
   const items = useMemo(() => (campaigns ?? []).filter((c) => c?.creative), [campaigns]);
@@ -25,30 +33,47 @@ export default function HeaderBanner({ campaigns = [], className = '' }: HeaderB
 
   const current = items[currentIndex] ?? items[0];
 
+  const handleClick = useCallback((campaign: HeaderBannerCampaign) => {
+    trackClick(campaign._id, 'top-banner');
+    window.open(campaign.destinationUrl, '_blank', 'noopener,noreferrer');
+  }, []);
+
   if (!items.length || !current) return null;
 
   const { creative: src, destinationUrl: href } = current;
+  const deviceCls = DEVICE_CLASS[current.bannerDevice || ''] || '';
 
   return (
-    <div className={`w-full ${className}`.trim()}>
-      <a
-        href={href}
-        target="_blank"
-        rel="sponsored noopener noreferrer"
-        onClick={(e) => {
-          e.preventDefault();
-          window.open(href, '_blank', 'noopener,noreferrer');
-        }}
-        className="block w-full overflow-hidden cursor-pointer"
-      >
-        <img
-          src={src}
-          alt="Banner"
-          className="w-full h-auto"
-          loading="eager"
-          style={{ display: 'block', maxWidth: '100%' }}
-        />
-      </a>
+    <div className={`w-full ${deviceCls} ${className}`.trim()}>
+      {/* Mobile: full-width stretch. Desktop: natural image size, max 50vw, centered. */}
+      <div className="flex justify-center">
+        <a
+          href={href}
+          target="_blank"
+          rel="sponsored noopener noreferrer"
+          onClick={(e) => {
+            e.preventDefault();
+            handleClick(current);
+          }}
+          className="block overflow-hidden cursor-pointer rounded-lg w-full md:w-auto"
+        >
+          <img
+            src={src}
+            alt="Banner"
+            loading="eager"
+            className="w-full h-auto md:w-auto md:h-auto md:max-w-[50vw] md:max-h-[280px]"
+            style={{ display: 'block' }}
+          />
+        </a>
+        <div className="flex justify-end mt-1">
+          <a
+            href="/advertise"
+            className="text-[9px] font-medium text-white/30 hover:text-white/50 transition-colors"
+          >
+            Sponsored
+          </a>
+        </div>
+      </div>
     </div>
   );
 }

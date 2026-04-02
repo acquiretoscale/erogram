@@ -49,7 +49,7 @@ export default function UpgradeModal({ isOpen, onClose, reason }: UpgradeModalPr
 
   if (!isOpen) return null;
 
-  const handlePurchase = async (plan: 'monthly' | 'yearly' | 'lifetime') => {
+  const handlePurchase = async (plan: 'monthly' | 'yearly') => {
     trackPremiumEvent('plan_click', { plan });
     setLoading(plan);
     setError('');
@@ -182,26 +182,6 @@ export default function UpgradeModal({ isOpen, onClose, reason }: UpgradeModalPr
                 {loading === 'yearly' && <div className="mt-2 text-xs text-amber-400">Opening Telegram...</div>}
               </button>
 
-              {/* Lifetime */}
-              <button
-                onClick={() => handlePurchase('lifetime')}
-                disabled={!!loading}
-                className="w-full rounded-xl p-4 text-left transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 border border-purple-500/30 hover:border-purple-500/50 relative overflow-hidden"
-                style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.08), rgba(139,92,246,0.05))' }}
-              >
-                <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-purple-500 text-white">Forever</div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-white font-bold text-[15px]">Lifetime</div>
-                    <div className="text-white/35 text-xs mt-0.5">Pay once, VIP forever — no renewals</div>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-amber-400 font-bold text-lg">10,000</span>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                  </div>
-                </div>
-                {loading === 'lifetime' && <div className="mt-2 text-xs text-amber-400">Opening Telegram...</div>}
-              </button>
             </div>
           )}
 

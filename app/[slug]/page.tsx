@@ -773,7 +773,7 @@ export default async function JoinPage({ params }: PageProps) {
 
     const [joinCtaCampaigns, topBannerCampaigns, vaultTeaser] = await Promise.all([
       getActiveCampaigns('join-cta'),
-      getActiveCampaigns('top-banner'),
+      getActiveCampaigns('top-banner', { page: 'join', device: isMobile ? 'mobile' : 'desktop' }),
       getVaultTeaser(),
     ]);
     const joinCtaCampaign = joinCtaCampaigns[0] ?? null;
@@ -876,7 +876,7 @@ export default async function JoinPage({ params }: PageProps) {
 
     const [joinCtaCampaigns2, topBannerCampaigns2, vaultTeaser2] = await Promise.all([
       getActiveCampaigns('join-cta'),
-      getActiveCampaigns('top-banner'),
+      getActiveCampaigns('top-banner', { page: 'join', device: isMobile ? 'mobile' : 'desktop' }),
       getVaultTeaser(),
     ]);
     const joinCtaCampaign = joinCtaCampaigns2[0] ?? null;

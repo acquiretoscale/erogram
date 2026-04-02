@@ -194,9 +194,10 @@ async function getStoryData(categories: StoryCategoryConfig[], locale: string = 
       categories.map(async (cat): Promise<StoryCategory> => {
         const limit = cat.maxItems ?? 3;
 
-        // ── EROGRAM: newest groups (24h) + admin announcements ──
+        // ── EROGRAM: newest groups (24h) + admin slides (synced R2 or uploaded) ──
         if (cat.filterType === 'erogram') {
-          const [groups, announcements] = await Promise.all([
+          const r2Folder = cat.r2Folder || '';
+          const [groups, dbSlides] = await Promise.all([
             Group.find({
               status: 'approved',
               isAdvertisement: { $ne: true },
@@ -217,7 +218,6 @@ async function getStoryData(categories: StoryCategoryConfig[], locale: string = 
               .lean(),
           ]);
 
-          // Fallback if no groups in last 24h
           let finalGroups = groups;
           if (finalGroups.length === 0) {
             finalGroups = await Group.find({ status: 'approved', isAdvertisement: { $ne: true }, premiumOnly: { $ne: true }, hideFromStories: { $ne: true } })
@@ -227,12 +227,14 @@ async function getStoryData(categories: StoryCategoryConfig[], locale: string = 
               .lean();
           }
 
-          const mediaSlides: StoryMediaSlide[] = (announcements as any[]).map((a) => ({
+          const mediaSlides: StoryMediaSlide[] = (dbSlides as any[]).map((a) => ({
             _id: a._id.toString(),
             mediaType: a.mediaType,
             mediaUrl: a.mediaUrl || '',
             ctaText: a.ctaText || '',
             ctaUrl: a.ctaUrl || '',
+            ctaPosition: a.ctaPosition || 'bottom',
+            ctaColor: a.ctaColor || 'blue',
             caption: a.caption || '',
             likes: a.likes ?? 0,
             premiumGroups: a.premiumGroups?.map((g: any) => ({
@@ -243,6 +245,27 @@ async function getStoryData(categories: StoryCategoryConfig[], locale: string = 
               category: g.category || '',
             })),
           }));
+
+          // Only fall back to raw R2 listing if no DB records exist at all
+          if (mediaSlides.length === 0 && r2Folder) {
+            try {
+              const r2Files = await listR2Files(r2Folder, { maxSizeMB: 5 });
+              const picked = pickRandom(r2Files, limit);
+              for (let i = 0; i < picked.length; i++) {
+                const url = picked[i];
+                const isVideo = /\.(mp4|webm|mov)$/i.test(url);
+                mediaSlides.push({
+                  _id: `ero-r2-${cat.slug}-${i}`,
+                  mediaType: isVideo ? 'video' : 'image',
+                  mediaUrl: url,
+                  ctaText: cat.ctaText || '',
+                  ctaUrl: cat.ctaUrl || '',
+                  ctaPosition: cat.ctaPosition || 'bottom',
+                  ctaColor: cat.ctaColor || 'blue',
+                });
+              }
+            } catch { /* R2 unavailable */ }
+          }
 
           const hasNewContent = finalGroups.some((g: any) => new Date(g.createdAt) > twentyFourHoursAgo) || mediaSlides.length > 0;
 
@@ -255,44 +278,57 @@ async function getStoryData(categories: StoryCategoryConfig[], locale: string = 
           };
         }
 
-        // ── RANDOM GIRL: R2 media + label from config (Vicky / Carla) ──
+        // ── RANDOM GIRL: synced DB slides first, fallback to R2 listing ──
         if (cat.filterType === 'random-girl') {
           const name = cat.label || 'Vicky';
 
-          const r2Folder = cat.r2Folder || 'tgempire/instabaddies';
-          let r2Files: string[] = [];
-          try {
-            r2Files = await listR2Files(r2Folder, { maxSizeMB: 5 });
-          } catch { /* R2 unavailable */ }
-
-          const picked = pickRandom(r2Files, limit);
-
-          // Check if admin has set a CTA for this category
-          const adminSlides = await StorySlideContent.find({
+          const dbSlides = await StorySlideContent.find({
             categorySlug: cat.slug,
             enabled: true,
             $or: [{ expiresAt: null }, { expiresAt: { $gte: new Date() } }],
-          }).sort({ sortOrder: 1 }).lean();
+          }).sort({ sortOrder: 1, createdAt: -1 }).lean();
 
-          const mediaSlides: StoryMediaSlide[] = picked.map((url, i) => {
-            const ext = url.toLowerCase();
-            const isVideo = ext.endsWith('.mp4') || ext.endsWith('.webm') || ext.endsWith('.mov');
-            const admin = (adminSlides as any[])[0];
-            return {
-              _id: `rg-${cat.slug}-${i}`,
-              mediaType: isVideo ? 'video' : 'image' as const,
-              mediaUrl: url,
-              ctaText: admin?.ctaText || cat.ctaText || '',
-              ctaUrl: admin?.ctaUrl || cat.ctaUrl || '',
-            };
-          });
+          let mediaSlides: StoryMediaSlide[];
 
-          const profileImage = cat.profileImage || (picked[0] ?? '');
+          if ((dbSlides as any[]).length > 0) {
+            // Per-slide records exist (synced from R2 or manually uploaded) — use each one's own settings
+            const picked = pickRandom(dbSlides as any[], limit);
+            mediaSlides = picked.map((a: any) => ({
+              _id: a._id.toString(),
+              mediaType: a.mediaType,
+              mediaUrl: a.mediaUrl || '',
+              ctaText: a.ctaText || cat.ctaText || '',
+              ctaUrl: a.ctaUrl || cat.ctaUrl || '',
+              ctaPosition: a.ctaPosition || cat.ctaPosition || 'bottom',
+              ctaColor: a.ctaColor || cat.ctaColor || 'blue',
+              caption: a.caption || '',
+              likes: a.likes ?? 0,
+            }));
+          } else {
+            // No synced records — dynamic R2 listing with category defaults
+            const r2Folder = cat.r2Folder || 'tgempire/instabaddies';
+            let r2Files: string[] = [];
+            try { r2Files = await listR2Files(r2Folder, { maxSizeMB: 5 }); } catch { /* */ }
+            mediaSlides = pickRandom(r2Files, limit).map((url, i) => {
+              const isVideo = /\.(mp4|webm|mov)$/i.test(url);
+              return {
+                _id: `rg-${cat.slug}-${i}`,
+                mediaType: isVideo ? 'video' : 'image' as const,
+                mediaUrl: url,
+                ctaText: cat.ctaText || '',
+                ctaUrl: cat.ctaUrl || '',
+                ctaPosition: cat.ctaPosition || 'bottom',
+                ctaColor: cat.ctaColor || 'blue',
+              };
+            });
+          }
+
+          const profileImage = cat.profileImage || (mediaSlides[0]?.mediaUrl ?? '');
 
           return {
             slug: cat.slug, label: name, profileImage,
             hasNewContent: mediaSlides.length > 0,
-            verified: false, ctaText: cat.ctaText, ctaUrl: cat.ctaUrl,
+            verified: cat.verified, ctaText: cat.ctaText, ctaUrl: cat.ctaUrl,
             r2Folder: cat.r2Folder, storyType: 'random-girl',
             groups: [],
             mediaSlides,
@@ -314,6 +350,8 @@ async function getStoryData(categories: StoryCategoryConfig[], locale: string = 
             mediaUrl: a.mediaUrl,
             ctaText: a.ctaText || '',
             ctaUrl: a.ctaUrl || '',
+            ctaPosition: a.ctaPosition || 'bottom',
+            ctaColor: a.ctaColor || 'blue',
             clientName: a.clientName || '',
             caption: a.caption || '',
             likes: a.likes ?? 0,
@@ -336,6 +374,8 @@ async function getStoryData(categories: StoryCategoryConfig[], locale: string = 
                 mediaType: isVideo ? 'video' : 'image' as const,
                 mediaUrl: url,
                 ctaText: cat.ctaText || '',
+                ctaPosition: cat.ctaPosition || 'bottom',
+                ctaColor: cat.ctaColor || 'blue',
                 ctaUrl: cat.ctaUrl || '',
               };
             });
@@ -422,7 +462,7 @@ export default async function GroupsPage() {
 
   // In-feed ads + story data + vault teaser — all in parallel
   const [topBannerCampaigns, feedCampaigns, storyData, vaultTeaserGroups] = await Promise.all([
-    getActiveCampaigns('top-banner'),
+    getActiveCampaigns('top-banner', { page: 'groups', device: isMobile ? 'mobile' : 'desktop' }),
     getActiveFeedCampaigns('groups'),
     storiesEnabled ? getStoryData(storyConfig, locale) : Promise.resolve([] as StoryCategory[]),
     getVaultTeaser(),

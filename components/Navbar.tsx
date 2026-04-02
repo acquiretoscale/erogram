@@ -244,6 +244,11 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
             {(navbarCta?.description || navbarCta?.buttonText) || DEFAULT_NAVBAR_CTA.description}
           </a>
 
+          <Link href="/articles" className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${BTN_NAV}`}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-80"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            {t('nav.articles', 'Articles')}
+          </Link>
+
           <Link href={lp('/add')} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[13px] font-semibold text-[#4ab3f4] bg-[#0088cc]/[0.10] border border-[#0088cc]/25 hover:bg-[#0088cc]/[0.18] hover:text-[#6ec6f7] transition-all whitespace-nowrap">
             <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
             {t('nav.add', 'Add')}
@@ -533,6 +538,15 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
             </a>
 
             <Link
+              href="/articles"
+              onClick={() => setIsMenuOpen(false)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[14px] font-semibold text-white/80 bg-white/[0.07] border border-white/[0.10] hover:bg-white/[0.13] hover:text-white transition-all"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-80"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              {t('nav.articles', 'Articles')}
+            </Link>
+
+            <Link
               href={lp('/add')}
               onClick={() => setIsMenuOpen(false)}
               className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-[14px] font-semibold text-[#4ab3f4] bg-[#0088cc]/[0.10] border border-[#0088cc]/25 hover:bg-[#0088cc]/[0.18] hover:text-[#6ec6f7] transition-all whitespace-nowrap"
@@ -576,10 +590,6 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 opacity-80"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
                   {t('nav.saved', 'Saved')}
                 </Link>
-                <Link href="/articles" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[14px] font-semibold text-[#4ab3f4] bg-[#0088cc]/[0.10] border border-[#0088cc]/25 hover:bg-[#0088cc]/[0.18] hover:text-[#6ec6f7] transition-all">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-80"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                  {t('nav.articles', 'Articles')}
-                </Link>
                 <Link href={`${lp('/profile')}?tab=support`} onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[14px] font-semibold text-[#4ab3f4] bg-[#0088cc]/[0.10] border border-[#0088cc]/25 hover:bg-[#0088cc]/[0.18] hover:text-[#6ec6f7] transition-all">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-80"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                   Support
@@ -611,9 +621,6 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
               </>
             ) : (
               <>
-                <Link href="/articles" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 rounded-lg text-[14px] text-white/70 hover:text-white hover:bg-white/5 transition">
-                  {t('nav.articles', 'Articles')}
-                </Link>
                 <Link
                   href={lp('/login')}
                   onClick={() => setIsMenuOpen(false)}

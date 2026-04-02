@@ -48,6 +48,8 @@ export async function getAdminOverview(token: string) {
   const _30d = new Date(); _30d.setDate(_30d.getDate() - 30); _30d.setHours(0, 0, 0, 0);
   const _30dStr = fmtDateKey(_30d);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
   const [
     pendingGroups, pendingBots, pendingReviews, pendingReports,
@@ -57,7 +59,7 @@ export async function getAdminOverview(token: string) {
     allPaidGroups, allPaidBots,
     subsTrend30d, adClicksTrend30d, trafficTrend30d, newUsersTrend30d, usersByCountry30d,
     latestRate, premiumConfig,
-    manualByAdvertiser, manualTotal, manualThisMonth,
+    manualByAdvertiser, manualTotal, manualThisMonth, manualPrevMonth,
     totalBookmarks, totalBookmarkFolders,
     groupsTrend30d, botsTrend30d,
     scheduledCount, nextScheduledGroup, lastScheduledGroup,
@@ -122,6 +124,10 @@ export async function getAdminOverview(token: string) {
       { $match: { paidAt: { $gte: monthStart } } },
       { $group: { _id: null, total: { $sum: '$amount' } } },
     ]),
+    ManualRevenue.aggregate([
+      { $match: { paidAt: { $gte: prevMonthStart, $lte: prevMonthEnd } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } },
+    ]),
     Bookmark.countDocuments(),
     BookmarkFolder.countDocuments(),
     Group.aggregate([
@@ -147,6 +153,7 @@ export async function getAdminOverview(token: string) {
   const totalPageviewsLifetime = totalPageviews[0]?.total || 0;
   const manualLifetime = manualTotal[0]?.total || 0;
   const manualThisMonthUsd = (manualThisMonth as any)[0]?.total || 0;
+  const manualPrevMonthUsd = (manualPrevMonth as any)[0]?.total || 0;
 
   const cfg = premiumConfig as any;
   const planStars: Record<string, number> = {
@@ -247,6 +254,14 @@ export async function getAdminOverview(token: string) {
     + salesThisMonth.filter(s => s.type !== 'subscription').reduce((a, s) => a + s.stars * rate, 0);
   const totalThisMonthUsd = starsThisMonthUsd + manualThisMonthUsd;
 
+  const salesPrevMonth = sales.filter((s) => {
+    const t = new Date(s.createdAt).getTime();
+    return t >= prevMonthStart.getTime() && t <= prevMonthEnd.getTime();
+  });
+  const starsPrevMonthUsd = salesPrevMonth.filter(s => s.type === 'subscription').reduce((a, s) => a + s.usd, 0)
+    + salesPrevMonth.filter(s => s.type !== 'subscription').reduce((a, s) => a + s.stars * rate, 0);
+  const totalPrevMonthUsd = starsPrevMonthUsd + manualPrevMonthUsd;
+
   const advertisers = (manualByAdvertiser as any[]).map((a) => ({ name: a._id || 'Unnamed', total: a.total || 0, count: a.count || 0 }));
   const subRevenue = sales.filter(s => s.type === 'subscription').reduce((a, s) => a + s.usd, 0);
   const groupRevenue = sales.filter(s => s.type === 'group_boost').reduce((a, s) => a + s.usd, 0);
@@ -270,6 +285,7 @@ export async function getAdminOverview(token: string) {
       manualRevenueLifetime: manualLifetime,
       totalEarningsLifetimeUsd: starsEarningsUsd + manualLifetime,
       totalRevenueThisMonth: totalThisMonthUsd,
+      totalRevenuePrevMonth: totalPrevMonthUsd,
       starsRevenueThisMonth: starsThisMonthUsd, manualRevenueThisMonth: manualThisMonthUsd,
     },
     kpis: {

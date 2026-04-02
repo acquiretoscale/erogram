@@ -415,13 +415,19 @@ export default function StoryViewer({
                 <img src={profileImg} alt={cat?.label || ''} className="w-full h-full object-cover" />
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <span className="text-white text-[13px] font-bold drop-shadow-lg">{cat?.label}</span>
+              {cat?.verified && (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0 drop-shadow-lg">
+                  <circle cx="12" cy="12" r="10" fill="#2AABEE" />
+                  <path d="M8 12.5l2.5 2.5L16 9.5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
               {currentSlide.type === 'group' && currentSlide.data.createdAt && (
-                <span className="text-white/50 text-[11px] font-medium">{timeAgo(currentSlide.data.createdAt)}</span>
+                <span className="text-white/50 text-[11px] font-medium ml-1">{timeAgo(currentSlide.data.createdAt)}</span>
               )}
               {cat?.storyType === 'advert' && (
-                <span className="text-white/40 text-[10px] font-medium">Sponsored</span>
+                <span className="text-white/40 text-[10px] font-medium ml-1">Sponsored</span>
               )}
             </div>
             {/* 24h countdown — like Instagram */}
@@ -683,6 +689,21 @@ function GroupSlideView({
   );
 }
 
+const CTA_COLORS: Record<string, { bg: string; shadow: string; text: string }> = {
+  blue:     { bg: 'linear-gradient(135deg, #2AABEE 0%, #229ED9 100%)', shadow: '0 8px 32px rgba(34,158,217,0.45)', text: '#fff' },
+  pink:     { bg: 'linear-gradient(135deg, #f953c6 0%, #b91d73 100%)', shadow: '0 8px 32px rgba(249,83,198,0.45)', text: '#fff' },
+  gold:     { bg: 'linear-gradient(135deg, #c9973a 0%, #e8ba5a 50%, #c9973a 100%)', shadow: '0 8px 32px rgba(201,151,58,0.45)', text: '#0d0c0a' },
+  green:    { bg: 'linear-gradient(135deg, #00b09b 0%, #96c93d 100%)', shadow: '0 8px 32px rgba(0,176,155,0.45)', text: '#fff' },
+  red:      { bg: 'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)', shadow: '0 8px 32px rgba(255,65,108,0.45)', text: '#fff' },
+  purple:   { bg: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)', shadow: '0 8px 32px rgba(124,58,237,0.45)', text: '#fff' },
+  black:    { bg: 'linear-gradient(135deg, #2d2d2d 0%, #0a0a0a 100%)', shadow: '0 8px 32px rgba(0,0,0,0.5)', text: '#fff' },
+  orange:   { bg: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', shadow: '0 8px 32px rgba(249,115,22,0.45)', text: '#fff' },
+};
+
+function getCtaStyle(color?: string) {
+  return CTA_COLORS[color || 'blue'] || CTA_COLORS.blue;
+}
+
 // ── Media slide (random girl / AI GF / announcements) ──
 function MediaSlideView({
   slide, cat, videoRef, onVideoMeta, stopPointer, onCtaClick,
@@ -694,6 +715,15 @@ function MediaSlideView({
   stopPointer: (e: React.PointerEvent) => void;
   onCtaClick: () => void;
 }) {
+  const pos = slide.ctaPosition || 'bottom';
+  const ctaStyle = getCtaStyle(slide.ctaColor);
+
+  const positionClass = pos === 'top'
+    ? 'justify-start pt-24'
+    : pos === 'middle'
+      ? 'justify-center'
+      : 'justify-end pb-20';
+
   return (
     <div className="absolute inset-0">
       {slide.mediaType === 'video' ? (
@@ -715,21 +745,34 @@ function MediaSlideView({
       )}
 
       {/* Gradients */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent h-28 pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
+      <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
+      <div className="absolute bottom-0 left-0 right-0 h-44 bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none" />
 
-      {/* Caption-only overlay (no CTA) */}
+      {/* Caption — Instagram-style bottom text */}
       {slide.caption && !slide.ctaText && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center px-6 pointer-events-none">
-          <p className="text-white text-base font-semibold drop-shadow-lg text-center leading-relaxed">{slide.caption}</p>
+        <div className="absolute bottom-16 left-0 right-0 z-10 px-5 pointer-events-none">
+          <div className="flex items-start gap-2.5">
+            <div className="w-7 h-7 rounded-full overflow-hidden bg-white/10 shrink-0 border border-white/20">
+              <img src={cat?.profileImage || '/assets/placeholder-no-image.png'} alt="" className="w-full h-full object-cover" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-white text-[13px] font-bold mr-2">{cat?.label || 'Erogram'}</span>
+              <span className="text-white/90 text-[14px] leading-relaxed">{slide.caption}</span>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* CTA — centered on the slide */}
+      {/* CTA + optional caption — positionable */}
       {slide.ctaText && slide.ctaUrl && (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 px-5 pointer-events-none">
+        <div className={`absolute inset-0 z-10 flex flex-col items-center ${positionClass} gap-3 px-5 pointer-events-none`}>
           {slide.caption && (
-            <p className="text-white text-base font-semibold drop-shadow-lg text-center leading-relaxed">{slide.caption}</p>
+            <div className="w-full max-w-[320px] pointer-events-none">
+              <div className="rounded-2xl px-5 py-3.5 backdrop-blur-xl border border-white/[0.15]"
+                style={{ background: 'rgba(0,0,0,0.45)' }}>
+                <p className="text-white text-[15px] font-semibold text-center leading-relaxed drop-shadow-lg">{slide.caption}</p>
+              </div>
+            </div>
           )}
           <Link
             href={slide.ctaUrl}
@@ -737,31 +780,31 @@ function MediaSlideView({
             rel="noopener noreferrer"
             onClick={(e) => { e.stopPropagation(); onCtaClick(); }}
             onPointerDown={stopPointer}
-            className="flex items-center justify-center gap-2.5 w-full max-w-[300px] py-4 rounded-xl text-white text-[16px] font-bold tracking-wide transition-all duration-200 active:scale-[0.96] shadow-xl pointer-events-auto"
-            style={{ background: 'linear-gradient(135deg, #2AABEE 0%, #229ED9 100%)', boxShadow: '0 8px 32px rgba(34,158,217,0.4)' }}
+            data-story-cta="true"
+            className="flex items-center justify-center gap-2.5 w-full max-w-[320px] py-4 rounded-2xl text-[16px] font-extrabold tracking-wide transition-all duration-200 active:scale-[0.96] pointer-events-auto border border-white/[0.15]"
+            style={{ background: ctaStyle.bg, boxShadow: ctaStyle.shadow, color: ctaStyle.text }}
           >
             {slide.ctaText}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={ctaStyle.text} strokeWidth="2.5" strokeLinecap="round" className="opacity-80">
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </Link>
         </div>
       )}
 
-      {/* Premium CTA on video slides without a custom CTA */}
+      {/* Default premium CTA on video slides without a custom CTA */}
       {slide.mediaType === 'video' && !slide.ctaText && (
         <div className="absolute bottom-16 left-0 right-0 z-10 flex justify-center px-5 pointer-events-none">
           <Link
             href="/premium"
-            target="_blank"
-            rel="noopener noreferrer"
             onClick={(e) => { e.stopPropagation(); onCtaClick(); }}
             onPointerDown={stopPointer}
-            className="flex items-center justify-center gap-2 w-full max-w-[280px] py-3.5 rounded-xl text-white text-[14px] font-black uppercase tracking-wide transition-all duration-200 active:scale-[0.96] shadow-xl pointer-events-auto"
+            data-story-cta="true"
+            className="flex items-center justify-center gap-2 w-full max-w-[300px] py-3.5 rounded-2xl text-[14px] font-black uppercase tracking-wide transition-all duration-200 active:scale-[0.96] pointer-events-auto border border-white/[0.1]"
             style={{
-              background: 'linear-gradient(135deg, #c9973a 0%, #e8ba5a 50%, #c9973a 100%)',
-              boxShadow: '0 8px 32px rgba(201,151,58,0.4), 0 0 20px rgba(201,151,58,0.2)',
-              color: '#0d0c0a',
+              background: CTA_COLORS.gold.bg,
+              boxShadow: CTA_COLORS.gold.shadow,
+              color: CTA_COLORS.gold.text,
             }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="#0d0c0a">
@@ -777,8 +820,8 @@ function MediaSlideView({
 
       {/* Client name badge */}
       {slide.clientName && (
-        <div className="absolute bottom-8 left-0 right-0 z-10 flex justify-center">
-          <span className="text-white/30 text-[10px] font-medium">by {slide.clientName}</span>
+        <div className="absolute bottom-6 left-0 right-0 z-10 flex justify-center">
+          <span className="text-white/25 text-[10px] font-medium tracking-wide">by {slide.clientName}</span>
         </div>
       )}
     </div>

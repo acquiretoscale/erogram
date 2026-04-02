@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Search, Bookmark, Crown, Trash2, X, Heart, Shuffle, Clock, Plus } from 'lucide-react';
 import Navbar from '@/components/Navbar';
+import HeaderBanner from '@/components/HeaderBanner';
 import { OF_CATEGORIES, ofCategoryUrl } from './constants';
 import { trackCreatorClick, trackTrendingClick } from '@/lib/actions/onlyfansTracking';
 import { getTrendingCreators } from '@/lib/actions/publicData';
@@ -46,6 +47,7 @@ interface Props {
   initialQuery?: string;
   top10Lists?: Top10List[];
   recentlyAdded?: Creator[];
+  topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string; bannerDevice?: string }>;
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -433,7 +435,7 @@ function CreatorCardSkeleton() {
   );
 }
 
-export default function OnlyFansClient({ initialCreators, totalCreators, initialQuery = '', top10Lists = [], recentlyAdded = [] }: Props) {
+export default function OnlyFansClient({ initialCreators, totalCreators, initialQuery = '', top10Lists = [], recentlyAdded = [], topBannerCampaigns = [] }: Props) {
   const { t } = useTranslation();
   const lp = useLocalePath();
   const [query, setQuery] = useState(initialQuery);
@@ -465,8 +467,9 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
   const isLiveVisitors = liveUsers > 0;
 
   const [categoryPicks, setCategoryPicks] = useState<Record<string, Creator[]>>({});
-  const [recentPicks, setRecentPicks] = useState<Creator[]>(() => recentlyAdded.slice(0, 4));
-  const shuffleRecent = () => setRecentPicks(shuffle(recentlyAdded).slice(0, 4));
+  const [recentPool, setRecentPool] = useState<Creator[]>(recentlyAdded);
+  const [recentPicks, setRecentPicks] = useState<Creator[]>(() => shuffle(recentlyAdded).slice(0, 4));
+  const shuffleRecent = () => setRecentPicks(shuffle(recentPool).slice(0, 4));
 
   const featuredIdSet = useMemo(
     () => new Set(allFeatured.map((f: any) => f._id)),
@@ -676,6 +679,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
       setSearchResults(filterOut);
       setCreators(filterOut);
       setAfterSearchCreators(filterOut);
+      setRecentPool(filterOut);
       setRecentPicks(filterOut);
       setCategoryPicks((prev) => {
         const next: Record<string, Creator[]> = {};
@@ -767,6 +771,11 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
       <Navbar variant="onlyfans" />
 
       <main className="pt-20">
+        {topBannerCampaigns.length > 0 && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 mb-4">
+            <HeaderBanner campaigns={topBannerCampaigns} />
+          </div>
+        )}
         {/* Hero — compact */}
         <section className="bg-gradient-to-b from-[#00AFF0]/10 via-[#00AFF0]/[0.04] to-[#111111] pt-6 pb-4 sm:pt-8 sm:pb-6 relative">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -1098,6 +1107,13 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                       <h2 className="text-sm sm:text-base font-black text-white/90 tracking-tight whitespace-nowrap">
                         {t('ofSearch.recentlyAdded')} <span className="text-[#00D4FF]">OnlyFans</span> {t('ofSearch.onlyfansCreators')}
                       </h2>
+                      <button
+                        onClick={shuffleRecent}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg bg-white/[0.08] border border-white/[0.10] text-white/60 text-[11px] sm:text-xs font-bold hover:bg-[#00AFF0]/15 hover:border-[#00AFF0]/30 hover:text-[#00AFF0] transition-all active:scale-[0.98] whitespace-nowrap shrink-0"
+                      >
+                        <Shuffle size={13} className="shrink-0" />
+                        {t('ofSearch.shuffleProfiles')}
+                      </button>
                       <Link
                         href={lp('/submit')}
                         className="inline-flex items-center gap-1 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg bg-white/[0.08] border border-white/[0.10] text-white/60 text-[11px] sm:text-xs font-bold hover:bg-[#00AFF0]/15 hover:border-[#00AFF0]/30 hover:text-[#00AFF0] transition-all active:scale-[0.98] whitespace-nowrap shrink-0"

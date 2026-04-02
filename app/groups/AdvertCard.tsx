@@ -137,6 +137,7 @@ function VideoAdCard({ campaign, handleClick }: { campaign: FeedCampaign; handle
                     loop
                     preload="none"
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    style={campaign.creative ? undefined : { background: '#0a0a0a' }}
                     aria-hidden="true"
                 />
 

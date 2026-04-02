@@ -58,6 +58,8 @@ export async function adminCreateCampaign(token: string, body: Record<string, an
     premiumCategory: body.premiumCategory ?? undefined,
     premiumGroupIds: body.premiumGroupIds ?? undefined,
     socialProof: body.socialProof ?? undefined,
+    bannerPages: body.bannerPages ?? undefined,
+    bannerDevice: body.bannerDevice ?? undefined,
   });
   revalidatePublicFeeds();
   return result;
@@ -67,9 +69,43 @@ export async function adminUpdateCampaign(token: string, id: string, body: Recor
   if (body.slot && TEXT_ONLY_SLOTS.includes(body.slot)) {
     body.creative = '';
   }
-  const updated = await updateCampaign(token, id, body);
+  const doc = await updateCampaign(token, id, body);
   revalidatePublicFeeds();
-  return updated;
+  if (!doc) return null;
+  const c = doc as any;
+  return {
+    _id: c._id?.toString?.() ?? String(c._id),
+    advertiserId: c.advertiserId?.toString?.() ?? '',
+    name: c.name ?? '',
+    internalName: c.internalName ?? '',
+    slot: c.slot ?? '',
+    creative: c.creative ?? '',
+    destinationUrl: c.destinationUrl ?? '',
+    startDate: c.startDate instanceof Date ? c.startDate.toISOString() : (c.startDate ?? ''),
+    endDate: c.endDate instanceof Date ? c.endDate.toISOString() : (c.endDate ?? ''),
+    status: c.status ?? 'active',
+    isVisible: c.isVisible !== false,
+    impressions: c.impressions ?? 0,
+    clicks: c.clicks ?? 0,
+    createdAt: c.createdAt instanceof Date ? c.createdAt.toISOString() : (c.createdAt ?? ''),
+    position: c.position ?? null,
+    feedTier: c.feedTier ?? null,
+    tierSlot: c.tierSlot ?? null,
+    description: c.description ?? '',
+    category: c.category ?? 'All',
+    country: c.country ?? 'All',
+    buttonText: c.buttonText ?? 'Visit Site',
+    feedPlacement: c.feedPlacement ?? 'both',
+    videoUrl: c.videoUrl ?? '',
+    badgeText: c.badgeText ?? '',
+    verified: Boolean(c.verified),
+    adType: c.adType ?? 'advertiser',
+    premiumCategory: c.premiumCategory ?? '',
+    premiumGroupIds: (c.premiumGroupIds || []).map((id: any) => id?.toString?.() ?? String(id)),
+    socialProof: c.socialProof ?? 'random',
+    bannerPages: c.bannerPages ?? [],
+    bannerDevice: c.bannerDevice ?? 'all',
+  };
 }
 
 export async function adminDeleteCampaign(token: string, id: string) {

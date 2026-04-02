@@ -256,10 +256,10 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
             <>
               <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full glass border-white/10 bg-white/5 mb-4 sm:mb-8 ${animationClasses.fadeInUp}`}>
                 <span className="w-2 h-2 rounded-full bg-[#ff3366] animate-pulse"></span>
-                <span className="text-sm font-medium text-white/80">{t('home.badge', 'The #1 NSFW Directory')}</span>
+                <span className="text-sm font-medium text-white/80">{t('home.badge', 'The #1 NSFW & Porn Telegram and AI Directory')}</span>
               </div>
               <h1 className={`text-3xl sm:text-5xl md:text-6xl font-black mb-4 sm:mb-8 leading-tight tracking-tight ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.1s' }}>
-                <span className="text-[#f5f5f5]">{t('home.heroTitle1', 'Discover NSFW Telegram groups,')}</span>
+                <span className="text-[#f5f5f5]">{t('home.heroTitle1', 'Discover NSFW & Porn Telegram groups,')}</span>
                 <span className="block sm:inline"> </span>
                 <span className="gradient-text">{t('home.heroTitle2', 'bots & AI')}</span>
               </h1>
@@ -273,7 +273,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border-white/10 bg-white/5 mb-4 sm:mb-8"
               >
                 <span className="w-2 h-2 rounded-full bg-[#ff3366] animate-pulse"></span>
-                <span className="text-sm font-medium text-white/80">{t('home.badge', 'The #1 NSFW Directory')}</span>
+                <span className="text-sm font-medium text-white/80">{t('home.badge', 'The #1 NSFW & Porn Telegram and AI Directory')}</span>
               </motion.div>
               <motion.h1
                 className="text-3xl sm:text-5xl md:text-6xl font-black mb-4 sm:mb-8 leading-tight tracking-tight"
@@ -282,7 +282,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                 transition={{ duration: 0.8, ease: [0.2, 0.8, 0.2, 1], delay: 0.1 }}
                 style={{ willChange: 'transform, opacity' }}
               >
-                <span className="text-[#f5f5f5]">{t('home.heroTitle1', 'Discover NSFW Telegram groups,')}</span>
+                <span className="text-[#f5f5f5]">{t('home.heroTitle1', 'Discover NSFW & Porn Telegram groups,')}</span>
                 <span className="block sm:inline"> </span>
                 <span className="gradient-text">{t('home.heroTitle2', 'bots & AI')}</span>
               </motion.h1>

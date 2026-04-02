@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation';
 import connectDB from '@/lib/db/mongodb';
 import { Article, User, Group } from '@/lib/models';
 import ArticleClient from './ArticleClient';
-import { getActiveCampaigns } from '@/lib/actions/campaigns';
 
 // ISR for public article pages (keeps SSR output crawlable while avoiding per-request rendering)
 export const revalidate = 300;
@@ -193,13 +192,9 @@ export default async function ArticlePage({ params }: PageProps) {
   const relatedArticles = await getRelatedArticles(article._id, 4);
 
   // Top groups for sidebar widget (SEO + internal links)
-  const [topGroups, topBannerCampaigns] = await Promise.all([
-    getTopGroups(5),
-    getActiveCampaigns('top-banner'),
-  ]);
+  const topGroups = await getTopGroups(5);
 
-  const topBannerForPage =
-    topBannerCampaigns.length > 0 && topBannerCampaigns[0].creative ? topBannerCampaigns : [];
+  const topBannerForPage: any[] = [];
 
   const articleUrl = `${BASE_URL}/articles/${article.slug}`;
   const imageUrl = toAbsoluteUrl(article.ogImage || article.featuredImage);

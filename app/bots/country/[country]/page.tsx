@@ -354,7 +354,7 @@ export default async function CountryBotsPage({ params }: PageProps) {
   const [bots, adverts, topBannerCampaigns, feedCampaigns] = await Promise.all([
     getBotsByCountry(country),
     getAdverts(),
-    getActiveCampaigns('top-banner'),
+    getActiveCampaigns('top-banner', { page: 'bots', device: isMobile ? 'mobile' : 'desktop' }),
     getActiveFeedCampaigns('bots'),
   ]);
 

@@ -26,29 +26,7 @@ async function answerPreCheckoutQuery(id: string, ok: boolean, errorMessage?: st
   });
 }
 
-async function sendMessage(chatId: number | string, text: string) {
-  if (!BOT_TOKEN) return;
-  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text,
-      disable_web_page_preview: true,
-    }),
-  });
-}
-
-async function getStarTransactions(limit: number) {
-  const l = Math.min(Math.max(limit, 1), 20);
-  const res = await fetch(
-    `https://api.telegram.org/bot${BOT_TOKEN}/getStarTransactions?offset=0&limit=${l}`,
-    { method: 'GET' }
-  );
-  return await res.json();
-}
-
-const VALID_PLANS = new Set(['monthly', 'quarterly', 'yearly', 'lifetime']);
+const VALID_PLANS = new Set(['monthly', 'quarterly', 'yearly']);
 
 export async function POST(req: NextRequest) {
   try {
@@ -65,53 +43,10 @@ export async function POST(req: NextRequest) {
 
     const update = await req.json();
 
-    // Basic /start handler so the bot "responds" in chat.
-    // Payments are handled below via pre_checkout_query + successful_payment updates.
+    // Ignore all plain text messages — the bot must NEVER message users.
+    // Only pre_checkout_query and successful_payment are handled below.
     if (update.message?.text && !update.message?.successful_payment) {
-      const text = String(update.message.text || '').trim();
-      const chatId = update.message.chat?.id;
-
-      if (text === '/start' || text.startsWith('/start ')) {
-        if (chatId !== undefined && chatId !== null) {
-          await sendMessage(
-            chatId,
-            [
-              'This bot is used for Erogram Premium payments via Telegram Stars.',
-              '',
-              'If you are trying to buy Premium: open the Premium page on the website and choose a plan.',
-              '',
-              'If you are trying to find Stars earnings: they are NOT added to your personal Stars balance. They belong to the bot revenue balance and may be hidden by Telegram UI in some regions/accounts.',
-              '',
-              'Commands:',
-              '/transactions - show last 5 Stars payments to this bot',
-            ].join('\n')
-          );
-        }
-        return NextResponse.json({ ok: true });
-      }
-
-      if ((text === '/transactions' || text.startsWith('/transactions ')) && chatId !== undefined && chatId !== null) {
-        const parts = text.split(/\s+/).filter(Boolean);
-        const limit = Number(parts[1] || 5);
-        const tg = await getStarTransactions(Number.isFinite(limit) ? limit : 5);
-        if (!tg?.ok) {
-          await sendMessage(chatId, 'Failed to fetch transactions from Telegram right now.');
-          return NextResponse.json({ ok: true });
-        }
-        const txs = tg?.result?.transactions || [];
-        if (!Array.isArray(txs) || txs.length === 0) {
-          await sendMessage(chatId, 'No Stars transactions found for this bot yet.');
-          return NextResponse.json({ ok: true });
-        }
-        const lines = txs.slice(0, 10).map((t: any) => {
-          const when = t?.date ? new Date(Number(t.date) * 1000).toISOString().slice(0, 16).replace('T', ' ') : '—';
-          const amount = Number(t?.amount || 0);
-          const fromId = t?.source?.user?.id ? `user:${t.source.user.id}` : 'user:—';
-          return `${when}  +${amount}★  ${fromId}`;
-        });
-        await sendMessage(chatId, `Latest Stars transactions:\n\n${lines.join('\n')}`);
-        return NextResponse.json({ ok: true });
-      }
+      return NextResponse.json({ ok: true });
     }
 
     if (update.pre_checkout_query) {
@@ -284,16 +219,11 @@ export async function POST(req: NextRequest) {
           lastPaymentChargeId: chargeId,
         };
 
-        if (plan === 'lifetime') {
-          updateData.premiumExpiresAt = null;
-        } else {
-          const pricing = await getPremiumPricing();
-          const planConfig = plan === 'yearly' ? pricing.yearly : plan === 'quarterly' ? pricing.quarterly : pricing.monthly;
-          const planDays = planConfig.days;
-          const expiresAt = new Date(now);
-          expiresAt.setDate(expiresAt.getDate() + planDays);
-          updateData.premiumExpiresAt = expiresAt;
-        }
+        const pricing = await getPremiumPricing();
+        const planConfig = plan === 'yearly' ? pricing.yearly : plan === 'quarterly' ? pricing.quarterly : pricing.monthly;
+        const expiresAt = new Date(now);
+        expiresAt.setDate(expiresAt.getDate() + planConfig.days);
+        updateData.premiumExpiresAt = expiresAt;
 
         await User.findByIdAndUpdate(userId, updateData);
         logEvent({ event: 'payment_success', userId, plan, chargeId, paymentMethod: 'stars' });

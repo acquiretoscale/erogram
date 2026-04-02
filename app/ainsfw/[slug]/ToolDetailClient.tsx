@@ -201,25 +201,28 @@ export default function ToolDetailClient({ tool, similar, initialStats }: ToolDe
                 </div>
               </div>
 
-              {/* Vote + Bookmark row */}
+              {/* Vote + Score + Bookmark row */}
               <div className="flex items-center gap-2 mb-4">
                 <button
                   onClick={() => handleVote('up')}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border font-black text-sm transition-all ${
+                  className={`flex items-center justify-center w-10 h-10 rounded-xl border font-black text-sm transition-all ${
                     userVote === 'up' ? 'bg-green-500 text-white border-green-400' : 'bg-white/10 text-white/70 border-white/15 hover:bg-green-500/20 hover:text-green-300'
                   }`}
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l8 8H4z"/></svg>
-                  {votes.up} Up
                 </button>
+                <span className={`flex-1 text-center text-sm font-black py-2.5 rounded-xl border ${
+                  score > 0 ? 'bg-green-500/20 text-green-300 border-green-500/30' : score < 0 ? 'bg-red-500/20 text-red-300 border-red-500/30' : 'bg-white/10 text-gray-300 border-white/15'
+                }`}>
+                  {score > 0 ? `+${score}` : score}
+                </span>
                 <button
                   onClick={() => handleVote('down')}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border font-black text-sm transition-all ${
+                  className={`flex items-center justify-center w-10 h-10 rounded-xl border font-black text-sm transition-all ${
                     userVote === 'down' ? 'bg-red-500 text-white border-red-400' : 'bg-white/10 text-white/70 border-white/15 hover:bg-red-500/20 hover:text-red-300'
                   }`}
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20l-8-8h16z"/></svg>
-                  {votes.down} Down
                 </button>
                 <button
                   onClick={handleBookmark}
@@ -231,15 +234,6 @@ export default function ToolDetailClient({ tool, similar, initialStats }: ToolDe
                     <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
                   </svg>
                 </button>
-              </div>
-
-              {/* Score pill */}
-              <div className="flex justify-center mb-4">
-                <span className={`text-sm font-black px-4 py-1.5 rounded-full border ${
-                  score > 0 ? 'bg-green-500/20 text-green-300 border-green-500/30' : score < 0 ? 'bg-red-500/20 text-red-300 border-red-500/30' : 'bg-white/10 text-gray-300 border-white/15'
-                }`}>
-                  Score: {score > 0 ? `+${score}` : score}
-                </span>
               </div>
 
               {/* Tags */}
@@ -260,30 +254,7 @@ export default function ToolDetailClient({ tool, similar, initialStats }: ToolDe
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
             >
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-tight mb-4">
-                {tool.name}
-              </h1>
-              <p className="text-gray-400 text-sm mb-2">{tool.vendor}</p>
-
-              {/* Star rating if any */}
-              {reviews.length > 0 && (
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="flex">
-                    {[1,2,3,4,5].map((s) => (
-                      <svg key={s} className={`w-4 h-4 ${s <= avgRating ? 'text-yellow-400' : 'text-gray-600'}`} viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                      </svg>
-                    ))}
-                  </div>
-                  <span className="text-gray-400 text-sm">{avgRating}/5 · {reviews.length} review{reviews.length !== 1 ? 's' : ''}</span>
-                </div>
-              )}
-
-              <p className="text-gray-300 text-base sm:text-lg leading-relaxed mb-8">
-                {tool.description}
-              </p>
-
-              {/* Screenshot Gallery */}
+              {/* Screenshot Gallery — shown first on both mobile and desktop */}
               {(gallery.length > 0 || galleryLoading) && (
                 <div className="mb-8">
                   <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-3">Screenshots</h3>
@@ -351,7 +322,31 @@ export default function ToolDetailClient({ tool, similar, initialStats }: ToolDe
                 </div>
               )}
 
-              {/* CTA card */}
+              {/* Title + text */}
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-tight mb-4">
+                {tool.name}
+              </h1>
+              <p className="text-gray-400 text-sm mb-2">{tool.vendor}</p>
+
+              {/* Star rating if any */}
+              {reviews.length > 0 && (
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="flex">
+                    {[1,2,3,4,5].map((s) => (
+                      <svg key={s} className={`w-4 h-4 ${s <= avgRating ? 'text-yellow-400' : 'text-gray-600'}`} viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                      </svg>
+                    ))}
+                  </div>
+                  <span className="text-gray-400 text-sm">{avgRating}/5 · {reviews.length} review{reviews.length !== 1 ? 's' : ''}</span>
+                </div>
+              )}
+
+              <p className="text-gray-300 text-base sm:text-lg leading-relaxed mb-8">
+                {tool.description}
+              </p>
+
+              {/* CTA card — immediately after description */}
               <div className="bg-[#151515] rounded-3xl p-6 sm:p-8 border border-white/10 shadow-xl mb-8 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-600/10 to-purple-600/10 blur-3xl rounded-full pointer-events-none -translate-y-1/2 translate-x-1/2" />
 

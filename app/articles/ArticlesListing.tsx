@@ -85,10 +85,6 @@ export default function ArticlesListing({ initialArticles = [], topBannerCampaig
         animate="animate"
         className="relative z-10 max-w-7xl mx-auto px-6 pt-20 pb-20"
       >
-        <div className="w-full mb-3">
-          <HeaderBanner campaigns={topBannerCampaigns} />
-        </div>
-
         <motion.div variants={fadeInUp} className="text-center mb-12 md:mb-16">
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black mb-4 md:mb-6 leading-tight">
             <span className="gradient-text">Articles</span>
@@ -97,6 +93,10 @@ export default function ArticlesListing({ initialArticles = [], topBannerCampaig
             Discover insights, guides, and stories about NSFW Telegram groups
           </p>
         </motion.div>
+
+        <div className="w-full mb-6">
+          <HeaderBanner campaigns={topBannerCampaigns} />
+        </div>
 
         <motion.div variants={fadeInUp} className="mb-8 px-4">
           <div className="relative max-w-2xl mx-auto">

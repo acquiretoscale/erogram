@@ -27,6 +27,8 @@ export default function AuthCallbackPage() {
       if (firstName) localStorage.setItem('firstName', firstName);
       if (photoUrl) localStorage.setItem('photoUrl', photoUrl);
     }
+    try { sessionStorage.removeItem('joinRedirect'); } catch {}
+
 
     if (isAdmin === 'true') {
       router.replace('/admin');

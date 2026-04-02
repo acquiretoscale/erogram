@@ -75,6 +75,8 @@ export async function getCampaigns(token: string, advertiserId?: string) {
     adType: c.adType || 'advertiser',
     premiumCategory: c.premiumCategory || '',
     premiumGroupIds: (c.premiumGroupIds || []).map((id: any) => id.toString()),
+    bannerPages: c.bannerPages || [],
+    bannerDevice: c.bannerDevice || 'all',
   }));
 }
 
@@ -106,6 +108,8 @@ export async function createCampaign(
     premiumCategory?: string;
     premiumGroupIds?: string[];
     socialProof?: string;
+    bannerPages?: string[];
+    bannerDevice?: 'all' | 'mobile' | 'desktop';
   }
 ) {
   const admin = await authenticateAdmin(token);
@@ -131,8 +135,9 @@ export async function createCampaign(
   if (!data.destinationUrl || !String(data.destinationUrl).trim()) {
     throw new Error('Destination URL is required');
   }
-  if (!isCtaSlot && data.adType !== 'premium' && !data.creative) {
-    throw new Error('Creative image is required for this slot');
+  const hasVideo = data.slot === 'feed' && !!(data as any).videoUrl;
+  if (!isCtaSlot && data.adType !== 'premium' && !data.creative && !hasVideo) {
+    throw new Error('Creative image is required for this slot (or provide a video URL for feed ads)');
   }
   if (isCtaSlot && !(data.description != null && String(data.description).trim())) {
     throw new Error('CTA text (button label) is required for CTA slots');
@@ -206,6 +211,8 @@ export async function createCampaign(
       ? data.premiumGroupIds.map(id => new mongoose.Types.ObjectId(id))
       : [],
     socialProof: data.socialProof || 'random',
+    bannerPages: data.bannerPages || [],
+    bannerDevice: data.bannerDevice || 'all',
   });
 
   // Keep feed positions gap-free after a new ad is created
@@ -245,6 +252,8 @@ export async function updateCampaign(
     premiumCategory: string;
     premiumGroupIds: string[];
     socialProof: string;
+    bannerPages: string[];
+    bannerDevice: 'all' | 'mobile' | 'desktop';
   }>
 ) {
   const admin = await authenticateAdmin(token);
@@ -280,6 +289,8 @@ export async function updateCampaign(
     updateData.premiumGroupIds = (data.premiumGroupIds || []).map(id => new mongoose.Types.ObjectId(id));
   }
   if ('socialProof' in data) updateData.socialProof = data.socialProof || 'random';
+  if ('bannerPages' in data) updateData.bannerPages = Array.isArray(data.bannerPages) ? data.bannerPages : [];
+  if ('bannerDevice' in data) updateData.bannerDevice = data.bannerDevice || 'all';
 
   if (Object.keys(updateData).length === 0) {
     const doc = await Campaign.findById(id).lean();
@@ -320,21 +331,57 @@ export async function deleteCampaign(token: string, id: string) {
 /**
  * Get active campaigns for a given slot.
  * Called from server components at render time — no auth needed.
+ *
+ * @param slot    Campaign slot name (e.g. 'top-banner', 'homepage-hero')
+ * @param opts.page   Page identifier for banner targeting (e.g. 'groups', 'bots', 'homepage').
+ *                    When provided, only campaigns targeting that page (or with no page restriction) are returned.
+ * @param opts.device 'mobile' | 'desktop' — filters by bannerDevice field.
  */
-export async function getActiveCampaigns(slot: string) {
+export async function getActiveCampaigns(
+  slot: string,
+  opts?: { page?: string; device?: 'mobile' | 'desktop' },
+) {
   await connectDB();
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  const limit = SLOT_LIMITS[slot] ?? undefined;
-  const query = Campaign.find({
+  const filter: Record<string, unknown> = {
     slot,
-    status: 'active', // paused/ended campaigns are never returned
+    status: 'active',
     isVisible: { $ne: false },
     startDate: { $lte: now },
     endDate: { $gte: startOfToday },
-  })
-    .select('_id creative destinationUrl slot description buttonText')
+  };
+
+  const andConditions: Record<string, unknown>[] = [];
+
+  if (opts?.page) {
+    andConditions.push({
+      $or: [
+        { bannerPages: { $size: 0 } },
+        { bannerPages: { $exists: false } },
+        { bannerPages: opts.page },
+      ],
+    });
+  }
+
+  if (opts?.device) {
+    andConditions.push({
+      $or: [
+        { bannerDevice: { $in: ['all', opts.device] } },
+        { bannerDevice: { $exists: false } },
+        { bannerDevice: null },
+      ],
+    });
+  }
+
+  if (andConditions.length > 0) {
+    filter.$and = andConditions;
+  }
+
+  const limit = SLOT_LIMITS[slot] ?? undefined;
+  const query = Campaign.find(filter)
+    .select('_id creative destinationUrl slot description buttonText bannerDevice')
     .sort({ createdAt: -1 });
   const campaigns = await (limit != null ? query.limit(limit) : query).lean();
 
@@ -345,6 +392,7 @@ export async function getActiveCampaigns(slot: string) {
     slot: c.slot,
     description: c.description || '',
     buttonText: c.buttonText || '',
+    bannerDevice: c.bannerDevice || 'all',
   }));
 }
 
