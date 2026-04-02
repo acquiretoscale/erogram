@@ -47,7 +47,7 @@ interface Props {
   initialQuery?: string;
   top10Lists?: Top10List[];
   recentlyAdded?: Creator[];
-  topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string; bannerDevice?: string }>;
+  topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string; bannerDevice?: 'all' | 'mobile' | 'desktop' }>;
 }
 
 function shuffle<T>(arr: T[]): T[] {

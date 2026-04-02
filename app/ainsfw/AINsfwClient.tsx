@@ -19,7 +19,7 @@ interface AINsfwClientProps {
   allStats?: Record<string, ToolStatsData>;
   featuredSlugs?: string[];
   featuredCampaignMap?: Record<string, string>;
-  topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string; bannerDevice?: string }>;
+  topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string; bannerDevice?: 'all' | 'mobile' | 'desktop' }>;
 }
 
 const CATEGORY_ACTIVE: Record<AINsfwCategory, string> = {
