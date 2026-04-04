@@ -208,15 +208,20 @@ export default async function ArticlePage({ params }: PageProps) {
     },
     headline: article.title,
     description: article.metaDescription || article.excerpt || article.title,
-    datePublished: article.publishedAt ? new Date(article.publishedAt).toISOString() : undefined,
-    dateModified: article.updatedAt ? new Date(article.updatedAt).toISOString() : undefined,
-    author: article.author?.username
-      ? {
+    ...(article.publishedAt ? { datePublished: new Date(article.publishedAt).toISOString() } : {}),
+    ...(article.updatedAt ? { dateModified: new Date(article.updatedAt).toISOString() } : {}),
+    ...(article.author?.username ? {
+      author: {
         '@type': 'Person',
         name: article.author.username,
-      }
-      : undefined,
-    image: imageUrl ? [imageUrl] : undefined,
+      },
+    } : {}),
+    ...(imageUrl ? {
+      image: {
+        '@type': 'ImageObject',
+        url: imageUrl,
+      },
+    } : {}),
     publisher: {
       '@type': 'Organization',
       name: 'Erogram',
