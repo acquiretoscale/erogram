@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     }
 
     const isAdminSource = source === 'bulk' || source === 'admin' || source === 'import';
-    const actorOverride = isAdminSource ? 'hello.datawizards/onlyfans-scraper' : undefined;
+    const actorOverride = isAdminSource ? 'hello.datawizards/onlyfans-scraper' : 'sentry/onlyfans-finder-pro';
     const creds = await getApifyCredentials(actorOverride);
     if (!creds) {
       return NextResponse.json({ error: 'No active Apify API keys. Add keys in OFM Settings.' }, { status: 500 });
