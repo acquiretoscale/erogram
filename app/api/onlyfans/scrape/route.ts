@@ -40,7 +40,7 @@ export async function DELETE(req: NextRequest) {
  * Body: { category: string, maxItems?: number, clean?: boolean, country?: string }
  *
  * Supports multiple Apify actors — auto-detects format based on actor name:
- *   - sentry/onlyfans-discovery-scraper (additionalKeywords, maxProfiles, searchMode)
+ *   - sentry/onlyfans-finder-pro        (additionalKeywords, maxProfiles, searchMode)
  *   - igolaizola/onlyfans-scraper       (category/query, maxItems, gender)
  *
  * Uses rotating API keys from OFM Settings.
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     }
 
     const isAdminSource = source === 'bulk' || source === 'admin' || source === 'import';
-    const actorOverride = isAdminSource ? 'hello.datawizards/onlyfans-scraper' : 'sentry/onlyfans-finder-pro';
+    const actorOverride = 'hello.datawizards/onlyfans-scraper';
     const creds = await getApifyCredentials(actorOverride);
     if (!creds) {
       return NextResponse.json({ error: 'No active Apify API keys. Add keys in OFM Settings.' }, { status: 500 });
@@ -195,11 +195,11 @@ function buildSentryInput(category: string, maxProfiles: number, isTop: boolean)
   return {
     searchMode: 'top',
     additionalKeywords: isTop ? '' : category,
-    maxProfiles,
+    maxProfiles: 1,
     requireInstagram: false,
     scrapeOtherSocials: false,
-    scrollPatience: 15,
-    maxPages: 50,
+    scrollPatience: 3,
+    maxPages: 2,
   };
 }
 

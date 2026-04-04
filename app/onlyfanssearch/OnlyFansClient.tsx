@@ -507,7 +507,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
         const looksLikeUsername = /^[a-z0-9._-]+$/i.test(sq) && !sq.includes(' ');
         const nameAsUsername = sq.replace(/\s+/g, '').toLowerCase();
         const usernames = looksLikeUsername ? [sq] : [nameAsUsername];
-        const body: Record<string, any> = { category: sq, maxItems: 15, source: 'search', usernames };
+        const body: Record<string, any> = { category: sq, maxItems: 1, source: 'search', usernames };
         setFetchingFromOF(true);
         fetch('/api/onlyfans/scrape', {
           method: 'POST',
