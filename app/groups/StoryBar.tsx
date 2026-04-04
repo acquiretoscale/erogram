@@ -218,7 +218,7 @@ function VisitingNowCard() {
 
   useEffect(() => {
     fetchCount();
-    const id = setInterval(fetchCount, 60_000);
+    const id = setInterval(fetchCount, 300_000);
     return () => clearInterval(id);
   }, [fetchCount]);
 
@@ -236,6 +236,18 @@ function VisitingNowCard() {
         </div>
       </div>
 
+      <Link
+        href="/premium"
+        target="_blank"
+        className="flex items-center justify-center gap-1 px-3 py-1.5 rounded-full text-[10px] font-black whitespace-nowrap transition-all duration-200 hover:opacity-90"
+        style={{
+          background: 'linear-gradient(135deg, #c9973a 0%, #e8ba5a 50%, #c9973a 100%)',
+          color: '#0d0c0a',
+          boxShadow: '0 0 10px rgba(201,151,58,0.35)',
+        }}
+      >
+        ⭐ EROGRAM PREMIUM
+      </Link>
     </div>
   );
 }

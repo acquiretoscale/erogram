@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { Upload, X, CheckCircle2, AlertCircle, Loader2, Star, Send, Search, Users, Heart, Image, Film, FileText, MapPin, DollarSign, Calendar, Globe, ShieldCheck, Layers, Zap, Crown } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import OFFooter from '@/components/OFFooter';
+import Footer from '@/components/Footer';
 import { submitCreator, searchCreatorByUsername, fetchCreatorFromApify, createFeaturedCreatorInvoice } from '@/lib/actions/submitCreator';
 import type { CreatorLookupResult } from '@/lib/actions/submitCreator';
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
@@ -836,7 +836,7 @@ export default function SubmitCreatorPage() {
         )}
       </div>
 
-      <OFFooter />
+      <Footer />
     </div>
   );
 }

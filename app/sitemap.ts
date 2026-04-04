@@ -1,10 +1,9 @@
 import { MetadataRoute } from 'next';
 import connectDB from '@/lib/db/mongodb';
-import { Group, Article, Bot } from '@/lib/models';
-import { categories, countries as constantCountries } from '@/app/groups/constants';
+import { Group, Article, Bot, OnlyFansCreator } from '@/lib/models';
+import { categories } from '@/app/groups/constants';
+import { OF_CATEGORIES, ofCategoryUrl } from '@/app/onlyfanssearch/constants';
 import { LOCALES, LOCALE_HREFLANG, localePath } from '@/lib/i18n/config';
-import { OF_CATEGORIES, OF_COUNTRIES, ofCategoryUrl, ofCountryUrl, ofCountryCategoryUrl } from '@/app/onlyfanssearch/constants';
-import { AI_NSFW_TOOLS } from '@/app/ainsfw/data';
 
 /** Build alternates object for a given path — tells Google about all language versions. */
 function buildAlternates(basePath: string, canonicalBase: string) {
@@ -25,8 +24,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     await connectDB();
 
     const [groups, bots, articles, totalGroups, totalBots, dbCountries, categoryCounts, countryCounts] = await Promise.all([
-      Group.find({ status: { $in: ['approved', 'deleted'] }, premiumOnly: { $ne: true }, category: { $ne: 'Hentai' } }).select('slug updatedAt').lean(),
-      Bot.find({ status: 'approved' }).select('slug updatedAt').lean(),
+      Group.find({ status: 'approved', premiumOnly: { $ne: true }, category: { $ne: 'Hentai' } }).select('slug updatedAt description_de description_es').lean(),
+      Bot.find({ status: 'approved' }).select('slug updatedAt description_de description_es').lean(),
       Article.find({}).select('slug updatedAt publishedAt').lean(),
       Group.countDocuments({ status: 'approved', premiumOnly: { $ne: true } }),
       Bot.countDocuments({ status: 'approved' }),
@@ -137,23 +136,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     const groupRoutes: MetadataRoute.Sitemap = groups.map((group: any) => {
       const path = `/${group.slug}`;
+      const hasTranslation = !!(group.description_de?.trim() || group.description_es?.trim());
       return {
         url: `${baseUrl}${path}`,
         lastModified: group.updatedAt || new Date(),
         changeFrequency: 'weekly' as const,
         priority: 0.7,
-        alternates: buildAlternates(path, canonicalBase),
+        ...(hasTranslation ? { alternates: buildAlternates(path, canonicalBase) } : {}),
       };
     });
 
     const botRoutes: MetadataRoute.Sitemap = bots.map((bot: any) => {
       const path = `/${bot.slug}`;
+      const hasTranslation = !!(bot.description_de?.trim() || bot.description_es?.trim());
       return {
         url: `${baseUrl}${path}`,
         lastModified: bot.updatedAt || new Date(),
         changeFrequency: 'weekly' as const,
         priority: 0.7,
-        alternates: buildAlternates(path, canonicalBase),
+        ...(hasTranslation ? { alternates: buildAlternates(path, canonicalBase) } : {}),
       };
     });
 
@@ -164,119 +165,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     }));
 
-    // ── OnlyFans SEO pages — with hreflang alternates for DE/ES ──
-    // EN uses SEO vanity URLs; DE uses /de/onlyfans-suche/...; ES uses /es/onlyfans-busca/...
-    // Countries are stored as category tags — DE/ES paths treat them uniformly.
-    const ofIndexRoute: MetadataRoute.Sitemap = [
-      {
-        url: `${baseUrl}/onlyfanssearch`,
-        lastModified: new Date(),
-        changeFrequency: 'daily',
-        priority: 0.9,
-        alternates: {
-          languages: {
-            en: `${canonicalBase}/onlyfanssearch`,
-            de: `${canonicalBase}/de/onlyfans-suche`,
-            es: `${canonicalBase}/es/onlyfans-busca`,
-            'x-default': `${canonicalBase}/onlyfanssearch`,
-          },
-        },
-      },
-      {
-        url: `${baseUrl}/onlyfanssearch/top-creators-2026`,
-        lastModified: new Date(),
-        changeFrequency: 'daily',
-        priority: 0.9,
-        alternates: {
-          languages: {
-            en: `${canonicalBase}/onlyfanssearch/top-creators-2026`,
-            de: `${canonicalBase}/de/onlyfans-suche/top-creators-2026`,
-            es: `${canonicalBase}/es/onlyfans-busca/top-creators-2026`,
-            'x-default': `${canonicalBase}/onlyfanssearch/top-creators-2026`,
-          },
-        },
-      },
+    // ── OnlyFans: top 100 creator pages + listing pages ──
+    const ofCreators = await OnlyFansCreator.find({
+      adminImported: true,
+      deleted: { $ne: true },
+      avatar: { $ne: '' },
+    }).select('slug updatedAt').lean();
+
+    const ofCreatorRoutes: MetadataRoute.Sitemap = (ofCreators as any[]).map((c) => ({
+      url: `${baseUrl}/onlyfans/${c.slug}`,
+      lastModified: c.updatedAt || new Date(),
+      changeFrequency: 'weekly' as const,
+      priority: 0.8,
+    }));
+
+    const ofStaticRoutes: MetadataRoute.Sitemap = [
+      { url: `${baseUrl}/onlyfanssearch`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 0.9 },
+      { url: `${baseUrl}/Toponlyfanscreators`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 0.9 },
     ];
 
     const ofCategoryRoutes: MetadataRoute.Sitemap = OF_CATEGORIES.map((cat) => ({
       url: `${baseUrl}${ofCategoryUrl(cat.slug)}`,
-      lastModified: new Date(),
-      changeFrequency: 'daily' as const,
-      priority: 0.85,
-      alternates: {
-        languages: {
-          en: `${canonicalBase}${ofCategoryUrl(cat.slug)}`,
-          de: `${canonicalBase}/de/onlyfans-suche/${cat.slug}`,
-          es: `${canonicalBase}/es/onlyfans-busca/${cat.slug}`,
-          'x-default': `${canonicalBase}${ofCategoryUrl(cat.slug)}`,
-        },
-      },
-    }));
-
-    // Countries are category tags — DE/ES use the same flat path structure as categories
-    const ofCountryRoutes: MetadataRoute.Sitemap = OF_COUNTRIES.map((co) => ({
-      url: `${baseUrl}${ofCountryUrl(co.slug)}`,
-      lastModified: new Date(),
-      changeFrequency: 'daily' as const,
-      priority: 0.85,
-      alternates: {
-        languages: {
-          en: `${canonicalBase}${ofCountryUrl(co.slug)}`,
-          de: `${canonicalBase}/de/onlyfans-suche/${co.slug}`,
-          es: `${canonicalBase}/es/onlyfans-busca/${co.slug}`,
-          'x-default': `${canonicalBase}${ofCountryUrl(co.slug)}`,
-        },
-      },
-    }));
-
-    const ofComboRoutes: MetadataRoute.Sitemap = OF_COUNTRIES.flatMap((co) =>
-      OF_CATEGORIES.map((cat) => ({
-        url: `${baseUrl}${ofCountryCategoryUrl(co.slug, cat.slug)}`,
-        lastModified: new Date(),
-        changeFrequency: 'weekly' as const,
-        priority: 0.8,
-        alternates: {
-          languages: {
-            en: `${canonicalBase}${ofCountryCategoryUrl(co.slug, cat.slug)}`,
-            de: `${canonicalBase}/de/onlyfans-suche/${co.slug}/${cat.slug}`,
-            es: `${canonicalBase}/es/onlyfans-busca/${co.slug}/${cat.slug}`,
-            'x-default': `${canonicalBase}${ofCountryCategoryUrl(co.slug, cat.slug)}`,
-          },
-        },
-      })),
-    );
-
-    // Best OnlyFans Accounts pages (/best-onlyfans-accounts/{category})
-    const bestOnlyfansIndexRoute: MetadataRoute.Sitemap = [
-      {
-        url: `${baseUrl}/best-onlyfans-accounts`,
-        lastModified: new Date(),
-        changeFrequency: 'daily',
-        priority: 0.9,
-        alternates: buildAlternates('/best-onlyfans-accounts', canonicalBase),
-      },
-    ];
-
-    const bestOnlyfansRoutes: MetadataRoute.Sitemap = OF_CATEGORIES.map((cat) => ({
-      url: `${baseUrl}/best-onlyfans-accounts/${cat.slug}`,
-      lastModified: new Date(),
-      changeFrequency: 'daily' as const,
-      priority: 0.85,
-      alternates: buildAlternates(`/best-onlyfans-accounts/${cat.slug}`, canonicalBase),
-    }));
-
-    // ── AI NSFW Tools ──
-    const ainsfwIndexRoute: MetadataRoute.Sitemap = [
-      {
-        url: `${baseUrl}/ainsfw`,
-        lastModified: new Date(),
-        changeFrequency: 'daily',
-        priority: 0.9,
-      },
-    ];
-
-    const ainsfwToolRoutes: MetadataRoute.Sitemap = AI_NSFW_TOOLS.map((tool) => ({
-      url: `${baseUrl}/${tool.slug}`,
       lastModified: new Date(),
       changeFrequency: 'weekly' as const,
       priority: 0.8,
@@ -293,14 +202,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ...groupRoutes,
       ...botRoutes,
       ...articleRoutes,
-      ...ofIndexRoute,
+      ...ofStaticRoutes,
       ...ofCategoryRoutes,
-      ...ofCountryRoutes,
-      ...ofComboRoutes,
-      ...bestOnlyfansIndexRoute,
-      ...bestOnlyfansRoutes,
-      ...ainsfwIndexRoute,
-      ...ainsfwToolRoutes,
+      ...ofCreatorRoutes,
     ];
   } catch (error) {
     console.error('Error generating sitemap:', error);

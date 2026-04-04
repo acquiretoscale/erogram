@@ -3,7 +3,7 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import connectDB from '@/lib/db/mongodb';
-import { User } from '@/lib/models';
+import { User, Bookmark, BookmarkFolder } from '@/lib/models';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -68,4 +68,31 @@ export async function deleteUser(token: string, id: string) {
   const user = await User.findByIdAndDelete(id);
   if (!user) throw new Error('User not found');
   return { success: true };
+}
+
+export async function getBookmarkStats(token: string) {
+  const admin = await authenticateAdmin(token);
+  if (!admin) throw new Error('Unauthorized');
+
+  await connectDB();
+
+  const [
+    totalBookmarks, totalFolders,
+    usersWithBookmarks,
+    groupBookmarks, botBookmarks,
+  ] = await Promise.all([
+    Bookmark.countDocuments(),
+    BookmarkFolder.countDocuments(),
+    Bookmark.distinct('userId').then(ids => ids.length),
+    Bookmark.countDocuments({ itemType: 'group' }),
+    Bookmark.countDocuments({ itemType: 'bot' }),
+  ]);
+
+  return {
+    totalBookmarks,
+    totalFolders,
+    usersWithBookmarks,
+    groupBookmarks,
+    botBookmarks,
+  };
 }

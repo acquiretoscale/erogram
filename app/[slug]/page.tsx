@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import mongoose from 'mongoose';
 import connectDB from '@/lib/db/mongodb';
-import { Group, Bot, Post } from '@/lib/models';
+import { Group, Bot, Post, OnlyFansCreator } from '@/lib/models';
 import JoinClient from './JoinClient';
 import { getTelegramMemberCount } from '@/lib/utils/telegram';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
@@ -16,6 +16,7 @@ import ToolDetailClient from '@/app/ainsfw/[slug]/ToolDetailClient';
 import { getToolStats } from '@/lib/actions/ainsfw';
 import { getCreatorBySlug, getRelatedCreators } from '@/lib/actions/ofCreatorProfile';
 import CreatorProfileClient from '@/app/onlyfanssearch/CreatorProfileClient';
+import { getTrendingOnErogram } from '@/lib/actions/publicData';
 
 // ISR for public join pages (keeps SSR output crawlable while avoiding per-request rendering)
 export const revalidate = 300;
@@ -152,6 +153,7 @@ async function getGroup(slug: string, locale: string = 'en') {
       createdAt: (group as any).createdAt,
       status: (group as any).status as string,
       premiumOnly: isPremium,
+      linkedCreatorSlug: (group as any).linkedCreatorSlug || '',
       reviews: reviews.map((r: any) => ({
         _id: r._id.toString(),
         authorName: r.authorName || 'Anonymous',
@@ -163,6 +165,7 @@ async function getGroup(slug: string, locale: string = 'en') {
         username: (group as any).createdBy.username,
         showNicknameUnderGroups: (group as any).createdBy.showNicknameUnderGroups
       } : null,
+      hasTranslations: !!((group as any).description_de?.trim() || (group as any).description_es?.trim()),
     };
 
     return result;
@@ -245,6 +248,7 @@ async function getBot(slug: string, locale: string = 'en') {
         username: (bot as any).createdBy.username,
         showNicknameUnderGroups: (bot as any).createdBy.showNicknameUnderGroups
       } : null,
+      hasTranslations: !!((bot as any).description_de?.trim() || (bot as any).description_es?.trim()),
     };
 
     return result;
@@ -471,9 +475,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       },
       alternates: {
         canonical: groupUrl,
-        languages: Object.fromEntries(
-          LOCALES.map(l => [l, `${BASE_URL}${localePath(`/${group.slug}`, l)}`])
-        ),
+        ...(group.hasTranslations ? {
+          languages: Object.fromEntries(
+            LOCALES.map(l => [l, `${BASE_URL}${localePath(`/${group.slug}`, l)}`])
+          ),
+        } : {}),
       },
       openGraph: {
         title: `${group.name} - Join NSFW Telegram Group`,
@@ -529,9 +535,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       keywords: `NSFW telegram bot, ${bot.name}, adult telegram bot, ${(bot.categories || [bot.category, bot.country].filter(Boolean)).join(', ')}, telegram bot, erotic bots, adult bot`,
       alternates: {
         canonical: botUrl,
-        languages: Object.fromEntries(
-          LOCALES.map(l => [l, `${BASE_URL}${localePath(`/${bot.slug}`, l)}`])
-        ),
+        ...(bot.hasTranslations ? {
+          languages: Object.fromEntries(
+            LOCALES.map(l => [l, `${BASE_URL}${localePath(`/${bot.slug}`, l)}`])
+          ),
+        } : {}),
       },
       openGraph: {
         title: `${bot.name} - Use NSFW Telegram Bot`,
@@ -595,13 +603,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // Try OnlyFans creator
   const creator = await getCreatorBySlug(slug);
   if (creator) {
+    const isTop100 = await OnlyFansCreator.exists({ slug, adminImported: true, deleted: { $ne: true } });
+    if (isTop100) return { title: 'Not Found', robots: { index: false, follow: false } };
+
     const creatorPath = `/${creator.slug}`;
     const pageUrl = `${BASE_URL}${creatorPath}`;
     const name = creator.name;
     const username = creator.username;
     const primaryCat = creator.categories[0] || 'onlyfans';
 
-    const fmtNum = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(0)}K` : `${n}`;
+    const fmtNum = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(0)}K` : `${n}K`;
 
     const statsLabels: Record<Locale, { likes: string; fans: string; photos: string; videos: string }> = {
       en: { likes: 'likes', fans: 'fans', photos: 'photos', videos: 'videos' },
@@ -964,7 +975,13 @@ export default async function JoinPage({ params }: PageProps) {
   // Try OnlyFans creator profile
   const creator = await getCreatorBySlug(slug);
   if (creator) {
-    const related = await getRelatedCreators(creator.categories, creator.slug, 6);
+    const isTop100 = await OnlyFansCreator.exists({ slug, adminImported: true, deleted: { $ne: true } });
+    if (isTop100) notFound();
+
+    const [related, trendingOnErogram] = await Promise.all([
+      getRelatedCreators(creator.categories, creator.slug, 6),
+      getTrendingOnErogram().catch(() => []),
+    ]);
     const pageUrl = `${BASE_URL}/${creator.slug}`;
 
     const ofSearchLabel: Record<Locale, string> = { en: 'OnlyFans Search', de: 'OnlyFans Suche', es: 'Buscador de OnlyFans' };
@@ -981,7 +998,7 @@ export default async function JoinPage({ params }: PageProps) {
     return (
       <>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
-        <CreatorProfileClient creator={creator} related={related} />
+        <CreatorProfileClient creator={creator} related={related} trendingOnErogram={trendingOnErogram} />
       </>
     );
   }

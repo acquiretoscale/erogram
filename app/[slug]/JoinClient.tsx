@@ -27,6 +27,7 @@ interface Entity {
   clickCount?: number;
   memberCount?: number;
   premiumOnly?: boolean;
+  linkedCreatorSlug?: string;
   reviews?: Array<{
     _id: string;
     authorName: string;
@@ -504,14 +505,24 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
       {/* Hero Background with Blur */}
       <div className="fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute inset-0 bg-[#0a0a0a]"></div>
-        <Image
-          src={groupImage}
-          alt={`${entity.name} background`}
-          fill
-          className="object-cover opacity-20 blur-3xl scale-110"
-          priority
-          onError={() => setGroupImage(PLACEHOLDER_IMAGE_URL)}
-        />
+        {entity.linkedCreatorSlug ? (
+          <img
+            src={groupImage}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover opacity-20 blur-3xl scale-110"
+            referrerPolicy="no-referrer"
+            onError={() => setGroupImage(PLACEHOLDER_IMAGE_URL)}
+          />
+        ) : (
+          <Image
+            src={groupImage}
+            alt={`${entity.name} background`}
+            fill
+            className="object-cover opacity-20 blur-3xl scale-110"
+            priority
+            onError={() => setGroupImage(PLACEHOLDER_IMAGE_URL)}
+          />
+        )}
         <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0a]/80 via-[#0a0a0a]/90 to-[#0a0a0a]"></div>
       </div>
 
@@ -608,14 +619,24 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
             >
               {/* Image Container */}
               <div className="aspect-square rounded-2xl overflow-hidden bg-[#222] relative mb-6 shadow-inner border border-white/5">
-                <Image
-                  src={groupImage}
-                  alt={entity.name}
-                  fill
-                  className="object-cover transition-transform duration-700 group-hover:scale-105"
-                  priority
-                  onError={() => setGroupImage(PLACEHOLDER_IMAGE_URL)}
-                />
+                {entity.linkedCreatorSlug ? (
+                  <img
+                    src={groupImage}
+                    alt={entity.name}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    referrerPolicy="no-referrer"
+                    onError={() => setGroupImage(PLACEHOLDER_IMAGE_URL)}
+                  />
+                ) : (
+                  <Image
+                    src={groupImage}
+                    alt={entity.name}
+                    fill
+                    className="object-cover transition-transform duration-700 group-hover:scale-105"
+                    priority
+                    onError={() => setGroupImage(PLACEHOLDER_IMAGE_URL)}
+                  />
+                )}
                 {/* Verified Badge Overlay */}
                 <div className="absolute top-3 right-3 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-md shadow-lg flex items-center gap-1">
                   <span>✓</span> {t('common.verified')}
@@ -698,12 +719,38 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                 </span>
               </div>
 
-              {/* Description */}
-              <div className="prose prose-invert max-w-none mb-10">
-                <p className="text-lg text-gray-300 leading-relaxed">
-                  {entity.description}
-                </p>
-              </div>
+              {/* Description or Erogram Profile CTA */}
+              {entity.linkedCreatorSlug ? (
+                <div className="mb-10">
+                  <a
+                    href={`/onlyfans/${entity.linkedCreatorSlug}`}
+                    className="group/cta block w-full bg-gradient-to-r from-[#00AFF0] via-blue-500 to-indigo-600 p-[2px] rounded-2xl shadow-xl shadow-blue-500/20 hover:shadow-blue-500/40 transition-all transform hover:-translate-y-1"
+                  >
+                    <div className="flex items-center justify-between gap-4 bg-[#0e1117] rounded-[14px] px-6 sm:px-8 py-5 group-hover/cta:bg-[#0e1117]/80 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#00AFF0] to-indigo-600 flex items-center justify-center shrink-0">
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        </div>
+                        <div>
+                          <div className="text-lg sm:text-xl font-black text-white">
+                            Show some love to {entity.name.replace(' OnlyFans', '')}
+                          </div>
+                          <div className="text-sm text-blue-300/70 font-medium">
+                            Visit her full Erogram profile
+                          </div>
+                        </div>
+                      </div>
+                      <svg className="w-6 h-6 text-white/60 group-hover/cta:text-white group-hover/cta:translate-x-1 transition-all shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </div>
+                  </a>
+                </div>
+              ) : (
+                <div className="prose prose-invert max-w-none mb-10">
+                  <p className="text-lg text-gray-300 leading-relaxed">
+                    {entity.description}
+                  </p>
+                </div>
+              )}
 
               {/* Primary Action Area — hidden for deleted groups */}
               {!isDeleted && (
@@ -915,11 +962,11 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                   >
                     <div className="flex items-start gap-4">
                       <div className="w-16 h-16 rounded-xl bg-[#222] overflow-hidden border border-white/5 group-hover:scale-105 transition-transform flex-shrink-0 relative">
-                        <Image
+                        <img
                           src={failedSimilarImages[g._id] ? PLACEHOLDER_IMAGE_URL : (g.image || PLACEHOLDER_IMAGE_URL)}
                           alt={g.name}
-                          fill
-                          className="object-cover"
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
                           onError={() => setFailedSimilarImages((prev) => ({ ...prev, [g._id]: true }))}
                         />
                       </div>

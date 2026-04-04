@@ -10,7 +10,6 @@ import { trackCreatorClick, trackTrendingClick } from '@/lib/actions/onlyfansTra
 import { getTrendingCreators } from '@/lib/actions/publicData';
 import { browseCreators, deleteCreatorBySlug } from '@/lib/actions/ofCreatorsBrowse';
 import { getOFMTrending, createOFMTrendingSlot } from '@/lib/actions/ofm';
-import OFFooter from '@/components/OFFooter';
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
 
 function formatCount(n: number) {
@@ -681,8 +680,6 @@ export default function CategoryClient({ creators: initialCreators, category, la
         </section>
 
       </main>
-
-      <OFFooter />
 
       <button
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}

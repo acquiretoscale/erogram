@@ -77,7 +77,7 @@ interface HomeClientProps {
 }
 
 const GROUP_BASE = 4_000;
-const ACTIVE_USERS_POLL = 60_000;
+const ACTIVE_USERS_POLL = 300_000;
 
 function useCountUp(target: number, duration = 1800) {
   const [value, setValue] = useState(0);

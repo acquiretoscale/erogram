@@ -2,7 +2,7 @@ import React from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
-import OFFooter from '@/components/OFFooter';
+import Footer from '@/components/Footer';
 import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
@@ -60,7 +60,7 @@ export default async function BestOnlyfansIndexPage() {
                     ))}
                 </div>
             </main>
-            <OFFooter />
+            <Footer />
         </div>
     );
 }

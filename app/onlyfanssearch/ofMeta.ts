@@ -39,10 +39,8 @@ function countryCatPath(countrySlug: string, catSlug: string, locale: Locale) {
     ? ofCountryCategoryUrl(countrySlug, catSlug)
     : `/${locale}/${ofSeg(locale)}/${countrySlug}/${catSlug}`;
 }
-function topPath(locale: Locale) {
-  return locale === 'en'
-    ? '/onlyfanssearch/top-creators-2026'
-    : `/${locale}/${ofSeg(locale)}/top-creators-2026`;
+function topPath(_locale: Locale) {
+  return '/Toponlyfanscreators';
 }
 
 // ── Alternates: all 3 locales + x-default pointing at EN ────────────────────
@@ -316,7 +314,7 @@ export function countryCategoryOfMeta(
   };
 }
 
-// ── Top creators page (/onlyfans-search/top-creators-2026) ───────────────────
+// ── Top creators page (/Toponlyfanscreators) ────────────────────────────────
 
 export function topCreatorsOfMeta(locale: Locale): Metadata {
   const current = topPath(locale);
@@ -346,9 +344,9 @@ export function topCreatorsOfMeta(locale: Locale): Metadata {
     title: title[locale],
     description: desc[locale],
     alternates: alt(
-      '/onlyfanssearch/top-creators-2026',
-      '/de/onlyfans-suche/top-creators-2026',
-      '/es/onlyfans-busca/top-creators-2026',
+      '/Toponlyfanscreators',
+      '/Toponlyfanscreators',
+      '/Toponlyfanscreators',
       current,
     ),
     robots,

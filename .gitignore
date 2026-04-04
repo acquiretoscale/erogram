@@ -49,3 +49,6 @@ next-env.d.ts
 # local working copies
 erogram-clean/
 erogram-v2/
+
+# downloaded images (local scraping artifacts)
+downloads/

@@ -9,7 +9,7 @@ import { OFMSettings } from '@/lib/models';
  *
  * Returns { token, actor } or null if nothing available.
  */
-export async function getApifyCredentials(): Promise<{ token: string; actor: string } | null> {
+export async function getApifyCredentials(actorOverride?: string): Promise<{ token: string; actor: string } | null> {
   await connectDB();
 
   let settings = await OFMSettings.findOne({ key: 'default' });
@@ -19,11 +19,11 @@ export async function getApifyCredentials(): Promise<{ token: string; actor: str
     if (!envKey) return null;
     return {
       token: envKey,
-      actor: process.env.APIFY_ONLYFANS_ACTOR || 'igolaizola/onlyfans-scraper',
+      actor: actorOverride || process.env.APIFY_ONLYFANS_ACTOR || 'igolaizola/onlyfans-scraper',
     };
   }
 
-  const actor = settings.apifyActor || process.env.APIFY_ONLYFANS_ACTOR || 'igolaizola/onlyfans-scraper';
+  const actor = actorOverride || settings.apifyActor || process.env.APIFY_ONLYFANS_ACTOR || 'igolaizola/onlyfans-scraper';
   const activeKeys = settings.apifyKeys.filter((k: any) => k.active && !k.burned);
 
   if (activeKeys.length === 0) {

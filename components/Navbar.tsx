@@ -75,7 +75,14 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
   const [isIOS, setIsIOS] = useState(false);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
+  const [showLangSwitcher, setShowLangSwitcher] = useState(true);
+  useEffect(() => {
+    setMounted(true);
+    const path = window.location.pathname.replace(/^\/(de|es)/, '') || '/';
+    if (path.startsWith('/onlyfans/') || path.startsWith('/ainsfw') || path.startsWith('/articles')) {
+      setShowLangSwitcher(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -354,6 +361,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
           )}
 
           {/* Utility — Language switcher (far right) */}
+          {showLangSwitcher && (
           <div className="relative" ref={langRef}>
             <button
               onClick={() => setLangOpen(!langOpen)}
@@ -391,6 +399,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
               )}
             </AnimatePresence>
           </div>
+          )}
 
         </div>
 
@@ -405,7 +414,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
             <motion.span className="w-5 h-0.5 bg-white/70 rounded-full" animate={{ opacity: isMenuOpen ? 0 : 1 }} transition={{ duration: 0.2 }} />
             <motion.span className="w-5 h-0.5 bg-white/70 rounded-full" animate={{ rotate: isMenuOpen ? -45 : 0, y: isMenuOpen ? -6 : 0 }} transition={{ duration: 0.2 }} />
           </button>
-          {!isMenuOpen && (
+          {!isMenuOpen && showLangSwitcher && (
             <div className="relative" ref={mobileLangRef}>
               <button
                 onClick={() => setMobileLangOpen(!mobileLangOpen)}

@@ -2,7 +2,7 @@
 
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
-import { User, OnlyFansCreator, TrendingOFCreator, TrendingClickDaily } from '@/lib/models';
+import { User, OnlyFansCreator, TrendingOFCreator, TrendingClickDaily, TrendingErogram } from '@/lib/models';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -27,41 +27,14 @@ export async function getOFMStats(token: string) {
   if (!(await authenticateAdmin(token))) throw new Error('Unauthorized');
   await connectDB();
 
-  const [
-    total,
-    freeCount,
-    verifiedCount,
-    categoryCounts,
-    recentlyScrapped,
-    topBySubscribers,
-  ] = await Promise.all([
+  const [total, recentlyScrapped] = await Promise.all([
     OnlyFansCreator.countDocuments(),
-    OnlyFansCreator.countDocuments({ isFree: true }),
-    OnlyFansCreator.countDocuments({ isVerified: true }),
-    OnlyFansCreator.aggregate([
-      { $unwind: '$categories' },
-      { $group: { _id: '$categories', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 20 },
-    ]),
     OnlyFansCreator.countDocuments({
       scrapedAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
     }),
-    OnlyFansCreator.find({}, 'name username subscriberCount avatar isFree price')
-      .sort({ subscriberCount: -1 })
-      .limit(5)
-      .lean(),
   ]);
 
-  return JSON.parse(JSON.stringify({
-    total,
-    freeCount,
-    paidCount: total - freeCount,
-    verifiedCount,
-    recentlyScrapped,
-    categoryCounts,
-    topBySubscribers,
-  }));
+  return JSON.parse(JSON.stringify({ total, recentlyScrapped }));
 }
 
 // ---------------------------------------------------------------------------
@@ -421,8 +394,28 @@ export async function getOFMTrending(token: string) {
   await connectDB();
 
   const slots = await TrendingOFCreator.find().sort({ position: 1 }).lean();
+
+  const usernames = [...new Set((slots as any[]).map((s: any) => s.username).filter(Boolean))];
+  const escapedPattern = usernames
+    .map(u => u.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|');
+  const creatorDocs = usernames.length
+    ? await OnlyFansCreator.find(
+        { username: { $regex: new RegExp(`^(${escapedPattern})$`, 'i') } },
+        'username likesCount',
+      ).lean()
+    : [];
+  const likesByUsername: Record<string, number> = {};
+  for (const c of creatorDocs as any[]) {
+    likesByUsername[c.username.toLowerCase()] = c.likesCount || 0;
+  }
+
   return JSON.parse(JSON.stringify(
-    slots.map((s: any) => ({ ...s, _id: s._id.toString() })),
+    (slots as any[]).map((s: any) => ({
+      ...s,
+      _id: s._id.toString(),
+      likesCount: likesByUsername[s.username?.toLowerCase()] ?? null,
+    })),
   ));
 }
 
@@ -442,12 +435,14 @@ export async function createOFMTrendingSlot(
     clickBudget?: number;
     dailyClickCap?: number;
     isStarPick?: boolean;
+    liveHourStart?: number;
+    liveHourEnd?: number;
   },
 ) {
   if (!(await authenticateAdmin(token))) throw new Error('Unauthorized');
   await connectDB();
 
-  const { name, username, avatar, url, bio, categories, position, note, dealPrice, active, clickBudget, dailyClickCap, isStarPick } = data;
+  const { name, username, avatar, url, bio, categories, position, note, dealPrice, active, clickBudget, dailyClickCap, isStarPick, liveHourStart, liveHourEnd } = data;
 
   if (!name || !username || !url || !position) {
     throw new Error('name, username, url, and position are required');
@@ -457,6 +452,7 @@ export async function createOFMTrendingSlot(
   }
 
   await TrendingOFCreator.findOneAndDelete({ position });
+  await TrendingOFCreator.deleteMany({ username });
 
   const creator = await TrendingOFCreator.create({
     name, username,
@@ -472,6 +468,8 @@ export async function createOFMTrendingSlot(
     clickBudget: clickBudget || 0,
     dailyClickCap: dailyClickCap || 0,
     isStarPick: isStarPick === true,
+    liveHourStart: liveHourStart ?? -1,
+    liveHourEnd: liveHourEnd ?? -1,
   });
 
   return JSON.parse(JSON.stringify({
@@ -487,7 +485,7 @@ export async function updateOFMTrending(token: string, id: string, data: Record<
   if (!(await authenticateAdmin(token))) throw new Error('Unauthorized');
   await connectDB();
 
-  const allowed = ['name', 'username', 'avatar', 'url', 'bio', 'categories', 'active', 'note', 'dealPrice', 'clickBudget', 'dailyClickCap', 'isStarPick'];
+  const allowed = ['name', 'username', 'avatar', 'url', 'bio', 'categories', 'active', 'note', 'dealPrice', 'clickBudget', 'dailyClickCap', 'isStarPick', 'liveHourStart', 'liveHourEnd'];
   const update: Record<string, any> = {};
   for (const key of allowed) {
     if (key in data) update[key] = data[key];
@@ -500,6 +498,14 @@ export async function updateOFMTrending(token: string, id: string, data: Record<
   ).lean();
 
   if (!creator) throw new Error('Not found');
+
+  if ('active' in update) {
+    await TrendingOFCreator.updateMany(
+      { username: (creator as any).username, _id: { $ne: (creator as any)._id } },
+      { $set: { active: update.active } },
+    );
+  }
+
   return JSON.parse(JSON.stringify({
     creator: { ...(creator as any), _id: (creator as any)._id.toString() },
   }));
@@ -564,6 +570,89 @@ export async function deleteOFMTrending(token: string, id: string) {
   await connectDB();
 
   const result = await TrendingOFCreator.findByIdAndDelete(id);
+  if (!result) throw new Error('Not found');
+  return { success: true };
+}
+
+// ---------------------------------------------------------------------------
+// Trending on Erogram — admin-curated chart
+// ---------------------------------------------------------------------------
+
+export async function getTrendingErogramAdmin(token: string) {
+  if (!(await authenticateAdmin(token))) throw new Error('Unauthorized');
+  await connectDB();
+  const docs = await TrendingErogram.find().sort({ position: 1 }).lean() as any[];
+
+  const slugs = docs.map((d: any) => d.slug).filter(Boolean);
+  const creators = slugs.length
+    ? await OnlyFansCreator.find({ slug: { $in: slugs } }).select('slug likesCount').lean() as any[]
+    : [];
+  const likesMap = new Map(creators.map((c: any) => [c.slug, c.likesCount ?? 0]));
+
+  return JSON.parse(JSON.stringify(docs.map((d: any) => ({
+    ...d,
+    _id: d._id.toString(),
+    creatorId: d.creatorId?.toString() || '',
+    likesCount: likesMap.get(d.slug) ?? 0,
+  }))));
+}
+
+export async function addTrendingErogramCreator(
+  token: string,
+  data: { creatorSlug: string; points: number; pointsDelta: number },
+) {
+  if (!(await authenticateAdmin(token))) throw new Error('Unauthorized');
+  await connectDB();
+
+  const creator = await OnlyFansCreator.findOne({ slug: data.creatorSlug, deleted: { $ne: true } })
+    .select('name username slug avatar')
+    .lean() as any;
+  if (!creator) throw new Error('Creator not found');
+
+  const existing = await TrendingErogram.findOne({ slug: creator.slug });
+  if (existing) throw new Error('Already on trending');
+
+  const maxPos = await TrendingErogram.findOne().sort({ position: -1 }).select('position').lean() as any;
+  const position = (maxPos?.position || 0) + 1;
+
+  const doc = await TrendingErogram.create({
+    creatorId: creator._id,
+    name: creator.name,
+    username: creator.username,
+    slug: creator.slug,
+    avatar: creator.avatar || '',
+    points: data.points || 0,
+    pointsDelta: data.pointsDelta || 0,
+    position,
+    active: true,
+  });
+
+  return JSON.parse(JSON.stringify({ ...doc.toObject(), _id: doc._id.toString() }));
+}
+
+export async function updateTrendingErogramCreator(
+  token: string,
+  id: string,
+  data: { points?: number; pointsDelta?: number; position?: number; active?: boolean },
+) {
+  if (!(await authenticateAdmin(token))) throw new Error('Unauthorized');
+  await connectDB();
+
+  const update: Record<string, any> = {};
+  if (data.points !== undefined) update.points = data.points;
+  if (data.pointsDelta !== undefined) update.pointsDelta = data.pointsDelta;
+  if (data.position !== undefined) update.position = data.position;
+  if (data.active !== undefined) update.active = data.active;
+
+  const doc = await TrendingErogram.findByIdAndUpdate(id, { $set: update }, { new: true }).lean();
+  if (!doc) throw new Error('Not found');
+  return JSON.parse(JSON.stringify({ ...doc, _id: (doc as any)._id.toString() }));
+}
+
+export async function deleteTrendingErogramCreator(token: string, id: string) {
+  if (!(await authenticateAdmin(token))) throw new Error('Unauthorized');
+  await connectDB();
+  const result = await TrendingErogram.findByIdAndDelete(id);
   if (!result) throw new Error('Not found');
   return { success: true };
 }

@@ -25,7 +25,7 @@ export default function Footer() {
             style={{ willChange: 'transform, opacity' }}
         >
             <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 mb-16">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
                     {/* Brand Column */}
                     <div className="space-y-6">
                         <Link href={lp('/')} className="block">
@@ -58,23 +58,18 @@ export default function Footer() {
                         <h3 className="text-white font-bold mb-6">{t('footer.discover', 'Discover')}</h3>
                         <ul className="space-y-4">
                             <li>
-                                <Link href={lp('/groups')} className="text-[#999] hover:text-[#b31b1b] transition-colors">
-                                    {t('footer.telegramGroups', 'Telegram Groups')}
-                                </Link>
-                            </li>
-                            <li>
                                 <Link href={lp('/bots')} className="text-[#999] hover:text-[#b31b1b] transition-colors">
-                                    {t('footer.aiBots', 'AI Bots')}
+                                    Telegram Bots
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/articles" className="text-[#999] hover:text-[#b31b1b] transition-colors">
-                                    {t('footer.articlesGuides', 'Articles & Guides')}
+                                <Link href={lp('/best-telegram-groups')} className="text-[#999] hover:text-[#b31b1b] transition-colors">
+                                    Telegram Groups
                                 </Link>
                             </li>
                             <li>
-                                <Link href={lp('/best-telegram-groups/')} className="text-[#999] hover:text-[#b31b1b] transition-colors">
-                                    {t('footer.topLists', 'Top Lists')}
+                                <Link href={lp('/onlyfanssearch')} className="text-[#999] hover:text-[#b31b1b] transition-colors">
+                                    OnlyFans Search
                                 </Link>
                             </li>
                             <li>
@@ -83,35 +78,37 @@ export default function Footer() {
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/OFM" className="text-[#999] hover:text-[#b31b1b] transition-colors">
-                                    OFM Boost
+                                <Link href="/articles" className="text-[#999] hover:text-[#b31b1b] transition-colors">
+                                    Articles &amp; Guides
                                 </Link>
                             </li>
                         </ul>
                     </div>
 
-                    {/* Support Column */}
+                    {/* Advertise Column */}
                     <div>
-                        <h3 className="text-white font-bold mb-6">{t('footer.support', 'Support')}</h3>
+                        <h3 className="text-white font-bold mb-6">Advertise</h3>
                         <ul className="space-y-4">
                             <li>
-                                <Link href={lp('/about')} className="text-[#999] hover:text-[#b31b1b] transition-colors">
-                                    {t('footer.aboutUs', 'About Us')}
+                                <Link href={lp('/add')} className="text-[#999] hover:text-[#b31b1b] transition-colors">
+                                    Get Listed on Erogram
                                 </Link>
                             </li>
                             <li>
-                                <Link href={lp('/privacy')} className="text-[#999] hover:text-[#b31b1b] transition-colors">
-                                    {t('footer.privacyPolicy', 'Privacy Policy')}
+                                <Link href={lp('/advertise')} className="text-[#999] hover:text-[#b31b1b] transition-colors">
+                                    Advertise on Erogram
                                 </Link>
                             </li>
-                            <li>
-                                <Link href={lp('/terms')} className="text-[#999] hover:text-[#b31b1b] transition-colors">
-                                    {t('footer.termsOfService', 'Terms of Service')}
-                                </Link>
-                            </li>
+                        </ul>
+                    </div>
+
+                    {/* Contact Column */}
+                    <div>
+                        <h3 className="text-white font-bold mb-6">Contact</h3>
+                        <ul className="space-y-4">
                             <li>
                                 <Link href={lp('/contact')} className="text-[#999] hover:text-[#b31b1b] transition-colors">
-                                    {t('footer.support', 'Support')}
+                                    Contact &amp; Support
                                 </Link>
                             </li>
                         </ul>

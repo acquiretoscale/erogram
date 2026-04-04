@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { getUsers, updateUser, deleteUser } from '@/lib/actions/adminUsers';
+import { getUsers, updateUser, deleteUser, getBookmarkStats } from '@/lib/actions/adminUsers';
 
 type PremiumFilter = 'all' | 'premium' | 'free';
 
@@ -18,9 +18,12 @@ export default function UsersTab() {
     const [premiumFilter, setPremiumFilter] = useState<PremiumFilter>('all');
     const [editingUser, setEditingUser] = useState<string | null>(null);
     const [editFormData, setEditFormData] = useState<any>({});
+    const [bkStats, setBkStats] = useState<{ totalBookmarks: number; totalFolders: number; usersWithBookmarks: number; groupBookmarks: number; botBookmarks: number } | null>(null);
 
     useEffect(() => {
         fetchUsers();
+        const token = localStorage.getItem('token') || '';
+        getBookmarkStats(token).then(setBkStats).catch(() => {});
     }, []);
 
     const fetchUsers = async () => {
@@ -82,6 +85,15 @@ export default function UsersTab() {
     }, [users, searchQuery, premiumFilter]);
 
     const premiumCount = useMemo(() => users.filter(isPremiumActive).length, [users]);
+    const savedOFStats = useMemo(() => {
+        let usersWithSaves = 0;
+        let totalSaves = 0;
+        for (const u of users) {
+            const n = u.savedCreators?.length ?? 0;
+            if (n > 0) { usersWithSaves++; totalSaves += n; }
+        }
+        return { usersWithSaves, totalSaves, avg: usersWithSaves > 0 ? (totalSaves / usersWithSaves).toFixed(1) : '0' };
+    }, [users]);
 
     return (
         <div className="space-y-6">
@@ -92,6 +104,58 @@ export default function UsersTab() {
                         {users.length} registered &middot;{' '}
                         <span className="text-amber-400 font-medium">{premiumCount} premium</span>
                     </p>
+                </div>
+            </div>
+
+            {/* Activation Stats */}
+            <div className="space-y-3">
+                {/* Bookmarks — groups & bots (Bookmark collection) */}
+                <div>
+                    <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">Bookmarks (Groups & Bots)</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="bg-[#141414] border border-white/[0.07] rounded-xl px-4 py-3">
+                            <p className="text-[10px] font-semibold text-amber-400/70 uppercase tracking-wider mb-1">Total bookmarks</p>
+                            <p className="text-[22px] font-bold text-amber-300 tabular-nums leading-none">{(bkStats?.totalBookmarks ?? 0).toLocaleString()}</p>
+                            <p className="text-[11px] text-white/30 mt-1">{(bkStats?.groupBookmarks ?? 0).toLocaleString()} groups · {(bkStats?.botBookmarks ?? 0).toLocaleString()} bots</p>
+                        </div>
+                        <div className="bg-[#141414] border border-white/[0.07] rounded-xl px-4 py-3">
+                            <p className="text-[10px] font-semibold text-amber-400/70 uppercase tracking-wider mb-1">Users who bookmarked</p>
+                            <p className="text-[22px] font-bold text-white tabular-nums leading-none">{(bkStats?.usersWithBookmarks ?? 0).toLocaleString()}</p>
+                            <p className="text-[11px] text-white/30 mt-1">{users.length > 0 ? (((bkStats?.usersWithBookmarks ?? 0) / users.length) * 100).toFixed(1) : '0'}% of all users</p>
+                        </div>
+                        <div className="bg-[#141414] border border-white/[0.07] rounded-xl px-4 py-3">
+                            <p className="text-[10px] font-semibold text-amber-400/70 uppercase tracking-wider mb-1">Folders created</p>
+                            <p className="text-[22px] font-bold text-white tabular-nums leading-none">{(bkStats?.totalFolders ?? 0).toLocaleString()}</p>
+                            <p className="text-[11px] text-white/30 mt-1">Across all users</p>
+                        </div>
+                        <div className="bg-[#141414] border border-white/[0.07] rounded-xl px-4 py-3">
+                            <p className="text-[10px] font-semibold text-amber-400/70 uppercase tracking-wider mb-1">Avg bookmarks / user</p>
+                            <p className="text-[22px] font-bold text-white tabular-nums leading-none">{(bkStats?.usersWithBookmarks ?? 0) > 0 ? ((bkStats!.totalBookmarks / bkStats!.usersWithBookmarks).toFixed(1)) : '0'}</p>
+                            <p className="text-[11px] text-white/30 mt-1">Per user with bookmarks</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* OF Creator Saves (User.savedCreators) */}
+                <div>
+                    <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">OF Creator Saves (Hearts)</p>
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="bg-[#141414] border border-white/[0.07] rounded-xl px-4 py-3">
+                            <p className="text-[10px] font-semibold text-pink-400/70 uppercase tracking-wider mb-1">Users who saved OF creators</p>
+                            <p className="text-[22px] font-bold text-pink-300 tabular-nums leading-none">{savedOFStats.usersWithSaves.toLocaleString()}</p>
+                            <p className="text-[11px] text-white/30 mt-1">{users.length > 0 ? ((savedOFStats.usersWithSaves / users.length) * 100).toFixed(1) : '0'}% of all users</p>
+                        </div>
+                        <div className="bg-[#141414] border border-white/[0.07] rounded-xl px-4 py-3">
+                            <p className="text-[10px] font-semibold text-pink-400/70 uppercase tracking-wider mb-1">Total creator saves</p>
+                            <p className="text-[22px] font-bold text-white tabular-nums leading-none">{savedOFStats.totalSaves.toLocaleString()}</p>
+                            <p className="text-[11px] text-white/30 mt-1">Across all users</p>
+                        </div>
+                        <div className="bg-[#141414] border border-white/[0.07] rounded-xl px-4 py-3">
+                            <p className="text-[10px] font-semibold text-pink-400/70 uppercase tracking-wider mb-1">Avg saves / active user</p>
+                            <p className="text-[22px] font-bold text-white tabular-nums leading-none">{savedOFStats.avg}</p>
+                            <p className="text-[11px] text-white/30 mt-1">Per user with saves</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 

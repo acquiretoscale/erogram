@@ -84,7 +84,7 @@ export async function fetchCreatorFromApify(username: string): Promise<CreatorLo
   const cleaned = username.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
   if (!cleaned) return null;
 
-  const creds = await getApifyCredentials();
+  const creds = await getApifyCredentials('hello.datawizards/onlyfans-scraper');
   if (!creds) return null;
 
   const { token, actor } = creds;

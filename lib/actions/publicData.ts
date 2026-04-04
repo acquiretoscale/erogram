@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import {
   Campaign, TrendingOFCreator, OnlyFansCreator,
-  Bookmark, ButtonConfig, User,
+  Bookmark, ButtonConfig, User, TrendingErogram,
 } from '@/lib/models';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
@@ -17,7 +17,7 @@ export async function getTrendingCreators(category?: string) {
 
   const creators = await TrendingOFCreator.find(filter)
     .limit(12)
-    .select('_id name username avatar url bio categories position dealPrice')
+    .select('_id name username avatar url bio categories position dealPrice liveHourStart liveHourEnd')
     .lean();
 
   const usernames = (creators as any[]).map((c) => c.username).filter(Boolean);
@@ -39,6 +39,8 @@ export async function getTrendingCreators(category?: string) {
     position: c.position,
     dealPrice: c.dealPrice || 0,
     likesCount: likesMap.get(c.username) ?? 0,
+    liveHourStart: c.liveHourStart ?? -1,
+    liveHourEnd: c.liveHourEnd ?? -1,
   }));
 
   for (let i = mapped.length - 1; i > 0; i--) {
@@ -47,6 +49,61 @@ export async function getTrendingCreators(category?: string) {
   }
 
   return mapped;
+}
+
+export async function getTrendingOnErogram() {
+  await connectDB();
+
+  const managed = await TrendingErogram.find({ active: true }).sort({ position: 1 }).limit(40).lean() as any[];
+
+  if (managed.length > 0) {
+    return managed.map((d: any, i: number) => ({
+      _id: String(d._id),
+      name: d.name || '',
+      username: d.username || '',
+      slug: d.slug || '',
+      avatar: d.avatar || '',
+      rank: i + 1,
+      points: d.points || 0,
+      pointsDelta: d.pointsDelta || 0,
+      rankChange: 0,
+    }));
+  }
+
+  const docs = await OnlyFansCreator.find({
+    avatar: { $ne: '' },
+    deleted: { $ne: true },
+    likesCount: { $gt: 0 },
+  })
+    .sort({ likesCount: -1 })
+    .limit(40)
+    .select('name username slug avatar clicks likesCount')
+    .lean() as any[];
+
+  const hash = (s: string) => {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+    return Math.abs(h);
+  };
+
+  return docs.map((d: any, i: number) => {
+    const h = hash(String(d._id));
+    const denom = Math.max(docs.length - 1, 1);
+    const points = Math.round(495 - ((i * (495 - 223)) / denom));
+    const delta = 10 + (h % 21);
+    const upOrDown = ((h >> 4) % 4) === 0 ? -1 : 1;
+    return {
+      _id: String(d._id),
+      name: d.name || '',
+      username: d.username || '',
+      slug: d.slug || '',
+      avatar: d.avatar || '',
+      rank: i + 1,
+      points,
+      pointsDelta: delta * upOrDown,
+      rankChange: 0,
+    };
+  });
 }
 
 export async function getCampaignPlacement(slot: string) {

@@ -22,6 +22,18 @@ async function authenticateAdmin(token: string) {
 
 // ─── Helpers for import ──────────────────────────────────────────────
 
+function parseAbbreviatedNumber(val: any): number {
+  if (typeof val === 'number') return val;
+  const s = String(val || '0').replace(/,/g, '').trim();
+  const match = s.match(/^([0-9.]+)\s*([KkMm]?)$/);
+  if (!match) return parseInt(s, 10) || 0;
+  const num = parseFloat(match[1]);
+  const suffix = match[2].toUpperCase();
+  if (suffix === 'M') return Math.round(num * 1_000_000);
+  if (suffix === 'K') return Math.round(num * 1_000);
+  return Math.round(num);
+}
+
 function parseSentryItem(item: any) {
   const username = item.onlyfansUsername || '';
   if (!username) return null;
@@ -31,9 +43,9 @@ function parseSentryItem(item: any) {
     username,
     avatar: item.profileImage || '',
     bio: (item.bio || '').slice(0, 500),
-    likesCount: parseInt(String(item.likes || '0').replace(/,/g, ''), 10) || 0,
-    photosCount: parseInt(String(item.photos || '0').replace(/,/g, ''), 10) || 0,
-    videosCount: parseInt(String(item.videos || '0').replace(/,/g, ''), 10) || 0,
+    likesCount: parseAbbreviatedNumber(item.likes),
+    photosCount: parseAbbreviatedNumber(item.photos),
+    videosCount: parseAbbreviatedNumber(item.videos),
     price: parseFloat(String(item.price || '0').replace(/[^0-9.]/g, '')) || 0,
     isFree: String(item.price || '').toLowerCase() === 'free' || item.price === '0' || item.price === '0.00' || item.price === 0,
     url: item.onlyfansLink || `https://onlyfans.com/${username}`,
@@ -50,7 +62,7 @@ function parseIgolaItem(item: any) {
     username,
     avatar: item.image || (item.images?.[0]?.url) || '',
     bio: (item.description || '').slice(0, 500),
-    likesCount: typeof item.likes === 'number' ? item.likes : parseInt(String(item.likes || '0').replace(/,/g, ''), 10) || 0,
+    likesCount: parseAbbreviatedNumber(item.likes),
     photosCount: 0,
     videosCount: 0,
     price: typeof item.price === 'number' ? item.price : parseFloat(String(item.price || '0')) || 0,
@@ -96,6 +108,7 @@ async function createBasicEntryAction(
       slug,
       url: `https://onlyfans.com/${username}`,
       scrapedAt: new Date(),
+      adminImported: true,
     },
     $setOnInsert: {
       avatar: '',
@@ -175,7 +188,7 @@ export async function importOFMCreator(
     return JSON.parse(JSON.stringify({ creator, trending: trendingResult, source: 'database' }));
   }
 
-  const creds = await getApifyCredentials();
+  const creds = await getApifyCredentials('hello.datawizards/onlyfans-scraper');
   if (!creds) {
     const result = await createBasicEntryAction(cleanUsername, slug, categories, trendingSlot);
     return JSON.parse(JSON.stringify(result));
@@ -183,11 +196,14 @@ export async function importOFMCreator(
 
   const { token: APIFY_TOKEN, actor: APIFY_ACTOR } = creds;
   const isSentry = APIFY_ACTOR.includes('sentry');
+  const isDatawizards = APIFY_ACTOR.includes('datawizards');
   const actorId = APIFY_ACTOR.replace('/', '~');
 
-  const input = isSentry
-    ? { searchMode: 'top', additionalKeywords: cleanUsername, maxProfiles: 5, requireInstagram: false, scrapeOtherSocials: false, scrollPatience: 10, maxPages: 3 }
-    : { maxItems: 5, query: cleanUsername, gender: 'female', sort: 'popular', minPrice: 0, maxPrice: 0 };
+  const input = isDatawizards
+    ? { search_queries: [cleanUsername] }
+    : isSentry
+      ? { searchMode: 'top', additionalKeywords: cleanUsername, maxProfiles: 5, requireInstagram: false, scrapeOtherSocials: false, scrollPatience: 10, maxPages: 3 }
+      : { maxItems: 5, query: cleanUsername, gender: 'female', sort: 'popular', minPrice: 0, maxPrice: 0 };
 
   try {
     let runRes = await fetch(
@@ -287,6 +303,13 @@ export async function importOFMCreator(
       : [];
     const allCats = [...new Set([...catList, ...(matched.scrapedCategories || [])])];
 
+    const existingDoc = await OnlyFansCreator.findOne({ slug }).select('likesCount subscriberCount photosCount videosCount mediaCount').lean() as any;
+    const existingLikes = existingDoc?.likesCount || 0;
+    const existingSubs = existingDoc?.subscriberCount || 0;
+    const existingPhotos = existingDoc?.photosCount || 0;
+    const existingVideos = existingDoc?.videosCount || 0;
+    const existingMedia = existingDoc?.mediaCount || 0;
+
     const updateOp: any = {
       $set: {
         name: matched.name,
@@ -295,17 +318,18 @@ export async function importOFMCreator(
         avatar: matched.avatar,
         header: '',
         bio: matched.bio,
-        subscriberCount: 0,
-        likesCount: matched.likesCount,
-        mediaCount: matched.photosCount + matched.videosCount,
-        photosCount: matched.photosCount,
-        videosCount: matched.videosCount,
+        likesCount: matched.likesCount >= existingLikes ? matched.likesCount : existingLikes,
+        subscriberCount: matched.subscriberCount >= existingSubs ? (matched.subscriberCount || 0) : existingSubs,
+        mediaCount: (matched.photosCount + matched.videosCount) >= existingMedia ? (matched.photosCount + matched.videosCount) : existingMedia,
+        photosCount: matched.photosCount >= existingPhotos ? matched.photosCount : existingPhotos,
+        videosCount: matched.videosCount >= existingVideos ? matched.videosCount : existingVideos,
         price: matched.price,
         isFree: matched.isFree,
         isVerified: false,
         gender: matched.gender,
         url: matched.url,
         scrapedAt: new Date(),
+        adminImported: true,
       },
     };
     if (allCats.length > 0) updateOp.$addToSet = { categories: { $each: allCats } };
@@ -331,6 +355,228 @@ export async function importOFMCreator(
     const result = await createBasicEntryAction(cleanUsername, slug, categories, trendingSlot);
     return JSON.parse(JSON.stringify(result));
   }
+}
+
+// ─── Bulk Import (single Apify run) ──────────────────────────────────
+
+export async function bulkImportCreators(
+  token: string,
+  usernames: string[],
+): Promise<{ results: Array<{ input: string; status: string; creator?: any; source?: string; error?: string }> }> {
+  if (!(await authenticateAdmin(token))) throw new Error('Unauthorized');
+  await connectDB();
+
+  const cleaned = usernames
+    .map((u) => u.trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?onlyfans\.com\//i, '').replace(/[/?#].*$/, '').trim().toLowerCase())
+    .filter(Boolean);
+  const unique = [...new Set(cleaned)];
+  if (unique.length === 0) throw new Error('No valid usernames');
+
+  const existingDocs = await OnlyFansCreator.find({ username: { $in: unique }, deleted: { $ne: true }, avatar: { $ne: '' } })
+    .select('name username slug avatar bio likesCount photosCount videosCount price isFree url categories')
+    .lean() as any[];
+  const existingMap = new Map(existingDocs.map((d: any) => [d.username.toLowerCase(), { ...d, _id: d._id.toString() }]));
+
+  const toScrape = unique.filter((u) => !existingMap.has(u));
+  const results: Array<{ input: string; status: string; creator?: any; source?: string; error?: string }> = [];
+
+  for (const u of unique) {
+    if (existingMap.has(u)) {
+      results.push({ input: u, status: 'success', creator: existingMap.get(u), source: 'database' });
+    } else {
+      results.push({ input: u, status: 'pending' });
+    }
+  }
+
+  if (toScrape.length === 0) {
+    return { results };
+  }
+
+  const creds = await getApifyCredentials('hello.datawizards/onlyfans-scraper');
+  if (!creds) {
+    for (const r of results) { if (r.status === 'pending') { r.status = 'failed'; r.error = 'No Apify keys'; } }
+    return { results };
+  }
+
+  const actorId = creds.actor.replace('/', '~');
+
+  try {
+    const runRes = await fetch(
+      `https://api.apify.com/v2/acts/${actorId}/runs?token=${creds.token}`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ search_queries: toScrape }) },
+    );
+
+    if (!runRes.ok) {
+      for (const r of results) { if (r.status === 'pending') { r.status = 'failed'; r.error = 'Apify run failed to start'; } }
+      return { results };
+    }
+
+    const runData = await runRes.json();
+    const runId = runData.data?.id;
+    if (!runId) {
+      for (const r of results) { if (r.status === 'pending') { r.status = 'failed'; r.error = 'No run ID'; } }
+      return { results };
+    }
+
+    let status = runData.data?.status;
+    const maxWait = 5 * 60 * 1000;
+    const start = Date.now();
+    while (!['SUCCEEDED', 'FAILED', 'ABORTED', 'TIMED-OUT'].includes(status)) {
+      if (Date.now() - start > maxWait) break;
+      await new Promise((r) => setTimeout(r, 5000));
+      const poll = await fetch(`https://api.apify.com/v2/actor-runs/${runId}?token=${creds.token}`);
+      status = (await poll.json()).data?.status;
+    }
+
+    if (status !== 'SUCCEEDED') {
+      for (const r of results) { if (r.status === 'pending') { r.status = 'failed'; r.error = `Apify run ${status}`; } }
+      return { results };
+    }
+
+    const datasetRes = await fetch(
+      `https://api.apify.com/v2/actor-runs/${runId}/dataset/items?token=${creds.token}&limit=500`,
+    );
+    const items = await datasetRes.json();
+
+    if (!Array.isArray(items)) {
+      for (const r of results) { if (r.status === 'pending') { r.status = 'failed'; r.error = 'No data returned'; } }
+      return { results };
+    }
+
+    const parsedMap = new Map<string, any>();
+    for (const item of items) {
+      const username = (item.username || '').toLowerCase();
+      if (!username) continue;
+      parsedMap.set(username, item);
+    }
+
+    for (const r of results) {
+      if (r.status !== 'pending') continue;
+      const raw = parsedMap.get(r.input);
+      if (!raw) { r.status = 'failed'; r.error = 'Not found on OnlyFans'; continue; }
+
+      try {
+        const parsed = {
+          name: raw.name || raw.username || r.input,
+          username: raw.username || r.input,
+          avatar: raw.avatar || '',
+          header: raw.header || '',
+          bio: (raw.about || '').slice(0, 500),
+          likesCount: raw.favoritedCount || 0,
+          photosCount: raw.photosCount || 0,
+          videosCount: raw.videosCount || 0,
+          mediaCount: raw.mediasCount || 0,
+          postsCount: raw.postsCount || 0,
+          subscriberCount: raw.subscribersCount || 0,
+          price: typeof raw.subscribePrice === 'number' ? raw.subscribePrice : parseFloat(String(raw.subscribePrice || '0')) || 0,
+          isFree: (raw.subscribePrice || 0) === 0,
+          isVerified: raw.isVerified || false,
+          url: `https://onlyfans.com/${raw.username || r.input}`,
+          gender: 'female' as const,
+          location: raw.location || '',
+          website: raw.website || '',
+          joinDate: raw.joinDate || '',
+          onlyfansId: raw.id || 0,
+        };
+
+        const slug = parsed.username.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+
+        const doc = await OnlyFansCreator.findOneAndUpdate(
+          { slug },
+          {
+            $set: {
+              name: parsed.name, username: parsed.username, slug, avatar: parsed.avatar,
+              header: parsed.header, bio: parsed.bio, subscriberCount: parsed.subscriberCount,
+              likesCount: parsed.likesCount, mediaCount: parsed.mediaCount,
+              photosCount: parsed.photosCount, videosCount: parsed.videosCount,
+              postsCount: parsed.postsCount, price: parsed.price, isFree: parsed.isFree,
+              isVerified: parsed.isVerified, gender: parsed.gender, url: parsed.url,
+              location: parsed.location, website: parsed.website, joinDate: parsed.joinDate,
+              onlyfansId: parsed.onlyfansId, scrapedAt: new Date(),
+            },
+          },
+          { upsert: true, new: true },
+        );
+
+        const saved = await OnlyFansCreator.findById(doc._id).lean() as any;
+        r.status = 'success';
+        r.creator = { ...saved, _id: saved._id.toString() };
+        r.source = 'apify';
+      } catch (e: any) {
+        r.status = 'failed';
+        r.error = e.message || 'DB save failed';
+      }
+    }
+  } catch (e: any) {
+    for (const r of results) { if (r.status === 'pending') { r.status = 'failed'; r.error = e.message || 'Unknown error'; } }
+  }
+
+  return { results };
+}
+
+// ─── Bulk helpers ────────────────────────────────────────────────────
+
+export async function saveBulkApifyResults(items: any[]) {
+  await connectDB();
+  const savedCreators: any[] = [];
+  for (const item of items) {
+    const username = item.username;
+    if (!username) continue;
+    const slug = username.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    try {
+      const doc = await OnlyFansCreator.findOneAndUpdate(
+        { slug },
+        {
+          $set: {
+            name: item.name || username, username, slug,
+            avatar: item.avatar || '', header: item.header || '',
+            bio: (item.about || '').slice(0, 500),
+            likesCount: item.favoritedCount || 0,
+            photosCount: item.photosCount || 0, videosCount: item.videosCount || 0,
+            mediaCount: item.mediasCount || 0, postsCount: item.postsCount || 0,
+            subscriberCount: item.subscribersCount || 0,
+            price: typeof item.subscribePrice === 'number' ? item.subscribePrice : parseFloat(String(item.subscribePrice || '0')) || 0,
+            isFree: (item.subscribePrice || 0) === 0,
+            isVerified: item.isVerified || false,
+            gender: 'female', url: `https://onlyfans.com/${username}`,
+            location: item.location || '', website: item.website || '',
+            joinDate: item.joinDate || '', onlyfansId: item.id || 0,
+            scrapedAt: new Date(),
+          },
+        },
+        { upsert: true, new: true, strict: false },
+      ).select('name username slug avatar likesCount categories price isFree url').lean() as any;
+      if (doc) savedCreators.push({ ...doc, _id: doc._id.toString() });
+    } catch {}
+  }
+  return savedCreators;
+}
+
+export async function checkExistingCreators(usernames: string[]) {
+  await connectDB();
+  const cleaned = usernames.map((u) => u.toLowerCase().trim()).filter(Boolean);
+  const docs = await OnlyFansCreator.find({
+    username: { $in: cleaned },
+    deleted: { $ne: true },
+    avatar: { $ne: '' },
+  })
+    .select('name username slug avatar likesCount categories price isFree url')
+    .lean() as any[];
+  return docs.map((d: any) => ({ ...d, _id: d._id.toString() }));
+}
+
+export async function getRecentImports(limit = 50) {
+  await connectDB();
+  const docs = await OnlyFansCreator.find({
+    scrapedAt: { $exists: true },
+    avatar: { $ne: '' },
+    deleted: { $ne: true },
+  })
+    .sort({ scrapedAt: -1 })
+    .limit(limit)
+    .select('name username slug avatar likesCount categories scrapedAt')
+    .lean() as any[];
+  return docs.map((d: any) => ({ ...d, _id: d._id.toString(), scrapedAt: d.scrapedAt?.toISOString?.() || '' }));
 }
 
 // ─── Scrape Logs ─────────────────────────────────────────────────────

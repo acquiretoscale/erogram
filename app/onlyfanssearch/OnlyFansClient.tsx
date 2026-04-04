@@ -3,16 +3,16 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Search, Bookmark, Crown, Trash2, X, Heart, Shuffle, Clock, Plus } from 'lucide-react';
+import { Search, Bookmark, Crown, Trash2, X, Heart, Shuffle, Clock, Plus, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import HeaderBanner from '@/components/HeaderBanner';
 import { OF_CATEGORIES, ofCategoryUrl } from './constants';
 import { trackCreatorClick, trackTrendingClick } from '@/lib/actions/onlyfansTracking';
 import { getTrendingCreators } from '@/lib/actions/publicData';
-import OFFooter from '@/components/OFFooter';
 import { browseCreators, searchCreators, deleteCreatorBySlug } from '@/lib/actions/ofCreatorsBrowse';
 import { getOFMTrending, createOFMTrendingSlot } from '@/lib/actions/ofm';
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
+import Footer from '@/components/Footer';
 
 
 
@@ -32,13 +32,26 @@ interface Creator {
   isFree: boolean;
   url: string;
   clicks: number;
+  liveHourStart?: number;
+  liveHourEnd?: number;
 }
 
 interface Top10List {
   category: string;
   label: string;
   creators: Creator[];
-  shufflePool: Creator[];
+}
+
+interface TrendingCreatorItem {
+  _id: string;
+  name: string;
+  username: string;
+  slug: string;
+  avatar: string;
+  rank: number;
+  points: number;
+  pointsDelta: number;
+  rankChange: number;
 }
 
 interface Props {
@@ -48,6 +61,7 @@ interface Props {
   top10Lists?: Top10List[];
   recentlyAdded?: Creator[];
   topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string; bannerDevice?: 'all' | 'mobile' | 'desktop' }>;
+  trendingOnErogram?: TrendingCreatorItem[];
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -57,6 +71,13 @@ function shuffle<T>(arr: T[]): T[] {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+function isCreatorLiveNow(start: number, end: number): boolean {
+  if (start < 0 || end < 0) return false;
+  const gmtHour = new Date().getUTCHours();
+  if (start <= end) return gmtHour >= start && gmtHour < end;
+  return gmtHour >= start || gmtHour < end;
 }
 
 function formatCount(n: number) {
@@ -93,7 +114,7 @@ function CreatorCard({
     onClickTrack(creator.slug);
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) {
-      window.location.href = `/join-erogram?redirect=/${creator.slug}`;
+      window.open(creator.url, '_blank', 'noopener,noreferrer');
       return;
     }
     window.open(`/${creator.slug}`, '_blank', 'noopener,noreferrer');
@@ -211,90 +232,6 @@ function CreatorCard({
   );
 }
 
-function FeaturedCategoryCard({ creator, onClickTrack }: { creator: Creator; onClickTrack: (id: string) => void }) {
-  const { t } = useTranslation();
-  const [redirecting, setRedirecting] = useState(false);
-  const [countdown, setCountdown] = useState(0);
-
-  useEffect(() => {
-    if (!redirecting || countdown <= 0) return;
-    const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [redirecting, countdown]);
-
-  useEffect(() => {
-    if (redirecting && countdown === 0) setRedirecting(false);
-  }, [redirecting, countdown]);
-
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (redirecting) return;
-    onClickTrack(creator._id);
-    window.open(creator.url, '_blank', 'noopener,noreferrer');
-    setRedirecting(true);
-    setCountdown(2);
-  };
-
-  return (
-    <div className="group h-full flex flex-col rounded-2xl overflow-hidden bg-gradient-to-br from-[#0B1D3A] via-[#122B53] to-[#1A3F73] ring-[3px] ring-[#FF6A00] hover:ring-[#FF8C3A] shadow-[0_8px_28px_-8px_rgba(255,106,0,0.45)] hover:shadow-[0_12px_36px_-6px_rgba(255,106,0,0.55)] hover:-translate-y-1 transition-all duration-300">
-      <div className="flex-1 flex flex-col">
-        <div className="relative aspect-[3/4] bg-[#0F274C]">
-          {creator.avatar ? (
-            <img
-              src={creator.avatar}
-              alt={`${creator.name} OnlyFans`}
-              className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
-              loading="lazy"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-[#C7DAFF] bg-[#0F274C]">
-              {creator.name.charAt(0)}
-            </div>
-          )}
-          <div className="absolute top-2 left-2 z-10">
-            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#FF6A00] text-white text-[9px] font-black uppercase tracking-widest shadow-lg">
-              <Crown size={8} fill="currentColor" /> {t('ofSearch.featured')}
-            </span>
-          </div>
-        </div>
-        <div className="px-2.5 pt-2 sm:px-4 sm:pt-3">
-          <h3 className="font-bold text-[13px] sm:text-[15px] text-white truncate leading-tight">
-            {creator.name}
-          </h3>
-          <p className="text-[11px] sm:text-[13px] text-[#7BAEFF] font-semibold mt-0.5">@{creator.username}</p>
-          {creator.likesCount > 0 && (
-            <p className="text-[10px] sm:text-[11px] text-[#FF9A50] mt-0.5">{formatCount(creator.likesCount)} {t('ofSearch.likes')}</p>
-          )}
-          {creator.categories && creator.categories.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {creator.categories.slice(0, 3).map((cat) => (
-                <span key={cat} className="px-1.5 py-0.5 bg-[#FF6A00]/15 text-[#FF9A50] text-[8px] sm:text-[9px] font-bold rounded-md capitalize border border-[#FF6A00]/25">
-                  {cat}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-      <div className="px-2.5 pb-2.5 pt-2 sm:px-4 sm:pb-4 sm:pt-3">
-        <button
-          onClick={handleClick}
-          disabled={redirecting}
-          className="flex items-center justify-center gap-2 w-full py-2 sm:py-2.5 rounded-xl bg-[#FF6A00] text-white text-[13px] sm:text-sm font-black text-center shadow-lg border border-[#FF9A50] group-hover:bg-[#FF7A1A] transition-all"
-        >
-          {redirecting ? (
-            <>
-              <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin shrink-0" />
-              {t('ofSearch.redirectingIn').replace('{n}', String(countdown))}
-            </>
-          ) : t('ofSearch.viewProfile')}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function CreatorPostModal({ creator, onClose }: { creator: Creator; onClose: () => void }) {
   const { t } = useTranslation();
   const [redirecting, setRedirecting] = useState(false);
@@ -379,37 +316,51 @@ function CreatorPostModal({ creator, onClose }: { creator: Creator; onClose: () 
 }
 
 function Top10CategoryCard({ list, onSelectCreator }: { list: Top10List; onSelectCreator: (c: Creator) => void }) {
-  const { t } = useTranslation();
   const lp = useLocalePath();
   const top10 = list.creators.slice(0, 10);
+
   return (
-    <div className="h-full rounded-2xl bg-white overflow-hidden shadow-md flex flex-col">
-      <div className="px-3 pt-3 pb-1">
-        <h3 className="text-[13px] font-black text-gray-900">Top 10 {list.label}</h3>
+    <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden shadow-[0_8px_30px_-14px_rgba(0,0,0,0.25)] flex flex-col">
+      <div className="px-5 pt-5 pb-4 border-b border-gray-100">
+        <h3 className="text-lg sm:text-xl font-black text-gray-900 tracking-tight">
+          Top 10 OnlyFans {list.label} Creators
+        </h3>
       </div>
-      <div className="px-1.5 flex-1 overflow-y-auto min-h-0">
-        {top10.map((c, i) => (
-          <button
-            key={c._id}
-            onClick={() => onSelectCreator(c)}
-            className="w-full flex items-center gap-1.5 px-1 py-[3px] rounded-lg hover:bg-gray-50 transition-colors group text-left"
-          >
-            <span className="w-4 text-center text-[10px] font-black text-gray-300 tabular-nums flex-shrink-0">
-              {i + 1}
-            </span>
-            <div className="w-11 h-11 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
-              {c.avatar ? (
-                <img src={c.avatar} alt={c.name} className="w-full h-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-gray-400">{c.name.charAt(0)}</div>
-              )}
-            </div>
-            <p className="min-w-0 flex-1 text-[11px] font-bold text-gray-800 truncate leading-tight group-hover:text-[#00AFF0] transition-colors">{c.name}</p>
-            {c.likesCount > 0 && (
-              <span className="text-[9px] font-semibold text-gray-400 tabular-nums flex-shrink-0">{formatCount(c.likesCount)}</span>
-            )}
-          </button>
-        ))}
+      <div className="flex-1 px-2 py-1">
+        <div className="space-y-0.5">
+          {top10.map((c, i) => (
+            <button
+              key={c._id}
+              onClick={() => onSelectCreator(c)}
+              className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-gray-50 transition-colors group text-left"
+            >
+              <span className="w-6 h-6 rounded-full bg-gray-900 text-white text-[10px] font-black flex items-center justify-center shrink-0 tabular-nums">
+                {i + 1}
+              </span>
+              <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                {c.avatar ? (
+                  <img src={c.avatar} alt={c.name} className="w-full h-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-sm font-bold text-gray-400">{c.name.charAt(0)}</div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-bold text-gray-900 truncate leading-tight group-hover:text-[#00AFF0] transition-colors">
+                  {c.name}
+                </p>
+                <p className="text-[11px] text-gray-500 truncate">@{c.username}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="px-4 pb-4 pt-3 border-t border-gray-100">
+        <Link
+          href={lp(ofCategoryUrl(list.category))}
+          className="flex items-center justify-center gap-1 w-full py-3 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-sm font-bold hover:from-[#009ADB] hover:to-[#00BFE8] transition-all"
+        >
+          View All {list.label}
+        </Link>
       </div>
     </div>
   );
@@ -435,7 +386,7 @@ function CreatorCardSkeleton() {
   );
 }
 
-export default function OnlyFansClient({ initialCreators, totalCreators, initialQuery = '', top10Lists = [], recentlyAdded = [], topBannerCampaigns = [] }: Props) {
+export default function OnlyFansClient({ initialCreators, totalCreators, initialQuery = '', top10Lists = [], recentlyAdded = [], topBannerCampaigns = [], trendingOnErogram = [] }: Props) {
   const { t } = useTranslation();
   const lp = useLocalePath();
   const [query, setQuery] = useState(initialQuery);
@@ -449,6 +400,8 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
   const [searchResults, setSearchResults] = useState<Creator[]>([]);
   const [searchDone, setSearchDone] = useState(false);
   const [progress, setProgress] = useState<{ loaded: number; total: number } | null>(null);
+
+  const [fetchingFromOF, setFetchingFromOF] = useState(false);
 
   // Infinite scroll after search results are exhausted
   const [afterSearchCreators, setAfterSearchCreators] = useState<Creator[]>([]);
@@ -466,56 +419,15 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
   const searchBoxRef = useRef<HTMLDivElement>(null);
   const isLiveVisitors = liveUsers > 0;
 
-  const [categoryPicks, setCategoryPicks] = useState<Record<string, Creator[]>>({});
   const [recentPool, setRecentPool] = useState<Creator[]>(recentlyAdded);
-  const [recentPicks, setRecentPicks] = useState<Creator[]>(() => shuffle(recentlyAdded).slice(0, 4));
+  const [recentPicks, setRecentPicks] = useState<Creator[]>(() => recentlyAdded.slice(0, 4));
   const shuffleRecent = () => setRecentPicks(shuffle(recentPool).slice(0, 4));
 
-  const featuredIdSet = useMemo(
-    () => new Set(allFeatured.map((f: any) => f._id)),
-    [allFeatured]
-  );
-
-  const buildCategoryPicks = useCallback((lists: typeof top10Lists, featured: any[]) => {
-    const map: Record<string, Creator[]> = {};
-    for (const list of lists) {
-      const featuredForCat = shuffle(
-        featured.filter((f: any) =>
-          Array.isArray(f.categories) && f.categories.some((c: string) => c.toLowerCase() === list.category.toLowerCase())
-        )
-      ).map((f: any) => ({
-        _id: f._id,
-        name: f.name,
-        username: f.username,
-        slug: f.username,
-        avatar: f.avatar || '',
-        url: f.url,
-        categories: f.categories || [],
-        likesCount: f.likesCount ?? 0,
-        photosCount: 0,
-        videosCount: 0,
-        price: 0,
-        isFree: true,
-        clicks: 0,
-      } as Creator));
-
-      const featIds = new Set(featuredForCat.map((f) => f._id));
-      const pool = shuffle((list.shufflePool || list.creators).filter((c) => !featIds.has(c._id)));
-      const feat = featuredForCat[0] ?? null;
-
-      if (feat) {
-        map[list.category] = [...pool.slice(0, 2), feat];
-      } else {
-        map[list.category] = pool.slice(0, 3);
-      }
-    }
-    return map;
-  }, []);
-
   useEffect(() => {
-    if (top10Lists.length === 0) return;
-    setCategoryPicks(buildCategoryPicks(top10Lists, allFeatured));
-  }, [top10Lists, allFeatured, buildCategoryPicks]);
+    if (recentlyAdded.length > 0) {
+      setRecentPicks(shuffle(recentlyAdded).slice(0, 4));
+    }
+  }, []);
 
   const TRENDING_CATEGORIES = OF_CATEGORIES.slice(0, 10);
 
@@ -582,11 +494,35 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
       setProgress({ loaded: unique.length, total: data.total || 0 });
 
       if (data.shouldScrape && data.scrapeQuery) {
+        const sq = data.scrapeQuery;
+        const looksLikeUsername = /^[a-z0-9._-]+$/i.test(sq) && !sq.includes(' ');
+        const nameAsUsername = sq.replace(/\s+/g, '').toLowerCase();
+        const usernames = looksLikeUsername ? [sq] : [nameAsUsername];
+        const body: Record<string, any> = { category: sq, maxItems: 15, source: 'search', usernames };
+        setFetchingFromOF(true);
         fetch('/api/onlyfans/scrape', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ category: data.scrapeQuery, maxItems: 15, source: 'search' }),
+          body: JSON.stringify(body),
         }).catch(() => {});
+
+        const retrySearch = async (attempt: number) => {
+          if (attempt > 8) { setFetchingFromOF(false); return; }
+          const delay = attempt <= 2 ? 5000 : attempt <= 4 ? 10000 : 15000;
+          await new Promise((r) => setTimeout(r, delay));
+          try {
+            const retry = await searchCreators(trimmed, 1000, 0);
+            const retryResults: Creator[] = retry.creators || [];
+            if (retryResults.length > 0) {
+              const seen2 = new Set<string>();
+              setSearchResults(retryResults.filter((c) => { if (seen2.has(c._id)) return false; seen2.add(c._id); return true; }));
+              setFetchingFromOF(false);
+              return;
+            }
+          } catch {}
+          retrySearch(attempt + 1);
+        };
+        retrySearch(1);
       }
     } catch (e: any) {
       console.error('Search error:', e);
@@ -662,7 +598,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
         .catch(() => {});
     };
     fetchActive();
-    const id = setInterval(fetchActive, 30_000);
+    const id = setInterval(fetchActive, 300_000);
     return () => clearInterval(id);
   }, []);
 
@@ -681,11 +617,6 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
       setAfterSearchCreators(filterOut);
       setRecentPool(filterOut);
       setRecentPicks(filterOut);
-      setCategoryPicks((prev) => {
-        const next: Record<string, Creator[]> = {};
-        for (const [cat, list] of Object.entries(prev)) next[cat] = filterOut(list);
-        return next;
-      });
     } catch (e: any) {
       alert(`Delete failed: ${e.message}`);
     }
@@ -933,8 +864,20 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
               </div>
             ) : searchDone && searchResults.length === 0 ? (
               <div className="text-center py-20">
-                <p className="text-white/30 text-lg">{t('ofSearch.noCreatorsFound')} &ldquo;{debouncedQuery}&rdquo;</p>
-                <p className="text-white/20 text-sm mt-2">{t('ofSearch.tryDifferent')}</p>
+                {fetchingFromOF ? (
+                  <>
+                    <div className="flex items-center justify-center gap-3 mb-3">
+                      <span className="w-5 h-5 border-2 border-[#00AFF0]/30 border-t-[#00AFF0] rounded-full animate-spin" />
+                      <p className="text-white/60 text-lg font-semibold">Searching OnlyFans for &ldquo;{debouncedQuery}&rdquo;...</p>
+                    </div>
+                    <p className="text-white/30 text-sm">This may take a few seconds. Results will appear automatically.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-white/30 text-lg">{t('ofSearch.noCreatorsFound')} &ldquo;{debouncedQuery}&rdquo;</p>
+                    <p className="text-white/20 text-sm mt-2">{t('ofSearch.tryDifferent')}</p>
+                  </>
+                )}
               </div>
             ) : searchResults.length > 0 ? (
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
@@ -977,7 +920,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                                   {tc.name.charAt(0)}
                                 </div>
                               )}
-                              <div className="absolute top-2 left-2 z-10">
+                              <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
                                 <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#EAF1FF] text-[#1F4076] text-[9px] font-black uppercase tracking-widest shadow-md ring-1 ring-white/70">
                                   <Crown size={8} fill="currentColor" className="text-[#1F4076]" />
                                   {t('ofSearch.featured')}
@@ -985,9 +928,17 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                               </div>
                             </div>
                             <div className="px-2.5 pt-2 sm:px-4 sm:pt-3">
-                              <h3 className="font-bold text-[13px] sm:text-[15px] text-white truncate leading-tight drop-shadow-sm">
-                                {tc.name}
-                              </h3>
+                              <div className="flex items-center gap-1.5">
+                                <h3 className="font-bold text-[13px] sm:text-[15px] text-white truncate leading-tight drop-shadow-sm">
+                                  {tc.name}
+                                </h3>
+                                {isCreatorLiveNow(tc.liveHourStart ?? -1, tc.liveHourEnd ?? -1) && (
+                                  <span className="inline-flex items-center gap-1 shrink-0">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-[pulse_2s_ease-in-out_infinite]" />
+                                    <span className="text-[9px] font-bold text-emerald-400 uppercase">Live</span>
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-[11px] sm:text-[13px] text-[#BFD7FF] font-semibold mt-0.5">@{tc.username}</p>
                             </div>
                             <div className="px-2.5 pb-2.5 pt-2 sm:px-4 sm:pb-4 sm:pt-3">
@@ -1072,7 +1023,15 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                           {tc.avatar ? <img src={tc.avatar} alt={`${tc.name} OnlyFans`} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" loading="lazy" referrerPolicy="no-referrer" /> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#C7DAFF] bg-[#0F274C]">{tc.name.charAt(0)}</div>}
                         </div>
                         <div className="px-3 pt-2.5 sm:px-4 sm:pt-3">
-                          <h3 className="font-bold text-[13px] sm:text-[15px] text-white truncate leading-tight">{tc.name}</h3>
+                          <div className="flex items-center gap-1.5">
+                            <h3 className="font-bold text-[13px] sm:text-[15px] text-white truncate leading-tight">{tc.name}</h3>
+                            {isCreatorLiveNow(tc.liveHourStart ?? -1, tc.liveHourEnd ?? -1) && (
+                              <span className="inline-flex items-center gap-1 shrink-0">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-[pulse_2s_ease-in-out_infinite]" />
+                                <span className="text-[9px] font-bold text-emerald-400 uppercase">Live</span>
+                              </span>
+                            )}
+                          </div>
                           <p className="text-[11px] sm:text-[13px] text-[#7BAEFF] font-semibold mt-0.5">@{tc.username}</p>
                           {(tc.likesCount > 0) && (
                             <p className="text-[10px] sm:text-[11px] text-[#FF9A50] mt-0.5">{formatCount(tc.likesCount)} {t('ofSearch.likes')}</p>
@@ -1090,6 +1049,81 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                         <div className="px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3"><div className="w-full py-2 sm:py-2.5 rounded-xl bg-[#FF6A00] text-white text-[12px] sm:text-sm font-black text-center shadow-lg border border-[#FF9A50] group-hover:bg-[#FF7A1A] transition-colors">{t('ofSearch.viewProfile')}</div></div>
                       </button>
                     ))}
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* Trending on Erogram */}
+            {trendingOnErogram.length > 0 && (
+              <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+                <div className="relative overflow-hidden rounded-2xl border border-[#00AFF0]/20 bg-gradient-to-br from-[#061018] via-[#0a1c2e] to-[#0d2844] p-4 sm:p-6 shadow-[0_20px_50px_-12px_rgba(0,175,240,0.18),inset_0_1px_0_0_rgba(255,255,255,0.06)]">
+                  <div className="pointer-events-none absolute -top-28 -right-20 h-56 w-56 rounded-full bg-[#00AFF0]/20 blur-3xl" />
+                  <div className="pointer-events-none absolute -bottom-24 -left-16 h-48 w-48 rounded-full bg-[#00D4FF]/12 blur-3xl" />
+                  <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(0,175,240,0.06)_0%,transparent_45%,rgba(0,212,255,0.04)_100%)]" />
+                  <div className="relative">
+                    <div className="flex items-center gap-3 mb-5">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-[#00AFF0] to-[#00D4FF] flex items-center justify-center shrink-0 shadow-lg shadow-[#00AFF0]/30">
+                        <TrendingUp size={18} className="text-white" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">
+                          Trending on <span className="text-[#00D4FF]">Erogram</span>
+                        </h2>
+                        <p className="text-[11px] text-white/50 font-semibold">Top {trendingOnErogram.length} chart · Last 7 days</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                      {[0, 1, 2, 3].map((col) => {
+                        const perCol = Math.ceil(trendingOnErogram.length / 4);
+                        const chunk = trendingOnErogram.slice(col * perCol, col * perCol + perCol);
+                        if (chunk.length === 0) return null;
+                        return (
+                          <div key={col} className="rounded-xl bg-white overflow-hidden shadow-md">
+                            {chunk.map((tc, j) => (
+                              <Link
+                                key={tc._id}
+                                href={`/onlyfans/${tc.slug}`}
+                                onClick={() => trackClick(tc.slug)}
+                                className={`w-full flex items-center hover:brightness-95 transition-all ${
+                                  j < chunk.length - 1 ? 'border-b border-gray-100' : ''
+                                }`}
+                              >
+                                <span className="w-6 h-6 rounded-md bg-gray-900 text-white text-[10px] font-black flex items-center justify-center shrink-0 tabular-nums ml-2">
+                                  {tc.rank}
+                                </span>
+                                <div className="flex items-center gap-3 px-2 py-2.5 flex-1 min-w-0">
+                                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+                                    {tc.avatar ? (
+                                      <img src={tc.avatar} alt={tc.name} className="w-full h-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center text-sm font-bold text-gray-400">{tc.name.charAt(0)}</div>
+                                    )}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-[13px] font-bold text-gray-900 truncate">{tc.name}</p>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <span className="text-[11px] font-black text-gray-500 tabular-nums">{tc.points.toLocaleString()} pts</span>
+                                      <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold tabular-nums ${tc.pointsDelta > 0 ? 'text-[#16a34a]' : tc.pointsDelta < 0 ? 'text-[#dc2626]' : 'text-gray-400'}`}>
+                                        {tc.pointsDelta > 0 ? <TrendingUp size={10} /> : tc.pointsDelta < 0 ? <TrendingDown size={10} /> : <Minus size={10} />}
+                                        {tc.pointsDelta > 0 ? `+${tc.pointsDelta}` : tc.pointsDelta}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <span className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 mr-2 ${
+                                  tc.pointsDelta > 0 ? 'bg-[#16a34a]' : tc.pointsDelta < 0 ? 'bg-[#dc2626]' : 'bg-[#6b7280]'
+                                }`}>
+                                  <span className="text-[14px] leading-none font-black text-white">
+                                    {tc.pointsDelta > 0 ? '▲' : tc.pointsDelta < 0 ? '▼' : '—'}
+                                  </span>
+                                </span>
+                              </Link>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </section>
@@ -1147,66 +1181,29 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
               </section>
             )}
 
-          {/* Top by Category — each category is its own block */}
-            {top10Lists.filter((l) => l.creators.length > 0).map((list) => (
-              <section key={`top-${list.category}`} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-[#00AFF0] to-[#00D4FF] flex items-center justify-center flex-shrink-0">
-                    <Crown size={14} className="text-white sm:hidden" />
-                    <Crown size={16} className="text-white hidden sm:block" />
+          {/* Top by Category */}
+            {top10Lists.filter((l) => l.creators.length > 0).length > 0 && (
+              <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-[#00AFF0] to-[#00D4FF] flex items-center justify-center flex-shrink-0">
+                    <Crown size={18} className="text-white" />
                   </div>
-                  <h2 className="text-base sm:text-lg font-black text-white/90">{t('ofSearch.topCategoryCreators').replace('{label}', list.label)}</h2>
+                  <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">Top 10 OnlyFans Creators by Category</h2>
                   <div className="flex-1 h-px bg-white/[0.06]" />
-                  <button
-                    onClick={() => {
-                      setCategoryPicks(prev => {
-                        const fresh = buildCategoryPicks([list], allFeatured);
-                        return { ...prev, ...fresh };
-                      });
-                    }}
-                    className="inline-flex items-center gap-1.5 text-[12px] sm:text-sm font-bold text-[#00AFF0] hover:text-[#00D4FF] transition-colors"
-                  >
-                    <Shuffle size={14} />
-                    {t('ofSearch.shuffleProfiles')}
-                  </button>
-                  <Link
-                    href={lp(ofCategoryUrl(list.category))}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.06] border border-white/[0.08] text-white/50 text-[11px] sm:text-xs font-bold hover:bg-[#00AFF0]/10 hover:border-[#00AFF0]/30 hover:text-[#00AFF0] transition-all"
-                  >
-                    View All
-                  </Link>
                 </div>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
-                  <Top10CategoryCard list={list} onSelectCreator={setSelectedCreator} />
-                  {(categoryPicks[list.category] || list.creators.slice(0, 3)).map((creator) =>
-                    featuredIdSet.has(creator._id) ? (
-                      <FeaturedCategoryCard
-                        key={`feat-cat-${creator._id}`}
-                        creator={creator}
-                        onClickTrack={(id) => trackTrendingClick(id)}
-                      />
-                    ) : (
-                      <CreatorCard
-                        key={`top3-${creator._id}`}
-                        creator={creator}
-                        onClickTrack={trackClick}
-                        isAdmin={isAdmin}
-                        onDelete={handleDelete}
-                        onSendToFeatured={handleSendToFeatured}
-                        isSaved={savedIds.has(creator._id)}
-                        onToggleSave={handleToggleSave}
-                      />
-                    )
-                  )}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
+                  {top10Lists.filter((l) => l.creators.length > 0).map((list) => (
+                    <Top10CategoryCard key={`top-${list.category}`} list={list} onSelectCreator={setSelectedCreator} />
+                  ))}
                 </div>
               </section>
-            ))}
+            )}
 
           </>
         )}
       </main>
 
-      <OFFooter />
+      <Footer />
 
       {/* Creator post modal */}
       {selectedCreator && (

@@ -1,12 +1,12 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
-import OFFooter from '@/components/OFFooter';
+import Footer from '@/components/Footer';
 import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator } from '@/lib/models';
 import { OF_CATEGORIES, ofCategoryUrl } from '@/app/onlyfanssearch/constants';
 
-export const revalidate = 3600;
+export const revalidate = 60;
 
 const canonicalBase = 'https://erogram.pro';
 
@@ -133,7 +133,7 @@ export default async function BestOnlyFansCreatorsPage() {
         </div>
       </main>
 
-      <OFFooter />
+      <Footer />
     </div>
   );
 }

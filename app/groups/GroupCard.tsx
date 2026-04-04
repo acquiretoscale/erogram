@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import Image from 'next/image';
+
 import { motion } from 'framer-motion';
 import BookmarkButton from '@/components/BookmarkButton';
 import { Group } from './types';
@@ -153,14 +153,13 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                 {/* Group Image */}
                 <div ref={imgRef} className="relative w-full h-32 sm:h-52 overflow-hidden bg-[#1a1a1a]">
                     {isAbsoluteUrl(imageSrc) ? (
-                        <Image
+                        <img
                             key={imageSrc}
                             src={imageSrc}
                             alt={group.name}
-                            fill
-                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                            className="object-cover transition-transform duration-700 group-hover:scale-110"
-                            priority={isIndex < 12}
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                            referrerPolicy="no-referrer"
+                            loading={isIndex < 12 ? 'eager' : 'lazy'}
                             onError={() => setImageSrc(placeholder)}
                         />
                     ) : (

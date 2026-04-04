@@ -1,0 +1,32 @@
+# PROTECT TOP CREATORS DATA
+
+## CRITICAL: DO NOT CORRUPT SCRAPED DATA
+
+The owner spent an entire night manually scraping 100+ top OnlyFans creators via /OF/import.
+Their likes counts, subscriber counts, and other stats are CORRECT in the database.
+
+## RULES
+
+1. **NEVER overwrite likesCount with a smaller value** - If existing likesCount is 22000 and new value is 22, KEEP 22000.
+2. **NEVER overwrite subscriberCount with a smaller value** - Same logic.
+3. **NEVER add likesCount filter to the top100 page** - The likes may appear small due to past corruption but they are the owner's curated data.
+4. **NEVER modify the /top100 query** without explicit permission.
+5. **The top100 page query is**: `{ categories: 'top', deleted: { $ne: true }, submittedByUser: { $ne: true } }` - DO NOT CHANGE THIS.
+6. **User-submitted creators (submittedByUser: true) must NEVER appear on /top100**.
+7. **creatorBios.ts** is the data file for custom bios + Telegram links. Add new creators there.
+8. **CreatorProfileClient.tsx** reads from creatorBios.ts for the About section + Telegram block.
+
+## LIKES COUNT CORRUPTION
+
+The Apify scraper sometimes returns abbreviated numbers without suffix (22 instead of 22K).
+The parseAbbreviatedNumber function handles K/M but if the API sends raw small numbers, they overwrite good data.
+
+**FIX**: When updating a creator, if the new likesCount is less than the existing likesCount, SKIP the update for that field.
+
+## BIO RULES
+
+- Long natural bios for famous creators (Amouranth style)
+- Short 100-150 word bios for lesser known ones
+- NEVER use AI language or the em dash character (—)
+- Telegram link mentioned naturally in bio when available
+- Telegram ALSO shown in the Telegram block in Profile Details

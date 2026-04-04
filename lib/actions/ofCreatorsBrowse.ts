@@ -129,6 +129,7 @@ export async function searchCreators(q: string, limit = 1000, skip = 0) {
   const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const regex = new RegExp(escaped, 'i');
   const normalized = trimmed.toLowerCase().replace(/\s+/g, ' ');
+  const noSpaces = normalized.replace(/\s+/g, '');
 
   const categoryTerms = new Set<string>([normalized]);
   if (SYNONYMS[normalized]) {
@@ -149,17 +150,33 @@ export async function searchCreators(q: string, limit = 1000, skip = 0) {
     return new RegExp(termEscaped, 'i');
   });
 
+  const wordRegexes = words.length > 1
+    ? words.map((w) => new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'))
+    : [];
+  const noSpacesRegex = words.length > 1 ? new RegExp(noSpaces, 'i') : null;
+
+  const nameOr: Record<string, any>[] = [
+    { name: regex },
+    { username: regex },
+    { bio: regex },
+    { categories: { $in: categoryRegexes } },
+  ];
+  if (noSpacesRegex) {
+    nameOr.push({ username: noSpacesRegex });
+    nameOr.push({ name: noSpacesRegex });
+  }
+  if (wordRegexes.length > 0) {
+    nameOr.push({ $and: wordRegexes.map((r) => ({ name: r })) });
+    nameOr.push(...wordRegexes.map((r) => ({ name: r })));
+    nameOr.push(...wordRegexes.map((r) => ({ username: r })));
+  }
+
   const match = {
     avatar: { $ne: '' },
     gender: 'female',
     categories: { $exists: true, $ne: [] },
     deleted: { $ne: true },
-    $or: [
-      { name: regex },
-      { username: regex },
-      { bio: regex },
-      { categories: { $in: categoryRegexes } },
-    ],
+    $or: nameOr,
   };
 
   const creators = await OnlyFansCreator.aggregate([

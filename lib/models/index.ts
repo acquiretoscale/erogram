@@ -122,6 +122,7 @@ export const groupSchema = new Schema(
     storyViews: { type: Number, default: 0 },
     likes: { type: Number, default: 0 },
     dislikes: { type: Number, default: 0 },
+    linkedCreatorSlug: { type: String, default: '' },
   },
   { timestamps: true }
 );
@@ -823,6 +824,9 @@ export const onlyFansCreatorSchema = new Schema(
     url: { type: String, required: true },
     gender: { type: String, enum: ['female', 'male', 'unknown'], default: 'unknown' },
     clicks: { type: Number, default: 0 },
+    clicksPrev: { type: Number, default: 0 },
+    rankPrev: { type: Number, default: 0 },
+    clicksSnapshotDate: { type: String, default: '' },
     featured: { type: Boolean, default: false },
     featuredAt: { type: Date, default: null },
     featuredExpiresAt: { type: Date, default: null },
@@ -873,6 +877,44 @@ onlyFansCreatorSchema.index({ deleted: 1 });
 
 export const OnlyFansCreator = models.OnlyFansCreator || model('OnlyFansCreator', onlyFansCreatorSchema);
 
+// Creator Review Schema — user ratings for OnlyFans creator pages
+const creatorReviewSchema = new Schema(
+  {
+    creatorSlug: { type: String, required: true, index: true },
+    author: { type: Schema.Types.ObjectId, ref: 'User' },
+    authorName: { type: String, default: 'Anonymous' },
+    content: { type: String, default: '' },
+    rating: { type: Number, min: 1, max: 5, required: true },
+    status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'approved' },
+    ip: { type: String },
+  },
+  { timestamps: true }
+);
+creatorReviewSchema.index({ creatorSlug: 1, status: 1 });
+creatorReviewSchema.index({ creatorSlug: 1, author: 1 }, { unique: true, sparse: true });
+
+export const CreatorReview = models.CreatorReview || model('CreatorReview', creatorReviewSchema);
+
+// Trending on Erogram — admin-curated chart shown on onlyfanssearch
+const trendingErogramSchema = new Schema(
+  {
+    creatorId:  { type: Schema.Types.ObjectId, ref: 'OnlyFansCreator' },
+    name:       { type: String, required: true },
+    username:   { type: String, required: true },
+    slug:       { type: String, required: true },
+    avatar:     { type: String, default: '' },
+    points:     { type: Number, default: 0 },
+    pointsDelta:{ type: Number, default: 0 },
+    position:   { type: Number, required: true },
+    active:     { type: Boolean, default: true },
+  },
+  { timestamps: true },
+);
+trendingErogramSchema.index({ position: 1 });
+trendingErogramSchema.index({ active: 1, position: 1 });
+
+export const TrendingErogram = models.TrendingErogram || model('TrendingErogram', trendingErogramSchema);
+
 // Trending OF Creator — paid promoted spots shown on all onlyfans-search pages
 const trendingOFCreatorSchema = new Schema(
   {
@@ -890,6 +932,8 @@ const trendingOFCreatorSchema = new Schema(
     clickBudget:   { type: Number, default: 0 },   // 0 = unlimited; > 0 = auto-pause when clicks >= budget
     dailyClickCap: { type: Number, default: 0 },   // 0 = unlimited; > 0 = stop counting after N clicks/day
     isStarPick:    { type: Boolean, default: false }, // true = added by star button (NOT a paid client)
+    liveHourStart: { type: Number, default: -1, min: -1, max: 23 }, // -1 = never live; 0–23 = GMT hour start
+    liveHourEnd:   { type: Number, default: -1, min: -1, max: 23 }, // -1 = never live; 0–23 = GMT hour end
   },
   { timestamps: true },
 );
@@ -956,7 +1000,7 @@ export const SearchQuery = models.SearchQuery || model('SearchQuery', searchQuer
 // Scrape Run Log — persists every Apify scrape run for cost tracking
 export const scrapeRunSchema = new Schema(
   {
-    source: { type: String, enum: ['bulk', 'search', 'import'], required: true },
+    source: { type: String, enum: ['bulk', 'search', 'import', 'admin'], required: true },
     query: { type: String, required: true },
     runId: { type: String, default: '' },
     actorId: { type: String, default: '' },

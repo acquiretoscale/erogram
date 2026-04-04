@@ -2,19 +2,7 @@
 
 import { useState, useEffect } from 'react';
 
-const SEARCH_REFERRERS = [
-  'google.com', 'google.co', 'google.', 
-  'bing.com',
-];
-
-function isSearchReferrer(ref: string): boolean {
-  try {
-    const host = new URL(ref).hostname.toLowerCase();
-    return SEARCH_REFERRERS.some(s => host.includes(s));
-  } catch {
-    return false;
-  }
-}
+const LS_KEY = 'age_verified';
 
 function RtaBadge({ size = 'sm', className = '' }: { size?: 'sm' | 'lg'; className?: string }) {
   const isLg = size === 'lg';
@@ -37,16 +25,15 @@ export default function AgeGate() {
 
   useEffect(() => {
     try {
-      if (localStorage.getItem('age_verified')) return;
-      const ref = document.referrer;
-      if (ref && isSearchReferrer(ref)) setVisible(true);
+      if (localStorage.getItem(LS_KEY)) return;
+      setVisible(true);
     } catch {
-      // localStorage blocked — skip gate
+      // localStorage blocked (incognito / restricted) — skip gate
     }
   }, []);
 
   const confirm = () => {
-    try { localStorage.setItem('age_verified', '1'); } catch {}
+    try { localStorage.setItem(LS_KEY, '1'); } catch {}
     setVisible(false);
   };
 

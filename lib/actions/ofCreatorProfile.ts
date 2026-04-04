@@ -1,8 +1,11 @@
 'use server';
 
+import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
-import { OnlyFansCreator } from '@/lib/models';
+import { OnlyFansCreator, CreatorReview, User } from '@/lib/models';
 import { deleteFromR2 } from '@/lib/r2';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
 export interface CreatorProfile {
   _id: string;
@@ -172,6 +175,74 @@ export async function getRelatedCreators(
   }
 }
 
+/** Other admin-imported (top 100) creators for cross-links on profile pages. */
+export async function getTop100CreatorSuggestions(
+  excludeSlugs: string[],
+  limit = 12
+): Promise<CreatorProfile[]> {
+  try {
+    await connectDB();
+    const unique = [...new Set(excludeSlugs.filter(Boolean))];
+    const creators = await OnlyFansCreator.find({
+      adminImported: true,
+      slug: { $nin: unique },
+      avatar: { $ne: '' },
+      deleted: { $ne: true },
+    })
+      .sort({ likesCount: -1 })
+      .limit(limit)
+      .select('name username slug avatar header categories subscriberCount likesCount photosCount videosCount price isFree isVerified url location')
+      .lean();
+
+    return (creators as any[]).map((c) => ({
+      _id: c._id.toString(),
+      name: c.name || '',
+      username: c.username || '',
+      slug: c.slug || '',
+      bio: '',
+      avatar: c.avatar || '',
+      avatarThumbC50: '',
+      avatarThumbC144: '',
+      header: c.header || '',
+      categories: c.categories || [],
+      subscriberCount: c.subscriberCount || 0,
+      likesCount: c.likesCount || 0,
+      mediaCount: 0,
+      photosCount: c.photosCount || 0,
+      videosCount: c.videosCount || 0,
+      audiosCount: 0,
+      postsCount: 0,
+      price: c.price || 0,
+      isFree: c.isFree || false,
+      isVerified: c.isVerified || false,
+      url: c.url || '',
+      gender: 'female',
+      scrapedAt: null,
+      lastSeen: '',
+      location: c.location || '',
+      website: '',
+      joinDate: '',
+      onlyfansId: 0,
+      hasStories: false,
+      hasStream: false,
+      tipsEnabled: false,
+      tipsMin: 0,
+      tipsMax: 0,
+      finishedStreamsCount: 0,
+      instagramUrl: '',
+      instagramUsername: '',
+      twitterUrl: '',
+      tiktokUrl: '',
+      fanslyUrl: '',
+      pornhubUrl: '',
+      telegramUrl: '',
+      extraPhotos: [],
+    }));
+  } catch {
+    return [];
+  }
+}
+
 // ── Admin actions ──
 
 export async function updateCreatorFields(slug: string, fields: Record<string, any>) {
@@ -215,4 +286,69 @@ export async function deleteCreator(slug: string) {
 
   await OnlyFansCreator.updateOne({ slug }, { $set: { deleted: true, deletedAt: new Date() } });
   return { success: true };
+}
+
+// ── Creator Reviews ──
+
+export interface CreatorReviewData {
+  _id: string;
+  authorName: string;
+  authorAvatar: string;
+  content: string;
+  rating: number;
+  createdAt: string;
+}
+
+export async function getCreatorReviews(slug: string): Promise<{ reviews: CreatorReviewData[]; avg: number; count: number }> {
+  await connectDB();
+  const reviews = await CreatorReview.find({ creatorSlug: slug, status: 'approved' })
+    .sort({ createdAt: -1 })
+    .limit(20)
+    .populate('author', 'username photoUrl')
+    .lean() as any[];
+
+  const mapped = reviews.map((r: any) => ({
+    _id: r._id.toString(),
+    authorName: r.author?.username || r.authorName || 'Anonymous',
+    authorAvatar: r.author?.photoUrl || '',
+    content: r.content || '',
+    rating: r.rating,
+    createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : '',
+  }));
+
+  const count = mapped.length;
+  const avg = count > 0 ? Math.round((mapped.reduce((s, r) => s + r.rating, 0) / count) * 10) / 10 : 0;
+
+  return { reviews: mapped, avg, count };
+}
+
+export async function submitCreatorReview(slug: string, rating: number, content: string, token: string) {
+  if (rating < 1 || rating > 5) throw new Error('Rating must be 1–5');
+  if (content.length > 500) throw new Error('Review too long');
+
+  let userId: string | null = null;
+  let username = 'Anonymous';
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      await connectDB();
+      const user = await User.findById(decoded.id).select('username').lean() as any;
+      if (user) {
+        userId = user._id.toString();
+        username = user.username;
+      }
+    } catch { /* invalid token */ }
+  }
+
+  await connectDB();
+  const review = await CreatorReview.create({
+    creatorSlug: slug,
+    author: userId,
+    authorName: username,
+    content: content.trim(),
+    rating: Math.round(rating),
+    status: 'pending',
+  });
+
+  return { _id: review._id.toString() };
 }

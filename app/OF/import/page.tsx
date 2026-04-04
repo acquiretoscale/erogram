@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getOFMTrending } from '@/lib/actions/ofm';
-import { importOFMCreator } from '@/lib/actions/ofmAdmin';
+import { importOFMCreator, checkExistingCreators, getRecentImports, saveBulkApifyResults } from '@/lib/actions/ofmAdmin';
 
 type TrendingSlot = { _id: string; position: number; name: string } | null;
 
@@ -17,6 +17,14 @@ type ImportedCreator = {
   price: number;
   isFree: boolean;
   categories: string[];
+};
+
+type BulkResult = {
+  input: string;
+  status: 'pending' | 'importing' | 'success' | 'failed';
+  creator?: ImportedCreator;
+  source?: string;
+  error?: string;
 };
 
 export default function ImportPage() {
@@ -226,6 +234,170 @@ export default function ImportPage() {
           )}
         </div>
       )}
+
+      {/* ── BULK IMPORT ──────────────────────────────────── */}
+      <BulkImportSection />
     </div>
+  );
+}
+
+function BulkImportSection() {
+  const [bulkInput, setBulkInput] = useState('');
+  const [bulkResults, setBulkResults] = useState<BulkResult[]>([]);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
+  const [recentImports, setRecentImports] = useState<any[]>([]);
+  const abortRef = useRef(false);
+
+  useEffect(() => { getRecentImports(50).then(setRecentImports).catch(() => {}); }, []);
+
+  const parseBulkInput = (text: string): string[] => {
+    return text.split(/[\n,]+/)
+      .map((l) => l.trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?onlyfans\.com\//i, '').replace(/[/?#].*$/, '').trim())
+      .filter(Boolean).filter((v, i, a) => a.indexOf(v) === i);
+  };
+
+  const BATCH_SIZE = 3;
+
+  const handleBulkImport = async () => {
+    const names = parseBulkInput(bulkInput);
+    if (!names.length) return;
+    abortRef.current = false;
+    setBulkRunning(true);
+
+    const results: BulkResult[] = names.map((n) => ({ input: n, status: 'pending' }));
+    setBulkResults([...results]);
+
+    const existing = await checkExistingCreators(names);
+    const existingMap = new Map(existing.map((c: any) => [c.username.toLowerCase(), c]));
+    const toScrape: number[] = [];
+    for (let i = 0; i < names.length; i++) {
+      const match = existingMap.get(names[i].toLowerCase());
+      if (match) { results[i] = { input: names[i], status: 'success', creator: match, source: 'database' }; }
+      else { toScrape.push(i); }
+    }
+    setBulkResults([...results]);
+
+    const batches: number[][] = [];
+    for (let i = 0; i < toScrape.length; i += BATCH_SIZE) batches.push(toScrape.slice(i, i + BATCH_SIZE));
+    setBatchProgress({ current: 0, total: batches.length });
+
+    for (let b = 0; b < batches.length; b++) {
+      if (abortRef.current) break;
+      const indices = batches[b];
+      const batch = indices.map((idx) => names[idx]);
+      setBatchProgress({ current: b + 1, total: batches.length });
+      for (const idx of indices) results[idx].status = 'importing';
+      setBulkResults([...results]);
+
+      try {
+        const res = await fetch('/api/onlyfans/scrape', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ category: 'bulk-import', usernames: batch, maxItems: batch.length, source: 'admin' }),
+        });
+        const data = await res.json();
+        const saved = res.ok ? (data.savedCreators || []) : [];
+        for (const idx of indices) {
+          const nLower = names[idx].toLowerCase();
+          const match = saved.find((s: any) => (s.username || '').toLowerCase() === nLower || (s.slug || '').toLowerCase() === nLower);
+          results[idx] = match
+            ? { input: names[idx], status: 'success', creator: match, source: 'apify' }
+            : { input: names[idx], status: 'failed', error: !res.ok ? (data.error || 'Scrape failed') : 'Not found on OnlyFans' };
+        }
+      } catch (e: any) {
+        for (const idx of indices) results[idx] = { input: names[idx], status: 'failed', error: e.message || 'Network error' };
+      }
+      setBulkResults([...results]);
+    }
+    setBulkRunning(false);
+    getRecentImports(50).then(setRecentImports).catch(() => {});
+  };
+
+  const succeeded = bulkResults.filter((r) => r.status === 'success').length;
+  const failed = bulkResults.filter((r) => r.status === 'failed').length;
+  const pending = bulkResults.filter((r) => r.status === 'pending' || r.status === 'importing').length;
+
+  return (
+    <>
+      <div className="border-t border-white/[0.06] pt-8">
+        <h2 className="text-xl font-black text-white">Bulk Import</h2>
+        <p className="text-white/40 text-sm mt-1">Paste usernames or URLs. Batches of {BATCH_SIZE}, results show live after each batch.</p>
+      </div>
+
+      {bulkRunning && (
+        <div className="p-4 bg-[#00AFF0]/10 border border-[#00AFF0]/30 rounded-xl flex items-center gap-3">
+          <span className="w-5 h-5 border-2 border-[#00AFF0]/30 border-t-[#00AFF0] rounded-full animate-spin shrink-0" />
+          <p className="text-sm font-bold text-[#00AFF0]">Batch {batchProgress.current}/{batchProgress.total} — {succeeded} imported, stay on this page</p>
+        </div>
+      )}
+
+      <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-6 space-y-5">
+        <div>
+          <label className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-2">Usernames / URLs (one per line)</label>
+          <textarea value={bulkInput} onChange={(e) => setBulkInput(e.target.value)} placeholder={`amouranth\nhttps://onlyfans.com/belledelphine\nsophieraiin`} rows={6} className="w-full px-4 py-3 bg-white/[0.05] border border-white/10 rounded-xl text-white text-sm placeholder:text-white/20 outline-none focus:border-[#00AFF0]/40 transition font-mono" disabled={bulkRunning} />
+          <p className="text-[11px] text-white/25 mt-1">{parseBulkInput(bulkInput).length} creators · {Math.ceil(parseBulkInput(bulkInput).length / BATCH_SIZE)} batches</p>
+        </div>
+        <div className="flex items-center gap-4">
+          <button onClick={handleBulkImport} disabled={bulkRunning || !parseBulkInput(bulkInput).length} className="px-6 py-3 bg-[#00AFF0] hover:bg-[#009dd9] text-white font-bold text-sm rounded-xl transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2">
+            {bulkRunning ? (<><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Batch {batchProgress.current}/{batchProgress.total}</>) : (<>Import All ({parseBulkInput(bulkInput).length})</>)}
+          </button>
+          {bulkRunning && <button onClick={() => { abortRef.current = true; }} className="px-4 py-3 bg-red-500/10 border border-red-500/20 text-red-400 font-bold text-sm rounded-xl hover:bg-red-500/20 transition">Stop</button>}
+          {bulkResults.length > 0 && (
+            <div className="flex items-center gap-3 text-xs font-bold">
+              <span className="text-emerald-400">{succeeded} imported</span>
+              {failed > 0 && <span className="text-red-400">{failed} failed</span>}
+              {pending > 0 && <span className="text-white/30">{pending} pending</span>}
+            </div>
+          )}
+          {bulkResults.length > 0 && !bulkRunning && <button onClick={() => setBulkResults([])} className="text-[11px] text-white/20 hover:text-white/40">Clear</button>}
+        </div>
+      </div>
+
+      {bulkResults.length > 0 && (
+        <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl overflow-hidden divide-y divide-white/[0.04]">
+          {bulkResults.map((r, i) => (
+            <div key={i} className={`flex items-center gap-4 px-5 py-3 ${r.status === 'importing' ? 'bg-[#00AFF0]/[0.03]' : ''}`}>
+              <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                {r.status === 'pending' && <span className="w-2 h-2 rounded-full bg-white/20" />}
+                {r.status === 'importing' && <span className="w-4 h-4 border-2 border-[#00AFF0]/30 border-t-[#00AFF0] rounded-full animate-spin" />}
+                {r.status === 'success' && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                {r.status === 'failed' && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="3" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>}
+              </div>
+              {r.creator?.avatar ? <img src={r.creator.avatar} alt="" className="w-10 h-10 rounded-xl object-cover bg-white/5 shrink-0" /> : <div className="w-10 h-10 rounded-xl bg-white/[0.05] flex items-center justify-center text-white/20 text-xs font-bold shrink-0">{r.input.charAt(0).toUpperCase()}</div>}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-white truncate">{r.creator?.name || r.input}</span>
+                  {r.creator && <span className="text-xs text-[#00AFF0] shrink-0">@{r.creator.username}</span>}
+                  {r.source && r.status === 'success' && <span className={`text-[9px] px-1.5 py-0.5 rounded-full shrink-0 ${r.source === 'apify' ? 'text-[#00AFF0]/60 bg-[#00AFF0]/10' : 'text-emerald-400/60 bg-emerald-500/10'}`}>{r.source === 'apify' ? 'scraped' : 'from DB'}</span>}
+                </div>
+                {r.status === 'failed' && <p className="text-[11px] text-red-400/70 truncate">{r.error}</p>}
+                {r.creator && r.status === 'success' && r.creator.likesCount > 0 && <p className="text-[11px] text-white/30 mt-0.5">{r.creator.likesCount.toLocaleString()} likes</p>}
+              </div>
+              {r.creator && r.status === 'success' && <a href={`/${r.creator.username}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#00AFF0] font-bold shrink-0">View →</a>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="border-t border-white/[0.06] pt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-black text-white">Recent Imports</h2>
+          <button onClick={() => getRecentImports(50).then(setRecentImports).catch(() => {})} className="text-xs text-[#00AFF0] font-bold hover:text-[#00AFF0]/70 transition">Refresh</button>
+        </div>
+        {recentImports.length === 0 ? <p className="text-white/20 text-sm">No recent imports.</p> : (
+          <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl overflow-hidden divide-y divide-white/[0.04]">
+            {recentImports.map((c) => (
+              <div key={c._id} className="flex items-center gap-3 px-5 py-2.5">
+                {c.avatar ? <img src={c.avatar} alt="" className="w-8 h-8 rounded-lg object-cover bg-white/5 shrink-0" /> : <div className="w-8 h-8 rounded-lg bg-white/[0.05] flex items-center justify-center text-white/20 text-xs font-bold shrink-0">{c.name?.charAt(0)}</div>}
+                <div className="flex-1 min-w-0"><span className="text-sm font-bold text-white truncate">{c.name}</span><span className="text-xs text-[#00AFF0] ml-2">@{c.username}</span></div>
+                {c.likesCount > 0 && <span className="text-[10px] text-white/25 shrink-0">{c.likesCount.toLocaleString()} likes</span>}
+                <span className="text-[10px] text-white/20 shrink-0">{c.scrapedAt ? new Date(c.scrapedAt).toLocaleDateString() : ''}</span>
+                <a href={`/${c.slug}`} target="_blank" rel="noopener noreferrer" className="text-[10px] text-[#00AFF0] font-bold shrink-0">View →</a>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
   );
 }

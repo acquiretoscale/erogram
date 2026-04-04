@@ -29,36 +29,36 @@ export default function ReviewsTab() {
         }
     };
 
-    const handleApprove = async (id: string) => {
+    const handleApprove = async (id: string, type?: string) => {
         if (!confirm('Approve this review and make it public?')) return;
 
         try {
             const token = localStorage.getItem('token') || '';
-            await updateReview(token, id, { status: 'approved' });
+            await updateReview(token, id, { status: 'approved', type });
             fetchReviews();
         } catch (err: any) {
             alert(err.message || 'Failed to approve review');
         }
     };
 
-    const handleReject = async (id: string) => {
+    const handleReject = async (id: string, type?: string) => {
         if (!confirm('Reject this review? It will not be published.')) return;
 
         try {
             const token = localStorage.getItem('token') || '';
-            await updateReview(token, id, { status: 'rejected' });
+            await updateReview(token, id, { status: 'rejected', type });
             fetchReviews();
         } catch (err: any) {
             alert(err.message || 'Failed to reject review');
         }
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = async (id: string, type?: string) => {
         if (!confirm('Are you sure you want to delete this review?')) return;
 
         try {
             const token = localStorage.getItem('token') || '';
-            await deleteReview(token, id);
+            await deleteReview(token, id, type);
             fetchReviews();
         } catch (err: any) {
             alert(err.message || 'Failed to delete review');
@@ -72,6 +72,7 @@ export default function ReviewsTab() {
             rating: review.rating || 5,
             authorName: review.authorName || '',
             status: review.status || 'pending',
+            type: review.type,
         });
     };
 
@@ -81,7 +82,7 @@ export default function ReviewsTab() {
         setIsSaving(true);
         try {
             const token = localStorage.getItem('token') || '';
-            await updateReview(token, editingReview, editFormData);
+            await updateReview(token, editingReview, { ...editFormData, type: editFormData.type });
             setEditingReview(null);
             fetchReviews();
         } catch (err: any) {
@@ -97,16 +98,24 @@ export default function ReviewsTab() {
     };
 
     const filteredReviews = reviews.filter((review) =>
-        review.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        review.content?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         review.authorName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        review.groupId?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+        review.groupId?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        review.creatorSlug?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     return (
         <div className="space-y-6">
             <div>
                 <h1 className="text-3xl font-black text-white mb-1">Reviews</h1>
-                <p className="text-[#999] text-sm">Moderate {reviews.length} user reviews</p>
+                <p className="text-[#999] text-sm">
+                    Moderate {reviews.length} reviews
+                    {reviews.filter((r) => r.status === 'pending').length > 0 && (
+                        <span className="ml-2 px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 text-xs font-bold">
+                            {reviews.filter((r) => r.status === 'pending').length} pending
+                        </span>
+                    )}
+                </p>
             </div>
 
             {/* Search */}
@@ -154,8 +163,17 @@ export default function ReviewsTab() {
                                         {editingReview === review._id ? (
                                             <>
                                                 <td className="px-6 py-4 text-white">
-                                                    <div className="font-semibold">{review.groupId?.name || 'Unknown Group'}</div>
-                                                    <div className="text-xs text-gray-400">{review.groupId?.category}</div>
+                                                    {review.type === 'creator' ? (
+                                                        <>
+                                                            <a href={`/onlyfans/${review.creatorSlug}`} target="_blank" className="font-semibold text-orange-400 hover:underline">🔥 {review.creatorSlug}</a>
+                                                            <div className="text-xs text-gray-400">Creator</div>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <div className="font-semibold">{review.groupId?.name || 'Unknown Group'}</div>
+                                                            <div className="text-xs text-gray-400">{review.groupId?.category}</div>
+                                                        </>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <input
@@ -225,15 +243,24 @@ export default function ReviewsTab() {
                                         ) : (
                                             <>
                                                 <td className="px-6 py-4 text-white">
-                                                    <div className="font-semibold">{review.groupId?.name || 'Unknown Group'}</div>
-                                                    <div className="text-xs text-gray-400">{review.groupId?.category}</div>
+                                                    {review.type === 'creator' ? (
+                                                        <>
+                                                            <a href={`/onlyfans/${review.creatorSlug}`} target="_blank" className="font-semibold text-orange-400 hover:underline">🔥 {review.creatorSlug}</a>
+                                                            <div className="text-xs text-gray-400">Creator</div>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <div className="font-semibold">{review.groupId?.name || 'Unknown Group'}</div>
+                                                            <div className="text-xs text-gray-400">{review.groupId?.category}</div>
+                                                        </>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4 text-gray-400">
                                                     {review.authorName || 'Anonymous'}
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center">
-                                                        <span className="text-yellow-400 mr-1">⭐</span>
+                                                        <span className="text-yellow-400 mr-1">{review.type === 'creator' ? '🔥' : '⭐'}</span>
                                                         <span className="text-white font-semibold">{review.rating}/5</span>
                                                     </div>
                                                 </td>
@@ -265,14 +292,14 @@ export default function ReviewsTab() {
                                                         {review.status === 'pending' && (
                                                             <>
                                                                 <button
-                                                                    onClick={() => handleApprove(review._id)}
+                                                                    onClick={() => handleApprove(review._id, review.type)}
                                                                     className="p-2 hover:bg-green-500/20 text-green-400 rounded-lg transition-colors"
                                                                     title="Approve"
                                                                 >
                                                                     ✅
                                                                 </button>
                                                                 <button
-                                                                    onClick={() => handleReject(review._id)}
+                                                                    onClick={() => handleReject(review._id, review.type)}
                                                                     className="p-2 hover:bg-yellow-500/20 text-yellow-400 rounded-lg transition-colors"
                                                                     title="Reject"
                                                                 >
@@ -281,7 +308,7 @@ export default function ReviewsTab() {
                                                             </>
                                                         )}
                                                         <button
-                                                            onClick={() => handleDelete(review._id)}
+                                                            onClick={() => handleDelete(review._id, review.type)}
                                                             className="p-2 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
                                                             title="Delete"
                                                         >
@@ -298,6 +325,7 @@ export default function ReviewsTab() {
                     </div>
                 )}
             </div>
+
         </div>
     );
 }

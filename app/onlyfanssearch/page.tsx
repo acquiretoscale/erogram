@@ -6,6 +6,7 @@ import OnlyFansClient from './OnlyFansClient';
 import { getLocale } from '@/lib/i18n/server';
 import { mainOfMeta } from './ofMeta';
 import { getActiveCampaigns } from '@/lib/actions/campaigns';
+import { getTrendingOnErogram } from '@/lib/actions/publicData';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -32,7 +33,7 @@ export default async function OnlyFansPage({ searchParams }: PageProps) {
   let initialCreators: any[] = [];
   let totalCreators = 0;
   let recentlyAdded: any[] = [];
-  let top10Lists: { category: string; label: string; creators: any[]; shufflePool: any[] }[] = [];
+  let top10Lists: { category: string; label: string; creators: any[] }[] = [];
 
   try {
     await connectDB();
@@ -55,20 +56,14 @@ export default async function OnlyFansPage({ searchParams }: PageProps) {
         .limit(30)
         .select('name username slug avatar header categories subscriberCount likesCount photosCount videosCount price isFree url clicks')
         .lean(),
-      ...TOP10_CATEGORIES.flatMap((cat) => [
+      ...TOP10_CATEGORIES.map((cat) =>
         OnlyFansCreator.aggregate([
           { $match: { ...baseMatch, categories: cat } },
           { $sort: { likesCount: -1 } },
           { $limit: 10 },
           projection,
         ]),
-        OnlyFansCreator.aggregate([
-          { $match: { ...baseMatch, categories: cat } },
-          { $sort: { likesCount: -1 } },
-          { $limit: 20 },
-          projection,
-        ]),
-      ]),
+      ),
     ]);
 
     initialCreators = [];
@@ -88,14 +83,16 @@ export default async function OnlyFansPage({ searchParams }: PageProps) {
     top10Lists = TOP10_CATEGORIES.map((cat, idx) => ({
       category: cat,
       label: categoryLabels[cat] || cat,
-      creators: (categoryResults[idx * 2] as any[]).map((c) => ({ ...c, _id: c._id.toString() })),
-      shufflePool: (categoryResults[idx * 2 + 1] as any[]).map((c) => ({ ...c, _id: c._id.toString() })),
+      creators: (categoryResults[idx] as any[]).map((c) => ({ ...c, _id: c._id.toString() })),
     })).filter((list) => list.creators.length > 0);
   } catch (e) {
     console.error('Failed to fetch OF creators:', e);
   }
 
-  const topBannerCampaigns = await getActiveCampaigns('top-banner', { page: 'onlyfanssearch', device: isMobile ? 'mobile' : 'desktop' }).catch(() => []);
+  const [topBannerCampaigns, trendingOnErogram] = await Promise.all([
+    getActiveCampaigns('top-banner', { page: 'onlyfanssearch', device: isMobile ? 'mobile' : 'desktop' }).catch(() => []),
+    getTrendingOnErogram().catch(() => []),
+  ]);
 
   return (
     <OnlyFansClient
@@ -105,6 +102,7 @@ export default async function OnlyFansPage({ searchParams }: PageProps) {
       top10Lists={top10Lists}
       recentlyAdded={recentlyAdded}
       topBannerCampaigns={topBannerCampaigns}
+      trendingOnErogram={trendingOnErogram}
     />
   );
 }

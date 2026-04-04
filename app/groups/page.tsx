@@ -45,7 +45,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export const revalidate = 60;
+export const revalidate = 120;
 
 async function getGroups(limit: number, isMobile: boolean = false, locale: string = 'en') {
   try {

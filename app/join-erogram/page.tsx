@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import Navbar from '@/components/Navbar';
-import OFFooter from '@/components/OFFooter';
+import Footer from '@/components/Footer';
 import JoinClient from './JoinClient';
 import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator } from '@/lib/models';
@@ -28,7 +28,7 @@ export default async function JoinErogramPage() {
       <Suspense fallback={null}>
         <JoinClient avatars={avatars} />
       </Suspense>
-      <OFFooter />
+      <Footer />
     </div>
   );
 }

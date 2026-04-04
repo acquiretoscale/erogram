@@ -27,7 +27,10 @@ interface TrendingSlot {
   dealPrice: number;
   clickBudget: number;
   dailyClickCap: number;
+  liveHourStart: number;
+  liveHourEnd: number;
   createdAt: string;
+  likesCount: number | null;
 }
 
 interface SearchResult {
@@ -48,6 +51,91 @@ interface SearchResult {
 interface DailyClick {
   date: string;
   clicks: number;
+}
+
+function isCreatorLiveNow(start: number, end: number): boolean {
+  if (start < 0 || end < 0) return false;
+  const gmtHour = new Date().getUTCHours();
+  if (start <= end) return gmtHour >= start && gmtHour < end;
+  return gmtHour >= start || gmtHour < end; // wraps midnight, e.g. 22–04
+}
+
+const HOUR_OPTIONS = [
+  { value: '-1', label: 'Disabled' },
+  ...Array.from({ length: 24 }, (_, i) => ({
+    value: String(i),
+    label: `${String(i).padStart(2, '0')}:00 GMT`,
+  })),
+];
+
+function LiveSchedulePicker({
+  startValue,
+  endValue,
+  onStartChange,
+  onEndChange,
+}: {
+  startValue: string;
+  endValue: string;
+  onStartChange: (v: string) => void;
+  onEndChange: (v: string) => void;
+}) {
+  const enabled = startValue !== '-1';
+  const isLive = enabled && isCreatorLiveNow(parseInt(startValue), parseInt(endValue));
+
+  return (
+    <div className="p-4 bg-emerald-500/[0.04] border border-emerald-500/10 rounded-xl space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] font-bold text-emerald-400/60 uppercase tracking-wider">Live Schedule</p>
+        {isLive && (
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-emerald-400">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
+            LIVE NOW
+          </span>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-bold text-white/40 mb-1">Start</label>
+          <select
+            value={startValue}
+            onChange={(e) => {
+              onStartChange(e.target.value);
+              if (e.target.value === '-1') onEndChange('-1');
+              else if (endValue === '-1') onEndChange(String((parseInt(e.target.value) + 2) % 24));
+            }}
+            className="w-full px-3 py-2 bg-white/[0.05] border border-white/10 rounded-lg text-white text-sm outline-none focus:border-emerald-400/40 transition appearance-none"
+          >
+            {HOUR_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value} className="bg-[#0e1419] text-white">{o.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-white/40 mb-1">End</label>
+          <select
+            value={endValue}
+            onChange={(e) => onEndChange(e.target.value)}
+            disabled={startValue === '-1'}
+            className="w-full px-3 py-2 bg-white/[0.05] border border-white/10 rounded-lg text-white text-sm outline-none focus:border-emerald-400/40 transition appearance-none disabled:opacity-30"
+          >
+            {HOUR_OPTIONS.filter((o) => o.value !== '-1').map((o) => (
+              <option key={o.value} value={o.value} className="bg-[#0e1419] text-white">{o.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      {enabled && (
+        <p className="text-[10px] text-white/25">
+          {parseInt(startValue) <= parseInt(endValue)
+            ? `Shows as LIVE between ${String(startValue).padStart(2, '0')}:00 – ${String(endValue).padStart(2, '0')}:00 GMT`
+            : `Shows as LIVE between ${String(startValue).padStart(2, '0')}:00 – ${String(endValue).padStart(2, '0')}:00 GMT (wraps midnight)`}
+        </p>
+      )}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -139,6 +227,8 @@ export default function TrendingAdminPage() {
   const [addCategories, setAddCategories] = useState<string[]>([]);
   const [clickBudget, setClickBudget] = useState('');
   const [dailyClickCap, setDailyClickCap] = useState('');
+  const [liveHourStart, setLiveHourStart] = useState('-1');
+  const [liveHourEnd, setLiveHourEnd] = useState('-1');
   const [saving, setSaving] = useState(false);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -150,6 +240,8 @@ export default function TrendingAdminPage() {
   const [editCategories, setEditCategories] = useState<string[]>([]);
   const [editClickBudget, setEditClickBudget] = useState('');
   const [editDailyClickCap, setEditDailyClickCap] = useState('');
+  const [editLiveHourStart, setEditLiveHourStart] = useState('-1');
+  const [editLiveHourEnd, setEditLiveHourEnd] = useState('-1');
 
   const token = () => localStorage.getItem('token') || '';
   const showToast = (msg: string) => {
@@ -208,6 +300,8 @@ export default function TrendingAdminPage() {
     setAddCategories([]);
     setClickBudget('');
     setDailyClickCap('');
+    setLiveHourStart('-1');
+    setLiveHourEnd('-1');
     setEditSlot(null);
   };
 
@@ -228,6 +322,8 @@ export default function TrendingAdminPage() {
         active,
         clickBudget: parseInt(clickBudget) || 0,
         dailyClickCap: parseInt(dailyClickCap) || 0,
+        liveHourStart: parseInt(liveHourStart),
+        liveHourEnd: parseInt(liveHourEnd),
       });
       showToast(`${selectedCreator.name} added to Slot #${nextPosition}`);
       setAddOpen(false);
@@ -246,6 +342,8 @@ export default function TrendingAdminPage() {
     setEditCategories(slot.categories || []);
     setEditClickBudget(String(slot.clickBudget || ''));
     setEditDailyClickCap(String(slot.dailyClickCap || ''));
+    setEditLiveHourStart(String(slot.liveHourStart ?? -1));
+    setEditLiveHourEnd(String(slot.liveHourEnd ?? -1));
     setAddOpen(false);
   };
 
@@ -260,6 +358,8 @@ export default function TrendingAdminPage() {
         categories: editCategories,
         clickBudget: parseInt(editClickBudget) || 0,
         dailyClickCap: parseInt(editDailyClickCap) || 0,
+        liveHourStart: parseInt(editLiveHourStart),
+        liveHourEnd: parseInt(editLiveHourEnd),
       });
       showToast('Saved');
       setEditSlot(null);
@@ -408,6 +508,20 @@ export default function TrendingAdminPage() {
                         BUDGET HIT
                       </span>
                     )}
+                    {isCreatorLiveNow(slot.liveHourStart, slot.liveHourEnd) && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 text-[9px] font-bold rounded-full flex-shrink-0">
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                        </span>
+                        LIVE
+                      </span>
+                    )}
+                    {(slot.liveHourStart ?? -1) >= 0 && !isCreatorLiveNow(slot.liveHourStart, slot.liveHourEnd) && (
+                      <span className="px-1.5 py-0.5 bg-white/5 text-white/20 text-[9px] font-bold rounded-full flex-shrink-0">
+                        {String(slot.liveHourStart).padStart(2, '0')}–{String(slot.liveHourEnd).padStart(2, '0')} GMT
+                      </span>
+                    )}
                   </div>
                   {/* Category badges */}
                   {slot.categories.length > 0 && (
@@ -425,6 +539,20 @@ export default function TrendingAdminPage() {
                   {/* Budget bar */}
                   <BudgetBar clicks={slot.clicks} budget={slot.clickBudget} />
                 </div>
+
+                {/* Likes */}
+                {slot.likesCount != null && slot.likesCount > 0 && (
+                  <div className="flex-shrink-0 text-right min-w-[60px]">
+                    <div className="text-sm font-bold text-pink-400">
+                      {slot.likesCount >= 1_000_000
+                        ? `${Math.floor(slot.likesCount / 1_000_000)}M`
+                        : slot.likesCount >= 1000
+                          ? `${Math.floor(slot.likesCount / 1000)}K`
+                          : slot.likesCount}
+                    </div>
+                    <div className="text-[10px] text-white/25">likes</div>
+                  </div>
+                )}
 
                 {/* Clicks */}
                 <div className="flex-shrink-0 text-right min-w-[70px]">
@@ -599,6 +727,13 @@ export default function TrendingAdminPage() {
                     </div>
                   </div>
 
+                  <LiveSchedulePicker
+                    startValue={liveHourStart}
+                    endValue={liveHourEnd}
+                    onStartChange={setLiveHourStart}
+                    onEndChange={setLiveHourEnd}
+                  />
+
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-bold text-white/40 mb-1">Deal Price ($)</label>
@@ -726,6 +861,13 @@ export default function TrendingAdminPage() {
                   </div>
                 </div>
               </div>
+
+              <LiveSchedulePicker
+                startValue={editLiveHourStart}
+                endValue={editLiveHourEnd}
+                onStartChange={setEditLiveHourStart}
+                onEndChange={setEditLiveHourEnd}
+              />
 
               <div className="grid grid-cols-2 gap-3">
                 <div>

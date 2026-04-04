@@ -6,7 +6,7 @@ import { processCreatorImages } from '@/lib/actions/creatorImages';
 
 const MAX_PROFILES_PER_SCRAPE = 15;
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 /**
  * DELETE /api/onlyfans/scrape
@@ -48,13 +48,15 @@ export async function DELETE(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const scrapeStart = Date.now();
   try {
-    const { category, maxItems: rawMax = 200, clean = false, country, source = 'bulk', usernames } = await req.json();
+    const { category, maxItems: rawMax = 200, clean = false, country, source = 'bulk', usernames, asyncMode = false } = await req.json();
     const maxItems = Math.min(Math.max(1, rawMax), MAX_PROFILES_PER_SCRAPE);
     if (!category && !usernames) {
       return NextResponse.json({ error: 'category or usernames is required' }, { status: 400 });
     }
 
-    const creds = await getApifyCredentials();
+    const isAdminSource = source === 'bulk' || source === 'admin' || source === 'import';
+    const actorOverride = isAdminSource ? 'hello.datawizards/onlyfans-scraper' : undefined;
+    const creds = await getApifyCredentials(actorOverride);
     if (!creds) {
       return NextResponse.json({ error: 'No active Apify API keys. Add keys in OFM Settings.' }, { status: 500 });
     }
@@ -89,6 +91,70 @@ export async function POST(req: NextRequest) {
       startedAt: new Date(),
     });
 
+    // Admin bulk import: fire async run, return runId immediately so client can poll
+    if (source === 'admin' && isDatawizards && isUsernameScrape && asyncMode) {
+      const runRes = await fetch(
+        `https://api.apify.com/v2/acts/${actorId}/runs?token=${APIFY_TOKEN}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) },
+      );
+      if (!runRes.ok) {
+        const errBody = await runRes.text();
+        await ScrapeRun.findByIdAndUpdate(logEntry._id, { status: 'failed', error: errBody.slice(0, 200), completedAt: new Date(), durationMs: Date.now() - scrapeStart });
+        return NextResponse.json({ error: 'Apify run failed to start', details: errBody.slice(0, 200) }, { status: 502 });
+      }
+      const runData = await runRes.json();
+      const runId = runData.data?.id;
+      await ScrapeRun.findByIdAndUpdate(logEntry._id, { runId });
+      return NextResponse.json({ runId, token: APIFY_TOKEN, logId: logEntry._id.toString() });
+    }
+
+    // Admin bulk import (non-async): use sync endpoint
+    if (source === 'admin' && isDatawizards && isUsernameScrape) {
+      const syncRes = await fetch(
+        `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${APIFY_TOKEN}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) },
+      );
+
+      if (!syncRes.ok) {
+        const errBody = await syncRes.text();
+        await ScrapeRun.findByIdAndUpdate(logEntry._id, { status: 'failed', error: errBody.slice(0, 200), completedAt: new Date(), durationMs: Date.now() - scrapeStart });
+        return NextResponse.json({ error: 'Apify sync run failed', details: errBody.slice(0, 200) }, { status: 502 });
+      }
+
+      const items = await syncRes.json();
+      if (!Array.isArray(items) || items.length === 0) {
+        await ScrapeRun.findByIdAndUpdate(logEntry._id, { status: 'succeeded', saved: 0, totalItems: 0, completedAt: new Date(), durationMs: Date.now() - scrapeStart });
+        return NextResponse.json({ success: true, saved: 0, savedCreators: [], totalItems: 0 });
+      }
+
+      const savedCreators: any[] = [];
+      for (const item of items) {
+        const parsed = parseDatawizardsItem(item);
+        if (!parsed) continue;
+        const slug = parsed.username.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        try {
+          const setFields: Record<string, any> = {
+            name: parsed.name, username: parsed.username, slug, avatar: parsed.avatar,
+            bio: parsed.bio, likesCount: parsed.likesCount, photosCount: parsed.photosCount,
+            videosCount: parsed.videosCount, price: parsed.price, isFree: parsed.isFree,
+            isVerified: parsed.isVerified || false, gender: parsed.gender, url: parsed.url,
+            scrapedAt: new Date(),
+          };
+          const dwFields = ['header','avatarThumbC50','avatarThumbC144','audiosCount','postsCount','subscriberCount','mediaCount','privateArchivedPostsCount','favoritesCount','location','website','joinDate','firstPublishedPostDate','onlyfansId','hasStories','hasStream','hasScheduledStream','tipsEnabled','tipsTextEnabled','tipsMin','tipsMinInternal','tipsMax','finishedStreamsCount','showMediaCount','isRestricted','canEarn','canChat','subscriptionBundles','promotions'] as const;
+          for (const f of dwFields) { if (f in parsed && (parsed as any)[f] !== undefined && (parsed as any)[f] !== '') setFields[f] = (parsed as any)[f]; }
+
+          const doc = await OnlyFansCreator.findOneAndUpdate(
+            { slug }, { $set: setFields }, { upsert: true, new: true, strict: false },
+          ).select('name username slug avatar likesCount categories price isFree url').lean() as any;
+          if (doc) savedCreators.push({ ...doc, _id: doc._id.toString() });
+        } catch {}
+      }
+
+      await ScrapeRun.findByIdAndUpdate(logEntry._id, { status: 'succeeded', saved: savedCreators.length, totalItems: items.length, completedAt: new Date(), durationMs: Date.now() - scrapeStart });
+      return NextResponse.json({ success: true, saved: savedCreators.length, savedCreators, totalItems: items.length });
+    }
+
+    // Non-admin: use async /runs endpoint + polling
     const runRes = await fetch(
       `https://api.apify.com/v2/acts/${actorId}/runs?token=${APIFY_TOKEN}`,
       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) },
@@ -101,50 +167,19 @@ export async function POST(req: NextRequest) {
       const errType = errJson?.error?.type || '';
       const errMsg = errJson?.error?.message || errBody;
 
-      if (errType === 'actor-is-not-rented') {
+      if (errType === 'actor-is-not-rented' || errType === 'not-enough-usage-to-run-paid-actor') {
         await ScrapeRun.findByIdAndUpdate(logEntry._id, { status: 'failed', error: errMsg, completedAt: new Date(), durationMs: Date.now() - scrapeStart });
         await updateSearchQueryStatus(source, catLower, 'failed', 0);
-        return NextResponse.json({
-          error: `Actor "${APIFY_ACTOR}" requires rental. Rent it on Apify or switch to a different actor in OFM Settings.`,
-          details: errMsg,
-        }, { status: 402 });
+        return NextResponse.json({ error: errMsg }, { status: 402 });
       }
 
-      if (errType === 'not-enough-usage-to-run-paid-actor') {
-        await ScrapeRun.findByIdAndUpdate(logEntry._id, { status: 'failed', error: errMsg, completedAt: new Date(), durationMs: Date.now() - scrapeStart });
-        await updateSearchQueryStatus(source, catLower, 'failed', 0);
-        return NextResponse.json({
-          error: 'Apify account out of credits. Top up at https://console.apify.com/billing/subscription',
-          details: errMsg,
-        }, { status: 402 });
-      }
-
-      if (runRes.status === 401 && errType !== 'actor-is-not-rented' && errType !== 'not-enough-usage-to-run-paid-actor') {
+      if (runRes.status === 401) {
         await markKeyBurned(APIFY_TOKEN);
-        const creds2 = await getApifyCredentials();
-        if (!creds2) {
-          await ScrapeRun.findByIdAndUpdate(logEntry._id, { status: 'failed', error: 'All API keys burned', completedAt: new Date(), durationMs: Date.now() - scrapeStart });
-          await updateSearchQueryStatus(source, catLower, 'failed', 0);
-          return NextResponse.json({ error: 'API key burned (payment/auth issue). No more active keys — add new keys in OFM Settings.' }, { status: 402 });
-        }
-        await ScrapeRun.findByIdAndUpdate(logEntry._id, { apiKeyHint: creds2.token.slice(-4) });
-        const retryRes = await fetch(
-          `https://api.apify.com/v2/acts/${actorId}/runs?token=${creds2.token}`,
-          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) },
-        );
-        if (!retryRes.ok) {
-          const retryBody = await retryRes.text();
-          if (retryRes.status === 401 || retryRes.status === 402) await markKeyBurned(creds2.token);
-          await ScrapeRun.findByIdAndUpdate(logEntry._id, { status: 'failed', error: retryBody, completedAt: new Date(), durationMs: Date.now() - scrapeStart });
-          await updateSearchQueryStatus(source, catLower, 'failed', 0);
-          return NextResponse.json({ error: 'Apify run failed after key rotation', details: retryBody }, { status: 502 });
-        }
-        return await processRun(retryRes, creds2.token, actorId, maxItems, catLower, clean, isSentry, isDatawizards, logEntry._id, scrapeStart, source);
       }
 
-      await updateSearchQueryStatus(source, catLower, 'failed', 0);
       await ScrapeRun.findByIdAndUpdate(logEntry._id, { status: 'failed', error: errMsg, completedAt: new Date(), durationMs: Date.now() - scrapeStart });
-      return NextResponse.json({ error: 'Apify run failed to start', details: errMsg }, { status: 502 });
+      await updateSearchQueryStatus(source, catLower, 'failed', 0);
+      return NextResponse.json({ error: 'Apify run failed', details: errMsg }, { status: 502 });
     }
 
     return await processRun(runRes, APIFY_TOKEN, actorId, maxItems, catLower, clean, isSentry, isDatawizards, logEntry._id, scrapeStart, source);
@@ -228,6 +263,18 @@ function containsBlockedContent(bio: string, name: string, username: string): bo
   return false;
 }
 
+function parseAbbreviatedNumber(val: any): number {
+  if (typeof val === 'number') return val;
+  const s = String(val || '0').replace(/,/g, '').trim();
+  const match = s.match(/^([0-9.]+)\s*([KkMm]?)$/);
+  if (!match) return parseInt(s, 10) || 0;
+  const num = parseFloat(match[1]);
+  const suffix = match[2].toUpperCase();
+  if (suffix === 'M') return Math.round(num * 1_000_000);
+  if (suffix === 'K') return Math.round(num * 1_000);
+  return Math.round(num);
+}
+
 function parseSentryItem(item: any) {
   const username = item.onlyfansUsername || '';
   if (!username) return null;
@@ -244,11 +291,11 @@ function parseSentryItem(item: any) {
     username,
     avatar: item.profileImage || '',
     bio: bio.slice(0, 500),
-    likesCount: parseInt(String(item.likes || '0').replace(/,/g, ''), 10) || 0,
+    likesCount: parseAbbreviatedNumber(item.likes),
     subscriberCount: 0,
     mediaCount: 0,
-    photosCount: parseInt(String(item.photos || '0').replace(/,/g, ''), 10) || 0,
-    videosCount: parseInt(String(item.videos || '0').replace(/,/g, ''), 10) || 0,
+    photosCount: parseAbbreviatedNumber(item.photos),
+    videosCount: parseAbbreviatedNumber(item.videos),
     price: parseFloat(String(item.price || '0').replace(/[^0-9.]/g, '')) || 0,
     isFree: String(item.price || '').toLowerCase() === 'free' || item.price === '0' || item.price === '0.00' || item.price === 0,
     isVerified: false,
@@ -281,7 +328,7 @@ function parseIgolaItem(item: any) {
     username,
     avatar: item.image || (item.images?.[0]?.url) || '',
     bio: bio.slice(0, 500),
-    likesCount: typeof item.likes === 'number' ? item.likes : parseInt(String(item.likes || '0').replace(/,/g, ''), 10) || 0,
+    likesCount: parseAbbreviatedNumber(item.likes),
     subscriberCount: 0,
     mediaCount: 0,
     photosCount: 0,
@@ -442,6 +489,7 @@ async function processRun(
 
   let saved = 0;
   let skipped = 0;
+  const savedCreators: any[] = [];
 
   for (const item of items) {
     const parsed = isDatawizards
@@ -499,15 +547,16 @@ async function processRun(
       if ('fanslyUrl' in parsed && parsed.fanslyUrl) setFields.fanslyUrl = parsed.fanslyUrl;
       if ('pornhubUrl' in parsed && parsed.pornhubUrl) setFields.pornhubUrl = parsed.pornhubUrl;
 
-      await OnlyFansCreator.findOneAndUpdate(
+      const savedDoc = await OnlyFansCreator.findOneAndUpdate(
         { slug },
         {
           $set: setFields,
           $addToSet: { categories: catLower },
         },
-        { upsert: true, strict: false },
-      );
+        { upsert: true, strict: false, new: true },
+      ).select('name username slug avatar likesCount categories price isFree url').lean() as any;
       saved++;
+      if (savedDoc) savedCreators.push({ ...savedDoc, _id: savedDoc._id.toString() });
     } catch (e: any) {
       if (e.code !== 11000) console.error(`Failed ${parsed.username}:`, e.message);
     }
@@ -545,5 +594,5 @@ async function processRun(
 
   await updateSearchQueryStatus(source, catLower, 'done', saved);
 
-  return NextResponse.json({ success: true, runId, totalItems: items.length, saved, skipped, imagesProcessed, category: catLower });
+  return NextResponse.json({ success: true, runId, totalItems: items.length, saved, skipped, imagesProcessed, category: catLower, savedCreators });
 }

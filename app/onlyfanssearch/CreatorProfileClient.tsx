@@ -7,27 +7,30 @@ import {
   Heart, Image as ImageIcon, Video, Users,
   ExternalLink, ChevronRight, DollarSign, Lock, Clock,
   Camera, Film, Globe, MapPin, Calendar, Mic, FileText,
-  Radio, Zap, MessageCircle, Share2, Copy, Check, Mail, X, Star,
+  Radio, Zap, MessageCircle, Share2, Copy, Check, Mail, X, Star, TrendingUp, TrendingDown, Minus, Bookmark,
   Home, Pencil, Trash2, Save,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
-import OFFooter from '@/components/OFFooter';
+import Footer from '@/components/Footer';
 import { trackCreatorClick } from '@/lib/actions/onlyfansTracking';
 import type { CreatorProfile } from '@/lib/actions/ofCreatorProfile';
-import { updateCreatorFields, deleteCreatorPhoto, deleteCreator } from '@/lib/actions/ofCreatorProfile';
-import { ofCategoryUrl, ofCountryUrl, OF_CATEGORIES, OF_COUNTRIES } from '@/app/onlyfanssearch/constants';
+import { updateCreatorFields, deleteCreatorPhoto, deleteCreator, getCreatorReviews, submitCreatorReview } from '@/lib/actions/ofCreatorProfile';
+import type { CreatorReviewData } from '@/lib/actions/ofCreatorProfile';
+import { ofCategoryUrl, OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
+import { getCreatorBio } from '@/app/onlyfanssearch/creatorBios';
 
 function formatCount(n: number) {
   if (!n) return '—';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return `${n}`;
+  return `${n}K`;
 }
 
 function formatExact(n: number) {
-  return n.toLocaleString();
+  if (n >= 1_000) return n.toLocaleString();
+  return `${n}K`;
 }
 
 function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
@@ -231,9 +234,10 @@ function ShareDropdown({ name, username, slug }: { name: string; username: strin
   );
 }
 
-function RelatedCard({ creator }: { creator: CreatorProfile }) {
+function RelatedCard({ creator, publicOnlyfansPath = false }: { creator: CreatorProfile; publicOnlyfansPath?: boolean }) {
   const { t } = useTranslation();
   const lp = useLocalePath();
+  const profileHref = publicOnlyfansPath ? lp(`/onlyfans/${creator.slug}`) : lp(`/${creator.slug}`);
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -241,7 +245,7 @@ function RelatedCard({ creator }: { creator: CreatorProfile }) {
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       className="group relative rounded-2xl overflow-hidden bg-[#0d1e2a] border border-[#00AFF0]/20 hover:border-[#00AFF0]/60 hover:-translate-y-1 transition-all duration-300 shadow-lg hover:shadow-[0_12px_32px_-8px_rgba(0,175,240,0.30)]"
     >
-      <Link href={lp(`/${creator.slug}`)} prefetch={false} className="block">
+      <Link href={profileHref} prefetch={false} className="block">
         <div className="relative aspect-[3/4] bg-[#0a1520]">
           {creator.avatar ? (
             <img
@@ -287,12 +291,28 @@ const CATEGORY_LABELS: Record<string, string> = {
   squirt: 'Squirt', streamer: 'Streamer', piercing: 'Piercing',
 };
 
+interface TrendingCreatorItem {
+  _id: string;
+  name: string;
+  username: string;
+  slug: string;
+  avatar: string;
+  rank: number;
+  points: number;
+  pointsDelta: number;
+  rankChange: number;
+}
+
 export default function CreatorProfileClient({
   creator,
   related,
+  trendingOnErogram = [],
+  publicAccess = false,
 }: {
   creator: CreatorProfile;
   related: CreatorProfile[];
+  trendingOnErogram?: TrendingCreatorItem[];
+  publicAccess?: boolean;
 }) {
   const router = useRouter();
   const { t } = useTranslation();
@@ -302,16 +322,18 @@ export default function CreatorProfileClient({
   const [headerError, setHeaderError] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
-  const [authChecked, setAuthChecked] = useState(false);
+  const [authChecked, setAuthChecked] = useState(publicAccess);
 
   useEffect(() => {
+    if (publicAccess) return;
+    const isDev = typeof window !== 'undefined' && window.location.hostname === 'localhost';
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) {
-      router.replace(`/join-erogram?redirect=/${creator.slug}`);
+    if (!token && !isDev) {
+      window.location.href = creator.url;
       return;
     }
     setAuthChecked(true);
-  }, [router, creator.slug]);
+  }, [creator.url, publicAccess]);
 
   // Admin state
   const [isAdmin, setIsAdmin] = useState(false);
@@ -365,11 +387,88 @@ export default function CreatorProfileClient({
   const hasSocials = !!(creator.instagramUrl || creator.twitterUrl || creator.tiktokUrl || creator.fanslyUrl || creator.pornhubUrl);
   const totalMedia = creator.mediaCount || (creator.photosCount + creator.videosCount + creator.audiosCount);
 
+  const [isSaved, setIsSaved] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    fetch('/api/onlyfans/save', { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data.savedIds) && data.savedIds.includes(creator._id)) setIsSaved(true);
+      })
+      .catch(() => {});
+  }, [creator._id]);
+
+  const handleToggleSave = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+      return;
+    }
+    const was = isSaved;
+    setIsSaved(!was);
+    try {
+      await fetch('/api/onlyfans/save', {
+        method: was ? 'DELETE' : 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ creatorId: creator._id }),
+      });
+    } catch {
+      setIsSaved(was);
+    }
+  };
+
+  // ── Review state ──
+  const [reviews, setReviews] = useState<CreatorReviewData[]>([]);
+  const [reviewAvg, setReviewAvg] = useState(0);
+  const [reviewCount, setReviewCount] = useState(0);
+  const [reviewForm, setReviewForm] = useState({ rating: 0, content: '', name: '' });
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [burstRating, setBurstRating] = useState(0);
+  const [commentCTAVisible, setCommentCTAVisible] = useState(false);
+  const commentRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    getCreatorReviews(creator.slug).then((data) => {
+      setReviews(data.reviews);
+      setReviewAvg(data.avg);
+      setReviewCount(data.count);
+    }).catch(() => {});
+  }, [creator.slug]);
+
+  const handleSubmitReview = async () => {
+    if (reviewSubmitting || reviewSubmitted) return;
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+      return;
+    }
+    if (reviewForm.rating < 1) return;
+    setReviewSubmitting(true);
+    try {
+      const tkn = typeof localStorage !== 'undefined' ? localStorage.getItem('token') || '' : '';
+      await submitCreatorReview(creator.slug, reviewForm.rating, reviewForm.content, tkn);
+      const data = await getCreatorReviews(creator.slug);
+      setReviews(data.reviews);
+      setReviewAvg(data.avg);
+      setReviewCount(data.count);
+      setReviewSubmitted(true);
+    } catch { /* ignore */ }
+    setReviewSubmitting(false);
+  };
+
   const [countdownStarted, setCountdownStarted] = useState(false);
 
   const handleViewProfile = () => {
     if (countdownStarted) return;
     trackCreatorClick(creator._id).catch(() => {});
+    if (publicAccess) {
+      window.open(creator.url, '_blank', 'noopener,noreferrer');
+      return;
+    }
     setCountdown(7);
     setCountdownStarted(true);
     setRedirecting(true);
@@ -420,7 +519,7 @@ export default function CreatorProfileClient({
       <Navbar />
 
       {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="max-w-4xl mx-auto px-4 sm:px-6 pt-4 pb-2">
+      <nav aria-label="Breadcrumb" className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-2">
         <ol className="flex items-center gap-1.5 text-xs text-gray-500">
           <li>
             <Link href={lp('/')} className="flex items-center gap-1 hover:text-white transition-colors">
@@ -458,132 +557,573 @@ export default function CreatorProfileClient({
         <div className="absolute inset-0 bg-gradient-to-t from-[#0a1117] via-[#0a1117]/40 to-transparent" />
       </div>
 
-      <div className="relative max-w-4xl mx-auto px-4 sm:px-6">
-        {/* Avatar + name */}
-        <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 -mt-16 sm:-mt-20 mb-6">
-          <div className="relative flex-shrink-0 w-28 h-28 sm:w-36 sm:h-36 rounded-2xl overflow-hidden ring-4 ring-[#0a1117] bg-[#0d1e2a] shadow-2xl">
-            {hasAvatar ? (
-              <img
-                src={creator.avatar}
-                alt={`${creator.name} OnlyFans`}
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-                onError={() => setAvatarError(true)}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-5xl font-black text-[#00AFF0]/40 bg-gradient-to-br from-[#00AFF0]/10 to-[#001824]">
-                {creator.name.charAt(0)}
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
+        {/* ── Top section: profile info LEFT + trending RIGHT ── */}
+        <div className="flex flex-col lg:flex-row gap-6">
+
+          {/* LEFT — profile info block */}
+          <div className="flex-1 min-w-0">
+            {/* Avatar + name */}
+            <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 -mt-16 sm:-mt-20 mb-6">
+              <div className="relative flex-shrink-0 w-28 h-28 sm:w-36 sm:h-36 rounded-2xl overflow-hidden ring-4 ring-[#0a1117] bg-[#0d1e2a] shadow-2xl">
+                {hasAvatar ? (
+                  <img
+                    src={creator.avatar}
+                    alt={`${creator.name} OnlyFans`}
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                    onError={() => setAvatarError(true)}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-5xl font-black text-[#00AFF0]/40 bg-gradient-to-br from-[#00AFF0]/10 to-[#001824]">
+                    {creator.name.charAt(0)}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1 pb-1">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight flex items-center gap-1.5">
+                    {creator.name}
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-500 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
+                  </h1>
+                  {creator.isFree ? (
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-xs font-black uppercase tracking-wide">
+                      FREE
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#00AFF0]/15 border border-[#00AFF0]/30 text-[#00AFF0] text-xs font-black">
+                      <Lock className="w-3 h-3" />
+                      {displayPrice}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[#00AFF0] text-sm sm:text-base font-bold">@{creator.username}</p>
+
+                {/* Location + Last seen row */}
+                <div className="flex flex-wrap items-center gap-3 mt-1.5">
+                  {creator.location && (
+                    <span className="flex items-center gap-1 text-gray-400 text-xs">
+                      <MapPin className="w-3 h-3 text-[#00AFF0]/70" />
+                      {creator.location}
+                    </span>
+                  )}
+                  {joinFormatted && (
+                    <span className="flex items-center gap-1 text-gray-400 text-xs">
+                      <Calendar className="w-3 h-3 text-[#00AFF0]/70" />
+                      {t('ofSearch.joined').replace('{date}', joinFormatted)}
+                    </span>
+                  )}
+                </div>
+
+              </div>
+
+              {/* Bookmark + Share + Submit — desktop */}
+              <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={handleToggleSave}
+                  className={`flex items-center justify-center w-10 h-10 rounded-xl border transition-all ${
+                    isSaved
+                      ? 'bg-[#00AFF0] border-[#00AFF0] text-white shadow-lg shadow-[#00AFF0]/30'
+                      : 'bg-white/[0.06] border-white/[0.10] text-white/50 hover:bg-[#00AFF0]/15 hover:border-[#00AFF0]/30 hover:text-[#00AFF0]'
+                  }`}
+                  title={isSaved ? t('ofSearch.removeSaved') : t('ofSearch.saveCreator')}
+                >
+                  <Bookmark size={16} fill={isSaved ? 'currentColor' : 'none'} />
+                </button>
+                {!publicAccess && (
+                  <Link
+                    href={lp('/submit')}
+                    className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-xs font-black shadow-md shadow-[#00AFF0]/20 hover:shadow-lg hover:shadow-[#00AFF0]/30 hover:-translate-y-0.5 transition-all"
+                  >
+                    <Star className="w-3.5 h-3.5" />
+                    {t('ofSearch.submitNewCreator')}
+                  </Link>
+                )}
+                <ShareDropdown name={creator.name} username={creator.username} slug={creator.slug} />
+              </div>
+            </div>
+
+            {/* Stats Strip */}
+            <div className="flex flex-wrap gap-2 sm:gap-3 mb-6">
+              {creator.likesCount > 0 && (
+                <div className="flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 rounded-xl"
+                  style={{ background: 'linear-gradient(135deg, rgba(0,175,240,0.15), rgba(0,175,240,0.07))', border: '1px solid rgba(0,175,240,0.30)', minWidth: '160px' }}>
+                  <svg className="w-9 h-9 flex-shrink-0" viewBox="0 0 24 24" fill="#00AFF0">
+                    <path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z"/>
+                  </svg>
+                  <div className="flex flex-col">
+                    <span className="font-black text-xl sm:text-2xl leading-tight" style={{ color: '#00AFF0' }}>{formatCount(creator.likesCount)}</span>
+                    <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider" style={{ color: '#00AFF0', opacity: 0.65 }}>{t('ofSearch.ofLikes')}</span>
+                  </div>
+                </div>
+              )}
+              {totalMedia > 0 && (
+                <StatCard icon={<ImageIcon className="w-4 h-4" />} label={t('ofSearch.totalMedia')} value={formatCount(totalMedia)} />
+              )}
+              <StatCard icon={<DollarSign className="w-4 h-4" />} label={t('ofSearch.price')} value={displayPrice} />
+            </div>
+
+            {/* Bookmark + Share + Submit — mobile only */}
+            <div className="sm:hidden flex items-center justify-end gap-2 mb-6">
+              <button
+                onClick={handleToggleSave}
+                className={`flex items-center justify-center w-9 h-9 rounded-xl border transition-all ${
+                  isSaved
+                    ? 'bg-[#00AFF0] border-[#00AFF0] text-white shadow-lg shadow-[#00AFF0]/30'
+                    : 'bg-white/[0.06] border-white/[0.10] text-white/50 hover:bg-[#00AFF0]/15 hover:border-[#00AFF0]/30 hover:text-[#00AFF0]'
+                }`}
+                title={isSaved ? t('ofSearch.removeSaved') : t('ofSearch.saveCreator')}
+              >
+                <Bookmark size={14} fill={isSaved ? 'currentColor' : 'none'} />
+              </button>
+              {!publicAccess && (
+                <Link
+                  href={lp('/submit')}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-[11px] font-black shadow-md shadow-[#00AFF0]/20 hover:shadow-lg hover:shadow-[#00AFF0]/30 transition-all"
+                >
+                  <Star className="w-3 h-3" />
+                  {t('ofSearch.submitNewCreator')}
+                </Link>
+              )}
+              <ShareDropdown name={creator.name} username={creator.username} slug={creator.slug} />
+            </div>
+
+            {/* Categories */}
+            {creator.categories.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-6">
+                {creator.categories.map((cat) => (
+                  <Link
+                    key={cat}
+                    href={lp(ofCategoryUrl(cat))}
+                    className="px-3 py-1.5 rounded-xl bg-[#00AFF0]/10 border border-[#00AFF0]/25 text-[#00AFF0] text-xs font-bold capitalize hover:bg-[#00AFF0]/20 hover:border-[#00AFF0]/50 transition-all"
+                  >
+                    {CATEGORY_LABELS[cat] || cat}
+                  </Link>
+                ))}
               </div>
             )}
-          </div>
 
-          <div className="flex-1 pb-1">
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight flex items-center gap-1.5">
-                {creator.name}
-                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-500 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
-              </h1>
-              {creator.isFree ? (
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-xs font-black uppercase tracking-wide">
-                  FREE
-                </span>
-              ) : (
-                <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#00AFF0]/15 border border-[#00AFF0]/30 text-[#00AFF0] text-xs font-black">
-                  <Lock className="w-3 h-3" />
-                  {displayPrice}
-                </span>
-              )}
-            </div>
-            <p className="text-[#00AFF0] text-sm sm:text-base font-bold">@{creator.username}</p>
-
-            {/* Location + Last seen row */}
-            <div className="flex flex-wrap items-center gap-3 mt-1.5">
-              {creator.location && (
-                <span className="flex items-center gap-1 text-gray-400 text-xs">
-                  <MapPin className="w-3 h-3 text-[#00AFF0]/70" />
-                  {creator.location}
-                </span>
-              )}
-              {joinFormatted && (
-                <span className="flex items-center gap-1 text-gray-400 text-xs">
-                  <Calendar className="w-3 h-3 text-[#00AFF0]/70" />
-                  {t('ofSearch.joined').replace('{date}', joinFormatted)}
-                </span>
-              )}
-            </div>
-
-          </div>
-
-          {/* Share + Submit — desktop */}
-          <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
-            <Link
-              href={lp('/submit')}
-              className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-xs font-black shadow-md shadow-[#00AFF0]/20 hover:shadow-lg hover:shadow-[#00AFF0]/30 hover:-translate-y-0.5 transition-all"
-            >
-              <Star className="w-3.5 h-3.5" />
-              {t('ofSearch.submitNewCreator')}
-            </Link>
-            <ShareDropdown name={creator.name} username={creator.username} slug={creator.slug} />
-          </div>
-        </div>
-
-        {/* ── Stats Strip ── */}
-        <div className="flex flex-wrap gap-2 sm:gap-3 mb-6">
-          {creator.likesCount > 0 && (
-            <div className="flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 rounded-xl"
-              style={{ background: 'linear-gradient(135deg, rgba(0,175,240,0.15), rgba(0,175,240,0.07))', border: '1px solid rgba(0,175,240,0.30)', minWidth: '160px' }}>
-              <svg className="w-9 h-9 flex-shrink-0" viewBox="0 0 24 24" fill="#00AFF0">
-                <path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z"/>
-              </svg>
-              <div className="flex flex-col">
-                <span className="font-black text-xl sm:text-2xl leading-tight" style={{ color: '#00AFF0' }}>{formatCount(creator.likesCount)}</span>
-                <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider" style={{ color: '#00AFF0', opacity: 0.65 }}>{t('ofSearch.ofLikes')}</span>
+            {/* ── Enhanced About Section ── */}
+        {(() => {
+          const bioData = getCreatorBio(creator.username);
+          if (bioData) {
+            return (
+              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
+                <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#00AFF0]" />
+                  About {bioData.name}
+                </h2>
+                <div className="text-sm text-gray-300 leading-relaxed">
+                  <p>{bioData.bio}</p>
+                </div>
               </div>
+            );
+          }
+          const username = creator.username?.toLowerCase();
+          if (username === 'DISABLED_amouranth') {
+            return (
+              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
+                <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#00AFF0]" />
+                  About Amouranth
+                </h2>
+                <div className="text-sm text-gray-300 leading-relaxed space-y-4">
+                  <p>
+                    Kaitlyn Siragusa, known online as <strong>Amouranth</strong>, is a 31-year-old content creator from Texas. 
+                    She originally built her audience on Twitch streaming cosplay, ASMR, and hot tub content before shifting her main focus to OnlyFans.
+                  </p>
+                  <p>
+                    She has a large following on <strong>X (@Amouranth)</strong> with approximately 3.77 million followers. 
+                    Reports suggest she has earned between $20 million and $30 million from OnlyFans, with some months reportedly exceeding $1.5 million in revenue.
+                  </p>
+                  <p>
+                    Community discussions on Reddit often highlight her high content output, professional production quality, and distinctive pink and black branding. 
+                    She also maintains a Telegram channel at <strong>t.me/Amouranth_Kaitlyn</strong>.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          if (username === 'sharonwinner') {
+            return (
+              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
+                <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#00AFF0]" />
+                  About Sharonwinner
+                </h2>
+                <div className="text-sm text-gray-300 leading-relaxed space-y-4">
+                  <p>
+                    Sharonwinner is one of the more established creators on OnlyFans, having joined the platform back in May 2020. She charges $25 per month and has steadily built up a following with around 175K likes over the years.
+                  </p>
+                  <p>
+                    In the community, she's often mentioned for her consistency and reliability — someone who has been putting out content for years without disappearing. Many appreciate that she's not just chasing trends but maintains a steady output of photos and videos.
+                  </p>
+                  <p>
+                    She also runs a Telegram channel at <strong>t.me/sharonwinneronlyfan</strong> where she shares updates and extra content with her subscribers. Her approach seems to be focused on long-term fans rather than quick viral moments.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          if (username === 'milkimind') {
+            return (
+              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
+                <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#00AFF0]" />
+                  About Milkimind
+                </h2>
+                <div className="text-sm text-gray-300 leading-relaxed space-y-4">
+                  <p>
+                    Milkimind has become quite popular in a relatively short time, currently sitting at an impressive 755K likes on her OnlyFans profile. What stands out is her very accessible $4 monthly subscription, which has clearly helped her grow her audience rapidly.
+                  </p>
+                  <p>
+                    From what fans say on Reddit and other communities, people enjoy her playful and engaging personality. She stands out from creators who take themselves too seriously — her content seems to have a lighter, more fun vibe.
+                  </p>
+                  <p>
+                    She also maintains an active Telegram channel at <strong>t.me/milkimind</strong> where she posts behind-the-scenes content, updates, and even cute voice messages. This multi-platform approach seems to be working well for her.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          if (username === 'thequeenrosi') {
+            return (
+              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
+                <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#00AFF0]" />
+                  About Thequeenrosi
+                </h2>
+                <div className="text-sm text-gray-300 leading-relaxed space-y-4">
+                  <p>
+                    Thequeenrosi is a rising creator who has recently broken into the top 100 rankings. While her like count (around 38K) is lower than some of the bigger names, she's gaining attention for the quality of her content.
+                  </p>
+                  <p>
+                    She seems to focus on delivering a more premium experience rather than posting as much content as possible. This approach appears to be working for her as she continues to climb the rankings.
+                  </p>
+                  <p>
+                    Like many creators in the top lists, she maintains a presence across multiple platforms to stay connected with her audience.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          if (username === 'leslyeanuket') {
+            return (
+              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
+                <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#00AFF0]" />
+                  About Leslyeanuket
+                </h2>
+                <div className="text-sm text-gray-300 leading-relaxed space-y-4">
+                  <p>
+                    Leslyeanuket has 27K likes on her OnlyFans profile and charges $50 per month. She is one of the higher priced creators in the current top rankings.
+                  </p>
+                  <p>
+                    She is active on several social media platforms including Instagram and TikTok. She also has a Telegram channel where she connects with her fans.
+                  </p>
+                  <p>
+                    Her pricing suggests she focuses on providing a more exclusive experience for her subscribers.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          if (username === 'mishiavilaof') {
+            return (
+              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
+                <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#00AFF0]" />
+                  About Mishiavilaof
+                </h2>
+                <div className="text-sm text-gray-300 leading-relaxed space-y-4">
+                  <p>
+                    Mishiavilaof has 36K likes on her OnlyFans profile and charges $7 per month. This more affordable pricing has helped her build a decent sized following.
+                  </p>
+                  <p>
+                    She maintains an active presence across multiple social platforms. Her content seems to appeal to fans looking for good value from their subscription.
+                  </p>
+                  <p>
+                    She uses Telegram and other platforms to keep her audience engaged and provide regular updates.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          if (username === 'sugeyabrego') {
+            return (
+              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
+                <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#00AFF0]" />
+                  About Sugeyabrego
+                </h2>
+                <div className="text-sm text-gray-300 leading-relaxed space-y-4">
+                  <p>
+                    Sugeyabrego is a very popular creator with 157K likes on her OnlyFans profile. She charges $8 per month and has built a large following.
+                  </p>
+                  <p>
+                    She is known for her consistent content and has been active for a while. Many fans appreciate her regular uploads and engagement with her audience.
+                  </p>
+                  <p>
+                    She maintains multiple social media accounts to stay connected with her fans across different platforms including Telegram.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          if (username === 'magsmx') {
+            return (
+              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
+                <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#00AFF0]" />
+                  About Magsmx
+                </h2>
+                <div className="text-sm text-gray-300 leading-relaxed space-y-4">
+                  <p>
+                    Magsmx has 79K likes on her OnlyFans profile and charges $18 per month. She has established herself as one of the more popular creators in the current rankings.
+                  </p>
+                  <p>
+                    She is known for her content quality and maintains a good balance between price and value for her subscribers.
+                  </p>
+                  <p>
+                    Like many top creators, she uses several platforms including Telegram to engage with her audience.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          if (username === 'letho_k' || username === 'letho-k') {
+            return (
+              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
+                <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#00AFF0]" />
+                  About Letho_k
+                </h2>
+                <div className="text-sm text-gray-300 leading-relaxed space-y-4">
+                  <p>
+                    Letho_k has 13K likes on her OnlyFans profile and charges $8 per month. She is one of the newer creators in the current top 100.
+                  </p>
+                  <p>
+                    She is still building her audience but has made it into the rankings. She maintains a presence across multiple platforms.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          if (username === 'ashtonfieldss' || username === 'ashton') {
+            return (
+              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
+                <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#00AFF0]" />
+                  About Ashtonfieldss
+                </h2>
+                <div className="text-sm text-gray-300 leading-relaxed space-y-4">
+                  <p>
+                    Ashtonfieldss is a very popular creator with 269K likes on her OnlyFans profile. She offers free subscription which has helped her grow a massive audience.
+                  </p>
+                  <p>
+                    Having such a large following with a free account shows how strong her content and personality are. She is one of the bigger names in the current top rankings.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          if (username === 'bhadbhabie') {
+            return (
+              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
+                <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#00AFF0]" />
+                  About Bhad Bhabie
+                </h2>
+                <div className="text-sm text-gray-300 leading-relaxed space-y-4">
+                  <p>
+                    Bhad Bhabie (Danielle Bregoli) is a well-known celebrity creator with 1.9 million likes on her OnlyFans profile. She charges $24 per month.
+                  </p>
+                  <p>
+                    She became famous from her "Cash me outside" viral moment on Dr. Phil and has successfully turned that internet fame into a lucrative OnlyFans career.
+                  </p>
+                  <p>
+                    As a celebrity creator, she brings mainstream attention to the platform and has one of the largest audiences among all creators.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          if (username === 'milamondell') {
+            return (
+              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
+                <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#00AFF0]" />
+                  About Milamondell
+                </h2>
+                <div className="text-sm text-gray-300 leading-relaxed space-y-4">
+                  <p>
+                    Milamondell is one of the biggest creators on this list with 3.1 million likes on her OnlyFans profile. She offers free subscription which has helped her grow an enormous audience.
+                  </p>
+                  <p>
+                    Her nickname "PRETTIEST PUSSY ONLINE" shows her branding approach. Having over 3 million likes with a free account demonstrates how popular her content is.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          if (username === 'gem101') {
+            return (
+              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
+                <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#00AFF0]" />
+                  About Gem101
+                </h2>
+                <div className="text-sm text-gray-300 leading-relaxed space-y-4">
+                  <p>
+                    Gem101 has 1.2 million likes on her OnlyFans profile and charges $30 per month. She is one of the higher priced creators with a very large following.
+                  </p>
+                  <p>
+                    Her nickname "The one ❤️" suggests she positions herself as a premium experience. She has built a massive audience despite the higher price point.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          if (username === 'jocibaker') {
+            return (
+              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
+                <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#00AFF0]" />
+                  About Jocibaker
+                </h2>
+                <div className="text-sm text-gray-300 leading-relaxed space-y-4">
+                  <p>
+                    Jocibaker has 667K likes on her OnlyFans profile and charges $5 per month. She has built a very large following with her content.
+                  </p>
+                  <p>
+                    She is one of the more popular creators in the current rankings and maintains an active presence across multiple platforms.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          if (username === 'letho_k' || username === 'letho-k') {
+            return (
+              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
+                <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#00AFF0]" />
+                  About Letho_k
+                </h2>
+                <div className="text-sm text-gray-300 leading-relaxed space-y-4">
+                  <p>
+                    Letho_k has 13K likes on her OnlyFans profile and charges $8 per month. She is one of the newer or less established creators in the current top 100.
+                  </p>
+                  <p>
+                    She is still building her audience but has made it into the top rankings. She uses multiple platforms to connect with her fans.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          if (username === 'ashtonfieldss' || username === 'ashton') {
+            return (
+              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
+                <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#00AFF0]" />
+                  About Ashtonfieldss
+                </h2>
+                <div className="text-sm text-gray-300 leading-relaxed space-y-4">
+                  <p>
+                    Ashtonfieldss is a very popular creator with 269K likes on her OnlyFans profile. She offers free subscription which has helped her grow a massive audience.
+                  </p>
+                  <p>
+                    Having such a large following with a free account shows how strong her content and personality are. She is one of the bigger names in the current top rankings.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          if (username === 'bhadbhabie') {
+            return (
+              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
+                <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#00AFF0]" />
+                  About Bhad Bhabie
+                </h2>
+                <div className="text-sm text-gray-300 leading-relaxed space-y-4">
+                  <p>
+                    Bhad Bhabie (Danielle Bregoli) is a well-known celebrity creator with 1.9 million likes on her OnlyFans profile. She charges $24 per month.
+                  </p>
+                  <p>
+                    She became famous from her "Cash me outside" viral moment on Dr. Phil and has successfully turned that internet fame into a lucrative OnlyFans career.
+                  </p>
+                  <p>
+                    As a celebrity creator, she brings mainstream attention to the platform and has one of the largest audiences among all creators.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          if (username === 'milamondell') {
+            return (
+              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
+                <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#00AFF0]" />
+                  About Milamondell
+                </h2>
+                <div className="text-sm text-gray-300 leading-relaxed space-y-4">
+                  <p>
+                    Milamondell is one of the biggest creators on this list with 3.1 million likes on her OnlyFans profile. She offers free subscription which has helped her grow an enormous audience.
+                  </p>
+                  <p>
+                    Her nickname "PRETTIEST PUSSY ONLINE" shows her branding approach. Having over 3 million likes with a free account demonstrates how popular her content is.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          if (username === 'gem101') {
+            return (
+              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
+                <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#00AFF0]" />
+                  About Gem101
+                </h2>
+                <div className="text-sm text-gray-300 leading-relaxed space-y-4">
+                  <p>
+                    Gem101 has 1.2 million likes on her OnlyFans profile and charges $30 per month. She is one of the higher priced creators with a very large following.
+                  </p>
+                  <p>
+                    Her nickname "The one ❤️" suggests she positions herself as a premium experience. She has built a massive audience despite the higher price point.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          if (username === 'jocibaker') {
+            return (
+              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
+                <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#00AFF0]" />
+                  About Jocibaker
+                </h2>
+                <div className="text-sm text-gray-300 leading-relaxed space-y-4">
+                  <p>
+                    Jocibaker has 667K likes on her OnlyFans profile and charges $5 per month. She has built a very large following with her content.
+                  </p>
+                  <p>
+                    She is one of the more popular creators in the current rankings and maintains an active presence across multiple platforms.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          return creator.bio ? (
+            <div className="mb-6 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 sm:p-6">
+              <h2 className="text-sm font-black text-white mb-3 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-[#00AFF0]" />
+                {t('ofSearch.aboutCreator') || 'About'}
+              </h2>
+              <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-line">{creator.bio}</p>
             </div>
-          )}
-          {totalMedia > 0 && (
-            <StatCard icon={<ImageIcon className="w-4 h-4" />} label={t('ofSearch.totalMedia')} value={formatCount(totalMedia)} />
-          )}
-          <StatCard icon={<DollarSign className="w-4 h-4" />} label={t('ofSearch.price')} value={displayPrice} />
-        </div>
-
-        {/* Share + Submit — mobile only */}
-        <div className="sm:hidden flex items-center justify-end gap-2 mb-6">
-          <Link
-            href={lp('/submit')}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-[11px] font-black shadow-md shadow-[#00AFF0]/20 hover:shadow-lg hover:shadow-[#00AFF0]/30 transition-all"
-          >
-            <Star className="w-3 h-3" />
-            {t('ofSearch.submitNewCreator')}
-          </Link>
-          <ShareDropdown name={creator.name} username={creator.username} slug={creator.slug} />
-        </div>
-
-        {/* ── Categories ── */}
-        {creator.categories.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-6">
-            {creator.categories.map((cat) => (
-              <Link
-                key={cat}
-                href={lp(ofCategoryUrl(cat))}
-                className="px-3 py-1.5 rounded-xl bg-[#00AFF0]/10 border border-[#00AFF0]/25 text-[#00AFF0] text-xs font-bold capitalize hover:bg-[#00AFF0]/20 hover:border-[#00AFF0]/50 transition-all"
-              >
-                {CATEGORY_LABELS[cat] || cat}
-              </Link>
-            ))}
-          </div>
-        )}
-
-        {/* ── Bio ── */}
-        {creator.bio ? (
-          <div className="mb-6 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 sm:p-6">
-            <h2 className="text-sm font-black text-white mb-3 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-[#00AFF0]" />
-              {t('ofSearch.aboutCreator') || 'About'}
-            </h2>
-            <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-line">{creator.bio}</p>
-          </div>
-        ) : null}
+          ) : null;
+        })()}
 
         {/* ── Social Links & Platforms ── */}
         {hasSocials && (
@@ -653,9 +1193,14 @@ export default function CreatorProfileClient({
                 <DetailRow label={t('ofSearch.joinedOnlyfans')} value={joinFormatted || 'N/A'} color={joinFormatted ? undefined : 'text-gray-500'} />
                 <DetailRow
                   label={t('ofSearch.telegram')}
-                  value={creator.telegramUrl ? creator.telegramUrl.replace(/https?:\/\/(t\.me\/)?/i, '@') : 'N/A'}
-                  color={creator.telegramUrl ? 'text-white' : 'text-gray-500'}
-                  href={creator.telegramUrl || undefined}
+                  value={(() => {
+                    if (creator.telegramUrl) return creator.telegramUrl.replace(/https?:\/\/(t\.me\/)?/i, '@');
+                    const bioData = getCreatorBio(creator.username);
+                    if (bioData?.telegram) return bioData.telegram.replace(/https?:\/\/(t\.me\/)?/i, '@');
+                    return 'N/A';
+                  })()}
+                  color={(creator.telegramUrl || !!getCreatorBio(creator.username)?.telegram) ? 'text-white' : 'text-gray-500'}
+                  href={creator.telegramUrl || getCreatorBio(creator.username)?.telegram || undefined}
                 />
                 <DetailRow
                   label={t('ofSearch.website')}
@@ -730,26 +1275,314 @@ export default function CreatorProfileClient({
                   </button>
                 )}
               </div>
+
+              {/* ── Compact inline flame rating — below OnlyFans CTA ── */}
+              <div className="flex items-center justify-center gap-2 mt-3 px-2 py-2 rounded-xl" style={{ background: 'rgba(255,80,0,0.08)', border: '1px solid rgba(255,100,0,0.18)' }}>
+                <style>{`
+                  @keyframes flameBurstInline {
+                    0%   { transform: scale(1); }
+                    25%  { transform: scale(2); filter: drop-shadow(0 0 10px rgba(255,120,0,1)) brightness(1.5); }
+                    60%  { transform: scale(1.3); }
+                    100% { transform: scale(1.15); filter: drop-shadow(0 0 5px rgba(255,100,0,0.8)); }
+                  }
+                  @keyframes sparkleInline {
+                    0%   { opacity: 1; transform: translate(0,0) scale(1); }
+                    100% { opacity: 0; transform: translate(var(--tx),var(--ty)) scale(0); }
+                  }
+                `}</style>
+                {reviewCount > 0 && (
+                  <span className="text-[10px] font-bold shrink-0 tabular-nums" style={{ color: 'rgba(255,160,80,0.75)' }}>
+                    {reviewAvg}/5
+                  </span>
+                )}
+                <div className="flex gap-1 items-center">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <div key={s} className="relative">
+                      {burstRating === s && [0,1,2,3,4,5,6,7].map((i) => (
+                        <span key={i} className="pointer-events-none absolute text-[8px] select-none" style={{ top: '50%', left: '50%', '--tx': `${Math.cos((i/8)*2*Math.PI)*20}px`, '--ty': `${Math.sin((i/8)*2*Math.PI)*20}px`, animation: 'sparkleInline 0.45s ease-out forwards', animationDelay: `${i*18}ms` } as React.CSSProperties}>
+                          {i%2===0?'✦':'🔥'}
+                        </span>
+                      ))}
+                      <button
+                        onClick={() => {
+                          setReviewForm((f) => ({ ...f, rating: s }));
+                          setBurstRating(s);
+                          setTimeout(() => setBurstRating(0), 600);
+                          if (!commentCTAVisible) setTimeout(() => { setCommentCTAVisible(true); setTimeout(() => commentRef.current?.focus(), 350); }, 500);
+                        }}
+                        onMouseEnter={() => setHoverRating(s)}
+                        onMouseLeave={() => setHoverRating(0)}
+                        className="text-base select-none leading-none block"
+                        style={{
+                          filter: s <= (hoverRating || reviewForm.rating) ? 'drop-shadow(0 0 5px rgba(255,100,0,0.9)) brightness(1.1)' : 'grayscale(0.6) brightness(0.5)',
+                          animation: burstRating === s ? 'flameBurstInline 0.4s ease-out forwards' : undefined,
+                          transition: burstRating === s ? 'none' : 'all 0.12s ease',
+                        }}
+                      >🔥</button>
+                    </div>
+                  ))}
+                </div>
+                {(hoverRating || reviewForm.rating) > 0 ? (
+                  <span className="text-[10px] font-black" style={{ color: '#ff8c00' }}>
+                    {(hoverRating || reviewForm.rating) === 5 ? 'ON FIRE!' : (hoverRating || reviewForm.rating) === 4 ? 'Very Hot' : (hoverRating || reviewForm.rating) === 3 ? 'Hot' : (hoverRating || reviewForm.rating) === 2 ? 'Warm' : 'Meh'}
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-semibold" style={{ color: 'rgba(255,160,80,0.5)' }}>Rate</span>
+                )}
+              </div>
             </div>
           </div>
         </div>
+          </div>
+
+        </div>
 
         <div className="h-px bg-gradient-to-r from-transparent via-[#00AFF0]/20 to-transparent mb-8" />
+
+        {/* ── Rate Creator — Flame Meter ── */}
+        <section className="mb-8 rounded-2xl overflow-hidden shadow-lg" style={{ background: 'linear-gradient(135deg, #1a0a00 0%, #2d0f00 40%, #1a0a00 100%)', border: '1px solid rgba(251,100,20,0.35)' }}>
+          {/* Header */}
+          <div className="px-5 pt-5 pb-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ background: 'linear-gradient(135deg, #ff6b00, #ff3d00)' }}>
+              🔥
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-black text-white leading-tight">
+                How hot is <span style={{ background: 'linear-gradient(90deg, #ff8c00, #ff3d00)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{creator.name}</span>?
+              </h2>
+              {reviewCount > 0 && (
+                <p className="text-[12px] font-semibold" style={{ color: 'rgba(255,160,80,0.75)' }}>
+                  {reviewCount} {reviewCount === 1 ? 'person rated' : 'people rated'} · {reviewAvg}/5
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Community flame bar — shown when reviews exist */}
+          {reviewCount > 0 && (
+            <div className="px-5 pb-4">
+              <div className="h-3 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{
+                    width: `${(reviewAvg / 5) * 100}%`,
+                    background: reviewAvg >= 4.5
+                      ? 'linear-gradient(90deg, #ff6b00, #ff3d00, #ffcc00)'
+                      : reviewAvg >= 3
+                      ? 'linear-gradient(90deg, #ff8c00, #ff5500)'
+                      : 'linear-gradient(90deg, #cc4400, #ff6600)',
+                    boxShadow: reviewAvg >= 4.5 ? '0 0 12px 2px rgba(255,100,0,0.6)' : 'none',
+                  }}
+                />
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className="text-[10px] font-bold" style={{ color: 'rgba(255,160,80,0.5)' }}>Lukewarm</span>
+                <span className="text-[10px] font-bold" style={{ color: 'rgba(255,160,80,0.5)' }}>On Fire 🔥</span>
+              </div>
+            </div>
+          )}
+
+          {/* Existing comments — white cards so they pop */}
+          {reviews.length > 0 && (
+            <div className="px-5 pb-4 space-y-2">
+              {reviews.map((r) => (
+                <div key={r._id} className="rounded-xl px-4 py-3 bg-white shadow-sm flex gap-3">
+                  <div className="w-8 h-8 rounded-full shrink-0 overflow-hidden bg-gradient-to-br from-[#ff6b00] to-[#ff3d00] flex items-center justify-center text-white text-xs font-black">
+                    {r.authorAvatar ? (
+                      <img src={r.authorAvatar} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      (r.authorName || 'A').charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-sm font-bold text-gray-800">{r.authorName || 'Anonymous'}</span>
+                      <div className="flex gap-0.5 ml-1">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <span key={i} className="text-[11px]">{i < r.rating ? '🔥' : '○'}</span>
+                        ))}
+                      </div>
+                      <span className="text-[10px] text-gray-400 ml-auto">{new Date(r.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    {r.content && <p className="text-sm text-gray-600 leading-relaxed">{r.content}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Rating form */}
+          <div className="px-5 pb-5">
+            {!reviewSubmitted ? (
+              <div className="rounded-xl p-4 space-y-4">
+
+                {/* Flame selector */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <style>{`
+                      @keyframes flameBurst {
+                        0%   { transform: scale(1); }
+                        20%  { transform: scale(1.8); filter: drop-shadow(0 0 14px rgba(255,120,0,1)) brightness(1.4); }
+                        50%  { transform: scale(1.35); filter: drop-shadow(0 0 10px rgba(255,80,0,0.9)); }
+                        100% { transform: scale(1.2); filter: drop-shadow(0 0 6px rgba(255,100,0,0.9)) brightness(1.15); }
+                      }
+                      @keyframes sparkle {
+                        0%   { opacity: 1; transform: translate(0,0) scale(1); }
+                        100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.2); }
+                      }
+                      @keyframes fadeSlideIn {
+                        from { opacity: 0; transform: translateY(-6px); }
+                        to   { opacity: 1; transform: translateY(0); }
+                      }
+                    `}</style>
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <div key={s} className="relative">
+                        {burstRating === s && [0,1,2,3,4,5,6,7].map((i) => (
+                          <span
+                            key={i}
+                            className="pointer-events-none absolute text-xs select-none"
+                            style={{
+                              top: '50%', left: '50%',
+                              '--tx': `${Math.cos((i / 8) * 2 * Math.PI) * 28}px`,
+                              '--ty': `${Math.sin((i / 8) * 2 * Math.PI) * 28}px`,
+                              animation: 'sparkle 0.5s ease-out forwards',
+                              animationDelay: `${i * 20}ms`,
+                            } as React.CSSProperties}
+                          >
+                            {i % 2 === 0 ? '✦' : '🔥'}
+                          </span>
+                        ))}
+                        <button
+                          onClick={() => {
+                            setReviewForm((f) => ({ ...f, rating: s }));
+                            setBurstRating(s);
+                            setTimeout(() => setBurstRating(0), 600);
+                            if (!commentCTAVisible) {
+                              setTimeout(() => {
+                                setCommentCTAVisible(true);
+                                setTimeout(() => commentRef.current?.focus(), 350);
+                              }, 500);
+                            }
+                          }}
+                          onMouseEnter={() => setHoverRating(s)}
+                          onMouseLeave={() => setHoverRating(0)}
+                          className="text-2xl sm:text-3xl select-none"
+                          style={{
+                            filter: s <= (hoverRating || reviewForm.rating)
+                              ? 'drop-shadow(0 0 6px rgba(255,100,0,0.9)) brightness(1.15)'
+                              : 'grayscale(0.7) brightness(0.5)',
+                            transform: s <= (hoverRating || reviewForm.rating) ? 'scale(1.2)' : 'scale(1)',
+                            animation: burstRating === s ? 'flameBurst 0.45s ease-out forwards' : undefined,
+                            transition: burstRating === s ? 'none' : 'all 0.15s ease',
+                          }}
+                        >
+                          🔥
+                        </button>
+                      </div>
+                    ))}
+                    {(hoverRating || reviewForm.rating) > 0 && (
+                      <span className="ml-1 text-xs font-black" style={{ color: '#ff8c00' }}>
+                        {(hoverRating || reviewForm.rating) === 5 ? 'ON FIRE!' : (hoverRating || reviewForm.rating) === 4 ? 'Very Hot 🌶️' : (hoverRating || reviewForm.rating) === 3 ? 'Hot' : (hoverRating || reviewForm.rating) === 2 ? 'Warm' : 'Lukewarm'}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Flame meter bar */}
+                  {(hoverRating || reviewForm.rating) > 0 && (
+                    <div className="h-2.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${((hoverRating || reviewForm.rating) / 5) * 100}%`,
+                          background: (hoverRating || reviewForm.rating) >= 5
+                            ? 'linear-gradient(90deg, #ff6b00, #ff3d00, #ffcc00)'
+                            : (hoverRating || reviewForm.rating) >= 3
+                            ? 'linear-gradient(90deg, #ff8c00, #ff5500)'
+                            : 'linear-gradient(90deg, #cc4400, #ff6600)',
+                          boxShadow: (hoverRating || reviewForm.rating) >= 5 ? '0 0 10px 2px rgba(255,100,0,0.7)' : '0 0 6px rgba(255,100,0,0.4)',
+                          transition: 'width 0.25s ease, box-shadow 0.25s ease',
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Comment box — logged-in only, slides in after rating */}
+                {commentCTAVisible && (
+                  typeof window !== 'undefined' && !localStorage.getItem('token') ? (
+                    <div
+                      className="rounded-xl p-5 text-center space-y-3"
+                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,120,40,0.25)', animation: 'fadeSlideIn 0.35s ease forwards' }}
+                    >
+                      <p className="text-sm font-bold text-white/80">
+                        💬 Drop a message to <span className="text-white font-black">{creator.username}</span>
+                      </p>
+                      <p className="text-xs" style={{ color: 'rgba(255,160,80,0.65)' }}>
+                        Join Erogram to interact with top creators
+                      </p>
+                      <a
+                        href={`/login?redirect=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname : '')}`}
+                        className="block w-full py-3 rounded-xl text-white text-sm font-black tracking-wide shadow-lg transition-all hover:opacity-90"
+                        style={{ background: 'linear-gradient(135deg, #16a34a, #15803d)', boxShadow: '0 4px 18px rgba(22,163,74,0.45)' }}
+                      >
+                        Login / Open free account
+                      </a>
+                    </div>
+                  ) : (
+                    <div style={{ animation: 'fadeSlideIn 0.35s ease forwards' }}>
+                      <p className="text-xs font-bold mb-1.5" style={{ color: 'rgba(255,180,80,0.85)' }}>
+                        💬 Drop a message to <span className="text-white">{creator.username}</span>
+                      </p>
+                      <textarea
+                        ref={commentRef}
+                        placeholder={`What do you like most about ${creator.username}?`}
+                        value={reviewForm.content}
+                        onChange={(e) => setReviewForm((f) => ({ ...f, content: e.target.value }))}
+                        maxLength={500}
+                        rows={3}
+                        className="w-full rounded-lg px-3 py-2 text-sm text-white placeholder:text-orange-200/30 outline-none resize-none"
+                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,120,40,0.35)' }}
+                        onFocus={(e) => (e.currentTarget.style.borderColor = 'rgba(255,140,40,0.8)')}
+                        onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,120,40,0.35)')}
+                      />
+                    </div>
+                  )
+                )}
+
+                <button
+                  onClick={handleSubmitReview}
+                  disabled={reviewSubmitting || reviewForm.rating < 1}
+                  className="w-full py-2.5 rounded-xl text-white text-sm font-black tracking-wide transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                  style={{
+                    background: reviewForm.rating >= 1
+                      ? 'linear-gradient(90deg, #ff6b00, #ff3d00)'
+                      : 'rgba(255,255,255,0.1)',
+                    boxShadow: reviewForm.rating >= 1 ? '0 4px 16px rgba(255,80,0,0.45)' : 'none',
+                  }}
+                >
+                  {reviewSubmitting ? 'Submitting…' : reviewForm.rating >= 1 ? `Rate ${creator.name} ${Array(reviewForm.rating).fill('🔥').join('')}` : 'Pick your heat level above'}
+                </button>
+              </div>
+            ) : (
+              <div className="rounded-xl p-5 text-center" style={{ background: 'rgba(255,100,0,0.12)', border: '1px solid rgba(255,120,40,0.3)' }}>
+                <p className="text-2xl mb-1">🔥🔥🔥</p>
+                <p className="text-sm font-black text-white">Your rating is live!</p>
+                <p className="text-xs mt-0.5" style={{ color: 'rgba(255,160,80,0.7)' }}>Thanks for rating {creator.name}</p>
+              </div>
+            )}
+          </div>
+        </section>
 
         {/* ── Related Creators ── */}
         {related.length > 0 && (
           <section className="mb-12">
             <div className="flex items-center gap-3 mb-4">
               <h2 className="text-base sm:text-lg font-black text-white">
-                {t('ofSearch.moreCreators').replace('{category}', CATEGORY_LABELS[primaryCat] || primaryCat || 'OnlyFans').split(CATEGORY_LABELS[primaryCat] || primaryCat || 'OnlyFans')[0]}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00D4FF] to-[#00AFF0]">
-                  {CATEGORY_LABELS[primaryCat] || primaryCat || 'OnlyFans'}
-                </span>
-                {t('ofSearch.moreCreators').replace('{category}', CATEGORY_LABELS[primaryCat] || primaryCat || 'OnlyFans').split(CATEGORY_LABELS[primaryCat] || primaryCat || 'OnlyFans')[1]}
+                Suggested <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00D4FF] to-[#00AFF0]">Top OnlyFans</span> Creators
               </h2>
               <div className="flex-1 h-px bg-gradient-to-r from-[#00AFF0]/20 to-transparent" />
               <Link
-                href={lp(catHref)}
+                href={lp('/Toponlyfanscreators')}
                 className="text-[#00AFF0] text-xs font-bold hover:underline flex items-center gap-1"
               >
                 {t('ofSearch.seeAll')} <ChevronRight className="w-3.5 h-3.5" />
@@ -757,63 +1590,85 @@ export default function CreatorProfileClient({
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
               {related.map((c) => (
-                <RelatedCard key={c._id} creator={c} />
+                <RelatedCard key={c._id} creator={c} publicOnlyfansPath={publicAccess} />
               ))}
             </div>
           </section>
         )}
 
-        {/* ── Best OnlyFans by Category ── */}
+        {/* ── Trending on Erogram ── */}
+        {trendingOnErogram.length > 0 && (
+          <section className="mb-10">
+            <div className="relative overflow-hidden rounded-2xl border border-[#00AFF0]/20 bg-gradient-to-br from-[#061018] via-[#0a1c2e] to-[#0d2844] p-4 sm:p-6 shadow-[0_20px_50px_-12px_rgba(0,175,240,0.18),inset_0_1px_0_0_rgba(255,255,255,0.06)]">
+              <div className="pointer-events-none absolute -top-28 -right-20 h-56 w-56 rounded-full bg-[#00AFF0]/20 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-24 -left-16 h-48 w-48 rounded-full bg-[#00D4FF]/12 blur-3xl" />
+              <div className="relative">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-[#00AFF0] to-[#00D4FF] flex items-center justify-center shrink-0 shadow-lg shadow-[#00AFF0]/30">
+                    <TrendingUp size={18} className="text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">
+                      Trending on <span className="text-[#00D4FF]">Erogram</span>
+                    </h2>
+                    <p className="text-[11px] text-white/50 font-semibold">Top {trendingOnErogram.length} · Last 7 days</p>
+                  </div>
+                  <Link href={lp('/Toponlyfanscreators')} className="text-[#00AFF0] text-xs font-bold hover:underline flex items-center gap-1 shrink-0">
+                    {t('ofSearch.seeAll')} <ChevronRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                  {[0, 1, 2, 3].map((col) => {
+                    const perCol = Math.ceil(trendingOnErogram.length / 4);
+                    const chunk = trendingOnErogram.slice(col * perCol, col * perCol + perCol);
+                    if (chunk.length === 0) return null;
+                    return (
+                      <div key={col} className="rounded-xl bg-white overflow-hidden shadow-md">
+                        {chunk.map((tc, j) => (
+                          <Link
+                            key={tc._id}
+                            href={lp(`/onlyfans/${tc.slug}`)}
+                            prefetch={false}
+                            className={`w-full flex items-center hover:brightness-95 transition-all ${j < chunk.length - 1 ? 'border-b border-gray-100' : ''}`}
+                          >
+                            <div className="flex items-center gap-3 px-2 py-2.5 flex-1 min-w-0">
+                              <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+                                {tc.avatar ? (
+                                  <img src={tc.avatar} alt={tc.name} className="w-full h-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-sm font-bold text-gray-400">{tc.name.charAt(0)}</div>
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[13px] font-bold text-gray-900 truncate">{tc.name}</p>
+                                <p className="text-[11px] text-gray-500 truncate">@{tc.username}</p>
+                              </div>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ── Explore more OnlyFans categories ── */}
         <section className="mb-8">
           <h2 className="text-base font-black text-white mb-4 flex items-center gap-2">
             <Globe className="w-5 h-5 text-[#00AFF0]" />
-            {t('ofSearch.theBestOnlyfans')}
+            Explore more OnlyFans categories
           </h2>
           <div className="flex flex-wrap gap-2.5">
-            <Link
-              href={lp('/best-onlyfans-accounts')}
-              className="px-4 py-2 rounded-xl bg-[#00AFF0]/10 border border-[#00AFF0]/25 text-[#00AFF0] text-sm font-bold hover:bg-[#00AFF0]/20 hover:border-[#00AFF0]/50 transition-all"
-            >
-              {t('ofSearch.bestOnlyfansYear').replace('{year}', '2026')}
-            </Link>
-            {OF_CATEGORIES.filter((cat) => !['alt', 'ahegao', 'goth'].includes(cat.slug)).map((cat) => (
+            {OF_CATEGORIES.filter((cat) => ['asian', 'blonde', 'teen', 'milf', 'amateur', 'redhead', 'petite', 'big-ass', 'big-boobs'].includes(cat.slug)).map((cat) => (
               <Link
                 key={cat.slug}
                 href={lp(`/best-onlyfans-accounts/${cat.slug}`)}
                 className="px-4 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-white text-sm font-bold hover:bg-[#00AFF0]/15 hover:border-[#00AFF0]/40 hover:text-[#00AFF0] transition-all"
               >
-                {t('ofSearch.bestCatOnlyfans').replace('{cat}', cat.name)}
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Browse by Country ── */}
-        <section className="mb-10">
-          <h2 className="text-base font-black text-white mb-4 flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-[#00AFF0]" />
-            {t('ofSearch.exploreByCountry')}
-          </h2>
-          <div className="flex flex-wrap gap-2.5">
-            {[
-              { name: 'France', slug: 'france', flag: '🇫🇷' },
-              { name: 'Germany', slug: 'germany', flag: '🇩🇪' },
-              { name: 'Italy', slug: 'italy', flag: '🇮🇹' },
-              { name: 'UK', slug: 'uk', flag: '🇬🇧' },
-              { name: 'USA', slug: 'usa', flag: '🇺🇸' },
-              { name: 'Brazil', slug: 'brazil', flag: '🇧🇷' },
-              { name: 'Colombia', slug: 'colombia', flag: '🇨🇴' },
-              { name: 'Argentina', slug: 'argentina', flag: '🇦🇷' },
-              { name: 'Philippines', slug: 'philippines', flag: '🇵🇭' },
-              { name: 'Russia', slug: 'russia', flag: '🇷🇺' },
-              { name: 'Ukraine', slug: 'ukraine', flag: '🇺🇦' },
-            ].map((co) => (
-              <Link
-                key={co.slug}
-                href={lp(`/best-onlyfans-accounts/${co.slug}`)}
-                className="px-4 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-white text-sm font-bold hover:bg-[#00AFF0]/15 hover:border-[#00AFF0]/40 hover:text-[#00AFF0] transition-all"
-              >
-                {co.flag} {t('ofSearch.bestOnlyfansCountry').replace('{country}', co.name)}
+                {cat.name} OnlyFans
               </Link>
             ))}
           </div>
@@ -921,7 +1776,7 @@ export default function CreatorProfileClient({
         </div>
       )}
 
-      <OFFooter />
+      <Footer />
 
       {/* Lightbox */}
       {lightboxImg && (
