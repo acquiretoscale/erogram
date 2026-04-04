@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Search, Bookmark, Crown, Trash2, X, Heart, Shuffle, Clock, Plus, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Search, Bookmark, Crown, Trash2, X, Heart, Shuffle, Clock, Plus, TrendingUp } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import HeaderBanner from '@/components/HeaderBanner';
 import { OF_CATEGORIES, ofCategoryUrl } from './constants';
@@ -315,9 +315,18 @@ function CreatorPostModal({ creator, onClose }: { creator: Creator; onClose: () 
   );
 }
 
-function Top10CategoryCard({ list, onSelectCreator }: { list: Top10List; onSelectCreator: (c: Creator) => void }) {
+function Top10CategoryCard({ list }: { list: Top10List }) {
   const lp = useLocalePath();
   const top10 = list.creators.slice(0, 10);
+
+  const handleCreatorClick = (c: Creator) => {
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      window.location.href = `/join-erogram?redirect=/${c.slug}`;
+      return;
+    }
+    window.open(`/${c.slug}`, '_blank', 'noopener,noreferrer');
+  };
 
   return (
     <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden shadow-[0_8px_30px_-14px_rgba(0,0,0,0.25)] flex flex-col">
@@ -331,7 +340,7 @@ function Top10CategoryCard({ list, onSelectCreator }: { list: Top10List; onSelec
           {top10.map((c, i) => (
             <button
               key={c._id}
-              onClick={() => onSelectCreator(c)}
+              onClick={() => handleCreatorClick(c)}
               className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-gray-50 transition-colors group text-left"
             >
               <span className="w-6 h-6 rounded-full bg-gray-900 text-white text-[10px] font-black flex items-center justify-center shrink-0 tabular-nums">
@@ -1081,9 +1090,11 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                         return (
                           <div key={col} className="rounded-xl bg-white overflow-hidden shadow-md">
                             {chunk.map((tc, j) => (
-                              <Link
+                              <a
                                 key={tc._id}
                                 href={`/onlyfans/${tc.slug}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 onClick={() => trackClick(tc.slug)}
                                 className={`w-full flex items-center hover:brightness-95 transition-all ${
                                   j < chunk.length - 1 ? 'border-b border-gray-100' : ''
@@ -1102,23 +1113,10 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                                   </div>
                                   <div className="min-w-0 flex-1">
                                     <p className="text-[13px] font-bold text-gray-900 truncate">{tc.name}</p>
-                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                      <span className="text-[11px] font-black text-gray-500 tabular-nums">{tc.points.toLocaleString()} pts</span>
-                                      <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold tabular-nums ${tc.pointsDelta > 0 ? 'text-[#16a34a]' : tc.pointsDelta < 0 ? 'text-[#dc2626]' : 'text-gray-400'}`}>
-                                        {tc.pointsDelta > 0 ? <TrendingUp size={10} /> : tc.pointsDelta < 0 ? <TrendingDown size={10} /> : <Minus size={10} />}
-                                        {tc.pointsDelta > 0 ? `+${tc.pointsDelta}` : tc.pointsDelta}
-                                      </span>
-                                    </div>
+                                    <p className="text-[11px] font-black text-gray-500 tabular-nums mt-0.5">{tc.points.toLocaleString()} pts</p>
                                   </div>
                                 </div>
-                                <span className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 mr-2 ${
-                                  tc.pointsDelta > 0 ? 'bg-[#16a34a]' : tc.pointsDelta < 0 ? 'bg-[#dc2626]' : 'bg-[#6b7280]'
-                                }`}>
-                                  <span className="text-[14px] leading-none font-black text-white">
-                                    {tc.pointsDelta > 0 ? '▲' : tc.pointsDelta < 0 ? '▼' : '—'}
-                                  </span>
-                                </span>
-                              </Link>
+                              </a>
                             ))}
                           </div>
                         );
@@ -1193,7 +1191,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
                   {top10Lists.filter((l) => l.creators.length > 0).map((list) => (
-                    <Top10CategoryCard key={`top-${list.category}`} list={list} onSelectCreator={setSelectedCreator} />
+                    <Top10CategoryCard key={`top-${list.category}`} list={list} />
                   ))}
                 </div>
               </section>

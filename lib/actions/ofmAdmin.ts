@@ -319,7 +319,7 @@ export async function importOFMCreator(
         header: '',
         bio: matched.bio,
         likesCount: matched.likesCount >= existingLikes ? matched.likesCount : existingLikes,
-        subscriberCount: matched.subscriberCount >= existingSubs ? (matched.subscriberCount || 0) : existingSubs,
+        subscriberCount: (matched as any).subscriberCount >= existingSubs ? ((matched as any).subscriberCount || 0) : existingSubs,
         mediaCount: (matched.photosCount + matched.videosCount) >= existingMedia ? (matched.photosCount + matched.videosCount) : existingMedia,
         photosCount: matched.photosCount >= existingPhotos ? matched.photosCount : existingPhotos,
         videosCount: matched.videosCount >= existingVideos ? matched.videosCount : existingVideos,

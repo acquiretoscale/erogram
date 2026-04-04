@@ -375,7 +375,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
     } else if (countdownStarted && countdown === 0 && entity && realTelegramLink) {
       trackClick();
       setIsRedirecting(true);
-      window.location.href = realTelegramLink;
+      window.open(realTelegramLink, '_blank', 'noopener,noreferrer');
     }
   }, [countdown, countdownStarted, entity]);
 
