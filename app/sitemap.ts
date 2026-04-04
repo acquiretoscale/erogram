@@ -173,7 +173,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }).select('slug updatedAt').lean();
 
     const ofCreatorRoutes: MetadataRoute.Sitemap = (ofCreators as any[]).map((c) => ({
-      url: `${baseUrl}/onlyfans/${c.slug}`,
+      url: `${baseUrl}/${c.slug}`,
       lastModified: c.updatedAt || new Date(),
       changeFrequency: 'weekly' as const,
       priority: 0.8,

@@ -14,7 +14,7 @@ import type { Locale } from '@/lib/i18n';
 import { getToolBySlug, getToolsByCategory } from '@/app/ainsfw/data';
 import ToolDetailClient from '@/app/ainsfw/[slug]/ToolDetailClient';
 import { getToolStats } from '@/lib/actions/ainsfw';
-import { getCreatorBySlug, getRelatedCreators } from '@/lib/actions/ofCreatorProfile';
+import { getCreatorBySlug, getRelatedCreators, getCreatorReviews } from '@/lib/actions/ofCreatorProfile';
 import CreatorProfileClient from '@/app/onlyfanssearch/CreatorProfileClient';
 import { getTrendingOnErogram } from '@/lib/actions/publicData';
 
@@ -603,9 +603,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // Try OnlyFans creator
   const creator = await getCreatorBySlug(slug);
   if (creator) {
-    const isTop100 = await OnlyFansCreator.exists({ slug, adminImported: true, deleted: { $ne: true } });
-    if (isTop100) return { title: 'Not Found', robots: { index: false, follow: false } };
-
     const creatorPath = `/${creator.slug}`;
     const pageUrl = `${BASE_URL}${creatorPath}`;
     const name = creator.name;
@@ -676,9 +673,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title: titleTemplates[locale] || titleTemplates.en,
       description: desc,
       keywords: `${name} OnlyFans, @${username} OnlyFans, ${primaryCat} OnlyFans creator, OnlyFans profile, ${creator.categories.join(', ')}, best OnlyFans 2026`,
-      robots: { index: false, follow: true },
+      robots: { index: true, follow: true },
       other: { rating: 'adult' },
-      // No hreflang on noindex creator profiles — avoids contradicting robots and duplicate /de /es URLs.
       alternates: { canonical: pageUrl },
       openGraph: {
         title: ogTitleTemplates[locale] || ogTitleTemplates.en,
@@ -978,29 +974,89 @@ export default async function JoinPage({ params }: PageProps) {
   // Try OnlyFans creator profile
   const creator = await getCreatorBySlug(slug);
   if (creator) {
-    const isTop100 = await OnlyFansCreator.exists({ slug, adminImported: true, deleted: { $ne: true } });
-    if (isTop100) notFound();
-
-    const [related, trendingOnErogram] = await Promise.all([
+    const [related, trendingOnErogram, reviewData] = await Promise.all([
       getRelatedCreators(creator.categories, creator.slug, 6),
       getTrendingOnErogram().catch(() => []),
+      getCreatorReviews(creator.slug).catch(() => ({ reviews: [], avg: 0, count: 0 })),
     ]);
     const pageUrl = `${BASE_URL}/${creator.slug}`;
 
-    const ofSearchLabel: Record<Locale, string> = { en: 'OnlyFans Search', de: 'OnlyFans Suche', es: 'Buscador de OnlyFans' };
     const breadcrumbJsonLd = {
       '@context': 'https://schema.org',
       '@type': 'BreadcrumbList',
       itemListElement: [
         { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
-        { '@type': 'ListItem', position: 2, name: ofSearchLabel[locale] || ofSearchLabel.en, item: `${BASE_URL}/onlyfanssearch` },
+        { '@type': 'ListItem', position: 2, name: 'Top OnlyFans Creators', item: `${BASE_URL}/Toponlyfanscreators` },
         { '@type': 'ListItem', position: 3, name: creator.name, item: pageUrl },
       ],
+    };
+
+    const webPageJsonLd: Record<string, any> = {
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: `${creator.name} OnlyFans — @${creator.username}`,
+      description: `${creator.name} OnlyFans profile. Browse photos, videos, and subscription info.`,
+      url: pageUrl,
+      isPartOf: { '@type': 'WebSite', name: 'Erogram', url: BASE_URL },
+    };
+
+    const personJsonLd: Record<string, any> = {
+      '@context': 'https://schema.org',
+      '@type': 'ProfilePage',
+      mainEntity: {
+        '@type': 'Person',
+        name: creator.name,
+        alternateName: `@${creator.username}`,
+        url: pageUrl,
+        ...(creator.avatar ? { image: creator.avatar } : {}),
+        sameAs: [
+          creator.url,
+          creator.instagramUrl,
+          creator.twitterUrl,
+          creator.tiktokUrl,
+        ].filter(Boolean),
+      },
+    };
+
+    if (reviewData.count > 0) {
+      personJsonLd.mainEntity.aggregateRating = {
+        '@type': 'AggregateRating',
+        ratingValue: reviewData.avg,
+        ratingCount: reviewData.count,
+        bestRating: 5,
+        worstRating: 1,
+      };
+    } else if (creator.likesCount > 0) {
+      const rating = Math.min(5, 3.5 + (Math.log10(Math.max(creator.likesCount, 1)) / Math.log10(5_000_000)) * 1.5);
+      personJsonLd.mainEntity.aggregateRating = {
+        '@type': 'AggregateRating',
+        ratingValue: Math.round(rating * 10) / 10,
+        ratingCount: creator.likesCount,
+        bestRating: 5,
+        worstRating: 1,
+      };
+    }
+
+    const offerJsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: `${creator.name} OnlyFans Subscription`,
+      ...(creator.avatar ? { image: creator.avatar } : {}),
+      url: pageUrl,
+      offers: {
+        '@type': 'Offer',
+        price: creator.isFree ? '0' : creator.price > 0 ? creator.price.toFixed(2) : '0',
+        priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
+      },
     };
 
     return (
       <>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageJsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(offerJsonLd) }} />
         <CreatorProfileClient creator={creator} related={related} trendingOnErogram={trendingOnErogram} />
       </>
     );

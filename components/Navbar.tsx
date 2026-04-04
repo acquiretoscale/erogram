@@ -79,7 +79,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
   useEffect(() => {
     setMounted(true);
     const path = window.location.pathname.replace(/^\/(de|es)/, '') || '/';
-    if (path.startsWith('/onlyfans/') || path.startsWith('/ainsfw') || path.startsWith('/articles')) {
+    if (path.endsWith('-onlyfans') || path.startsWith('/ainsfw') || path.startsWith('/articles')) {
       setShowLangSwitcher(false);
     }
   }, []);

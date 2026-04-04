@@ -165,7 +165,7 @@ export default function ReviewsTab() {
                                                 <td className="px-6 py-4 text-white">
                                                     {review.type === 'creator' ? (
                                                         <>
-                                                            <a href={`/onlyfans/${review.creatorSlug}`} target="_blank" className="font-semibold text-orange-400 hover:underline">🔥 {review.creatorSlug}</a>
+                                                            <a href={`/${review.creatorSlug}`} target="_blank" className="font-semibold text-orange-400 hover:underline">🔥 {review.creatorSlug}</a>
                                                             <div className="text-xs text-gray-400">Creator</div>
                                                         </>
                                                     ) : (
@@ -245,7 +245,7 @@ export default function ReviewsTab() {
                                                 <td className="px-6 py-4 text-white">
                                                     {review.type === 'creator' ? (
                                                         <>
-                                                            <a href={`/onlyfans/${review.creatorSlug}`} target="_blank" className="font-semibold text-orange-400 hover:underline">🔥 {review.creatorSlug}</a>
+                                                            <a href={`/${review.creatorSlug}`} target="_blank" className="font-semibold text-orange-400 hover:underline">🔥 {review.creatorSlug}</a>
                                                             <div className="text-xs text-gray-400">Creator</div>
                                                         </>
                                                     ) : (

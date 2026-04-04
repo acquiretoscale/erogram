@@ -61,7 +61,7 @@ export default async function TopCreatorsPage() {
           {creators.map((c: any, i: number) => (
             <Link
               key={c._id}
-              href={`/onlyfans/${c.slug}`}
+              href={`/${c.slug}`}
               className="group block rounded-2xl border border-black/10 bg-white hover:bg-[#f8fbff] hover:border-[#00AFF0]/40 transition-all shadow-sm hover:shadow-md"
             >
               <div className="p-5 sm:p-6">

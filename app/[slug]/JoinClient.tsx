@@ -723,7 +723,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
               {entity.linkedCreatorSlug ? (
                 <div className="mb-10">
                   <a
-                    href={`/onlyfans/${entity.linkedCreatorSlug}`}
+                    href={`/${entity.linkedCreatorSlug}`}
                     className="group/cta block w-full bg-gradient-to-r from-[#00AFF0] via-blue-500 to-indigo-600 p-[2px] rounded-2xl shadow-xl shadow-blue-500/20 hover:shadow-blue-500/40 transition-all transform hover:-translate-y-1"
                   >
                     <div className="flex items-center justify-between gap-4 bg-[#0e1117] rounded-[14px] px-6 sm:px-8 py-5 group-hover/cta:bg-[#0e1117]/80 transition-colors">

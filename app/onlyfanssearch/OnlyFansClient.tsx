@@ -1092,7 +1092,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                             {chunk.map((tc, j) => (
                               <a
                                 key={tc._id}
-                                href={`/onlyfans/${tc.slug}`}
+                                href={`/${tc.slug}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={() => trackClick(tc.slug)}
