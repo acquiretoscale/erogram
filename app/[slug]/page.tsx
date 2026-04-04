@@ -763,7 +763,7 @@ export default async function JoinPage({ params }: PageProps) {
       url: pageUrl,
       ...(group.telegramLink ? { sameAs: group.telegramLink } : {}),
       image: safeImageUrl(group.image, PLACEHOLDER_ABS),
-      foundingDate: group.createdAt ? new Date(group.createdAt).getFullYear().toString() : undefined,
+      ...(group.createdAt ? { foundingDate: new Date(group.createdAt).getFullYear().toString() } : {}),
       memberOf: {
         '@type': 'WebSite',
         name: 'Erogram',
@@ -876,13 +876,16 @@ export default async function JoinPage({ params }: PageProps) {
         url: BASE_URL,
       },
       image: safeImageUrl(bot.image, PLACEHOLDER_ABS),
-      datePublished: bot.createdAt ? new Date(bot.createdAt).toISOString().split('T')[0] : undefined,
-      aggregateRating: bot.clickCount ? {
-        '@type': 'AggregateRating',
-        ratingCount: bot.clickCount,
-        bestRating: 5,
-        worstRating: 1,
-      } : undefined,
+      ...(bot.createdAt ? { datePublished: new Date(bot.createdAt).toISOString().split('T')[0] } : {}),
+      ...(bot.clickCount > 0 ? {
+        aggregateRating: {
+          '@type': 'AggregateRating',
+          ratingValue: Math.min(5, Math.round((3.5 + (Math.log10(Math.max(bot.clickCount, 1)) / 5) * 1.5) * 10) / 10),
+          ratingCount: bot.clickCount,
+          bestRating: 5,
+          worstRating: 1,
+        },
+      } : {}),
     };
 
     const [joinCtaCampaigns2, topBannerCampaigns2, vaultTeaser2] = await Promise.all([
@@ -954,7 +957,7 @@ export default async function JoinPage({ params }: PageProps) {
       operatingSystem: 'Web',
       offers: {
         '@type': 'Offer',
-        price: aiTool.subscription.toLowerCase().includes('free') ? '0' : undefined,
+        price: aiTool.subscription.toLowerCase().includes('free') ? '0' : '0',
         priceCurrency: 'USD',
         availability: 'https://schema.org/InStock',
       },

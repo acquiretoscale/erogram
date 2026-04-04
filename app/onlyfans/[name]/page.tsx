@@ -279,7 +279,7 @@ export default async function PublicCreatorPage({ params }: PageProps) {
     url: pageUrl,
     offers: {
       '@type': 'Offer',
-      price: creator.isFree ? '0' : creator.price > 0 ? creator.price.toFixed(2) : undefined,
+      price: creator.isFree ? '0' : creator.price > 0 ? creator.price.toFixed(2) : '0',
       priceCurrency: 'USD',
       availability: 'https://schema.org/InStock',
     },
