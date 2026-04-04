@@ -46,7 +46,7 @@ async function main() {
   let skipped = 0;
 
   for (const c of creators) {
-    const slug = `${c.username}-onlyfans-telegram`;
+    const slug = `${c.username}-onlyfans`;
 
     const exists = await groupsCol.findOne({ slug });
     if (exists) {

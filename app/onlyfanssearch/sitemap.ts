@@ -1,6 +1,6 @@
 import { MetadataRoute } from 'next';
 import connectDB from '@/lib/db/mongodb';
-import { OnlyFansCreator } from '@/lib/models';
+import { OnlyFansCreator, Group } from '@/lib/models';
 import { OF_CATEGORIES, OF_COUNTRIES, ofCategoryUrl, ofCountryUrl } from './constants';
 
 const BASE = 'https://erogram.pro';
@@ -8,14 +8,22 @@ const BASE = 'https://erogram.pro';
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   await connectDB();
 
-  const top80 = await OnlyFansCreator.find({
-    adminImported: true,
-    deleted: { $ne: true },
-  })
-    .sort({ likesCount: -1 })
-    .limit(80)
-    .select('slug updatedAt')
-    .lean() as any[];
+  const [top80, creatorGroups] = await Promise.all([
+    OnlyFansCreator.find({
+      adminImported: true,
+      deleted: { $ne: true },
+    })
+      .sort({ likesCount: -1 })
+      .limit(80)
+      .select('slug updatedAt')
+      .lean() as any,
+    Group.find({
+      status: 'approved',
+      linkedCreatorSlug: { $exists: true, $ne: '' },
+    })
+      .select('slug updatedAt')
+      .lean() as any,
+  ]);
 
   const staticPages: MetadataRoute.Sitemap = [
     { url: `${BASE}/onlyfanssearch`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
@@ -23,11 +31,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/best-onlyfans-accounts`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
   ];
 
-  const creatorPages: MetadataRoute.Sitemap = top80.map((c: any) => ({
+  const creatorPages: MetadataRoute.Sitemap = (top80 as any[]).map((c) => ({
     url: `${BASE}/onlyfans/${c.slug}`,
     lastModified: c.updatedAt || new Date(),
     changeFrequency: 'weekly' as const,
     priority: 0.8,
+  }));
+
+  const creatorGroupPages: MetadataRoute.Sitemap = (creatorGroups as any[]).map((g) => ({
+    url: `${BASE}/${g.slug}`,
+    lastModified: g.updatedAt || new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: 0.75,
   }));
 
   const bestCategoryPages: MetadataRoute.Sitemap = OF_CATEGORIES.map((cat) => ({
@@ -54,6 +69,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...staticPages,
     ...creatorPages,
+    ...creatorGroupPages,
     ...bestCategoryPages,
     ...categoryPages,
     ...countryPages,
