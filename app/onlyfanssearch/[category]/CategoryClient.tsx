@@ -62,10 +62,10 @@ function CategoryCreatorCard({ creator, onTrack, onSave, onDelete, onSendToTrend
     onTrack(creator.slug);
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) {
-      window.location.href = `/join-erogram?redirect=/${creator.slug}`;
+      window.location.href = `/join-erogram?redirect=/onlyfans/${creator.username}`;
       return;
     }
-    window.open(`/${creator.slug}`, '_blank', 'noopener,noreferrer');
+    window.open(`/onlyfans/${creator.username}`, '_blank', 'noopener,noreferrer');
   };
 
   return (

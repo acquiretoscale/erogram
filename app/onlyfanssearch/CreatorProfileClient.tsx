@@ -237,7 +237,7 @@ function ShareDropdown({ name, username, slug }: { name: string; username: strin
 function RelatedCard({ creator, publicOnlyfansPath = false }: { creator: CreatorProfile; publicOnlyfansPath?: boolean }) {
   const { t } = useTranslation();
   const lp = useLocalePath();
-  const profileHref = lp(`/${creator.slug}`);
+  const profileHref = publicOnlyfansPath ? lp(`/${creator.slug}`) : lp(`/onlyfans/${creator.username}`);
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -1627,7 +1627,7 @@ export default function CreatorProfileClient({
                         {chunk.map((tc, j) => (
                           <Link
                             key={tc._id}
-                            href={lp(`/${tc.slug}`)}
+                            href={lp(`/onlyfans/${tc.username || tc.slug}`)}
                             prefetch={false}
                             className={`w-full flex items-center hover:brightness-95 transition-all ${j < chunk.length - 1 ? 'border-b border-gray-100' : ''}`}
                           >

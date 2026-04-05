@@ -36,6 +36,7 @@ async function getTopCreators() {
       gender: 'female',
       avatar: { $ne: '' },
       deleted: { $ne: true },
+      adminImported: true,
     })
       .sort({ clicks: -1, likesCount: -1 })
       .limit(6)

@@ -50,6 +50,7 @@ export interface CreatorProfile {
   pornhubUrl: string;
   telegramUrl: string;
   extraPhotos: string[];
+  adminImported: boolean;
 }
 
 export async function getCreatorBySlug(slug: string): Promise<CreatorProfile | null> {
@@ -102,6 +103,64 @@ export async function getCreatorBySlug(slug: string): Promise<CreatorProfile | n
       pornhubUrl: c.pornhubUrl || '',
       telegramUrl: c.telegramUrl || '',
       extraPhotos: c.extraPhotos || [],
+      adminImported: c.adminImported || false,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function getCreatorByUsername(username: string): Promise<CreatorProfile | null> {
+  try {
+    await connectDB();
+    const creator = await OnlyFansCreator.findOne({ username, deleted: { $ne: true } }).lean();
+    if (!creator) return null;
+
+    const c = creator as any;
+    return {
+      _id: c._id.toString(),
+      name: c.name || '',
+      username: c.username || '',
+      slug: c.slug || '',
+      bio: c.bio || '',
+      avatar: c.avatar || '',
+      avatarThumbC50: c.avatarThumbC50 || '',
+      avatarThumbC144: c.avatarThumbC144 || '',
+      header: c.header || '',
+      categories: c.categories || [],
+      subscriberCount: c.subscriberCount || 0,
+      likesCount: c.likesCount || 0,
+      mediaCount: c.mediaCount || 0,
+      photosCount: c.photosCount || 0,
+      videosCount: c.videosCount || 0,
+      audiosCount: c.audiosCount || 0,
+      postsCount: c.postsCount || 0,
+      price: c.price || 0,
+      isFree: c.isFree || false,
+      isVerified: c.isVerified || false,
+      url: c.url || '',
+      gender: c.gender || 'unknown',
+      scrapedAt: c.scrapedAt ? new Date(c.scrapedAt).toISOString() : null,
+      lastSeen: c.lastSeen || '',
+      location: c.location || '',
+      website: c.website || '',
+      joinDate: c.joinDate || '',
+      onlyfansId: c.onlyfansId || 0,
+      hasStories: c.hasStories || false,
+      hasStream: c.hasStream || false,
+      tipsEnabled: c.tipsEnabled || false,
+      tipsMin: c.tipsMin || 0,
+      tipsMax: c.tipsMax || 0,
+      finishedStreamsCount: c.finishedStreamsCount || 0,
+      instagramUrl: c.instagramUrl || '',
+      instagramUsername: c.instagramUsername || '',
+      twitterUrl: c.twitterUrl || '',
+      tiktokUrl: c.tiktokUrl || '',
+      fanslyUrl: c.fanslyUrl || '',
+      pornhubUrl: c.pornhubUrl || '',
+      telegramUrl: c.telegramUrl || '',
+      extraPhotos: c.extraPhotos || [],
+      adminImported: c.adminImported || false,
     };
   } catch {
     return null;

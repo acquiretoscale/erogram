@@ -600,8 +600,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  // Try OnlyFans creator
+  // Try OnlyFans creator (only admin-imported top creators get root URLs)
   const creator = await getCreatorBySlug(slug);
+  if (creator && !creator.adminImported) {
+    return { title: 'Not Found', robots: { index: false, follow: false } };
+  }
   if (creator) {
     const creatorPath = `/${creator.slug}`;
     const pageUrl = `${BASE_URL}${creatorPath}`;
@@ -673,7 +676,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title: titleTemplates[locale] || titleTemplates.en,
       description: desc,
       keywords: `${name} OnlyFans, @${username} OnlyFans, ${primaryCat} OnlyFans creator, OnlyFans profile, ${creator.categories.join(', ')}, best OnlyFans 2026`,
-      robots: { index: true, follow: true },
+      robots: creator.adminImported ? { index: true, follow: true } : { index: false, follow: false },
       other: { rating: 'adult' },
       alternates: { canonical: pageUrl },
       openGraph: {
@@ -971,8 +974,9 @@ export default async function JoinPage({ params }: PageProps) {
     );
   }
 
-  // Try OnlyFans creator profile
+  // Try OnlyFans creator profile (only admin-imported get root URLs)
   const creator = await getCreatorBySlug(slug);
+  if (creator && !creator.adminImported) notFound();
   if (creator) {
     const [related, trendingOnErogram, reviewData] = await Promise.all([
       getRelatedCreators(creator.categories, creator.slug, 6),
@@ -1053,11 +1057,15 @@ export default async function JoinPage({ params }: PageProps) {
 
     return (
       <>
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageJsonLd) }} />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }} />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(offerJsonLd) }} />
-        <CreatorProfileClient creator={creator} related={related} trendingOnErogram={trendingOnErogram} />
+        {creator.adminImported && (
+          <>
+            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageJsonLd) }} />
+            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }} />
+            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(offerJsonLd) }} />
+          </>
+        )}
+        <CreatorProfileClient creator={creator} related={related} trendingOnErogram={trendingOnErogram} publicAccess={creator.adminImported} />
       </>
     );
   }

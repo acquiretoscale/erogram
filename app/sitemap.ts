@@ -1,8 +1,7 @@
 import { MetadataRoute } from 'next';
 import connectDB from '@/lib/db/mongodb';
-import { Group, Article, Bot, OnlyFansCreator } from '@/lib/models';
+import { Group, Article, Bot } from '@/lib/models';
 import { categories } from '@/app/groups/constants';
-import { OF_CATEGORIES, ofCategoryUrl } from '@/app/onlyfanssearch/constants';
 import { LOCALES, LOCALE_HREFLANG, localePath } from '@/lib/i18n/config';
 
 /** Build alternates object for a given path — tells Google about all language versions. */
@@ -163,32 +162,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     }));
 
-    // ── OnlyFans: top 100 creator pages + listing pages ──
-    const ofCreators = await OnlyFansCreator.find({
-      adminImported: true,
-      deleted: { $ne: true },
-      avatar: { $ne: '' },
-    }).select('slug updatedAt').lean();
-
-    const ofCreatorRoutes: MetadataRoute.Sitemap = (ofCreators as any[]).map((c) => ({
-      url: `${baseUrl}/${c.slug}`,
-      lastModified: c.updatedAt || new Date(),
-      changeFrequency: 'weekly' as const,
-      priority: 0.8,
-    }));
-
-    const ofStaticRoutes: MetadataRoute.Sitemap = [
-      { url: `${baseUrl}/onlyfanssearch`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 0.9 },
-      { url: `${baseUrl}/Toponlyfanscreators`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 0.9 },
-    ];
-
-    const ofCategoryRoutes: MetadataRoute.Sitemap = OF_CATEGORIES.map((cat) => ({
-      url: `${baseUrl}${ofCategoryUrl(cat.slug)}`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
-      priority: 0.8,
-    }));
-
     return [
       ...staticRoutes,
       ...bestGroupsCategoryRoutes,
@@ -200,9 +173,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ...groupRoutes,
       ...botRoutes,
       ...articleRoutes,
-      ...ofStaticRoutes,
-      ...ofCategoryRoutes,
-      ...ofCreatorRoutes,
     ];
   } catch (error) {
     console.error('Error generating sitemap:', error);

@@ -117,7 +117,7 @@ function CreatorCard({
       window.open(creator.url, '_blank', 'noopener,noreferrer');
       return;
     }
-    window.open(`/${creator.slug}`, '_blank', 'noopener,noreferrer');
+    window.open(`/onlyfans/${creator.username}`, '_blank', 'noopener,noreferrer');
   };
 
   if (deleted) return null;
@@ -322,10 +322,10 @@ function Top10CategoryCard({ list }: { list: Top10List }) {
   const handleCreatorClick = (c: Creator) => {
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) {
-      window.location.href = `/join-erogram?redirect=/${c.slug}`;
+      window.location.href = `/join-erogram?redirect=/onlyfans/${c.username}`;
       return;
     }
-    window.open(`/${c.slug}`, '_blank', 'noopener,noreferrer');
+    window.open(`/onlyfans/${c.username}`, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -1092,7 +1092,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                             {chunk.map((tc, j) => (
                               <a
                                 key={tc._id}
-                                href={`/${tc.slug}`}
+                                href={`/onlyfans/${tc.username || tc.slug}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={() => trackClick(tc.slug)}

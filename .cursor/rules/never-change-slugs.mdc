@@ -1,22 +1,70 @@
-# ABSOLUTE BAN ON CHANGING SLUG PATTERNS
+# ABSOLUTE BAN ON CHANGING SLUGS, URLS, RENDERING, OR SITEMAPS
 
-## THE RULE (non-negotiable, written in marble)
+## STATUS: AI destroyed 70% of Google traffic by changing these without permission. NEVER AGAIN.
 
-**NEVER rename, change, or "optimize" any slug pattern** unless the owner explicitly orders it.
+## SLUG DAMAGE LOG (why this rule exists)
 
-### Current slug patterns (DO NOT TOUCH):
+1. Creator profile slugs changed 3 times — broke all internal links
+2. Telegram group slugs changed 3 times — broke all 29 group pages
+3. 36 trending chart entries had wrong slugs — every trending link was 404
+4. linkedCreatorSlug filter excluded 29 groups from sitemap
+5. hreflang alternates stripped from thousands of groups/bots
+6. 12,513 user-scraped creators have slugs exposing 12K thin pages to Google
 
-- **OnlyFans creator Telegram groups**: `{username}-onlyfans-telegram`
-- **OnlyFans creator profile pages**: `{username}-onlyfans`
-- **Regular Telegram groups**: whatever slug they were created with
-- **Bots**: whatever slug they were created with
+**Slugs are POISON. NEVER create, rename, filter, or manipulate slugs unless owner explicitly orders it.**
 
-### Why this exists
+## SACRED SLUG PATTERNS (carved in marble, DO NOT TOUCH)
 
-Slug changes = URL changes = Google drops all rankings for those pages overnight.
-The AI changed slug patterns 3 times in 3 commits without being asked, destroying SEO.
-Every slug rename requires a DB migration AND 301 redirects for every affected URL.
+| Entity | Slug Pattern | Example URL |
+|---|---|---|
+| OnlyFans creator profile | `{username}-onlyfans` | `erogram.pro/chloekhan-onlyfans` |
+| OnlyFans creator Telegram group | `{username}-onlyfans-telegram` | `erogram.pro/chloekhan-onlyfans-telegram` |
+| Regular Telegram groups | their original slug | `erogram.pro/whatever-it-was-created-with` |
+| Bots | their original slug | `erogram.pro/whatever-it-was-created-with` |
 
-### If you think a slug should change
+## SACRED DB COLLECTIONS (DO NOT modify slug fields)
 
-**STOP. Ask the owner first.** Do not "improve" or "clean up" slugs on your own.
+- `onlyfanscreators` — 82 admin-imported creators, ALL slugs end with `-onlyfans`
+- `onlyfanscreators` — 12,513 user-scraped creators, MUST NEVER be served as public pages (only `adminImported: true` get pages)
+- `trendingerograms` — trending entries, ALL slugs end with `-onlyfans`
+- `groups` with `linkedCreatorSlug` — 29 groups, ALL slugs end with `-onlyfans-telegram`
+- `groups` without `linkedCreatorSlug` — regular groups, leave their slugs alone
+
+## SACRED RENDERING CONFIG (DO NOT CHANGE)
+
+| File | Setting | Value |
+|---|---|---|
+| `app/groups/page.tsx` | `export const dynamic` | `'force-dynamic'` |
+| `app/page.tsx` | `export const revalidate` | `300` (NO `headers()`) |
+| `app/articles/page.tsx` | `export const revalidate` | `60` (NO `headers()`) |
+| `app/bots/page.tsx` | `export const revalidate` | `300` |
+| `app/[slug]/page.tsx` | `export const revalidate` | `300` |
+| `app/articles/[slug]/page.tsx` | `export const revalidate` | `300` |
+
+## SACRED SITEMAP RULES
+
+- ALL groups in main sitemap — no linkedCreatorSlug filter, no exclusions
+- ALL groups and bots get hreflang alternates — no conditional logic
+- OF creator profiles (-onlyfans) live ONLY in onlyfanssearch/sitemap.ts
+- OF telegram groups (-onlyfans-telegram) live in main sitemap as regular groups
+- No duplicates across sitemaps
+- All 3 sitemaps declared in robots.ts
+
+## ABSOLUTE BANS
+
+1. NEVER change a slug pattern
+2. NEVER create new slug fields or patterns
+3. NEVER rename slugs via migration scripts
+4. NEVER filter slugs in/out of sitemaps
+5. NEVER change revalidate numbers
+6. NEVER change force-dynamic to revalidate or vice versa
+7. NEVER add headers() to a static page
+8. NEVER add device detection to a static page
+9. NEVER remove hreflang alternates from groups/bots
+10. NEVER serve non-adminImported creators as public pages
+
+## IF YOU THINK ANY OF THE ABOVE SHOULD CHANGE
+
+**STOP. Ask the owner.** Full sentence: "I want to change [X] from [current] to [proposed]. This affects [N] pages. Do you approve?"
+
+Default answer is ALWAYS: **NO. Leave it alone.**
