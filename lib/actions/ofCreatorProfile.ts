@@ -228,6 +228,7 @@ export async function getRelatedCreators(
       pornhubUrl: '',
       telegramUrl: '',
       extraPhotos: [],
+      adminImported: false,
     }));
   } catch {
     return [];
@@ -296,6 +297,7 @@ export async function getTop100CreatorSuggestions(
       pornhubUrl: '',
       telegramUrl: '',
       extraPhotos: [],
+      adminImported: false,
     }));
   } catch {
     return [];
