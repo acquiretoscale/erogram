@@ -114,10 +114,10 @@ function CreatorCard({
     onClickTrack(creator.slug);
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) {
-      window.open(creator.url, '_blank', 'noopener,noreferrer');
+      window.open(`/join-erogram?redirect=/${creator.username}-onlyfans`, '_blank', 'noopener,noreferrer');
       return;
     }
-    window.open(`/onlyfans/${creator.username}`, '_blank', 'noopener,noreferrer');
+    window.open(`/${creator.username}-onlyfans`, '_blank', 'noopener,noreferrer');
   };
 
   if (deleted) return null;
@@ -322,10 +322,10 @@ function Top10CategoryCard({ list }: { list: Top10List }) {
   const handleCreatorClick = (c: Creator) => {
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) {
-      window.location.href = `/join-erogram?redirect=/onlyfans/${c.username}`;
+      window.open(`/join-erogram?redirect=/${c.username}-onlyfans`, '_blank', 'noopener,noreferrer');
       return;
     }
-    window.open(`/onlyfans/${c.username}`, '_blank', 'noopener,noreferrer');
+    window.open(`/${c.username}-onlyfans`, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -816,7 +816,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                   >
                     {t('ofSearch.all')}
                   </Link>
-                  {OF_CATEGORIES.map((cat) => (
+                  {OF_CATEGORIES.slice(0, 12).map((cat) => (
                     <Link
                       key={cat.slug}
                       href={lp(ofCategoryUrl(cat.slug))}
@@ -1092,7 +1092,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                             {chunk.map((tc, j) => (
                               <a
                                 key={tc._id}
-                                href={`/onlyfans/${tc.username || tc.slug}`}
+                                href={`/${tc.username}-onlyfans`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={() => trackClick(tc.slug)}
@@ -1113,7 +1113,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                                   </div>
                                   <div className="min-w-0 flex-1">
                                     <p className="text-[13px] font-bold text-gray-900 truncate">{tc.name}</p>
-                                    <p className="text-[11px] font-black text-gray-500 tabular-nums mt-0.5">{tc.points.toLocaleString()} pts</p>
+                                    <p className="text-[11px] text-gray-500 mt-0.5">@{tc.username}</p>
                                   </div>
                                 </div>
                               </a>

@@ -1627,7 +1627,7 @@ export default function CreatorProfileClient({
                         {chunk.map((tc, j) => (
                           <Link
                             key={tc._id}
-                            href={lp(`/onlyfans/${tc.username || tc.slug}`)}
+                            href={lp(`/${tc.username}-onlyfans`)}
                             prefetch={false}
                             className={`w-full flex items-center hover:brightness-95 transition-all ${j < chunk.length - 1 ? 'border-b border-gray-100' : ''}`}
                           >
