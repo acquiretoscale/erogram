@@ -24,7 +24,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     await connectDB();
 
     const [groups, bots, articles, totalGroups, totalBots, dbCountries, categoryCounts, countryCounts] = await Promise.all([
-      Group.find({ status: 'approved', premiumOnly: { $ne: true }, category: { $ne: 'Hentai' }, linkedCreatorSlug: { $in: [null, ''] } }).select('slug updatedAt description_de description_es').lean(),
+      Group.find({ status: 'approved', premiumOnly: { $ne: true }, category: { $ne: 'Hentai' } }).select('slug updatedAt description_de description_es').lean(),
       Bot.find({ status: 'approved' }).select('slug updatedAt description_de description_es').lean(),
       Article.find({}).select('slug updatedAt publishedAt').lean(),
       Group.countDocuments({ status: 'approved', premiumOnly: { $ne: true } }),
@@ -136,25 +136,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     const groupRoutes: MetadataRoute.Sitemap = groups.map((group: any) => {
       const path = `/${group.slug}`;
-      const hasTranslation = !!(group.description_de?.trim() || group.description_es?.trim());
       return {
         url: `${baseUrl}${path}`,
         lastModified: group.updatedAt || new Date(),
         changeFrequency: 'weekly' as const,
         priority: 0.7,
-        ...(hasTranslation ? { alternates: buildAlternates(path, canonicalBase) } : {}),
+        alternates: buildAlternates(path, canonicalBase),
       };
     });
 
     const botRoutes: MetadataRoute.Sitemap = bots.map((bot: any) => {
       const path = `/${bot.slug}`;
-      const hasTranslation = !!(bot.description_de?.trim() || bot.description_es?.trim());
       return {
         url: `${baseUrl}${path}`,
         lastModified: bot.updatedAt || new Date(),
         changeFrequency: 'weekly' as const,
         priority: 0.7,
-        ...(hasTranslation ? { alternates: buildAlternates(path, canonicalBase) } : {}),
+        alternates: buildAlternates(path, canonicalBase),
       };
     });
 

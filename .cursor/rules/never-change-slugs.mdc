@@ -1,0 +1,22 @@
+# ABSOLUTE BAN ON CHANGING SLUG PATTERNS
+
+## THE RULE (non-negotiable, written in marble)
+
+**NEVER rename, change, or "optimize" any slug pattern** unless the owner explicitly orders it.
+
+### Current slug patterns (DO NOT TOUCH):
+
+- **OnlyFans creator Telegram groups**: `{username}-onlyfans-telegram`
+- **OnlyFans creator profile pages**: `{username}-onlyfans`
+- **Regular Telegram groups**: whatever slug they were created with
+- **Bots**: whatever slug they were created with
+
+### Why this exists
+
+Slug changes = URL changes = Google drops all rankings for those pages overnight.
+The AI changed slug patterns 3 times in 3 commits without being asked, destroying SEO.
+Every slug rename requires a DB migration AND 301 redirects for every affected URL.
+
+### If you think a slug should change
+
+**STOP. Ask the owner first.** Do not "improve" or "clean up" slugs on your own.

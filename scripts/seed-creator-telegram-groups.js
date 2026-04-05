@@ -46,7 +46,8 @@ async function main() {
   let skipped = 0;
 
   for (const c of creators) {
-    const slug = `${c.username}-telegram`;
+    // NEVER change this slug pattern. Owner's explicit order: {username}-onlyfans-telegram. Period.
+    const slug = `${c.username}-onlyfans-telegram`;
 
     const exists = await groupsCol.findOne({ slug });
     if (exists) {

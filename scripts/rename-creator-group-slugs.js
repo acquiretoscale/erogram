@@ -1,3 +1,5 @@
+// MIGRATION: Rename creator Telegram group slugs to {username}-onlyfans-telegram
+// NEVER change this pattern. Owner's explicit order.
 const mongoose = require('mongoose');
 require('dotenv').config({ path: '.env.local' });
 
@@ -8,19 +10,27 @@ async function main() {
   await mongoose.connect(MONGO_URI);
   const col = mongoose.connection.db.collection('groups');
 
+  // Find groups with linkedCreatorSlug that have the WRONG slug pattern
   const groups = await col.find({
     linkedCreatorSlug: { $exists: true, $ne: '' },
-    slug: { $regex: /-onlyfans-telegram$/ },
+    slug: { $not: { $regex: /-onlyfans-telegram$/ } },
   }).toArray();
 
-  console.log(`Found ${groups.length} groups to rename\n`);
+  console.log(`Found ${groups.length} groups to rename to {username}-onlyfans-telegram\n`);
 
   let renamed = 0;
   let skipped = 0;
 
   for (const g of groups) {
     const oldSlug = g.slug;
-    const newSlug = oldSlug.replace(/-onlyfans-telegram$/, '-onlyfans');
+    // Strip any existing suffixes and rebuild correctly
+    const base = oldSlug.replace(/-telegram$/, '').replace(/-onlyfans$/, '');
+    const newSlug = `${base}-onlyfans-telegram`;
+
+    if (oldSlug === newSlug) {
+      skipped++;
+      continue;
+    }
 
     const conflict = await col.findOne({ slug: newSlug });
     if (conflict) {

@@ -1,0 +1,34 @@
+# ABSOLUTE BAN ON CHANGING PAGE RENDERING CONFIG
+
+## STATUS: These settings were destroyed once. 70% Google traffic lost. NEVER AGAIN.
+
+## SACRED VALUES (non-negotiable, do NOT touch)
+
+| File | Setting | Value | Why |
+|---|---|---|---|
+| `app/groups/page.tsx` | `export const dynamic` | `'force-dynamic'` | Groups MUST render fresh every request. Period. |
+| `app/page.tsx` | `export const revalidate` | `300` | Homepage is STATIC. 5 min cache. No `headers()`. |
+| `app/articles/page.tsx` | `export const revalidate` | `60` | Articles listing is STATIC. 1 min cache. No `headers()`. |
+| `app/bots/page.tsx` | `export const revalidate` | `300` | Bots listing is STATIC. 5 min cache. |
+| `app/[slug]/page.tsx` | `export const revalidate` | `300` | Individual group/bot pages. 5 min ISR. |
+| `app/articles/[slug]/page.tsx` | `export const revalidate` | `300` | Individual article pages. 5 min ISR. |
+
+## BANNED ACTIONS
+
+1. **NEVER change `revalidate` numbers** without owner's explicit order
+2. **NEVER change `force-dynamic` to `revalidate`** or vice versa
+3. **NEVER add `headers()` to a static page** — it silently converts static → dynamic, kills SEO
+4. **NEVER add `staleTimes` or modify `experimental` config** in `next.config.ts`
+5. **NEVER add device detection (`detectDeviceFromUserAgent`) to static pages** — same effect as `headers()`
+
+## WHY THIS EXISTS
+
+Adding `headers()` to `app/page.tsx` and `app/articles/page.tsx` silently broke static rendering.
+Changing `force-dynamic` to `revalidate = 120` on groups broke fresh rendering.
+Google saw stale/broken pages → dropped 70% of organic traffic → nearly killed Erogram.
+
+## IF YOU WANT TO OPTIMIZE RENDERING
+
+**STOP. Ask the owner.** Say: "I want to change rendering config on [page]. Current: [value]. Proposed: [value]. This will affect SEO. Do you approve?"
+
+Default answer is ALWAYS: leave it alone.
