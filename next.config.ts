@@ -20,6 +20,8 @@ const nextConfig: NextConfig = {
 
   turbopack: {},
 
+  serverExternalPackages: ['@ffmpeg-installer/ffmpeg', 'fluent-ffmpeg'],
+
   webpack: (config, { dev }) => {
     if (dev) {
       config.cache = false;
@@ -191,6 +193,23 @@ const nextConfig: NextConfig = {
         headers: [
           { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, max-age=0" },
           { key: "Pragma", value: "no-cache" },
+        ],
+      },
+      // Creator profiles: never cache, never index
+      {
+        source: "/enzogonzo",
+        headers: [
+          { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, private, max-age=0" },
+          { key: "Pragma", value: "no-cache" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive, nosnippet" },
+        ],
+      },
+      {
+        source: "/vickykovaks",
+        headers: [
+          { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, private, max-age=0" },
+          { key: "Pragma", value: "no-cache" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive, nosnippet" },
         ],
       },
     ];

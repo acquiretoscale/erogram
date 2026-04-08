@@ -36,26 +36,29 @@ export async function POST(req: NextRequest) {
 
         if (isGif) {
             finalBuffer = buffer;
-            key = `uploads/${randomUUID()}.gif`;
+            key = `onlygram/images/${randomUUID()}.gif`;
             mime = 'image/gif';
         } else {
             let compressed = await sharp(buffer)
+                .rotate()
                 .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
                 .webp({ quality: 80 })
                 .toBuffer();
             if (compressed.length > 200 * 1024) {
                 compressed = await sharp(buffer)
+                    .rotate()
                     .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
                     .webp({ quality: 55 })
                     .toBuffer();
             }
             if (compressed.length > 200 * 1024) {
                 compressed = await sharp(buffer)
+                    .rotate()
                     .resize(600, 600, { fit: 'inside', withoutEnlargement: true })
                     .webp({ quality: 45 })
                     .toBuffer();
             }
-            key = `uploads/${randomUUID()}.webp`;
+            key = `onlygram/images/${randomUUID()}.webp`;
             mime = 'image/webp';
             finalBuffer = compressed;
         }

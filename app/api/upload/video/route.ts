@@ -1,11 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
+import { writeFile, readFile, unlink } from 'fs/promises';
+import path from 'path';
 import { uploadToR2, isR2Configured } from '@/lib/r2';
 
-const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 50 MB
+/* eslint-disable @typescript-eslint/no-require-imports */
+const ffmpeg = require('fluent-ffmpeg');
+const { path: ffmpegPath } = require('@ffmpeg-installer/ffmpeg');
+ffmpeg.setFfmpegPath(ffmpegPath);
+
 const ALLOWED_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
+const TARGET_SIZE = 10 * 1024 * 1024; // 10 MB
+
+function compressVideo(inputPath: string, outputPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    ffmpeg(inputPath)
+      .videoCodec('libx264')
+      .audioCodec('aac')
+      .audioBitrate('128k')
+      .outputOptions([
+        '-crf', '22',
+        '-preset', 'fast',
+        '-vf', 'scale=-2:\'min(720,ih)\'',
+        '-movflags', '+faststart',
+        '-pix_fmt', 'yuv420p',
+      ])
+      .format('mp4')
+      .on('end', () => resolve())
+      .on('error', (err: Error) => reject(err))
+      .save(outputPath);
+  });
+}
 
 export async function POST(req: NextRequest) {
+  const id = randomUUID();
+  const tmpDir = '/tmp';
+  const inputPath = path.join(tmpDir, `${id}-input`);
+  const outputPath = path.join(tmpDir, `${id}-output.mp4`);
+
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;
@@ -21,29 +53,30 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    if (buffer.length > MAX_VIDEO_BYTES) {
-      return NextResponse.json(
-        { message: 'Video too large. Max 50 MB.' },
-        { status: 400 }
-      );
-    }
-
     if (!isR2Configured()) {
-      return NextResponse.json(
-        {
-          message:
-            'Video upload is not configured. Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_PUBLIC_URL.',
-        },
-        { status: 503 }
-      );
+      return NextResponse.json({ message: 'R2 not configured.' }, { status: 503 });
     }
 
-    const ext = file.type === 'video/quicktime' ? 'mov' : file.type.split('/')[1];
-    const key = `campaigns/videos/${randomUUID()}.${ext}`;
-    const url = await uploadToR2(buffer, key, file.type);
+    const bytes = await file.arrayBuffer();
+    const rawBuffer = Buffer.from(bytes);
+
+    let finalBuffer: Buffer;
+    let key: string;
+
+    if (rawBuffer.length <= TARGET_SIZE) {
+      // Already under 10 MB — upload as-is
+      const ext = file.type === 'video/quicktime' ? 'mov' : file.type.split('/')[1];
+      key = `onlygram/videos/${id}.${ext}`;
+      finalBuffer = rawBuffer;
+    } else {
+      // Compress with ffmpeg
+      await writeFile(inputPath, rawBuffer);
+      await compressVideo(inputPath, outputPath);
+      finalBuffer = await readFile(outputPath);
+      key = `onlygram/videos/${id}.mp4`;
+    }
+
+    const url = await uploadToR2(finalBuffer, key, 'video/mp4');
 
     return NextResponse.json({ url });
   } catch (error: any) {
@@ -52,5 +85,9 @@ export async function POST(req: NextRequest) {
       { message: error.message || 'Upload failed' },
       { status: 500 }
     );
+  } finally {
+    // Clean up temp files
+    unlink(inputPath).catch(() => {});
+    unlink(outputPath).catch(() => {});
   }
 }

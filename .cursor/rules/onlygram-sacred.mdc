@@ -1,0 +1,82 @@
+# MARBLE SACRED — ONLYGRAM PRIVACY RULES
+
+## THIS IS THE MOST CRITICAL RULE IN THE ENTIRE PROJECT.
+
+## ONLYGRAM CONTAINS SENSITIVE ADULT CONTENT. ANY PUBLIC EXPOSURE = LAWSUIT.
+
+## ZERO PUBLIC FOOTPRINT. ZERO. ABSOLUTELY ZERO.
+
+---
+
+## WHAT IS ONLYGRAM
+
+Onlygram is a private, admin-only demo of an OnlyFans-like creator platform.
+It lives at `/enzogonzo` and `/vickykovaks`. It stores media in R2 under `onlygram/`.
+It stores posts/profiles in MongoDB (`OnlygramPost`, `OnlygramCreator`).
+
+**It contains real, sensitive, private adult content that is NOT for public consumption.**
+
+---
+
+## RULE 1: EROS ONLY — NO EXCEPTIONS
+
+Every single entry point MUST verify `username === 'eros'` via JWT + DB lookup.
+
+- Server pages (`app/enzogonzo/page.tsx`, `app/vickykovaks/page.tsx`): `verifyOwner` checks `isAdmin && username === 'eros'`
+- Server actions (`lib/actions/onlygramDb.ts`, `lib/actions/listMyMedia.ts`, `lib/actions/deleteMedia.ts`): `verifyOwner` checks same
+- Navbar links: `isAdminUser && localStorage.getItem('username') === 'eros'`
+- No other admin, no other user, no anonymous visitor can EVER see this content.
+
+**If you add ANY new server action, API route, or page related to Onlygram, it MUST have the `verifyOwner` check that requires `username === 'eros'`.**
+
+## RULE 2: ZERO PUBLIC FOOTPRINT
+
+- `/enzogonzo` and `/vickykovaks` are EXCLUDED from middleware locale rewrites
+- Both pages have `robots: { index: false, follow: false, nocache: true }` metadata
+- Both pages have HTTP headers: `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet`
+- Both pages have `Cache-Control: no-store, no-cache, must-revalidate, private, max-age=0`
+- They are NOT in any sitemap
+- They are NOT in robots.txt
+- They are NOT linked from any public page
+- The only link to them is inside the user menu dropdown, gated to `eros` only
+
+**NEVER add these routes to a sitemap. NEVER add public links. NEVER remove the noindex headers.**
+
+## RULE 3: R2 MEDIA ISOLATION
+
+- All Onlygram media lives under `onlygram/videos/` and `onlygram/images/` on R2
+- NEVER mix Onlygram media with public Erogram media (`uploads/`, `campaigns/`)
+- NEVER list Onlygram media from any public endpoint
+- When a post is deleted, ALL associated R2 files MUST be permanently deleted
+
+## RULE 4: NO PUBLIC-FACING FEATURES
+
+- NEVER create a public API route that returns Onlygram data
+- NEVER add Onlygram content to search results, feeds, recommendations, or any public view
+- NEVER add analytics, tracking pixels, or third-party scripts to Onlygram pages
+- NEVER log Onlygram URLs or media URLs in any public logging system
+
+## RULE 5: NAVBAR LINK — EROS ONLY
+
+The Onlygram link in the Navbar user menu:
+- Shows ONLY when `isAdminUser && mounted && localStorage.getItem('username') === 'eros'`
+- Shows as a single "Onlygram" button (no profile names in the menu)
+- NEVER show Vicky Kovaks in the menu — access is through the profile switcher inside Onlygram only (admin mode, triple-tap logo)
+
+## RULE 6: DO NOT TOUCH THESE FILES WITHOUT EXPLICIT OWNER PERMISSION
+
+- `app/enzogonzo/page.tsx` — server auth gate
+- `app/vickykovaks/page.tsx` — server auth gate
+- `app/enzogonzo/EnzoGonzoClient.tsx` — entire client UI
+- `lib/actions/onlygramDb.ts` — DB CRUD with verifyOwner
+- `lib/actions/listMyMedia.ts` — R2 listing with verifyOwner
+- `lib/actions/deleteMedia.ts` — R2 deletion with verifyOwner
+
+## IF YOU THINK ANY RULE SHOULD CHANGE
+
+**STOP. Ask the owner with this exact format:**
+"I want to change [RULE NUMBER] because [REASON]. Current behavior: [X]. Proposed: [Y]. Do you approve?"
+
+**Default answer is ALWAYS: NO. Leave it alone.**
+
+**VIOLATING THESE RULES COULD RESULT IN A LAWSUIT. THIS IS NOT A JOKE.**

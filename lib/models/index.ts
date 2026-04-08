@@ -36,6 +36,10 @@ export const userSchema = new Schema(
     paymentMethod: { type: String, enum: ['stars', 'crypto', null], default: null },
     lastPaymentChargeId: { type: String, default: null },
     savedCreators: [{ type: Schema.Types.ObjectId, ref: 'OnlyFansCreator' }],
+    interests: { type: [String], default: [] },
+    preferredPlatforms: { type: [String], default: [] },
+    interestedInAI: { type: Boolean, default: false },
+    onboardingCompleted: { type: Boolean, default: false },
     stats: {
       groupsCreated: { type: Number, default: 0 },
       groupsSaved: { type: Number, default: 0 },
@@ -1082,3 +1086,48 @@ ainsfwSubmissionSchema.index({ featured: 1 });
 ainsfwSubmissionSchema.index({ boosted: 1, boostExpiresAt: 1 });
 
 export const AINsfwSubmission = models.AINsfwSubmission || model('AINsfwSubmission', ainsfwSubmissionSchema);
+
+// OnlygramPost — private creator profile posts (enzogonzo / vickykovaks)
+const onlygramPostSchema = new Schema({
+  slug: { type: String, required: true, index: true },
+  postId: { type: String, required: true },
+  type: { type: String, enum: ['photo', 'video'], default: 'photo' },
+  thumbnail: { type: String, default: '' },
+  videoUrl: { type: String, default: '' },
+  media: [{ type: { type: String, enum: ['photo', 'video'] }, url: String, thumb: String }],
+  caption: { type: String, default: '' },
+  likes: { type: Number, default: 0 },
+  comments: { type: Number, default: 0 },
+  views: { type: Number, default: 0 },
+  locked: { type: Boolean, default: false },
+  price: { type: Number, default: 0 },
+  postedAt: { type: String, default: '' },
+  postedAtIso: { type: String, default: '' },
+  pinned: { type: Boolean, default: false },
+  tagged: [{ username: String, name: String }],
+  commentList: [{ user: String, text: String, ago: String }],
+}, { timestamps: true });
+
+onlygramPostSchema.index({ slug: 1, createdAt: -1 });
+
+export const OnlygramPost = models.OnlygramPost || model('OnlygramPost', onlygramPostSchema);
+
+// OnlygramCreator — profile data (avatar, cover, bio etc)
+const onlygramCreatorSchema = new Schema({
+  slug: { type: String, required: true, unique: true },
+  name: String,
+  username: String,
+  avatar: String,
+  cover: String,
+  bio: String,
+  verified: { type: Boolean, default: true },
+  location: String,
+  joinedDate: String,
+  subscriptionPrice: Schema.Types.Mixed,
+  totalFans: Number,
+  totalLikes: Number,
+  totalPosts: Number,
+  totalMedia: Number,
+}, { timestamps: true });
+
+export const OnlygramCreator = models.OnlygramCreator || model('OnlygramCreator', onlygramCreatorSchema);

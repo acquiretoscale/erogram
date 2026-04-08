@@ -150,7 +150,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
     if (!token) return;
     fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
-      .then(d => { if (d.premium) setIsPremium(true); if (d.isAdmin) { setIsAdminUser(true); localStorage.setItem('isAdmin', 'true'); } })
+      .then(d => { if (d.premium) setIsPremium(true); if (d.isAdmin) { setIsAdminUser(true); localStorage.setItem('isAdmin', 'true'); } if (d.username) localStorage.setItem('username', d.username); })
       .catch(() => {});
   }, [mounted]);
 
@@ -304,6 +304,16 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                           OF Admin
                         </Link>
                       )}
+                      {isAdminUser && mounted && localStorage.getItem('username') === 'eros' && (
+                        <>
+                          <div className="h-px bg-white/[0.06] mx-3 my-1" />
+                          <Link href="/enzogonzo" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-[#00AFF0] hover:text-[#00D4FF] hover:bg-[#00AFF0]/5 transition font-semibold">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.5" fill="currentColor"/></svg>
+                            Onlygram
+                          </Link>
+                          <div className="h-px bg-white/[0.06] mx-3 my-1" />
+                        </>
+                      )}
                       <Link href={lp('/profile')} onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-white/70 hover:text-white hover:bg-white/5 transition">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>
                         {t('nav.profile', 'Profile')}
@@ -316,7 +326,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                         {t('nav.articles', 'Articles')}
                       </Link>
-                      <Link href={`${lp('/profile')}?tab=support`} onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-white/70 hover:text-white hover:bg-white/5 transition">
+                      <Link href={`${lp('/profile')}?tab=settings`} onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-white/70 hover:text-white hover:bg-white/5 transition">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                         Support
                       </Link>
@@ -591,6 +601,12 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                     OF Admin
                   </Link>
                 )}
+                {isAdminUser && mounted && localStorage.getItem('username') === 'eros' && (
+                  <Link href="/enzogonzo" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-[14px] font-semibold text-[#00AFF0] bg-[#00AFF0]/[0.08] border border-[#00AFF0]/20 hover:bg-[#00AFF0]/[0.14] transition">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.5" fill="currentColor"/></svg>
+                    Onlygram
+                  </Link>
+                )}
                 <Link href={lp('/profile')} onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[14px] font-semibold text-[#4ab3f4] bg-[#0088cc]/[0.10] border border-[#0088cc]/25 hover:bg-[#0088cc]/[0.18] hover:text-[#6ec6f7] transition-all">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 opacity-80"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>
                   {t('nav.profile', 'Profile')}
@@ -599,7 +615,7 @@ export default function Navbar({ username, setUsername, showAddGroup, onAddGroup
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 opacity-80"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
                   {t('nav.saved', 'Saved')}
                 </Link>
-                <Link href={`${lp('/profile')}?tab=support`} onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[14px] font-semibold text-[#4ab3f4] bg-[#0088cc]/[0.10] border border-[#0088cc]/25 hover:bg-[#0088cc]/[0.18] hover:text-[#6ec6f7] transition-all">
+                <Link href={`${lp('/profile')}?tab=settings`} onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[14px] font-semibold text-[#4ab3f4] bg-[#0088cc]/[0.10] border border-[#0088cc]/25 hover:bg-[#0088cc]/[0.18] hover:text-[#6ec6f7] transition-all">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-80"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                   Support
                 </Link>

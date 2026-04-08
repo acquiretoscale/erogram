@@ -1,4 +1,5 @@
 import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || 'erogramimages';
 
@@ -51,6 +52,26 @@ export function getR2PublicUrl(): string {
 }
 
 /**
+ * Generate a presigned PUT URL so the browser can upload directly to R2.
+ * Returns { uploadUrl, publicUrl }.
+ */
+export async function getPresignedUploadUrl(
+  key: string,
+  contentType: string,
+  expiresIn = 3600
+): Promise<{ uploadUrl: string; publicUrl: string }> {
+  const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || '';
+  const client = getR2Client();
+  const command = new PutObjectCommand({
+    Bucket: R2_BUCKET_NAME,
+    Key: key,
+    ContentType: contentType,
+  });
+  const uploadUrl = await getSignedUrl(client, command, { expiresIn });
+  return { uploadUrl, publicUrl: `${R2_PUBLIC_URL}/${key}` };
+}
+
+/**
  * List files in an R2 folder, optionally filtering by max size.
  * Returns public URLs of matching objects.
  */
@@ -88,6 +109,31 @@ export async function listR2Files(
   } while (continuationToken);
 
   return urls;
+}
+
+export async function listR2FilesWithDates(
+  prefix: string,
+  exts: string[] = ['.mp4', '.webm', '.mov', '.jpg', '.jpeg', '.png', '.webp'],
+): Promise<{ url: string; date: string }[]> {
+  if (!isR2Configured()) return [];
+  const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || '';
+  const client = getR2Client();
+  const results: { url: string; date: string }[] = [];
+  let continuationToken: string | undefined;
+  do {
+    const res = await client.send(
+      new ListObjectsV2Command({ Bucket: R2_BUCKET_NAME, Prefix: prefix.endsWith('/') ? prefix : `${prefix}/`, MaxKeys: 1000, ContinuationToken: continuationToken })
+    );
+    for (const obj of res.Contents ?? []) {
+      if (!obj.Key || !obj.Size) continue;
+      const lower = obj.Key.toLowerCase();
+      if (exts.some(ext => lower.endsWith(ext))) {
+        results.push({ url: `${R2_PUBLIC_URL}/${obj.Key}`, date: obj.LastModified?.toISOString() || '' });
+      }
+    }
+    continuationToken = res.IsTruncated ? res.NextContinuationToken : undefined;
+  } while (continuationToken);
+  return results;
 }
 
 export async function deleteFromR2(publicUrl: string): Promise<void> {

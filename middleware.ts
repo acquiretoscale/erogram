@@ -187,6 +187,6 @@ export const config = {
    * - /advert/...       (advertiser panel — stays English only)
    */
   matcher: [
-    '/((?!api|_next|assets|icons|fonts|favicon|manifest|robots|sitemap|admin|OF|advert).*)',
+    '/((?!api|_next|assets|icons|fonts|favicon|manifest|robots|sitemap|admin|OF|advert|enzogonzo|vickykovaks).*)',
   ],
 };
