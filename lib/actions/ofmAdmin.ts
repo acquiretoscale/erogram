@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import { User, OnlyFansCreator, TrendingOFCreator, ScrapeRun, SearchQuery, OFMSettings } from '@/lib/models';
 import { getApifyCredentials, markKeyBurned } from '@/lib/apify-key';
+import { processCreatorImages } from '@/lib/actions/creatorImages';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -340,6 +341,11 @@ export async function importOFMCreator(
       { upsert: true, new: true },
     );
 
+    // Process images: download from OF CDN → optimize → EXIF brand → upload to R2
+    try { await processCreatorImages(slug); } catch (e: any) {
+      console.error(`Image R2 processing failed for ${slug}:`, e.message);
+    }
+
     const finalDoc = await OnlyFansCreator.findById(creatorDoc._id).lean() as any;
     const creator = { ...finalDoc, _id: finalDoc._id.toString() };
 
@@ -511,6 +517,16 @@ export async function bulkImportCreators(
     for (const r of results) { if (r.status === 'pending') { r.status = 'failed'; r.error = e.message || 'Unknown error'; } }
   }
 
+  // Process images for all successfully imported creators → R2
+  for (const r of results) {
+    if (r.status !== 'success' || !r.creator) continue;
+    const slug = r.creator.slug || (r.creator as any).username?.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    if (!slug) continue;
+    try { await processCreatorImages(slug); } catch (e: any) {
+      console.error(`Image R2 processing failed for ${slug}:`, e.message);
+    }
+  }
+
   return { results };
 }
 
@@ -549,6 +565,14 @@ export async function saveBulkApifyResults(items: any[]) {
       if (doc) savedCreators.push({ ...doc, _id: doc._id.toString() });
     } catch {}
   }
+
+  // Process images for all saved creators → R2
+  for (const c of savedCreators) {
+    try { await processCreatorImages(c.slug); } catch (e: any) {
+      console.error(`Image R2 processing failed for ${c.slug}:`, e.message);
+    }
+  }
+
   return savedCreators;
 }
 

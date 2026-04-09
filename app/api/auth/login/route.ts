@@ -55,6 +55,9 @@ export async function POST(req: NextRequest) {
       token,
       username: user.username,
       isAdmin: user.isAdmin,
+      firstName: user.firstName || null,
+      photoUrl: user.photoUrl || null,
+      onboardingCompleted: user.onboardingCompleted || false,
     });
   } catch (error: any) {
     console.error('Login error:', error);

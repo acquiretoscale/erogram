@@ -67,6 +67,7 @@ export async function GET(req: NextRequest) {
 
     const geo = geoUpdateFields(req);
     let user = await User.findOne({ googleId });
+    let isNewUser = false;
 
     if (!user) {
       // Check if another account already uses this email
@@ -100,6 +101,7 @@ export async function GET(req: NextRequest) {
             photoUrl: picture,
             ...geo,
           });
+          isNewUser = true;
           notifyAdminsOfNewUser({ username, provider: 'google' }).catch(() => {});
         } catch (err: any) {
           if (err.code === 11000 && err.keyPattern?.email) {
@@ -110,6 +112,7 @@ export async function GET(req: NextRequest) {
               photoUrl: picture,
               ...geo,
             });
+            isNewUser = true;
             notifyAdminsOfNewUser({ username, provider: 'google' }).catch(() => {});
           } else {
             throw err;
@@ -151,6 +154,7 @@ export async function GET(req: NextRequest) {
     if (user.firstName) params.set('firstName', user.firstName);
     if (user.photoUrl) params.set('photoUrl', user.photoUrl);
     if (state) params.set('state', state);
+    if (isNewUser) params.set('newUser', '1');
 
     return NextResponse.redirect(`${callbackPage}?${params.toString()}`);
   } catch (err: any) {

@@ -14,6 +14,8 @@ interface SavedCreator {
   isFree: boolean;
   url: string;
   clicks: number;
+  categories?: string[];
+  likesCount?: number;
 }
 
 export default function SavedModelsTab() {
@@ -141,7 +143,17 @@ export default function SavedModelsTab() {
                       {creator.isFree ? 'Free' : `$${creator.price}`}
                     </span>
                   </div>
-                  <p className="text-[11px] text-white/60 truncate">@{creator.username}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    {creator.likesCount ? (
+                      <span className="text-[9px] text-white/50 flex items-center gap-0.5">
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="#f472b6" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                        {creator.likesCount >= 1000 ? `${(creator.likesCount / 1000).toFixed(1)}k` : creator.likesCount}
+                      </span>
+                    ) : null}
+                    {creator.categories && creator.categories.slice(0, 2).map((cat, i) => (
+                      <span key={i} className="px-1 py-[1px] rounded text-[7px] font-semibold text-white/70 capitalize" style={{ background: 'rgba(0,175,240,0.3)' }}>{cat}</span>
+                    ))}
+                  </div>
                 </div>
               </div>
             </a>
@@ -160,7 +172,7 @@ export default function SavedModelsTab() {
               rel="noopener noreferrer"
               className="flex items-center justify-center gap-1.5 py-2.5 text-sm font-bold text-[#00AFF0] hover:bg-[#00AFF0]/5 transition-colors"
             >
-              View profile
+              Visit OnlyFans
               <ExternalLink size={13} />
             </a>
           </div>

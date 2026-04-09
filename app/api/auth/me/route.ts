@@ -39,6 +39,8 @@ export async function GET(req: NextRequest) {
       id: user._id,
       username: user.username,
       email: user.email,
+      firstName: u.firstName || null,
+      photoUrl: u.photoUrl || null,
       isAdmin: user.isAdmin,
       authProvider,
       premium: isPremium,
@@ -48,6 +50,10 @@ export async function GET(req: NextRequest) {
       country: u.country || null,
       city: u.city || null,
       timezone: u.timezone || null,
+      interests: u.interests || [],
+      preferredPlatforms: u.preferredPlatforms || [],
+      interestedInAI: u.interestedInAI || false,
+      onboardingCompleted: u.onboardingCompleted || false,
     });
   } catch (error: any) {
     console.error('Auth check error:', error);

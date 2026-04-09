@@ -50,6 +50,12 @@ const nextConfig: NextConfig = {
         hostname: '*.erogram.pro',
         pathname: '/**',
       },
+      // OnlyFans CDN thumbnails (used for creator avatars/images pulled from OF)
+      {
+        protocol: 'https',
+        hostname: '*.onlyfans.com',
+        pathname: '/**',
+      },
       // Cloudflare R2 public bucket (current + any future buckets)
       {
         protocol: 'https',

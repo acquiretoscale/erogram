@@ -13,6 +13,7 @@ import GroupCard from './GroupCard';
 import AdvertCard from './AdvertCard';
 import VirtualizedGroupGrid from './VirtualizedGroupGrid';
 import { checkBookmarks } from '@/lib/actions/publicData';
+import VickyGroupsBubble from './VickyGroupsBubble';
 import GroupCardSkeleton from './GroupCardSkeleton';
 import StoryBar from './StoryBar';
 import type { VaultTeaserItem } from './VaultTeaserFeed';
@@ -896,6 +897,10 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
           onClose={() => setIsStoryOpen(false)}
         />
       )}
+
+      {/* Vicky AI floating bubble */}
+      <VickyGroupsBubble />
     </div>
   );
 }
+

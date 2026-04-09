@@ -150,8 +150,8 @@ export async function bulkProcessCreatorImages(slugs: string[]): Promise<
 }
 
 /**
- * Find all adminImported creators whose avatar/header still point to external URLs
- * (not on R2) and process them.
+ * Find ALL creators whose avatar/header/extraPhotos still point to external URLs
+ * (not on R2) and process them. Covers every creator, not just adminImported.
  */
 export async function processAllTop100Images(): Promise<{
   total: number;
@@ -162,17 +162,17 @@ export async function processAllTop100Images(): Promise<{
   if (!isR2Configured()) return { total: 0, processed: 0, skipped: 0, errors: ['R2 not configured'] };
 
   await connectDB();
-  const r2Host = process.env.R2_PUBLIC_URL || '___none___';
+  const host = r2Host();
 
   const creators = await OnlyFansCreator.find({
-    adminImported: true,
     deleted: { $ne: true },
-  }).select('slug avatar header').lean() as any[];
+  }).select('slug avatar header extraPhotos').lean() as any[];
 
   const needsProcessing = creators.filter(
     (c: any) =>
-      (c.avatar && !c.avatar.includes(r2Host)) ||
-      (c.header && !c.header.includes(r2Host))
+      (c.avatar && !c.avatar.includes(host)) ||
+      (c.header && !c.header.includes(host)) ||
+      (c.extraPhotos || []).some((p: string) => p && !p.includes(host))
   );
 
   const errors: string[] = [];

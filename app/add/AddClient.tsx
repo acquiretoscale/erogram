@@ -779,23 +779,6 @@ export default function AddClient({ categories, countries, defaultTab }: AddClie
           )}
       </>
 
-      {/* AI NSFW CTA */}
-      <div className="mt-10 max-w-2xl mx-auto">
-        <Link
-          href="/add/ainsfw"
-          className="block p-5 rounded-2xl border-2 border-[#06b6d4]/30 bg-gradient-to-r from-[#06b6d4]/10 to-[#8b5cf6]/10 hover:border-[#06b6d4]/60 transition-all group no-underline"
-        >
-          <div className="flex items-center gap-4">
-            <span className="text-3xl shrink-0">{'\u{1F9E0}'}</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-black text-white group-hover:text-[#22d3ee] transition-colors">List your AI NSFW Tool</p>
-              <p className="text-xs text-[#888] mt-0.5">Get featured across Erogram&apos;s AI NSFW directory &mdash; from $39</p>
-            </div>
-            <svg className="w-5 h-5 text-[#06b6d4] shrink-0 group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          </div>
-        </Link>
-      </div>
-
       <p className="mt-6 text-center text-[#666] text-sm">
         <Link href={lp('/groups')} className="text-[#0088cc] hover:underline">{t('add.browseGroups')}</Link>
         {' \u00B7 '}

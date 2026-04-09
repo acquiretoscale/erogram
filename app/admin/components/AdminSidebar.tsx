@@ -23,6 +23,7 @@ import {
     Sparkles,
     Crown,
     Flame,
+    Lightbulb,
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -49,6 +50,7 @@ const tabs: TabItem[] = [
     { href: '/admin/advertisers',      name: 'Advertisers',     icon: Briefcase },
     { href: '/admin/creator-profile',  name: 'Creator Beta',    icon: Flame },
     { href: '/admin/users',            name: 'Users',           icon: User },
+    { href: '/admin/suggestions',      name: 'Feature Ideas',   icon: Lightbulb },
     { href: '/admin/settings',         name: 'Settings',        icon: Settings },
 ];
 

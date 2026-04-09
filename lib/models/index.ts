@@ -1131,3 +1131,18 @@ const onlygramCreatorSchema = new Schema({
 }, { timestamps: true });
 
 export const OnlygramCreator = models.OnlygramCreator || model('OnlygramCreator', onlygramCreatorSchema);
+
+// FeatureSuggestion — user-submitted feature ideas + upvotes
+const featureSuggestionSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  username: { type: String, required: true },
+  title: { type: String, required: true, maxlength: 120 },
+  description: { type: String, default: '', maxlength: 500 },
+  status: { type: String, enum: ['new', 'reviewed', 'planned', 'done', 'rejected'], default: 'new' },
+  upvotes: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+  upvoteCount: { type: Number, default: 0 },
+}, { timestamps: true });
+
+featureSuggestionSchema.index({ upvoteCount: -1, createdAt: -1 });
+
+export const FeatureSuggestion = models.FeatureSuggestion || model('FeatureSuggestion', featureSuggestionSchema);

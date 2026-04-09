@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
     }
 
     let user = await User.findOne({ telegramId: data.id });
+    let isNewUser = false;
 
     const geo = geoUpdateFields(req);
 
@@ -57,6 +58,7 @@ export async function POST(req: NextRequest) {
           photoUrl: data.photo_url || null,
           ...geo,
         });
+        isNewUser = true;
         notifyAdminsOfNewUser({ username: user.username, provider: 'telegram' }).catch(() => {});
       } catch (error: any) {
         if (error.code === 11000 && error.keyPattern && error.keyPattern.email) {
@@ -68,6 +70,7 @@ export async function POST(req: NextRequest) {
             photoUrl: data.photo_url || null,
             ...geo,
           });
+          isNewUser = true;
           notifyAdminsOfNewUser({ username: user.username, provider: 'telegram' }).catch(() => {});
         } else {
           throw error;
@@ -102,6 +105,7 @@ export async function POST(req: NextRequest) {
       isAdmin: user.isAdmin,
       firstName: user.firstName,
       photoUrl: user.photoUrl,
+      isNewUser,
     });
   } catch (error: any) {
     console.error('Telegram login error:', error);

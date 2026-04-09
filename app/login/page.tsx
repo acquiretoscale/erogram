@@ -17,6 +17,9 @@ const Navbar = dynamic(() => import('@/components/Navbar'), {
 export default function LoginPage() {
   const [error, setError] = useState('');
   const [redirectTo, setRedirectTo] = useState('/profile?tab=saved');
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
   const router = useRouter();
 
   const normalizeRedirect = (value: string | null) => {
@@ -53,6 +56,9 @@ export default function LoginPage() {
         const rd = normalizeRedirect(params.get('redirect'));
         if (res.data.isAdmin === 'true' || res.data.isAdmin === true) {
           router.push('/admin');
+        } else if (res.data.isNewUser) {
+          const hasPending = localStorage.getItem('pendingBookmark');
+          router.push(hasPending ? '/welcome?from=bookmark' : '/welcome');
         } else {
           router.push(rd);
         }
@@ -62,6 +68,36 @@ export default function LoginPage() {
       }
     };
   }, [router]);
+
+  const handlePasswordLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginUsername.trim() || !loginPassword.trim()) return;
+    setLoginLoading(true);
+    setError('');
+    try {
+      const res = await axios.post('/api/auth/login', {
+        username: loginUsername.trim(),
+        password: loginPassword,
+      });
+      if (!res.data?.token) { setError('Login failed'); setLoginLoading(false); return; }
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('username', res.data.username);
+      localStorage.setItem('isAdmin', res.data.isAdmin);
+      if (res.data.firstName) localStorage.setItem('firstName', res.data.firstName);
+      if (res.data.photoUrl) localStorage.setItem('photoUrl', res.data.photoUrl);
+
+      if (res.data.isAdmin === 'true' || res.data.isAdmin === true) {
+        router.push('/admin');
+      } else if (!res.data.onboardingCompleted) {
+        router.push('/welcome');
+      } else {
+        router.push(redirectTo);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Login failed');
+    }
+    setLoginLoading(false);
+  };
 
   return (
     <div className="min-h-screen bg-[#111111] flex items-center justify-center px-6">
@@ -105,6 +141,35 @@ export default function LoginPage() {
               Sign in with Google
             </a>
             <div className="flex justify-center items-center min-h-[60px] glass rounded-lg p-4 border border-white/10" id="telegram-login-container"></div>
+
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10" /></div>
+              <div className="relative flex justify-center"><span className="px-3 text-xs text-[#666] bg-[#111111]">or</span></div>
+            </div>
+
+            <form onSubmit={handlePasswordLogin} className="space-y-2">
+              <input
+                type="text"
+                placeholder="Username"
+                value={loginUsername}
+                onChange={e => setLoginUsername(e.target.value)}
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder:text-white/30 outline-none focus:ring-1 focus:ring-[#b31b1b]/50"
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={loginPassword}
+                onChange={e => setLoginPassword(e.target.value)}
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder:text-white/30 outline-none focus:ring-1 focus:ring-[#b31b1b]/50"
+              />
+              <button
+                type="submit"
+                disabled={loginLoading || !loginUsername.trim() || !loginPassword.trim()}
+                className="w-full px-6 py-3 bg-[#b31b1b] hover:bg-[#d32f2f] text-white rounded-lg font-medium transition-all disabled:opacity-50"
+              >
+                {loginLoading ? 'Signing in…' : 'Sign in'}
+              </button>
+            </form>
           </div>
 
           <div className="mt-6 text-center text-sm text-[#999]">

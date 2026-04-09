@@ -34,6 +34,7 @@ export default function BookmarkButton({
 
     const token = localStorage.getItem('token');
     if (!token) {
+      try { localStorage.setItem('pendingBookmark', JSON.stringify({ itemId, itemType })); } catch {}
       router.push('/login?redirect=%2Fprofile%3Ftab%3Dsaved%26onboarding%3Dbookmark');
       return;
     }
@@ -57,6 +58,7 @@ export default function BookmarkButton({
       if (err?.response?.status === 403 && err?.response?.data?.upgrade) {
         setShowUpgrade(true);
       } else if (err?.response?.status === 401) {
+        try { localStorage.setItem('pendingBookmark', JSON.stringify({ itemId, itemType })); } catch {}
         router.push('/login?redirect=%2Fprofile%3Ftab%3Dsaved%26onboarding%3Dbookmark');
       }
     } finally {
