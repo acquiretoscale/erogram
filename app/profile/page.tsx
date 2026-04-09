@@ -8,7 +8,7 @@ import { ToastProvider, useToast } from '@/components/Toast';
 import SavedTab from './SavedTab';
 import VaultTab from './VaultTab';
 import SavedModelsTab from './SavedModelsTab';
-import { VickyFloatingChat } from '@/app/profile1/page';
+import VickyFloatingChat from '@/app/profile1/VickyFloatingChat';
 import FeatureSuggestionsTab from '@/app/profile1/FeatureSuggestionsTab';
 
 type Tab = 'home' | 'saved' | 'models' | 'vault' | 'settings' | 'suggestions';
