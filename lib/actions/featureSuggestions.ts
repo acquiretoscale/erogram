@@ -66,7 +66,7 @@ export async function getSuggestions(token: string | null, page = 1, sort: 'top'
   const limit = 20;
   const skip = (page - 1) * limit;
 
-  const sortObj = sort === 'new' ? { createdAt: -1 as const } : { upvoteCount: -1 as const, createdAt: -1 as const };
+  const sortObj: Record<string, 1 | -1> = sort === 'new' ? { createdAt: -1 } : { upvoteCount: -1, createdAt: -1 };
 
   const [items, total] = await Promise.all([
     FeatureSuggestion.find().sort(sortObj).skip(skip).limit(limit).lean(),
