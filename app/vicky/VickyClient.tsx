@@ -103,7 +103,7 @@ export default function VickyClient() {
           </button>
           <div className="relative">
             <img src="/assets/vicky-ai-avatar.jpg" alt="Vicky AI" className="w-12 h-12 rounded-full ring-2 ring-white/20" style={{ objectFit: 'cover', objectPosition: '50% 65%' }} />
-            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 ring-2" style={{ ringColor: '#0a0f1e' }} />
+            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 ring-2 ring-[#0a0f1e]" />
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-sm font-black text-white leading-tight">Vicky AI</h1>
@@ -146,7 +146,7 @@ export default function VickyClient() {
             className="w-12 h-12 rounded-full ring-2 ring-amber-400/30"
             style={{ objectFit: 'cover', objectPosition: '50% 65%' }}
           />
-          <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 ring-2" style={{ ringColor: '#0a0f1e' }} />
+          <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 ring-2 ring-[#0a0f1e]" />
         </div>
         <div className="flex-1 min-w-0">
           <h1 className="text-sm font-black text-white leading-tight">Vicky AI</h1>
