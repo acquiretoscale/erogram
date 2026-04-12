@@ -4,13 +4,24 @@ import { writeFile, readFile, unlink } from 'fs/promises';
 import path from 'path';
 import { uploadToR2, isR2Configured } from '@/lib/r2';
 
-/* eslint-disable @typescript-eslint/no-require-imports */
-const ffmpeg = require('fluent-ffmpeg');
-const { path: ffmpegPath } = require('@ffmpeg-installer/ffmpeg');
-ffmpeg.setFfmpegPath(ffmpegPath);
-
 const ALLOWED_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 const TARGET_SIZE = 10 * 1024 * 1024; // 10 MB
+
+let ffmpegLoaded = false;
+let ffmpeg: any = null;
+
+function loadFfmpeg() {
+  if (ffmpegLoaded) return;
+  try {
+    /* eslint-disable @typescript-eslint/no-require-imports */
+    ffmpeg = require('fluent-ffmpeg');
+    const { path: ffmpegPath } = require('@ffmpeg-installer/ffmpeg');
+    ffmpeg.setFfmpegPath(ffmpegPath);
+    ffmpegLoaded = true;
+  } catch {
+    ffmpeg = null;
+  }
+}
 
 function compressVideo(inputPath: string, outputPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -41,6 +52,8 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;
+    const folder = formData.get('folder') as string | null;
+    const isOnlygram = folder === 'onlygram';
 
     if (!file) {
       return NextResponse.json({ message: 'No file uploaded' }, { status: 400 });
@@ -62,18 +75,24 @@ export async function POST(req: NextRequest) {
 
     let finalBuffer: Buffer;
     let key: string;
+    const prefix = isOnlygram ? 'onlygram/videos' : 'campaigns/videos';
 
-    if (rawBuffer.length <= TARGET_SIZE) {
-      // Already under 10 MB — upload as-is
+    if (!isOnlygram || rawBuffer.length <= TARGET_SIZE) {
       const ext = file.type === 'video/quicktime' ? 'mov' : file.type.split('/')[1];
-      key = `onlygram/videos/${id}.${ext}`;
+      key = `${prefix}/${id}.${ext}`;
       finalBuffer = rawBuffer;
     } else {
-      // Compress with ffmpeg
-      await writeFile(inputPath, rawBuffer);
-      await compressVideo(inputPath, outputPath);
-      finalBuffer = await readFile(outputPath);
-      key = `onlygram/videos/${id}.mp4`;
+      loadFfmpeg();
+      if (!ffmpeg) {
+        const ext = file.type === 'video/quicktime' ? 'mov' : file.type.split('/')[1];
+        key = `${prefix}/${id}.${ext}`;
+        finalBuffer = rawBuffer;
+      } else {
+        await writeFile(inputPath, rawBuffer);
+        await compressVideo(inputPath, outputPath);
+        finalBuffer = await readFile(outputPath);
+        key = `${prefix}/${id}.mp4`;
+      }
     }
 
     const url = await uploadToR2(finalBuffer, key, 'video/mp4');
@@ -86,7 +105,6 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   } finally {
-    // Clean up temp files
     unlink(inputPath).catch(() => {});
     unlink(outputPath).catch(() => {});
   }

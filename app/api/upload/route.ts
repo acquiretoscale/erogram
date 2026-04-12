@@ -11,6 +11,7 @@ export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData();
         const file = formData.get('file') as File;
+        const folder = formData.get('folder') as string | null;
 
         if (!file) {
             return NextResponse.json(
@@ -36,7 +37,8 @@ export async function POST(req: NextRequest) {
 
         if (isGif) {
             finalBuffer = buffer;
-            key = `onlygram/images/${randomUUID()}.gif`;
+            const prefix = folder === 'onlygram' ? 'onlygram/images' : 'uploads';
+            key = `${prefix}/${randomUUID()}.gif`;
             mime = 'image/gif';
         } else {
             let compressed = await sharp(buffer)
@@ -58,7 +60,8 @@ export async function POST(req: NextRequest) {
                     .webp({ quality: 45 })
                     .toBuffer();
             }
-            key = `onlygram/images/${randomUUID()}.webp`;
+            const prefix = folder === 'onlygram' ? 'onlygram/images' : 'uploads';
+            key = `${prefix}/${randomUUID()}.webp`;
             mime = 'image/webp';
             finalBuffer = compressed;
         }

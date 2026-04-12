@@ -532,6 +532,7 @@ function CreatorPage({ slug }: { slug: string }) {
       try {
         const fd = new FormData();
         fd.append('file', file);
+        fd.append('folder', 'onlygram');
         const endpoint = isVideo ? '/api/upload/video' : '/api/upload';
         const res = await axios.post(endpoint, fd);
         const url = res.data.url;
@@ -541,6 +542,7 @@ function CreatorPage({ slug }: { slug: string }) {
             const blob = await (await fetch(uploadThumbs[i])).blob();
             const tfd = new FormData();
             tfd.append('file', new File([blob], 'thumb.jpg', { type: 'image/jpeg' }));
+            tfd.append('folder', 'onlygram');
             const tres = await axios.post('/api/upload', tfd);
             thumb = tres.data.url;
           } catch {}
@@ -709,6 +711,7 @@ function CreatorPage({ slug }: { slug: string }) {
               try {
                 const fd = new FormData();
                 fd.append('file', f);
+                fd.append('folder', 'onlygram');
                 const res = await axios.post('/api/upload', fd);
                 if (res.data.url) setEditDraft(d => ({ ...d, cover: res.data.url }));
               } catch {}
@@ -739,6 +742,7 @@ function CreatorPage({ slug }: { slug: string }) {
               try {
                 const fd = new FormData();
                 fd.append('file', f);
+                fd.append('folder', 'onlygram');
                 const res = await axios.post('/api/upload', fd);
                 if (res.data.url) setEditDraft(d => ({ ...d, avatar: res.data.url }));
               } catch {}
@@ -1565,6 +1569,7 @@ function PostCard({
       try {
         const fd = new FormData();
         fd.append('file', file);
+        fd.append('folder', 'onlygram');
         const endpoint = isVideo ? '/api/upload/video' : '/api/upload';
         const res = await axios.post(endpoint, fd);
         setEditMedia(prev => [...prev, { type: isVideo ? 'video' : 'photo', url: res.data.url }]);
@@ -1589,6 +1594,7 @@ function PostCard({
       const blob = await (await fetch(dataUrl)).blob();
       const fd = new FormData();
       fd.append('file', new File([blob], 'thumb.jpg', { type: 'image/jpeg' }));
+      fd.append('folder', 'onlygram');
       const res = await axios.post('/api/upload', fd);
       setEditMedia(prev => prev.map((m, i) => i === idx ? { ...m, thumb: res.data.url } : m));
       setThumbPicking(null);
