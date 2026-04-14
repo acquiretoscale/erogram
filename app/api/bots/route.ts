@@ -3,8 +3,7 @@ import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import { Bot, User } from '@/lib/models';
 import { slugify } from '@/lib/utils/slugify';
-import fs from 'fs';
-import path from 'path';
+import { uploadToR2, isR2Configured } from '@/lib/r2';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -244,18 +243,14 @@ export async function POST(req: NextRequest) {
 
     const defaultImage = process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png';
     let finalImage = defaultImage;
-    if (image?.startsWith('data:image/')) {
+    if (image?.startsWith('data:image/') && isR2Configured()) {
       const base64Match = image.match(/^data:image\/(\w+);base64,(.+)$/);
       if (base64Match?.[2]) {
         const ext = base64Match[1].replace('jpeg', 'jpg');
         const buffer = Buffer.from(base64Match[2], 'base64');
-        const filename = `${slug}.${ext}`;
-        const relativePath = `/uploads/bots/${filename}`;
-        const absolutePath = path.join(process.cwd(), 'public/uploads/bots', filename);
-        const dir = path.dirname(absolutePath);
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        fs.writeFileSync(absolutePath, buffer);
-        finalImage = relativePath;
+        const key = `bots/${slug}.${ext}`;
+        const contentType = `image/${base64Match[1]}`;
+        finalImage = await uploadToR2(buffer, key, contentType);
       }
     } else if (image && image !== defaultImage && image !== '/assets/image.jpg') {
       finalImage = image;
