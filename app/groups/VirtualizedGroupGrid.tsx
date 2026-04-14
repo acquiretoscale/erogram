@@ -14,7 +14,7 @@ interface VirtualizedGroupGridProps {
     vaultTeaserGroups?: VaultTeaserItem[];
 }
 
-type Item = { type: 'group' | 'campaign' | 'vault-teaser'; data: Group | FeedCampaign | null; index: number };
+type Item = { type: 'group' | 'campaign' | 'vault-teaser' | 'vault-group'; data: Group | FeedCampaign | null; index: number };
 
 // In-feed ad slot layout (by group count, 0-indexed):
 //   Slot 2 → after 2 groups  (gc=2)   — one-time fixed
@@ -29,8 +29,9 @@ const LOOP_GAP = 5;
 
 const VAULT_TEASER_GC = 7;
 const VAULT_TEASER_REPEAT = 20;
+const VAULT_GROUP_EVERY = 7;
 
-function buildFeedItems(groups: Group[], campaigns: FeedCampaign[], hasVaultTeaser: boolean): Item[] {
+function buildFeedItems(groups: Group[], campaigns: FeedCampaign[], hasVaultTeaser: boolean, vaultGroups: VaultTeaserItem[] = []): Item[] {
     const items: Item[] = [];
     if (campaigns.length === 0 && !hasVaultTeaser) {
         return groups.map((g, i) => ({ type: 'group' as const, data: g, index: i }));
@@ -46,6 +47,7 @@ function buildFeedItems(groups: Group[], campaigns: FeedCampaign[], hasVaultTeas
     let groupCount = 0;
     let slot4Idx = 0;
     let vaultInserted = false;
+    let vaultGroupIdx = 0;
 
     while (groupIdx < groups.length) {
         if (hasVaultTeaser && groupCount === VAULT_TEASER_GC && !vaultInserted) {
@@ -55,6 +57,13 @@ function buildFeedItems(groups: Group[], campaigns: FeedCampaign[], hasVaultTeas
 
         if (hasVaultTeaser && vaultInserted && groupCount > VAULT_TEASER_GC && (groupCount - VAULT_TEASER_GC) % VAULT_TEASER_REPEAT === 0) {
             items.push({ type: 'vault-teaser', data: null, index: items.length });
+        }
+
+        if (vaultGroups.length > 0 && groupCount > 0 && groupCount % VAULT_GROUP_EVERY === 0) {
+            const vg = vaultGroups[vaultGroupIdx % vaultGroups.length];
+            const asGroup: Group = { _id: vg._id, name: vg.name, slug: '', category: vg.category, country: vg.country || '', description: '', image: vg.image, memberCount: vg.memberCount };
+            items.push({ type: 'vault-group', data: asGroup, index: items.length });
+            vaultGroupIdx++;
         }
 
         if (groupCount === SLOT2_GC && slot2.length > 0) {
@@ -93,11 +102,11 @@ const VirtualizedGroupGrid = React.memo(function VirtualizedGroupGrid({
     vaultTeaserGroups = [],
 }: VirtualizedGroupGridProps) {
     const hasVault = vaultTeaserGroups.length > 0;
-    const [items, setItems] = useState<Item[]>(() => buildFeedItems(groups, feedCampaigns, hasVault));
+    const [items, setItems] = useState<Item[]>(() => buildFeedItems(groups, feedCampaigns, hasVault, vaultTeaserGroups));
 
     useEffect(() => {
-        setItems(buildFeedItems(groups, feedCampaigns, hasVault));
-    }, [groups, feedCampaigns, hasVault]);
+        setItems(buildFeedItems(groups, feedCampaigns, hasVault, vaultTeaserGroups));
+    }, [groups, feedCampaigns, hasVault, vaultTeaserGroups]);
 
     return (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
@@ -107,6 +116,17 @@ const VirtualizedGroupGrid = React.memo(function VirtualizedGroupGrid({
                         <VaultTeaserFeed
                             key={`vault-teaser-${idx}`}
                             items={vaultTeaserGroups}
+                        />
+                    );
+                }
+                if (item.type === 'vault-group') {
+                    const groupData = item.data as Group;
+                    return (
+                        <GroupCard
+                            key={`vault-group-${groupData._id}-${idx}`}
+                            group={groupData}
+                            isIndex={Math.floor(item.index)}
+                            lockedPremium
                         />
                     );
                 }

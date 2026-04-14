@@ -240,7 +240,7 @@ function buildSvgPath(data: number[], maxVal: number, w: number, h: number, pad 
 /* ═══════════════════════════════════════════════════════════════ */
 /* AUTH GATE                                                      */
 /* ═══════════════════════════════════════════════════════════════ */
-function AuthGate() {
+function AuthGate({ onSuccess }: { onSuccess: () => void }) {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -262,10 +262,10 @@ function AuthGate() {
         setLoading(false);
         return;
       }
-      document.cookie = `admin_token=${res.data.token}; path=/; SameSite=Strict; Secure; max-age=86400`;
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('isAdmin', 'true');
-      window.location.reload();
+      localStorage.setItem('username', res.data.username);
+      onSuccess();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed');
       setLoading(false);
@@ -317,8 +317,17 @@ function AuthGate() {
 /* ═══════════════════════════════════════════════════════════════ */
 /* MAIN PAGE                                                      */
 /* ═══════════════════════════════════════════════════════════════ */
-export default function EnzoGonzoClient({ requireAuth, slug = 'enzogonzo' }: { requireAuth: boolean; slug?: string }) {
-  if (requireAuth) return <AuthGate />;
+export default function EnzoGonzoClient({ requireAuth: _requireAuth, slug = 'enzogonzo' }: { requireAuth: boolean; slug?: string }) {
+  const [authed, setAuthed] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const isAdmin = localStorage.getItem('isAdmin');
+    const username = localStorage.getItem('username');
+    if (token && isAdmin === 'true' && username === 'eros') setAuthed(true);
+  }, []);
+
+  if (!authed) return <AuthGate onSuccess={() => setAuthed(true)} />;
   return <CreatorPage slug={slug} />;
 }
 

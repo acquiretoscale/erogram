@@ -15,9 +15,10 @@ interface GroupCardProps {
     isBookmarked?: boolean;
     bookmarkId?: string | null;
     itemType?: 'group' | 'bot';
+    lockedPremium?: boolean;
 }
 
-export default function GroupCard({ group, isFeatured = false, isIndex = 0, shouldPreload = false, onVisible, onOpenReviewModal, onOpenReportModal, isBookmarked = false, bookmarkId = null, itemType = 'group' }: GroupCardProps) {
+export default function GroupCard({ group, isFeatured = false, isIndex = 0, shouldPreload = false, onVisible, onOpenReviewModal, onOpenReportModal, isBookmarked = false, bookmarkId = null, itemType = 'group', lockedPremium = false }: GroupCardProps) {
     const [isHovered, setIsHovered] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
     const [deleted, setDeleted] = useState(false);
@@ -145,9 +146,11 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                 )}
             </div>
 
-            <div className={`glass rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col backdrop-blur-xl border transition-all duration-500 group ${isFeatured
-                ? 'border-yellow-500/30 shadow-[0_0_30px_rgba(234,179,8,0.1)] hover:border-yellow-500/60 hover:shadow-[0_0_50px_rgba(234,179,8,0.2)]'
-                : 'border-white/5 hover:border-white/20 hover:shadow-2xl hover:shadow-black/50'
+            <div className={`glass rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col backdrop-blur-xl border transition-all duration-500 group ${lockedPremium
+                ? 'border-yellow-500/50 shadow-[0_0_20px_rgba(201,151,58,0.25)] hover:border-yellow-500/80 hover:shadow-[0_0_35px_rgba(201,151,58,0.4)]'
+                : isFeatured
+                    ? 'border-yellow-500/30 shadow-[0_0_30px_rgba(234,179,8,0.1)] hover:border-yellow-500/60 hover:shadow-[0_0_50px_rgba(234,179,8,0.2)]'
+                    : 'border-white/5 hover:border-white/20 hover:shadow-2xl hover:shadow-black/50'
                 }`}>
 
                 {/* Group Image */}
@@ -173,8 +176,22 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent opacity-80" />
 
+                    {lockedPremium && (
+                        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 backdrop-blur-[2px]">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70">
+                                <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                            </svg>
+                        </div>
+                    )}
+
                     {/* Badges */}
-                    <div className="absolute top-3 left-3 flex gap-2 flex-wrap">
+                    <div className="absolute top-3 left-3 flex gap-2 flex-wrap z-20">
+                        {lockedPremium && (
+                            <div className="text-[10px] font-black px-2 py-1 rounded-md shadow-lg uppercase tracking-wider flex items-center gap-1" style={{ background: 'linear-gradient(135deg, #fb5607, #ffbe0b)', color: '#1a0800' }}>
+                                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                Premium
+                            </div>
+                        )}
                         {itemType === 'bot' && (
                             <div className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-[10px] font-black px-2 py-1 rounded-md shadow-lg uppercase tracking-wider flex items-center gap-1">
                                 <span>🤖</span> Bot
@@ -192,21 +209,23 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                         )}
                     </div>
 
-                    {/* Stats Overlay */}
-                    <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end">
-                        <div className="flex gap-2 flex-wrap">
-                            <div className="bg-black/60 backdrop-blur-md border border-white/10 px-2 py-1 rounded-lg flex items-center gap-1.5">
-                                <span className="text-xs">👁️</span>
-                                <span className="text-xs font-bold text-white">{(group.views || 0).toLocaleString()}</span>
-                            </div>
-                            {(group.memberCount || 0) > 0 && (
+                    {/* Stats Overlay — hidden on premium locked cards */}
+                    {!lockedPremium && (
+                        <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end">
+                            <div className="flex gap-2 flex-wrap">
                                 <div className="bg-black/60 backdrop-blur-md border border-white/10 px-2 py-1 rounded-lg flex items-center gap-1.5">
-                                    <span className="text-xs">👥</span>
-                                    <span className="text-xs font-bold text-white">{group.memberCount?.toLocaleString()}</span>
+                                    <span className="text-xs">👁️</span>
+                                    <span className="text-xs font-bold text-white">{(group.views || 0).toLocaleString()}</span>
                                 </div>
-                            )}
+                                {(group.memberCount || 0) > 0 && (
+                                    <div className="bg-black/60 backdrop-blur-md border border-white/10 px-2 py-1 rounded-lg flex items-center gap-1.5">
+                                        <span className="text-xs">👥</span>
+                                        <span className="text-xs font-bold text-white">{group.memberCount?.toLocaleString()}</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
 
                 {/* Card Content */}
@@ -271,24 +290,33 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
 
                         {/* Main Button */}
                         <a
-                            href={group.isAdvertisement && group.advertisementUrl
-                                ? `/redirect.html?url=${encodeURIComponent(group.advertisementUrl)}&group=${group._id}`
-                                : itemType === 'bot'
-                                    ? `/bots/${group.slug}`
-                                    : `/${group.slug}`}
+                            href={lockedPremium
+                                ? '/premium'
+                                : group.isAdvertisement && group.advertisementUrl
+                                    ? `/redirect.html?url=${encodeURIComponent(group.advertisementUrl)}&group=${group._id}`
+                                    : itemType === 'bot'
+                                        ? `/bots/${group.slug}`
+                                        : `/${group.slug}`}
                             target="_blank"
                             rel={group.isAdvertisement ? "sponsored noopener noreferrer" : "noopener noreferrer"}
-                            className={`group/btn relative flex items-center justify-center w-full overflow-hidden rounded-xl py-2.5 sm:py-3.5 px-3 sm:px-4 font-black text-white shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${isFeatured
-                                ? 'bg-gradient-to-r from-yellow-500 to-red-600 hover:shadow-orange-500/40'
-                                : itemType === 'bot'
-                                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:shadow-cyan-500/40'
-                                    : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-blue-500/40'
+                            className={`group/btn relative flex items-center justify-center w-full overflow-hidden rounded-xl py-2.5 sm:py-3.5 px-3 sm:px-4 font-black text-white shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${lockedPremium
+                                ? 'hover:shadow-orange-500/40'
+                                : isFeatured
+                                    ? 'bg-gradient-to-r from-yellow-500 to-red-600 hover:shadow-orange-500/40'
+                                    : itemType === 'bot'
+                                        ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:shadow-cyan-500/40'
+                                        : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-blue-500/40'
                                 }`}
+                            style={lockedPremium ? { background: 'linear-gradient(135deg, #fb5607, #ffbe0b)', color: '#1a0800' } : undefined}
                         >
                             <div className="absolute inset-0 bg-white/20 opacity-0 transition-opacity duration-300 group-hover/btn:opacity-100" />
 
                             <span className={`relative flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm uppercase tracking-wider`}>
-                                {group.isAdvertisement ? (
+                                {lockedPremium ? (
+                                    <>
+                                        <span className="text-base sm:text-lg">🔒</span> Unlock Premium
+                                    </>
+                                ) : group.isAdvertisement ? (
                                     <>
                                         <span>🔗</span> Visit
                                     </>

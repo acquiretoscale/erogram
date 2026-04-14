@@ -55,8 +55,8 @@ export default function robots(): MetadataRoute.Robots {
     ],
     sitemap: [
       `${baseUrl}/sitemap.xml`,
-      `${baseUrl}/onlyfanssearch/sitemap.xml`,
-      `${baseUrl}/ainsfw/sitemap.xml`,
+      `${baseUrl}/sitemapof.xml`,
+      `${baseUrl}/sitemapAInsfw.xml`,
     ],
   };
 }

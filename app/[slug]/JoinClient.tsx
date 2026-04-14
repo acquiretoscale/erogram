@@ -100,10 +100,6 @@ interface PopupAdvert {
   button3Url?: string;
 }
 
-const DEFAULT_JOIN_CTA = {
-  destinationUrl: 'https://lovescape.com/create-ai-sex-girlfriend/style?userId=5ebe4f139af9bcff39155f3e9f06fbce233415fd82fd4da2a9c51ea0921d4c0e&sourceId=Erogram&creativeId=6step_hent&p1=test',
-  description: 'Build your own AI girlfriend 💖',
-};
 
 function VaultTeaserBlock({ items }: { items: VaultTeaserItem[] }) {
   const fmtNum = (n: number) => n >= 1_000_000 ? (n/1_000_000).toFixed(1)+'M' : n >= 1_000 ? (n/1_000).toFixed(n>=10_000?0:1)+'K' : n > 0 ? String(n) : null;
@@ -814,24 +810,76 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                   </div>
                 )}
 
-                <div className="mt-6 border-t border-white/5 pt-6 space-y-3">
-                  <a
-                    href={joinCtaCampaign?.destinationUrl ?? DEFAULT_JOIN_CTA.destinationUrl}
-                    target="_blank"
-                    rel="sponsored noopener noreferrer"
-                    onClick={() => joinCtaCampaign?._id && trackCampaignClick(joinCtaCampaign._id)}
-                    className="block w-full text-center bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 hover:from-purple-500 hover:via-pink-500 hover:to-rose-500 text-white font-bold py-4 rounded-2xl text-lg shadow-lg shadow-purple-900/20 transition-all transform hover:-translate-y-0.5"
-                  >
-                    {(joinCtaCampaign?.description || joinCtaCampaign?.buttonText) || DEFAULT_JOIN_CTA.description}
-                  </a>
+                <div className="mt-6 border-t border-white/5 pt-6">
+                  <div className="rounded-2xl border-2 border-orange-500/70 bg-[#0d0d0d] p-5 text-center space-y-4 shadow-[0_0_18px_rgba(249,115,22,0.2)]">
+                    <a
+                      href="/premium"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full text-center font-black py-5 rounded-2xl text-lg uppercase tracking-widest transition-all duration-150 transform hover:-translate-y-1 hover:brightness-110 active:translate-y-0"
+                      style={{ background: 'linear-gradient(180deg,#4ade80 0%,#16a34a 100%)', color: '#fff', border: '2.5px solid #15803d', boxShadow: '0 0 0 1px #bbf7d0, 0 0 24px 6px rgba(74,222,128,0.55), 0 6px 0 #14532d', textShadow: '0 1px 3px rgba(0,0,0,0.5)', letterSpacing: '0.08em' }}
+                    >
+                      🔒 UNLOCK 4000 UNLISTED PREMIUM GROUPS
+                    </a>
+
+                    <div className="space-y-1.5 text-left max-w-md mx-auto">
+                      <p className="text-base font-bold">
+                        <span style={{ background: '#b91c1c', color: '#fff', padding: '2px 6px', borderRadius: '2px', boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' as any }}>Access Instantly Over 4000 unlisted groups</span>
+                      </p>
+                      <ul className="text-sm font-medium space-y-1.5">
+                        <li><span style={{ background: '#b91c1c', color: '#fff', padding: '2px 6px', borderRadius: '2px', boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' as any }}>• Organized by categories, total subs, and country.</span></li>
+                        <li><span style={{ background: '#b91c1c', color: '#fff', padding: '2px 6px', borderRadius: '2px', boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' as any }}>• Unlimited Bookmarking &amp; folders.</span></li>
+                        <li><span style={{ background: '#b91c1c', color: '#fff', padding: '2px 6px', borderRadius: '2px', boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' as any }}>• Enhanced filtering, Vicky AI to find faster what you&apos;re looking for &amp; Much more.</span></li>
+                      </ul>
+                    </div>
+
+                    {vaultTeaser.length > 0 && (
+                      <div className="grid grid-cols-3 gap-1.5 py-2">
+                        {vaultTeaser.slice(0, 12).map((g) => {
+                          const cats = g.vaultCategories && g.vaultCategories.length > 0 ? g.vaultCategories : [g.category];
+                          const fmt = g.memberCount >= 1_000_000 ? (g.memberCount/1_000_000).toFixed(1)+'M' : g.memberCount >= 1_000 ? (g.memberCount/1_000).toFixed(g.memberCount>=10_000?0:1)+'K' : g.memberCount > 0 ? String(g.memberCount) : null;
+                          return (
+                            <div
+                              key={g._id}
+                              className="relative rounded-lg flex items-center gap-2 px-2 py-1.5 select-none"
+                              style={{ background: '#ffffff', border: '1px solid rgba(249,115,22,0.3)' }}
+                            >
+                              <div className="shrink-0 w-8 h-8 rounded-md overflow-hidden border border-orange-200">
+                                <img src={g.image || '/assets/placeholder-no-image.png'} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-bold text-[10px] truncate leading-tight mb-0.5 select-none pointer-events-none" aria-hidden="true">
+                                  <span className="text-black">{g.name.slice(0, 4)}</span><span style={{ filter: 'blur(4px)', color: '#000' }}>{g.name.slice(4) || '····'}</span>
+                                </div>
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  {cats.map((c: string, i: number) => (
+                                    <span key={c} className="text-[7px] font-black uppercase tracking-[0.06em] px-1 py-0.5 rounded shrink-0" style={{ background: i === 0 ? '#fff7ed' : '#f5f5f5', border: '1px solid rgba(249,115,22,0.2)', color: i === 0 ? '#ea580c' : '#9a3412' }}>{c}</span>
+                                  ))}
+                                  {fmt && <span className="text-[8px] font-semibold shrink-0 text-gray-400">· {fmt}</span>}
+                                </div>
+                              </div>
+                              <svg className="shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(249,115,22,0.4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                              </svg>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <a
+                      href="/premium"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full text-center font-black py-5 rounded-2xl text-xl uppercase tracking-widest transition-all duration-150 transform hover:-translate-y-1 hover:brightness-110 active:translate-y-0"
+                      style={{ background: 'linear-gradient(180deg,#4ade80 0%,#16a34a 100%)', color: '#fff', border: '2.5px solid #15803d', boxShadow: '0 0 0 1px #bbf7d0, 0 0 28px 8px rgba(74,222,128,0.6), 0 6px 0 #14532d', textShadow: '0 1px 3px rgba(0,0,0,0.5)', letterSpacing: '0.08em' }}
+                    >
+                      🔒 UNLOCK EROGRAM PREMIUM
+                    </a>
+                    <p className="text-xs text-white/50 mt-2">Over 60 categories · Updated regularly</p>
+                  </div>
                 </div>
 
-                {/* Premium Vault Teaser — same as in-feed version */}
-                {vaultTeaser.length > 0 && (
-                  <div className="mt-6">
-                    <VaultTeaserFeed items={vaultTeaser} />
-                  </div>
-                )}
 
               </div>
               )}
