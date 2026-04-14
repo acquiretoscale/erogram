@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import generateSitemap from '@/app/onlyfanssearch/sitemap';
 
-function toXml(entries: { url: string; lastModified?: Date; changeFrequency?: string; priority?: number }[]) {
+function toXml(entries: { url: string; lastModified?: string | Date; changeFrequency?: string; priority?: number }[]) {
   const urls = entries
     .map((e) => {
       let node = `  <url>\n    <loc>${e.url}</loc>`;
-      if (e.lastModified) node += `\n    <lastmod>${e.lastModified.toISOString()}</lastmod>`;
+      if (e.lastModified) node += `\n    <lastmod>${new Date(e.lastModified).toISOString()}</lastmod>`;
       if (e.changeFrequency) node += `\n    <changefreq>${e.changeFrequency}</changefreq>`;
       if (e.priority != null) node += `\n    <priority>${e.priority}</priority>`;
       node += '\n  </url>';
