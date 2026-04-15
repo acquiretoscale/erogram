@@ -2,10 +2,10 @@
 
 import { useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { Upload, X, CheckCircle2, AlertCircle, Loader2, Star, Send, Search, Users, Heart, Image, Film, FileText, MapPin, DollarSign, Calendar, Globe, ShieldCheck, Layers, Zap, Crown } from 'lucide-react';
+import { Upload, X, CheckCircle2, AlertCircle, Loader2, Star, Send, Search, Users, Heart, Image, Film, FileText, MapPin, DollarSign, Calendar, Globe, ShieldCheck, Layers } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { submitCreator, searchCreatorByUsername, fetchCreatorFromApify, createFeaturedCreatorInvoice } from '@/lib/actions/submitCreator';
+import { submitCreator, searchCreatorByUsername, fetchCreatorFromApify } from '@/lib/actions/submitCreator';
 import type { CreatorLookupResult } from '@/lib/actions/submitCreator';
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
 
@@ -62,7 +62,6 @@ export default function SubmitCreatorPage() {
   const [fetchedImages, setFetchedImages] = useState<{ url: string; label: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [submittingFeatured, setSubmittingFeatured] = useState(false);
   const [result, setResult] = useState<{ success: boolean; slug?: string; id?: string; error?: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -271,64 +270,6 @@ export default function SubmitCreatorPage() {
     }
   };
 
-  const handleSubmitFeatured = async () => {
-    if (!isValid || submitting || submittingFeatured) return;
-
-    setSubmittingFeatured(true);
-    setResult(null);
-
-    try {
-      setUploading(true);
-      const uploadedUrls = await Promise.all(photos.map((p) => uploadPhoto(p.file)));
-      setUploading(false);
-
-      const allPhotoUrls = [
-        ...fetchedImages.map((fi) => fi.url),
-        ...uploadedUrls,
-      ];
-
-      const res = await submitCreator({
-        name: name.trim(),
-        onlyfansUrl: onlyfansUrl.trim(),
-        website: website.trim(),
-        description: description.trim(),
-        photoUrls: allPhotoUrls,
-        instagram: instagram.trim(),
-        twitter: twitter.trim(),
-        telegram: telegram.trim(),
-        tiktok: tiktok.trim(),
-        location: location.trim(),
-        categories,
-        price: price.trim(),
-        ...(fetchedProfile ? {
-          subscriberCount: fetchedProfile.subscriberCount,
-          likesCount: fetchedProfile.likesCount,
-          photosCount: fetchedProfile.photosCount,
-          videosCount: fetchedProfile.videosCount,
-          postsCount: fetchedProfile.postsCount,
-        } : {}),
-      });
-
-      if (!res.success || !res.id) {
-        setResult({ success: false, error: res.error || 'Failed to create profile.' });
-        return;
-      }
-
-      const invoiceRes = await createFeaturedCreatorInvoice(res.id);
-      if (invoiceRes.error || !invoiceRes.url) {
-        setResult({ success: true, slug: res.slug, id: res.id, error: invoiceRes.error });
-        return;
-      }
-
-      window.location.href = invoiceRes.url;
-    } catch (err: any) {
-      setResult({ success: false, error: err.message || 'Something went wrong.' });
-    } finally {
-      setSubmittingFeatured(false);
-      setUploading(false);
-    }
-  };
-
   const isValid = name.trim() && onlyfansUrl.trim() && description.trim().length >= 20 && hasImages && categories.length > 0;
 
   return (
@@ -373,55 +314,6 @@ export default function SubmitCreatorPage() {
               </div>
             </div>
 
-            {result.id && (
-              <button
-                type="button"
-                onClick={async () => {
-                  setSubmittingFeatured(true);
-                  try {
-                    const invoiceRes = await createFeaturedCreatorInvoice(result.id!);
-                    if (invoiceRes.url) {
-                      window.location.href = invoiceRes.url;
-                    } else {
-                      setResult((prev) => prev ? { ...prev, error: invoiceRes.error } : prev);
-                    }
-                  } finally {
-                    setSubmittingFeatured(false);
-                  }
-                }}
-                disabled={submittingFeatured}
-                className="w-full flex items-center justify-between gap-4 px-6 py-5 rounded-2xl transition-all disabled:opacity-60 active:translate-y-[2px]"
-                style={{
-                  background: 'linear-gradient(160deg, #1a0a00 0%, #3d1800 30%, #6b2f00 60%, #FF6A00 100%)',
-                  border: '3px solid #FF6A00',
-                  boxShadow: '5px 5px 0px #FF6A00',
-                }}
-              >
-                {submittingFeatured ? (
-                  <div className="w-full flex items-center justify-center gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin text-white" />
-                    <span className="text-[15px] font-black uppercase tracking-widest text-white">{t('submitCreator.creatingPayment')}</span>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-[#FF6A00]/30 flex items-center justify-center shrink-0">
-                        <Crown className="w-5 h-5 text-[#FFB800]" />
-                      </div>
-                      <div className="text-left leading-tight">
-                        <span className="block text-[1.1rem] font-black uppercase tracking-wider text-white">{t('submitCreator.getFeatured')}</span>
-                        <span className="block text-xs font-bold text-orange-300/80 flex items-center gap-1">
-                          <Zap className="w-3 h-3" /> {t('submitCreator.getFeaturedDesc')}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0 leading-tight">
-                      <span className="block text-2xl font-black text-white">$97</span>
-                    </div>
-                  </>
-                )}
-              </button>
-            )}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -739,7 +631,7 @@ export default function SubmitCreatorPage() {
               {/* Submit for FREE */}
               <button
                 type="submit"
-                disabled={!isValid || submitting || submittingFeatured}
+                disabled={!isValid || submitting}
                 className="relative w-full overflow-hidden flex flex-col items-center justify-center gap-0.5 py-5 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:translate-y-[2px]"
                 style={{
                   background: isValid ? 'linear-gradient(135deg, #ffffff 0%, #e8f8ff 100%)' : '#e5e7eb',
@@ -757,76 +649,43 @@ export default function SubmitCreatorPage() {
                 )}
               </button>
 
-              {/* Submit FEATURED */}
-              <button
-                type="button"
-                onClick={handleSubmitFeatured}
-                disabled={submitting || submittingFeatured}
-                className="relative w-full overflow-hidden flex items-center justify-between gap-4 px-6 py-5 transition-all hover:opacity-90 disabled:cursor-not-allowed active:translate-y-[2px]"
-                style={{
-                  background: 'linear-gradient(135deg, #ffffff 0%, #e6f9ff 100%)',
-                  border: '3px solid #00AFF0',
-                  boxShadow: '5px 5px 0px #00AFF0',
-                }}
-              >
-                {submittingFeatured ? (
-                  <span className="flex items-center gap-2 text-[15px] font-black uppercase tracking-widest text-black w-full justify-center">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    {uploading ? t('submitCreator.uploading') : t('submitCreator.creatingPayment')}
-                  </span>
-                ) : (
-                  <>
-                    <span className="text-[1.2rem] font-black uppercase tracking-widest text-black leading-tight">{t('submitCreator.submitFeatured')}</span>
-                    <div className="shrink-0 text-right leading-tight">
-                      <span className="block font-black text-black text-[1.4rem] leading-none">{t('submitCreator.moreExposure')}</span>
-                      <span className="block text-xs font-bold text-[#0090c8] uppercase tracking-widest">{t('submitCreator.forOneMonth')}</span>
-                    </div>
-                  </>
-                )}
-              </button>
+            </div>
 
-              {/* OFM Agencies */}
-              <Link
-                href={lp('/OFM')}
-                className="w-full flex items-center justify-between gap-4 px-6 py-5 transition-all hover:opacity-90 active:translate-x-[2px] active:translate-y-[2px]"
-                style={{
-                  background: 'linear-gradient(160deg, #0c2d4e 0%, #0a3d62 60%, #064e3b 100%)',
-                  border: '3px solid #0ea5e9',
-                  boxShadow: '6px 6px 0px #0ea5e9',
-                }}
-              >
-                <div className="leading-none">
-                  <span className="block text-xs font-black uppercase tracking-widest text-sky-400/70 mb-0.5">{t('submitCreator.forOFM')}</span>
-                  <span
-                    className="block font-black uppercase leading-none text-white"
-                    style={{ fontSize: '3rem', textShadow: '3px 3px 0px rgba(0,0,0,0.5)', lineHeight: 1 }}
-                  >
-                    OFM
-                  </span>
-                  <span
-                    className="block font-black uppercase tracking-tight"
-                    style={{ fontSize: '1rem', color: '#7dd3fc', lineHeight: 1.2 }}
-                  >
-                    {t('submitCreator.ofmAgencies')}
-                  </span>
-                </div>
-
-                <div className="leading-none shrink-0 text-right">
-                  <span className="block text-xs font-black uppercase tracking-widest text-sky-400/70 mb-0.5">{t('submitCreator.getLabel')}</span>
-                  <span
-                    className="block font-black text-white leading-none"
-                    style={{ fontSize: '3.5rem', textShadow: '3px 3px 0px rgba(0,0,0,0.5)', lineHeight: 1 }}
-                  >
-                    100<span style={{ color: '#0ea5e9' }}>×</span>
-                  </span>
-                  <span
-                    className="block font-black uppercase tracking-tight"
-                    style={{ fontSize: '1rem', color: '#7dd3fc', lineHeight: 1.1 }}
-                  >
-                    {t('submitCreator.moreExposure100')}
-                  </span>
-                </div>
-              </Link>
+            <div
+              className="rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-6"
+              style={{
+                background: 'linear-gradient(135deg, #0088cc 0%, #00AFF0 60%, #00c6ff 100%)',
+                boxShadow: '0 4px 24px rgba(0,175,240,0.35)',
+              }}
+            >
+              <div className="shrink-0 w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-2xl">
+                🚀
+              </div>
+              <div className="flex-1 text-center sm:text-left">
+                <p className="text-[11px] font-black uppercase tracking-widest text-white/70 mb-0.5">For OFM Agency Owners</p>
+                <h3 className="text-lg sm:text-xl font-black text-white leading-tight mb-1">
+                  Get 100× More Views with Paid Promotion
+                </h3>
+                <p className="text-sm text-white/90 leading-relaxed">
+                  Interested? Reach out for a custom quote — we'll get your creators in front of the right audience.
+                </p>
+              </div>
+              <div className="shrink-0 flex flex-col gap-2 w-full sm:w-auto">
+                <a
+                  href="mailto:Isabella@erogram.biz"
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white text-[#0088cc] font-black text-sm hover:bg-white/90 transition-all whitespace-nowrap"
+                >
+                  ✉️ Isabella@erogram.biz
+                </a>
+                <a
+                  href="https://t.me/RVN8888"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/15 border border-white/30 text-white font-black text-sm hover:bg-white/25 transition-all whitespace-nowrap"
+                >
+                  ✈️ @RVN8888 on Telegram
+                </a>
+              </div>
             </div>
 
             <p className="text-gray-600 text-xs text-center">

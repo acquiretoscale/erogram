@@ -259,9 +259,9 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                 <span className="text-sm font-medium text-white/80">{t('home.badge', 'The #1 NSFW & Porn Telegram and AI Directory')}</span>
               </div>
               <h1 className={`text-3xl sm:text-5xl md:text-6xl font-black mb-4 sm:mb-8 leading-tight tracking-tight ${animationClasses.fadeInUp}`} style={{ animationDelay: '0.1s' }}>
-                <span className="text-[#f5f5f5]">{t('home.heroTitle1', 'Discover NSFW & Porn Telegram groups,')}</span>
+                <span className="text-[#f5f5f5]">{t('home.heroTitle1', 'Best Telegram Porn & NSFW Groups,')}</span>
                 <span className="block sm:inline"> </span>
-                <span className="gradient-text">{t('home.heroTitle2', 'bots & AI')}</span>
+                <span className="gradient-text">{t('home.heroTitle2', 'Bots & AI Tools Directory')}</span>
               </h1>
             </>
           ) : (
@@ -282,9 +282,9 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                 transition={{ duration: 0.8, ease: [0.2, 0.8, 0.2, 1], delay: 0.1 }}
                 style={{ willChange: 'transform, opacity' }}
               >
-                <span className="text-[#f5f5f5]">{t('home.heroTitle1', 'Discover NSFW & Porn Telegram groups,')}</span>
+                <span className="text-[#f5f5f5]">{t('home.heroTitle1', 'Best Telegram Porn & NSFW Groups,')}</span>
                 <span className="block sm:inline"> </span>
-                <span className="gradient-text">{t('home.heroTitle2', 'bots & AI')}</span>
+                <span className="gradient-text">{t('home.heroTitle2', 'Bots & AI Tools Directory')}</span>
               </motion.h1>
             </>
           )}
@@ -339,10 +339,8 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                 className="relative w-full sm:w-auto px-4 py-2.5 sm:px-5 md:px-8 md:py-4 bg-[#00AFF0] hover:bg-[#009dd9] text-white rounded-lg md:rounded-xl transition-all hover:scale-105 flex items-center justify-center gap-1.5 md:gap-2.5 whitespace-nowrap"
               >
                 <span className="text-[14px] md:text-lg font-semibold">
-                  {t('home.ofSearchLineStart', 'Explore +1.8M ')}
-                  <span className="font-black">{t('home.ofSearchParen', 'OnlyFans')}</span>
+                  <span className="font-black">ONLYFANS SEARCH</span> +1.8M creators
                 </span>
-                <span className="absolute -top-1.5 -right-1.5 px-1 py-0.5 bg-rose-500 text-white text-[8px] font-black uppercase rounded leading-none tracking-wider">BETA</span>
               </button>
             </div>
                       ) : (
@@ -383,10 +381,8 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                 className="relative w-full sm:w-auto px-4 py-2.5 sm:px-5 md:px-8 md:py-4 bg-[#00AFF0] hover:bg-[#009dd9] text-white rounded-lg md:rounded-xl transition-all hover:scale-105 flex items-center justify-center gap-1.5 md:gap-2.5 whitespace-nowrap"
               >
                 <span className="text-[14px] md:text-lg font-semibold">
-                  {t('home.ofSearchLineStart', 'Explore +1.8M ')}
-                  <span className="font-black">{t('home.ofSearchParen', 'OnlyFans')}</span>
+                  <span className="font-black">ONLYFANS SEARCH</span> +1.8M creators
                 </span>
-                <span className="absolute -top-1.5 -right-1.5 px-1 py-0.5 bg-rose-500 text-white text-[8px] font-black uppercase rounded leading-none tracking-wider">BETA</span>
               </button>
             </motion.div>
           )}
