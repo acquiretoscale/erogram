@@ -600,14 +600,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  // Try OnlyFans creator (only admin-imported top creators get root URLs)
+  // Resolve OnlyFans creator. Every registered user must be able to view any
+  // creator at /{username}-onlyfans. Google stays out of non-admin profiles via
+  // the robots: noindex flag below — but the page itself must render, never 404.
   const creator = await getCreatorBySlug(slug);
-  if (creator && !creator.adminImported) {
-    return { title: 'Not Found', robots: { index: false, follow: false } };
-  }
   if (creator) {
-    const creatorPath = `/${creator.slug}`;
-    const pageUrl = `${BASE_URL}${creatorPath}`;
+    const pageUrl = `${BASE_URL}/${slug}`;
     const name = creator.name;
     const username = creator.username;
     const primaryCat = creator.categories[0] || 'onlyfans';
@@ -974,16 +972,18 @@ export default async function JoinPage({ params }: PageProps) {
     );
   }
 
-  // Try OnlyFans creator profile (only admin-imported get root URLs)
+  // Resolve OnlyFans creator. Registered users get the full profile for any
+  // creator. Non-admin creators stay noindex (set in generateMetadata above) so
+  // Google never sees them, and CreatorProfileClient's own auth check bounces
+  // non-logged-in visitors. We must never 404 a real creator here.
   const creator = await getCreatorBySlug(slug);
-  if (creator && !creator.adminImported) notFound();
   if (creator) {
     const [related, trendingOnErogram, reviewData] = await Promise.all([
       getRelatedCreators(creator.categories, creator.slug, 6),
       getTrendingOnErogram().catch(() => []),
       getCreatorReviews(creator.slug).catch(() => ({ reviews: [], avg: 0, count: 0 })),
     ]);
-    const pageUrl = `${BASE_URL}/${creator.slug}`;
+    const pageUrl = `${BASE_URL}/${slug}`;
 
     const breadcrumbJsonLd = {
       '@context': 'https://schema.org',

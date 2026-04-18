@@ -56,7 +56,21 @@ export interface CreatorProfile {
 export async function getCreatorBySlug(slug: string): Promise<CreatorProfile | null> {
   try {
     await connectDB();
-    const creator = await OnlyFansCreator.findOne({ slug, deleted: { $ne: true } }).lean();
+    let creator = await OnlyFansCreator.findOne({ slug, deleted: { $ne: true } }).lean();
+
+    // Fallback for /{something}-onlyfans URLs where the DB record still has the
+    // legacy un-suffixed slug (true for ~12.6K scraped creators). Admin-imported
+    // top creators have slug = '{username}-onlyfans' already and hit the first
+    // query. For scraped ones, the DB slug is the sanitized base (e.g. URL
+    // 'sirenaa-xx-onlyfans' -> DB slug 'sirenaa-xx', username 'sirenaa.xx').
+    if (!creator && slug.endsWith('-onlyfans')) {
+      const base = slug.slice(0, -'-onlyfans'.length);
+      creator = await OnlyFansCreator.findOne({
+        $or: [{ slug: base }, { username: base }],
+        deleted: { $ne: true },
+      }).lean();
+    }
+
     if (!creator) return null;
 
     const c = creator as any;
