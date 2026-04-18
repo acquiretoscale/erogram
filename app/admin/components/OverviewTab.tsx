@@ -147,6 +147,66 @@ function AreaChart({ points, color, label }: { points: TrendPoint[]; color: stri
   );
 }
 
+/* ─── Bar Chart (daily $ values) ─── */
+function BarChart({ points, color, label, formatValue }: { points: TrendPoint[]; color: string; label: string; formatValue: (v: number) => string }) {
+  const [hover, setHover] = useState<number | null>(null);
+  if (!points?.length) return <div className="h-16 flex items-center justify-center text-xs text-white/20">No data</div>;
+
+  const W = 400, H = 72, PAD = 2;
+  const vals = points.map(p => p.value);
+  const max = Math.max(...vals, 1);
+  const barW = (W - PAD * 2) / points.length;
+  const axIdx = [0, Math.floor(points.length / 2), points.length - 1];
+
+  return (
+    <div>
+      <div className="relative">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 72 }} onMouseLeave={() => setHover(null)} aria-label={label}>
+          <defs>
+            <linearGradient id={`bar-${label}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity="1" />
+              <stop offset="100%" stopColor={color} stopOpacity="0.55" />
+            </linearGradient>
+          </defs>
+          {points.map((p, i) => {
+            const h = p.value > 0 ? Math.max(1.2, (p.value / max) * (H - PAD * 2)) : 0;
+            const x = PAD + i * barW;
+            const y = H - PAD - h;
+            const isHover = hover === i;
+            return (
+              <g key={i}>
+                {h > 0 && (
+                  <rect
+                    x={x + 0.6} y={y} width={Math.max(1, barW - 1.2)} height={h}
+                    fill={`url(#bar-${label})`}
+                    opacity={isHover ? 1 : 0.9}
+                    rx="1"
+                  />
+                )}
+                <rect x={x} y={0} width={barW} height={H} fill="transparent" onMouseEnter={() => setHover(i)} onClick={() => setHover(i)} style={{ cursor: 'pointer' }} />
+              </g>
+            );
+          })}
+        </svg>
+        {hover !== null && points[hover] && (() => {
+          const pct = hover / Math.max(points.length - 1, 1);
+          return (
+            <div
+              className="absolute -top-8 pointer-events-none z-10 bg-[#1e1e1e] border border-white/10 text-white text-[11px] font-semibold px-2 py-1 rounded-md shadow-lg whitespace-nowrap"
+              style={{ left: `${pct * 100}%`, transform: `translateX(-${pct * 100}%)` }}
+            >
+              {fmtShortDate(points[hover].date)}: <span className="font-bold" style={{ color }}>{formatValue(points[hover].value)}</span>
+            </div>
+          );
+        })()}
+      </div>
+      <div className="flex justify-between mt-1">
+        {axIdx.map(i => <span key={i} className="text-[10px] text-white/25">{fmtShortDate(points[i].date)}</span>)}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Dual Area Chart ─── */
 function DualAreaChart({ free: allNew, paid }: { free: TrendPoint[]; paid: TrendPoint[] }) {
   const [hover, setHover] = useState<number | null>(null);
@@ -542,6 +602,29 @@ export default function OverviewTab({ data, loading, onRefresh }: Props) {
     if (adv.total > 0) pieSlices.push({ label: adv.name, value: adv.total, color: PIE_COLORS[(i + 3) % PIE_COLORS.length] });
   });
 
+  /* Daily sales revenue (last 30 days) computed from recentSales */
+  const salesByDay: TrendPoint[] = (() => {
+    const map = new Map<string, number>();
+    const days: TrendPoint[] = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      days.push({ date: key, value: 0 });
+      map.set(key, 0);
+    }
+    sales.forEach((s) => {
+      const key = new Date(s.createdAt).toISOString().slice(0, 10);
+      if (map.has(key)) map.set(key, (map.get(key) ?? 0) + (s.usd || 0));
+    });
+    return days.map(d => ({ date: d.date, value: map.get(d.date) ?? 0 }));
+  })();
+  const salesByDayValues = salesByDay.map(p => p.value);
+  const bestDay = salesByDay.reduce((best, p) => p.value > best.value ? p : best, { date: '', value: 0 });
+  const totalLast30d = salesByDayValues.reduce((a, b) => a + b, 0);
+  const activeDays = salesByDayValues.filter(v => v > 0).length;
+  const avgPerDay = activeDays > 0 ? totalLast30d / 30 : 0;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -601,6 +684,28 @@ export default function OverviewTab({ data, loading, onRefresh }: Props) {
           <StatCard label="Ad Clicks 24h" value={fmtNum(kpis.adClicks?.last24h || 0)} sub={`${fmtNum(kpis.adClicks?.lifetime || 0)} lifetime`} accent="#f59e0b" />
         </motion.div>
       </div>
+
+      {/* Sales Revenue (daily bars) */}
+      <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.08 }}>
+        <Card>
+          <SectionHeader
+            title="Sales Revenue"
+            right={
+              <div className="flex items-center gap-3 text-[11px]">
+                <span className="text-white/30">30d total <span className="font-bold text-emerald-400 ml-1">{fmtUsd(totalLast30d)}</span></span>
+                <span className="text-white/30">avg/day <span className="font-bold text-white/70 ml-1">{fmtUsd(avgPerDay)}</span></span>
+                {bestDay.value > 0 && (
+                  <span className="text-white/30">best <span className="font-bold text-amber-400 ml-1">{fmtUsd(bestDay.value)}</span> <span className="text-white/40">({fmtShortDate(bestDay.date)})</span></span>
+                )}
+                <span className="text-white/25">{activeDays}/30 active days</span>
+              </div>
+            }
+          />
+          <div className="p-3 pt-2">
+            <BarChart points={salesByDay} color="#10b981" label="sales-revenue" formatValue={fmtUsd} />
+          </div>
+        </Card>
+      </motion.div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

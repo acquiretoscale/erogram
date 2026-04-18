@@ -11,12 +11,12 @@ const GROUP_PLANS: Partial<Record<SubmissionType, { title: string; description: 
   instant_approval: {
     title: 'Instant Approval',
     description: 'Skip the moderation queue — your group goes live immediately',
-    amount: 1000,
+    amount: 600,
   },
   boost_week: {
     title: 'Instant + Boost (1 Week)',
     description: 'Instantly approved AND boosted in Top Groups for 7 days (40× more exposure)',
-    amount: 3000,
+    amount: 2000,
   },
   boost_month: {
     title: 'Instant + Boost (1 Month)',

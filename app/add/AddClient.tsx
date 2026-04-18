@@ -38,7 +38,7 @@ const GROUP_PRICING_TIERS: PricingTier[] = [
   },
   {
     type: 'instant_approval',
-    stars: 1000,
+    stars: 600,
     label: 'Instant Approval',
     badge: 'FAST',
     perks: ['Goes live immediately', 'Skip moderation queue', 'Regular listing position'],
@@ -49,7 +49,7 @@ const GROUP_PRICING_TIERS: PricingTier[] = [
   },
   {
     type: 'boost_week',
-    stars: 3000,
+    stars: 2000,
     label: 'Instant + Boost',
     badge: null,
     perks: ['Goes live immediately', '1 week in Top Listings section', 'Reach thousands of active users'],
@@ -108,8 +108,8 @@ const BOT_PRICING_TIERS: PricingTier[] = [
 ];
 
 const GROUP_TIER_STARS: Record<string, number> = {
-  instant_approval: 1000,
-  boost_week: 3000,
+  instant_approval: 600,
+  boost_week: 2000,
 };
 
 const BOT_TIER_STARS: Record<string, number> = {
@@ -642,8 +642,8 @@ export default function AddClient({ categories, countries, defaultTab }: AddClie
                 const isSelected = selectedTier === tier.type;
                 const { accentColor, borderSelected, bg } = tier;
                 return (
+                  <div key={tier.type}>
                   <motion.button
-                    key={tier.type}
                     type="button"
                     onClick={() => setSelectedTier(tier.type)}
                     whileTap={{ scale: 0.98 }}
@@ -711,10 +711,10 @@ export default function AddClient({ categories, countries, defaultTab }: AddClie
                           </div>
                         )}
 
-                        {/* 40X badge — boost_week & boost_month */}
+                        {/* Duration badge — boost_week & boost_month */}
                         {(tier.type === 'boost_week' || tier.type === 'boost_month') && (
                           <div
-                            className="shrink-0 self-stretch rounded-xl flex flex-col items-center justify-center gap-2"
+                            className="shrink-0 self-stretch rounded-xl flex flex-col items-center justify-center gap-1"
                             style={{
                               width: '15rem',
                               background: 'rgba(0,0,0,0.55)',
@@ -722,15 +722,40 @@ export default function AddClient({ categories, countries, defaultTab }: AddClie
                               boxShadow: `0 0 12px ${tier.type === 'boost_month' ? 'rgba(168,85,247,0.3)' : 'rgba(249,115,22,0.3)'}`,
                             }}
                           >
-                            <span className="font-black text-white leading-none" style={{ fontSize: '3.5rem' }}>40×</span>
-                            <span className="font-black text-sm uppercase tracking-widest text-center leading-tight px-2" style={{ color: tier.type === 'boost_month' ? '#c4b5fd' : '#fdba74' }}>
-                              More Exposure{tier.type === 'boost_week' ? ' for 1 Week' : ' for 1 Month'}
+                            <span className="font-black text-white leading-none tracking-tight" style={{ fontSize: '2.8rem' }}>
+                              {tier.type === 'boost_week' ? '1 WEEK' : '1 MONTH'}
+                            </span>
+                            <span className="font-black text-xs uppercase tracking-widest text-center leading-tight px-2" style={{ color: tier.type === 'boost_month' ? '#c4b5fd' : '#fdba74' }}>
+                              Boost · 40× More Exposure
                             </span>
                           </div>
                         )}
                       </div>
                     </div>
                   </motion.button>
+                  {isSelected && (
+                    <motion.button
+                      type="button"
+                      onClick={tab === 'group' ? submitGroup : submitBot}
+                      disabled={isSubmitting || !isFormFilled}
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      whileTap={{ scale: 0.97 }}
+                      className="w-full mt-2 py-2.5 rounded-xl font-black text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      style={{
+                        background: !isFormFilled ? '#333' : `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)`,
+                      }}
+                    >
+                      {isSubmitting
+                        ? t('add.submitting')
+                        : !isFormFilled
+                          ? 'Fill the form above first'
+                          : tier.type === 'free'
+                            ? t('add.submitForMod')
+                            : `Submit & Pay ${(tier.stars || 0).toLocaleString()}★`}
+                    </motion.button>
+                  )}
+                  </div>
                 );
               })}
             </div>
@@ -778,6 +803,21 @@ export default function AddClient({ categories, countries, defaultTab }: AddClie
             </p>
           )}
       </>
+
+      <div className="mt-6 rounded-2xl p-4 text-center" style={{ background: 'linear-gradient(135deg, rgba(34,158,217,0.12), rgba(34,158,217,0.04))', border: '1.5px solid rgba(34,158,217,0.35)' }}>
+        <p className="text-[13px] font-black text-white mb-1.5">Having trouble with your purchase?</p>
+        <p className="text-[11px] text-gray-300 mb-3">Reach out to our support team.</p>
+        <div className="flex flex-col sm:flex-row gap-2 justify-center">
+          <a href="https://t.me/erogram1" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-[12px] font-black text-white transition hover:opacity-90" style={{ background: '#229ED9' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9.036 16.572l-.353 4.967c.505 0 .724-.217.987-.476l2.37-2.265 4.914 3.6c.9.495 1.533.235 1.777-.832l3.22-15.088h.001c.287-1.332-.482-1.853-1.357-1.528L1.94 11.29c-1.308.494-1.288 1.206-.222 1.53l4.82 1.498L17.722 7.98c.527-.348 1.006-.155.611.193"/></svg>
+            Telegram: @erogram1
+          </a>
+          <a href="mailto:support@erogram.biz" className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-[12px] font-black transition hover:opacity-90" style={{ background: '#fff', color: '#111827' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            support@erogram.biz
+          </a>
+        </div>
+      </div>
 
       <p className="mt-6 text-center text-[#666] text-sm">
         <Link href={lp('/groups')} className="text-[#0088cc] hover:underline">{t('add.browseGroups')}</Link>

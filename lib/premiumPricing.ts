@@ -13,6 +13,7 @@ export interface PremiumPricing {
   monthly: PlanConfig;
   quarterly: PlanConfig;
   yearly: PlanConfig;
+  lifetime: PlanConfig;
   offerBadge: string;
   offerText: string;
 }
@@ -21,6 +22,7 @@ const DEFAULTS: PremiumPricing = {
   monthly: { priceUsd: 8.99, starsAmount: 600, days: 30, label: 'Erogram VIP (1 Month)', description: '30-day unlimited access — Secret Vault, bookmarks & more' },
   quarterly: { priceUsd: 13.49, starsAmount: 900, days: 90, label: 'Erogram VIP (3 Months)', description: '3-month unlimited access — Secret Vault, bookmarks & more' },
   yearly: { priceUsd: 29.99, starsAmount: 2000, days: 365, label: 'Erogram VIP (1 Year)', description: '1-year unlimited access — Secret Vault, bookmarks & more' },
+  lifetime: { priceUsd: 197, starsAmount: 13000, days: 36500, label: 'Erogram VIP (Lifetime)', description: 'Lifetime unlimited access — Secret Vault, bookmarks & more' },
   offerBadge: '80% OFF',
   offerText: 'Launch price ends soon',
 };
@@ -54,6 +56,7 @@ export async function getPremiumPricing(): Promise<PremiumPricing> {
         monthly: pick(DEFAULTS.monthly, doc.monthly),
         quarterly: pick(DEFAULTS.quarterly, doc.quarterly),
         yearly: pick(DEFAULTS.yearly, doc.yearly),
+        lifetime: pick(DEFAULTS.lifetime, doc.lifetime),
         offerBadge: doc.offerBadge ?? DEFAULTS.offerBadge,
         offerText: doc.offerText ?? DEFAULTS.offerText,
       };
@@ -68,7 +71,7 @@ export async function getPremiumPricing(): Promise<PremiumPricing> {
   return cached!;
 }
 
-const VALID_PLANS = ['monthly', 'quarterly', 'yearly'] as const;
+const VALID_PLANS = ['monthly', 'quarterly', 'yearly', 'lifetime'] as const;
 export type ValidPlan = typeof VALID_PLANS[number];
 
 export function isValidPlan(plan: string): plan is ValidPlan {
