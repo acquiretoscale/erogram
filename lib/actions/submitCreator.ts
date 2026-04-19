@@ -4,7 +4,6 @@ import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator } from '@/lib/models';
 import sharp from 'sharp';
 import { uploadToR2, isR2Configured } from '@/lib/r2';
-import { getApifyCredentials } from '@/lib/apify-key';
 
 export interface CreatorLookupResult {
   source: 'db' | 'apify';
@@ -84,16 +83,11 @@ export async function fetchCreatorFromApify(username: string): Promise<CreatorLo
   const cleaned = username.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
   if (!cleaned) return null;
 
-  const creds = await getApifyCredentials('hello.datawizards/onlyfans-scraper');
-  if (!creds) return null;
+  const token = process.env.APIFY_SUBMIT_TOKEN;
+  if (!token) return null;
 
-  const { token, actor } = creds;
-  const actorId = actor.replace('/', '~');
-
-  const isDatawizards = actor.includes('datawizards');
-  const input = isDatawizards
-    ? { search_queries: [cleaned] }
-    : { category: cleaned, maxItems: 1 };
+  const actorId = 'hello.datawizards~onlyfans-scraper';
+  const input = { search_queries: [cleaned] };
 
   const runRes = await fetch(
     `https://api.apify.com/v2/acts/${actorId}/runs?token=${token}`,

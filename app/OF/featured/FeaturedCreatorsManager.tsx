@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState, useRef, useMemo } from 'react';
+import axios from 'axios';
+import { compressImage } from '@/lib/utils/compressImage';
 import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
 import {
   getOFMTrending,
@@ -11,6 +13,7 @@ import {
   getTrendingDailyClicks,
   resetTrendingClicks,
 } from '@/lib/actions/ofm';
+import { fetchCreatorFromApify } from '@/lib/actions/submitCreator';
 
 interface TrendingSlot {
   _id: string;
@@ -55,6 +58,7 @@ interface DailyClick {
 
 function isCreatorLiveNow(start: number, end: number): boolean {
   if (start < 0 || end < 0) return false;
+  if (start === 0 && end === 0) return true; // 24H live
   const gmtHour = new Date().getUTCHours();
   if (start <= end) return gmtHour >= start && gmtHour < end;
   return gmtHour >= start || gmtHour < end; // wraps midnight, e.g. 22–04
@@ -142,10 +146,12 @@ function LiveSchedulePicker({
 // Mini bar chart — pure SVG, no deps
 // ---------------------------------------------------------------------------
 function DailyClicksChart({ data }: { data: DailyClick[] }) {
+  const [hovered, setHovered] = useState<number | null>(null);
   const max = Math.max(...data.map((d) => d.clicks), 1);
   const total = data.reduce((s, d) => s + d.clicks, 0);
   const barW = Math.max(4, Math.min(14, Math.floor(680 / data.length) - 2));
   const chartH = 120;
+  const svgW = data.length * (barW + 2) + 20;
 
   return (
     <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-5">
@@ -155,29 +161,43 @@ function DailyClicksChart({ data }: { data: DailyClick[] }) {
           <p className="text-[11px] text-white/30 mt-0.5">All creators combined</p>
         </div>
         <div className="text-right">
-          <div className="text-xl font-black text-[#00AFF0]">{total.toLocaleString()}</div>
-          <div className="text-[10px] text-white/30">total</div>
+          <div className="text-xl font-black text-[#00AFF0]">
+            {hovered !== null ? data[hovered].clicks.toLocaleString() : total.toLocaleString()}
+          </div>
+          <div className="text-[10px] text-white/30">
+            {hovered !== null ? data[hovered].date : 'total'}
+          </div>
         </div>
       </div>
       <div className="overflow-x-auto">
         <svg
-          width={data.length * (barW + 2) + 20}
+          width={svgW}
           height={chartH + 24}
           style={{ display: 'block', margin: '0 auto' }}
+          onMouseLeave={() => setHovered(null)}
         >
           {data.map((d, i) => {
             const h = (d.clicks / max) * chartH;
             const x = i * (barW + 2) + 10;
             const isWeekend = [0, 6].includes(new Date(d.date + 'T00:00:00').getDay());
+            const isHovered = hovered === i;
             const fill =
               d.clicks === 0
                 ? 'rgba(255,255,255,0.05)'
-                : isWeekend
-                  ? 'rgba(0,175,240,0.45)'
-                  : '#00AFF0';
+                : isHovered
+                  ? '#fff'
+                  : isWeekend
+                    ? 'rgba(0,175,240,0.45)'
+                    : '#00AFF0';
             return (
-              <g key={d.date}>
-                <title>{d.date}: {d.clicks} clicks</title>
+              <g key={d.date} onMouseEnter={() => setHovered(i)}>
+                <rect
+                  x={x}
+                  y={0}
+                  width={barW}
+                  height={chartH}
+                  fill="transparent"
+                />
                 <rect
                   x={x}
                   y={chartH - h}
@@ -185,6 +205,7 @@ function DailyClicksChart({ data }: { data: DailyClick[] }) {
                   height={Math.max(h, 2)}
                   rx={2}
                   fill={fill}
+                  className="transition-colors duration-100"
                 />
                 {i % 7 === 0 && (
                   <text
@@ -192,7 +213,7 @@ function DailyClicksChart({ data }: { data: DailyClick[] }) {
                     y={chartH + 16}
                     textAnchor="middle"
                     fontSize={9}
-                    fill="rgba(255,255,255,0.25)"
+                    fill={isHovered ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.25)'}
                   >
                     {d.date.slice(5)}
                   </text>
@@ -220,6 +241,7 @@ export default function FeaturedCreatorsManager() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [apifyFetching, setApifyFetching] = useState(false);
   const [selectedCreator, setSelectedCreator] = useState<SearchResult | null>(null);
   const [dealPrice, setDealPrice] = useState('');
   const [note, setNote] = useState('');
@@ -229,6 +251,9 @@ export default function FeaturedCreatorsManager() {
   const [dailyClickCap, setDailyClickCap] = useState('');
   const [liveHourStart, setLiveHourStart] = useState('-1');
   const [liveHourEnd, setLiveHourEnd] = useState('-1');
+  const [live24h, setLive24h] = useState(false);
+  const [customAvatar, setCustomAvatar] = useState('');
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [saving, setSaving] = useState(false);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -302,6 +327,8 @@ export default function FeaturedCreatorsManager() {
     setDailyClickCap('');
     setLiveHourStart('-1');
     setLiveHourEnd('-1');
+    setLive24h(false);
+    setCustomAvatar('');
     setEditSlot(null);
   };
 
@@ -312,18 +339,18 @@ export default function FeaturedCreatorsManager() {
       await createOFMTrendingSlot(token(), {
         name: selectedCreator.name,
         username: selectedCreator.username,
-        avatar: selectedCreator.avatar,
+        avatar: customAvatar || selectedCreator.avatar,
         url: selectedCreator.url,
         bio: selectedCreator.bio,
         categories: addCategories,
         position: nextPosition,
-        dealPrice: parseFloat(dealPrice) || 0,
+        dealPrice: 0,
         note: note.trim(),
         active,
         clickBudget: parseInt(clickBudget) || 0,
         dailyClickCap: parseInt(dailyClickCap) || 0,
-        liveHourStart: parseInt(liveHourStart),
-        liveHourEnd: parseInt(liveHourEnd),
+        liveHourStart: live24h ? 0 : parseInt(liveHourStart),
+        liveHourEnd: live24h ? 0 : parseInt(liveHourEnd),
       });
       showToast(`${selectedCreator.name} added to Slot #${nextPosition}`);
       setAddOpen(false);
@@ -672,8 +699,48 @@ export default function FeaturedCreatorsManager() {
                 )}
 
                 {searchQuery.length >= 2 && !searching && searchResults.length === 0 && (
-                  <div className="mt-4 text-center text-white/20 text-sm py-6">
-                    No creators found for &ldquo;{searchQuery}&rdquo;
+                  <div className="mt-4 text-center py-6 space-y-3">
+                    <p className="text-white/20 text-sm">No creators found for &ldquo;{searchQuery}&rdquo;</p>
+                    <button
+                      type="button"
+                      disabled={apifyFetching}
+                      onClick={async () => {
+                        const raw = searchQuery.trim();
+                        const username = raw.includes('onlyfans.com/')
+                          ? (raw.replace(/\/$/, '').split('/').pop() || '').toLowerCase().replace(/[^a-z0-9._-]/g, '')
+                          : raw.toLowerCase().replace(/[^a-z0-9._-]/g, '');
+                        if (!username) return;
+                        setApifyFetching(true);
+                        try {
+                          const result = await fetchCreatorFromApify(username);
+                          if (result) {
+                            setSearchResults([{
+                              _id: result.username,
+                              name: result.name,
+                              username: result.username,
+                              slug: result.username,
+                              avatar: result.avatar,
+                              bio: result.bio || '',
+                              categories: result.categories || [],
+                              url: `https://onlyfans.com/${result.username}`,
+                              clicks: 0,
+                              likesCount: result.likesCount || 0,
+                              price: result.price || 0,
+                              isFree: result.isFree || false,
+                            }]);
+                          } else {
+                            alert('Creator not found on OnlyFans. Check the username and try again.');
+                          }
+                        } catch {
+                          alert('Import failed. Please try again.');
+                        } finally {
+                          setApifyFetching(false);
+                        }
+                      }}
+                      className="px-5 py-2.5 rounded-xl bg-[#00AFF0] hover:bg-[#009dd9] disabled:opacity-50 disabled:cursor-wait text-white text-sm font-bold transition"
+                    >
+                      {apifyFetching ? 'Importing from OnlyFans... (30-60s)' : 'Import from OnlyFans'}
+                    </button>
                   </div>
                 )}
 
@@ -684,9 +751,9 @@ export default function FeaturedCreatorsManager() {
             ) : (
               <>
                 {/* Selected preview */}
-                <div className="flex items-center gap-3 p-4 rounded-xl bg-[#00AFF0]/[0.06] border border-[#00AFF0]/20 mt-3 mb-5">
-                  {selectedCreator.avatar ? (
-                    <img src={selectedCreator.avatar} alt="" className="w-12 h-12 rounded-xl object-cover bg-white/5 flex-shrink-0" />
+                <div className="flex items-center gap-3 p-4 rounded-xl bg-[#00AFF0]/[0.06] border border-[#00AFF0]/20 mt-3 mb-3">
+                  {(customAvatar || selectedCreator.avatar) ? (
+                    <img src={customAvatar || selectedCreator.avatar} alt="" className="w-12 h-12 rounded-xl object-cover bg-white/5 flex-shrink-0" />
                   ) : (
                     <div className="w-12 h-12 rounded-xl bg-[#00AFF0]/10 flex items-center justify-center text-[#00AFF0] font-black text-xl flex-shrink-0">{selectedCreator.name.charAt(0)}</div>
                   )}
@@ -694,9 +761,50 @@ export default function FeaturedCreatorsManager() {
                     <div className="font-bold text-white truncate">{selectedCreator.name}</div>
                     <div className="text-xs text-[#00AFF0]">@{selectedCreator.username}</div>
                   </div>
-                  <button onClick={() => { setSelectedCreator(null); setSearchQuery(''); }} className="px-2.5 py-1 bg-white/[0.06] hover:bg-white/10 border border-white/10 text-white/50 text-xs font-semibold rounded-lg transition">
+                  <button onClick={() => { setSelectedCreator(null); setSearchQuery(''); setCustomAvatar(''); }} className="px-2.5 py-1 bg-white/[0.06] hover:bg-white/10 border border-white/10 text-white/50 text-xs font-semibold rounded-lg transition">
                     Change
                   </button>
+                </div>
+
+                {/* Custom picture upload */}
+                <div className="mb-5">
+                  <label className="block text-xs font-bold text-white/40 mb-1.5">Custom Picture (optional)</label>
+                  <div className="flex items-center gap-3">
+                    <label className="cursor-pointer px-3 py-2 rounded-lg bg-white/[0.06] border border-white/10 text-white/60 text-xs font-semibold hover:bg-white/10 transition">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={uploadingAvatar}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (file.size > 5 * 1024 * 1024) { alert('Max 5 MB'); return; }
+                          setUploadingAvatar(true);
+                          try {
+                            const compressed = await compressImage(file);
+                            const formData = new FormData();
+                            formData.append('file', compressed);
+                            const res = await axios.post('/api/upload', formData, {
+                              headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token()}` },
+                            });
+                            setCustomAvatar(res.data.url);
+                          } catch {
+                            alert('Upload failed');
+                          } finally {
+                            setUploadingAvatar(false);
+                          }
+                        }}
+                      />
+                      {uploadingAvatar ? 'Uploading...' : 'Upload picture'}
+                    </label>
+                    {customAvatar && (
+                      <button type="button" onClick={() => setCustomAvatar('')} className="text-xs text-red-400 hover:text-red-300 transition">
+                        Remove
+                      </button>
+                    )}
+                    {!customAvatar && <span className="text-[10px] text-white/20">Uses OnlyFans avatar if not set</span>}
+                  </div>
                 </div>
 
                 <div className="space-y-4">
@@ -727,31 +835,36 @@ export default function FeaturedCreatorsManager() {
                     </div>
                   </div>
 
-                  <LiveSchedulePicker
-                    startValue={liveHourStart}
-                    endValue={liveHourEnd}
-                    onStartChange={setLiveHourStart}
-                    onEndChange={setLiveHourEnd}
-                  />
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-bold text-white/40 mb-1">Deal Price ($)</label>
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/15 hover:bg-emerald-500/10 transition">
                       <input
-                        type="number" min="0" step="1"
-                        value={dealPrice}
-                        onChange={(e) => setDealPrice(e.target.value)}
-                        placeholder="e.g. 50"
-                        className="w-full px-3 py-2 bg-white/[0.05] border border-white/10 rounded-lg text-white text-sm placeholder:text-white/20 outline-none focus:border-[#00AFF0]/40 transition"
+                        type="checkbox"
+                        checked={live24h}
+                        onChange={(e) => {
+                          setLive24h(e.target.checked);
+                          if (e.target.checked) { setLiveHourStart('0'); setLiveHourEnd('0'); }
+                          else { setLiveHourStart('-1'); setLiveHourEnd('-1'); }
+                        }}
+                        className="accent-emerald-500 w-4 h-4"
                       />
-                    </div>
-                    <div className="flex flex-col justify-end pb-1">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="accent-[#00AFF0] w-4 h-4" />
-                        <span className="text-sm text-white/60">Active (visible)</span>
-                      </label>
-                    </div>
+                      <span className="text-sm font-bold text-emerald-400">Live 24/7</span>
+                      <span className="text-[10px] text-white/25">Always shows as LIVE</span>
+                    </label>
+
+                    {!live24h && (
+                      <LiveSchedulePicker
+                        startValue={liveHourStart}
+                        endValue={liveHourEnd}
+                        onStartChange={setLiveHourStart}
+                        onEndChange={setLiveHourEnd}
+                      />
+                    )}
                   </div>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="accent-[#00AFF0] w-4 h-4" />
+                    <span className="text-sm text-white/60">Active (visible)</span>
+                  </label>
 
                   <div>
                     <label className="block text-xs font-bold text-white/40 mb-1">Internal Note</label>

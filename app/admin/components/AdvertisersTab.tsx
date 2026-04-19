@@ -8,6 +8,7 @@ import { adminCreateCampaign, adminUpdateCampaign, adminDeleteCampaign, getAdver
 import { getBots } from '@/lib/actions/adminBots';
 import { getOFMTrending, searchOFMCreators } from '@/lib/actions/ofm';
 import { ensureR2Avatar } from '@/lib/actions/creatorImages';
+import { fetchCreatorFromApify } from '@/lib/actions/submitCreator';
 import FeaturedCreatorsManager from '@/app/OF/featured/FeaturedCreatorsManager';
 
 interface AdvertiserRow {
@@ -642,6 +643,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
   const [creatorSearchResults, setCreatorSearchResults] = useState<OFCreatorPick[]>([]);
   const [creatorSearchLoading, setCreatorSearchLoading] = useState(false);
   const [selectedCreators, setSelectedCreators] = useState<OFCreatorPick[]>([]);
+  const [apifyFetching, setApifyFetching] = useState(false);
   const creatorSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchFeaturedCreatorsForPicker = async () => {
@@ -1620,7 +1622,43 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                     className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-pink-500 outline-none" />
                   <div className="space-y-1.5 max-h-[320px] overflow-y-auto">
                     {creatorSearchLoading && <p className="text-[#666] text-sm py-2">Searching...</p>}
-                    {!creatorSearchLoading && creatorSearchQuery.length >= 2 && creatorSearchResults.length === 0 && <p className="text-[#666] text-sm py-2">No creators found for &ldquo;{creatorSearchQuery}&rdquo;</p>}
+                    {!creatorSearchLoading && creatorSearchQuery.length >= 2 && creatorSearchResults.length === 0 && (
+                      <div className="py-2 space-y-2">
+                        <p className="text-[#666] text-sm">No creators found for &ldquo;{creatorSearchQuery}&rdquo;</p>
+                        <button
+                          type="button"
+                          disabled={apifyFetching}
+                          onClick={async () => {
+                            const q = creatorSearchQuery.trim().replace(/[^a-z0-9._-]/gi, '').toLowerCase();
+                            if (!q) return;
+                            setApifyFetching(true);
+                            try {
+                              const result = await fetchCreatorFromApify(q);
+                              if (result) {
+                                const pick: OFCreatorPick = {
+                                  _id: result.username,
+                                  name: result.name,
+                                  username: result.username,
+                                  avatar: result.avatar,
+                                  url: `https://onlyfans.com/${result.username}`,
+                                  bio: result.bio || '',
+                                };
+                                setCreatorSearchResults([pick]);
+                              } else {
+                                alert('Creator not found on OnlyFans. Check the username and try again.');
+                              }
+                            } catch {
+                              alert('Import failed. Please try again.');
+                            } finally {
+                              setApifyFetching(false);
+                            }
+                          }}
+                          className="px-4 py-2 rounded-lg bg-pink-600 hover:bg-pink-500 disabled:opacity-50 disabled:cursor-wait text-white text-xs font-bold transition-colors"
+                        >
+                          {apifyFetching ? 'Importing from OnlyFans...' : 'Import from OnlyFans'}
+                        </button>
+                      </div>
+                    )}
                     {creatorSearchResults.map((c) => {
                       const picked = selectedCreators.some((x) => x.username === c.username);
                       return (
