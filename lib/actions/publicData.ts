@@ -51,6 +51,63 @@ export async function getTrendingCreators(category?: string) {
   return mapped;
 }
 
+/**
+ * Returns active TrendingOFCreator entries shaped as FeedCampaign objects
+ * so they can be injected into the /groups feed alongside regular ads.
+ * Clicks tracked via trackTrendingClick (not Campaign model).
+ */
+export async function getFeaturedCreatorFeedItems() {
+  const { unstable_noStore } = await import('next/cache');
+  unstable_noStore();
+
+  await connectDB();
+  const creators = await TrendingOFCreator.find({ active: true })
+    .select('_id name username avatar url liveHourStart liveHourEnd')
+    .lean();
+
+  const usernames = (creators as any[]).map(c => c.username).filter(Boolean);
+  const ofDocs = usernames.length
+    ? await OnlyFansCreator.find({ username: { $in: usernames } }).select('username likesCount subscriberCount').lean()
+    : [];
+  const statsMap = new Map((ofDocs as any[]).map(d => [d.username, { likes: d.likesCount || 0, subs: d.subscriberCount || 0 }]));
+
+  const shuffled = [...(creators as any[])];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  return shuffled.map((c, i) => {
+    const stats = statsMap.get(c.username);
+    const raw = (c.url || '').trim();
+    const dest = /^https?:\/\//i.test(raw) ? raw : `https://onlyfans.com/${c.username}`;
+    // First creator → slot 2 (visible after 2 groups), second → slot 3 (after 8),
+    // rest → slot 4 (after 12, then loops every 5 groups as user scrolls)
+    const ts = i === 0 ? 2 : i === 1 ? 3 : 4;
+    return {
+      _id: `of-featured-${c._id}`,
+      creative: c.avatar || '',
+      destinationUrl: dest,
+      name: c.name || c.username,
+      slot: 'feed',
+      feedTier: 1,
+      tierSlot: ts,
+      position: i + 1,
+      description: '',
+      category: 'All',
+      country: 'All',
+      buttonText: 'View Profile',
+      adType: 'onlyfans-creator' as const,
+      ofUsername: c.username,
+      ofTrendingId: c._id.toString(),
+      ofLikesCount: stats?.likes || 0,
+      ofSubscriberCount: stats?.subs || 0,
+      ofLiveHourStart: c.liveHourStart ?? -1,
+      ofLiveHourEnd: c.liveHourEnd ?? -1,
+    };
+  });
+}
+
 export async function getTrendingOnErogram() {
   await connectDB();
 

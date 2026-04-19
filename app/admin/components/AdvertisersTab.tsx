@@ -6,6 +6,9 @@ import { compressImage } from '@/lib/utils/compressImage';
 import { createAdvertiser, updateAdvertiser, deleteAdvertiser } from '@/lib/actions/advertisers';
 import { adminCreateCampaign, adminUpdateCampaign, adminDeleteCampaign, getAdvertisersDashboard, getAdvertiserDashboardStats } from '@/lib/actions/adminCampaigns';
 import { getBots } from '@/lib/actions/adminBots';
+import { getOFMTrending, searchOFMCreators } from '@/lib/actions/ofm';
+import { ensureR2Avatar } from '@/lib/actions/creatorImages';
+import FeaturedCreatorsManager from '@/app/OF/featured/FeaturedCreatorsManager';
 
 interface AdvertiserRow {
   _id: string;
@@ -479,7 +482,7 @@ function isTextOnlySlot(slot: string): boolean {
   return s === 'navbar-cta' || s === 'join-cta' || s === 'filter-cta';
 }
 
-type SectionTabType = 'overview' | 'slots' | 'buttonsBanners' | 'advertisers' | 'feedAds' | 'premium' | 'revenue';
+type SectionTabType = 'overview' | 'slots' | 'buttonsBanners' | 'advertisers' | 'feedAds' | 'featuredCreators' | 'premium' | 'revenue';
 
 interface AdvertisersTabProps {
   setActiveTab?: (tab: string) => void;
@@ -553,7 +556,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
   const [isSaving, setIsSaving] = useState(false);
 
   // Campaign form: type drives whether we show text+link, image+link, or premium mosaic
-  const [campaignType, setCampaignType] = useState<'text' | 'image' | 'premium'>('image');
+  const [campaignType, setCampaignType] = useState<'text' | 'image' | 'premium' | 'onlyfans-creator'>('image');
   const [editingCampaign, setEditingCampaign] = useState<CampaignRow | null>(null);
   const [campForm, setCampForm] = useState({
     advertiserId: '',
@@ -577,11 +580,12 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
     videoUrl: '',
     badgeText: '',
     verified: false,
-    adType: 'advertiser' as 'advertiser' | 'premium',
+    adType: 'advertiser' as 'advertiser' | 'premium' | 'onlyfans-creator',
     premiumCategory: '',
     socialProof: 'random',
     bannerPages: [] as string[],
     bannerDevice: 'all' as 'all' | 'mobile' | 'desktop',
+    ofUsername: '',
   });
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
@@ -620,6 +624,85 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       description: bot.description || '',
       buttonText: 'Open Bot',
     }));
+  };
+
+  // ── OnlyFans Creator picker (for the "OnlyFans Creator" ad type) ──
+  type OFCreatorPick = {
+    _id: string; // used locally (may be slot id or search result id — dedup by username)
+    name: string;
+    username: string;
+    avatar: string;
+    url: string;
+    bio: string;
+  };
+  const [creatorPickerTab, setCreatorPickerTab] = useState<'featured' | 'search'>('featured');
+  const [featuredCreatorsForPicker, setFeaturedCreatorsForPicker] = useState<OFCreatorPick[]>([]);
+  const [featuredCreatorsLoaded, setFeaturedCreatorsLoaded] = useState(false);
+  const [creatorSearchQuery, setCreatorSearchQuery] = useState('');
+  const [creatorSearchResults, setCreatorSearchResults] = useState<OFCreatorPick[]>([]);
+  const [creatorSearchLoading, setCreatorSearchLoading] = useState(false);
+  const [selectedCreators, setSelectedCreators] = useState<OFCreatorPick[]>([]);
+  const creatorSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fetchFeaturedCreatorsForPicker = async () => {
+    if (featuredCreatorsLoaded) return;
+    try {
+      const token = getToken();
+      const slots = (await getOFMTrending(token)) as Array<{
+        _id: string; name: string; username: string; avatar?: string; url?: string; bio?: string;
+      }>;
+      setFeaturedCreatorsForPicker(
+        (slots || []).map((s) => ({
+          _id: s._id,
+          name: s.name,
+          username: s.username,
+          avatar: s.avatar || '',
+          url: s.url || `https://onlyfans.com/${s.username}`,
+          bio: s.bio || '',
+        })),
+      );
+      setFeaturedCreatorsLoaded(true);
+    } catch { /* ignore */ }
+  };
+
+  // Debounced creator search
+  useEffect(() => {
+    if (creatorSearchTimer.current) clearTimeout(creatorSearchTimer.current);
+    const q = creatorSearchQuery.trim();
+    if (q.length < 2) { setCreatorSearchResults([]); return; }
+    setCreatorSearchLoading(true);
+    creatorSearchTimer.current = setTimeout(async () => {
+      try {
+        const token = getToken();
+        const data = (await searchOFMCreators(token, q)) as {
+          creators?: Array<{ _id: string; name: string; username: string; avatar?: string; url?: string; bio?: string }>;
+        };
+        setCreatorSearchResults(
+          (data?.creators || []).map((c) => ({
+            _id: c._id,
+            name: c.name,
+            username: c.username,
+            avatar: c.avatar || '',
+            url: c.url || `https://onlyfans.com/${c.username}`,
+            bio: c.bio || '',
+          })),
+        );
+      } catch {
+        setCreatorSearchResults([]);
+      } finally {
+        setCreatorSearchLoading(false);
+      }
+    }, 300);
+    return () => {
+      if (creatorSearchTimer.current) clearTimeout(creatorSearchTimer.current);
+    };
+  }, [creatorSearchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggleCreatorSelected = (c: OFCreatorPick) => {
+    setSelectedCreators((prev) => {
+      const exists = prev.some((x) => x.username === c.username);
+      return exists ? prev.filter((x) => x.username !== c.username) : [...prev, c];
+    });
   };
 
   // Data fetching. skipLoading=true = refresh without full-page loading (e.g. after save).
@@ -801,6 +884,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       socialProof: 'random',
       bannerPages: [],
       bannerDevice: 'all',
+      ofUsername: '',
     });
     setView('editCampaign');
   };
@@ -843,6 +927,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       socialProof: (camp as any).socialProof || 'random',
       bannerPages: (camp as any).bannerPages || [],
       bannerDevice: (camp as any).bannerDevice || 'all',
+      ofUsername: (camp as any).ofUsername || '',
     });
     const savedIds: string[] = (camp as any).premiumGroupIds || [];
     setSelectedGroupIds(new Set(savedIds));
@@ -864,6 +949,86 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       alert('Please log in again. Your session may have expired.');
       return;
     }
+
+    // ── OnlyFans Creator: multi-creator -> multi-campaign ──
+    if (!editingCampaign && campaignType === 'onlyfans-creator') {
+      if (!campForm.advertiserId) {
+        alert('Please select an Advertiser above (required).');
+        return;
+      }
+      if (selectedCreators.length === 0) {
+        alert('Pick at least one OnlyFans creator.');
+        return;
+      }
+      const slot = campForm.tierSlot && campForm.tierSlot >= 2 && campForm.tierSlot <= 4 ? campForm.tierSlot : 2;
+      if (savingRef.current) return;
+      savingRef.current = true;
+      setIsSaving(true);
+      try {
+        const startDate = campForm.startDate;
+        const endDate = campForm.endDate;
+        let ok = 0;
+        const errs: string[] = [];
+        for (const c of selectedCreators) {
+          // Campaign schema requires destinationUrl to start with http(s):// or /.
+          // Fall back to https://onlyfans.com/<username> if stored URL is malformed or missing.
+          const raw = (c.url || '').trim();
+          const dest = /^https?:\/\//i.test(raw) || raw.startsWith('/')
+            ? raw
+            : `https://onlyfans.com/${c.username}`;
+          try {
+            const r2Avatar = await ensureR2Avatar(c.username);
+            await adminCreateCampaign(token, {
+              advertiserId: campForm.advertiserId,
+              name: c.name || c.username,
+              internalName: `OF Creator: @${c.username}`,
+              slot: 'feed',
+              creative: r2Avatar || c.avatar || '',
+              destinationUrl: dest,
+              startDate,
+              endDate,
+              status: 'active',
+              isVisible: true,
+              position: slot,
+              feedTier: 1,
+              tierSlot: slot,
+              description: c.bio ? c.bio.slice(0, 140) : `@${c.username}`,
+              category: 'All',
+              country: 'All',
+              buttonText: 'View Profile',
+              feedPlacement: 'both',
+              verified: false,
+              adType: 'onlyfans-creator',
+              socialProof: 'random',
+              ofUsername: c.username,
+            });
+            ok++;
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'failed';
+            errs.push(`${c.username}: ${msg}`);
+          }
+        }
+        await fetchAll(true);
+        if (errs.length && ok > 0) {
+          alert(`${ok} campaign${ok === 1 ? '' : 's'} launched in Slot ${slot}. ${errs.length} failed:\n${errs.join('\n')}`);
+        } else if (errs.length) {
+          alert(`None launched. Errors:\n${errs.join('\n')}`);
+        } else if (ok > 0) {
+          alert(`${ok} creator campaign${ok === 1 ? '' : 's'} launched in Slot ${slot} ✓`);
+        }
+        setSelectedCreators([]);
+        setEditingCampaign(null);
+        setCampaignType('image');
+        // Jump straight to Feed Ads tab so admin can see the new campaigns
+        setSectionTab('feedAds');
+        setView('list');
+      } finally {
+        setIsSaving(false);
+        savingRef.current = false;
+      }
+      return;
+    }
+
     const isCta = isTextOnlySlot(campForm.slot) || (editingCampaign ? isTextOnlySlot(editingCampaign.slot) : false) || ['navbar-cta', 'join-cta', 'filter-cta'].includes(campForm.slot?.trim() ?? '');
     if (!campForm.name || !campForm.destinationUrl) {
       alert('Name and destination URL are required');
@@ -985,6 +1150,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
         socialProof: 'random',
         bannerPages: [],
         bannerDevice: 'all',
+        ofUsername: '',
       });
       setView('list');
       alert('Campaign saved successfully.');
@@ -1338,9 +1504,162 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                 <span className="text-white">🤖 Featured Bot</span>
                 <span className="text-xs text-[#666]">— slot 5, groups feed only</span>
               </label>
+              <label className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 cursor-pointer hover:bg-white/[0.05] transition-colors">
+                <input
+                  type="radio"
+                  name="campaignType"
+                  checked={campaignType === 'onlyfans-creator'}
+                  onChange={() => {
+                    const eroAdv = advertisers.find(a => a.name === 'EROGRAM');
+                    setCampaignType('onlyfans-creator');
+                    setCampForm({
+                      ...campForm,
+                      slot: 'feed',
+                      adType: 'onlyfans-creator',
+                      position: 2,
+                      feedTier: 1,
+                      tierSlot: 2,
+                      feedPlacement: 'both',
+                      buttonText: 'View Profile',
+                      creative: '',
+                      videoUrl: '',
+                      advertiserId: campForm.advertiserId || eroAdv?._id || '',
+                      ofUsername: '',
+                    });
+                    setSelectedCreators([]);
+                    setCreatorSearchQuery('');
+                    setCreatorSearchResults([]);
+                    setCreatorPickerTab('featured');
+                    fetchFeaturedCreatorsForPicker();
+                  }}
+                  className="w-4 h-4 text-pink-500 focus:ring-pink-500"
+                />
+                <span className="text-white">💋 OnlyFans Creator</span>
+                <span className="text-xs text-[#666]">— pick creators, links straight to OnlyFans</span>
+              </label>
             </div>
           </div>
 
+          {/* ─── OnlyFans Creator: slot picker + creator multi-picker ───────── */}
+          {campaignType === 'onlyfans-creator' && (
+            <div className="rounded-xl bg-pink-500/10 border border-pink-500/30 p-4 space-y-4">
+              <p className="text-sm font-semibold text-pink-200">
+                Pick one or more OnlyFans creators. Each creator becomes a separate campaign. Clicks go straight to OnlyFans.
+              </p>
+
+              {/* Feed position picker */}
+              <div>
+                <label className="block text-xs font-bold text-pink-200/80 uppercase tracking-wider mb-2">Feed position</label>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    { ts: 2, label: 'Position A', desc: 'after 2 groups' },
+                    { ts: 3, label: 'Position B', desc: 'after 8 groups' },
+                    { ts: 4, label: 'Position C (loops)', desc: 'after 12+ groups, repeats' },
+                  ]).map(({ ts, label, desc }) => {
+                    const active = campForm.tierSlot === ts;
+                    return (
+                      <button
+                        key={ts}
+                        type="button"
+                        onClick={() => setCampForm({ ...campForm, tierSlot: ts, position: ts, feedTier: 1 })}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${
+                          active
+                            ? 'bg-pink-500/25 border-pink-500/50 text-white'
+                            : 'bg-[#1a1a1a] border-white/10 text-[#999] hover:border-white/20'
+                        }`}
+                      >
+                        {label} <span className="text-[10px] font-normal opacity-60">({desc})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {!campForm.advertiserId && (
+                <p className="text-amber-400/80 text-xs">Pick an Advertiser above (required).</p>
+              )}
+
+              {/* Tabs: Featured shortcut vs Search */}
+              <div className="flex gap-2 border-b border-white/10">
+                <button type="button" onClick={() => { setCreatorPickerTab('featured'); fetchFeaturedCreatorsForPicker(); }}
+                  className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${creatorPickerTab === 'featured' ? 'border-pink-500 text-white' : 'border-transparent text-[#999] hover:text-white'}`}>
+                  From /OF/featured ({featuredCreatorsForPicker.length})
+                </button>
+                <button type="button" onClick={() => setCreatorPickerTab('search')}
+                  className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${creatorPickerTab === 'search' ? 'border-pink-500 text-white' : 'border-transparent text-[#999] hover:text-white'}`}>
+                  Search all creators
+                </button>
+              </div>
+
+              {/* Featured list */}
+              {creatorPickerTab === 'featured' && (
+                <div className="space-y-1.5 max-h-[320px] overflow-y-auto">
+                  {!featuredCreatorsLoaded && <p className="text-[#666] text-sm py-3">Loading featured creators...</p>}
+                  {featuredCreatorsLoaded && featuredCreatorsForPicker.length === 0 && <p className="text-[#666] text-sm py-3">No featured creators yet.</p>}
+                  {featuredCreatorsForPicker.map((c) => {
+                    const picked = selectedCreators.some((x) => x.username === c.username);
+                    return (
+                      <button key={c._id} type="button" onClick={() => toggleCreatorSelected(c)}
+                        className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-colors ${picked ? 'bg-pink-500/15 border-pink-500/40' : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05]'}`}>
+                        {c.avatar ? <img src={c.avatar} alt="" className="w-10 h-10 rounded-lg object-cover bg-white/5 flex-shrink-0" /> : <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-white/30 font-bold flex-shrink-0">{c.name.charAt(0)}</div>}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-bold text-white truncate">{c.name}</div>
+                          <div className="text-xs text-pink-300 truncate">@{c.username}</div>
+                        </div>
+                        <span className={`text-xs font-bold flex-shrink-0 ${picked ? 'text-pink-300' : 'text-[#666]'}`}>{picked ? '✓ Picked' : 'Pick'}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Search */}
+              {creatorPickerTab === 'search' && (
+                <div className="space-y-2">
+                  <input type="text" value={creatorSearchQuery} onChange={(e) => setCreatorSearchQuery(e.target.value)} placeholder="Search by name or username..."
+                    className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-pink-500 outline-none" />
+                  <div className="space-y-1.5 max-h-[320px] overflow-y-auto">
+                    {creatorSearchLoading && <p className="text-[#666] text-sm py-2">Searching...</p>}
+                    {!creatorSearchLoading && creatorSearchQuery.length >= 2 && creatorSearchResults.length === 0 && <p className="text-[#666] text-sm py-2">No creators found for &ldquo;{creatorSearchQuery}&rdquo;</p>}
+                    {creatorSearchResults.map((c) => {
+                      const picked = selectedCreators.some((x) => x.username === c.username);
+                      return (
+                        <button key={c._id} type="button" onClick={() => toggleCreatorSelected(c)}
+                          className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-colors ${picked ? 'bg-pink-500/15 border-pink-500/40' : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05]'}`}>
+                          {c.avatar ? <img src={c.avatar} alt="" className="w-10 h-10 rounded-lg object-cover bg-white/5 flex-shrink-0" /> : <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-white/30 font-bold flex-shrink-0">{c.name.charAt(0)}</div>}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-bold text-white truncate">{c.name}</div>
+                            <div className="text-xs text-pink-300 truncate">@{c.username}</div>
+                          </div>
+                          <span className={`text-xs font-bold flex-shrink-0 ${picked ? 'text-pink-300' : 'text-[#666]'}`}>{picked ? '✓ Picked' : 'Pick'}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Selected summary */}
+              {selectedCreators.length > 0 && (
+                <div className="pt-3 border-t border-white/10">
+                  <p className="text-xs font-bold text-pink-200/80 uppercase tracking-wider mb-2">
+                    {selectedCreators.length} creator{selectedCreators.length === 1 ? '' : 's'} selected
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedCreators.map((c) => (
+                      <span key={c.username} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-pink-500/15 border border-pink-500/30 rounded-full text-xs text-pink-200">
+                        @{c.username}
+                        <button type="button" onClick={() => toggleCreatorSelected(c)} className="text-pink-300/70 hover:text-white" aria-label="Remove">×</button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {campaignType !== 'onlyfans-creator' && (
+          <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-semibold text-[#999] mb-2">Campaign Name *</label>
@@ -1837,6 +2156,8 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
               )}
             </>
           )}
+          </>
+          )}
 
           <div>
             <label className="block text-sm font-semibold text-[#999] mb-2">Duration</label>
@@ -1926,6 +2247,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
           <button type="button" onClick={() => setSectionTab('buttonsBanners')} className={tabClass('buttonsBanners')}>Buttons & Banners</button>
           <button type="button" onClick={() => setSectionTab('advertisers')} className={tabClass('advertisers')}>Advertisers</button>
           <button type="button" onClick={() => setSectionTab('feedAds')} className={tabClass('feedAds')}>Feed Ads</button>
+          <button type="button" onClick={() => setSectionTab('featuredCreators')} className={tabClass('featuredCreators')}>💋 Featured Creators</button>
           <button type="button" onClick={() => setSectionTab('premium')} className={tabClass('premium')}>Erogram Premium</button>
           <button type="button" onClick={() => setSectionTab('revenue')} className={tabClass('revenue')}>💰 Revenue</button>
         </div>}
@@ -3542,6 +3864,11 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
             );
           })()}
         </>
+      )}
+
+      {/* ─── Featured Creators tab (mirrors /OF/featured) ───────────── */}
+      {sectionTab === 'featuredCreators' && (
+        <FeaturedCreatorsManager />
       )}
 
       {/* ─── Erogram Premium tab ───────────────────────────────────── */}

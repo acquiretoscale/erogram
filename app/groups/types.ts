@@ -71,8 +71,16 @@ export interface FeedCampaign {
     verified?: boolean;
     /** Tier slot (1-3): determines which section the ad appears in */
     tierSlot?: number;
-    /** 'advertiser' (image/video) or 'premium' (group mosaic from a category) */
-    adType?: 'advertiser' | 'premium' | 'featured-bot';
+    /** 'advertiser' (image/video), 'premium' (group mosaic), 'featured-bot' (slot 5 bot), or 'onlyfans-creator' (OF creator → direct OF link) */
+    adType?: 'advertiser' | 'premium' | 'featured-bot' | 'onlyfans-creator';
+    /** For onlyfans-creator cards (sourced from TrendingOFCreator) */
+    ofUsername?: string;
+    ofLikesCount?: number;
+    ofSubscriberCount?: number;
+    ofIsLive?: boolean;
+    ofTrendingId?: string;
+    ofLiveHourStart?: number;
+    ofLiveHourEnd?: number;
     /** For premium ads: which category the groups are from */
     premiumCategory?: string;
     /** For premium ads: top featured groups to show in the mosaic */

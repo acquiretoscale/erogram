@@ -10,6 +10,7 @@ import HeaderBanner from '@/components/HeaderBanner';
 import BookmarkButton from '@/components/BookmarkButton';
 import { getButtonConfig } from '@/lib/actions/publicData';
 import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
+import { trackTrendingClick } from '@/lib/actions/onlyfansTracking';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 import VaultTeaserFeed from '@/app/groups/VaultTeaserFeed';
 import VickyGroupsBubble from '@/app/groups/VickyGroupsBubble';
@@ -65,6 +66,19 @@ interface VaultTeaserItem {
   vaultCategories?: string[];
 }
 
+interface FeaturedCreator {
+  _id: string;
+  name: string;
+  username: string;
+  avatar: string;
+  url: string;
+  bio?: string;
+  categories?: string[];
+  likesCount?: number;
+  liveHourStart?: number;
+  liveHourEnd?: number;
+}
+
 interface JoinClientProps {
   entity: Entity;
   type: 'group' | 'bot';
@@ -83,6 +97,7 @@ interface JoinClientProps {
   topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string; slot: string }>;
   isDeleted?: boolean;
   vaultTeaser?: VaultTeaserItem[];
+  featuredCreators?: FeaturedCreator[];
 }
 
 interface PopupAdvert {
@@ -178,7 +193,7 @@ function VaultTeaserBlock({ items }: { items: VaultTeaserItem[] }) {
   );
 }
 
-export default function JoinClient({ entity, type, similarGroups = [], initialIsMobile = false, initialIsTelegram = false, joinCtaCampaign = null, topBannerCampaigns = [], isDeleted = false, vaultTeaser = [] }: JoinClientProps) {
+export default function JoinClient({ entity, type, similarGroups = [], initialIsMobile = false, initialIsTelegram = false, joinCtaCampaign = null, topBannerCampaigns = [], isDeleted = false, vaultTeaser = [], featuredCreators = [] }: JoinClientProps) {
   const [countdown, setCountdown] = useState(0);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [buttonConfig, setButtonConfig] = useState<ButtonConfig | null>(null);
@@ -189,6 +204,8 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
   const [failedSimilarImages, setFailedSimilarImages] = useState<Record<string, boolean>>({});
   const [userInteracted, setUserInteracted] = useState(false);
   const [adsReady, setAdsReady] = useState(false);
+  const isOfCategory = /onlyfans/i.test(entity.category);
+  const [showCreatorAd] = useState(() => featuredCreators.length > 0 && (isOfCategory || Math.random() < 0.5));
   const clickTrackedRef = useRef(false);
   const { t } = useTranslation();
   const lp = useLocalePath();
@@ -811,73 +828,131 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                 )}
 
                 <div className="mt-6 border-t border-white/5 pt-6">
-                  <div className="rounded-2xl border-2 border-orange-500/70 bg-[#0d0d0d] p-5 text-center space-y-4 shadow-[0_0_18px_rgba(249,115,22,0.2)]">
-                    <a
-                      href="/premium"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block w-full text-center font-black py-5 rounded-2xl text-lg uppercase tracking-widest transition-all duration-150 transform hover:-translate-y-1 hover:brightness-110 active:translate-y-0"
-                      style={{ background: 'linear-gradient(180deg,#4ade80 0%,#16a34a 100%)', color: '#fff', border: '2.5px solid #15803d', boxShadow: '0 0 0 1px #bbf7d0, 0 0 24px 6px rgba(74,222,128,0.55), 0 6px 0 #14532d', textShadow: '0 1px 3px rgba(0,0,0,0.5)', letterSpacing: '0.08em' }}
-                    >
-                      🔒 UNLOCK 4000 UNLISTED PREMIUM GROUPS
-                    </a>
-
-                    <div className="space-y-1.5 text-left max-w-md mx-auto">
-                      <p className="text-base font-bold">
-                        <span style={{ background: '#b91c1c', color: '#fff', padding: '2px 6px', borderRadius: '2px', boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' as any }}>Access Instantly Over 4000 unlisted groups</span>
-                      </p>
-                      <ul className="text-sm font-medium space-y-1.5">
-                        <li><span style={{ background: '#b91c1c', color: '#fff', padding: '2px 6px', borderRadius: '2px', boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' as any }}>• Organized by categories, total subs, and country.</span></li>
-                        <li><span style={{ background: '#b91c1c', color: '#fff', padding: '2px 6px', borderRadius: '2px', boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' as any }}>• Unlimited Bookmarking &amp; folders.</span></li>
-                        <li><span style={{ background: '#b91c1c', color: '#fff', padding: '2px 6px', borderRadius: '2px', boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' as any }}>• Enhanced filtering, Vicky AI to find faster what you&apos;re looking for &amp; Much more.</span></li>
-                      </ul>
-                    </div>
-
-                    {vaultTeaser.length > 0 && (
-                      <div className="grid grid-cols-3 gap-1.5 py-2">
-                        {vaultTeaser.slice(0, 12).map((g) => {
-                          const cats = g.vaultCategories && g.vaultCategories.length > 0 ? g.vaultCategories : [g.category];
-                          const fmt = g.memberCount >= 1_000_000 ? (g.memberCount/1_000_000).toFixed(1)+'M' : g.memberCount >= 1_000 ? (g.memberCount/1_000).toFixed(g.memberCount>=10_000?0:1)+'K' : g.memberCount > 0 ? String(g.memberCount) : null;
+                  {showCreatorAd ? (
+                    <div className="rounded-2xl border border-[#00AFF0]/30 bg-white p-4 shadow-[0_18px_40px_-20px_rgba(0,175,240,0.45)]">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-[#00AFF0]" style={{ fontSize: 14 }}>★</span>
+                        <h3 className="text-sm font-black text-[#0f172a]">Featured <span className="text-[#00AFF0]">Creators</span></h3>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {featuredCreators.slice(0, 4).map((c) => {
+                          const isLive = (c.liveHourStart ?? -1) >= 0 && (c.liveHourEnd ?? -1) >= 0 && (() => {
+                            const h = new Date().getUTCHours();
+                            const s = c.liveHourStart!, e = c.liveHourEnd!;
+                            return s <= e ? h >= s && h < e : h >= s || h < e;
+                          })();
+                          const likes = c.likesCount ?? 0;
                           return (
-                            <div
-                              key={g._id}
-                              className="relative rounded-lg flex items-center gap-2 px-2 py-1.5 select-none"
-                              style={{ background: '#ffffff', border: '1px solid rgba(249,115,22,0.3)' }}
+                            <button
+                              key={c._id}
+                              type="button"
+                              onClick={() => { trackTrendingClick(c._id); window.open(c.url, '_blank', 'noopener,noreferrer'); }}
+                              className="group w-full text-left rounded-2xl overflow-hidden bg-white ring-[2px] ring-[#00AFF0]/35 hover:ring-[#00AFF0] shadow-[0_10px_24px_-14px_rgba(0,175,240,0.55)] hover:shadow-[0_14px_30px_-14px_rgba(0,175,240,0.65)] hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none"
                             >
-                              <div className="shrink-0 w-8 h-8 rounded-md overflow-hidden border border-orange-200">
-                                <img src={g.image || '/assets/placeholder-no-image.png'} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
+                              <div className="relative aspect-[3/4] bg-[#eaf7ff]">
+                                {c.avatar ? (
+                                  <img src={c.avatar} alt={c.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" loading="lazy" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#00AFF0] bg-[#eaf7ff]">{c.name.charAt(0)}</div>
+                                )}
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="font-bold text-[10px] truncate leading-tight mb-0.5 select-none pointer-events-none" aria-hidden="true">
-                                  <span className="text-black">{g.name.slice(0, 4)}</span><span style={{ filter: 'blur(4px)', color: '#000' }}>{g.name.slice(4) || '····'}</span>
+                              <div className="px-3 pt-2.5">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-bold text-[13px] text-[#0f172a] truncate leading-tight">{c.name}</span>
+                                  {isLive && (
+                                    <span className="inline-flex items-center gap-1 shrink-0">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-[pulse_2s_ease-in-out_infinite]" />
+                                      <span className="text-[9px] font-bold text-emerald-400 uppercase">Live</span>
+                                    </span>
+                                  )}
                                 </div>
-                                <div className="flex items-center gap-1 flex-wrap">
-                                  {cats.map((c: string, i: number) => (
-                                    <span key={c} className="text-[7px] font-black uppercase tracking-[0.06em] px-1 py-0.5 rounded shrink-0" style={{ background: i === 0 ? '#fff7ed' : '#f5f5f5', border: '1px solid rgba(249,115,22,0.2)', color: i === 0 ? '#ea580c' : '#9a3412' }}>{c}</span>
-                                  ))}
-                                  {fmt && <span className="text-[8px] font-semibold shrink-0 text-gray-400">· {fmt}</span>}
-                                </div>
+                                <p className="text-[11px] text-[#00AFF0] font-semibold mt-0.5">@{c.username}</p>
+                                {likes > 0 && <p className="text-[10px] text-gray-500 mt-0.5">{likes >= 1000 ? (likes / 1000).toFixed(1) + 'K' : likes} likes</p>}
+                                {c.categories && c.categories.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-1.5">
+                                    {c.categories.slice(0, 2).map((cat) => (
+                                      <span key={cat} className="px-1.5 py-0.5 bg-[#00AFF0]/10 text-[#0099cc] text-[8px] font-bold rounded-md capitalize border border-[#00AFF0]/30">{cat}</span>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
-                              <svg className="shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(249,115,22,0.4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                              </svg>
-                            </div>
+                              <div className="px-3 pb-3 pt-2">
+                                <div className="w-full py-2 rounded-xl bg-[#00AFF0] text-white text-[12px] font-black text-center shadow-lg border border-[#00D4FF] group-hover:bg-[#00C4FF] transition-colors">Visit Profile</div>
+                              </div>
+                            </button>
                           );
                         })}
                       </div>
-                    )}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border-2 border-orange-500/70 bg-[#0d0d0d] p-5 text-center space-y-4 shadow-[0_0_18px_rgba(249,115,22,0.2)]">
+                      <a
+                        href="/premium"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block w-full text-center font-black py-5 rounded-2xl text-lg uppercase tracking-widest transition-all duration-150 transform hover:-translate-y-1 hover:brightness-110 active:translate-y-0"
+                        style={{ background: 'linear-gradient(180deg,#4ade80 0%,#16a34a 100%)', color: '#fff', border: '2.5px solid #15803d', boxShadow: '0 0 0 1px #bbf7d0, 0 0 24px 6px rgba(74,222,128,0.55), 0 6px 0 #14532d', textShadow: '0 1px 3px rgba(0,0,0,0.5)', letterSpacing: '0.08em' }}
+                      >
+                        🔒 UNLOCK 4000 UNLISTED PREMIUM GROUPS
+                      </a>
 
-                    <a
-                      href="/premium"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block w-full text-center font-black py-5 rounded-2xl text-xl uppercase tracking-widest transition-all duration-150 transform hover:-translate-y-1 hover:brightness-110 active:translate-y-0"
-                      style={{ background: 'linear-gradient(180deg,#4ade80 0%,#16a34a 100%)', color: '#fff', border: '2.5px solid #15803d', boxShadow: '0 0 0 1px #bbf7d0, 0 0 28px 8px rgba(74,222,128,0.6), 0 6px 0 #14532d', textShadow: '0 1px 3px rgba(0,0,0,0.5)', letterSpacing: '0.08em' }}
-                    >
-                      🔒 UNLOCK EROGRAM PREMIUM
-                    </a>
-                    <p className="text-xs text-white/50 mt-2">Over 60 categories · Updated regularly</p>
-                  </div>
+                      <div className="space-y-1.5 text-left max-w-md mx-auto">
+                        <p className="text-base font-bold">
+                          <span style={{ background: '#b91c1c', color: '#fff', padding: '2px 6px', borderRadius: '2px', boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' as any }}>Access Instantly Over 4000 unlisted groups</span>
+                        </p>
+                        <ul className="text-sm font-medium space-y-1.5">
+                          <li><span style={{ background: '#b91c1c', color: '#fff', padding: '2px 6px', borderRadius: '2px', boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' as any }}>• Organized by categories, total subs, and country.</span></li>
+                          <li><span style={{ background: '#b91c1c', color: '#fff', padding: '2px 6px', borderRadius: '2px', boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' as any }}>• Unlimited Bookmarking &amp; folders.</span></li>
+                          <li><span style={{ background: '#b91c1c', color: '#fff', padding: '2px 6px', borderRadius: '2px', boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' as any }}>• Enhanced filtering, Vicky AI to find faster what you&apos;re looking for &amp; Much more.</span></li>
+                        </ul>
+                      </div>
+
+                      {vaultTeaser.length > 0 && (
+                        <div className="grid grid-cols-3 gap-1.5 py-2">
+                          {vaultTeaser.slice(0, 12).map((g) => {
+                            const cats = g.vaultCategories && g.vaultCategories.length > 0 ? g.vaultCategories : [g.category];
+                            const fmt = g.memberCount >= 1_000_000 ? (g.memberCount/1_000_000).toFixed(1)+'M' : g.memberCount >= 1_000 ? (g.memberCount/1_000).toFixed(g.memberCount>=10_000?0:1)+'K' : g.memberCount > 0 ? String(g.memberCount) : null;
+                            return (
+                              <div
+                                key={g._id}
+                                className="relative rounded-lg flex items-center gap-2 px-2 py-1.5 select-none"
+                                style={{ background: '#ffffff', border: '1px solid rgba(249,115,22,0.3)' }}
+                              >
+                                <div className="shrink-0 w-8 h-8 rounded-md overflow-hidden border border-orange-200">
+                                  <img src={g.image || '/assets/placeholder-no-image.png'} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-bold text-[10px] truncate leading-tight mb-0.5 select-none pointer-events-none" aria-hidden="true">
+                                    <span className="text-black">{g.name.slice(0, 4)}</span><span style={{ filter: 'blur(4px)', color: '#000' }}>{g.name.slice(4) || '····'}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1 flex-wrap">
+                                    {cats.map((c: string, i: number) => (
+                                      <span key={c} className="text-[7px] font-black uppercase tracking-[0.06em] px-1 py-0.5 rounded shrink-0" style={{ background: i === 0 ? '#fff7ed' : '#f5f5f5', border: '1px solid rgba(249,115,22,0.2)', color: i === 0 ? '#ea580c' : '#9a3412' }}>{c}</span>
+                                    ))}
+                                    {fmt && <span className="text-[8px] font-semibold shrink-0 text-gray-400">· {fmt}</span>}
+                                  </div>
+                                </div>
+                                <svg className="shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(249,115,22,0.4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                </svg>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      <a
+                        href="/premium"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block w-full text-center font-black py-5 rounded-2xl text-xl uppercase tracking-widest transition-all duration-150 transform hover:-translate-y-1 hover:brightness-110 active:translate-y-0"
+                        style={{ background: 'linear-gradient(180deg,#4ade80 0%,#16a34a 100%)', color: '#fff', border: '2.5px solid #15803d', boxShadow: '0 0 0 1px #bbf7d0, 0 0 28px 8px rgba(74,222,128,0.6), 0 6px 0 #14532d', textShadow: '0 1px 3px rgba(0,0,0,0.5)', letterSpacing: '0.08em' }}
+                      >
+                        🔒 UNLOCK EROGRAM PREMIUM
+                      </a>
+                      <p className="text-xs text-white/50 mt-2">Over 60 categories · Updated regularly</p>
+                    </div>
+                  )}
                 </div>
 
 

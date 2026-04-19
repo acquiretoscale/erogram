@@ -515,8 +515,11 @@ export const campaignSchema = new Schema(
     badgeText: { type: String, default: '' },
     // Show a verified checkmark next to the ad title (like Instagram verified)
     verified: { type: Boolean, default: false },
-    // Ad type: 'advertiser' (image/video), 'premium' (group mosaic), or 'featured-bot' (slot-5 bot spotlight)
-    adType: { type: String, enum: ['advertiser', 'premium', 'featured-bot', 'featured-nsfw'], default: 'advertiser' },
+    // Ad type: 'advertiser' (image/video), 'premium' (group mosaic), 'featured-bot' (slot-5 bot spotlight),
+    // 'featured-nsfw' (nsfw spotlight), or 'onlyfans-creator' (single OF creator campaign — renders like image ad)
+    adType: { type: String, enum: ['advertiser', 'premium', 'featured-bot', 'featured-nsfw', 'onlyfans-creator'], default: 'advertiser' },
+    // For onlyfans-creator ads: the creator's username (for display + linkback). destinationUrl stores the OF URL.
+    ofUsername: { type: String, default: '' },
     // For premium ads: which category to pull featured groups from
     premiumCategory: { type: String, default: '' },
     // For premium ads: hand-picked group IDs to show (overrides automatic category query)

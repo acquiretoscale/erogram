@@ -3,7 +3,7 @@
 import jwt from 'jsonwebtoken';
 import mongoose, { type PipelineStage } from 'mongoose';
 import connectDB from '@/lib/db/mongodb';
-import { User, Campaign, CampaignClick, CampaignImpressionDaily, Advertiser, Article, Group } from '@/lib/models';
+import { User, Campaign, CampaignClick, CampaignImpressionDaily, Advertiser, Article, Group, OnlyFansCreator } from '@/lib/models';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -77,6 +77,7 @@ export async function getCampaigns(token: string, advertiserId?: string) {
     premiumGroupIds: (c.premiumGroupIds || []).map((id: any) => id.toString()),
     bannerPages: c.bannerPages || [],
     bannerDevice: c.bannerDevice || 'all',
+    ofUsername: c.ofUsername || '',
   }));
 }
 
@@ -104,12 +105,13 @@ export async function createCampaign(
     videoUrl?: string;
     badgeText?: string;
     verified?: boolean;
-    adType?: 'advertiser' | 'premium';
+    adType?: 'advertiser' | 'premium' | 'onlyfans-creator';
     premiumCategory?: string;
     premiumGroupIds?: string[];
     socialProof?: string;
     bannerPages?: string[];
     bannerDevice?: 'all' | 'mobile' | 'desktop';
+    ofUsername?: string;
   }
 ) {
   const admin = await authenticateAdmin(token);
@@ -136,7 +138,7 @@ export async function createCampaign(
     throw new Error('Destination URL is required');
   }
   const hasVideo = data.slot === 'feed' && !!(data as any).videoUrl;
-  if (!isCtaSlot && data.adType !== 'premium' && !data.creative && !hasVideo) {
+  if (!isCtaSlot && data.adType !== 'premium' && data.adType !== 'onlyfans-creator' && !data.creative && !hasVideo) {
     throw new Error('Creative image is required for this slot (or provide a video URL for feed ads)');
   }
   if (isCtaSlot && !(data.description != null && String(data.description).trim())) {
@@ -213,6 +215,7 @@ export async function createCampaign(
     socialProof: data.socialProof || 'random',
     bannerPages: data.bannerPages || [],
     bannerDevice: data.bannerDevice || 'all',
+    ofUsername: data.adType === 'onlyfans-creator' ? (data.ofUsername || '').trim() : '',
   });
 
   // Keep feed positions gap-free after a new ad is created
@@ -248,12 +251,13 @@ export async function updateCampaign(
     videoUrl: string;
     badgeText: string;
     verified: boolean;
-    adType: 'advertiser' | 'premium';
+    adType: 'advertiser' | 'premium' | 'onlyfans-creator';
     premiumCategory: string;
     premiumGroupIds: string[];
     socialProof: string;
     bannerPages: string[];
     bannerDevice: 'all' | 'mobile' | 'desktop';
+    ofUsername: string;
   }>
 ) {
   const admin = await authenticateAdmin(token);
@@ -284,6 +288,7 @@ export async function updateCampaign(
   if ('badgeText' in data) updateData.badgeText = String(data.badgeText ?? '').trim();
   if ('verified' in data) updateData.verified = Boolean(data.verified);
   if ('adType' in data) updateData.adType = data.adType || 'advertiser';
+  if ('ofUsername' in data) updateData.ofUsername = String(data.ofUsername ?? '').trim();
   if ('premiumCategory' in data) updateData.premiumCategory = String(data.premiumCategory ?? '').trim();
   if ('premiumGroupIds' in data) {
     updateData.premiumGroupIds = (data.premiumGroupIds || []).map(id => new mongoose.Types.ObjectId(id));
@@ -537,7 +542,7 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
       { feedPlacement: { $exists: false } },
     ],
   })
-    .select('_id creative destinationUrl slot feedTier tierSlot position description category country buttonText name feedPlacement videoUrl badgeText verified adType premiumCategory premiumGroupIds socialProof')
+    .select('_id creative destinationUrl slot feedTier tierSlot position description category country buttonText name feedPlacement videoUrl badgeText verified adType premiumCategory premiumGroupIds socialProof ofUsername')
     .lean();
 
   // Group by tierSlot (1-4) for A/B variant selection
@@ -546,6 +551,25 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
     const ts = (c as any).tierSlot as number;
     if (!slotGroups.has(ts)) slotGroups.set(ts, []);
     slotGroups.get(ts)!.push(c);
+  }
+
+  // For onlyfans-creator campaigns: one query to get stats + lastSeen
+  const ofUsernames = campaigns
+    .filter((c: any) => c.adType === 'onlyfans-creator' && c.ofUsername)
+    .map((c: any) => (c.ofUsername as string).toLowerCase());
+  const ofCreatorMap = new Map<string, { likesCount: number; subscriberCount: number; lastSeen: string }>();
+  if (ofUsernames.length > 0) {
+    const ofDocs = await OnlyFansCreator.find(
+      { username: { $in: ofUsernames } },
+      'username lastSeen likesCount subscriberCount',
+    ).lean();
+    for (const d of ofDocs as any[]) {
+      ofCreatorMap.set(d.username.toLowerCase(), {
+        likesCount: d.likesCount || 0,
+        subscriberCount: d.subscriberCount || 0,
+        lastSeen: d.lastSeen || '',
+      });
+    }
   }
 
   // Slots 1-3: pick one random variant (A/B test).
@@ -558,6 +582,9 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
 
     const picks = s === 4 ? variants : [variants[Math.floor(Math.random() * variants.length)]];
     for (const pick of picks) {
+      const ofData = (pick as any).adType === 'onlyfans-creator'
+        ? ofCreatorMap.get(((pick as any).ofUsername || '').toLowerCase())
+        : undefined;
       results.push({
         _id: pick._id.toString(),
         creative: pick.creative,
@@ -576,6 +603,12 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
         adType: pick.adType || 'advertiser',
         premiumCategory: pick.premiumCategory || '',
         socialProof: pick.socialProof || 'random',
+        ofUsername: (pick as any).ofUsername || '',
+        ...(ofData ? {
+          ofLikesCount: ofData.likesCount,
+          ofSubscriberCount: ofData.subscriberCount,
+          ofIsLive: ofData.lastSeen ? (Date.now() - new Date(ofData.lastSeen).getTime() < 3600000) : false,
+        } : {}),
       });
     }
   }

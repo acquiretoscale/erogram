@@ -106,6 +106,7 @@ export async function POST(req: NextRequest) {
       firstName: user.firstName,
       photoUrl: user.photoUrl,
       isNewUser,
+      onboardingCompleted: !!user.onboardingCompleted,
     });
   } catch (error: any) {
     console.error('Telegram login error:', error);

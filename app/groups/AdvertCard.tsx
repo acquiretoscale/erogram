@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Advert, FeedCampaign } from './types';
 import { useIsTelegramBrowser } from '../hooks/useIsTelegramBrowser';
 import { trackClick as trackCampaignClick, trackImpression } from '@/lib/actions/campaigns';
+import { trackTrendingClick } from '@/lib/actions/onlyfansTracking';
 
 interface AdvertCardProps {
     advert?: Advert;
@@ -54,6 +55,136 @@ function seededRandomVideo(seed: string) {
         hash = hash & hash;
     }
     return Math.abs(hash) / 2147483647;
+}
+
+function formatCount(n: number): string {
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}K`;
+    return String(n);
+}
+
+function isCreatorLiveNow(start: number, end: number): boolean {
+    if (start < 0 || end < 0) return false;
+    const h = new Date().getUTCHours();
+    return start <= end ? h >= start && h < end : h >= start || h < end;
+}
+
+function OnlyFansCreatorAdCard({ campaign, handleClick }: { campaign: FeedCampaign; handleClick: () => void }) {
+    const cardRef = useRef<HTMLDivElement>(null);
+    const impressionFiredRef = useRef(false);
+    const [imgError, setImgError] = useState(false);
+    const online = isCreatorLiveNow(campaign.ofLiveHourStart ?? -1, campaign.ofLiveHourEnd ?? -1);
+    const trendingId = campaign.ofTrendingId || '';
+
+    const onCardClick = () => {
+        if (trendingId) trackTrendingClick(trendingId);
+        handleClick();
+    };
+
+    useEffect(() => {
+        const el = cardRef.current;
+        if (!el) return;
+        const observer = new IntersectionObserver(([entry]) => {
+            if (entry.isIntersecting && !impressionFiredRef.current) {
+                impressionFiredRef.current = true;
+                if (campaign._id) trackImpression(campaign._id);
+            }
+        }, { threshold: 0.3 });
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [campaign._id]);
+
+    const displayName = campaign.name || campaign.ofUsername || 'Creator';
+    const username = campaign.ofUsername || '';
+    const description = campaign.description && campaign.description !== `@${username}` ? campaign.description : '';
+    const likesCount = campaign.ofLikesCount || 0;
+    const subscriberCount = campaign.ofSubscriberCount || 0;
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="h-full"
+        >
+            <div
+                ref={cardRef}
+                onClick={onCardClick}
+                className="group h-full flex flex-col rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer border border-[#00AFF0]/25 hover:border-[#00AFF0]/60 hover:shadow-2xl hover:shadow-[#00AFF0]/15 transition-all duration-500 bg-white"
+                role="link"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && onCardClick()}
+            >
+                {/* Portrait image — 3:4 aspect like /onlyfanssearch */}
+                <div className="relative aspect-[3/4] bg-[#1a1a1a] overflow-hidden">
+                    {campaign.creative && !imgError ? (
+                        <img
+                            src={campaign.creative}
+                            alt={`${displayName} OnlyFans`}
+                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                            onError={() => setImgError(true)}
+                        />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center text-5xl font-black text-[#00AFF0]/30 bg-gradient-to-br from-[#00AFF0]/10 to-[#00D4FF]/5">
+                            {displayName.charAt(0)}
+                        </div>
+                    )}
+                    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none" />
+
+                    {/* Featured Creator label */}
+                    <div className="absolute bottom-2 right-2 z-10">
+                        <span className="text-[9px] font-bold text-white/70 uppercase tracking-wider">Featured Creator</span>
+                    </div>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 flex flex-col px-2.5 pt-2 sm:px-4 sm:pt-3">
+                    {/* Name + online indicator */}
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <h3 className="font-bold text-[13px] sm:text-[15px] text-[#0f172a] truncate leading-tight">
+                            {displayName}
+                        </h3>
+                        {online && (
+                            <span className="flex items-center gap-1 shrink-0">
+                                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#22c55e' }} />
+                                <span className="text-[9px] font-semibold" style={{ color: '#16a34a' }}>Online</span>
+                            </span>
+                        )}
+                    </div>
+                    {username && (
+                        <p className="text-[11px] sm:text-[13px] text-[#00AFF0] font-semibold mt-0.5 truncate">@{username}</p>
+                    )}
+
+                    {/* Stats row */}
+                    {(subscriberCount > 0 || likesCount > 0) && (
+                        <div className="flex items-center gap-1.5 mt-1 text-[10px] sm:text-[11px] text-gray-400">
+                            {subscriberCount > 0 && <span>{formatCount(subscriberCount)} fans</span>}
+                            {likesCount > 0 && <span>{subscriberCount > 0 ? '·' : ''} {formatCount(likesCount)} likes</span>}
+                        </div>
+                    )}
+
+                    {/* Description / bio */}
+                    {description && (
+                        <p className="text-[10px] sm:text-xs text-gray-400 mt-1.5 line-clamp-2 leading-relaxed">
+                            {description}
+                        </p>
+                    )}
+                </div>
+
+                {/* CTA button */}
+                <div className="px-2.5 pb-2.5 pt-2 sm:px-4 sm:pb-4 sm:pt-3 mt-auto">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onCardClick(); }}
+                        className="w-full py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] hover:from-[#009ADB] hover:to-[#00BFE8] text-white text-[13px] sm:text-sm font-black text-center shadow-[0_8px_18px_-8px_rgba(0,175,240,0.7)] transition-all"
+                    >
+                        {campaign.buttonText || 'View Profile'}
+                    </button>
+                </div>
+            </div>
+        </motion.div>
+    );
 }
 
 function VideoAdCard({ campaign, handleClick }: { campaign: FeedCampaign; handleClick: () => void }) {
@@ -596,9 +727,13 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
         return null;
     }
 
+    // ONLYFANS CREATOR CARD — portrait layout matching /onlyfanssearch style
+    if (campaign?.adType === 'onlyfans-creator') {
+        return <OnlyFansCreatorAdCard campaign={campaign} handleClick={handleClick} />;
+    }
+
     // FEATURED BOT CARD — slot 5 bot spotlight
     if (campaign?.adType === 'featured-bot') {
-        const botBadge = { label: 'Featured Bot', icon: '🤖', color: 'bg-gradient-to-r from-cyan-500 to-blue-600' };
         return (
             <motion.div
                 initial={{ opacity: 0, y: 60 }}
@@ -609,12 +744,6 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                 className="h-full"
             >
                 <div className={`glass rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col backdrop-blur-xl border transition-all duration-500 group relative border-cyan-500/20 hover:border-cyan-400/50 hover:shadow-2xl hover:shadow-cyan-500/20`}>
-                    {/* Featured Bot badge */}
-                    <div className="absolute top-2 sm:top-3 left-2 sm:left-3 z-10">
-                        <span className={`${botBadge.color} text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg uppercase tracking-wider flex items-center gap-1`}>
-                            <span>{botBadge.icon}</span> {botBadge.label}
-                        </span>
-                    </div>
                     {/* Image */}
                     <div ref={imgRef} className="relative w-full h-32 sm:h-52 overflow-hidden bg-[#1a1a1a]">
                         <Image
@@ -627,6 +756,9 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                             onError={() => setImageSrc('/assets/image.jpg')}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent opacity-80" />
+                        <div className="absolute bottom-1.5 right-1.5 z-10">
+                            <span className="text-[8px] sm:text-[9px] font-bold text-white/40 uppercase tracking-wider">🤖 Featured Bot</span>
+                        </div>
                     </div>
                     {/* Content */}
                     <div className="p-3 sm:p-5 flex-grow flex flex-col relative">

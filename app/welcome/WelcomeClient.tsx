@@ -252,6 +252,17 @@ export default function WelcomeClient({ categories, aiTools, isPreview = false, 
     } catch {}
   }, [creators, groups, aiTools, selectedCategories, selectedAICategories, showAI]);
 
+  const getPostOnboardingDest = useCallback(() => {
+    try {
+      const saved = sessionStorage.getItem('postOnboardingRedirect');
+      if (saved) {
+        sessionStorage.removeItem('postOnboardingRedirect');
+        return saved;
+      }
+    } catch {}
+    return '/profile1?tab=home&onboarding=complete';
+  }, []);
+
   const goToCelebration = useCallback(async (paid: boolean, method?: 'stars' | 'crypto', plan?: string) => {
     if (isPreview) {
       storeSimData();
@@ -260,8 +271,8 @@ export default function WelcomeClient({ categories, aiTools, isPreview = false, 
       return;
     }
     await finishAndRedirect();
-    router.replace('/profile1?tab=home&onboarding=complete');
-  }, [isPreview, storeSimData, finishAndRedirect, router]);
+    router.replace(getPostOnboardingDest());
+  }, [isPreview, storeSimData, finishAndRedirect, router, getPostOnboardingDest]);
 
   const handleFinish = useCallback(async () => {
     setFinishing(true);
@@ -271,8 +282,8 @@ export default function WelcomeClient({ categories, aiTools, isPreview = false, 
       return;
     }
     await finishAndRedirect();
-    router.replace('/profile1?tab=home&onboarding=complete');
-  }, [isPreview, finishAndRedirect, storeSimData, router]);
+    router.replace(getPostOnboardingDest());
+  }, [isPreview, finishAndRedirect, storeSimData, router, getPostOnboardingDest]);
 
   const handleSkip = useCallback(async () => {
     setFinishing(true);
@@ -282,8 +293,8 @@ export default function WelcomeClient({ categories, aiTools, isPreview = false, 
       return;
     }
     await finishAndRedirect();
-    router.replace('/profile1?tab=home&onboarding=complete');
-  }, [isPreview, finishAndRedirect, storeSimData, router]);
+    router.replace(getPostOnboardingDest());
+  }, [isPreview, finishAndRedirect, storeSimData, router, getPostOnboardingDest]);
 
   const togglePlatform = (id: string) =>
     setSelectedPlatforms(prev =>

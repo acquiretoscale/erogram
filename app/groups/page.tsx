@@ -7,6 +7,7 @@ import GroupsClient from './GroupsClient';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { getActiveCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
+import { getFeaturedCreatorFeedItems } from '@/lib/actions/publicData';
 import { getStoryCategories, DEFAULT_STORY_CATEGORIES, type StoryCategoryConfig } from '@/lib/actions/siteConfig';
 import { listR2Files } from '@/lib/r2';
 import type { StoryCategory, StoryMediaSlide } from './types';
@@ -460,13 +461,24 @@ export default async function GroupsPage() {
   let storyConfig = await getStoryCategories();
   if (storyConfig.length === 0) storyConfig = DEFAULT_STORY_CATEGORIES;
 
-  // In-feed ads + story data + vault teaser — all in parallel
-  const [topBannerCampaigns, feedCampaigns, storyData, vaultTeaserGroups] = await Promise.all([
+  // In-feed ads + story data + vault teaser + featured creators — all in parallel
+  const [topBannerCampaigns, feedCampaignsRaw, storyData, vaultTeaserGroups, featuredCreatorItems] = await Promise.all([
     getActiveCampaigns('top-banner', { page: 'groups', device: isMobile ? 'mobile' : 'desktop' }),
     getActiveFeedCampaigns('groups'),
     storiesEnabled ? getStoryData(storyConfig, locale) : Promise.resolve([] as StoryCategory[]),
     getVaultTeaser(),
+    getFeaturedCreatorFeedItems().catch(() => []),
   ]);
+
+  // Merge featured creators into feed, filtering out any campaign-based OF creator ads to avoid dupes
+  const regularAds = feedCampaignsRaw.filter((c: any) => c.adType !== 'onlyfans-creator');
+  const usedSlots = new Set(regularAds.map((c: any) => c.tierSlot));
+  // Bump featured creators to slot 4 if a paying advertiser already occupies their slot
+  const creatorAds = (featuredCreatorItems as any[]).map((c: any) => ({
+    ...c,
+    tierSlot: usedSlots.has(c.tierSlot) ? 4 : c.tierSlot,
+  }));
+  const feedCampaigns = [...regularAds, ...creatorAds];
 
   const topBannerForPage =
     topBannerCampaigns.length > 0 && topBannerCampaigns[0].creative ? topBannerCampaigns : [];

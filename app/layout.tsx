@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import LayoutWrapper from "@/components/LayoutWrapper";
+import ClarityScript from "@/components/ClarityScript";
 import { getLocale, getPathname } from "@/lib/i18n/server";
 import { getDictionary, LocaleProvider } from "@/lib/i18n";
 import { LOCALES, localePath, LOCALE_HREFLANG, DEFAULT_LOCALE } from "@/lib/i18n/config";
@@ -122,6 +123,8 @@ export default async function RootLayout({
             gtag('config', 'G-1LS0T31C7J');
           `}
         </Script>
+
+        <ClarityScript />
 
         <LocaleProvider locale={locale} dict={dict}>
           <LayoutWrapper>

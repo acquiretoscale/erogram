@@ -155,6 +155,7 @@ export async function GET(req: NextRequest) {
     if (user.photoUrl) params.set('photoUrl', user.photoUrl);
     if (state) params.set('state', state);
     if (isNewUser) params.set('newUser', '1');
+    if (!user.onboardingCompleted) params.set('onboardingPending', '1');
 
     return NextResponse.redirect(`${callbackPage}?${params.toString()}`);
   } catch (err: any) {

@@ -16,7 +16,7 @@ import ToolDetailClient from '@/app/ainsfw/[slug]/ToolDetailClient';
 import { getToolStats } from '@/lib/actions/ainsfw';
 import { getCreatorBySlug, getRelatedCreators, getCreatorReviews } from '@/lib/actions/ofCreatorProfile';
 import CreatorProfileClient from '@/app/onlyfanssearch/CreatorProfileClient';
-import { getTrendingOnErogram } from '@/lib/actions/publicData';
+import { getTrendingOnErogram, getTrendingCreators } from '@/lib/actions/publicData';
 
 // ISR for public join pages (keeps SSR output crawlable while avoiding per-request rendering)
 export const revalidate = 300;
@@ -779,10 +779,11 @@ export default async function JoinPage({ params }: PageProps) {
       };
     }
 
-    const [joinCtaCampaigns, topBannerCampaigns, vaultTeaser] = await Promise.all([
+    const [joinCtaCampaigns, topBannerCampaigns, vaultTeaser, featuredCreators] = await Promise.all([
       getActiveCampaigns('join-cta'),
       getActiveCampaigns('top-banner', { page: 'join', device: isMobile ? 'mobile' : 'desktop' }),
       getVaultTeaser(),
+      getTrendingCreators().catch(() => []),
     ]);
     const joinCtaCampaign = joinCtaCampaigns[0] ?? null;
     const topBannerForPage =
@@ -807,7 +808,7 @@ export default async function JoinPage({ params }: PageProps) {
             />
           </>
         )}
-        <JoinClient entity={group} type="group" similarGroups={similarGroups} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} isDeleted={group.status === 'deleted'} vaultTeaser={vaultTeaser} />
+        <JoinClient entity={group} type="group" similarGroups={similarGroups} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} isDeleted={group.status === 'deleted'} vaultTeaser={vaultTeaser} featuredCreators={featuredCreators} />
       </>
     );
   }
@@ -885,10 +886,11 @@ export default async function JoinPage({ params }: PageProps) {
       } : {}),
     };
 
-    const [joinCtaCampaigns2, topBannerCampaigns2, vaultTeaser2] = await Promise.all([
+    const [joinCtaCampaigns2, topBannerCampaigns2, vaultTeaser2, featuredCreators2] = await Promise.all([
       getActiveCampaigns('join-cta'),
       getActiveCampaigns('top-banner', { page: 'join', device: isMobile ? 'mobile' : 'desktop' }),
       getVaultTeaser(),
+      getTrendingCreators().catch(() => []),
     ]);
     const joinCtaCampaign = joinCtaCampaigns2[0] ?? null;
     const topBannerForPage =
@@ -908,7 +910,7 @@ export default async function JoinPage({ params }: PageProps) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplicationJsonLd) }}
         />
-        <JoinClient entity={bot} type="bot" similarGroups={[]} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} vaultTeaser={vaultTeaser2} />
+        <JoinClient entity={bot} type="bot" similarGroups={[]} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} vaultTeaser={vaultTeaser2} featuredCreators={featuredCreators2} />
       </>
     );
   }

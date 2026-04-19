@@ -129,6 +129,23 @@ export async function processCreatorImages(slug: string): Promise<{
 }
 
 /**
+ * Ensure a creator's avatar is on R2. Returns the R2 URL, or the original if R2 isn't configured.
+ * Calls processCreatorImages under the hood — reuses the full pipeline.
+ */
+export async function ensureR2Avatar(username: string): Promise<string> {
+  await connectDB();
+  const creator = await OnlyFansCreator.findOne(
+    { username: { $regex: new RegExp(`^${username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } },
+    'slug avatar',
+  ).lean() as any;
+  if (!creator) return '';
+  if (creator.avatar && isAlreadyOnR2(creator.avatar)) return creator.avatar;
+  if (!isR2Configured()) return creator.avatar || '';
+  const result = await processCreatorImages(creator.slug);
+  return result.avatarR2 || creator.avatar || '';
+}
+
+/**
  * Bulk-process images for multiple creators.
  * Returns a summary of results per creator.
  */

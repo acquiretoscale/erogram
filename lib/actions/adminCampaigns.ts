@@ -60,6 +60,7 @@ export async function adminCreateCampaign(token: string, body: Record<string, an
     socialProof: body.socialProof ?? undefined,
     bannerPages: body.bannerPages ?? undefined,
     bannerDevice: body.bannerDevice ?? undefined,
+    ofUsername: body.ofUsername ?? undefined,
   });
   revalidatePublicFeeds();
   return result;
@@ -105,6 +106,7 @@ export async function adminUpdateCampaign(token: string, id: string, body: Recor
     socialProof: c.socialProof ?? 'random',
     bannerPages: c.bannerPages ?? [],
     bannerDevice: c.bannerDevice ?? 'all',
+    ofUsername: c.ofUsername ?? '',
   };
 }
 

@@ -294,7 +294,7 @@ export async function searchOFMCreators(token: string, q: string) {
   const creators = await OnlyFansCreator.find(filter)
     .sort({ clicks: -1 })
     .limit(15)
-    .select('name username slug avatar bio categories url clicks likesCount price isFree')
+    .select('name username slug avatar bio categories url clicks likesCount price isFree lastSeen subscriberCount')
     .lean();
 
   return JSON.parse(JSON.stringify({

@@ -136,16 +136,14 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
       {/* Trending categories — always visible for SEO */}
       <nav aria-label="Trending Telegram group categories" className="mt-1.5 rounded-lg px-2 py-1.5 shadow-sm" style={{ background: 'linear-gradient(135deg, #1a1510, #191510)', border: '1px solid rgba(245,158,11,0.15)' }}>
         <div className="flex flex-wrap items-center gap-1">
-          <span className="text-[8px] font-black uppercase tracking-wider shrink-0 mr-0.5" style={{ color: '#f59e0b' }}>🔥 Trending</span>
+          <span className="text-[8px] font-black uppercase tracking-wider shrink-0 mr-0.5" style={{ color: '#f59e0b' }}>🔥 Trending on Erogram</span>
             {[
               { label: 'Telegram Porn', href: '/best-telegram-groups/porn-telegram' },
               { label: 'Lesbian', href: '/best-telegram-groups/lesbian' },
               { label: 'Threesome', href: '/best-telegram-groups/threesome' },
-              { label: 'Big Ass', href: '/best-telegram-groups/big%20ass' },
               { label: 'Blowjob', href: '/best-telegram-groups/blowjob' },
               { label: 'Amateur', href: '/best-telegram-groups/amateur' },
               { label: 'Onlyfans', href: '/best-telegram-groups/onlyfans' },
-              { label: 'Russia', href: '/groups/country/Russia' },
               { label: 'BDSM', href: '/best-telegram-groups/bdsm' },
               { label: 'Germany', href: '/groups/country/Germany' },
             ].map(({ label, href }) => (
@@ -162,6 +160,17 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
                 {label}
               </Link>
             ))}
+            <Link
+              href="/onlyfanssearch"
+              className="px-1.5 py-[2px] text-[8px] font-bold rounded-full transition-all duration-200 whitespace-nowrap hover:scale-105"
+              style={{
+                background: 'linear-gradient(135deg, #00AFF0, #0088cc)',
+                color: '#ffffff',
+                border: '1px solid rgba(0,175,240,0.5)',
+              }}
+            >
+              OnlyFans Search
+            </Link>
         </div>
       </nav>
     </section>
@@ -236,18 +245,23 @@ function VisitingNowCard() {
         </div>
       </div>
 
-      <Link
-        href="/premium"
-        target="_blank"
-        className="flex items-center justify-center gap-1 px-3 py-1.5 rounded-full text-[10px] font-black whitespace-nowrap transition-all duration-200 hover:opacity-90"
-        style={{
-          background: 'linear-gradient(135deg, #c9973a 0%, #e8ba5a 50%, #c9973a 100%)',
-          color: '#0d0c0a',
-          boxShadow: '0 0 10px rgba(201,151,58,0.35)',
-        }}
-      >
-        ⭐ EROGRAM PREMIUM
-      </Link>
+      <div className="relative rounded-full p-[2px] overflow-hidden" style={{
+        background: 'conic-gradient(from 0deg, #ff006e, #fb5607, #ffbe0b, #ff6b35, #e91e8c, #ff006e)',
+      }}>
+        <Link
+          href="/premium"
+          target="_blank"
+          className="relative z-10 flex items-center justify-center gap-1 px-3 py-1.5 rounded-full text-[10px] font-black whitespace-nowrap transition-all duration-200 hover:brightness-110"
+          style={{
+            background: 'linear-gradient(180deg, #4ade80 0%, #16a34a 100%)',
+            color: '#fff',
+            boxShadow: '0 0 10px rgba(74,222,128,0.4)',
+            textShadow: '0 1px 2px rgba(0,0,0,0.4)',
+          }}
+        >
+          ⭐ EROGRAM PREMIUM
+        </Link>
+      </div>
     </div>
   );
 }

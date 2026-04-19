@@ -317,8 +317,6 @@ export default function CreatorProfileClient({
   const router = useRouter();
   const { t } = useTranslation();
   const lp = useLocalePath();
-  const [redirecting, setRedirecting] = useState(false);
-  const [countdown, setCountdown] = useState(0);
   const [headerError, setHeaderError] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
@@ -460,28 +458,10 @@ export default function CreatorProfileClient({
     setReviewSubmitting(false);
   };
 
-  const [countdownStarted, setCountdownStarted] = useState(false);
-
   const handleViewProfile = () => {
-    if (countdownStarted) return;
     trackCreatorClick(creator._id).catch(() => {});
-    if (publicAccess) {
-      window.open(creator.url, '_blank', 'noopener,noreferrer');
-      return;
-    }
-    setCountdown(7);
-    setCountdownStarted(true);
-    setRedirecting(true);
-  };
-
-  useEffect(() => {
-    if (!countdownStarted) return;
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
-      return () => clearTimeout(timer);
-    }
     window.open(creator.url, '_blank', 'noopener,noreferrer');
-  }, [countdownStarted, countdown, creator.url]);
+  };
 
   const displayPrice = creator.isFree
     ? t('ofSearch.free')
@@ -631,15 +611,6 @@ export default function CreatorProfileClient({
                 >
                   <Bookmark size={16} fill={isSaved ? 'currentColor' : 'none'} />
                 </button>
-                {!publicAccess && (
-                  <Link
-                    href={lp('/submit')}
-                    className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-xs font-black shadow-md shadow-[#00AFF0]/20 hover:shadow-lg hover:shadow-[#00AFF0]/30 hover:-translate-y-0.5 transition-all"
-                  >
-                    <Star className="w-3.5 h-3.5" />
-                    {t('ofSearch.submitNewCreator')}
-                  </Link>
-                )}
                 <ShareDropdown name={creator.name} username={creator.username} slug={creator.slug} />
               </div>
             </div>
@@ -677,15 +648,6 @@ export default function CreatorProfileClient({
               >
                 <Bookmark size={14} fill={isSaved ? 'currentColor' : 'none'} />
               </button>
-              {!publicAccess && (
-                <Link
-                  href={lp('/submit')}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-[11px] font-black shadow-md shadow-[#00AFF0]/20 hover:shadow-lg hover:shadow-[#00AFF0]/30 transition-all"
-                >
-                  <Star className="w-3 h-3" />
-                  {t('ofSearch.submitNewCreator')}
-                </Link>
-              )}
               <ShareDropdown name={creator.name} username={creator.username} slug={creator.slug} />
             </div>
 
@@ -1256,16 +1218,6 @@ export default function CreatorProfileClient({
                 );
               })()}
               <div className="flex justify-center mt-auto pt-2">
-                {redirecting ? (
-                  <div className="w-full bg-[#111] rounded-xl border border-white/10 px-5 py-4 text-center">
-                    <div className="flex flex-col items-center justify-center gap-2.5">
-                      <div className="w-7 h-7 border-2 border-[#00AFF0] border-t-transparent rounded-full animate-spin" />
-                      <div className="text-sm font-bold text-white">
-                        {countdown === 0 ? t('ofSearch.openingOnlyfans') : t('ofSearch.redirectingIn').replace('{n}', String(countdown))}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
                   <button
                     onClick={handleViewProfile}
                     className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white font-black text-sm shadow-md shadow-[#00AFF0]/25 hover:shadow-lg hover:shadow-[#00AFF0]/40 hover:-translate-y-0.5 transition-all"
@@ -1273,7 +1225,6 @@ export default function CreatorProfileClient({
                     {t('ofSearch.visitCreatorOf').replace('{name}', creator.name.split(' ')[0])}
                     <ExternalLink className="w-4 h-4" />
                   </button>
-                )}
               </div>
 
               {/* ── Compact inline flame rating — below OnlyFans CTA ── */}

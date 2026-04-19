@@ -68,7 +68,7 @@ export default function VickyGroupsBubble() {
         <div className="fixed bottom-6 right-6" style={{ zIndex: 9998 }}>
           <button onClick={() => setExpanded(true)}
             className="flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 rounded-full transition-all duration-200 hover:scale-105 active:scale-95"
-            style={{ background: 'linear-gradient(135deg, #0d1628, #141e33)', border: '2px solid rgba(0,175,240,0.4)', boxShadow: '0 4px 30px rgba(0,175,240,0.3), 0 8px 32px rgba(0,0,0,0.5)' }}>
+            style={{ background: 'linear-gradient(135deg, #0d1628, #141e33)', border: '2px solid #16a34a', boxShadow: '0 0 20px rgba(22,163,74,0.5), 0 4px 30px rgba(22,163,74,0.3), 0 8px 32px rgba(0,0,0,0.5)' }}>
             <div className="relative shrink-0">
               <img src="/assets/vicky-ai-avatar.jpg" alt="Vicky AI" className="w-14 h-14 rounded-full ring-2 ring-[#00aff0]/40" style={{ objectFit: 'cover', objectPosition: '50% 40%' }} />
               <span className="absolute top-0 right-0 w-3 h-3 bg-emerald-400 rounded-full border-2 border-[#0d1628]" />

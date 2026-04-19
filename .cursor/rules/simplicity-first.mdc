@@ -1,0 +1,18 @@
+---
+description: STOP over-engineering. Simple solutions, minimal token usage, no cross-collection lookups at render time.
+alwaysApply: true
+---
+
+# SIMPLICITY FIRST — STOP OVER-ENGINEERING
+
+## Credits are EXPENSIVE and NOT unlimited. Every token counts.
+
+### Rules
+
+1. **Simplest solution wins.** If a boolean field on the same document works, use it. Don't fetch from 3 collections.
+2. **No cross-collection joins at render time** unless absolutely required. Store what you need where you need it.
+3. **Don't build infrastructure for one field.** A simple `isLive: true` beats a pipeline of liveHourStart/liveHourEnd lookups across collections.
+4. **Before writing code, ask: "Is there a 5-line version of this?"** If yes, do that.
+5. **Don't create new files, types, interfaces, or abstractions** unless the change genuinely requires them.
+6. **Reuse what exists.** Check existing fields/models/actions before inventing new ones.
+7. **One DB query > two DB queries.** Always.
