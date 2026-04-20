@@ -669,13 +669,30 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
                       {(() => {
-                        const allOrganic = topGroups.slice(0, 4);
+                        const manualSlot1 = topGroups.find((g: any) => g.topGroupSlot === 1);
+                        const manualSlot2 = topGroups.find((g: any) => g.topGroupSlot === 2);
+                        const manualIds = new Set([manualSlot1?._id, manualSlot2?._id].filter(Boolean));
+                        const allOrganic = topGroups.filter(g => !manualIds.has(g._id)).slice(0, 4);
                         let organicIdx = 0;
 
                         const spots: React.ReactNode[] = [];
 
-                        // Spot 1 — versatile: tier 6 campaign (group/bot/advertiser) or organic
-                        if (tier6Campaign && !isTelegram) {
+                        const renderGroupCard = (g: Group, idx: number) => (
+                          <GroupCard
+                            key={`top-${g._id}`}
+                            group={g}
+                            isIndex={idx}
+                            onOpenReviewModal={openReviewModal}
+                            onOpenReportModal={openReportModal}
+                            isBookmarked={!!bookmarkedMap[g._id]}
+                            bookmarkId={bookmarkedMap[g._id] || null}
+                          />
+                        );
+
+                        // Spot 1 — manual slot 1 > tier 6 campaign > organic
+                        if (manualSlot1) {
+                          spots.push(renderGroupCard(manualSlot1, 0));
+                        } else if (tier6Campaign && !isTelegram) {
                           spots.push(
                             <AdvertCard
                               key={`tier6-${tier6Campaign._id}`}
@@ -686,22 +703,13 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                             />
                           );
                         } else if (allOrganic[organicIdx]) {
-                          const g = allOrganic[organicIdx++];
-                          spots.push(
-                            <GroupCard
-                              key={`top-${g._id}`}
-                              group={g}
-                              isIndex={0}
-                              onOpenReviewModal={openReviewModal}
-                              onOpenReportModal={openReportModal}
-                              isBookmarked={!!bookmarkedMap[g._id]}
-                              bookmarkId={bookmarkedMap[g._id] || null}
-                            />
-                          );
+                          spots.push(renderGroupCard(allOrganic[organicIdx++], 0));
                         }
 
-                        // Spot 2 — tier 1 campaign or organic
-                        if (tier1Campaign && !isTelegram) {
+                        // Spot 2 — manual slot 2 > tier 1 campaign > organic
+                        if (manualSlot2) {
+                          spots.push(renderGroupCard(manualSlot2, 1));
+                        } else if (tier1Campaign && !isTelegram) {
                           spots.push(
                             <AdvertCard
                               key={`tier1-${tier1Campaign._id}`}
@@ -712,34 +720,12 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                             />
                           );
                         } else if (allOrganic[organicIdx]) {
-                          const g = allOrganic[organicIdx++];
-                          spots.push(
-                            <GroupCard
-                              key={`top-${g._id}`}
-                              group={g}
-                              isIndex={1}
-                              onOpenReviewModal={openReviewModal}
-                              onOpenReportModal={openReportModal}
-                              isBookmarked={!!bookmarkedMap[g._id]}
-                              bookmarkId={bookmarkedMap[g._id] || null}
-                            />
-                          );
+                          spots.push(renderGroupCard(allOrganic[organicIdx++], 1));
                         }
 
                         // Spot 3 — always organic
                         if (allOrganic[organicIdx]) {
-                          const g = allOrganic[organicIdx++];
-                          spots.push(
-                            <GroupCard
-                              key={`top-${g._id}`}
-                              group={g}
-                              isIndex={2}
-                              onOpenReviewModal={openReviewModal}
-                              onOpenReportModal={openReportModal}
-                              isBookmarked={!!bookmarkedMap[g._id]}
-                              bookmarkId={bookmarkedMap[g._id] || null}
-                            />
-                          );
+                          spots.push(renderGroupCard(allOrganic[organicIdx++], 2));
                         }
 
                         // Spot 4 — tier 5 campaign (Featured Bot) or organic
@@ -754,18 +740,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                             />
                           );
                         } else if (allOrganic[organicIdx]) {
-                          const g = allOrganic[organicIdx++];
-                          spots.push(
-                            <GroupCard
-                              key={`top-${g._id}`}
-                              group={g}
-                              isIndex={3}
-                              onOpenReviewModal={openReviewModal}
-                              onOpenReportModal={openReportModal}
-                              isBookmarked={!!bookmarkedMap[g._id]}
-                              bookmarkId={bookmarkedMap[g._id] || null}
-                            />
-                          );
+                          spots.push(renderGroupCard(allOrganic[organicIdx++], 3));
                         }
 
                         return spots;

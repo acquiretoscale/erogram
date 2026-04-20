@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import BookmarkButton from '@/components/BookmarkButton';
+import { compressImage } from '@/lib/utils/compressImage';
 import { Group } from './types';
 
 interface GroupCardProps {
@@ -22,6 +23,10 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
     const [isHovered, setIsHovered] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
     const [deleted, setDeleted] = useState(false);
+    const [showEdit, setShowEdit] = useState(false);
+    const [editData, setEditData] = useState({ name: '', description: '', image: '', telegramLink: '' });
+    const [editUploading, setEditUploading] = useState(false);
+    const [editSaving, setEditSaving] = useState(false);
     const placeholder = '/assets/image.jpg';
 
     useEffect(() => {
@@ -114,6 +119,48 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
         }
     };
 
+    const openEdit = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setEditData({ name: group.name, description: group.description, image: imageSrc, telegramLink: (group as any).telegramLink || '' });
+        setShowEdit(true);
+    };
+
+    const handleEditImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (file.size > 10 * 1024 * 1024) { alert('Max 10MB'); return; }
+        setEditUploading(true);
+        try {
+            const compressed = await compressImage(file);
+            const fd = new FormData();
+            fd.append('file', compressed);
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/upload', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
+            const data = await res.json();
+            if (data.url) setEditData(prev => ({ ...prev, image: data.url }));
+        } catch { alert('Upload failed'); }
+        finally { setEditUploading(false); }
+    };
+
+    const handleEditSave = async () => {
+        setEditSaving(true);
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`/api/admin/groups/${group._id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ name: editData.name, description: editData.description, image: editData.image, telegramLink: editData.telegramLink }),
+            });
+            if (!res.ok) throw new Error('Failed');
+            setImageSrc(editData.image);
+            group.name = editData.name;
+            group.description = editData.description;
+            setShowEdit(false);
+        } catch { alert('Failed to save'); }
+        finally { setEditSaving(false); }
+    };
+
     if (deleted) return null;
 
     return (
@@ -136,13 +183,22 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                     className="w-11 h-11 sm:w-10 sm:h-10 rounded-full bg-black/70 backdrop-blur-md border border-white/15 hover:bg-black/90 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.5)]"
                 />
                 {isAdmin && (
-                    <button
-                        onClick={handleAdminDelete}
-                        className="w-7 h-7 flex items-center justify-center rounded-full bg-red-600/80 hover:bg-red-600 text-white text-xs backdrop-blur-sm transition-all"
-                        title="Delete group"
-                    >
-                        🗑️
-                    </button>
+                    <>
+                        <button
+                            onClick={openEdit}
+                            className="w-7 h-7 flex items-center justify-center rounded-full bg-blue-600/80 hover:bg-blue-600 text-white text-xs backdrop-blur-sm transition-all"
+                            title="Edit group"
+                        >
+                            ✏️
+                        </button>
+                        <button
+                            onClick={handleAdminDelete}
+                            className="w-7 h-7 flex items-center justify-center rounded-full bg-red-600/80 hover:bg-red-600 text-white text-xs backdrop-blur-sm transition-all"
+                            title="Delete group"
+                        >
+                            🗑️
+                        </button>
+                    </>
                 )}
             </div>
 
@@ -334,6 +390,82 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                     </div>
                 </div>
             </div>
+
+            {/* Admin Quick Edit Modal */}
+            <AnimatePresence>
+                {showEdit && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+                        onClick={() => setShowEdit(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-[#111] border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl"
+                        >
+                            <div className="p-5 border-b border-white/10 flex justify-between items-center">
+                                <h3 className="text-white font-bold">Edit Group</h3>
+                                <button onClick={() => setShowEdit(false)} className="text-[#666] hover:text-white text-xl">&times;</button>
+                            </div>
+                            <div className="p-5 space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-[#999] uppercase mb-1.5">Image</label>
+                                    <div className="flex items-center gap-3">
+                                        {editData.image && <img src={editData.image} alt="" className="w-16 h-16 rounded-lg object-cover border border-white/10" />}
+                                        <label className="cursor-pointer px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-white hover:bg-white/10 transition-colors">
+                                            {editUploading ? 'Uploading...' : 'Change image'}
+                                            <input type="file" accept="image/*" onChange={handleEditImage} className="hidden" disabled={editUploading} />
+                                        </label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-[#999] uppercase mb-1.5">Name</label>
+                                    <input
+                                        type="text"
+                                        value={editData.name}
+                                        onChange={(e) => setEditData(prev => ({ ...prev, name: e.target.value }))}
+                                        className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-[#999] uppercase mb-1.5">Description</label>
+                                    <textarea
+                                        value={editData.description}
+                                        onChange={(e) => setEditData(prev => ({ ...prev, description: e.target.value }))}
+                                        rows={3}
+                                        className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white resize-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-[#999] uppercase mb-1.5">Telegram Link</label>
+                                    <input
+                                        type="text"
+                                        value={editData.telegramLink}
+                                        onChange={(e) => setEditData(prev => ({ ...prev, telegramLink: e.target.value }))}
+                                        placeholder="https://t.me/..."
+                                        className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+                                    />
+                                </div>
+                            </div>
+                            <div className="p-5 border-t border-white/10 flex justify-end gap-3">
+                                <button onClick={() => setShowEdit(false)} className="px-4 py-2 text-sm text-[#999] hover:text-white transition-colors">Cancel</button>
+                                <button
+                                    onClick={handleEditSave}
+                                    disabled={editSaving}
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold disabled:opacity-50 transition-colors"
+                                >
+                                    {editSaving ? 'Saving...' : 'Save'}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 }

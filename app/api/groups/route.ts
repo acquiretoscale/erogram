@@ -195,12 +195,25 @@ export async function GET(req: NextRequest) {
 
       const topLimit = parseInt(searchParams.get('limit') || '3', 10);
       const POOL_SIZE = Math.max(topLimit * 5, 20);
+
+      // Fetch manually slotted groups (topGroupSlot 1 or 2) first
+      const manualSlotted = await Group.find({
+        status: 'approved',
+        topGroupSlot: { $in: [1, 2] },
+      })
+        .select('name slug category country categories description description_de description_es image telegramLink clickCount views memberCount verified weeklyClicks topGroupSlot')
+        .lean();
+
+      const manualSlotMap = new Map((manualSlotted as any[]).map(g => [g.topGroupSlot, g]));
+      const manualIds = new Set((manualSlotted as any[]).map(g => g._id.toString()));
+
       const candidates = await Group.find({
         status: 'approved',
         isAdvertisement: { $ne: true },
         premiumOnly: { $ne: true },
         pinned: { $ne: true },
         featured: { $ne: true },
+        topGroupSlot: { $nin: [1, 2] },
         category: { $ne: 'Hentai' },
       })
         .sort({ weeklyClicks: -1, views: -1 })
@@ -214,14 +227,25 @@ export async function GET(req: NextRequest) {
         weight: Math.max(1, (g.weeklyClicks || 0)) + Math.random() * 5 + (POOL_SIZE - i),
       }));
       weighted.sort((a, b) => b.weight - a.weight);
-      const topGroups = weighted.slice(0, topLimit).map(w => w.group);
+      const organicPicks = weighted.slice(0, topLimit).map(w => w.group);
+
+      // Merge: manual slot groups go first (sorted by slot), then organic fills remaining
+      const finalGroups: any[] = [];
+      const slot1 = manualSlotMap.get(1);
+      const slot2 = manualSlotMap.get(2);
+      if (slot1) finalGroups.push(slot1);
+      if (slot2) finalGroups.push(slot2);
+      for (const g of organicPicks) {
+        if (finalGroups.length >= topLimit) break;
+        if (!manualIds.has(g._id.toString())) finalGroups.push(g);
+      }
 
       const origin = req.headers.get('x-forwarded-host')
         ? `https://${req.headers.get('x-forwarded-host')}`
         : new URL(req.url).origin;
 
       return NextResponse.json({
-        groups: topGroups.map((g: any) => {
+        groups: finalGroups.map((g: any) => {
           const cats = g.categories?.length ? g.categories : [g.category, g.country].filter(Boolean);
           return {
             _id: g._id.toString(),
@@ -241,6 +265,7 @@ export async function GET(req: NextRequest) {
             memberCount: g.memberCount || 0,
             verified: g.verified || false,
             weeklyClicks: g.weeklyClicks || 0,
+            topGroupSlot: g.topGroupSlot || null,
           };
         }),
       });

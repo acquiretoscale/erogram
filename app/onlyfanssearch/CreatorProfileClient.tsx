@@ -337,6 +337,11 @@ export default function CreatorProfileClient({
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminEdit, setAdminEdit] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState<'avatar' | 'header' | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const headerInputRef = useRef<HTMLInputElement>(null);
+  const panelAvatarRef = useRef<HTMLInputElement>(null);
+  const panelHeaderRef = useRef<HTMLInputElement>(null);
   const [editFields, setEditFields] = useState({
     name: creator.name,
     bio: creator.bio || '',
@@ -368,6 +373,47 @@ export default function CreatorProfileClient({
     if (!confirm('Delete this photo?')) return;
     await deleteCreatorPhoto(creator.slug, type, idx);
     router.refresh();
+  };
+
+  const handleReplacePhoto = async (type: 'avatar' | 'header', file: File) => {
+    setUploading(type);
+    try {
+      // Convert to compressed WebP data URL (same pattern as /add/AddClient.tsx)
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        img.onload = () => {
+          // Cap at 800px max dimension for avatars, 1600px for headers
+          const maxDim = type === 'header' ? 1600 : 800;
+          const ratio = Math.min(maxDim / img.width, maxDim / img.height, 1);
+          canvas.width = Math.round(img.width * ratio);
+          canvas.height = Math.round(img.height * ratio);
+          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob((blob) => {
+            if (!blob) return reject(new Error('Canvas toBlob failed'));
+            const r = new FileReader();
+            r.onload = () => resolve(r.result as string);
+            r.onerror = () => reject(r.error);
+            r.readAsDataURL(blob);
+          }, 'image/webp', 0.85);
+        };
+        img.onerror = () => reject(new Error('Image load failed'));
+        img.src = URL.createObjectURL(file);
+      });
+
+      const updateFields: Record<string, string> = { [type]: dataUrl };
+      if (type === 'avatar') {
+        updateFields.avatarThumbC50 = dataUrl;
+        updateFields.avatarThumbC144 = dataUrl;
+      }
+      await updateCreatorFields(creator.slug, updateFields);
+      router.refresh();
+    } catch (e: any) {
+      alert(`Upload failed: ${e.message || 'Unknown error'}`);
+    } finally {
+      setUploading(null);
+    }
   };
 
   const handleDeleteProfile = async () => {
@@ -545,7 +591,7 @@ export default function CreatorProfileClient({
           <div className="flex-1 min-w-0">
             {/* Avatar + name */}
             <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 -mt-16 sm:-mt-20 mb-6">
-              <div className="relative flex-shrink-0 w-28 h-28 sm:w-36 sm:h-36 rounded-2xl overflow-hidden ring-4 ring-[#0a1117] bg-[#0d1e2a] shadow-2xl">
+              <div className="relative flex-shrink-0 w-28 h-28 sm:w-36 sm:h-36 rounded-2xl overflow-hidden ring-4 ring-[#0a1117] bg-[#0d1e2a] shadow-2xl group/avatar">
                 {hasAvatar ? (
                   <img
                     src={creator.avatar}
@@ -558,6 +604,18 @@ export default function CreatorProfileClient({
                   <div className="w-full h-full flex items-center justify-center text-5xl font-black text-[#00AFF0]/40 bg-gradient-to-br from-[#00AFF0]/10 to-[#001824]">
                     {creator.name.charAt(0)}
                   </div>
+                )}
+                {isAdmin && (
+                  <>
+                    <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleReplacePhoto('avatar', f); e.target.value = ''; }} />
+                    {uploading === 'avatar' ? (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-10"><svg className="animate-spin h-6 w-6 text-white" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg></div>
+                    ) : (
+                      <button onClick={() => avatarInputRef.current?.click()} className="absolute inset-0 bg-black/60 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center z-10 cursor-pointer">
+                        <Camera className="w-6 h-6 text-white" />
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -1647,31 +1705,90 @@ export default function CreatorProfileClient({
               <button onClick={() => setAdminEdit(false)} className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
 
-            {/* Photos with delete buttons */}
+            {/* Photos — upload + delete */}
             <div>
               <label className="text-xs font-bold text-gray-400 uppercase mb-2 block">Photos</label>
-              <div className="flex flex-wrap gap-2">
-                {creator.avatar && (
-                  <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-white/10">
-                    <img src={creator.avatar} alt="" className="w-full h-full object-cover" />
-                    <button onClick={() => handleDeletePhoto('avatar')} className="absolute top-1 right-1 p-0.5 rounded bg-red-600 text-white"><X className="w-3 h-3" /></button>
-                    <span className="absolute bottom-0.5 left-0.5 text-[8px] bg-black/70 px-1 rounded text-gray-300">Avatar</span>
+              <input ref={panelAvatarRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleReplacePhoto('avatar', f); e.target.value = ''; }} />
+              <input ref={panelHeaderRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleReplacePhoto('header', f); e.target.value = ''; }} />
+              <div className="space-y-3">
+                {/* Avatar row */}
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.04] border border-white/10">
+                  <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-white/10 shrink-0">
+                    {creator.avatar ? (
+                      <img src={creator.avatar} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-white/5 text-gray-500 text-xl font-black">{creator.name.charAt(0)}</div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-bold text-white mb-1">Profile Picture</div>
+                    <div className="text-[10px] text-[#666] truncate">{creator.avatar ? 'Current photo loaded' : 'No avatar set'}</div>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => panelAvatarRef.current?.click()}
+                      disabled={uploading === 'avatar'}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#00AFF0] text-white text-xs font-bold hover:bg-[#009dd9] transition-all disabled:opacity-50"
+                    >
+                      {uploading === 'avatar' ? (
+                        <><svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Uploading…</>
+                      ) : (
+                        <><Camera className="w-3.5 h-3.5" /> {creator.avatar ? 'Replace' : 'Upload'}</>
+                      )}
+                    </button>
+                    {creator.avatar && (
+                      <button onClick={() => handleDeletePhoto('avatar')} className="px-2 py-2 rounded-lg bg-red-600/20 border border-red-600/30 text-red-400 hover:bg-red-600/30 transition-all">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {/* Header row */}
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.04] border border-white/10">
+                  <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-white/10 shrink-0">
+                    {creator.header ? (
+                      <img src={creator.header} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-white/5 text-gray-500 text-[9px] font-bold">No header</div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-bold text-white mb-1">Header / Banner</div>
+                    <div className="text-[10px] text-[#666] truncate">{creator.header ? 'Current banner loaded' : 'No header set'}</div>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => panelHeaderRef.current?.click()}
+                      disabled={uploading === 'header'}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#00AFF0] text-white text-xs font-bold hover:bg-[#009dd9] transition-all disabled:opacity-50"
+                    >
+                      {uploading === 'header' ? (
+                        <><svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Uploading…</>
+                      ) : (
+                        <><Camera className="w-3.5 h-3.5" /> {creator.header ? 'Replace' : 'Upload'}</>
+                      )}
+                    </button>
+                    {creator.header && (
+                      <button onClick={() => handleDeletePhoto('header')} className="px-2 py-2 rounded-lg bg-red-600/20 border border-red-600/30 text-red-400 hover:bg-red-600/30 transition-all">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {/* Extra photos */}
+                {(creator.extraPhotos || []).length > 0 && (
+                  <div>
+                    <div className="text-[10px] font-bold text-gray-500 uppercase mb-1.5">Extra Photos</div>
+                    <div className="flex flex-wrap gap-2">
+                      {(creator.extraPhotos || []).map((url, i) => (
+                        <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-white/10">
+                          <img src={url} alt="" className="w-full h-full object-cover" />
+                          <button onClick={() => handleDeletePhoto('extra', i)} className="absolute top-1 right-1 p-0.5 rounded bg-red-600 text-white"><X className="w-3 h-3" /></button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
-                {creator.header && (
-                  <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-white/10">
-                    <img src={creator.header} alt="" className="w-full h-full object-cover" />
-                    <button onClick={() => handleDeletePhoto('header')} className="absolute top-1 right-1 p-0.5 rounded bg-red-600 text-white"><X className="w-3 h-3" /></button>
-                    <span className="absolute bottom-0.5 left-0.5 text-[8px] bg-black/70 px-1 rounded text-gray-300">Header</span>
-                  </div>
-                )}
-                {(creator.extraPhotos || []).map((url, i) => (
-                  <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-white/10">
-                    <img src={url} alt="" className="w-full h-full object-cover" />
-                    <button onClick={() => handleDeletePhoto('extra', i)} className="absolute top-1 right-1 p-0.5 rounded bg-red-600 text-white"><X className="w-3 h-3" /></button>
-                    <span className="absolute bottom-0.5 left-0.5 text-[8px] bg-black/70 px-1 rounded text-gray-300">Extra {i+1}</span>
-                  </div>
-                ))}
               </div>
             </div>
 

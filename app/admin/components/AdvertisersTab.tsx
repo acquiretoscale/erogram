@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { compressImage } from '@/lib/utils/compressImage';
 import { createAdvertiser, updateAdvertiser, deleteAdvertiser } from '@/lib/actions/advertisers';
-import { adminCreateCampaign, adminUpdateCampaign, adminDeleteCampaign, getAdvertisersDashboard, getAdvertiserDashboardStats } from '@/lib/actions/adminCampaigns';
+import { adminCreateCampaign, adminUpdateCampaign, adminDeleteCampaign, getAdvertisersDashboard, getAdvertiserDashboardStats, getTopGroupSlots, setTopGroupSlot, clearTopGroupSlot, searchGroupsForTopSlot } from '@/lib/actions/adminCampaigns';
 import { getBots } from '@/lib/actions/adminBots';
 import { getOFMTrending, searchOFMCreators } from '@/lib/actions/ofm';
 import { ensureR2Avatar } from '@/lib/actions/creatorImages';
@@ -534,6 +534,12 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
   const [feedAdsDragOverIdx, setFeedAdsDragOverIdx] = useState<number | null>(null);
   const [feedAdsMenuOpen, setFeedAdsMenuOpen] = useState<string | null>(null);
   const [expandedPositions, setExpandedPositions] = useState<Set<string>>(new Set());
+  const [topGroupSlots, setTopGroupSlots] = useState<{ _id: string; name: string; slug: string; image: string; topGroupSlot: number; views: number; weeklyClicks: number; clickCount: number; category: string }[]>([]);
+  const [topSlotSearch, setTopSlotSearch] = useState('');
+  const [topSlotResults, setTopSlotResults] = useState<{ _id: string; name: string; slug: string; image: string; category: string; views: number }[]>([]);
+  const [topSlotSearching, setTopSlotSearching] = useState(false);
+  const [topSlotEditingSlot, setTopSlotEditingSlot] = useState<1 | 2 | null>(null);
+  const [topSlotSaving, setTopSlotSaving] = useState(false);
   const [feedAdsDateRange, setFeedAdsDateRange] = useState<'24h' | '7d' | '30d' | 'all'>('30d');
   const [feedAdsCustomFrom, setFeedAdsCustomFrom] = useState('');
   const [feedAdsCustomTo, setFeedAdsCustomTo] = useState('');
@@ -723,11 +729,21 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       setFeedClickStats(res.feedClickStats ?? {});
       setFeedABStats(res.feedABStats ?? {});
       setError('');
+      // Also refresh top group slots
+      getTopGroupSlots(token).then(s => setTopGroupSlots(s)).catch(err => console.error('getTopGroupSlots failed:', err));
     } catch (err: any) {
       setError(err.message || 'Failed to load data');
     } finally {
       if (!skipLoading) setIsLoading(false);
     }
+  };
+
+  const fetchTopSlots = async () => {
+    try {
+      const token = getToken();
+      const s = await getTopGroupSlots(token);
+      setTopGroupSlots(s);
+    } catch (err) { console.error('fetchTopSlots failed:', err); }
   };
 
   const [premiumFetchError, setPremiumFetchError] = useState('');
@@ -3437,7 +3453,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
               <>
                 <div className="mb-6">
                   <h2 className="text-xl font-bold text-white mb-2">Feed Ads — A/B Testing</h2>
-                  <p className="text-[#999] text-sm">5 slots (Slot 1: Top Section, Slot 2: after 2 groups, Slot 3: after 7 groups, Slot 4: after 12+ groups, Slot 5: 🤖 Featured Bot after 4 groups). Each holds up to 4 A/B variants. One random variant shown per impression. Click a slot to manage its ads.</p>
+                  <p className="text-[#999] text-sm">5 slots (Slot 1: Top Groups section + featured groups, Slot 2: after 2 groups, Slot 3: after 7 groups, Slot 4: after 12+ groups, Slot 5: 🤖 Featured Bot after 4 groups). Each holds up to 4 A/B variants. One random variant shown per impression. Click a slot to manage its ads.</p>
                 </div>
 
                 {/* KPI row */}
@@ -3631,7 +3647,10 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                         >
                           <svg className={`w-4 h-4 text-[#999] transition-transform shrink-0 ${isExpanded ? 'rotate-90' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6" /></svg>
                           <span className="text-white font-bold text-sm min-w-[52px]">Slot {slotNum}</span>
-                          <span className="text-[#555] text-[10px] shrink-0">{slotNum === 1 ? 'Top Section' : slotNum === 2 ? 'After 2 groups' : slotNum === 3 ? 'After 7 groups' : slotNum === 5 ? '🤖 Featured Bot (after 4 groups)' : 'After 12 groups + loops'}</span>
+                          <span className="text-[#555] text-[10px] shrink-0">{slotNum === 1 ? '👑 Top Groups Section' : slotNum === 2 ? 'After 2 groups' : slotNum === 3 ? 'After 7 groups' : slotNum === 5 ? '🤖 Featured Bot (after 4 groups)' : 'After 12 groups + loops'}</span>
+                          {slotNum === 1 && topGroupSlots.length > 0 && (
+                            <span className="text-amber-400 text-[10px] font-semibold">{topGroupSlots.length} featured group{topGroupSlots.length > 1 ? 's' : ''}</span>
+                          )}
                           {variantCount > 0 ? (
                             <span className="text-[#666] text-xs truncate">{advNames.join(', ')}</span>
                           ) : (
@@ -3675,6 +3694,106 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                         {/* Expanded variant table */}
                         {isExpanded && (
                           <div className="border-t border-white/5">
+                            {/* Manual Top Groups — only inside Slot 1 */}
+                            {slotNum === 1 && (
+                              <div className="border-b border-amber-500/20">
+                                <table className="w-full text-sm">
+                                  <thead className="bg-amber-500/[0.06]">
+                                    <tr>
+                                      <th className="px-3 py-2 text-left font-bold text-amber-400 text-xs uppercase" colSpan={2}>Featured Group</th>
+                                      <th className="px-3 py-2 text-left font-bold text-amber-400/70 text-xs uppercase">Image</th>
+                                      <th className="px-3 py-2 text-left font-bold text-amber-400/70 text-xs uppercase">Name</th>
+                                      <th className="px-3 py-2 text-right font-bold text-amber-400/70 text-xs uppercase">Views</th>
+                                      <th className="px-3 py-2 text-right font-bold text-amber-400/70 text-xs uppercase">Weekly</th>
+                                      <th className="px-3 py-2 text-right font-bold text-amber-400/70 text-xs uppercase">Clicks</th>
+                                      <th className="px-3 py-2 text-center font-bold text-amber-400/70 text-xs uppercase w-24"></th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-white/5">
+                                    {([1, 2] as const).map((tgSlot) => {
+                                      const assigned = topGroupSlots.find(g => g.topGroupSlot === tgSlot);
+                                      const isEditing = topSlotEditingSlot === tgSlot;
+                                      return (
+                                        <tr key={tgSlot} className="hover:bg-amber-500/[0.03] transition-colors">
+                                          <td className="px-3 py-2 text-amber-400 font-bold text-xs w-8">#{tgSlot}</td>
+                                          {assigned && !isEditing ? (
+                                            <>
+                                              <td className="px-3 py-2 w-4"></td>
+                                              <td className="px-3 py-2">{assigned.image ? <img src={assigned.image} alt="" className="h-10 w-14 object-cover rounded" /> : <span className="text-[#666]">—</span>}</td>
+                                              <td className="px-3 py-2">
+                                                <div className="text-white font-medium">{assigned.name}</div>
+                                                <div className="text-[10px] text-[#666]">/{assigned.slug} · {assigned.category}</div>
+                                              </td>
+                                              <td className="px-3 py-2 text-right text-white tabular-nums">{assigned.views.toLocaleString()}</td>
+                                              <td className="px-3 py-2 text-right text-green-400 tabular-nums">{assigned.weeklyClicks.toLocaleString()}</td>
+                                              <td className="px-3 py-2 text-right text-white tabular-nums font-semibold">{assigned.clickCount.toLocaleString()}</td>
+                                              <td className="px-3 py-2 text-center">
+                                                <div className="flex items-center justify-center gap-2">
+                                                  <button onClick={() => { setTopSlotEditingSlot(tgSlot); setTopSlotSearch(''); setTopSlotResults([]); }} className="text-[10px] text-amber-400 hover:text-amber-300 font-semibold">Change</button>
+                                                  <button
+                                                    onClick={async () => {
+                                                      if (!confirm(`Remove "${assigned.name}" from Position ${tgSlot}?`)) return;
+                                                      setTopSlotSaving(true);
+                                                      try { await clearTopGroupSlot(getToken(), tgSlot); await fetchTopSlots(); } catch (e: any) { alert(e.message || 'Failed'); } finally { setTopSlotSaving(false); }
+                                                    }}
+                                                    disabled={topSlotSaving}
+                                                    className="text-[10px] text-red-400 hover:text-red-300 font-semibold"
+                                                  >Remove</button>
+                                                </div>
+                                              </td>
+                                            </>
+                                          ) : (
+                                            <td className="px-3 py-2" colSpan={6}>
+                                              <div className="flex items-center gap-2 max-w-md relative">
+                                                <input
+                                                  type="text"
+                                                  value={isEditing ? topSlotSearch : ''}
+                                                  onChange={async (e) => {
+                                                    const q = e.target.value;
+                                                    setTopSlotSearch(q);
+                                                    if (!isEditing) setTopSlotEditingSlot(tgSlot);
+                                                    if (q.length < 2) { setTopSlotResults([]); return; }
+                                                    setTopSlotSearching(true);
+                                                    try { const r = await searchGroupsForTopSlot(getToken(), q); setTopSlotResults(r); } catch (err: any) { console.error('Top slot search failed:', err); } finally { setTopSlotSearching(false); }
+                                                  }}
+                                                  onFocus={() => { if (!isEditing) setTopSlotEditingSlot(tgSlot); }}
+                                                  placeholder={assigned ? assigned.name : 'Search group to assign...'}
+                                                  className="flex-1 bg-[#1a1a1a] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder:text-[#555]"
+                                                />
+                                                {isEditing && <button onClick={() => { setTopSlotEditingSlot(null); setTopSlotSearch(''); setTopSlotResults([]); }} className="text-[10px] text-[#999] hover:text-white shrink-0">Cancel</button>}
+                                                {isEditing && topSlotResults.length > 0 && (
+                                                  <div className="absolute top-full left-0 right-0 mt-1 max-h-36 overflow-y-auto rounded-lg border border-white/10 bg-[#111] z-30 shadow-xl">
+                                                    {topSlotResults.map((g) => (
+                                                      <button
+                                                        key={g._id}
+                                                        onClick={async () => {
+                                                          setTopSlotSaving(true);
+                                                          try { await setTopGroupSlot(getToken(), g._id, tgSlot); await fetchTopSlots(); setTopSlotEditingSlot(null); setTopSlotSearch(''); setTopSlotResults([]); } catch (e: any) { console.error('Set top slot failed:', e); alert(e.message || 'Failed'); } finally { setTopSlotSaving(false); }
+                                                        }}
+                                                        disabled={topSlotSaving}
+                                                        className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-white/5 text-left transition-colors"
+                                                      >
+                                                        {g.image && <img src={g.image} alt="" className="h-7 w-7 rounded object-cover border border-white/10" />}
+                                                        <div className="flex-1 min-w-0">
+                                                          <div className="text-xs text-white truncate">{g.name}</div>
+                                                          <div className="text-[10px] text-[#666]">/{g.slug} · {g.category} · {g.views.toLocaleString()} views</div>
+                                                        </div>
+                                                      </button>
+                                                    ))}
+                                                  </div>
+                                                )}
+                                                {isEditing && topSlotSearching && <span className="text-[10px] text-[#666]">Searching...</span>}
+                                              </div>
+                                              {!isEditing && !assigned && <div className="text-[10px] text-[#555] italic mt-1">Empty — click to assign</div>}
+                                            </td>
+                                          )}
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
                             <table className="w-full text-sm">
                               <thead className="bg-white/[0.02]">
                                 <tr>

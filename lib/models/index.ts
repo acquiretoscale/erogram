@@ -97,6 +97,7 @@ export const groupSchema = new Schema(
     boostDuration: { type: String, enum: ['1d', '7d', '14d', '30d', null], default: null },
     paidBoost: { type: Boolean, default: false },
     paidBoostStars: { type: Number, default: null },
+    topGroupSlot: { type: Number, default: null },
     // CSV bulk-import scheduling fields
     scheduledPublishAt: { type: Date, default: null },
     importBatchId: { type: String, default: null },
@@ -138,6 +139,7 @@ groupSchema.index({ showOnVaultTeaser: 1, vaultTeaserOrder: 1 });
 groupSchema.index({ categories: 1, status: 1 });
 groupSchema.index({ featured: 1, featuredOrder: 1 });
 groupSchema.index({ boosted: 1, boostExpiresAt: 1 });
+groupSchema.index({ topGroupSlot: 1 });
 
 // Post/Comment Schema
 export const postSchema = new Schema(

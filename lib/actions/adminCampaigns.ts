@@ -1,6 +1,9 @@
 'use server';
 
+import jwt from 'jsonwebtoken';
 import { revalidatePath } from 'next/cache';
+import connectDB from '@/lib/db/mongodb';
+import { User, Group } from '@/lib/models';
 import {
   createCampaign,
   updateCampaign,
@@ -18,7 +21,21 @@ import {
 } from '@/lib/actions/campaigns';
 import { getAdvertisers } from '@/lib/actions/advertisers';
 
+const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 const TEXT_ONLY_SLOTS = ['navbar-cta', 'join-cta', 'filter-cta'];
+
+async function authenticateAdmin(token: string) {
+  if (!token) return null;
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    await connectDB();
+    const user = await User.findById(decoded.id);
+    if (user && user.isAdmin) return user;
+  } catch {
+    return null;
+  }
+  return null;
+}
 
 function revalidatePublicFeeds() {
   revalidatePath('/groups');
@@ -154,4 +171,74 @@ export async function getAdvertiserDashboardStats(
     to: params.to,
   };
   return getDashboardStats(token, filters);
+}
+
+export async function getTopGroupSlots(token: string) {
+  const admin = await authenticateAdmin(token);
+  if (!admin) throw new Error('Unauthorized');
+
+  await connectDB();
+  const groups = await Group.find({ topGroupSlot: { $in: [1, 2] } })
+    .select('name slug image topGroupSlot views weeklyClicks clickCount category')
+    .lean();
+
+  return groups.map((g: any) => ({
+    _id: g._id.toString(),
+    name: g.name,
+    slug: g.slug,
+    image: g.image,
+    topGroupSlot: g.topGroupSlot,
+    views: g.views || 0,
+    weeklyClicks: g.weeklyClicks || 0,
+    clickCount: g.clickCount || 0,
+    category: g.category || '',
+  }));
+}
+
+export async function setTopGroupSlot(token: string, groupId: string, slot: 1 | 2) {
+  const admin = await authenticateAdmin(token);
+  if (!admin) throw new Error('Unauthorized');
+
+  await connectDB();
+  await Group.updateMany({ topGroupSlot: slot }, { $set: { topGroupSlot: null } }, { strict: false });
+  await Group.findByIdAndUpdate(groupId, { $set: { topGroupSlot: slot } }, { strict: false });
+  revalidatePublicFeeds();
+  return { success: true };
+}
+
+export async function clearTopGroupSlot(token: string, slot: 1 | 2) {
+  const admin = await authenticateAdmin(token);
+  if (!admin) throw new Error('Unauthorized');
+
+  await connectDB();
+  await Group.updateMany({ topGroupSlot: slot }, { $set: { topGroupSlot: null } });
+  revalidatePublicFeeds();
+  return { success: true };
+}
+
+export async function searchGroupsForTopSlot(token: string, query: string) {
+  const admin = await authenticateAdmin(token);
+  if (!admin) throw new Error('Unauthorized');
+
+  await connectDB();
+  const groups = await Group.find({
+    status: 'approved',
+    isAdvertisement: { $ne: true },
+    $or: [
+      { name: { $regex: query, $options: 'i' } },
+      { slug: { $regex: query, $options: 'i' } },
+    ],
+  })
+    .select('name slug image category views')
+    .limit(10)
+    .lean();
+
+  return groups.map((g: any) => ({
+    _id: g._id.toString(),
+    name: g.name,
+    slug: g.slug,
+    image: g.image,
+    category: g.category || '',
+    views: g.views || 0,
+  }));
 }

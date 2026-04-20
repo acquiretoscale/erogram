@@ -26,6 +26,7 @@ export interface Group {
     memberCount?: number;
     verified?: boolean;
     itemType?: 'group' | 'bot';
+    topGroupSlot?: number | null;
 }
 
 

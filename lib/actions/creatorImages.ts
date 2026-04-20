@@ -129,6 +129,36 @@ export async function processCreatorImages(slug: string): Promise<{
 }
 
 /**
+ * Admin: replace a creator's avatar or header with a new file upload.
+ * Accepts FormData with: slug, type ('avatar' | 'header'), file (File).
+ */
+export async function replaceCreatorPhoto(formData: FormData): Promise<{ url: string } | { error: string }> {
+  const slug = formData.get('slug') as string;
+  const type = formData.get('type') as 'avatar' | 'header';
+  const file = formData.get('file') as File | null;
+  if (!slug || !type || !file) return { error: 'Missing slug, type, or file' };
+  if (file.size === 0) return { error: 'Empty file' };
+  if (!isR2Configured()) return { error: 'R2 not configured' };
+
+  const buf = Buffer.from(await file.arrayBuffer());
+  if (buf.length === 0) return { error: 'File buffer empty' };
+  const optimized = await optimizeAndBrand(buf);
+  const cacheBust = Date.now().toString(36);
+  const keySuffix = type === 'header' ? '-header' : '';
+  const key = `onlyfanssearch/${slug}-onlyfans${keySuffix}-${cacheBust}.jpg`;
+  const url = await uploadToR2(optimized, key, 'image/jpeg');
+
+  await connectDB();
+  const update: Record<string, string> = { [type]: url };
+  if (type === 'avatar') {
+    update.avatarThumbC50 = url;
+    update.avatarThumbC144 = url;
+  }
+  await OnlyFansCreator.updateOne({ slug }, { $set: update });
+  return { url };
+}
+
+/**
  * Ensure a creator's avatar is on R2. Returns the R2 URL, or the original if R2 isn't configured.
  * Calls processCreatorImages under the hood — reuses the full pipeline.
  */
