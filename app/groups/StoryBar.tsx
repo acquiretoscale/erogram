@@ -68,32 +68,28 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
 
       <h3 className="sr-only">Recent Groups</h3>
 
-      {/* Single-row card: label on left, circles scroll right */}
       {hasStories && <div className="relative rounded-xl overflow-hidden flex items-stretch" style={{
-        background: 'linear-gradient(165deg, #1a1008 0%, #2a1a0a 40%, #1f1208 100%)',
-        border: '1px solid rgba(245,158,11,0.2)',
-        boxShadow: '0 4px 24px rgba(245,158,11,0.08), inset 0 1px 0 rgba(255,200,100,0.08)',
+        background: 'linear-gradient(165deg, #0a1520 0%, #0d1a2a 40%, #091218 100%)',
+        border: '1px solid rgba(0,175,240,0.2)',
+        boxShadow: '0 4px 24px rgba(0,175,240,0.08), inset 0 1px 0 rgba(100,200,255,0.06)',
       }}>
-        {/* Glossy reflection overlay */}
         <div className="absolute inset-0 pointer-events-none z-0" style={{
-          background: 'linear-gradient(180deg, rgba(255,180,60,0.07) 0%, transparent 40%, transparent 85%, rgba(245,158,11,0.04) 100%)',
+          background: 'linear-gradient(180deg, rgba(0,175,240,0.05) 0%, transparent 40%, transparent 85%, rgba(0,136,204,0.03) 100%)',
         }} />
 
-        {/* Left label — compact horizontal */}
         <div className="relative z-[1] shrink-0 flex flex-col items-center justify-center px-1 py-1" style={{
-          background: 'linear-gradient(180deg, #0d0d0d 0%, #111008 100%)',
-          borderRight: '1px solid rgba(245,158,11,0.15)',
+          background: 'linear-gradient(180deg, #0a0f15 0%, #0c1520 100%)',
+          borderRight: '1px solid rgba(0,175,240,0.15)',
         }}>
           <p className="text-[10px] font-black uppercase tracking-widest text-white/60 whitespace-nowrap" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>Stories</p>
         </div>
 
-        {/* Scrollable circles */}
         <div className="relative flex-1 min-w-0 group/scroll">
           {canScrollLeft && (
             <button
               onClick={() => scroll('left')}
               className="absolute left-0 top-0 bottom-0 z-10 w-8 flex items-center justify-start pl-1 opacity-0 group-hover/scroll:opacity-100 transition-opacity duration-200"
-              style={{ background: 'linear-gradient(to right, #1a1008 40%, transparent)' }}
+              style={{ background: 'linear-gradient(to right, #0a1520 40%, transparent)' }}
               aria-label="Scroll left"
             >
               <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
@@ -106,7 +102,7 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
             <button
               onClick={() => scroll('right')}
               className="absolute right-0 top-0 bottom-0 z-10 w-8 flex items-center justify-end pr-1 opacity-0 group-hover/scroll:opacity-100 transition-opacity duration-200"
-              style={{ background: 'linear-gradient(to left, #1a1008 40%, transparent)' }}
+              style={{ background: 'linear-gradient(to left, #0a1520 40%, transparent)' }}
               aria-label="Scroll right"
             >
               <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
@@ -133,10 +129,9 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
         </div>
       </div>}
 
-      {/* Trending categories — always visible for SEO */}
-      <nav aria-label="Trending Telegram group categories" className="mt-1.5 rounded-lg px-2 py-1.5 shadow-sm" style={{ background: 'linear-gradient(135deg, #1a1510, #191510)', border: '1px solid rgba(245,158,11,0.15)' }}>
+      <nav aria-label="Trending Telegram group categories" className="mt-1.5 rounded-lg px-2 py-1.5 shadow-sm" style={{ background: 'linear-gradient(135deg, #0a1520, #0d1825)', border: '1px solid rgba(0,175,240,0.15)' }}>
         <div className="flex flex-wrap items-center gap-1">
-          <span className="text-[8px] font-black uppercase tracking-wider shrink-0 mr-0.5" style={{ color: '#f59e0b' }}>🔥 Trending on Erogram</span>
+          <span className="text-[8px] font-black uppercase tracking-wider shrink-0 mr-0.5" style={{ color: '#00AFF0' }}>🔥 Trending on Erogram</span>
             {[
               { label: 'Telegram Porn', href: '/best-telegram-groups/porn-telegram' },
               { label: 'Lesbian', href: '/best-telegram-groups/lesbian' },
@@ -152,9 +147,9 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
                 href={href}
                 className="px-1.5 py-[2px] text-[8px] font-bold rounded-full transition-all duration-200 whitespace-nowrap hover:scale-105"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(245,158,11,0.2), rgba(234,88,12,0.15))',
-                  color: '#fbbf24',
-                  border: '1px solid rgba(245,158,11,0.25)',
+                  background: 'linear-gradient(135deg, rgba(0,175,240,0.15), rgba(0,136,204,0.10))',
+                  color: '#7dd3fc',
+                  border: '1px solid rgba(0,175,240,0.25)',
                 }}
               >
                 {label}
@@ -186,29 +181,26 @@ function PremiumUpgradeCircle() {
       aria-label="Upgrade to Erogram Premium"
     >
       <div className="relative w-[76px] h-[76px] md:w-[84px] md:h-[84px]">
-        {/* Spinning golden ring */}
         <div className="absolute inset-0 rounded-full overflow-hidden">
           <div
             className="story-neon-ring absolute"
             style={{
               inset: '-24px',
-              background: 'conic-gradient(from 0deg, #f59e0b, #ef4444, #f59e0b, #fbbf24, #f59e0b)',
+              background: 'conic-gradient(from 0deg, #00AFF0, #0088cc, #00D4FF, #38bdf8, #00AFF0)',
             }}
           />
         </div>
-        {/* Moat */}
-        <div className="absolute inset-[3px] rounded-full" style={{ background: '#1a1008' }} />
-        {/* Inner background */}
+        <div className="absolute inset-[3px] rounded-full" style={{ background: '#0a1520' }} />
         <div
           className="absolute inset-[5px] rounded-full flex items-center justify-center"
-          style={{ background: 'linear-gradient(135deg, #1c1203, #2d1f04)' }}
+          style={{ background: 'linear-gradient(135deg, #0c1a2a, #0d2035)' }}
         >
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="#f59e0b">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="#00AFF0">
             <path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/>
           </svg>
         </div>
       </div>
-      <span className="text-[7px] md:text-[8px] font-black uppercase tracking-tight text-center leading-none text-amber-400 group-hover:text-amber-300 transition-colors whitespace-nowrap">
+      <span className="text-[7px] md:text-[8px] font-black uppercase tracking-tight text-center leading-none text-sky-300 group-hover:text-sky-200 transition-colors whitespace-nowrap">
         ⭐ Erogram<br />Premium
       </span>
     </Link>
@@ -233,7 +225,6 @@ function VisitingNowCard() {
 
   return (
     <div className="shrink-0 flex flex-col justify-center gap-2 pl-3 ml-1" style={{ borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
-      {/* Visiting now — subtle stat */}
       <div className="flex items-center gap-1.5">
         <span className="relative flex h-1.5 w-1.5 shrink-0">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
@@ -246,17 +237,17 @@ function VisitingNowCard() {
       </div>
 
       <div className="relative rounded-full p-[2px] overflow-hidden" style={{
-        background: 'conic-gradient(from 0deg, #ff006e, #fb5607, #ffbe0b, #ff6b35, #e91e8c, #ff006e)',
+        background: 'conic-gradient(from 0deg, #00AFF0, #0088cc, #00D4FF, #38bdf8, #00AFF0)',
       }}>
         <Link
           href="/premium"
           target="_blank"
           className="relative z-10 flex items-center justify-center gap-1 px-3 py-1.5 rounded-full text-[10px] font-black whitespace-nowrap transition-all duration-200 hover:brightness-110"
           style={{
-            background: 'linear-gradient(180deg, #4ade80 0%, #16a34a 100%)',
+            background: 'linear-gradient(180deg, #00AFF0 0%, #0088cc 100%)',
             color: '#fff',
-            boxShadow: '0 0 10px rgba(74,222,128,0.4)',
-            textShadow: '0 1px 2px rgba(0,0,0,0.4)',
+            boxShadow: '0 0 10px rgba(0,175,240,0.4)',
+            textShadow: '0 1px 2px rgba(0,0,0,0.3)',
           }}
         >
           ⭐ EROGRAM PREMIUM
@@ -282,7 +273,6 @@ function StoryCircle({
       const seenMs = new Date(seenAt).getTime();
       const latestAt = category.groups[0]?.createdAt;
       if (latestAt) return new Date(latestAt).getTime() > seenMs;
-      // For media-only categories (random girl, AI GF), always show as unseen if not seen yet
       return category.hasNewContent;
     }
     return true;
@@ -301,39 +291,33 @@ function StoryCircle({
       aria-label={`View ${category.label} stories`}
     >
       <div className="relative w-[76px] h-[76px] md:w-[84px] md:h-[84px]">
-
-        {/* Spinning neon ring layer — clipped to circle */}
         <div className="absolute inset-0 rounded-full overflow-hidden">
           {hasUnseen ? (
-            /* Unseen: spinning pink-orange-yellow neon */
             <div
               className="story-neon-ring absolute"
               style={{
                 inset: '-24px',
-                background: 'conic-gradient(from 0deg, #ff006e, #fb5607, #ffbe0b, #ff6b35, #e91e8c, #ff006e)',
+                background: 'conic-gradient(from 0deg, #00AFF0, #0088cc, #00D4FF, #38bdf8, #7dd3fc, #00AFF0)',
               }}
             />
           ) : (
-            /* Seen: slow-spinning golden/amber — dimmed */
             <div
               className="story-neon-ring-slow absolute"
               style={{
                 inset: '-24px',
-                background: 'conic-gradient(from 0deg, #92400e, #d97706, #f59e0b, #ea580c, #92400e)',
+                background: 'conic-gradient(from 0deg, #1e3a5f, #0c4a6e, #0369a1, #1e3a5f)',
                 opacity: 0.55,
               }}
             />
           )}
         </div>
 
-        {/* Moat between ring and image */}
         <div
           className="absolute inset-[3px] rounded-full"
-          style={{ background: '#1a1008' }}
+          style={{ background: '#0a1520' }}
         />
 
-        {/* Profile image */}
-        <div className="absolute inset-[5px] rounded-full overflow-hidden" style={{ background: '#2a1a0a' }}>
+        <div className="absolute inset-[5px] rounded-full overflow-hidden" style={{ background: '#0d1a2a' }}>
           <img
             src={imgSrc}
             alt={category.label}
@@ -343,9 +327,8 @@ function StoryCircle({
         </div>
       </div>
 
-      {/* Label + verified badge */}
       <span className={`flex items-center gap-0.5 text-[10px] md:text-[11px] font-semibold transition-colors duration-200 max-w-[76px] md:max-w-[84px] ${
-        hasUnseen ? 'text-amber-200/90 group-hover:text-amber-100' : 'text-amber-200/30 group-hover:text-amber-200/50'
+        hasUnseen ? 'text-sky-200/90 group-hover:text-sky-100' : 'text-sky-300/30 group-hover:text-sky-300/50'
       }`}>
         <span className="truncate">{category.label}</span>
         {category.verified && <VerifiedBadge size={11} />}

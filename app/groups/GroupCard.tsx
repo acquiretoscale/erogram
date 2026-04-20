@@ -17,9 +17,10 @@ interface GroupCardProps {
     bookmarkId?: string | null;
     itemType?: 'group' | 'bot';
     lockedPremium?: boolean;
+    directLink?: string;
 }
 
-export default function GroupCard({ group, isFeatured = false, isIndex = 0, shouldPreload = false, onVisible, onOpenReviewModal, onOpenReportModal, isBookmarked = false, bookmarkId = null, itemType = 'group', lockedPremium = false }: GroupCardProps) {
+export default function GroupCard({ group, isFeatured = false, isIndex = 0, shouldPreload = false, onVisible, onOpenReviewModal, onOpenReportModal, isBookmarked = false, bookmarkId = null, itemType = 'group', lockedPremium = false, directLink }: GroupCardProps) {
     const [isHovered, setIsHovered] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
     const [deleted, setDeleted] = useState(false);
@@ -346,13 +347,15 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
 
                         {/* Main Button */}
                         <a
-                            href={lockedPremium
-                                ? '/premium'
-                                : group.isAdvertisement && group.advertisementUrl
-                                    ? `/redirect.html?url=${encodeURIComponent(group.advertisementUrl)}&group=${group._id}`
-                                    : itemType === 'bot'
-                                        ? `/bots/${group.slug}`
-                                        : `/${group.slug}`}
+                            href={directLink
+                                ? directLink
+                                : lockedPremium
+                                    ? '/premium'
+                                    : group.isAdvertisement && group.advertisementUrl
+                                        ? `/redirect.html?url=${encodeURIComponent(group.advertisementUrl)}&group=${group._id}`
+                                        : itemType === 'bot'
+                                            ? `/bots/${group.slug}`
+                                            : `/${group.slug}`}
                             target="_blank"
                             rel={group.isAdvertisement ? "sponsored noopener noreferrer" : "noopener noreferrer"}
                             className={`group/btn relative flex items-center justify-center w-full overflow-hidden rounded-xl py-2.5 sm:py-3.5 px-3 sm:px-4 font-black text-white shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${lockedPremium

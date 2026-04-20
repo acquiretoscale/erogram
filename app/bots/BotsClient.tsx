@@ -501,7 +501,7 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
                           style={{ willChange: 'transform, opacity' }}
                         >
                           <div className="h-full">
-                            <BotCard bot={bot} isIndex={idx} />
+                            <BotCard bot={bot} isIndex={idx} directLink={bot.isAdvertisement && bot.advertisementUrl ? bot.advertisementUrl : bot.telegramLink || undefined} />
                           </div>
                           <div className="absolute -top-1 sm:-top-2 -left-1 sm:-left-2 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg z-20 border-2 border-white">
                             <span className="text-black font-bold text-xs sm:text-sm">#{idx + 1}</span>
@@ -580,7 +580,7 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
   );
 }
 
-const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex = 0 }: { bot: Bot; isFeatured?: boolean; isIndex: number }) {
+const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex = 0, directLink }: { bot: Bot; isFeatured?: boolean; isIndex: number; directLink?: string }) {
   const { t } = useTranslation();
   const [isHovered, setIsHovered] = useState(false);
   const [imageSrc, setImageSrc] = useState(bot.image || 'PLACEHOLDER_IMAGE_URL');
@@ -732,9 +732,11 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
           {/* Footer Actions */}
           <div className="mt-auto">
             <a
-              href={bot.isAdvertisement && bot.advertisementUrl
-                ? `/redirect.html?url=${encodeURIComponent(bot.advertisementUrl)}&bot=${bot._id}`
-                : `/${bot.slug}`}
+              href={directLink
+                ? directLink
+                : bot.isAdvertisement && bot.advertisementUrl
+                  ? `/redirect.html?url=${encodeURIComponent(bot.advertisementUrl)}&bot=${bot._id}`
+                  : `/${bot.slug}`}
               target="_blank"
               rel={bot.isAdvertisement ? "sponsored noopener noreferrer" : "noopener noreferrer"}
               onClick={() => {

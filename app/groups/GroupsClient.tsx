@@ -677,17 +677,23 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
                         const spots: React.ReactNode[] = [];
 
-                        const renderGroupCard = (g: Group, idx: number) => (
-                          <GroupCard
-                            key={`top-${g._id}`}
-                            group={g}
-                            isIndex={idx}
-                            onOpenReviewModal={openReviewModal}
-                            onOpenReportModal={openReportModal}
-                            isBookmarked={!!bookmarkedMap[g._id]}
-                            bookmarkId={bookmarkedMap[g._id] || null}
-                          />
-                        );
+                        const renderGroupCard = (g: Group, idx: number) => {
+                          const tgLink = g.isAdvertisement && g.advertisementUrl
+                            ? g.advertisementUrl
+                            : g.telegramLink || undefined;
+                          return (
+                            <GroupCard
+                              key={`top-${g._id}`}
+                              group={g}
+                              isIndex={idx}
+                              onOpenReviewModal={openReviewModal}
+                              onOpenReportModal={openReportModal}
+                              isBookmarked={!!bookmarkedMap[g._id]}
+                              bookmarkId={bookmarkedMap[g._id] || null}
+                              directLink={tgLink}
+                            />
+                          );
+                        };
 
                         // Spot 1 — manual slot 1 > tier 6 campaign > organic
                         if (manualSlot1) {
