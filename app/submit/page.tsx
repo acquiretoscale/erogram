@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Upload, X, CheckCircle2, AlertCircle, Loader2, Star, Send, Search, Users, Heart, Image, Film, FileText, MapPin, DollarSign, Calendar, Globe, ShieldCheck, Layers } from 'lucide-react';
+import { Upload, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { submitCreator, searchCreatorByUsername, fetchCreatorFromApify } from '@/lib/actions/submitCreator';
-import type { CreatorLookupResult } from '@/lib/actions/submitCreator';
+import { submitCreator } from '@/lib/actions/submitCreator';
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
 
 const inputClass = 'w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/10 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-[#00AFF0]/50 focus:ring-1 focus:ring-[#00AFF0]/30 transition-all';
@@ -18,29 +17,6 @@ const CATEGORY_OPTIONS = [
 ];
 
 const MAX_PHOTOS = 8;
-
-function StatCell({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-white/[0.04]">
-      <span className="shrink-0">{icon}</span>
-      <div className="min-w-0">
-        <div className="text-[10px] text-gray-500 leading-none">{label}</div>
-        <div className="text-xs font-black text-white truncate">{value}</div>
-      </div>
-    </div>
-  );
-}
-
-function formatJoinDate(raw: string): string {
-  if (!raw) return '';
-  try {
-    const d = new Date(raw);
-    if (isNaN(d.getTime())) return raw;
-    return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  } catch {
-    return raw;
-  }
-}
 
 export default function SubmitCreatorPage() {
   const { t } = useTranslation();
@@ -59,120 +35,23 @@ export default function SubmitCreatorPage() {
   const [customCat, setCustomCat] = useState('');
   const [price, setPrice] = useState('');
   const [photos, setPhotos] = useState<{ file: File; preview: string }[]>([]);
-  const [fetchedImages, setFetchedImages] = useState<{ url: string; label: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ success: boolean; slug?: string; id?: string; error?: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [liveUsers, setLiveUsers] = useState(0);
 
-  const [suggestions, setSuggestions] = useState<CreatorLookupResult[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [searching, setSearching] = useState(false);
-  const [importing, setImporting] = useState(false);
-  const [importStep, setImportStep] = useState('');
-  const [importProgress, setImportProgress] = useState(0);
-  const [populated, setPopulated] = useState(false);
-  const [fetchedProfile, setFetchedProfile] = useState<CreatorLookupResult | null>(null);
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const IMPORT_STEPS = [
-    { label: t('submitCreator.connectingOf'), pct: 10 },
-    { label: t('submitCreator.importingProfile'), pct: 25 },
-    { label: t('submitCreator.importingPhotos'), pct: 45 },
-    { label: t('submitCreator.addingPricing'), pct: 65 },
-    { label: t('submitCreator.detectingCats'), pct: 80 },
-    { label: t('submitCreator.finalizing'), pct: 92 },
-  ];
-
-  const populateFromResult = useCallback((r: CreatorLookupResult) => {
-    setName(r.name);
-    setOnlyfansUrl(`https://onlyfans.com/${r.username}`);
-    setWebsite(r.website || '');
-    setDescription(r.bio || '');
-    setInstagram(r.instagramUrl || '');
-    setTwitter(r.twitterUrl || '');
-    setTelegram(r.telegramUrl || '');
-    setTiktok(r.tiktokUrl || '');
-    setLocation(r.location || '');
-    setPrice(r.isFree ? 'Free' : r.price > 0 ? String(r.price) : '');
-    if (r.categories?.length) setCategories(r.categories);
-
-    const imgs: { url: string; label: string }[] = [];
-    if (r.avatar) imgs.push({ url: r.avatar, label: 'Profile' });
-    if (r.header) imgs.push({ url: r.header, label: 'Banner' });
-    setFetchedImages(imgs);
-
-    setFetchedProfile(r);
-    setPopulated(true);
-    setSuggestions([]);
-    setShowSuggestions(false);
+  useEffect(() => {
+    const fetchActive = () => {
+      fetch('/api/advertise-stats', { cache: 'no-store' })
+        .then(r => r.json())
+        .then(d => { if (typeof d.activeVisitors === 'number') setLiveUsers(d.activeVisitors); })
+        .catch(() => {});
+    };
+    fetchActive();
+    const id = setInterval(fetchActive, 300_000);
+    return () => clearInterval(id);
   }, []);
-
-  const handleNameChange = (val: string) => {
-    setName(val);
-    setPopulated(false);
-    setFetchedProfile(null);
-
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-
-    if (val.trim().length < 2) {
-      setSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
-
-    searchTimer.current = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const results = await searchCreatorByUsername(val.trim());
-        setSuggestions(results);
-        setShowSuggestions(true);
-      } catch {
-        setSuggestions([]);
-      } finally {
-        setSearching(false);
-      }
-    }, 400);
-  };
-
-  const handleImportFromOnlyFans = async () => {
-    const usernameFromUrl = onlyfansUrl.match(/onlyfans\.com\/([a-zA-Z0-9._-]+)/)?.[1];
-    const query = usernameFromUrl || name.trim().toLowerCase().replace(/\s+/g, '');
-    if (!query) return;
-
-    setImporting(true);
-    setImportProgress(0);
-    setImportStep(IMPORT_STEPS[0].label);
-
-    let stepIdx = 0;
-    const stepInterval = setInterval(() => {
-      stepIdx++;
-      if (stepIdx < IMPORT_STEPS.length) {
-        setImportStep(IMPORT_STEPS[stepIdx].label);
-        setImportProgress(IMPORT_STEPS[stepIdx].pct);
-      }
-    }, 7000);
-
-    try {
-      const result = await fetchCreatorFromApify(query);
-      clearInterval(stepInterval);
-      if (result) {
-        setImportStep(t('submitCreator.importComplete'));
-        setImportProgress(100);
-        populateFromResult(result);
-        setTimeout(() => setImporting(false), 800);
-      } else {
-        setImportStep(t('submitCreator.noProfileFound'));
-        setImportProgress(0);
-        setTimeout(() => setImporting(false), 2000);
-      }
-    } catch {
-      clearInterval(stepInterval);
-      setImportStep(t('submitCreator.importFailed'));
-      setImportProgress(0);
-      setTimeout(() => setImporting(false), 2000);
-    }
-  };
 
   const handlePhotos = (files: FileList | null) => {
     if (!files) return;
@@ -190,10 +69,6 @@ export default function SubmitCreatorPage() {
       URL.revokeObjectURL(prev[idx].preview);
       return prev.filter((_, i) => i !== idx);
     });
-  };
-
-  const removeFetchedImage = (idx: number) => {
-    setFetchedImages((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const toggleCategory = (cat: string) => {
@@ -220,8 +95,7 @@ export default function SubmitCreatorPage() {
     return data.url;
   };
 
-  const totalImages = fetchedImages.length + photos.length;
-  const hasImages = totalImages > 0;
+  const hasImages = photos.length > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -235,17 +109,12 @@ export default function SubmitCreatorPage() {
       const uploadedUrls = await Promise.all(photos.map((p) => uploadPhoto(p.file)));
       setUploading(false);
 
-      const allPhotoUrls = [
-        ...fetchedImages.map((fi) => fi.url),
-        ...uploadedUrls,
-      ];
-
       const res = await submitCreator({
         name: name.trim(),
         onlyfansUrl: onlyfansUrl.trim(),
         website: website.trim(),
         description: description.trim(),
-        photoUrls: allPhotoUrls,
+        photoUrls: uploadedUrls,
         instagram: instagram.trim(),
         twitter: twitter.trim(),
         telegram: telegram.trim(),
@@ -253,13 +122,6 @@ export default function SubmitCreatorPage() {
         location: location.trim(),
         categories,
         price: price.trim(),
-        ...(fetchedProfile ? {
-          subscriberCount: fetchedProfile.subscriberCount,
-          likesCount: fetchedProfile.likesCount,
-          photosCount: fetchedProfile.photosCount,
-          videosCount: fetchedProfile.videosCount,
-          postsCount: fetchedProfile.postsCount,
-        } : {}),
       });
       setResult(res);
     } catch (err: any) {
@@ -278,16 +140,22 @@ export default function SubmitCreatorPage() {
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
         <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#00AFF0]/10 border border-[#00AFF0]/25 text-[#00AFF0] text-xs font-bold mb-4">
-            <Star className="w-3.5 h-3.5" />
-            {t('submitCreator.badge')}
-          </div>
           <h1 className="text-3xl sm:text-4xl font-black text-white mb-3">
-            {t('submitCreator.title')}
+            Promote Your OnlyFans
           </h1>
-          <p className="text-gray-400 text-sm max-w-md mx-auto">
-            {t('submitCreator.subtitle')}
+          <p className="text-gray-400 text-sm max-w-lg mx-auto leading-relaxed">
+            Dozens of content creators and agencies work with us to grow their OnlyFans traffic. Get access to the best and most qualified leads to make more money with your OnlyFans. Submit your profile for <span className="text-white font-bold">FREE</span>.
           </p>
+          {liveUsers > 0 && (
+            <div className="flex items-center justify-center gap-1.5 mt-4">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span className="font-bold text-white text-sm tabular-nums">{liveUsers.toLocaleString()}</span>
+              <span className="text-white/40 text-[11px] sm:text-sm">visiting Erogram right now</span>
+            </div>
+          )}
         </div>
 
         {result?.success ? (
@@ -328,113 +196,17 @@ export default function SubmitCreatorPage() {
             <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5 space-y-5">
               <h2 className="text-xs font-black text-gray-400 uppercase tracking-wider">{t('submitCreator.required')}</h2>
 
-              <div className="relative">
+              <div>
                 <label className="block text-sm font-bold text-white mb-1">{t('submitCreator.nameLabel')} <span className="text-red-400">*</span></label>
                 <p className="text-[11px] text-gray-500 mb-2">{t('submitCreator.nameHint')}</p>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => handleNameChange(e.target.value)}
-                    onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
-                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                    placeholder={t('submitCreator.namePlaceholder')}
-                    className={inputClass}
-                    disabled={importing}
-                  />
-                  {searching && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <Loader2 className="w-4 h-4 text-[#00AFF0] animate-spin" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Autocomplete — found in DB */}
-                {showSuggestions && suggestions.length > 0 && !importing && (
-                  <div className="absolute z-20 mt-1 w-full rounded-xl bg-[#0d1a24] border border-white/10 shadow-xl overflow-hidden max-h-64 overflow-y-auto">
-                    {suggestions.map((s) => (
-                      <button
-                        key={s.username}
-                        type="button"
-                        onMouseDown={(e) => { e.preventDefault(); populateFromResult(s); }}
-                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/[0.06] transition-colors text-left"
-                      >
-                        {s.avatar && (
-                          <img src={s.avatar} alt="" className="w-9 h-9 rounded-full object-cover border border-white/10 shrink-0" />
-                        )}
-                        <div className="min-w-0">
-                          <div className="text-sm font-bold text-white truncate">{s.name}</div>
-                          <div className="text-xs text-gray-500 truncate">@{s.username}</div>
-                        </div>
-                        <span className="ml-auto text-[10px] font-bold text-emerald-400/70 uppercase shrink-0">{t('submitCreator.inDatabase')}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Not in DB — offer to import from OnlyFans */}
-                {showSuggestions && suggestions.length === 0 && !searching && name.trim().length >= 2 && !populated && !importing && (
-                  <div className="absolute z-20 mt-1 w-full rounded-xl bg-[#0d1a24] border border-white/10 shadow-xl overflow-hidden">
-                    <div className="px-4 py-3 text-xs text-gray-400">
-                      {t('submitCreator.notInDb')}
-                    </div>
-                    <button
-                      type="button"
-                      onMouseDown={(e) => { e.preventDefault(); setShowSuggestions(false); handleImportFromOnlyFans(); }}
-                      className="w-full flex items-center gap-2 px-4 py-3 text-sm font-bold text-[#00AFF0] hover:bg-[#00AFF0]/[0.06] transition-colors border-t border-white/[0.06]"
-                    >
-                      <Search className="w-4 h-4" /> {t('submitCreator.importFrom').replace('{name}', name.trim())}
-                    </button>
-                  </div>
-                )}
-
-                {/* Import progress bar */}
-                {importing && (
-                  <div className="mt-3 rounded-xl bg-[#0d1a24] border border-[#00AFF0]/20 p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 text-[#00AFF0] animate-spin shrink-0" />
-                      <span className="text-sm font-bold text-white">{t('submitCreator.importingFrom')}</span>
-                    </div>
-                    {/* Progress bar */}
-                    <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] transition-all duration-700 ease-out"
-                        style={{ width: `${importProgress}%` }}
-                      />
-                    </div>
-                    {/* Animated step label */}
-                    <p className="text-xs text-[#00AFF0] font-semibold animate-pulse">{importStep}</p>
-                  </div>
-                )}
-
-                {/* Success badge */}
-                {populated && !importing && (
-                  <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/[0.08] border border-emerald-500/20 text-emerald-400 text-xs font-bold">
-                    <CheckCircle2 className="w-4 h-4" />
-                    {t('submitCreator.profileImported')}
-                  </div>
-                )}
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t('submitCreator.namePlaceholder')}
+                  className={inputClass}
+                />
               </div>
-
-              {/* Fetched profile stats — only visible after import/select, NOT on manual fill */}
-              {populated && fetchedProfile && (
-                <div className="rounded-xl border border-[#00AFF0]/15 bg-[#00AFF0]/[0.04] p-4 space-y-3">
-                  <h3 className="text-xs font-black text-[#00AFF0] uppercase tracking-wider">{t('submitCreator.importedData')}</h3>
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                    <StatCell icon={<Users className="w-3.5 h-3.5 text-[#00AFF0]" />} label={t('submitCreator.username')} value={`@${fetchedProfile.username}`} />
-                    {fetchedProfile.likesCount > 0 && <StatCell icon={<Heart className="w-3.5 h-3.5 text-pink-400" />} label={t('submitCreator.totalLikes')} value={fetchedProfile.likesCount.toLocaleString()} />}
-                    {fetchedProfile.mediaCount > 0 && <StatCell icon={<Layers className="w-3.5 h-3.5 text-teal-400" />} label={t('submitCreator.totalMedia')} value={fetchedProfile.mediaCount.toLocaleString()} />}
-                    {fetchedProfile.photosCount > 0 && <StatCell icon={<Image className="w-3.5 h-3.5 text-emerald-400" />} label={t('submitCreator.photos')} value={fetchedProfile.photosCount.toLocaleString()} />}
-                    {fetchedProfile.videosCount > 0 && <StatCell icon={<Film className="w-3.5 h-3.5 text-purple-400" />} label={t('submitCreator.videos')} value={fetchedProfile.videosCount.toLocaleString()} />}
-                    {fetchedProfile.postsCount > 0 && <StatCell icon={<FileText className="w-3.5 h-3.5 text-sky-400" />} label={t('submitCreator.posts')} value={fetchedProfile.postsCount.toLocaleString()} />}
-                    <StatCell icon={<DollarSign className="w-3.5 h-3.5 text-yellow-400" />} label={t('submitCreator.price')} value={fetchedProfile.isFree ? t('submitCreator.free') : `$${fetchedProfile.price}/mo`} />
-                    {fetchedProfile.location && <StatCell icon={<MapPin className="w-3.5 h-3.5 text-orange-400" />} label={t('submitCreator.location')} value={fetchedProfile.location} />}
-                    {fetchedProfile.joinDate && <StatCell icon={<Calendar className="w-3.5 h-3.5 text-indigo-400" />} label={t('submitCreator.joinedOnlyfans')} value={formatJoinDate(fetchedProfile.joinDate)} />}
-                    {fetchedProfile.website && <StatCell icon={<Globe className="w-3.5 h-3.5 text-cyan-400" />} label={t('submitCreator.website')} value={fetchedProfile.website.replace(/https?:\/\//, '').slice(0, 25)} />}
-                    {fetchedProfile.isVerified && <StatCell icon={<ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />} label={t('submitCreator.verified')} value={t('submitCreator.yes')} />}
-                  </div>
-                </div>
-              )}
 
               <div>
                 <label className="block text-sm font-bold text-white mb-2">{t('submitCreator.onlyfansUrl')} <span className="text-red-400">*</span></label>
@@ -449,27 +221,6 @@ export default function SubmitCreatorPage() {
                 </label>
 
                 <div className="flex flex-wrap gap-3 mb-3">
-                  {/* Fetched images from DB / Apify (avatar + header) */}
-                  {fetchedImages.map((fi, i) => (
-                    <div key={`fetched-${i}`} className="relative w-28 h-28 rounded-xl overflow-hidden border-2 border-[#00AFF0]/30 group">
-                      <img src={fi.url} alt="" className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => removeFetchedImage(i)}
-                        className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-md bg-black/70 text-[10px] text-gray-300 font-bold">
-                        {fi.label}
-                      </span>
-                      <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-[#00AFF0]/80 text-[9px] text-white font-black uppercase">
-                        Auto
-                      </span>
-                    </div>
-                  ))}
-
-                  {/* User-uploaded photos */}
                   {photos.map((p, i) => (
                     <div key={`upload-${i}`} className="relative w-28 h-28 rounded-xl overflow-hidden border border-white/10 group">
                       <img src={p.preview} alt="" className="w-full h-full object-cover" />
@@ -481,13 +232,12 @@ export default function SubmitCreatorPage() {
                         <X className="w-3.5 h-3.5" />
                       </button>
                       <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-md bg-black/70 text-[10px] text-gray-300 font-bold">
-                        Photo {fetchedImages.length + i + 1}
+                        Photo {i + 1}
                       </span>
                     </div>
                   ))}
 
-                  {/* Upload button */}
-                  {totalImages < MAX_PHOTOS && (
+                  {photos.length < MAX_PHOTOS && (
                     <button
                       type="button"
                       onClick={() => fileRef.current?.click()}
@@ -583,26 +333,6 @@ export default function SubmitCreatorPage() {
               </div>
             </div>
 
-            {/* Telegram — dedicated block */}
-            <div className="rounded-2xl border border-[#00AFF0]/20 bg-gradient-to-r from-[#00AFF0]/[0.06] to-transparent p-5 space-y-3">
-              <div className="flex items-center gap-2.5">
-                <Send className="w-5 h-5 text-[#00AFF0]" />
-                <h2 className="text-sm font-black text-white">{t('submitCreator.telegramSection')}</h2>
-              </div>
-              <p className="text-xs text-gray-400 leading-relaxed"
-                dangerouslySetInnerHTML={{
-                  __html: t('submitCreator.telegramDesc')
-                    .replace(/<tg>/g, '<span class="text-[#00AFF0] font-bold">')
-                    .replace(/<\/tg>/g, '</span>')
-                    .replace(/<b>/g, '<span class="text-white font-black">')
-                    .replace(/<\/b>/g, '</span>')
-                    .replace(/<rec>/g, '<span class="text-emerald-400 font-black">')
-                    .replace(/<\/rec>/g, '</span>')
-                }}
-              />
-              <input type="url" value={telegram} onChange={(e) => setTelegram(e.target.value)} placeholder="https://t.me/username" className={inputClass} />
-            </div>
-
             {/* Social Media & Website */}
             <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5 space-y-5">
               <h2 className="text-xs font-black text-gray-400 uppercase tracking-wider">{t('submitCreator.socialTitle')} <span className="text-gray-600 font-normal normal-case">{t('submitCreator.socialOptional')}</span></h2>
@@ -651,40 +381,36 @@ export default function SubmitCreatorPage() {
 
             </div>
 
-            <div
-              className="rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-6"
-              style={{
-                background: 'linear-gradient(135deg, #0088cc 0%, #00AFF0 60%, #00c6ff 100%)',
-                boxShadow: '0 4px 24px rgba(0,175,240,0.35)',
-              }}
-            >
-              <div className="shrink-0 w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-2xl">
-                🚀
-              </div>
-              <div className="flex-1 text-center sm:text-left">
-                <p className="text-[11px] font-black uppercase tracking-widest text-white/70 mb-0.5">For OFM Agency Owners</p>
-                <h3 className="text-lg sm:text-xl font-black text-white leading-tight mb-1">
-                  Get 100× More Views with Paid Promotion
-                </h3>
-                <p className="text-sm text-white/90 leading-relaxed">
-                  Interested? Reach out for a custom quote — we'll get your creators in front of the right audience.
-                </p>
-              </div>
-              <div className="shrink-0 flex flex-col gap-2 w-full sm:w-auto">
-                <a
-                  href="mailto:Isabella@erogram.biz"
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white text-[#0088cc] font-black text-sm hover:bg-white/90 transition-all whitespace-nowrap"
-                >
-                  ✉️ Isabella@erogram.biz
-                </a>
-                <a
-                  href="https://t.me/RVN8888"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/15 border border-white/30 text-white font-black text-sm hover:bg-white/25 transition-all whitespace-nowrap"
-                >
-                  ✈️ @RVN8888 on Telegram
-                </a>
+            <h2 className="text-2xl sm:text-3xl font-black text-white text-center mb-4">For OFM Agency Owners</h2>
+            <div className="rounded-2xl bg-white p-6 sm:p-8">
+              <div className="flex flex-col sm:flex-row sm:items-start gap-5 sm:gap-8">
+                <div className="flex-1">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#00AFF0] mb-2">Get Featured on Erogram</p>
+                  <h3 className="text-xl sm:text-2xl font-black text-gray-900 leading-tight mb-2">
+                    Get 100× More Views with Paid Promotion
+                  </h3>
+                  <p className="text-sm text-gray-500 leading-relaxed">
+                    Contact us for a custom quote. We'll get your creators in front of the right audience.
+                  </p>
+                </div>
+                <div className="shrink-0 flex flex-col gap-2.5 w-full sm:w-auto">
+                  <a
+                    href="mailto:Isabella@erogram.biz"
+                    className="flex items-center justify-center gap-2.5 px-5 py-3 rounded-xl bg-[#00AFF0] text-white font-bold text-sm hover:bg-[#009AD6] transition-colors whitespace-nowrap"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                    Isabella@erogram.biz
+                  </a>
+                  <a
+                    href="https://t.me/RVN8888"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2.5 px-5 py-3 rounded-xl bg-gray-900 text-white font-bold text-sm hover:bg-gray-800 transition-colors whitespace-nowrap"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="shrink-0"><path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/></svg>
+                    @RVN8888 on Telegram
+                  </a>
+                </div>
               </div>
             </div>
 
