@@ -51,6 +51,17 @@ function localizedDesc(g: any, locale: string): string {
   return g.description || '';
 }
 
+async function getReviewStatsMap(groupIds: any[]): Promise<Map<string, { reviewCount: number; averageRating: number }>> {
+  if (groupIds.length === 0) return new Map();
+  const stats = await Post.aggregate([
+    { $match: { groupId: { $in: groupIds }, status: 'approved' } },
+    { $group: { _id: '$groupId', reviewCount: { $sum: 1 }, averageRating: { $avg: '$rating' } } },
+  ]);
+  const map = new Map<string, { reviewCount: number; averageRating: number }>();
+  stats.forEach((s: any) => map.set(s._id.toString(), { reviewCount: s.reviewCount, averageRating: s.averageRating || 0 }));
+  return map;
+}
+
 export async function GET(req: NextRequest) {
   try {
     await connectDB();
@@ -95,9 +106,12 @@ export async function GET(req: NextRequest) {
         ? `https://${req.headers.get('x-forwarded-host')}`
         : new URL(req.url).origin;
 
+      const featReviewMap = await getReviewStatsMap(featuredGroups.map((g: any) => g._id));
+
       return NextResponse.json({
         groups: featuredGroups.map((g: any) => {
           const cats = g.categories?.length ? g.categories : [g.category, g.country].filter(Boolean);
+          const rs = featReviewMap.get(g._id.toString()) || { reviewCount: 0, averageRating: 0 };
           return {
             _id: g._id.toString(),
             name: (g.name || '').slice(0, 150),
@@ -116,6 +130,8 @@ export async function GET(req: NextRequest) {
             views: g.views || 0,
             memberCount: g.memberCount || 0,
             verified: g.verified || false,
+            averageRating: rs.averageRating,
+            reviewCount: rs.reviewCount,
           };
         }),
       });
@@ -146,9 +162,12 @@ export async function GET(req: NextRequest) {
         ? `https://${req.headers.get('x-forwarded-host')}`
         : new URL(req.url).origin;
 
+      const boostReviewMap = await getReviewStatsMap(boostedGroups.map((g: any) => g._id));
+
       return NextResponse.json({
         groups: boostedGroups.map((g: any) => {
           const cats = g.categories?.length ? g.categories : [g.category, g.country].filter(Boolean);
+          const rs = boostReviewMap.get(g._id.toString()) || { reviewCount: 0, averageRating: 0 };
           return {
             _id: g._id.toString(),
             name: (g.name || '').slice(0, 150),
@@ -170,6 +189,8 @@ export async function GET(req: NextRequest) {
             memberCount: g.memberCount || 0,
             verified: g.verified || false,
             weeklyClicks: g.weeklyClicks || 0,
+            averageRating: rs.averageRating,
+            reviewCount: rs.reviewCount,
           };
         }),
       });
@@ -244,9 +265,12 @@ export async function GET(req: NextRequest) {
         ? `https://${req.headers.get('x-forwarded-host')}`
         : new URL(req.url).origin;
 
+      const topReviewMap = await getReviewStatsMap(finalGroups.map((g: any) => g._id));
+
       return NextResponse.json({
         groups: finalGroups.map((g: any) => {
           const cats = g.categories?.length ? g.categories : [g.category, g.country].filter(Boolean);
+          const rs = topReviewMap.get(g._id.toString()) || { reviewCount: 0, averageRating: 0 };
           return {
             _id: g._id.toString(),
             name: (g.name || '').slice(0, 150),
@@ -266,6 +290,8 @@ export async function GET(req: NextRequest) {
             verified: g.verified || false,
             weeklyClicks: g.weeklyClicks || 0,
             topGroupSlot: g.topGroupSlot || null,
+            averageRating: rs.averageRating,
+            reviewCount: rs.reviewCount,
           };
         }),
       });
@@ -413,41 +439,10 @@ export async function GET(req: NextRequest) {
 
       groups = await Group.aggregate(pipeline);
 
-      // Get review statistics for random groups too
-      const randomGroupIds = groups.map((g: any) => g._id);
-      const randomReviewStats = await Post.aggregate([
-        {
-          $match: {
-            groupId: { $in: randomGroupIds },
-            status: 'approved'
-          }
-        },
-        {
-          $group: {
-            _id: '$groupId',
-            reviewCount: { $sum: 1 },
-            averageRating: { $avg: '$rating' }
-          }
-        }
-      ]);
-
-      // Create a map for quick lookup
-      const randomReviewStatsMap = new Map();
-      randomReviewStats.forEach((stat: any) => {
-        randomReviewStatsMap.set(stat._id.toString(), {
-          reviewCount: stat.reviewCount,
-          averageRating: stat.averageRating || 0
-        });
-      });
-
-      // Add review stats to groups
+      const randomReviewStatsMap = await getReviewStatsMap(groups.map((g: any) => g._id));
       groups = groups.map((g: any) => {
         const stats = randomReviewStatsMap.get(g._id.toString()) || { reviewCount: 0, averageRating: 0 };
-        return {
-          ...g,
-          reviewCount: stats.reviewCount,
-          averageRating: stats.averageRating
-        };
+        return { ...g, reviewCount: stats.reviewCount, averageRating: stats.averageRating };
       });
     } else {
       groups = await Group.find(query)
@@ -465,32 +460,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Get review statistics for all groups
-    const groupIds = groups.map((g: any) => g._id);
-    const reviewStats = await Post.aggregate([
-      {
-        $match: {
-          groupId: { $in: groupIds },
-          status: 'approved' // Only count approved reviews
-        }
-      },
-      {
-        $group: {
-          _id: '$groupId',
-          reviewCount: { $sum: 1 },
-          averageRating: { $avg: '$rating' }
-        }
-      }
-    ]);
-
-    // Create a map for quick lookup
-    const reviewStatsMap = new Map();
-    reviewStats.forEach((stat: any) => {
-      reviewStatsMap.set(stat._id.toString(), {
-        reviewCount: stat.reviewCount,
-        averageRating: stat.averageRating || 0
-      });
-    });
+    const reviewStatsMap = await getReviewStatsMap(groups.map((g: any) => g._id));
 
     const origin = req.nextUrl?.origin || (req.headers.get('host') ? `https://${req.headers.get('host')}` : '') || process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') || '';
     const sanitized = groups.map((g: any) => {

@@ -1,6 +1,7 @@
 'use server';
 
 import jwt from 'jsonwebtoken';
+import { revalidatePath } from 'next/cache';
 import connectDB from '@/lib/db/mongodb';
 import { User, Post, CreatorReview } from '@/lib/models';
 
@@ -92,9 +93,18 @@ export async function updateReview(
   if (data.type === 'creator') {
     const review = await CreatorReview.findByIdAndUpdate(id, updateData, { new: true }).lean();
     if (!review) throw new Error('Review not found');
+    if (data.status && (review as any).creatorSlug) {
+      revalidatePath(`/${(review as any).creatorSlug}`);
+    }
   } else {
-    const review = await Post.findByIdAndUpdate(id, updateData, { new: true }).lean();
+    const review = await Post.findByIdAndUpdate(id, updateData, { new: true })
+      .populate('groupId', 'slug')
+      .lean();
     if (!review) throw new Error('Review not found');
+    const slug = (review as any).groupId?.slug;
+    if (data.status && slug) {
+      revalidatePath(`/${slug}`);
+    }
   }
   return { success: true };
 }
@@ -107,9 +117,12 @@ export async function deleteReview(token: string, id: string, type?: string) {
   if (type === 'creator') {
     const review = await CreatorReview.findByIdAndDelete(id);
     if (!review) throw new Error('Review not found');
+    if ((review as any).creatorSlug) revalidatePath(`/${(review as any).creatorSlug}`);
   } else {
-    const review = await Post.findByIdAndDelete(id);
+    const review = await Post.findByIdAndDelete(id).populate('groupId', 'slug');
     if (!review) throw new Error('Review not found');
+    const slug = (review as any).groupId?.slug;
+    if (slug) revalidatePath(`/${slug}`);
   }
   return { success: true };
 }
