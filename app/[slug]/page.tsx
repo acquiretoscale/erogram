@@ -674,7 +674,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title: titleTemplates[locale] || titleTemplates.en,
       description: desc,
       keywords: `${name} OnlyFans, @${username} OnlyFans, ${primaryCat} OnlyFans creator, OnlyFans profile, ${creator.categories.join(', ')}, best OnlyFans 2026`,
-      robots: creator.adminImported ? { index: true, follow: true } : { index: false, follow: false },
+      robots: { index: false, follow: false },
       other: { rating: 'adult' },
       alternates: { canonical: pageUrl },
       openGraph: {

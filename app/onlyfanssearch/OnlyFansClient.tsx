@@ -1018,22 +1018,25 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
             {/* Featured creators */}
             {blockFeatured.length > 0 && (
               <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-                <div className="rounded-2xl border border-[#1E3A6E] bg-gradient-to-br from-[#071526] via-[#0D2140] to-[#122B58] p-4 sm:p-6 shadow-[0_24px_60px_-18px_rgba(4,12,28,0.98)]">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Crown size={14} className="text-[#FF9A50]" fill="currentColor" />
-                    <h2 className="text-sm sm:text-base font-black text-white/90">
-                      Featured <span className="text-[#FF9A50]">OnlyFans Creators</span>
-                    </h2>
+                <div className="rounded-2xl border border-[#00AFF0]/20 bg-white p-4 sm:p-6 shadow-[0_24px_60px_-18px_rgba(0,175,240,0.15)]">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Crown size={14} className="text-[#00AFF0]" fill="currentColor" />
+                      <h2 className="text-sm sm:text-base font-black text-gray-900">
+                        Featured <span className="text-[#00AFF0]">OnlyFans Creators</span>
+                      </h2>
+                    </div>
+                    <a href="/submit" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-lg bg-[#0a1c2e] text-white text-[10px] sm:text-xs font-black uppercase tracking-wider hover:bg-[#122B53] transition-colors shadow-sm">Submit Your Creator</a>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5">
                     {blockFeatured.map((tc) => (
-                      <button key={`feat-${tc._id}`} type="button" onClick={() => { trackTrendingClick(tc._id); window.open(tc.url, '_blank', 'noopener,noreferrer'); }} className="group w-full text-left rounded-2xl overflow-hidden bg-gradient-to-br from-[#0B1D3A] via-[#122B53] to-[#1A3F73] ring-[3px] ring-[#FF6A00] hover:ring-[#FF8C3A] shadow-[0_8px_28px_-8px_rgba(255,106,0,0.45)] hover:shadow-[0_12px_36px_-6px_rgba(255,106,0,0.55)] hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none">
-                        <div className="relative aspect-[3/4] bg-[#0F274C]">
-                          {tc.avatar ? <img src={tc.avatar} alt={`${tc.name} OnlyFans`} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" loading="lazy" referrerPolicy="no-referrer" /> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#C7DAFF] bg-[#0F274C]">{tc.name.charAt(0)}</div>}
+                      <button key={`feat-${tc._id}`} type="button" onClick={() => { trackTrendingClick(tc._id); window.open(tc.url, '_blank', 'noopener,noreferrer'); }} className="group w-full text-left rounded-2xl overflow-hidden bg-white ring-[2px] ring-[#00AFF0]/30 hover:ring-[#00AFF0] shadow-[0_8px_28px_-8px_rgba(0,175,240,0.25)] hover:shadow-[0_12px_36px_-6px_rgba(0,175,240,0.35)] hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none">
+                        <div className="relative aspect-[3/4] bg-[#f0f8ff]">
+                          {tc.avatar ? <img src={tc.avatar} alt={`${tc.name} OnlyFans`} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" loading="lazy" referrerPolicy="no-referrer" /> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#00AFF0] bg-[#f0f8ff]">{tc.name.charAt(0)}</div>}
                         </div>
                         <div className="px-3 pt-2.5 sm:px-4 sm:pt-3">
                           <div className="flex items-center gap-1.5">
-                            <h3 className="font-bold text-[13px] sm:text-[15px] text-white truncate leading-tight">{tc.name}</h3>
+                            <h3 className="font-bold text-[13px] sm:text-[15px] text-gray-900 truncate leading-tight">{tc.name}</h3>
                             {isCreatorLiveNow(tc.liveHourStart ?? -1, tc.liveHourEnd ?? -1) && (
                               <span className="inline-flex items-center gap-1 shrink-0">
                                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-[pulse_2s_ease-in-out_infinite]" />
@@ -1041,21 +1044,21 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] sm:text-[13px] text-[#7BAEFF] font-semibold mt-0.5">@{tc.username}</p>
+                          <p className="text-[11px] sm:text-[13px] text-[#00AFF0] font-semibold mt-0.5">@{tc.username}</p>
                           {(tc.likesCount > 0) && (
-                            <p className="text-[10px] sm:text-[11px] text-[#FF9A50] mt-0.5">{formatCount(tc.likesCount)} {t('ofSearch.likes')}</p>
+                            <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5">{formatCount(tc.likesCount)} {t('ofSearch.likes')}</p>
                           )}
                           {tc.categories && tc.categories.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1.5">
                               {tc.categories.slice(0, 2).map((cat: string) => (
-                                <span key={cat} className="px-1.5 py-0.5 bg-[#FF6A00]/15 text-[#FF9A50] text-[8px] sm:text-[9px] font-bold rounded-md capitalize border border-[#FF6A00]/25">
+                                <span key={cat} className="px-1.5 py-0.5 bg-[#00AFF0]/10 text-[#00AFF0] text-[8px] sm:text-[9px] font-bold rounded-md capitalize border border-[#00AFF0]/20">
                                   {cat}
                                 </span>
                               ))}
                             </div>
                           )}
                         </div>
-                        <div className="px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3"><div className="w-full py-2 sm:py-2.5 rounded-xl bg-[#FF6A00] text-white text-[12px] sm:text-sm font-black text-center shadow-lg border border-[#FF9A50] group-hover:bg-[#FF7A1A] transition-colors">{t('ofSearch.viewProfile')}</div></div>
+                        <div className="px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3"><div className="w-full py-2 sm:py-2.5 rounded-xl bg-[#00AFF0] text-white text-[12px] sm:text-sm font-black text-center shadow-lg border border-[#00AFF0] group-hover:bg-[#009AD6] transition-colors">{t('ofSearch.viewProfile')}</div></div>
                       </button>
                     ))}
                   </div>

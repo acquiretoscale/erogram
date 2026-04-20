@@ -314,7 +314,7 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                             <span className={`relative flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm uppercase tracking-wider`}>
                                 {lockedPremium ? (
                                     <>
-                                        <span className="text-base sm:text-lg">🔒</span> Unlock Premium
+                                        <span className="text-base sm:text-lg">🔒</span> UNLOCK PREMIUM GROUPS
                                     </>
                                 ) : group.isAdvertisement ? (
                                     <>

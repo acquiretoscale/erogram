@@ -135,7 +135,7 @@ function OnlyFansCreatorAdCard({ campaign, handleClick }: { campaign: FeedCampai
 
                     {/* Featured Creator label */}
                     <div className="absolute bottom-2 right-2 z-10">
-                        <span className="text-[9px] font-bold text-white/70 uppercase tracking-wider">Featured Creator</span>
+                        <span className="text-[7px] font-bold text-white/70 uppercase tracking-wider">Featured Onlyfans Creator</span>
                     </div>
                 </div>
 

@@ -42,8 +42,16 @@ const AINsfwIcon = () => (
   </span>
 );
 
+const OnlyFansIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
+    <path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z" />
+  </svg>
+);
+
 export default function AddPage() {
-  const btnClass = "flex items-center justify-center gap-2 w-full px-5 py-4 rounded-xl text-base font-bold text-[#4ab3f4] bg-[#0088cc]/[0.10] border border-[#0088cc]/25 hover:bg-[#0088cc]/[0.18] hover:text-[#6ec6f7] transition-all no-underline";
+  const telegramBtnClass = "flex items-center justify-center gap-2 w-full px-5 py-4 rounded-xl text-base font-bold text-[#4ab3f4] bg-[#0088cc]/[0.10] border border-[#0088cc]/25 hover:bg-[#0088cc]/[0.18] hover:text-[#6ec6f7] transition-all no-underline";
+  const aiNsfwBtnClass = "flex items-center justify-center gap-2 w-full px-5 py-4 rounded-xl text-base font-bold text-white bg-[#b31b1b] border border-[#b31b1b] hover:bg-[#cc2222] hover:border-[#cc2222] transition-all no-underline";
+  const onlyFansBtnClass = "flex items-center justify-center gap-2 w-full px-5 py-4 rounded-xl text-base font-bold text-white bg-[#00AFF0] border border-[#00AFF0] hover:bg-[#00c2ff] hover:border-[#00c2ff] transition-all no-underline";
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
@@ -55,13 +63,10 @@ export default function AddPage() {
         </div>
 
         <div className="flex flex-col gap-3">
-          <Link href="/add/group" className={btnClass}><GroupIcon /> Submit your Telegram Group</Link>
-          <Link href="/add/bot" className={btnClass}><BotIcon /> Submit your Telegram Bot</Link>
-          <Link href="/add/ainsfw" className={btnClass}><AINsfwIcon /> Submit your AI NSFW Tool</Link>
-          <Link href="/submit" className="flex items-center justify-center gap-2 w-full px-5 py-4 rounded-xl text-base font-bold text-[#00AFF0] bg-[#00AFF0]/[0.10] border border-[#00AFF0]/25 hover:bg-[#00AFF0]/[0.18] hover:text-[#3dc4f7] transition-all no-underline">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="shrink-0"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-            Submit OnlyFans Creator
-          </Link>
+          <Link href="/add/group" className={telegramBtnClass}><GroupIcon /> Submit your Telegram Group</Link>
+          <Link href="/add/bot" className={telegramBtnClass}><BotIcon /> Submit your Telegram Bot</Link>
+          <Link href="/add/ainsfw" className={aiNsfwBtnClass}><AINsfwIcon /> Submit your AI NSFW Tool</Link>
+          <Link href="/submit" className={onlyFansBtnClass}><OnlyFansIcon /> Submit OnlyFans Creator</Link>
         </div>
       </main>
       <Footer />
