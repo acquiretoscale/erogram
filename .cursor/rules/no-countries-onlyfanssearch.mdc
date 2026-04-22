@@ -1,0 +1,23 @@
+---
+description: Countries do not exist on Erogram OnlyFans Search - they are categories
+globs: app/onlyfanssearch/**
+alwaysApply: false
+---
+
+# NO COUNTRIES ON ONLYFANSSEARCH
+
+## The Rule
+
+**Countries DO NOT EXIST as a separate concept on Erogram.**
+
+When a country (e.g. France, Germany) is added to OnlyFans Search, it is added as a **CATEGORY** — exactly the same as "Brunette", "Asian", "Latina", etc.
+
+- NEVER create `OF_COUNTRIES`, `OF_COUNTRY_SLUGS`, `OF_COUNTRY_MAP`, or any country-specific data structures
+- NEVER create `/country/` routes or country URL helpers (`ofCountryUrl`, `ofCountryCategoryUrl`)
+- NEVER add country vs. category branching logic — there is only ONE type: category
+- If the owner wants to add "France", add it to `OF_CATEGORIES` in `constants.ts`
+- Country pages like `/onlyfansfrance` do not exist. Use `/{slug}onlyfans` like every other category
+
+## Why
+
+Countries were removed because 19 out of 20 had 0 creators. The entire country infrastructure was dead code generating empty pages that hurt SEO. The owner decided countries = categories, period.

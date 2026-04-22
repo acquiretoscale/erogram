@@ -13,8 +13,6 @@ import { NextRequest, NextResponse } from 'next/server';
  *
  * OnlyFans SEO rewrites:
  * - /{cat}onlyfans               → /onlyfanssearch/{cat}
- * - /onlyfans{country}           → /onlyfanssearch/country/{country}
- * - /onlyfans{country}/{cat}onlyfans → /onlyfanssearch/country/{country}/{cat}
  */
 
 // Block referral traffic from Turkish Yandex only. Russian Yandex (.ru) is kept.
@@ -41,11 +39,8 @@ const OF_CAT_SLUGS = new Set([
   'ahegao','alt','cosplay','goth','latina','tattoo','curvy','ebony',
   'feet','lingerie','thick','twerk','squirt','piercing',
 ]);
-const OF_COUNTRY_SLUGS = new Set([
-  'france','germany','spain','italy','uk','usa','brazil','colombia',
-  'mexico','argentina','japan','philippines','australia','canada',
-  'russia','ukraine','poland','romania','czech','netherlands',
-]);
+// Countries removed — they will be re-added as categories, not countries.
+const OF_COUNTRY_SLUGS = new Set<string>();
 
 export function middleware(request: NextRequest) {
   // ── Block Turkish Yandex referral traffic (Google-safe, Russian Yandex untouched) ──

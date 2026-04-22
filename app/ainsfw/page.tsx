@@ -10,6 +10,8 @@ import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 
 const BASE_URL = 'https://erogram.pro';
 
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const dict = await getDictionary(locale);

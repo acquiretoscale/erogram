@@ -3,14 +3,11 @@ import { notFound, redirect } from 'next/navigation';
 import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator } from '@/lib/models';
 import CategoryClient from './CategoryClient';
-import {
-  OF_CATEGORY_SLUGS, OF_CATEGORY_MAP,
-  OF_COUNTRY_SLUGS, OF_COUNTRY_MAP,
-  OF_COUNTRIES, OF_CATEGORIES,
-  ofCategoryUrl, ofCountryUrl, ofCountryCategoryUrl,
-} from '../constants';
+import { OF_CATEGORY_SLUGS, OF_CATEGORY_MAP, ofCategoryUrl } from '../constants';
 import { getLocale } from '@/lib/i18n/server';
-import { categoryOfMeta, countryOfMeta } from '../ofMeta';
+import { categoryOfMeta } from '../ofMeta';
+
+export const dynamic = 'force-dynamic';
 
 interface PageProps {
   params: Promise<{ category: string }>;
@@ -20,16 +17,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { category: rawSlug } = await params;
   const locale = await getLocale();
 
-  const is2026 = rawSlug.endsWith('2026');
-  if (is2026) return {};
+  if (rawSlug.endsWith('2026')) return {};
 
-  const slug = rawSlug;
-
-  const cat = OF_CATEGORY_MAP.get(slug);
-  if (cat) return categoryOfMeta(locale, slug, cat.name);
-
-  const co = OF_COUNTRY_MAP.get(slug);
-  if (co) return countryOfMeta(locale, slug, co.name);
+  const cat = OF_CATEGORY_MAP.get(rawSlug);
+  if (cat) return categoryOfMeta(locale, rawSlug, cat.name);
 
   return {};
 }
@@ -60,30 +51,22 @@ function serializeCreator(c: any) {
 export default async function OnlyFansSlugPage({ params }: PageProps) {
   const { category: rawSlug } = await params;
 
-  // 301 redirect old /onlyfans-search/{slug}2026 → /best-onlyfans-accounts/{slug}
-  const is2026 = rawSlug.endsWith('2026');
-  if (is2026) {
-    const slug = rawSlug.slice(0, -4);
-    redirect(`/best-onlyfans-accounts/${slug}`);
+  if (rawSlug.endsWith('2026')) {
+    redirect(`/best-onlyfans-accounts/${rawSlug.slice(0, -4)}`);
   }
 
-  const slug = rawSlug;
-  const isCategory = OF_CATEGORY_SLUGS.has(slug);
-  const isCountry = OF_COUNTRY_SLUGS.has(slug);
-
-  if (!isCategory && !isCountry) notFound();
+  if (!OF_CATEGORY_SLUGS.has(rawSlug)) notFound();
 
   await connectDB();
 
-  const baseMatch = { categories: slug, gender: 'female', avatar: { $ne: '' }, deleted: { $ne: true } };
+  const baseMatch = { categories: rawSlug, gender: 'female', avatar: { $ne: '' }, deleted: { $ne: true } };
 
-  const creators = await OnlyFansCreator.find(baseMatch)
-    .sort({ clicks: -1, likesCount: -1 })
-    .limit(200)
-    .select('name username slug avatar header bio subscriberCount likesCount photosCount videosCount price isFree isVerified url clicks')
-    .lean();
+  const creators = await OnlyFansCreator.aggregate([
+    { $match: baseMatch },
+    { $sample: { size: 200 } },
+    { $project: { name: 1, username: 1, slug: 1, avatar: 1, header: 1, bio: 1, subscriberCount: 1, likesCount: 1, photosCount: 1, videosCount: 1, price: 1, isFree: 1, isVerified: 1, url: 1, clicks: 1 } },
+  ]);
 
-  // Deduplicate by username
   const seen = new Set<string>();
   const serialized = (creators as any[])
     .map(serializeCreator)
@@ -94,37 +77,13 @@ export default async function OnlyFansSlugPage({ params }: PageProps) {
       return true;
     });
 
-  if (isCategory) {
-    const cat = OF_CATEGORY_MAP.get(slug)!;
-    const countryLinks = OF_COUNTRIES.map((co) => ({
-      name: co.name,
-      flag: co.flag,
-      href: ofCountryCategoryUrl(co.slug, slug),
-    }));
-    return (
-      <CategoryClient
-        creators={serialized}
-        category={slug}
-        label={cat.name}
-        countryLinks={countryLinks}
-        canonicalUrl={`https://erogram.pro${ofCategoryUrl(slug)}`}
-      />
-    );
-  }
-
-  const co = OF_COUNTRY_MAP.get(slug)!;
-  const categoryLinks = OF_CATEGORIES.map((cat) => ({
-    name: cat.name,
-    flag: cat.emoji,
-    href: ofCountryCategoryUrl(slug, cat.slug),
-  }));
+  const cat = OF_CATEGORY_MAP.get(rawSlug)!;
   return (
     <CategoryClient
       creators={serialized}
-      category={slug}
-      label={co.name}
-      countryLinks={categoryLinks}
-      canonicalUrl={`https://erogram.pro${ofCountryUrl(slug)}`}
+      category={rawSlug}
+      label={cat.name}
+      canonicalUrl={`https://erogram.pro${ofCategoryUrl(rawSlug)}`}
     />
   );
 }

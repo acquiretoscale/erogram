@@ -1,8 +1,9 @@
-// OnlyFans Search — categories, countries, and URL helpers
-// URL patterns:
-//   Category:          /{cat}onlyfans          → /blondeonlyfans
-//   Country:           /onlyfans{country}      → /onlyfansfrance
-//   Country+Category:  /onlyfans{country}/{cat}onlyfans → /onlyfansfrance/blondeonlyfans
+// OnlyFans Search — categories and URL helpers
+// URL pattern: /{cat}onlyfans → /blondeonlyfans
+//
+// COUNTRIES DO NOT EXIST on Erogram. When a "country" is added (e.g. France),
+// it must be added as a CATEGORY — same as Brunette, Asian, etc.
+// The owner will add them later as categories. Do NOT re-introduce OF_COUNTRIES.
 
 export const OF_CATEGORIES = [
   { name: 'Asian', emoji: '🌸', slug: 'asian' },
@@ -35,47 +36,11 @@ export const OF_CATEGORIES = [
   { name: 'Piercing', emoji: '💎', slug: 'piercing' },
 ] as const;
 
-export const OF_COUNTRIES = [
-  { name: 'France', slug: 'france', flag: '🇫🇷' },
-  { name: 'Germany', slug: 'germany', flag: '🇩🇪' },
-  { name: 'Spain', slug: 'spain', flag: '🇪🇸' },
-  { name: 'Italy', slug: 'italy', flag: '🇮🇹' },
-  { name: 'UK', slug: 'uk', flag: '🇬🇧' },
-  { name: 'USA', slug: 'usa', flag: '🇺🇸' },
-  { name: 'Brazil', slug: 'brazil', flag: '🇧🇷' },
-  { name: 'Colombia', slug: 'colombia', flag: '🇨🇴' },
-  { name: 'Mexico', slug: 'mexico', flag: '🇲🇽' },
-  { name: 'Argentina', slug: 'argentina', flag: '🇦🇷' },
-  { name: 'Japan', slug: 'japan', flag: '🇯🇵' },
-  { name: 'Philippines', slug: 'philippines', flag: '🇵🇭' },
-  { name: 'Australia', slug: 'australia', flag: '🇦🇺' },
-  { name: 'Canada', slug: 'canada', flag: '🇨🇦' },
-  { name: 'Russia', slug: 'russia', flag: '🇷🇺' },
-  { name: 'Ukraine', slug: 'ukraine', flag: '🇺🇦' },
-  { name: 'Poland', slug: 'poland', flag: '🇵🇱' },
-  { name: 'Romania', slug: 'romania', flag: '🇷🇴' },
-  { name: 'Czech Republic', slug: 'czech', flag: '🇨🇿' },
-  { name: 'Netherlands', slug: 'netherlands', flag: '🇳🇱' },
-] as const;
-
 export const OF_CATEGORY_SLUGS: Set<string> = new Set(OF_CATEGORIES.map((c) => c.slug));
-export const OF_COUNTRY_SLUGS: Set<string> = new Set(OF_COUNTRIES.map((c) => c.slug));
 
-// Slug lookup maps
 export const OF_CATEGORY_MAP: Map<string, (typeof OF_CATEGORIES)[number]> = new Map(OF_CATEGORIES.map((c) => [c.slug, c]));
-export const OF_COUNTRY_MAP: Map<string, (typeof OF_COUNTRIES)[number]> = new Map(OF_COUNTRIES.map((c) => [c.slug, c]));
 
 /** Build the public SEO URL for a category page: /blondeonlyfans */
 export function ofCategoryUrl(catSlug: string) {
   return `/${catSlug}onlyfans`;
-}
-
-/** Build the public SEO URL for a country page: /onlyfansfrance */
-export function ofCountryUrl(countrySlug: string) {
-  return `/onlyfans${countrySlug}`;
-}
-
-/** Build the public SEO URL for country+category: /onlyfansfrance/blondeonlyfans */
-export function ofCountryCategoryUrl(countrySlug: string, catSlug: string) {
-  return `/onlyfans${countrySlug}/${catSlug}onlyfans`;
 }

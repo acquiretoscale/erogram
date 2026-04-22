@@ -216,17 +216,40 @@ export async function GET(req: NextRequest) {
 
       const topLimit = parseInt(searchParams.get('limit') || '3', 10);
       const POOL_SIZE = Math.max(topLimit * 5, 20);
+      const now = new Date();
 
-      // Fetch manually slotted groups (topGroupSlot 1 or 2) first
+      // Expire old boosts
+      await Group.updateMany(
+        { boosted: true, boostExpiresAt: { $lte: now } },
+        { $set: { boosted: false, boostExpiresAt: null, boostDuration: null } }
+      );
+
+      // Boosted groups (paid) get priority placement in Top Groups
+      const boostedGroups = await Group.find({
+        status: 'approved',
+        boosted: true,
+        boostExpiresAt: { $gt: now },
+        premiumOnly: { $ne: true },
+        category: { $ne: 'Hentai' },
+      })
+        .sort({ boostExpiresAt: 1 })
+        .limit(topLimit)
+        .select('name slug category country categories description description_de description_es image telegramLink clickCount views memberCount verified weeklyClicks boosted boostExpiresAt')
+        .lean();
+
+      const boostedIds = new Set((boostedGroups as any[]).map(g => g._id.toString()));
+
+      // Fetch manually slotted groups (topGroupSlot 1 or 2), excluding already-boosted
       const manualSlotted = await Group.find({
         status: 'approved',
         topGroupSlot: { $in: [1, 2] },
+        _id: { $nin: Array.from(boostedIds) },
       })
         .select('name slug category country categories description description_de description_es image telegramLink clickCount views memberCount verified weeklyClicks topGroupSlot')
         .lean();
 
       const manualSlotMap = new Map((manualSlotted as any[]).map(g => [g.topGroupSlot, g]));
-      const manualIds = new Set((manualSlotted as any[]).map(g => g._id.toString()));
+      const reservedIds = new Set([...boostedIds, ...(manualSlotted as any[]).map(g => g._id.toString())]);
 
       const candidates = await Group.find({
         status: 'approved',
@@ -234,6 +257,7 @@ export async function GET(req: NextRequest) {
         premiumOnly: { $ne: true },
         pinned: { $ne: true },
         featured: { $ne: true },
+        boosted: { $ne: true },
         topGroupSlot: { $nin: [1, 2] },
         category: { $ne: 'Hentai' },
       })
@@ -242,7 +266,6 @@ export async function GET(req: NextRequest) {
         .select('name slug category country categories description description_de description_es image telegramLink clickCount views memberCount verified weeklyClicks')
         .lean();
 
-      // Weighted random pick: higher weeklyClicks = higher chance, but not deterministic
       const weighted = (candidates as any[]).map((g, i) => ({
         group: g,
         weight: Math.max(1, (g.weeklyClicks || 0)) + Math.random() * 5 + (POOL_SIZE - i),
@@ -250,15 +273,15 @@ export async function GET(req: NextRequest) {
       weighted.sort((a, b) => b.weight - a.weight);
       const organicPicks = weighted.slice(0, topLimit).map(w => w.group);
 
-      // Merge: manual slot groups go first (sorted by slot), then organic fills remaining
-      const finalGroups: any[] = [];
+      // Merge: boosted first → manual slots → organic fills remaining
+      const finalGroups: any[] = [...boostedGroups];
       const slot1 = manualSlotMap.get(1);
       const slot2 = manualSlotMap.get(2);
-      if (slot1) finalGroups.push(slot1);
-      if (slot2) finalGroups.push(slot2);
+      if (slot1 && finalGroups.length < topLimit) finalGroups.push(slot1);
+      if (slot2 && finalGroups.length < topLimit) finalGroups.push(slot2);
       for (const g of organicPicks) {
         if (finalGroups.length >= topLimit) break;
-        if (!manualIds.has(g._id.toString())) finalGroups.push(g);
+        if (!reservedIds.has(g._id.toString())) finalGroups.push(g);
       }
 
       const origin = req.headers.get('x-forwarded-host')
@@ -290,6 +313,7 @@ export async function GET(req: NextRequest) {
             verified: g.verified || false,
             weeklyClicks: g.weeklyClicks || 0,
             topGroupSlot: g.topGroupSlot || null,
+            boosted: g.boosted || false,
             averageRating: rs.averageRating,
             reviewCount: rs.reviewCount,
           };

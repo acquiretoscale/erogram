@@ -669,10 +669,12 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
                       {(() => {
-                        const manualSlot1 = topGroups.find((g: any) => g.topGroupSlot === 1);
-                        const manualSlot2 = topGroups.find((g: any) => g.topGroupSlot === 2);
+                        const boostedArr = topGroups.filter((g: any) => g.boosted);
+                        const nonBoosted = topGroups.filter((g: any) => !g.boosted);
+                        const manualSlot1 = nonBoosted.find((g: any) => g.topGroupSlot === 1);
+                        const manualSlot2 = nonBoosted.find((g: any) => g.topGroupSlot === 2);
                         const manualIds = new Set([manualSlot1?._id, manualSlot2?._id].filter(Boolean));
-                        const allOrganic = topGroups.filter(g => !manualIds.has(g._id)).slice(0, 4);
+                        const allOrganic = nonBoosted.filter(g => !manualIds.has(g._id)).slice(0, 4);
                         let organicIdx = 0;
 
                         const spots: React.ReactNode[] = [];
@@ -695,58 +697,52 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                           );
                         };
 
+                        // Boosted groups (paid) always fill first
+                        for (const g of boostedArr) {
+                          if (spots.length >= 4) break;
+                          spots.push(renderGroupCard(g, spots.length));
+                        }
+
                         // Spot 1 — manual slot 1 > tier 6 campaign > organic
-                        if (manualSlot1) {
-                          spots.push(renderGroupCard(manualSlot1, 0));
-                        } else if (tier6Campaign && !isTelegram) {
-                          spots.push(
-                            <AdvertCard
-                              key={`tier6-${tier6Campaign._id}`}
-                              campaign={tier6Campaign}
-                              isIndex={0}
-                              shouldPreload={true}
-                              onVisible={undefined}
-                            />
-                          );
-                        } else if (allOrganic[organicIdx]) {
-                          spots.push(renderGroupCard(allOrganic[organicIdx++], 0));
+                        if (spots.length < 1) {
+                          if (manualSlot1) {
+                            spots.push(renderGroupCard(manualSlot1, 0));
+                          } else if (tier6Campaign && !isTelegram) {
+                            spots.push(
+                              <AdvertCard key={`tier6-${tier6Campaign._id}`} campaign={tier6Campaign} isIndex={0} shouldPreload={true} onVisible={undefined} />
+                            );
+                          } else if (allOrganic[organicIdx]) {
+                            spots.push(renderGroupCard(allOrganic[organicIdx++], 0));
+                          }
                         }
 
                         // Spot 2 — manual slot 2 > tier 1 campaign > organic
-                        if (manualSlot2) {
-                          spots.push(renderGroupCard(manualSlot2, 1));
-                        } else if (tier1Campaign && !isTelegram) {
-                          spots.push(
-                            <AdvertCard
-                              key={`tier1-${tier1Campaign._id}`}
-                              campaign={tier1Campaign}
-                              isIndex={1}
-                              shouldPreload={true}
-                              onVisible={undefined}
-                            />
-                          );
-                        } else if (allOrganic[organicIdx]) {
-                          spots.push(renderGroupCard(allOrganic[organicIdx++], 1));
+                        if (spots.length < 2) {
+                          if (manualSlot2) {
+                            spots.push(renderGroupCard(manualSlot2, 1));
+                          } else if (tier1Campaign && !isTelegram) {
+                            spots.push(
+                              <AdvertCard key={`tier1-${tier1Campaign._id}`} campaign={tier1Campaign} isIndex={1} shouldPreload={true} onVisible={undefined} />
+                            );
+                          } else if (allOrganic[organicIdx]) {
+                            spots.push(renderGroupCard(allOrganic[organicIdx++], 1));
+                          }
                         }
 
-                        // Spot 3 — always organic
-                        if (allOrganic[organicIdx]) {
+                        // Spot 3 — organic
+                        if (spots.length < 3 && allOrganic[organicIdx]) {
                           spots.push(renderGroupCard(allOrganic[organicIdx++], 2));
                         }
 
-                        // Spot 4 — tier 5 campaign (Featured Bot) or organic
-                        if (tier5Campaign && !isTelegram) {
-                          spots.push(
-                            <AdvertCard
-                              key={`tier5-${tier5Campaign._id}`}
-                              campaign={tier5Campaign}
-                              isIndex={3}
-                              shouldPreload={true}
-                              onVisible={undefined}
-                            />
-                          );
-                        } else if (allOrganic[organicIdx]) {
-                          spots.push(renderGroupCard(allOrganic[organicIdx++], 3));
+                        // Spot 4 — tier 5 campaign or organic
+                        if (spots.length < 4) {
+                          if (tier5Campaign && !isTelegram) {
+                            spots.push(
+                              <AdvertCard key={`tier5-${tier5Campaign._id}`} campaign={tier5Campaign} isIndex={3} shouldPreload={true} onVisible={undefined} />
+                            );
+                          } else if (allOrganic[organicIdx]) {
+                            spots.push(renderGroupCard(allOrganic[organicIdx++], 3));
+                          }
                         }
 
                         return spots;

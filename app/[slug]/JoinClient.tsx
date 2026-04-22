@@ -442,10 +442,8 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
       return () => clearTimeout(timer);
     } else if (countdownStarted && countdown === 0 && entity && realTelegramLink) {
       trackClick();
-      setIsRedirecting(true);
-      window.open(realTelegramLink, '_blank', 'noopener,noreferrer');
     }
-  }, [countdown, countdownStarted, entity]);
+  }, [countdown, countdownStarted, entity, realTelegramLink]);
 
 
 
@@ -847,45 +845,26 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                       </div>
                     </div>
                   </button>
-                ) : countdownStarted ? (
+                ) : countdownStarted && countdown > 0 ? (
                   <div className="w-full bg-[#111] rounded-2xl border border-white/10 px-8 py-5 text-center">
                     <div className="flex flex-col items-center justify-center gap-3">
                       <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                       <div className="text-lg font-medium text-white">
-                        {isRedirecting ? t('slug.openingTelegram') : t('slug.redirectingIn').replace('{seconds}', String(countdown))}
+                        {t('slug.redirectingIn').replace('{seconds}', String(countdown))}
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {buttonConfig && entity ? (
-                      <a
-                        href={buttonConfig.button1.link || realTelegramLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={trackClick}
-                        className="block w-full text-center bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-5 rounded-2xl text-xl shadow-lg shadow-blue-900/20 transition-all transform hover:-translate-y-0.5"
-                      >
-                        {buttonConfig.button1.text}
-                      </a>
-                    ) : (
-                      <a
-                        href={realTelegramLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={() => {
-                          setIsRedirecting(true);
-                          trackClick();
-                        }}
-                        className="block w-full text-center bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-5 rounded-2xl text-xl shadow-lg shadow-blue-900/20 transition-all transform hover:-translate-y-0.5"
-                      >
-                        {t('slug.openInTelegram')}
-                      </a>
-                    )}
-                    <p className="text-center text-sm text-gray-500 mt-2">
-                      {t('slug.notRedirected')}
-                    </p>
-                  </div>
+                  <a
+                    href={realTelegramLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={trackClick}
+                    className="flex items-center justify-center gap-3 w-full bg-white hover:bg-gray-100 text-[#0088cc] font-bold py-5 rounded-2xl text-xl shadow-lg transition-all transform hover:-translate-y-0.5 border border-gray-200"
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                    Open in Telegram
+                  </a>
                 )}
 
                 <div className="mt-6 border-t border-white/5 pt-6">

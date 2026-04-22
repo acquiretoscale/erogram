@@ -715,7 +715,7 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
 
           {/* Tags */}
           <div className="flex flex-wrap gap-2 mb-4">
-            {((bot as any).categories?.length ? (bot as any).categories : [bot.category].filter(Boolean)).map((tag: string) => (
+            {[...new Set<string>((bot as any).categories?.length ? (bot as any).categories : [bot.category].filter(Boolean))].map((tag: string) => (
               <span key={tag} className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-gray-300 text-xs font-medium hover:bg-white/10 transition-colors">
                 {tag}
               </span>

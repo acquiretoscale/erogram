@@ -5,7 +5,7 @@ import { notFound } from 'next/navigation';
 import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator, TrendingOFCreator } from '@/lib/models';
 import Navbar from '@/components/Navbar';
-import { OF_CATEGORIES, OF_CATEGORY_MAP, OF_COUNTRIES, OF_COUNTRY_MAP, ofCategoryUrl } from '@/app/onlyfanssearch/constants';
+import { OF_CATEGORIES, OF_CATEGORY_MAP, ofCategoryUrl } from '@/app/onlyfanssearch/constants';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
 import type { Locale } from '@/lib/i18n';
@@ -15,10 +15,7 @@ interface PageProps {
 }
 
 export async function generateStaticParams() {
-    return [
-        ...OF_CATEGORIES.map((cat) => ({ category: cat.slug })),
-        ...OF_COUNTRIES.map((co) => ({ category: co.slug })),
-    ];
+    return OF_CATEGORIES.map((cat) => ({ category: cat.slug }));
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -27,13 +24,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const { category: slug } = await params;
 
     const cat = OF_CATEGORY_MAP.get(slug);
-    const country = OF_COUNTRY_MAP.get(slug);
-    if (!cat && !country) return {};
+    if (!cat) return {};
 
     const year = new Date().getFullYear();
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
 
-    const label = cat?.name || country?.name || slug;
+    const label = cat.name;
     const l = label.toLowerCase();
     const titleMap: Record<Locale, string> = {
         en: `10 Best ${label} OnlyFans Accounts & Creators (${year})`,
@@ -75,10 +71,9 @@ export default async function BestOnlyfansPage({ params }: PageProps) {
     const month = new Date().toLocaleString(localeMap[locale] || 'en-US', { month: 'long' });
 
     const cat = OF_CATEGORY_MAP.get(slug);
-    const country = OF_COUNTRY_MAP.get(slug);
-    if (!cat && !country) notFound();
+    if (!cat) notFound();
 
-    const label = cat?.name || country?.name || slug;
+    const label = cat.name;
 
     await connectDB();
 

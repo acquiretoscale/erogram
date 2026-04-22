@@ -10,7 +10,7 @@
  */
 import type { Metadata } from 'next';
 import type { Locale } from '@/lib/i18n/config';
-import { ofCategoryUrl, ofCountryUrl, ofCountryCategoryUrl } from './constants';
+import { ofCategoryUrl } from './constants';
 
 const BASE = 'https://erogram.pro';
 const robots = { index: true, follow: true } as const;
@@ -29,15 +29,6 @@ function mainPath(locale: Locale) {
 }
 function catPath(catSlug: string, locale: Locale) {
   return locale === 'en' ? ofCategoryUrl(catSlug) : `/${locale}/${ofSeg(locale)}/${catSlug}`;
-}
-function countryPath(countrySlug: string, locale: Locale) {
-  // Countries are category tags in the DB — DE/ES paths follow the same flat structure as categories.
-  return locale === 'en' ? ofCountryUrl(countrySlug) : `/${locale}/${ofSeg(locale)}/${countrySlug}`;
-}
-function countryCatPath(countrySlug: string, catSlug: string, locale: Locale) {
-  return locale === 'en'
-    ? ofCountryCategoryUrl(countrySlug, catSlug)
-    : `/${locale}/${ofSeg(locale)}/${countrySlug}/${catSlug}`;
 }
 function topPath(_locale: Locale) {
   return '/Toponlyfanscreators';
@@ -158,144 +149,6 @@ export function categoryOfMeta(locale: Locale, catSlug: string, label: string): 
       ofCategoryUrl(catSlug),
       `/de/onlyfans-suche/${catSlug}`,
       `/es/onlyfans-busca/${catSlug}`,
-      current,
-    ),
-    robots,
-    openGraph: {
-      title: ogTitle,
-      description: desc,
-      type: 'website',
-      url: `${BASE}${current}`,
-      siteName: 'Erogram',
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: twTitle,
-      description: twDesc,
-    },
-  };
-}
-
-// ── Country page (/onlyfansfrance, /de/onlyfans-search/country/france) ────────
-// `countryName` = English name from constants (e.g. "France") — kept as-is across locales.
-
-export function countryOfMeta(locale: Locale, countrySlug: string, countryName: string): Metadata {
-  const current = countryPath(countrySlug, locale);
-
-  const title =
-    locale === 'de'
-      ? `Beste ${countryName} OnlyFans Creator (2026) — Top ${countryName} Accounts & Profile`
-      : locale === 'es'
-      ? `Mejores Creadoras ${countryName} de OnlyFans (2026) — Top Cuentas ${countryName}`
-      : `Best ${countryName} OnlyFans Creators (2026) — Top ${countryName} Accounts & Profiles`;
-
-  const desc =
-    locale === 'de'
-      ? `Nutze unser OnlyFans Suchtool für die besten ${countryName} Creator. Verifizierte ${countryName} OnlyFans Profile durchsuchen, Preise vergleichen — täglich aktualisiert.`
-      : locale === 'es'
-      ? `Usa nuestro buscador de OnlyFans para las mejores creadoras ${countryName}. Explora perfiles verificados, compara precios — actualizado diariamente.`
-      : `Use our OnlyFans search tool to find the best ${countryName} creators. Browse verified ${countryName} OnlyFans profiles, compare prices, and discover top accounts — updated daily.`;
-
-  const ogTitle =
-    locale === 'de'
-      ? `Beste ${countryName} OnlyFans Creator (2026) | Erogram`
-      : locale === 'es'
-      ? `Mejores Creadoras ${countryName} de OnlyFans (2026) | Erogram`
-      : `Best ${countryName} OnlyFans Creators (2026) | Erogram`;
-
-  const twTitle =
-    locale === 'de'
-      ? `Beste ${countryName} OnlyFans Creator (2026)`
-      : locale === 'es'
-      ? `Mejores Creadoras ${countryName} de OnlyFans (2026)`
-      : `Best ${countryName} OnlyFans Creators (2026)`;
-
-  const twDesc =
-    locale === 'de'
-      ? `Top ${countryName} OnlyFans Accounts — verifizierte Profile vergleichen auf Erogram.`
-      : locale === 'es'
-      ? `Top cuentas ${countryName} de OnlyFans — explora perfiles verificados en Erogram.`
-      : `Top ${countryName} OnlyFans accounts — browse verified profiles and compare prices on Erogram.`;
-
-  return {
-    title,
-    description: desc,
-    alternates: alt(
-      ofCountryUrl(countrySlug),
-      `/de/onlyfans-suche/${countrySlug}`,
-      `/es/onlyfans-busca/${countrySlug}`,
-      current,
-    ),
-    robots,
-    openGraph: {
-      title: ogTitle,
-      description: desc,
-      type: 'website',
-      url: `${BASE}${current}`,
-      siteName: 'Erogram',
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: twTitle,
-      description: twDesc,
-    },
-  };
-}
-
-// ── Country + Category page (/onlyfansfrance/blondeonlyfans) ─────────────────
-
-export function countryCategoryOfMeta(
-  locale: Locale,
-  countrySlug: string,
-  countryName: string,
-  catSlug: string,
-  catName: string,
-): Metadata {
-  const current = countryCatPath(countrySlug, catSlug, locale);
-  const cl = catName.toLowerCase();
-
-  const title =
-    locale === 'de'
-      ? `Beste ${catName} OnlyFans aus ${countryName} (2026) — Top ${catName} ${countryName} Creator`
-      : locale === 'es'
-      ? `Mejores Creadoras ${catName} de OnlyFans en ${countryName} (2026) — Top ${catName} ${countryName}`
-      : `Best ${catName} OnlyFans from ${countryName} (2026) — Top ${catName} ${countryName} Creators`;
-
-  const desc =
-    locale === 'de'
-      ? `Nutze unser OnlyFans Suchtool für die besten ${catName} Creator aus ${countryName}. Verifizierte ${cl} Profile aus ${countryName} vergleichen — täglich aktualisiert.`
-      : locale === 'es'
-      ? `Usa nuestro buscador de OnlyFans para las mejores creadoras ${catName} en ${countryName}. Explora perfiles verificados, compara precios — actualizado diariamente.`
-      : `Find the best ${cl} OnlyFans creators from ${countryName} with our OnlyFans search tool. Browse verified ${cl} profiles from ${countryName}, compare prices — updated daily.`;
-
-  const ogTitle =
-    locale === 'de'
-      ? `Beste ${catName} OnlyFans aus ${countryName} (2026) | Erogram`
-      : locale === 'es'
-      ? `Mejores Creadoras ${catName} de OnlyFans en ${countryName} (2026) | Erogram`
-      : `Best ${catName} OnlyFans from ${countryName} (2026) | Erogram`;
-
-  const twTitle =
-    locale === 'de'
-      ? `Beste ${catName} OnlyFans aus ${countryName} (2026)`
-      : locale === 'es'
-      ? `Mejores Creadoras ${catName} de OnlyFans en ${countryName} (2026)`
-      : `Best ${catName} OnlyFans from ${countryName} (2026)`;
-
-  const twDesc =
-    locale === 'de'
-      ? `Top ${cl} OnlyFans Accounts aus ${countryName} — verifizierte Profile auf Erogram.`
-      : locale === 'es'
-      ? `Top cuentas ${cl} OnlyFans en ${countryName} — perfiles verificados en Erogram.`
-      : `Top ${cl} OnlyFans accounts from ${countryName} — browse verified profiles on Erogram.`;
-
-  return {
-    title,
-    description: desc,
-    alternates: alt(
-      ofCountryCategoryUrl(countrySlug, catSlug),
-      `/de/onlyfans-suche/${countrySlug}/${catSlug}`,
-      `/es/onlyfans-busca/${countrySlug}/${catSlug}`,
       current,
     ),
     robots,

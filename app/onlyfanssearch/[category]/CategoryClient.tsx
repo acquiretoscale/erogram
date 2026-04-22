@@ -166,7 +166,6 @@ interface Props {
   category: string;
   label: string;
   canonicalUrl?: string;
-  countryLinks?: { name: string; flag: string; href: string }[];
 }
 
 export default function CategoryClient({ creators: initialCreators, category, label }: Props) {

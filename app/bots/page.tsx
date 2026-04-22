@@ -12,8 +12,7 @@ import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
 
 const canonicalBase = 'https://erogram.pro';
 
-// ISR for public listing page
-export const revalidate = 300;
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
@@ -50,13 +49,30 @@ export async function generateMetadata(): Promise<Metadata> {
 async function getBots() {
   try {
     await connectDB();
+    const PLACEHOLDER = process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png';
 
-    const bots = await Bot.find({ status: 'approved' })
-      .select('-image') // Exclude image field to prevent loading huge base64 strings
-      .populate('createdBy', 'username showNicknameUnderGroups')
-      .sort({ pinned: -1, createdAt: -1 })
-      .limit(12)
-      .lean();
+    const bots = await Bot.aggregate([
+      { $match: { status: 'approved' } },
+      { $sample: { size: 12 } },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'createdBy',
+          foreignField: '_id',
+          as: 'createdBy',
+        },
+      },
+      { $addFields: { createdBy: { $arrayElemAt: ['$createdBy', 0] } } },
+      {
+        $project: {
+          _id: 1, name: 1, slug: 1, category: 1, country: 1,
+          description: 1, telegramLink: 1, isAdvertisement: 1,
+          advertisementUrl: 1, pinned: 1, clickCount: 1, views: 1,
+          memberCount: 1,
+          createdBy: { username: 1, showNicknameUnderGroups: 1 },
+        },
+      },
+    ]);
 
     return bots.map((bot: any) => ({
       _id: bot._id.toString(),
@@ -65,7 +81,7 @@ async function getBots() {
       category: bot.category,
       country: bot.country,
       description: bot.description,
-      image: process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png',
+      image: PLACEHOLDER,
       telegramLink: bot.telegramLink,
       isAdvertisement: bot.isAdvertisement || false,
       advertisementUrl: bot.advertisementUrl || null,
@@ -75,7 +91,7 @@ async function getBots() {
       memberCount: bot.memberCount || 0,
       createdBy: bot.createdBy ? {
         username: bot.createdBy.username,
-        showNicknameUnderGroups: bot.createdBy.showNicknameUnderGroups
+        showNicknameUnderGroups: bot.createdBy.showNicknameUnderGroups,
       } : null,
     }));
   } catch (error) {
