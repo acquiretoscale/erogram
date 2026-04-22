@@ -6,7 +6,6 @@ import {
   User, Group, Bot, Post, Report,
   PremiumEvent, PremiumConfig, CampaignClick,
   ManualRevenue, StarsRate, Bookmark, BookmarkFolder,
-  AINsfwSubmission, OnlyFansCreator,
 } from '@/lib/models';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
@@ -57,7 +56,7 @@ export async function getAdminOverview(token: string) {
     totalAdClicks, adClicks24h,
     totalUsers, totalPageviews,
     allPremiumUsers, allPaymentEvents,
-    allPaidGroups, allPaidBots, allPaidAinsfw, allFeaturedCreators,
+    allPaidGroups, allPaidBots, allCryptoSubmissionEvents,
     subsTrend30d, adClicksTrend30d, trafficTrend30d, newUsersTrend30d, usersByCountry30d,
     latestRate, premiumConfig,
     manualByAdvertiser, manualTotal, manualThisMonth, manualPrevMonth,
@@ -86,10 +85,8 @@ export async function getAdminOverview(token: string) {
     Bot.find({ paidBoost: true }).sort({ createdAt: -1 })
       .select('name paidBoostStars createdBy createdByUsername createdAt')
       .populate('createdBy', 'username firstName country city photoUrl telegramUsername').lean(),
-    AINsfwSubmission.find({ paymentStatus: 'paid', paymentId: { $ne: null } }).sort({ createdAt: -1 })
-      .select('name slug submissionTier contactEmail createdAt').lean(),
-    OnlyFansCreator.find({ featuredPaymentId: { $ne: null } }).sort({ featuredAt: -1 })
-      .select('name username featuredAt').lean(),
+    PremiumEvent.find({ event: { $in: ['submission_payment_success', 'featured_creator_payment_success'] } })
+      .sort({ createdAt: -1 }).lean(),
     PremiumEvent.aggregate([
       { $match: { event: { $in: ['payment_success', 'crypto_payment_success'] }, createdAt: { $gte: _30d } } },
       { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, value: { $sum: 1 } } },
@@ -248,23 +245,17 @@ export async function getAdminOverview(token: string) {
     });
   }
 
-  const ainsfwPrices: Record<string, number> = { basic: 49, boost: 197, platinum: 297 };
-  for (const a of allPaidAinsfw as any[]) {
-    const usd = ainsfwPrices[a.submissionTier] || 49;
+  const cryptoPrices: Record<string, number> = { basic: 49, boost: 197, platinum: 297, featured_creator: 97 };
+  for (const ev of allCryptoSubmissionEvents as any[]) {
+    const tier = ev.tier || 'basic';
+    const isFeatured = ev.event === 'featured_creator_payment_success';
+    const label = isFeatured ? 'Featured Creator' : `AI NSFW ${tier}`;
+    const usd = isFeatured ? 97 : (cryptoPrices[tier] || 49);
     sales.push({
-      _id: a._id.toString(), type: 'ainsfw_listing', label: `AI NSFW: ${a.name}`, plan: a.submissionTier,
+      _id: ev._id.toString(), type: 'ainsfw_listing', label, plan: isFeatured ? 'featured_creator' : tier,
       paymentMethod: 'crypto', stars: 0, usd,
-      createdAt: new Date(a.createdAt).toISOString(),
-      buyer: { username: a.contactEmail || 'Unknown', firstName: null, country: null, city: null, photoUrl: null, telegramUsername: null },
-    });
-  }
-
-  for (const c of allFeaturedCreators as any[]) {
-    sales.push({
-      _id: c._id.toString(), type: 'ainsfw_listing', label: `Featured Creator: ${c.name || c.username}`, plan: 'featured_creator',
-      paymentMethod: 'crypto', stars: 0, usd: 97,
-      createdAt: new Date(c.featuredAt || c.createdAt).toISOString(),
-      buyer: { username: c.username || 'Unknown', firstName: null, country: null, city: null, photoUrl: null, telegramUsername: null },
+      createdAt: new Date(ev.createdAt).toISOString(),
+      buyer: { username: ev.entityType || 'crypto', firstName: null, country: null, city: null, photoUrl: null, telegramUsername: null },
     });
   }
 

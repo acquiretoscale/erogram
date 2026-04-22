@@ -38,6 +38,7 @@ export default function AINsfwTab() {
   const [editSubFeatured, setEditSubFeatured] = useState(false);
   const [editSubFeaturedDays, setEditSubFeaturedDays] = useState(30);
   const [editSubStatus, setEditSubStatus] = useState('pending');
+  const [editSubUnlisted, setEditSubUnlisted] = useState(false);
   const [subSaving, setSubSaving] = useState(false);
 
   const showToast = (msg: string) => {
@@ -92,6 +93,7 @@ export default function AINsfwTab() {
     setEditSubFeatured(sub.featured);
     setEditSubFeaturedDays(30);
     setEditSubStatus(sub.status);
+    setEditSubUnlisted(!!sub.unlisted);
   };
 
   const saveSubEdit = async () => {
@@ -103,6 +105,7 @@ export default function AINsfwTab() {
         status: editSubStatus,
         featured: editSubFeatured,
         featuredDays: editSubFeaturedDays,
+        unlisted: editSubUnlisted,
       });
       if (result) {
         setSubs((prev) => prev.map((s) => (s._id === result._id ? result : s)));
@@ -491,9 +494,12 @@ export default function AINsfwTab() {
                       }`}>{sub.status}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${sub.paymentStatus === 'paid' ? 'bg-green-600/20 text-green-400' : 'bg-red-600/20 text-red-400'}`}>
-                        {sub.paymentStatus}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${sub.paymentStatus === 'paid' ? 'bg-green-600/20 text-green-400' : 'bg-red-600/20 text-red-400'}`}>
+                          {sub.paymentStatus}
+                        </span>
+                        {sub.unlisted && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-600/20 text-red-400">UNLISTED</span>}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       {sub.featured ? (
@@ -558,6 +564,12 @@ export default function AINsfwTab() {
                   </div>
                 )}
               </div>
+
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={editSubUnlisted} onChange={(e) => setEditSubUnlisted(e.target.checked)} className="w-4 h-4 rounded bg-white/[0.06] border-white/[0.20] text-red-500 focus:ring-red-500/50" />
+                <span className="text-sm text-red-400 font-semibold">Unlisted</span>
+                <span className="text-[10px] text-white/30">(hidden from public page)</span>
+              </label>
 
               <div className="bg-white/[0.04] rounded-lg p-3 border border-white/[0.06] text-[11px] text-white/40 space-y-1">
                 <p>Tier: <span className="text-white/60 font-semibold">{editSub.submissionTier}</span> · Payment: <span className="text-white/60 font-semibold">{editSub.paymentStatus}</span></p>

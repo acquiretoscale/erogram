@@ -247,6 +247,7 @@ export interface AdminSubmission {
   featuredExpiresAt: string | null;
   boosted: boolean;
   boostExpiresAt: string | null;
+  unlisted: boolean;
   views: number;
   clickCount: number;
   createdAt: string;
@@ -264,6 +265,7 @@ export async function getAdminSubmissions(): Promise<AdminSubmission[]> {
     featuredExpiresAt: d.featuredExpiresAt ? new Date(d.featuredExpiresAt).toISOString() : null,
     boosted: !!d.boosted,
     boostExpiresAt: d.boostExpiresAt ? new Date(d.boostExpiresAt).toISOString() : null,
+    unlisted: !!d.unlisted,
     views: d.views || 0, clickCount: d.clickCount || 0,
     createdAt: new Date(d.createdAt).toISOString(),
   }));
@@ -271,12 +273,13 @@ export async function getAdminSubmissions(): Promise<AdminSubmission[]> {
 
 export async function adminUpdateSubmission(
   id: string,
-  updates: { description?: string; status?: string; featured?: boolean; featuredDays?: number },
+  updates: { description?: string; status?: string; featured?: boolean; featuredDays?: number; unlisted?: boolean },
 ): Promise<AdminSubmission | null> {
   await connectDB();
   const set: Record<string, any> = {};
   if (updates.description !== undefined) set.description = updates.description;
   if (updates.status !== undefined) set.status = updates.status;
+  if (updates.unlisted !== undefined) set.unlisted = updates.unlisted;
   if (updates.featured !== undefined) {
     set.featured = updates.featured;
     if (updates.featured && updates.featuredDays) {
@@ -298,6 +301,7 @@ export async function adminUpdateSubmission(
     featuredExpiresAt: doc.featuredExpiresAt ? new Date(doc.featuredExpiresAt).toISOString() : null,
     boosted: !!doc.boosted,
     boostExpiresAt: doc.boostExpiresAt ? new Date(doc.boostExpiresAt).toISOString() : null,
+    unlisted: !!doc.unlisted,
     views: doc.views || 0, clickCount: doc.clickCount || 0,
     createdAt: new Date(doc.createdAt).toISOString(),
   };
@@ -306,7 +310,7 @@ export async function adminUpdateSubmission(
 export async function getApprovedSubmissions(existingSlugs: Set<string>): Promise<AINsfwTool[]> {
   await connectDB();
   const docs = await AINsfwSubmission.find(
-    { status: 'approved', paymentStatus: 'paid' },
+    { status: 'approved', paymentStatus: 'paid', unlisted: { $ne: true } },
     { slug: 1, name: 1, category: 1, vendor: 1, description: 1, image: 1, tags: 1, subscription: 1, payment: 1, tryNowUrl: 1, websiteUrl: 1 },
   ).lean() as any[];
 
