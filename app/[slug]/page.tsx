@@ -11,7 +11,9 @@ import { getActiveCampaigns } from '@/lib/actions/campaigns';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { LOCALES, localePath } from '@/lib/i18n';
 import type { Locale } from '@/lib/i18n';
-import { getToolBySlug, getToolsByCategory } from '@/app/ainsfw/data';
+import { getToolBySlug, getToolsByCategory, AI_NSFW_TOOLS } from '@/app/ainsfw/data';
+import { AINsfwSubmission } from '@/lib/models';
+import type { AINsfwTool } from '@/app/ainsfw/types';
 import ToolDetailClient from '@/app/ainsfw/[slug]/ToolDetailClient';
 import { getToolStats } from '@/lib/actions/ainsfw';
 import { getCreatorBySlug, getRelatedCreators, getCreatorReviews } from '@/lib/actions/ofCreatorProfile';
@@ -24,6 +26,20 @@ export const revalidate = 300;
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
 const PLACEHOLDER_REL = process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png';
 const PLACEHOLDER_ABS = PLACEHOLDER_REL.startsWith('http') ? PLACEHOLDER_REL : `${BASE_URL}/assets/placeholder-no-image.png`;
+
+async function getSubmissionTool(slug: string): Promise<AINsfwTool | null> {
+  try {
+    await connectDB();
+    const d = await AINsfwSubmission.findOne({ slug, status: 'approved', paymentStatus: 'paid' }).lean() as any;
+    if (!d) return null;
+    return {
+      slug: d.slug, name: d.name, category: d.category, vendor: d.vendor || d.name,
+      description: d.description, image: d.image || '/assets/image.jpg', tags: d.tags || [],
+      subscription: d.subscription || '', payment: d.payment || [],
+      tryNowUrl: d.tryNowUrl || d.websiteUrl, sourceUrl: d.websiteUrl,
+    };
+  } catch { return null; }
+}
 
 function safeImageUrl(img: unknown, fallback: string): string {
   return (typeof img === 'string' && img.startsWith('https://')) ? img : fallback;
@@ -565,8 +581,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  // If neither found, try AI NSFW tool
-  const aiTool = getToolBySlug(slug);
+  // If neither found, try AI NSFW tool (static list, then DB submissions)
+  const aiTool = getToolBySlug(slug) || await getSubmissionTool(slug);
   if (aiTool) {
     const toolPageUrl = `${BASE_URL}/${aiTool.slug}`;
     const toolImgUrl = aiTool.image.startsWith('http') ? aiTool.image : `${BASE_URL}${aiTool.image}`;
@@ -915,8 +931,8 @@ export default async function JoinPage({ params }: PageProps) {
     );
   }
 
-  // If neither found, try AI NSFW tool
-  const aiTool = getToolBySlug(slug);
+  // If neither found, try AI NSFW tool (static list, then DB submissions)
+  const aiTool = getToolBySlug(slug) || await getSubmissionTool(slug);
   if (aiTool) {
     const [similar, toolStats] = await Promise.all([
       Promise.resolve(getToolsByCategory(aiTool.category).filter((t) => t.slug !== aiTool.slug).slice(0, 6)),

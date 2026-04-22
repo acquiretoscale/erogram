@@ -8,7 +8,7 @@ import { getPremiumPricing } from '@/lib/premiumPricing';
 const IPN_SECRET = process.env.NOWPAYMENTS_IPN_SECRET || '';
 
 const VALID_PLANS = new Set(['monthly', 'quarterly', 'yearly', 'lifetime']);
-const VALID_SUBMISSION_TIERS = new Set(['instant', 'boost', 'platinum']);
+const VALID_SUBMISSION_TIERS = new Set(['basic', 'instant', 'boost', 'platinum']);
 const ACTIVATE_ON = new Set(['finished', 'confirmed']);
 
 function logEvent(data: Record<string, any>) {
@@ -41,6 +41,18 @@ async function handleSubmissionPayment(
   const entity = await Model.findById(entityId);
   if (!entity) {
     console.error(`NowPayments submission webhook: ${entityType} not found`, entityId);
+    return;
+  }
+
+  // ainsfw submissions set correct dates at creation — just confirm payment
+  if (entityType === 'ainsfw') {
+    await Model.findByIdAndUpdate(entityId, {
+      status: 'approved',
+      paymentStatus: 'paid',
+      paymentId: String(paymentId),
+    });
+    logEvent({ event: 'submission_payment_success', entityType, entityId, tier, paymentId, paymentMethod: 'crypto' });
+    notifyAdminsOfSale({ plan: `${entityType}_${tier}`, method: 'crypto', username: entity.name || 'Unknown' }).catch(() => {});
     return;
   }
 

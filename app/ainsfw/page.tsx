@@ -4,7 +4,7 @@ import { AI_NSFW_TOOLS } from './data';
 import AINsfwClient from './AINsfwClient';
 import { getLocale } from '@/lib/i18n/server';
 import { getDictionary } from '@/lib/i18n';
-import { getAllToolStats, getFeaturedTools } from '@/lib/actions/ainsfw';
+import { getAllToolStats, getFeaturedTools, getApprovedSubmissions } from '@/lib/actions/ainsfw';
 import { getActiveCampaigns } from '@/lib/actions/campaigns';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 
@@ -53,11 +53,14 @@ export default async function AINsfwPage() {
   const locale = await getLocale();
   const dict = await getDictionary(locale);
   const a = dict.ainsfw ?? {};
-  const [allStats, featuredInfos, topBannerCampaigns] = await Promise.all([
+  const staticSlugs = new Set(AI_NSFW_TOOLS.map(t => t.slug));
+  const [allStats, featuredInfos, topBannerCampaigns, paidSubmissions] = await Promise.all([
     getAllToolStats(AI_NSFW_TOOLS.map(t => t.slug)),
     getFeaturedTools(),
     getActiveCampaigns('top-banner', { page: 'ainsfw', device: isMobile ? 'mobile' : 'desktop' }).catch(() => []),
+    getApprovedSubmissions(staticSlugs),
   ]);
+  const allTools = [...AI_NSFW_TOOLS, ...paidSubmissions];
   const featuredSlugs = featuredInfos.map(f => f.slug);
   const featuredCampaignMap: Record<string, string> = {};
   for (const f of featuredInfos) {
@@ -70,8 +73,8 @@ export default async function AINsfwPage() {
     name: a.heroTitle || 'Best AI NSFW Tools 2026',
     description: a.guideSubtitle || 'Curated list of the best AI NSFW tools.',
     url: `${BASE_URL}/ainsfw`,
-    numberOfItems: AI_NSFW_TOOLS.length,
-    itemListElement: AI_NSFW_TOOLS.map((tool, i) => ({
+    numberOfItems: allTools.length,
+    itemListElement: allTools.map((tool, i) => ({
       '@type': 'ListItem',
       position: i + 1,
       name: tool.name,
@@ -129,7 +132,7 @@ export default async function AINsfwPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
-      <AINsfwClient tools={AI_NSFW_TOOLS} allStats={allStats} featuredSlugs={featuredSlugs} featuredCampaignMap={featuredCampaignMap} topBannerCampaigns={topBannerCampaigns} />
+      <AINsfwClient tools={allTools} allStats={allStats} featuredSlugs={featuredSlugs} featuredCampaignMap={featuredCampaignMap} topBannerCampaigns={topBannerCampaigns} />
     </>
   );
 }
