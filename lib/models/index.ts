@@ -1041,12 +1041,7 @@ const ainsfwToolStatsSchema = new Schema(
     upvotes: { type: Number, default: 0 },
     downvotes: { type: Number, default: 0 },
     featured: { type: Boolean, default: false, index: true },
-    featuredExpiresAt: { type: Date, default: null },
     campaignId: { type: Schema.Types.ObjectId, ref: 'Campaign', default: null },
-    description: { type: String, default: '' },
-    description_de: { type: String, default: '' },
-    description_es: { type: String, default: '' },
-    gallery: { type: [String], default: [] },
     reviews: [
       {
         text: { type: String, required: true, maxlength: 1000 },

@@ -72,13 +72,17 @@ function TopAINsfwBlock({ tools, allStats, scores, featuredSlugs, featuredCampai
   const { t } = useTranslation();
   const featuredSet = new Set(featuredSlugs);
 
-  const allFeatured = tools.filter((t) => featuredSet.has(t.slug));
   const scoreSorted = [...tools]
-    .filter((tool) => !featuredSet.has(tool.slug) && (scores[tool.slug] ?? 0) > 0)
+    .filter((tool) => (scores[tool.slug] ?? 0) > 0)
     .sort((a, b) => (scores[b.slug] ?? 0) - (scores[a.slug] ?? 0));
 
-  const fillSlots = Math.max(0, 4 - allFeatured.length);
-  const topTools = [...allFeatured, ...scoreSorted.slice(0, fillSlots)].slice(0, 4);
+  // Build top 4: first 3 by score, 4th slot reserved for a featured tool
+  const top3 = scoreSorted.filter((t) => !featuredSet.has(t.slug)).slice(0, 3);
+  const featuredTool = tools.find((t) => featuredSet.has(t.slug));
+
+  const topTools = featuredTool
+    ? [...top3, featuredTool].slice(0, 4)
+    : scoreSorted.slice(0, 4);
 
   if (topTools.length === 0) return null;
 

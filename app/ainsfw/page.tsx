@@ -54,25 +54,13 @@ export default async function AINsfwPage() {
   const dict = await getDictionary(locale);
   const a = dict.ainsfw ?? {};
   const staticSlugs = new Set(AI_NSFW_TOOLS.map(t => t.slug));
-  const [initialStats, featuredInfos, topBannerCampaigns, paidSubmissions] = await Promise.all([
+  const [allStats, featuredInfos, topBannerCampaigns, paidSubmissions] = await Promise.all([
     getAllToolStats(AI_NSFW_TOOLS.map(t => t.slug)),
     getFeaturedTools(),
     getActiveCampaigns('top-banner', { page: 'ainsfw', device: isMobile ? 'mobile' : 'desktop' }).catch(() => []),
     getApprovedSubmissions(staticSlugs),
   ]);
-  const subSlugs = paidSubmissions.map(t => t.slug);
-  const subStats = subSlugs.length > 0 ? await getAllToolStats(subSlugs) : {};
-  const allStats = { ...initialStats, ...subStats };
-  const descKey = locale === 'de' ? 'description_de' : locale === 'es' ? 'description_es' : '';
-  const allTools = [...AI_NSFW_TOOLS, ...paidSubmissions].map(t => {
-    const s = allStats[t.slug];
-    const locDesc = descKey && s?.[descKey as keyof typeof s]
-      ? String(s[descKey as keyof typeof s])
-      : descKey && (t as any)[descKey]
-        ? (t as any)[descKey]
-        : s?.description || t.description;
-    return { ...t, description: locDesc };
-  });
+  const allTools = [...AI_NSFW_TOOLS, ...paidSubmissions];
   const featuredSlugs = featuredInfos.map(f => f.slug);
   const featuredCampaignMap: Record<string, string> = {};
   for (const f of featuredInfos) {

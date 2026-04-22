@@ -72,6 +72,16 @@ async function handleSubmissionPayment(
   if (tier === 'platinum') {
     update.featured = true;
     update.featuredAt = now;
+    if (entityType === 'ainsfw') {
+      const exp = new Date(now);
+      exp.setDate(exp.getDate() + 30);
+      update.featuredExpiresAt = exp;
+    }
+  }
+
+  if (entityType === 'ainsfw') {
+    update.paymentStatus = 'paid';
+    update.paymentId = String(paymentId);
   }
 
   await Model.findByIdAndUpdate(entityId, update);
