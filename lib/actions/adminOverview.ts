@@ -6,6 +6,7 @@ import {
   User, Group, Bot, Post, Report,
   PremiumEvent, PremiumConfig, CampaignClick,
   ManualRevenue, StarsRate, Bookmark, BookmarkFolder,
+  AINsfwSubmission, OnlyFansCreator,
 } from '@/lib/models';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
@@ -56,7 +57,7 @@ export async function getAdminOverview(token: string) {
     totalAdClicks, adClicks24h,
     totalUsers, totalPageviews,
     allPremiumUsers, allPaymentEvents,
-    allPaidGroups, allPaidBots,
+    allPaidGroups, allPaidBots, allPaidAinsfw, allFeaturedCreators,
     subsTrend30d, adClicksTrend30d, trafficTrend30d, newUsersTrend30d, usersByCountry30d,
     latestRate, premiumConfig,
     manualByAdvertiser, manualTotal, manualThisMonth, manualPrevMonth,
@@ -85,6 +86,10 @@ export async function getAdminOverview(token: string) {
     Bot.find({ paidBoost: true }).sort({ createdAt: -1 })
       .select('name paidBoostStars createdBy createdByUsername createdAt')
       .populate('createdBy', 'username firstName country city photoUrl telegramUsername').lean(),
+    AINsfwSubmission.find({ paymentStatus: 'paid', paymentId: { $ne: null } }).sort({ createdAt: -1 })
+      .select('name slug submissionTier contactEmail createdAt').lean(),
+    OnlyFansCreator.find({ featuredPaymentId: { $ne: null } }).sort({ featuredAt: -1 })
+      .select('name username featuredAt').lean(),
     PremiumEvent.aggregate([
       { $match: { event: { $in: ['payment_success', 'crypto_payment_success'] }, createdAt: { $gte: _30d } } },
       { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, value: { $sum: 1 } } },
@@ -178,7 +183,7 @@ export async function getAdminOverview(token: string) {
   }
 
   type SaleEntry = {
-    _id: string; type: 'subscription' | 'group_boost' | 'bot_boost';
+    _id: string; type: 'subscription' | 'group_boost' | 'bot_boost' | 'ainsfw_listing';
     label: string; plan: string | null; paymentMethod: string;
     stars: number; usd: number; createdAt: string;
     buyer: { username: string; firstName: string | null; country: string | null; city: string | null; photoUrl: string | null; telegramUsername: string | null; };
@@ -243,6 +248,26 @@ export async function getAdminOverview(token: string) {
     });
   }
 
+  const ainsfwPrices: Record<string, number> = { basic: 49, boost: 197, platinum: 297 };
+  for (const a of allPaidAinsfw as any[]) {
+    const usd = ainsfwPrices[a.submissionTier] || 49;
+    sales.push({
+      _id: a._id.toString(), type: 'ainsfw_listing', label: `AI NSFW: ${a.name}`, plan: a.submissionTier,
+      paymentMethod: 'crypto', stars: 0, usd,
+      createdAt: new Date(a.createdAt).toISOString(),
+      buyer: { username: a.contactEmail || 'Unknown', firstName: null, country: null, city: null, photoUrl: null, telegramUsername: null },
+    });
+  }
+
+  for (const c of allFeaturedCreators as any[]) {
+    sales.push({
+      _id: c._id.toString(), type: 'ainsfw_listing', label: `Featured Creator: ${c.name || c.username}`, plan: 'featured_creator',
+      paymentMethod: 'crypto', stars: 0, usd: 97,
+      createdAt: new Date(c.featuredAt || c.createdAt).toISOString(),
+      buyer: { username: c.username || 'Unknown', firstName: null, country: null, city: null, photoUrl: null, telegramUsername: null },
+    });
+  }
+
   sales.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const salesTotalStars = sales.reduce((s, x) => s + x.stars, 0);
@@ -250,22 +275,27 @@ export async function getAdminOverview(token: string) {
   const sales24h = sales.filter((s) => new Date(s.createdAt).getTime() >= _24h.getTime());
   const sales24hUsd = sales24h.reduce((s, x) => s + x.usd, 0);
   const salesThisMonth = sales.filter((s) => new Date(s.createdAt).getTime() >= monthStart.getTime());
-  const starsThisMonthUsd = salesThisMonth.filter(s => s.type === 'subscription').reduce((a, s) => a + s.usd, 0)
-    + salesThisMonth.filter(s => s.type !== 'subscription').reduce((a, s) => a + s.stars * rate, 0);
+  const starsThisMonthUsd = salesThisMonth.reduce((a, s) => {
+    if (s.type === 'subscription' || s.paymentMethod === 'crypto') return a + s.usd;
+    return a + s.stars * rate;
+  }, 0);
   const totalThisMonthUsd = starsThisMonthUsd + manualThisMonthUsd;
 
   const salesPrevMonth = sales.filter((s) => {
     const t = new Date(s.createdAt).getTime();
     return t >= prevMonthStart.getTime() && t <= prevMonthEnd.getTime();
   });
-  const starsPrevMonthUsd = salesPrevMonth.filter(s => s.type === 'subscription').reduce((a, s) => a + s.usd, 0)
-    + salesPrevMonth.filter(s => s.type !== 'subscription').reduce((a, s) => a + s.stars * rate, 0);
+  const starsPrevMonthUsd = salesPrevMonth.reduce((a, s) => {
+    if (s.type === 'subscription' || s.paymentMethod === 'crypto') return a + s.usd;
+    return a + s.stars * rate;
+  }, 0);
   const totalPrevMonthUsd = starsPrevMonthUsd + manualPrevMonthUsd;
 
   const advertisers = (manualByAdvertiser as any[]).map((a) => ({ name: a._id || 'Unnamed', total: a.total || 0, count: a.count || 0 }));
   const subRevenue = sales.filter(s => s.type === 'subscription').reduce((a, s) => a + s.usd, 0);
   const groupRevenue = sales.filter(s => s.type === 'group_boost').reduce((a, s) => a + s.usd, 0);
   const botRevenue = sales.filter(s => s.type === 'bot_boost').reduce((a, s) => a + s.usd, 0);
+  const ainsfwRevenue = sales.filter(s => s.type === 'ainsfw_listing').reduce((a, s) => a + s.usd, 0);
   const pendingTotal = pendingGroups + pendingBots + pendingReviews + pendingReports;
   const dbLatencyMs = Date.now() - start;
 
@@ -274,8 +304,10 @@ export async function getAdminOverview(token: string) {
   if (pendingReports > 5) alerts.push({ level: 'critical', title: 'Unresolved Reports', description: `${pendingReports} reports`, actionUrl: '/admin/reports' });
   if (pendingTotal === 0) alerts.push({ level: 'ok', title: 'All Clear', description: 'Queue is empty' });
 
-  const starsEarningsUsd = sales.filter(s => s.type === 'subscription').reduce((a, s) => a + s.usd, 0)
-    + sales.filter(s => s.type !== 'subscription').reduce((a, s) => a + s.stars * rate, 0);
+  const starsEarningsUsd = sales.reduce((a, s) => {
+    if (s.type === 'subscription' || s.paymentMethod === 'crypto') return a + s.usd;
+    return a + s.stars * rate;
+  }, 0);
 
   return {
     generatedAt: now.toISOString(),
@@ -308,7 +340,7 @@ export async function getAdminOverview(token: string) {
     pending: { groups: pendingGroups, bots: pendingBots, reviews: pendingReviews, reports: pendingReports, total: pendingTotal },
     recentSales: sales,
     salesSummary: { count: sales.length, totalStars: salesTotalStars, totalUsd: salesTotalUsd, last24hCount: sales24h.length, last24hUsd: sales24hUsd },
-    earningsByCategory: { subscriptions: subRevenue, groups: groupRevenue, bots: botRevenue, advertisers },
+    earningsByCategory: { subscriptions: subRevenue, groups: groupRevenue, bots: botRevenue, ainsfw: ainsfwRevenue, advertisers },
     monitoring: { dbLatencyMs, alerts },
     activity: {
       newUsers24h: (newUsers24hCount as number) || 0,

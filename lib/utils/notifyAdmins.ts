@@ -75,6 +75,10 @@ export async function notifyAdminsOfSale(payload: SaleNotificationPayload) {
     bot_instant_approval: 'Bot Instant Approval (1000★)',
     bot_boost_week: 'Bot Boost 1 Week (3000★)',
     bot_boost_month: 'Bot Boost 1 Month (6000★)',
+    ainsfw_basic: 'AI NSFW Basic ($49)',
+    ainsfw_boost: 'AI NSFW Boost ($197)',
+    ainsfw_platinum: 'AI NSFW Platinum ($297)',
+    featured_creator: 'Featured Creator ($97)',
   };
   const planLabel = PLAN_LABELS[payload.plan] || payload.plan;
   const methodLabel = payload.method === 'stars' ? '⭐ Stars' : '₿ Crypto';
