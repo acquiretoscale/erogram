@@ -54,9 +54,10 @@ export default function ToolDetailClient({ tool, similar, initialStats }: ToolDe
   const [userVote, setUserVote] = useState<'up' | 'down' | null>(null);
   const [bookmarked, setBookmarked] = useState(false);
 
-  // Gallery
-  const [gallery, setGallery] = useState<string[]>([]);
-  const [galleryLoading, setGalleryLoading] = useState(true);
+  // Gallery — admin-uploaded images take priority
+  const adminGallery = initialStats?.gallery || [];
+  const [gallery, setGallery] = useState<string[]>(adminGallery);
+  const [galleryLoading, setGalleryLoading] = useState(adminGallery.length === 0);
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
 
   // Reviews
@@ -75,13 +76,14 @@ export default function ToolDetailClient({ tool, similar, initialStats }: ToolDe
       setBookmarked(localStorage.getItem(getBookmarkKey(tool.slug)) === '1');
     } catch {}
 
-    // Fetch processed gallery images
-    setGalleryLoading(true);
-    fetch(`/api/ainsfw/images?slug=${encodeURIComponent(tool.slug)}&name=${encodeURIComponent(tool.name)}&vendor=${encodeURIComponent(tool.vendor)}`)
-      .then(r => r.json())
-      .then(d => { if (d.images?.length) setGallery(d.images.slice(0, 6)); })
-      .catch(() => {})
-      .finally(() => setGalleryLoading(false));
+    if (adminGallery.length === 0) {
+      setGalleryLoading(true);
+      fetch(`/api/ainsfw/images?slug=${encodeURIComponent(tool.slug)}&name=${encodeURIComponent(tool.name)}&vendor=${encodeURIComponent(tool.vendor)}`)
+        .then(r => r.json())
+        .then(d => { if (d.images?.length) setGallery(d.images.slice(0, 6)); })
+        .catch(() => {})
+        .finally(() => setGalleryLoading(false));
+    }
   }, [tool.slug, tool.name, tool.vendor]);
 
   const handleVisit = () => {

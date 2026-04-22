@@ -8,19 +8,26 @@ export interface ToolStatsData {
   upvotes: number;
   downvotes: number;
   featured: boolean;
+  featuredExpiresAt?: string | null;
   campaignId?: string;
+  description?: string;
+  description_de?: string;
+  description_es?: string;
+  gallery?: string[];
   reviews: { text: string; rating: number; createdAt: string }[];
 }
 
-export async function getToolStats(slug: string): Promise<ToolStatsData> {
-  await connectDB();
-  const doc = await AINsfwToolStats.findOne({ slug }).lean() as any;
-  if (!doc) return { upvotes: 0, downvotes: 0, featured: false, reviews: [] };
+function mapDoc(doc: any): ToolStatsData {
   return {
     upvotes: doc.upvotes || 0,
     downvotes: doc.downvotes || 0,
     featured: !!doc.featured,
+    featuredExpiresAt: doc.featuredExpiresAt ? new Date(doc.featuredExpiresAt).toISOString() : null,
     campaignId: doc.campaignId?.toString() || undefined,
+    description: doc.description || '',
+    description_de: doc.description_de || '',
+    description_es: doc.description_es || '',
+    gallery: doc.gallery || [],
     reviews: (doc.reviews || []).map((r: any) => ({
       text: r.text,
       rating: r.rating,
@@ -29,24 +36,56 @@ export async function getToolStats(slug: string): Promise<ToolStatsData> {
   };
 }
 
+export async function getToolStats(slug: string): Promise<ToolStatsData> {
+  await connectDB();
+  const doc = await AINsfwToolStats.findOne({ slug }).lean() as any;
+  if (!doc) return { upvotes: 0, downvotes: 0, featured: false, reviews: [] };
+  return mapDoc(doc);
+}
+
 export async function getAllToolStats(slugs: string[]): Promise<Record<string, ToolStatsData>> {
   await connectDB();
   const docs = await AINsfwToolStats.find({ slug: { $in: slugs } }).lean() as any[];
   const map: Record<string, ToolStatsData> = {};
   for (const doc of docs) {
-    map[doc.slug] = {
-      upvotes: doc.upvotes || 0,
-      downvotes: doc.downvotes || 0,
-      featured: !!doc.featured,
-      campaignId: doc.campaignId?.toString() || undefined,
-      reviews: (doc.reviews || []).map((r: any) => ({
-        text: r.text,
-        rating: r.rating,
-        createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '',
-      })),
-    };
+    map[doc.slug] = mapDoc(doc);
   }
   return map;
+}
+
+export async function adminEditTool(
+  slug: string,
+  updates: {
+    description?: string;
+    description_de?: string;
+    description_es?: string;
+    featured?: boolean;
+    featuredDays?: number;
+    gallery?: string[];
+  },
+): Promise<ToolStatsData> {
+  await connectDB();
+  const set: Record<string, any> = {};
+  if (updates.description !== undefined) set.description = updates.description;
+  if (updates.description_de !== undefined) set.description_de = updates.description_de;
+  if (updates.description_es !== undefined) set.description_es = updates.description_es;
+  if (updates.gallery !== undefined) set.gallery = updates.gallery;
+  if (updates.featured !== undefined) {
+    set.featured = updates.featured;
+    if (updates.featured && updates.featuredDays) {
+      const exp = new Date();
+      exp.setDate(exp.getDate() + updates.featuredDays);
+      set.featuredExpiresAt = exp;
+    } else if (!updates.featured) {
+      set.featuredExpiresAt = null;
+    }
+  }
+  const doc = await AINsfwToolStats.findOneAndUpdate(
+    { slug },
+    { $set: set },
+    { upsert: true, new: true },
+  ).lean() as any;
+  return mapDoc(doc);
 }
 
 export async function voteOnTool(slug: string, direction: 'up' | 'down'): Promise<{ upvotes: number; downvotes: number }> {

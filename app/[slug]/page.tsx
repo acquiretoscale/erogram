@@ -939,6 +939,15 @@ export default async function JoinPage({ params }: PageProps) {
       getToolStats(aiTool.slug),
     ]);
 
+    // Apply locale-based description (admin override > static data > default)
+    const descKey = locale === 'de' ? 'description_de' : locale === 'es' ? 'description_es' : '';
+    const localizedDesc = descKey && (toolStats as any)[descKey]
+      ? (toolStats as any)[descKey]
+      : descKey && (aiTool as any)[descKey]
+        ? (aiTool as any)[descKey]
+        : toolStats.description || aiTool.description;
+    const displayTool = { ...aiTool, description: localizedDesc };
+
     const toolPageUrl = `${BASE_URL}/${aiTool.slug}`;
     const toolImgUrl = aiTool.image.startsWith('http') ? aiTool.image : `${BASE_URL}${aiTool.image}`;
 
@@ -985,7 +994,7 @@ export default async function JoinPage({ params }: PageProps) {
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(toolBreadcrumb) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(toolWebPage) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(toolSoftware) }} />
-        <ToolDetailClient tool={aiTool} similar={similar} initialStats={toolStats} />
+        <ToolDetailClient tool={displayTool} similar={similar} initialStats={toolStats} />
       </>
     );
   }
