@@ -8,7 +8,7 @@ import { getPremiumPricing } from '@/lib/premiumPricing';
 const IPN_SECRET = process.env.NOWPAYMENTS_IPN_SECRET || '';
 
 const VALID_PLANS = new Set(['monthly', 'quarterly', 'yearly', 'lifetime']);
-const VALID_SUBMISSION_TIERS = new Set(['basic', 'instant', 'boost', 'platinum']);
+const VALID_SUBMISSION_TIERS = new Set(['instant', 'boost', 'platinum']);
 const ACTIVATE_ON = new Set(['finished', 'confirmed']);
 
 function logEvent(data: Record<string, any>) {
@@ -44,18 +44,6 @@ async function handleSubmissionPayment(
     return;
   }
 
-  // ainsfw submissions set correct dates at creation — just confirm payment
-  if (entityType === 'ainsfw') {
-    await Model.findByIdAndUpdate(entityId, {
-      status: 'approved',
-      paymentStatus: 'paid',
-      paymentId: String(paymentId),
-    });
-    logEvent({ event: 'submission_payment_success', entityType, entityId, tier, paymentId, paymentMethod: 'crypto' });
-    notifyAdminsOfSale({ plan: `${entityType}_${tier}`, method: 'crypto', username: entity.name || 'Unknown' }).catch(() => {});
-    return;
-  }
-
   const now = new Date();
   const update: Record<string, any> = { status: 'approved' };
 
@@ -72,6 +60,16 @@ async function handleSubmissionPayment(
   if (tier === 'platinum') {
     update.featured = true;
     update.featuredAt = now;
+    if (entityType === 'ainsfw') {
+      const exp = new Date(now);
+      exp.setDate(exp.getDate() + 30);
+      update.featuredExpiresAt = exp;
+    }
+  }
+
+  if (entityType === 'ainsfw') {
+    update.paymentStatus = 'paid';
+    update.paymentId = String(paymentId);
   }
 
   await Model.findByIdAndUpdate(entityId, update);

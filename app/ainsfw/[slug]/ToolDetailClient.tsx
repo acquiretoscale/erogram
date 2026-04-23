@@ -342,7 +342,7 @@ export default function ToolDetailClient({ tool, similar, initialStats }: ToolDe
                 </div>
               )}
 
-              <p className="text-gray-300 text-base sm:text-lg leading-relaxed mb-8 whitespace-pre-line">
+              <p className="text-gray-300 text-base sm:text-lg leading-relaxed mb-8">
                 {tool.description}
               </p>
 

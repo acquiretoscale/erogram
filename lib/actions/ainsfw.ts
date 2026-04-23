@@ -1,8 +1,7 @@
 'use server';
 
 import connectDB from '@/lib/db/mongodb';
-import { AINsfwToolStats, Campaign, Advertiser, AINsfwSubmission } from '@/lib/models';
-import type { AINsfwTool } from '@/app/ainsfw/types';
+import { AINsfwToolStats, Campaign, Advertiser } from '@/lib/models';
 
 export interface ToolStatsData {
   upvotes: number;
@@ -228,105 +227,4 @@ export async function getFeaturedTools(): Promise<FeaturedToolInfo[]> {
     }
   }
   return results;
-}
-
-export interface AdminSubmission {
-  _id: string;
-  name: string;
-  slug: string;
-  category: string;
-  vendor: string;
-  description: string;
-  image: string;
-  websiteUrl: string;
-  contactEmail: string;
-  status: string;
-  submissionTier: string;
-  paymentStatus: string;
-  featured: boolean;
-  featuredExpiresAt: string | null;
-  boosted: boolean;
-  boostExpiresAt: string | null;
-  unlisted: boolean;
-  views: number;
-  clickCount: number;
-  createdAt: string;
-}
-
-export async function getAdminSubmissions(): Promise<AdminSubmission[]> {
-  await connectDB();
-  const docs = await AINsfwSubmission.find({}).sort({ createdAt: -1 }).lean() as any[];
-  return docs.map((d: any) => ({
-    _id: d._id.toString(),
-    name: d.name, slug: d.slug, category: d.category, vendor: d.vendor || '',
-    description: d.description, image: d.image || '', websiteUrl: d.websiteUrl || '',
-    contactEmail: d.contactEmail || '', status: d.status, submissionTier: d.submissionTier || 'basic',
-    paymentStatus: d.paymentStatus || 'none', featured: !!d.featured,
-    featuredExpiresAt: d.featuredExpiresAt ? new Date(d.featuredExpiresAt).toISOString() : null,
-    boosted: !!d.boosted,
-    boostExpiresAt: d.boostExpiresAt ? new Date(d.boostExpiresAt).toISOString() : null,
-    unlisted: !!d.unlisted,
-    views: d.views || 0, clickCount: d.clickCount || 0,
-    createdAt: new Date(d.createdAt).toISOString(),
-  }));
-}
-
-export async function adminUpdateSubmission(
-  id: string,
-  updates: { description?: string; status?: string; featured?: boolean; featuredDays?: number; unlisted?: boolean },
-): Promise<AdminSubmission | null> {
-  await connectDB();
-  const set: Record<string, any> = {};
-  if (updates.description !== undefined) set.description = updates.description;
-  if (updates.status !== undefined) set.status = updates.status;
-  if (updates.unlisted !== undefined) set.unlisted = updates.unlisted;
-  if (updates.featured !== undefined) {
-    set.featured = updates.featured;
-    if (updates.featured && updates.featuredDays) {
-      const exp = new Date();
-      exp.setDate(exp.getDate() + updates.featuredDays);
-      set.featuredExpiresAt = exp;
-    } else if (!updates.featured) {
-      set.featuredExpiresAt = null;
-    }
-  }
-  const doc = await AINsfwSubmission.findByIdAndUpdate(id, { $set: set }, { new: true }).lean() as any;
-  if (!doc) return null;
-  return {
-    _id: doc._id.toString(),
-    name: doc.name, slug: doc.slug, category: doc.category, vendor: doc.vendor || '',
-    description: doc.description, image: doc.image || '', websiteUrl: doc.websiteUrl || '',
-    contactEmail: doc.contactEmail || '', status: doc.status, submissionTier: doc.submissionTier || 'basic',
-    paymentStatus: doc.paymentStatus || 'none', featured: !!doc.featured,
-    featuredExpiresAt: doc.featuredExpiresAt ? new Date(doc.featuredExpiresAt).toISOString() : null,
-    boosted: !!doc.boosted,
-    boostExpiresAt: doc.boostExpiresAt ? new Date(doc.boostExpiresAt).toISOString() : null,
-    unlisted: !!doc.unlisted,
-    views: doc.views || 0, clickCount: doc.clickCount || 0,
-    createdAt: new Date(doc.createdAt).toISOString(),
-  };
-}
-
-export async function getApprovedSubmissions(existingSlugs: Set<string>): Promise<AINsfwTool[]> {
-  await connectDB();
-  const docs = await AINsfwSubmission.find(
-    { status: 'approved', paymentStatus: 'paid', unlisted: { $ne: true } },
-    { slug: 1, name: 1, category: 1, vendor: 1, description: 1, image: 1, tags: 1, subscription: 1, payment: 1, tryNowUrl: 1, websiteUrl: 1 },
-  ).lean() as any[];
-
-  return docs
-    .filter((d: any) => !existingSlugs.has(d.slug))
-    .map((d: any) => ({
-      slug: d.slug,
-      name: d.name,
-      category: d.category,
-      vendor: d.vendor || d.name,
-      description: d.description,
-      image: d.image || '/assets/image.jpg',
-      tags: d.tags || [],
-      subscription: d.subscription || '',
-      payment: d.payment || [],
-      tryNowUrl: d.tryNowUrl || d.websiteUrl,
-      sourceUrl: d.websiteUrl,
-    }));
 }
