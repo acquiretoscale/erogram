@@ -122,6 +122,7 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
   const [awaitingPayment, setAwaitingPayment] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [paymentMethodUsed, setPaymentMethodUsed] = useState<'stars' | 'crypto'>('stars');
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [paymentJustCompleted, setPaymentJustCompleted] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const tracked = useRef(false);
@@ -182,14 +183,11 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
       if (res.data?.url) {
         setPaymentUrl(res.data.url);
         setPaymentMethodUsed(payMethod);
+        setSelectedPlan(plan);
         setAwaitingPayment(true);
         if (pollRef.current) clearInterval(pollRef.current);
         let a = 0;
-        pollRef.current = setInterval(async () => {
-          a++;
-          await checkPremiumStatus(true);
-          if (a >= 120) { clearInterval(pollRef.current!); pollRef.current = null; setAwaitingPayment(false); }
-        }, 5000);
+        pollRef.current = setInterval(async () => { a++; await checkPremiumStatus(true); if (a >= 120) { clearInterval(pollRef.current!); pollRef.current = null; setAwaitingPayment(false); } }, 5000);
       }
     } catch (err: any) { if (err?.response?.data?.soldOut) setSoldOut(true); setError(err?.response?.data?.message || 'Failed to create payment'); } finally { setLoading(null); }
   };
@@ -236,6 +234,11 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
             <p className="text-xs sm:text-sm max-w-md mx-auto text-white/40">
               Exclusive groups, rare niches, and leak communities you won&apos;t find anywhere else.
             </p>
+            {!isPremium && (
+              <a href="#pricing" className="inline-flex items-center gap-1.5 mt-3 px-5 py-2.5 rounded-lg text-sm font-black text-white transition-all hover:scale-[1.02] active:scale-95" style={{ background: '#16a34a', boxShadow: '0 4px 12px rgba(22,163,74,0.3)' }}>
+                Buy Now <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </a>
+            )}
           </div>
 
           {/* Quality */}
@@ -381,6 +384,7 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
 
         {/* ━━━ UPGRADE CARD — after Inner Circle ━━━ */}
         <div
+          id="pricing"
           className="rounded-xl overflow-hidden relative mb-6"
           style={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}
         >
@@ -468,14 +472,14 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                 {/* Payment method picker */}
                 <div>
                   <p className="text-[10px] text-gray-400 text-center mb-1 font-semibold">Choose your payment method</p>
-                  <p className="text-[10px] text-green-600 text-center mb-2.5 font-bold">One-time payment · No auto-renewal</p>
+                  <p className="text-[10px] text-gray-400 text-center mb-2.5 font-semibold">One-time payment · No auto-renewal</p>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => setPayMethod('stars')}
                       className="rounded-xl py-3 text-center transition-all"
                       style={{
-                        background: payMethod === 'stars' ? '#16a34a' : '#f3f4f6',
-                        border: payMethod === 'stars' ? '2px solid #15803d' : '2px solid #e5e7eb',
+                        background: payMethod === 'stars' ? '#111827' : '#f3f4f6',
+                        border: payMethod === 'stars' ? '2px solid #111827' : '2px solid #e5e7eb',
                       }}
                     >
                       <div className={`text-[12px] font-black ${payMethod === 'stars' ? 'text-white' : 'text-gray-700'}`}>⭐ Telegram Stars</div>
@@ -485,8 +489,8 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                       onClick={() => setPayMethod('crypto')}
                       className="rounded-xl py-3 text-center transition-all"
                       style={{
-                        background: payMethod === 'crypto' ? '#16a34a' : '#f3f4f6',
-                        border: payMethod === 'crypto' ? '2px solid #15803d' : '2px solid #e5e7eb',
+                        background: payMethod === 'crypto' ? '#f7931a' : '#f3f4f6',
+                        border: payMethod === 'crypto' ? '2px solid #e07d0a' : '2px solid #e5e7eb',
                       }}
                     >
                       <div className={`text-[12px] font-black ${payMethod === 'crypto' ? 'text-white' : 'text-gray-700'}`}>₿ Crypto</div>
@@ -505,28 +509,32 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                       <div className="flex items-center gap-1 flex-wrap">
                         {payMethod === 'stars' ? (
                           <>
-                            <span className="font-black text-[20px] leading-none text-gray-900">1,000</span>
+                            <span className="font-black text-[20px] leading-none text-gray-900">750</span>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="#111827"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                            <span className="text-gray-500 text-[10px]">≈ $14.97 · $4.99/mo</span>
+                            <span className="font-black text-[14px] leading-none text-gray-900 ml-1">$9.97</span>
                           </>
                         ) : (
                           <>
-                            <span className="font-black text-[20px] leading-none text-gray-900">$14.97</span>
-                            <span className="text-gray-500 text-[10px]">· $4.99/mo</span>
+                            <span className="font-black text-[20px] leading-none text-gray-900">$9.97</span>
                           </>
                         )}
                       </div>
-                      <p className="text-[9px] mt-1 text-green-600 font-semibold">One-time payment · No auto-renewal</p>
+                      <p className="text-[9px] mt-1 text-gray-400 font-semibold">One-time payment · No auto-renewal</p>
                     </div>
                     <button
                       onClick={() => handlePurchase('quarterly')}
                       disabled={!!loading}
-                      className="shrink-0 px-3.5 py-2.5 rounded-lg font-black text-[11px] uppercase tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 flex items-center gap-1.5 hover:opacity-90"
+                      className="shrink-0 px-3.5 py-2 rounded-lg font-black text-white transition-all active:scale-95 disabled:opacity-50 hover:opacity-90 flex flex-col items-center"
                       style={{ background: '#16a34a', whiteSpace: 'nowrap' }}
                     >
                       {loading === 'quarterly' ? (
                         <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                      ) : (<>Get 3 Months <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></>)}
+                      ) : (
+                        <>
+                          <span className="text-[11px] uppercase tracking-wide">Get 3 Months</span>
+                          <span className="text-[9px] font-bold text-white/70">$3.32/mo ONLY</span>
+                        </>
+                      )}
                     </button>
                   </div>
 
@@ -541,49 +549,54 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                         <div className="flex items-center gap-1 flex-wrap">
                           {payMethod === 'stars' ? (
                             <>
-                              <span className="font-black text-[20px] leading-none text-gray-900">2,000</span>
+                              <span className="font-black text-[20px] leading-none text-gray-900">1,500</span>
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="#111827"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                              <span className="text-gray-500 text-[10px]">≈ $29.97/yr · $2.50/mo</span>
+                              <span className="font-black text-[14px] leading-none text-gray-900 ml-1">$19.97</span>
                             </>
                           ) : (
                             <>
-                              <span className="font-black text-[20px] leading-none text-gray-900">$29.97</span>
-                              <span className="text-gray-500 text-[10px]">· $2.50/mo</span>
+                              <span className="font-black text-[20px] leading-none text-gray-900">$19.97</span>
                             </>
                           )}
                         </div>
-                        <p className="text-[9px] mt-1 text-green-600 font-semibold">One-time payment · No auto-renewal</p>
+                        <p className="text-[9px] mt-1 text-gray-400 font-semibold">One-time payment · No auto-renewal</p>
                       </div>
                       <button
                         onClick={() => handlePurchase('yearly')}
                         disabled={!!loading}
-                        className="shrink-0 px-3.5 py-2.5 rounded-lg font-black text-[11px] uppercase tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 flex items-center gap-1.5 hover:opacity-90"
+                        className="shrink-0 px-3.5 py-2 rounded-lg font-black text-white transition-all active:scale-95 disabled:opacity-50 hover:opacity-90 flex flex-col items-center"
                         style={{ background: '#16a34a', whiteSpace: 'nowrap' }}
                       >
                         {loading === 'yearly' ? (
                           <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                        ) : (<>Get Yearly <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></>)}
+                        ) : (
+                          <>
+                            <span className="text-[11px] uppercase tracking-wide">Get Yearly</span>
+                            <span className="text-[9px] font-bold text-white/70">$1.66/mo ONLY</span>
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>
 
                   {/* Lifetime */}
-                  <div className="rounded-lg px-3 py-3 flex items-center gap-3" style={{ border: '2px solid #16a34a', background: '#f0fdf4' }}>
+                  <div className="rounded-lg px-3 py-3 flex items-center gap-3" style={{ border: '1px solid #e5e7eb' }}>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                         <span className="font-black text-gray-900 text-[13px]">Lifetime</span>
-                        <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-green-600 text-white">PAY ONCE</span>
+                        <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-gray-800 text-white">PAY ONCE</span>
                       </div>
                       <div className="flex items-center gap-1 flex-wrap">
                         {payMethod === 'stars' ? (
                           <>
-                            <span className="font-black text-[20px] leading-none text-gray-900">13,000</span>
+                            <span className="font-black text-[20px] leading-none text-gray-900">15,000</span>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="#111827"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                            <span className="text-gray-500 text-[10px]">≈ $197 · Access forever</span>
+                            <span className="font-black text-[14px] leading-none text-gray-900 ml-1">$190</span>
+                            <span className="text-gray-500 text-[10px]">· Access forever</span>
                           </>
                         ) : (
                           <>
-                            <span className="font-black text-[20px] leading-none text-gray-900">$197</span>
+                            <span className="font-black text-[20px] leading-none text-gray-900">$190</span>
                             <span className="text-gray-500 text-[10px]">· Access forever</span>
                           </>
                         )}
@@ -593,58 +606,82 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                     <button
                       onClick={() => handlePurchase('lifetime')}
                       disabled={!!loading}
-                      className="shrink-0 px-3.5 py-2.5 rounded-lg font-black text-[11px] uppercase tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 flex items-center gap-1.5 hover:opacity-90"
+                      className="shrink-0 px-3.5 py-2 rounded-lg font-black text-white transition-all active:scale-95 disabled:opacity-50 hover:opacity-90 flex flex-col items-center"
                       style={{ background: '#16a34a', whiteSpace: 'nowrap' }}
                     >
                       {loading === 'lifetime' ? (
                         <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                      ) : (<>Get Lifetime <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></>)}
+                      ) : (
+                        <>
+                          <span className="text-[11px] uppercase tracking-wide">Pay Once</span>
+                          <span className="text-[9px] font-bold text-white/70">Use Forever!</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
-                <p className="text-center text-[11px] text-green-600 font-bold mt-2">One-time payment · No auto-renewal · No recurring charges</p>
+                <p className="text-center text-[11px] text-gray-400 font-semibold mt-2">One-time payment · No auto-renewal · No recurring charges</p>
                 <p className="text-center text-[9px] text-gray-400 mt-1">
                   {payMethod === 'crypto' ? 'Secure checkout via NOWPayments · USDT, BTC, ETH & 100+ coins' : 'Secure checkout via Telegram Stars · Instant access'}
                 </p>
               </div>
             )}
 
-            {/* ━━━ BUY NOW — user-gesture link (replaces popup-blocked window.open) ━━━ */}
-            {paymentUrl && !isPremium && (
-              <div className="flex flex-col items-center gap-3 py-4">
-                <a
-                  href={paymentUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-white font-black text-base tracking-wide transition-all hover:scale-[1.03] active:scale-[0.97]"
-                  style={{
-                    background: paymentMethodUsed === 'crypto'
-                      ? 'linear-gradient(180deg, #f7931a 0%, #e58307 100%)'
-                      : 'linear-gradient(180deg, #2AAEE8 0%, #229ED9 100%)',
-                    boxShadow: paymentMethodUsed === 'crypto'
-                      ? '0 6px 18px rgba(247,147,26,0.45), 0 2px 4px rgba(247,147,26,0.3), inset 0 1px 0 rgba(255,255,255,0.3)'
-                      : '0 6px 18px rgba(34,158,217,0.45), 0 2px 4px rgba(34,158,217,0.3), inset 0 1px 0 rgba(255,255,255,0.3)',
-                    border: paymentMethodUsed === 'crypto' ? '1px solid #c26a00' : '1px solid #1a8cc2',
-                  }}
+            {paymentUrl && !isPremium && (() => {
+              const info: Record<string, { label: string; stars: string; usd: string; perMo: string }> = {
+                monthly: { label: '1 Month', stars: '600 ★', usd: '$7.80', perMo: '$7.80/mo' },
+                quarterly: { label: '3 Months', stars: '750 ★', usd: '$9.97', perMo: '$3.32/mo' },
+                yearly: { label: '1 Year', stars: '1,500 ★', usd: '$19.97', perMo: '$1.66/mo' },
+                lifetime: { label: 'Lifetime', stars: '15,000 ★', usd: '$190', perMo: 'forever' },
+              };
+              const p = info[selectedPlan || ''] || info.quarterly;
+              return (
+              <div className="space-y-3">
+                <button
+                  onClick={() => { setPaymentUrl(null); setSelectedPlan(null); setAwaitingPayment(false); if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } }}
+                  className="w-full py-2.5 rounded-lg text-[13px] font-bold text-white transition-all hover:opacity-90 flex items-center justify-center gap-1.5"
+                  style={{ background: '#111827' }}
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-                  </svg>
-                  BUY NOW
-                </a>
-                <div className="flex items-center gap-1.5">
-                  <svg className="animate-spin shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#229ED9" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                  <span className="text-[11px] font-medium text-gray-500">
-                    {paymentMethodUsed === 'crypto'
-                      ? 'Complete payment — this page updates automatically once confirmed'
-                      : 'Complete payment in Telegram — this page updates automatically once confirmed'}
-                  </span>
-                </div>
-                <button onClick={() => { setPaymentUrl(null); setAwaitingPayment(false); if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } }} className="text-[11px] font-semibold text-gray-500 hover:text-gray-800 underline">
-                  ← Choose a different plan
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                  Change Plan
                 </button>
+
+                <div className="rounded-xl p-4 space-y-3" style={{ background: '#ffffff', border: '1px solid #e5e7eb', boxShadow: '0 8px 28px rgba(0,0,0,0.12)' }}>
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center">Order Summary</p>
+
+                  <div className="rounded-lg px-4 py-3" style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-black text-gray-900 text-[14px]">Erogram VIP — {p.label}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-500 text-[12px]">{paymentMethodUsed === 'stars' ? p.stars : p.usd}</span>
+                      <span className="font-bold text-gray-900 text-[13px]">{p.perMo === 'forever' ? 'Pay once, use forever' : p.perMo + ' only'}</span>
+                    </div>
+                  </div>
+
+                  <a
+                    href={paymentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full py-4 rounded-xl text-white font-black text-base tracking-wide transition-all hover:scale-[1.02] active:scale-[0.97]"
+                    style={{ background: '#16a34a', boxShadow: '0 6px 18px rgba(22,163,74,0.4)' }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                    </svg>
+                    {paymentMethodUsed === 'stars' ? `PAY ${p.stars}` : `PAY ${p.usd}`}
+                  </a>
+
+                  <p className="text-[10px] text-gray-500 text-center">
+                    Complete payment in Telegram · This page updates automatically · After payment you will be redirected back to Erogram
+                  </p>
+                  <p className="text-[10px] text-gray-400 text-center">
+                    Need help? Telegram: <a href="https://t.me/erogram1" target="_blank" rel="noopener noreferrer" className="font-bold underline">@erogram1</a> · <a href="mailto:support@erogram.biz" className="font-bold underline">support@erogram.biz</a>
+                  </p>
+                </div>
               </div>
-            )}
+              );
+            })()}
 
             <div className="mt-4 space-y-0.5">
               <p className="text-center text-[9px] text-gray-400">Pay with Telegram Stars or Crypto</p>

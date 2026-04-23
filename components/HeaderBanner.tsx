@@ -47,28 +47,28 @@ export default function HeaderBanner({ campaigns = [], className = '' }: HeaderB
     <div className={`w-full ${deviceCls} ${className}`.trim()}>
       {/* Mobile: full-width stretch. Desktop: natural image size, max 50vw, centered. */}
       <div className="flex justify-center">
-        <a
-          href={href}
-          target="_blank"
-          rel="sponsored noopener noreferrer"
-          onClick={(e) => {
-            e.preventDefault();
-            handleClick(current);
-          }}
-          className="block overflow-hidden cursor-pointer rounded-lg w-full md:w-auto"
-        >
-          <img
-            src={src}
-            alt="Banner"
-            loading="eager"
-            className="w-full h-auto md:w-auto md:h-auto md:max-w-[50vw] md:max-h-[280px]"
-            style={{ display: 'block' }}
-          />
-        </a>
-        <div className="flex justify-end mt-1">
+        <div className="relative inline-block w-full md:w-auto">
+          <a
+            href={href}
+            target="_blank"
+            rel="sponsored noopener noreferrer"
+            onClick={(e) => {
+              e.preventDefault();
+              handleClick(current);
+            }}
+            className="block overflow-hidden cursor-pointer rounded-lg"
+          >
+            <img
+              src={src}
+              alt="Banner"
+              loading="eager"
+              className="w-full h-auto md:w-auto md:h-auto md:max-w-[50vw] md:max-h-[280px]"
+              style={{ display: 'block' }}
+            />
+          </a>
           <a
             href="/advertise"
-            className="text-[9px] font-medium text-white/30 hover:text-white/50 transition-colors"
+            className="absolute bottom-1 right-1.5 text-[9px] font-medium text-white/40 hover:text-white/60 transition-colors drop-shadow-sm"
           >
             Sponsored
           </a>

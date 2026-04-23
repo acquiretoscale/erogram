@@ -76,13 +76,9 @@ function TopAINsfwBlock({ tools, allStats, scores, featuredSlugs, featuredCampai
     .filter((tool) => (scores[tool.slug] ?? 0) > 0)
     .sort((a, b) => (scores[b.slug] ?? 0) - (scores[a.slug] ?? 0));
 
-  // Build top 4: first 3 by score, 4th slot reserved for a featured tool
-  const top3 = scoreSorted.filter((t) => !featuredSet.has(t.slug)).slice(0, 3);
-  const featuredTool = tools.find((t) => featuredSet.has(t.slug));
-
-  const topTools = featuredTool
-    ? [...top3, featuredTool].slice(0, 4)
-    : scoreSorted.slice(0, 4);
+  const allFeatured = tools.filter((t) => featuredSet.has(t.slug));
+  const nonFeaturedByScore = scoreSorted.filter((t) => !featuredSet.has(t.slug));
+  const topTools = [...allFeatured, ...nonFeaturedByScore].slice(0, 4);
 
   if (topTools.length === 0) return null;
 
@@ -332,8 +328,10 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], feat
 
           {/* Main Content */}
           <div className="lg:w-3/4 min-w-0 shrink-0">
-            {/* Top AI NSFW Block */}
-            <TopAINsfwBlock tools={tools} allStats={allStats} scores={scores} featuredSlugs={featuredSlugs} featuredCampaignMap={featuredCampaignMap} onVoteChange={handleVoteChange} />
+            {/* Top AI NSFW Block — hidden when a search or filter is active */}
+            {activeCategory === 'All' && activePayment === 'All' && !search.trim() && (
+              <TopAINsfwBlock tools={tools} allStats={allStats} scores={scores} featuredSlugs={featuredSlugs} featuredCampaignMap={featuredCampaignMap} onVoteChange={handleVoteChange} />
+            )}
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3">
               {(() => {

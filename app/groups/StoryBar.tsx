@@ -155,17 +155,6 @@ export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: 
                 {label}
               </Link>
             ))}
-            <Link
-              href="/onlyfanssearch"
-              className="px-1.5 py-[2px] text-[8px] font-bold rounded-full transition-all duration-200 whitespace-nowrap hover:scale-105"
-              style={{
-                background: 'linear-gradient(135deg, #00AFF0, #0088cc)',
-                color: '#ffffff',
-                border: '1px solid rgba(0,175,240,0.5)',
-              }}
-            >
-              OnlyFans Search
-            </Link>
         </div>
       </nav>
     </section>
@@ -237,16 +226,16 @@ function VisitingNowCard() {
       </div>
 
       <div className="relative rounded-full p-[2px] overflow-hidden" style={{
-        background: 'conic-gradient(from 0deg, #00AFF0, #0088cc, #00D4FF, #38bdf8, #00AFF0)',
+        background: 'conic-gradient(from 0deg, #4ade80, #16a34a, #bbf7d0, #22c55e, #4ade80)',
       }}>
         <Link
           href="/premium"
           target="_blank"
           className="relative z-10 flex items-center justify-center gap-1 px-3 py-1.5 rounded-full text-[10px] font-black whitespace-nowrap transition-all duration-200 hover:brightness-110"
           style={{
-            background: 'linear-gradient(180deg, #00AFF0 0%, #0088cc 100%)',
+            background: 'linear-gradient(180deg, #4ade80 0%, #16a34a 100%)',
             color: '#fff',
-            boxShadow: '0 0 10px rgba(0,175,240,0.4)',
+            boxShadow: '0 0 12px rgba(74,222,128,0.55)',
             textShadow: '0 1px 2px rgba(0,0,0,0.3)',
           }}
         >

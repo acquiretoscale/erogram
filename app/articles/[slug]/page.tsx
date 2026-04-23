@@ -4,8 +4,7 @@ import connectDB from '@/lib/db/mongodb';
 import { Article, User, Group } from '@/lib/models';
 import ArticleClient from './ArticleClient';
 
-// ISR for public article pages (keeps SSR output crawlable while avoiding per-request rendering)
-export const revalidate = 300;
+export const dynamic = 'force-dynamic';
 
 const BASE_URL = 'https://erogram.pro';
 

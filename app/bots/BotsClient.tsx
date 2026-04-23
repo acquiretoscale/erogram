@@ -444,8 +444,8 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
 
           {/* Bots Grid */}
           <div className="lg:w-3/4">
-            {/* Top Bots Section */}
-            {(topBots.length > 0 || topBotsLoading) && (
+            {/* Top Bots Section — hidden when a search or filter is active */}
+            {!debouncedSearchQuery && selectedCategory === 'All' && selectedSubcategory === 'All' && (topBots.length > 0 || topBotsLoading) && (
               <div className="mb-16 relative rounded-3xl p-[2px]">
                 <div className="absolute inset-0 rounded-3xl overflow-hidden">
                   <div style={{

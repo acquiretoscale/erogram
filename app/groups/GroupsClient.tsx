@@ -13,7 +13,6 @@ import GroupCard from './GroupCard';
 import AdvertCard from './AdvertCard';
 import VirtualizedGroupGrid from './VirtualizedGroupGrid';
 import { checkBookmarks } from '@/lib/actions/publicData';
-import VickyGroupsBubble from './VickyGroupsBubble';
 import GroupCardSkeleton from './GroupCardSkeleton';
 import StoryBar from './StoryBar';
 import type { VaultTeaserItem } from './VaultTeaserFeed';
@@ -557,17 +556,57 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
           <HeaderBanner campaigns={topBannerCampaigns} />
         </div>
 
+        {/* Filter toggle + Explore navigation — mobile only */}
+        <div className="lg:hidden grid grid-cols-4 gap-1.5 mb-3">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center justify-center gap-1 px-1 py-1.5 text-[11px] font-bold rounded-md text-white whitespace-nowrap transition-all duration-200 hover:brightness-125 active:scale-95"
+            style={{
+              background: 'linear-gradient(135deg, #0a1520, #0d1a2a)',
+              border: '1px solid rgba(0,175,240,0.2)',
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+            </svg>
+            Filter
+          </button>
+          <Link
+            href={lp('/bots')}
+            className="flex items-center justify-center gap-1 px-1 py-1.5 text-[11px] font-bold rounded-md text-white whitespace-nowrap transition-all duration-200 hover:brightness-110 active:scale-95"
+            style={{
+              background: 'linear-gradient(135deg, #00AFF0, #0088cc)',
+              border: '1px solid rgba(0,175,240,0.5)',
+            }}
+          >
+            Telegram Bots
+          </Link>
+          <Link
+            href={lp('/ainsfw')}
+            className="flex items-center justify-center gap-1 px-1 py-1.5 text-[11px] font-bold rounded-md text-white whitespace-nowrap transition-all duration-200 hover:brightness-110 active:scale-95"
+            style={{
+              background: 'linear-gradient(135deg, #00AFF0, #0088cc)',
+              border: '1px solid rgba(0,175,240,0.5)',
+            }}
+          >
+            AI NSFW
+          </Link>
+          <Link
+            href={lp('/onlyfanssearch')}
+            className="flex items-center justify-center gap-1 px-1 py-1.5 text-[11px] font-bold rounded-md text-white whitespace-nowrap transition-all duration-200 hover:brightness-110 active:scale-95"
+            style={{
+              background: 'linear-gradient(135deg, #00AFF0, #0088cc)',
+              border: '1px solid rgba(0,175,240,0.5)',
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
+              <path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z" />
+            </svg>
+            OF Search
+          </Link>
+        </div>
+
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
-          {/* Mobile: Filter toggle */}
-          <div className="lg:hidden">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="w-full px-4 py-3 bg-[#b31b1b] hover:bg-[#c42b2b] text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
-            >
-              <span className="text-xl">🔍</span>
-              {showFilters ? t('groups.hideFilters') : t('groups.showFilters')}
-            </button>
-          </div>
 
           {/* Sidebar Filters */}
           <aside className={`${showFilters ? 'block' : 'hidden'} lg:block lg:w-1/4 min-w-0 shrink-0`} suppressHydrationWarning>
@@ -646,8 +685,8 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
           <div className="lg:w-3/4 min-w-0 shrink-0">
             <div className="relative">
-              {/* Top Groups — hidden during search */}
-              {!debouncedSearchQuery && topGroups.length > 0 && (
+              {/* Top Groups — hidden during search or when a filter is active */}
+              {!debouncedSearchQuery && selectedCategory === (initialCountry || 'All') && topGroups.length > 0 && (
                 <div className="mb-5 relative rounded-2xl p-[2px]" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706, #92400e, #d97706, #f59e0b, #fcd34d, #f59e0b)' }}>
                   {/* Shimmer sweep */}
                   <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
@@ -753,8 +792,8 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                 </div>
               )}
 
-              {/* Featured Groups — below Top Groups (hidden during search) */}
-              {!debouncedSearchQuery && featuredGroups.length > 0 && (
+              {/* Featured Groups — below Top Groups (hidden during search or when a filter is active) */}
+              {!debouncedSearchQuery && selectedCategory === (initialCountry || 'All') && featuredGroups.length > 0 && (
                 <div className="mb-10 relative rounded-3xl p-[2px]" style={{ background: 'linear-gradient(135deg, #a855f7, #7c3aed, #6d28d9, #7c3aed, #a855f7)' }}>
                   <div className="rounded-[22px] bg-[#111111] relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-violet-900/10 to-purple-900/10" />
@@ -875,8 +914,6 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
         />
       )}
 
-      {/* Vicky AI floating bubble */}
-      <VickyGroupsBubble />
     </div>
   );
 }

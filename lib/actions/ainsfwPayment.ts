@@ -89,7 +89,7 @@ export async function createAINSFWSubmission(
     boostExpiresAt: isBoost ? oneMonthLater : null,
   });
 
-  const orderId = `ainsfw_${plan}_${submission._id}`;
+  const orderId = `sub__ainsfw__${submission._id}__${plan}__${Date.now()}`;
 
   try {
     const res = await fetch(`${NP_BASE}/invoice`, {

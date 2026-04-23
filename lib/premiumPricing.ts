@@ -20,9 +20,9 @@ export interface PremiumPricing {
 
 const DEFAULTS: PremiumPricing = {
   monthly: { priceUsd: 8.99, starsAmount: 600, days: 30, label: 'Erogram VIP (1 Month)', description: '30-day unlimited access — Secret Vault, bookmarks & more' },
-  quarterly: { priceUsd: 13.49, starsAmount: 900, days: 90, label: 'Erogram VIP (3 Months)', description: '3-month unlimited access — Secret Vault, bookmarks & more' },
-  yearly: { priceUsd: 29.99, starsAmount: 2000, days: 365, label: 'Erogram VIP (1 Year)', description: '1-year unlimited access — Secret Vault, bookmarks & more' },
-  lifetime: { priceUsd: 197, starsAmount: 13000, days: 36500, label: 'Erogram VIP (Lifetime)', description: 'Lifetime unlimited access — Secret Vault, bookmarks & more' },
+  quarterly: { priceUsd: 9.97, starsAmount: 750, days: 90, label: 'Erogram VIP (3 Months)', description: '3-month unlimited access — Secret Vault, bookmarks & more' },
+  yearly: { priceUsd: 19.97, starsAmount: 1500, days: 365, label: 'Erogram VIP (1 Year)', description: '1-year unlimited access — Secret Vault, bookmarks & more' },
+  lifetime: { priceUsd: 190, starsAmount: 15000, days: 36500, label: 'Erogram VIP (Lifetime)', description: 'Lifetime unlimited access — Secret Vault, bookmarks & more' },
   offerBadge: '80% OFF',
   offerText: 'Launch price ends soon',
 };
@@ -96,15 +96,15 @@ export async function getStarsRate(): Promise<number> {
       return d.usdt_per_star;
     }
   } catch { /* fall through */ }
-  return 0.015; // fallback
+  return 0.013; // fallback
 }
 
 export function usdToStars(usd: number, ratePerStar: number): number {
-  if (ratePerStar <= 0) return Math.ceil(usd / 0.015);
+  if (ratePerStar <= 0) return Math.ceil(usd / 0.013);
   return Math.ceil(usd / ratePerStar);
 }
 
 export function starsToUsd(stars: number, ratePerStar: number): number {
-  const rate = ratePerStar > 0 ? ratePerStar : 0.015;
+  const rate = ratePerStar > 0 ? ratePerStar : 0.013;
   return +(stars * rate).toFixed(2);
 }

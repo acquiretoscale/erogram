@@ -240,7 +240,6 @@ export default function Premium15Client({ vaultTeaser: rawVaultTeaser = [] }: Pr
   const [premiumExpiresAt, setPremiumExpiresAt] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [awaitingPayment, setAwaitingPayment] = useState(false);
-  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const payMethod = 'stars' as const;
   
   const [isAdmin, setIsAdmin] = useState(false);
@@ -339,7 +338,11 @@ export default function Premium15Client({ vaultTeaser: rawVaultTeaser = [] }: Pr
     try {
       const token = localStorage.getItem('token');
       const res = await axios.post('/api/payments/stars', { plan }, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.data?.url) { setPaymentUrl(res.data.url); setAwaitingPayment(true); if (pollRef.current) clearInterval(pollRef.current); let a = 0; pollRef.current = setInterval(async () => { a++; await checkPremiumStatus(); if (a >= 120) { clearInterval(pollRef.current!); pollRef.current = null; setAwaitingPayment(false); } }, 5000); }
+      if (res.data?.url) {
+        const w = window.open(res.data.url, '_blank');
+        if (!w) window.location.href = res.data.url;
+        setAwaitingPayment(true); if (pollRef.current) clearInterval(pollRef.current); let a = 0; pollRef.current = setInterval(async () => { a++; await checkPremiumStatus(); if (a >= 120) { clearInterval(pollRef.current!); pollRef.current = null; setAwaitingPayment(false); } }, 5000);
+      }
     } catch (err: any) { if (err?.response?.data?.soldOut) setSoldOut(true); setError(err?.response?.data?.message || 'Failed to create payment'); } finally { setLoading(null); }
   };
 
@@ -531,30 +534,6 @@ export default function Premium15Client({ vaultTeaser: rawVaultTeaser = [] }: Pr
 
           <div className="relative px-4 pt-5 pb-5">
 
-            {awaitingPayment && !isPremium && paymentUrl && (
-              <div className="mb-3 flex flex-col items-center gap-3 py-4">
-                <a
-                  href={paymentUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-white font-black text-base tracking-wide transition-all hover:scale-[1.03] active:scale-[0.97]"
-                  style={{ background: 'linear-gradient(180deg, #2AAEE8 0%, #229ED9 100%)', boxShadow: '0 6px 18px rgba(34,158,217,0.45), 0 2px 4px rgba(34,158,217,0.3), inset 0 1px 0 rgba(255,255,255,0.3)', border: '1px solid #1a8cc2' }}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-                  </svg>
-                  BUY NOW
-                </a>
-                <div className="flex items-center gap-1.5">
-                  <svg className="animate-spin shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#229ED9" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                  <span className="text-[11px] font-medium text-gray-400">This page updates automatically once payment is confirmed</span>
-                </div>
-                <button onClick={() => { setPaymentUrl(null); setAwaitingPayment(false); if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } }} className="text-[11px] font-semibold text-gray-400 hover:text-gray-200 underline">
-                  ← Choose a different plan
-                </button>
-              </div>
-            )}
-
             {error && <div className="mb-3 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center">{error}</div>}
 
             {(isPremium || isAdmin) && adminPreview === 'none' && (
@@ -690,6 +669,19 @@ export default function Premium15Client({ vaultTeaser: rawVaultTeaser = [] }: Pr
             <div className="mt-4 space-y-0.5">
               <p className="text-center text-[9px]" style={{ color: '#2a1f0e' }}>Telegram Stars · Instant activation</p>
               <p className="text-center text-[9px]" style={{ color: '#1e1510' }}>Erogram is actively developing — more features coming soon</p>
+            </div>
+
+            <div className="mt-5 rounded-xl p-4 text-center space-y-1.5" style={{ background: '#f5f0e0', border: '1px solid #d4c9a8' }}>
+              <p className="text-[13px] font-bold" style={{ color: '#1e1510' }}>Having trouble with your purchase?</p>
+              <p className="text-[11px]" style={{ color: '#3a2f1e' }}>Reach out to our support team.</p>
+              <div className="flex flex-col items-center gap-2 mt-2">
+                <a href="https://t.me/erogram1" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-bold text-white transition-all hover:brightness-110" style={{ background: '#229ED9' }}>
+                  Telegram: @erogram1
+                </a>
+                <a href="mailto:support@erogram.biz" className="text-[12px] font-semibold underline transition-colors hover:opacity-80" style={{ color: '#1e1510' }}>
+                  support@erogram.biz
+                </a>
+              </div>
             </div>
           </div>
         </div>
