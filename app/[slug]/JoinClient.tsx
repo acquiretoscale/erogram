@@ -956,7 +956,6 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={() => {
-                          setIsRedirecting(true);
                           trackClick();
                         }}
                         className="block w-full text-center bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-5 rounded-2xl text-xl shadow-lg shadow-blue-900/20 transition-all transform hover:-translate-y-0.5"
