@@ -446,82 +446,42 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
           <div className="lg:w-3/4">
             {/* Top Bots Section — hidden when a search or filter is active */}
             {!debouncedSearchQuery && selectedCategory === 'All' && selectedSubcategory === 'All' && (topBots.length > 0 || topBotsLoading) && (
-              <div className="mb-16 relative rounded-3xl p-[2px]">
-                <div className="absolute inset-0 rounded-3xl overflow-hidden">
-                  <div style={{
-                    position: 'absolute',
-                    inset: '-80%',
-                    background: 'conic-gradient(from 0deg, transparent 0deg, transparent 60deg, #f59e0b 80deg, #ea580c 90deg, #ffffff 100deg, #ea580c 110deg, #f59e0b 120deg, transparent 140deg, transparent 360deg)',
-                    animation: 'vault-led-spin 12s linear infinite',
-                  }} />
+              <div className="mb-5 relative rounded-2xl p-[2px]" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706, #92400e, #d97706, #f59e0b, #fcd34d, #f59e0b)' }}>
+                <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
+                  <div className="absolute inset-0 opacity-30" style={{ background: 'linear-gradient(105deg, transparent 40%, rgba(252,211,77,0.4) 50%, transparent 60%)', animation: 'shimmer 3s infinite' }} />
                 </div>
-                <div className="relative rounded-[22px] bg-[#111111] overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-yellow-600/10 via-orange-600/10 to-red-600/10 rounded-3xl"></div>
+                <style>{`@keyframes shimmer { 0%,100%{transform:translateX(-100%)} 50%{transform:translateX(100%)} }`}</style>
+                <div className="relative rounded-[20px] overflow-hidden" style={{ background: 'linear-gradient(145deg, #0f0f0f 0%, #141008 40%, #0f0f0f 100%)' }}>
+                <div className="relative p-3 sm:p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <svg className="w-4 h-4 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm2 3a1 1 0 000 2h10a1 1 0 000-2H7z"/>
+                    </svg>
+                    <h2 className="text-sm font-black text-white leading-none">{t('bots.topBots')}</h2>
+                    <span className="text-amber-400/60 text-xs font-medium">{t('bots.topBotsDesc')}</span>
+                  </div>
 
-                {/* Section Header */}
-                <div className="relative text-center mb-8 sm:mb-12">
-                  <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6 }}
-                    className="inline-block"
-                    style={{ willChange: 'transform, opacity' }}
-                  >
-                    <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#f5f5f5] mb-3 sm:mb-4 drop-shadow-2xl">
-                      🏆 {t('bots.topBots')}
-                    </h2>
-                    <div className="h-1 w-24 sm:w-32 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 mx-auto rounded-full animate-pulse"></div>
-                  </motion.div>
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.6, delay: 0.2 }}
-                    className="text-[#999] mt-3 sm:mt-4 text-base sm:text-lg px-4"
-                    style={{ willChange: 'opacity' }}
-                  >
-                    {t('bots.topBotsDesc')}
-                  </motion.p>
-                </div>
-
-                {/* Top Bots Grid: 2 bots + 1 feed ad */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 px-2 relative z-10">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
                   {topBotsLoading ? (
-                    Array.from({ length: 3 }, (_, i) => (
+                    Array.from({ length: 4 }, (_, i) => (
                       <BotCardSkeleton key={`top-skeleton-${i}`} />
                     ))
                   ) : (
                     <>
-                      {topBots.slice(0, 2).map((bot, idx) => (
-                        <motion.div
-                          key={`top-${bot._id}`}
-                          initial={{ opacity: 0, y: 50 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.6, delay: idx * 0.1 }}
-                          className="relative h-full"
-                          style={{ willChange: 'transform, opacity' }}
-                        >
-                          <div className="h-full">
-                            <BotCard bot={bot} isIndex={idx} directLink={bot.isAdvertisement && bot.advertisementUrl ? bot.advertisementUrl : bot.telegramLink || undefined} />
-                          </div>
-                          <div className="absolute -top-1 sm:-top-2 -left-1 sm:-left-2 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg z-20 border-2 border-white">
-                            <span className="text-black font-bold text-xs sm:text-sm">#{idx + 1}</span>
-                          </div>
-                        </motion.div>
+                      {topBots.slice(0, feedCampaigns.length > 0 ? 3 : 4).map((bot, idx) => (
+                        <div key={`top-${bot._id}`} className="h-full">
+                          <BotCard bot={bot} isIndex={idx} directLink={bot.isAdvertisement && bot.advertisementUrl ? bot.advertisementUrl : bot.telegramLink || undefined} />
+                        </div>
                       ))}
                       {feedCampaigns.length > 0 && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 50 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.6, delay: 0.2 }}
-                          className="h-full"
-                          style={{ willChange: 'transform, opacity' }}
-                        >
-                          <AdvertCard campaign={feedCampaigns[0]} isIndex={2} />
-                        </motion.div>
+                        <div className="h-full">
+                          <AdvertCard campaign={feedCampaigns[0]} isIndex={3} />
+                        </div>
                       )}
                     </>
                   )}
                 </div>
+              </div>
               </div>
               </div>
             )}
@@ -649,12 +609,12 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
       className="h-full"
       style={{ willChange: 'transform, opacity' }}
     >
-      <div className={`glass rounded-3xl overflow-hidden h-full flex flex-col backdrop-blur-xl border transition-all duration-500 group relative ${isFeatured
+      <div className={`glass rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col backdrop-blur-xl border transition-all duration-500 group relative ${isFeatured
         ? 'border-yellow-500/30 shadow-[0_0_30px_rgba(234,179,8,0.1)] hover:border-yellow-500/60 hover:shadow-[0_0_50px_rgba(234,179,8,0.2)]'
         : 'border-white/5 hover:border-white/20 hover:shadow-2xl hover:shadow-black/50'
         }`}>
         {/* Bot Image */}
-        <div ref={imgRef} className="relative w-full h-52 overflow-hidden bg-[#1a1a1a]">
+        <div ref={imgRef} className="relative w-full h-32 sm:h-52 overflow-hidden bg-[#1a1a1a]">
           <img
             src={imageSrc}
             alt={bot.name}
@@ -700,13 +660,13 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
         </div>
 
         {/* Card Content */}
-        <div className="p-5 flex-grow flex flex-col relative">
+        <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
           {/* Title */}
-          <h3 className="text-xl font-black text-white mb-3 line-clamp-2 leading-tight group-hover:text-blue-400 transition-colors flex items-center gap-2 min-w-0">
+          <h3 className="text-sm sm:text-xl font-black text-white mb-2 sm:mb-3 leading-tight group-hover:text-blue-400 transition-colors flex items-center gap-1 sm:gap-2 min-w-0">
             <span className="truncate">{bot.name}</span>
             {bot.showVerified && (
-              <span className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 border border-white/30 shadow" title="Verified">
-                <svg viewBox="0 0 24 24" className="w-3 h-3 text-white" fill="currentColor" aria-hidden="true">
+              <span className="shrink-0 flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 border border-white/30 shadow" title="Verified">
+                <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" fill="currentColor" aria-hidden="true">
                   <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
                 </svg>
               </span>
@@ -714,17 +674,17 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
           </h3>
 
           {/* Tags */}
-          <div className="flex flex-wrap gap-2 mb-4">
+          <div className="flex flex-wrap gap-1 sm:gap-2 mb-2 sm:mb-4">
             {[...new Set<string>((bot as any).categories?.length ? (bot as any).categories : [bot.category].filter(Boolean))].map((tag: string) => (
-              <span key={tag} className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-gray-300 text-xs font-medium hover:bg-white/10 transition-colors">
+              <span key={tag} className="px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg bg-white/5 border border-white/5 text-gray-300 text-[10px] sm:text-xs font-medium">
                 {tag}
               </span>
             ))}
           </div>
 
           {/* Description */}
-          <div className="mb-6 flex-grow">
-            <p className="text-gray-400 text-sm line-clamp-3 leading-relaxed">
+          <div className="mb-3 sm:mb-6 flex-grow">
+            <p className="text-gray-400 text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed">
               {bot.description}
             </p>
           </div>
@@ -751,21 +711,21 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
                   } catch {}
                 }
               }}
-              className={`group/btn relative flex items-center justify-center w-full overflow-hidden rounded-xl py-3.5 px-4 font-black text-white shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${isFeatured
+              className={`group/btn relative flex items-center justify-center w-full overflow-hidden rounded-xl py-2.5 sm:py-3.5 px-3 sm:px-4 font-black text-white shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${isFeatured
                 ? 'bg-gradient-to-r from-yellow-500 to-red-600 hover:shadow-orange-500/40'
                 : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-blue-500/40'
                 }`}
             >
               <div className="absolute inset-0 bg-white/20 opacity-0 transition-opacity duration-300 group-hover/btn:opacity-100" />
 
-              <span className="relative flex items-center justify-center gap-2 text-sm uppercase tracking-wider">
+              <span className="relative flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm uppercase tracking-wider">
                 {bot.isAdvertisement ? (
                   <>
                     <span>🔗</span> {t('bots.visitLink')}
                   </>
                 ) : (
                   <>
-                    <span className="text-lg">🤖</span> {t('bots.useBot')}
+                    <span className="text-base sm:text-lg">🤖</span> {t('bots.useBot')}
                   </>
                 )}
               </span>
@@ -822,7 +782,7 @@ const VirtualizedBotGrid = React.memo(function VirtualizedBotGrid({ bots, advert
   }, [bots, feedCampaigns, isTelegram]);
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
       {items.map((item) => {
         if (item.type === 'bot') {
           return (

@@ -66,7 +66,7 @@ async function getBots() {
       {
         $project: {
           _id: 1, name: 1, slug: 1, category: 1, country: 1,
-          description: 1, telegramLink: 1, isAdvertisement: 1,
+          description: 1, image: 1, telegramLink: 1, isAdvertisement: 1,
           advertisementUrl: 1, pinned: 1, clickCount: 1, views: 1,
           memberCount: 1,
           createdBy: { username: 1, showNicknameUnderGroups: 1 },
@@ -81,7 +81,7 @@ async function getBots() {
       category: bot.category,
       country: bot.country,
       description: bot.description,
-      image: PLACEHOLDER,
+      image: (bot.image && typeof bot.image === 'string' && bot.image.startsWith('https://')) ? bot.image : PLACEHOLDER,
       telegramLink: bot.telegramLink,
       isAdvertisement: bot.isAdvertisement || false,
       advertisementUrl: bot.advertisementUrl || null,
