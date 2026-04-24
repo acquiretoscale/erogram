@@ -12,6 +12,8 @@ import AdvertCard from '../groups/AdvertCard';
 import type { FeedCampaign } from '../groups/types';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 import { useTranslation, useLocalePath } from '@/lib/i18n';
+import { voteOnBot, unvoteOnBot, getAllBotStats } from '@/lib/actions/botVotes';
+import type { BotStatsData } from '@/lib/actions/botVotes';
 // Removed react-window import as virtualization is no longer used
 
 
@@ -65,9 +67,10 @@ interface BotsClientProps {
   initialIsTelegram: boolean;
   initialCountry?: string;
   topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string }>;
+  allBotStats?: Record<string, BotStatsData>;
 }
 
-export default function BotsClient({ initialBots, initialAdverts, feedCampaigns = [], initialIsMobile, initialIsTelegram, initialCountry, topBannerCampaigns = [] }: BotsClientProps) {
+export default function BotsClient({ initialBots, initialAdverts, feedCampaigns = [], initialIsMobile, initialIsTelegram, initialCountry, topBannerCampaigns = [], allBotStats }: BotsClientProps) {
   const [username, setUsername] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedSubcategory, setSelectedSubcategory] = useState('All');
@@ -83,6 +86,20 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
   const isFirstLoad = useRef(true);
   const { t } = useTranslation();
   const lp = useLocalePath();
+
+  const [botScores, setBotScores] = useState<Record<string, number>>(() => {
+    const map: Record<string, number> = {};
+    if (allBotStats) {
+      for (const [slug, s] of Object.entries(allBotStats)) {
+        map[slug] = (s.upvotes ?? 0) - (s.downvotes ?? 0);
+      }
+    }
+    return map;
+  });
+
+  const handleBotVoteChange = useCallback((slug: string, score: number) => {
+    setBotScores(prev => ({ ...prev, [slug]: score }));
+  }, []);
 
   useEffect(() => {
     // Get username from localStorage on mount
@@ -168,6 +185,16 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
           setBots(regular);
           setSkip(regular.length);
           setHasMore(data.hasMore);
+          const newSlugs = regular.map((b: Bot) => b.slug).filter((s: string) => !(s in botScores));
+          if (newSlugs.length > 0) {
+            getAllBotStats(newSlugs).then(stats => {
+              setBotScores(prev => {
+                const next = { ...prev };
+                for (const [slug, s] of Object.entries(stats)) next[slug] = (s.upvotes ?? 0) - (s.downvotes ?? 0);
+                return next;
+              });
+            }).catch(() => {});
+          }
         } else {
           setBots([]);
           setSkip(0);
@@ -198,13 +225,24 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
           .then(res => res.json())
           .then(data => {
             if (data.bots && data.bots.length > 0) {
+              const incoming = data.bots.filter((b: Bot) => !b.pinned);
               setBots(prev => {
                 const existingIds = new Set(prev.map(b => b._id));
-                const newBots = data.bots.filter((b: Bot) => !existingIds.has(b._id) && !b.pinned);
+                const newBots = incoming.filter((b: Bot) => !existingIds.has(b._id));
                 return [...prev, ...newBots];
               });
-              setSkip(prev => prev + data.bots.filter((b: Bot) => !b.pinned).length);
+              setSkip(prev => prev + incoming.length);
               setHasMore(data.hasMore);
+              const newSlugs = incoming.map((b: Bot) => b.slug).filter((s: string) => !(s in botScores));
+              if (newSlugs.length > 0) {
+                getAllBotStats(newSlugs).then(stats => {
+                  setBotScores(prev => {
+                    const next = { ...prev };
+                    for (const [slug, s] of Object.entries(stats)) next[slug] = (s.upvotes ?? 0) - (s.downvotes ?? 0);
+                    return next;
+                  });
+                }).catch(() => {});
+              }
             } else {
               setHasMore(false);
             }
@@ -235,8 +273,9 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
   }, [pinnedBots, selectedCategory]);
 
   const displayBots = useMemo(() => {
-    return [...filteredPinnedBots, ...filteredBots];
-  }, [filteredPinnedBots, filteredBots]);
+    const sorted = [...filteredBots].sort((a, b) => (botScores[b.slug] ?? 0) - (botScores[a.slug] ?? 0));
+    return [...filteredPinnedBots, ...sorted];
+  }, [filteredPinnedBots, filteredBots, botScores]);
 
   // Custom hook for debouncing
   function useDebounce(value: string, delay: number) {
@@ -468,9 +507,9 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
                     ))
                   ) : (
                     <>
-                      {topBots.slice(0, feedCampaigns.length > 0 ? 3 : 4).map((bot, idx) => (
+                      {[...topBots].sort((a, b) => (botScores[b.slug] ?? 0) - (botScores[a.slug] ?? 0)).slice(0, feedCampaigns.length > 0 ? 3 : 4).map((bot, idx) => (
                         <div key={`top-${bot._id}`} className="h-full">
-                          <BotCard bot={bot} isIndex={idx} directLink={bot.isAdvertisement && bot.advertisementUrl ? bot.advertisementUrl : bot.telegramLink || undefined} />
+                          <BotCard bot={bot} isIndex={idx} directLink={bot.isAdvertisement && bot.advertisementUrl ? bot.advertisementUrl : bot.telegramLink || undefined} initialStats={allBotStats?.[bot.slug]} onVoteChange={handleBotVoteChange} />
                         </div>
                       ))}
                       {feedCampaigns.length > 0 && (
@@ -510,6 +549,8 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
                     feedCampaigns={feedCampaigns ?? []}
                     isMobile={isMobile}
                     isTelegram={isTelegram}
+                    allBotStats={allBotStats}
+                    onVoteChange={handleBotVoteChange}
                   />
                 </div>
               )}
@@ -540,7 +581,7 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
   );
 }
 
-const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex = 0, directLink }: { bot: Bot; isFeatured?: boolean; isIndex: number; directLink?: string }) {
+const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex = 0, directLink, initialStats, onVoteChange }: { bot: Bot; isFeatured?: boolean; isIndex: number; directLink?: string; initialStats?: BotStatsData; onVoteChange?: (slug: string, score: number) => void }) {
   const { t } = useTranslation();
   const [isHovered, setIsHovered] = useState(false);
   const [imageSrc, setImageSrc] = useState(bot.image || 'PLACEHOLDER_IMAGE_URL');
@@ -548,6 +589,36 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
   const [isInView, setIsInView] = useState(false);
   const hasFetchedRef = useRef(false);
   const imgRef = useRef<HTMLDivElement>(null);
+
+  const [votes, setVotes] = useState({ up: initialStats?.upvotes ?? 0, down: initialStats?.downvotes ?? 0 });
+  const [userVote, setUserVote] = useState<'up' | 'down' | null>(null);
+  const score = votes.up - votes.down;
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`bot_vote_${bot.slug}`) as 'up' | 'down' | null;
+      if (saved) setUserVote(saved);
+    } catch {}
+  }, [bot.slug]);
+
+  const handleVote = async (e: React.MouseEvent, dir: 'up' | 'down') => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (userVote === dir) {
+      setUserVote(null);
+      localStorage.setItem(`bot_vote_${bot.slug}`, '');
+      const result = await unvoteOnBot(bot.slug, dir);
+      setVotes({ up: result.upvotes, down: result.downvotes });
+      onVoteChange?.(bot.slug, result.upvotes - result.downvotes);
+    } else {
+      if (userVote) await unvoteOnBot(bot.slug, userVote);
+      setUserVote(dir);
+      localStorage.setItem(`bot_vote_${bot.slug}`, dir);
+      const result = await voteOnBot(bot.slug, dir);
+      setVotes({ up: result.upvotes, down: result.downvotes });
+      onVoteChange?.(bot.slug, result.upvotes - result.downvotes);
+    }
+  };
 
   // Intersection Observer for lazy loading
   useEffect(() => {
@@ -642,7 +713,7 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
 
           {/* Stats Overlay */}
           <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end">
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
               {bot.memberCount && bot.memberCount > 0 && (
                 <div className="bg-black/60 backdrop-blur-md border border-white/10 px-2 py-1 rounded-lg flex items-center gap-1.5">
                   <span className="text-xs">👥</span>
@@ -655,6 +726,36 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
                   <span className="text-xs font-bold text-white">{bot.clickCount.toLocaleString()}</span>
                 </div>
               )}
+            </div>
+            {/* Vote buttons on image */}
+            <div className="flex items-center gap-1 bg-black/60 backdrop-blur-md border border-white/10 px-1.5 py-1 rounded-lg">
+              <button
+                onClick={(e) => handleVote(e, 'up')}
+                title="Upvote"
+                className={`flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold transition-all ${
+                  userVote === 'up'
+                    ? 'bg-green-500 text-white'
+                    : 'text-white/60 hover:text-green-300'
+                }`}
+              >
+                <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l8 8H4z"/></svg>
+              </button>
+              <span className={`text-[10px] font-black px-1 tabular-nums ${
+                score > 0 ? 'text-green-300' : score < 0 ? 'text-red-300' : 'text-white/40'
+              }`}>
+                {score > 0 ? `+${score}` : score}
+              </span>
+              <button
+                onClick={(e) => handleVote(e, 'down')}
+                title="Downvote"
+                className={`flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold transition-all ${
+                  userVote === 'down'
+                    ? 'bg-red-500 text-white'
+                    : 'text-white/60 hover:text-red-300'
+                }`}
+              >
+                <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20l-8-8h16z"/></svg>
+              </button>
             </div>
           </div>
         </div>
@@ -767,7 +868,7 @@ function buildBotFeedItems(bots: Bot[], campaigns: FeedCampaign[]): Array<{ type
   return items;
 }
 
-const VirtualizedBotGrid = React.memo(function VirtualizedBotGrid({ bots, advertPlacementsMap, feedCampaigns, isMobile, isTelegram }: { bots: Bot[]; advertPlacementsMap: Map<number, Advert>; feedCampaigns: FeedCampaign[]; isMobile: boolean; isTelegram: boolean }) {
+const VirtualizedBotGrid = React.memo(function VirtualizedBotGrid({ bots, advertPlacementsMap, feedCampaigns, isMobile, isTelegram, allBotStats, onVoteChange }: { bots: Bot[]; advertPlacementsMap: Map<number, Advert>; feedCampaigns: FeedCampaign[]; isMobile: boolean; isTelegram: boolean; allBotStats?: Record<string, BotStatsData>; onVoteChange?: (slug: string, score: number) => void }) {
   // SSR renders bots-only; useEffect inserts ads client-side to avoid hydration mismatch with Math.random()
   const [items, setItems] = React.useState<Array<{ type: 'bot' | 'campaign'; data: Bot | FeedCampaign; index: number }>>(() =>
     bots.map((bot, i) => ({ type: 'bot' as const, data: bot, index: i }))
@@ -785,12 +886,15 @@ const VirtualizedBotGrid = React.memo(function VirtualizedBotGrid({ bots, advert
     <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
       {items.map((item) => {
         if (item.type === 'bot') {
+          const b = item.data as Bot;
           return (
             <BotCard
-              key={`bot-${(item.data as Bot)._id}`}
-              bot={item.data as Bot}
+              key={`bot-${b._id}`}
+              bot={b}
               isIndex={Math.floor(item.index)}
-              isFeatured={(item.data as Bot).pinned}
+              isFeatured={b.pinned}
+              initialStats={allBotStats?.[b.slug]}
+              onVoteChange={onVoteChange}
             />
           );
         }

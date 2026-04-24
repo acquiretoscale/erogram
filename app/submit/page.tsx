@@ -160,28 +160,31 @@ export default function SubmitCreatorPage() {
 
         {result?.success ? (
           <div className="space-y-5">
-            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-8 text-center">
-              <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto mb-4" />
-              <h2 className="text-xl font-black text-white mb-2">{t('submitCreator.successTitle')}</h2>
-              <p className="text-gray-300 text-sm mb-6">
-                {t('submitCreator.successDesc')}
+            <div className="rounded-2xl border border-[#00AFF0]/30 bg-white p-8 text-center">
+              <CheckCircle2 className="w-12 h-12 text-[#00AFF0] mx-auto mb-4" />
+              <h2 className="text-xl font-black text-gray-900 mb-2">Profile Submitted!</h2>
+              <div className="inline-block px-4 py-1.5 rounded-full bg-green-100 border border-green-300 text-green-700 text-xs font-black uppercase tracking-wider mb-4">
+                ✓ Pending Approval
+              </div>
+              <p className="text-gray-500 text-sm mb-6">
+                Our team will review and approve your profile shortly — usually within 48 hours.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Link
-                  href={lp(`/${result.slug}`)}
-                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white font-black text-sm shadow-md hover:shadow-lg transition-all"
-                >
-                  {t('submitCreator.viewProfile')}
-                </Link>
-                <Link
                   href={lp('/onlyfanssearch')}
-                  className="px-6 py-3 rounded-xl border border-[#00AFF0]/25 text-[#00AFF0] font-bold text-sm hover:bg-[#00AFF0]/10 transition-all"
+                  className="px-6 py-3 rounded-xl bg-[#00AFF0] text-white font-black text-sm shadow-md hover:bg-[#009AD6] transition-all"
                 >
                   {t('submitCreator.backToSearch')}
                 </Link>
+                <Link
+                  href={lp('/submit')}
+                  onClick={() => { setResult(null); setName(''); setOnlyfansUrl(''); setDescription(''); setPhotos([]); setCategories([]); }}
+                  className="px-6 py-3 rounded-xl border-2 border-[#00AFF0] text-[#00AFF0] font-bold text-sm hover:bg-[#00AFF0]/10 transition-all"
+                >
+                  Submit Another
+                </Link>
               </div>
             </div>
-
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">

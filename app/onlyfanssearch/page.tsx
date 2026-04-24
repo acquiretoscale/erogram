@@ -38,7 +38,7 @@ export default async function OnlyFansPage({ searchParams }: PageProps) {
   try {
     await connectDB();
 
-    const baseMatch = { avatar: { $ne: '' }, gender: 'female', categories: { $exists: true, $ne: [] }, deleted: { $ne: true } };
+    const baseMatch = { avatar: { $ne: '' }, gender: 'female', categories: { $exists: true, $ne: [] }, deleted: { $ne: true }, submissionStatus: { $ne: 'pending' } };
 
     const projection = {
       $project: {

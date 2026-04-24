@@ -496,6 +496,8 @@
     "readyToJoin": "Ready to join?",
     "clickToAccess": "Click the button below to access this community on Telegram.",
     "joinChannelNow": "Join Channel Now",
+    "useBotNow": "Use Bot Now",
+    "linkReady": "Link Ready — Visit Telegram",
     "openingTelegram": "Opening Telegram...",
     "redirectingIn": "Redirecting in {seconds}s...",
     "openInTelegram": "Open in Telegram",

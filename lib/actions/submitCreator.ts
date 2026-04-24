@@ -343,7 +343,7 @@ export async function submitCreator(input: SubmitCreatorInput) {
   const existing = await OnlyFansCreator.findOne({ slug }).lean() as any;
   if (existing) {
     const merged = [...new Set([...(existing.categories || []), ...(input.categories || [])])];
-    const updateFields: Record<string, any> = { categories: merged };
+    const updateFields: Record<string, any> = { categories: merged, submissionStatus: 'pending', submittedByUser: true };
     if (input.description?.trim()) updateFields.bio = input.description.trim();
     if (input.telegram?.trim()) updateFields.telegramUrl = input.telegram.trim();
     if (input.instagram?.trim()) updateFields.instagramUrl = input.instagram.trim();
@@ -357,17 +357,23 @@ export async function submitCreator(input: SubmitCreatorInput) {
     if (input.videosCount) updateFields.videosCount = input.videosCount;
     if (input.postsCount) updateFields.postsCount = input.postsCount;
 
-    if (photoUrls?.length && isR2Configured()) {
-      const r2Urls: string[] = [];
-      for (let i = 0; i < photoUrls.length && i < 8; i++) {
-        const suffix = i === 0 ? '' : String(i + 1);
-        const key = `onlyfanssearch/${slug}-onlyfans${suffix}.jpg`;
-        const r2Url = await optimizeAndUploadToR2(photoUrls[i], key);
-        r2Urls.push(r2Url || photoUrls[i]);
+    if (photoUrls?.length) {
+      if (isR2Configured()) {
+        const r2Urls: string[] = [];
+        for (let i = 0; i < photoUrls.length && i < 8; i++) {
+          const suffix = i === 0 ? '' : String(i + 1);
+          const key = `onlyfanssearch/${slug}-onlyfans${suffix}.jpg`;
+          const r2Url = await optimizeAndUploadToR2(photoUrls[i], key);
+          r2Urls.push(r2Url || photoUrls[i]);
+        }
+        if (r2Urls[0]) updateFields.avatar = r2Urls[0];
+        if (r2Urls[1]) updateFields.header = r2Urls[1];
+        if (r2Urls.length > 2) updateFields.extraPhotos = r2Urls.slice(2);
+      } else {
+        if (photoUrls[0]) updateFields.avatar = photoUrls[0];
+        if (photoUrls[1]) updateFields.header = photoUrls[1];
+        if (photoUrls.length > 2) updateFields.extraPhotos = photoUrls.slice(2);
       }
-      if (r2Urls[0]) updateFields.avatar = r2Urls[0];
-      if (r2Urls[1]) updateFields.header = r2Urls[1];
-      if (r2Urls.length > 2) updateFields.extraPhotos = r2Urls.slice(2);
     }
 
     await OnlyFansCreator.updateOne({ slug }, { $set: updateFields }, { strict: false });
@@ -425,6 +431,7 @@ export async function submitCreator(input: SubmitCreatorInput) {
         telegramUrl: input.telegram?.trim() || '',
         bio: input.description.trim(),
         submittedByUser: true,
+        submissionStatus: 'pending',
         extraPhotos: r2Urls.slice(2),
       },
     },

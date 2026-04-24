@@ -16,6 +16,7 @@ import { AINsfwSubmission } from '@/lib/models';
 import type { AINsfwTool } from '@/app/ainsfw/types';
 import ToolDetailClient from '@/app/ainsfw/[slug]/ToolDetailClient';
 import { getToolStats } from '@/lib/actions/ainsfw';
+import { getBotStats } from '@/lib/actions/botVotes';
 import { getCreatorBySlug, getRelatedCreators, getCreatorReviews } from '@/lib/actions/ofCreatorProfile';
 import CreatorProfileClient from '@/app/onlyfanssearch/CreatorProfileClient';
 import { getTrendingOnErogram, getTrendingCreators } from '@/lib/actions/publicData';
@@ -902,11 +903,12 @@ export default async function JoinPage({ params }: PageProps) {
       } : {}),
     };
 
-    const [joinCtaCampaigns2, topBannerCampaigns2, vaultTeaser2, featuredCreators2] = await Promise.all([
+    const [joinCtaCampaigns2, topBannerCampaigns2, vaultTeaser2, featuredCreators2, botStatsData] = await Promise.all([
       getActiveCampaigns('join-cta'),
       getActiveCampaigns('top-banner', { page: 'join', device: isMobile ? 'mobile' : 'desktop' }),
       getVaultTeaser(),
       getTrendingCreators().catch(() => []),
+      getBotStats(bot.slug),
     ]);
     const joinCtaCampaign = joinCtaCampaigns2[0] ?? null;
     const topBannerForPage =
@@ -926,7 +928,7 @@ export default async function JoinPage({ params }: PageProps) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplicationJsonLd) }}
         />
-        <JoinClient entity={bot} type="bot" similarGroups={[]} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} vaultTeaser={vaultTeaser2} featuredCreators={featuredCreators2} />
+        <JoinClient entity={bot} type="bot" similarGroups={[]} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} vaultTeaser={vaultTeaser2} featuredCreators={featuredCreators2} botStats={botStatsData} />
       </>
     );
   }

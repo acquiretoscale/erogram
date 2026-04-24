@@ -30,9 +30,6 @@ export default function AuthCallbackPage() {
     try { sessionStorage.removeItem('joinRedirect'); } catch {}
 
 
-    const isNewUser = searchParams.get('newUser') === '1';
-    const needsOnboarding = isNewUser || searchParams.get('onboardingPending') === '1';
-
     const redirectTarget = state?.startsWith('redirect:')
       ? state.slice('redirect:'.length)
       : null;
@@ -41,12 +38,6 @@ export default function AuthCallbackPage() {
       router.replace('/admin');
     } else if (state === 'premium') {
       router.replace('/premium');
-    } else if (needsOnboarding) {
-      const hasPending = typeof localStorage !== 'undefined' && localStorage.getItem('pendingBookmark');
-      if (redirectTarget) {
-        try { sessionStorage.setItem('postOnboardingRedirect', redirectTarget); } catch {}
-      }
-      router.replace(hasPending ? '/welcome?from=bookmark' : '/welcome');
     } else if (redirectTarget) {
       router.replace(redirectTarget.startsWith('/') ? redirectTarget : '/profile?tab=saved');
     } else {

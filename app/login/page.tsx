@@ -51,15 +51,8 @@ export default function LoginPage() {
 
         const params = new URLSearchParams(window.location.search);
         const rd = normalizeRedirect(params.get('redirect'));
-        const needsOnboarding = res.data.isNewUser || !res.data.onboardingCompleted;
         if (res.data.isAdmin === 'true' || res.data.isAdmin === true) {
           router.push('/admin');
-        } else if (needsOnboarding) {
-          const hasPending = localStorage.getItem('pendingBookmark');
-          if (rd && rd !== '/profile?tab=saved') {
-            try { sessionStorage.setItem('postOnboardingRedirect', rd); } catch {}
-          }
-          router.push(hasPending ? '/welcome?from=bookmark' : '/welcome');
         } else {
           router.push(rd);
         }

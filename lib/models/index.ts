@@ -873,6 +873,7 @@ export const onlyFansCreatorSchema = new Schema(
     telegramUrl: { type: String, default: '' },
     extraPhotos: { type: [String], default: [] },
     submittedByUser: { type: Boolean, default: false },
+    submissionStatus: { type: String, enum: ['approved', 'pending', 'rejected'], default: 'approved' },
     deleted: { type: Boolean, default: false },
     deletedAt: { type: Date, default: null },
   },
@@ -1137,6 +1138,18 @@ const onlygramCreatorSchema = new Schema({
 }, { timestamps: true });
 
 export const OnlygramCreator = models.OnlygramCreator || model('OnlygramCreator', onlygramCreatorSchema);
+
+// Bot Stats — votes (per-bot aggregate, mirrors AINsfwToolStats)
+const botStatsSchema = new Schema(
+  {
+    slug: { type: String, required: true, unique: true, index: true },
+    upvotes: { type: Number, default: 0 },
+    downvotes: { type: Number, default: 0 },
+  },
+  { timestamps: true },
+);
+
+export const BotStats = models.BotStats || model('BotStats', botStatsSchema);
 
 // FeatureSuggestion — user-submitted feature ideas + upvotes
 const featureSuggestionSchema = new Schema({

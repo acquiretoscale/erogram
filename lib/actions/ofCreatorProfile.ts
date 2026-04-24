@@ -72,6 +72,7 @@ export async function getCreatorBySlug(slug: string): Promise<CreatorProfile | n
     }
 
     if (!creator) return null;
+    if ((creator as any).submissionStatus === 'pending' || (creator as any).submissionStatus === 'rejected') return null;
 
     const c = creator as any;
     return {

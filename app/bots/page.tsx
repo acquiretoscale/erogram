@@ -7,6 +7,7 @@ import BotsClient from './BotsClient';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { getActiveCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
+import { getAllBotStats } from '@/lib/actions/botVotes';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
 
@@ -141,6 +142,8 @@ export default async function BotsPage() {
     getActiveFeedCampaigns('bots'),
   ]);
 
+  const allBotStats = await getAllBotStats(bots.map(b => b.slug));
+
   const topBannerForPage =
     topBannerCampaigns.length > 0 && topBannerCampaigns[0].creative ? topBannerCampaigns : [];
 
@@ -164,6 +167,7 @@ export default async function BotsPage() {
           initialIsTelegram={isTelegram}
           initialCountry="All"
           topBannerCampaigns={topBannerForPage}
+          allBotStats={allBotStats}
         />
       </ErrorBoundary>
     </>

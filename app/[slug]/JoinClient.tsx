@@ -12,6 +12,7 @@ import { getButtonConfig } from '@/lib/actions/publicData';
 import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
 import { trackTrendingClick } from '@/lib/actions/onlyfansTracking';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
+import { voteOnBot, unvoteOnBot } from '@/lib/actions/botVotes';
 import VaultTeaserFeed from '@/app/groups/VaultTeaserFeed';
 import VickyGroupsBubble from '@/app/groups/VickyGroupsBubble';
 import { useTranslation, useLocalePath } from '@/lib/i18n';
@@ -80,6 +81,11 @@ interface FeaturedCreator {
   liveHourEnd?: number;
 }
 
+interface BotStatsData {
+  upvotes: number;
+  downvotes: number;
+}
+
 interface JoinClientProps {
   entity: Entity;
   type: 'group' | 'bot';
@@ -99,6 +105,7 @@ interface JoinClientProps {
   isDeleted?: boolean;
   vaultTeaser?: VaultTeaserItem[];
   featuredCreators?: FeaturedCreator[];
+  botStats?: BotStatsData;
 }
 
 interface PopupAdvert {
@@ -194,10 +201,37 @@ function VaultTeaserBlock({ items }: { items: VaultTeaserItem[] }) {
   );
 }
 
-export default function JoinClient({ entity, type, similarGroups = [], initialIsMobile = false, initialIsTelegram = false, joinCtaCampaign = null, topBannerCampaigns = [], isDeleted = false, vaultTeaser = [], featuredCreators = [] }: JoinClientProps) {
+export default function JoinClient({ entity, type, similarGroups = [], initialIsMobile = false, initialIsTelegram = false, joinCtaCampaign = null, topBannerCampaigns = [], isDeleted = false, vaultTeaser = [], featuredCreators = [], botStats }: JoinClientProps) {
   const [countdown, setCountdown] = useState(0);
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [linkReady, setLinkReady] = useState(false);
   const [buttonConfig, setButtonConfig] = useState<ButtonConfig | null>(null);
+
+  const [botVotes, setBotVotes] = useState({ up: botStats?.upvotes ?? 0, down: botStats?.downvotes ?? 0 });
+  const [botUserVote, setBotUserVote] = useState<'up' | 'down' | null>(null);
+  const botScore = botVotes.up - botVotes.down;
+
+  useEffect(() => {
+    if (type !== 'bot') return;
+    try {
+      const saved = localStorage.getItem(`bot_vote_${entity.slug}`) as 'up' | 'down' | null;
+      if (saved) setBotUserVote(saved);
+    } catch {}
+  }, [entity.slug, type]);
+
+  const handleBotVote = async (dir: 'up' | 'down') => {
+    if (botUserVote === dir) {
+      setBotUserVote(null);
+      localStorage.setItem(`bot_vote_${entity.slug}`, '');
+      const result = await unvoteOnBot(entity.slug, dir);
+      setBotVotes({ up: result.upvotes, down: result.downvotes });
+    } else {
+      if (botUserVote) await unvoteOnBot(entity.slug, botUserVote);
+      setBotUserVote(dir);
+      localStorage.setItem(`bot_vote_${entity.slug}`, dir);
+      const result = await voteOnBot(entity.slug, dir);
+      setBotVotes({ up: result.upvotes, down: result.downvotes });
+    }
+  };
   const [popupAdvert, setPopupAdvert] = useState<PopupAdvert | null>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [countdownStarted, setCountdownStarted] = useState(false);
@@ -442,8 +476,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
       return () => clearTimeout(timer);
     } else if (countdownStarted && countdown === 0 && entity && realTelegramLink) {
       trackClick();
-      setIsRedirecting(true);
-      window.open(realTelegramLink, '_blank', 'noopener,noreferrer');
+      setLinkReady(true);
     }
   }, [countdown, countdownStarted, entity]);
 
@@ -750,6 +783,43 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                   <div className="text-xs font-semibold text-white truncate">{entity.country}</div>
                 </div>
               </div>
+
+              {/* Bot Voting — left column, below stats */}
+              {type === 'bot' && (
+                <div className="mt-3 bg-[#1a1a1a] p-3 rounded-xl border border-white/5 overflow-hidden">
+                  <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-2 text-center">{t('slug.communityRating', 'Community Rating')}</div>
+                  <div className="flex items-center justify-center gap-2">
+                    <button
+                      onClick={() => handleBotVote('up')}
+                      className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all ${
+                        botUserVote === 'up'
+                          ? 'bg-green-500 text-white shadow-md shadow-green-500/30'
+                          : 'bg-white/[0.08] text-white/50 hover:bg-green-500/20 hover:text-green-300'
+                      }`}
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l8 8H4z"/></svg>
+                    </button>
+                    <span className={`text-lg font-black px-3 py-0.5 rounded-lg tabular-nums ${
+                      botScore > 0 ? 'bg-green-500/20 text-green-300' :
+                      botScore < 0 ? 'bg-red-500/20 text-red-300' :
+                      'bg-white/[0.06] text-white/30'
+                    }`}>
+                      {botScore > 0 ? `+${botScore}` : botScore}
+                    </span>
+                    <button
+                      onClick={() => handleBotVote('down')}
+                      className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all ${
+                        botUserVote === 'down'
+                          ? 'bg-red-500 text-white shadow-md shadow-red-500/30'
+                          : 'bg-white/[0.08] text-white/50 hover:bg-red-500/20 hover:text-red-300'
+                      }`}
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20l-8-8h16z"/></svg>
+                    </button>
+                  </div>
+                  <div className="text-[10px] text-gray-500 text-center mt-1.5 tabular-nums">{botVotes.up} {t('slug.upvotes', 'upvotes')}</div>
+                </div>
+              )}
             </motion.div>
           </div>
 
@@ -843,16 +913,28 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                     <div className="relative w-full bg-[#111] rounded-[14px] px-8 py-5 transition-all group-hover:bg-transparent">
                       <div className="flex items-center justify-center gap-3">
                         <span className="text-2xl">🚀</span>
-                        <span className="text-xl font-bold text-white">{t('slug.joinChannelNow')}</span>
+                        <span className="text-xl font-bold text-white">{type === 'bot' ? t('slug.useBotNow', 'Use Bot Now') : t('slug.joinChannelNow')}</span>
                       </div>
                     </div>
                   </button>
+                ) : linkReady ? (
+                  <a
+                    href={realTelegramLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full rounded-2xl bg-white text-center px-8 py-5 transition-all hover:bg-gray-100"
+                  >
+                    <div className="flex items-center justify-center gap-3">
+                      <span className="text-2xl">✅</span>
+                      <span className="text-xl font-bold text-black">{t('slug.linkReady', 'Link Ready — Visit Telegram')}</span>
+                    </div>
+                  </a>
                 ) : countdownStarted ? (
                   <div className="w-full bg-[#111] rounded-2xl border border-white/10 px-8 py-5 text-center">
                     <div className="flex flex-col items-center justify-center gap-3">
                       <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                       <div className="text-lg font-medium text-white">
-                        {isRedirecting ? t('slug.openingTelegram') : t('slug.redirectingIn').replace('{seconds}', String(countdown))}
+                        {t('slug.redirectingIn').replace('{seconds}', String(countdown))}
                       </div>
                     </div>
                   </div>
