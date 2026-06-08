@@ -94,11 +94,6 @@ export default function Footer() {
                                     Get Listed on Erogram
                                 </Link>
                             </li>
-                            <li>
-                                <Link href={lp('/advertise')} className="text-[#999] hover:text-[#b31b1b] transition-colors">
-                                    Advertise on Erogram
-                                </Link>
-                            </li>
                         </ul>
                     </div>
 

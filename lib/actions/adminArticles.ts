@@ -160,6 +160,8 @@ export async function getArticle(token: string, id: string) {
     twitterImage: a.twitterImage || '',
     twitterTitle: a.twitterTitle || '',
     twitterDescription: a.twitterDescription || '',
+    videoBlocks: a.videoBlocks || [],
+    ctaBlocks: a.ctaBlocks || [],
   };
 
   return JSON.parse(JSON.stringify(result));
@@ -171,7 +173,7 @@ export async function createArticle(token: string, data: Record<string, any>) {
 
   await connectDB();
 
-  const { title, content, excerpt, featuredImage, status, tags, metaTitle, metaDescription, metaKeywords, ogImage, ogTitle, ogDescription, twitterCard, twitterImage, twitterTitle, twitterDescription, advertiserId } = data;
+  const { title, content, excerpt, featuredImage, status, tags, metaTitle, metaDescription, metaKeywords, ogImage, ogTitle, ogDescription, twitterCard, twitterImage, twitterTitle, twitterDescription, advertiserId, videoBlocks, ctaBlocks } = data;
 
   if (!title || !content) {
     throw new Error('Title and content are required');
@@ -207,6 +209,8 @@ export async function createArticle(token: string, data: Record<string, any>) {
     twitterImage: twitterImage || '',
     twitterTitle: twitterTitle || '',
     twitterDescription: twitterDescription || '',
+    videoBlocks: videoBlocks || [],
+    ctaBlocks: ctaBlocks || [],
   });
 
   article.status = articleStatus;
@@ -336,7 +340,7 @@ export async function updateArticle(token: string, id: string, data: Record<stri
 
   await connectDB();
 
-  const { title, content, excerpt, featuredImage, status, tags, metaTitle, metaDescription, metaKeywords, ogImage, ogTitle, ogDescription, twitterCard, twitterImage, twitterTitle, twitterDescription, advertiserId } = data;
+  const { title, content, excerpt, featuredImage, status, tags, metaTitle, metaDescription, metaKeywords, ogImage, ogTitle, ogDescription, twitterCard, twitterImage, twitterTitle, twitterDescription, advertiserId, videoBlocks, ctaBlocks } = data;
 
   const oldArticle = await Article.findById(id);
   if (!oldArticle) throw new Error('Article not found');
@@ -347,7 +351,6 @@ export async function updateArticle(token: string, id: string, data: Record<stri
     content,
     updatedAt: new Date(),
     excerpt: excerpt !== undefined && excerpt !== null ? excerpt : '',
-    featuredImage: featuredImage !== undefined && featuredImage !== null ? featuredImage : '',
     tags: tags || [],
     metaTitle: metaTitle !== undefined && metaTitle !== null ? metaTitle : '',
     metaDescription: metaDescription !== undefined && metaDescription !== null ? metaDescription : '',
@@ -361,6 +364,11 @@ export async function updateArticle(token: string, id: string, data: Record<stri
     twitterDescription: twitterDescription !== undefined && twitterDescription !== null ? twitterDescription : '',
   };
 
+  // Only overwrite featuredImage if explicitly provided — prevents accidental wipe
+  if (featuredImage !== undefined) {
+    setFields.featuredImage = featuredImage;
+  }
+
   if (title && title !== oldArticle.title) {
     setFields.title = title;
     // Do NOT regenerate the slug when only the title changes.
@@ -370,6 +378,13 @@ export async function updateArticle(token: string, id: string, data: Record<stri
 
   if (advertiserId !== undefined) {
     setFields.advertiserId = (advertiserId && String(advertiserId).trim()) ? advertiserId : null;
+  }
+
+  if (videoBlocks !== undefined) {
+    setFields.videoBlocks = videoBlocks;
+  }
+  if (ctaBlocks !== undefined) {
+    setFields.ctaBlocks = ctaBlocks;
   }
 
   if (status !== undefined && status !== null && (status === 'published' || status === 'draft')) {
@@ -540,4 +555,11 @@ export async function getArticleStats(token: string) {
     totalClicks30d,
     count: articles.length,
   }));
+}
+
+export async function getArticleBlocks(articleId: string) {
+  await connectDB();
+  const a = await Article.findById(articleId).select('content videoBlocks ctaBlocks').lean() as any;
+  if (!a) return { content: '', videoBlocks: [], ctaBlocks: [] };
+  return JSON.parse(JSON.stringify({ content: a.content || '', videoBlocks: a.videoBlocks || [], ctaBlocks: a.ctaBlocks || [] }));
 }

@@ -201,6 +201,20 @@ export const articleSchema = new Schema(
     twitterImage: { type: String, required: false },
     twitterTitle: { type: String, required: false },
     twitterDescription: { type: String, required: false },
+    videoBlocks: [{
+      url: { type: String, required: true },
+      caption: { type: String },
+      link: { type: String },
+      linktext: { type: String },
+      position: { type: String, enum: ['after_intro', 'middle', 'end'], default: 'end' },
+    }],
+    ctaBlocks: [{
+      url: { type: String, required: true },
+      text: { type: String, required: true },
+      headline: { type: String },
+      description: { type: String },
+      position: { type: String, enum: ['after_intro', 'middle', 'end'], default: 'end' },
+    }],
   },
   {
     timestamps: true,

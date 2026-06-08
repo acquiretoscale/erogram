@@ -33,6 +33,12 @@ interface ArticlesListingProps {
   topBannerCampaigns?: TopBannerCampaign[];
 }
 
+function displayAuthorName(username?: string | null): string {
+  const u = (username || '').trim();
+  if (!u || u.toLowerCase() === 'erogram') return 'Enzo Gonsalves';
+  return u;
+}
+
 export default function ArticlesListing({ initialArticles = [], topBannerCampaigns = [] }: ArticlesListingProps) {
   const [username, setUsername] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -166,7 +172,7 @@ export default function ArticlesListing({ initialArticles = [], topBannerCampaig
                     <div className="flex items-center justify-between text-sm text-[#666] pt-4 border-t border-[#333]">
                       <div className="flex items-center gap-2">
                         <span aria-hidden>👤</span>
-                        <span>{article.author?.username ?? 'erogram'}</span>
+                        <span>{displayAuthorName(article.author?.username)}</span>
                       </div>
                       {article.publishedAt && (
                         <time dateTime={article.publishedAt}>

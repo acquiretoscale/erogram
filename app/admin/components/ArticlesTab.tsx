@@ -1,33 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { getArticles, getArticle, createArticle, updateArticle, deleteArticle, getArticleStats } from '@/lib/actions/adminArticles';
 import { getAdvertisersDashboard } from '@/lib/actions/adminCampaigns';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { compressImage } from '@/lib/utils/compressImage';
+import ArticleEditor from './ArticleEditor';
 
-/* ─── SVG icon helpers (inline to avoid extra deps) ─── */
-const I = ({ d, className = '' }: { d: string; className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={`w-4 h-4 ${className}`}><path d={d} /></svg>
-);
-const ICONS = {
-  bold:       <I d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6zM6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />,
-  italic:     <I d="M19 4h-9M14 20H5M15 4 9 20" />,
-  strike:     <I d="M16 4H9a3 3 0 0 0 0 6h6a3 3 0 0 1 0 6H8M4 12h16" />,
-  h1:         <span className="text-xs font-black leading-none">H1</span>,
-  h2:         <span className="text-xs font-black leading-none">H2</span>,
-  h3:         <span className="text-xs font-black leading-none">H3</span>,
-  link:       <I d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />,
-  image:      <I d="M21 15V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10m18 0-3.5-4.5L15 14l-4-5-4 5m16-4v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6" />,
-  quote:      <I d="M3 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2zM15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2z" />,
-  ul:         <I d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />,
-  ol:         <I d="M10 6h11M10 12h11M10 18h11M4 6V2l-1 1M3 10h2l-2 2.5L5 15M3 18v-1h2v-1H3" />,
-  code:       <I d="m16 18 6-6-6-6M8 6l-6 6 6 6" />,
-  hr:         <I d="M3 12h18" />,
-  cta:        <span className="text-[10px] font-black leading-none tracking-tight">CTA</span>,
-};
 
 export default function ArticlesTab() {
     const [articles, setArticles] = useState<any[]>([]);
@@ -38,7 +17,6 @@ export default function ArticlesTab() {
     const [searchQuery, setSearchQuery] = useState('');
     const [showEditor, setShowEditor] = useState(false);
     const [editingArticle, setEditingArticle] = useState<any>(null);
-    const [editorMode, setEditorMode] = useState<'edit' | 'preview' | 'split'>('split');
     const [articleData, setArticleData] = useState({
         title: '',
         content: '',
@@ -57,6 +35,8 @@ export default function ArticlesTab() {
         twitterImage: '',
         twitterTitle: '',
         twitterDescription: '',
+        videoBlocks: [] as { url: string; caption: string; link: string; linktext: string; position: string }[],
+        ctaBlocks: [] as { url: string; text: string; headline: string; description: string; position: string }[],
     });
     const [tagInput, setTagInput] = useState('');
     const [isSaving, setIsSaving] = useState(false);
@@ -75,7 +55,14 @@ export default function ArticlesTab() {
     };
 
     useEffect(() => {
-        fetchArticles();
+        fetchArticles().then((list) => {
+            const slug = sessionStorage.getItem('adminEditArticle');
+            if (slug && list.length > 0) {
+                sessionStorage.removeItem('adminEditArticle');
+                const found = list.find((a: any) => a.slug === slug);
+                if (found) handleEdit(found);
+            }
+        });
     }, []);
 
     useEffect(() => {
@@ -95,12 +82,15 @@ export default function ArticlesTab() {
         try {
             const token = localStorage.getItem('token') || '';
             const list = await getArticles(token);
-            setArticles(Array.isArray(list) ? list : []);
+            const articleList = Array.isArray(list) ? list : [];
+            setArticles(articleList);
             const statsData = await getArticleStats(token);
             setArticleStats({ totalClicks: statsData?.totalClicks ?? 0, totalClicks24h: statsData?.totalClicks24h ?? 0, totalClicks7d: statsData?.totalClicks7d ?? 0, totalClicks30d: statsData?.totalClicks30d ?? 0, count: statsData?.count ?? 0 });
+            return articleList;
         } catch (err: any) {
             setError(err.message || 'Failed to load articles');
             setArticles([]);
+            return [];
         } finally {
             setIsLoading(false);
         }
@@ -126,6 +116,8 @@ export default function ArticlesTab() {
             twitterImage: '',
             twitterTitle: '',
             twitterDescription: '',
+            videoBlocks: [],
+            ctaBlocks: [],
         });
         setTagInput('');
         setShowEditor(true);
@@ -152,6 +144,8 @@ export default function ArticlesTab() {
             twitterImage: article.twitterImage || '',
             twitterTitle: article.twitterTitle || '',
             twitterDescription: article.twitterDescription || '',
+            videoBlocks: article.videoBlocks || [],
+            ctaBlocks: article.ctaBlocks || [],
         });
         setTagInput('');
         if (article.content !== undefined) {
@@ -180,6 +174,8 @@ export default function ArticlesTab() {
                 twitterImage: full.twitterImage ?? prev.twitterImage,
                 twitterTitle: full.twitterTitle ?? prev.twitterTitle,
                 twitterDescription: full.twitterDescription ?? prev.twitterDescription,
+                videoBlocks: full.videoBlocks || prev.videoBlocks,
+                ctaBlocks: full.ctaBlocks || prev.ctaBlocks,
             }));
             setEditingArticle(full);
         } catch (err: any) {
@@ -293,185 +289,6 @@ export default function ArticlesTab() {
         });
     };
 
-    /* ─── Rich-toolbar helpers ─── */
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const inlineImgRef = useRef<HTMLInputElement>(null);
-    const [isInlineUploading, setIsInlineUploading] = useState(false);
-    const [linkDialog, setLinkDialog] = useState<{ open: boolean; mode: 'link' | 'cta'; selectedText: string }>({ open: false, mode: 'link', selectedText: '' });
-    const [linkUrl, setLinkUrl] = useState('');
-    const [linkText, setLinkText] = useState('');
-    const [ctaDesc, setCtaDesc] = useState('');
-    const savedSelectionRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
-
-    const insertAtCursor = useCallback((before: string, after = '') => {
-        const ta = textareaRef.current;
-        if (!ta) return;
-        const start = ta.selectionStart;
-        const end = ta.selectionEnd;
-        const text = ta.value;
-        const selected = text.substring(start, end);
-        const replacement = before + (after ? selected : '') + after;
-        const newContent = text.substring(0, after ? start : start) + replacement + text.substring(after ? end : end);
-        setArticleData(prev => ({ ...prev, content: after ? text.substring(0, start) + replacement + text.substring(end) : text.substring(0, start) + before + text.substring(end) }));
-        const cursorPos = after
-            ? (selected ? start + before.length + selected.length + after.length : start + before.length)
-            : start + before.length;
-        setTimeout(() => {
-            ta.focus();
-            if (after && selected) {
-                ta.selectionStart = start;
-                ta.selectionEnd = cursorPos;
-            } else {
-                ta.selectionStart = ta.selectionEnd = after ? start + before.length : cursorPos;
-            }
-        }, 0);
-    }, []);
-
-    const wrapSelection = useCallback((prefix: string, suffix: string) => {
-        const ta = textareaRef.current;
-        if (!ta) return;
-        const start = ta.selectionStart;
-        const end = ta.selectionEnd;
-        const text = ta.value;
-        const selected = text.substring(start, end);
-        const newContent = text.substring(0, start) + prefix + selected + suffix + text.substring(end);
-        setArticleData(prev => ({ ...prev, content: newContent }));
-        setTimeout(() => {
-            ta.focus();
-            if (selected) {
-                ta.selectionStart = start;
-                ta.selectionEnd = start + prefix.length + selected.length + suffix.length;
-            } else {
-                ta.selectionStart = ta.selectionEnd = start + prefix.length;
-            }
-        }, 0);
-    }, []);
-
-    const prefixLines = useCallback((prefix: string) => {
-        const ta = textareaRef.current;
-        if (!ta) return;
-        const start = ta.selectionStart;
-        const end = ta.selectionEnd;
-        const text = ta.value;
-        const lineStart = text.lastIndexOf('\n', start - 1) + 1;
-        const lineEnd = text.indexOf('\n', end);
-        const actualEnd = lineEnd === -1 ? text.length : lineEnd;
-        const block = text.substring(lineStart, actualEnd);
-        const prefixed = block.split('\n').map(l => prefix + l).join('\n');
-        const newContent = text.substring(0, lineStart) + prefixed + text.substring(actualEnd);
-        setArticleData(prev => ({ ...prev, content: newContent }));
-        setTimeout(() => { ta.focus(); }, 0);
-    }, []);
-
-    const openLinkDialog = useCallback((mode: 'link' | 'cta') => {
-        const ta = textareaRef.current;
-        if (!ta) return;
-        const selected = ta.value.substring(ta.selectionStart, ta.selectionEnd);
-        savedSelectionRef.current = { start: ta.selectionStart, end: ta.selectionEnd };
-        setLinkText(selected || '');
-        setLinkUrl('');
-        setCtaDesc('');
-        setLinkDialog({ open: true, mode, selectedText: selected });
-    }, []);
-
-    const confirmLinkDialog = useCallback(() => {
-        const ta = textareaRef.current;
-        if (!ta || !linkUrl.trim()) { setLinkDialog(p => ({ ...p, open: false })); return; }
-        const { start, end } = savedSelectionRef.current;
-        const text = ta.value;
-
-        if (linkDialog.mode === 'link') {
-            const display = linkText.trim() || linkUrl;
-            const md = `[${display}](${linkUrl.trim()})`;
-            const newContent = text.substring(0, start) + md + text.substring(end);
-            setArticleData(prev => ({ ...prev, content: newContent }));
-            setTimeout(() => { ta.focus(); ta.selectionStart = ta.selectionEnd = start + md.length; }, 0);
-        } else {
-            const btnText = linkText.trim() || 'Learn More';
-            const block = `\n\`\`\`cta\nurl: ${linkUrl.trim()}\ntext: ${btnText}\ndescription: ${ctaDesc.trim()}\n\`\`\`\n`;
-            const newContent = text.substring(0, start) + block + text.substring(end);
-            setArticleData(prev => ({ ...prev, content: newContent }));
-            setTimeout(() => { ta.focus(); ta.selectionStart = ta.selectionEnd = start + block.length; }, 0);
-        }
-        setLinkDialog(p => ({ ...p, open: false }));
-    }, [linkUrl, linkText, ctaDesc, linkDialog.mode]);
-
-    const handleInlineImage = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        if (file.size > 10 * 1024 * 1024) { alert('Max 10 MB'); return; }
-        if (!file.type.startsWith('image/')) { alert('Select an image file'); return; }
-        setIsInlineUploading(true);
-        try {
-            const compressed = await compressImage(file);
-            const fd = new FormData();
-            fd.append('file', compressed);
-            const token = localStorage.getItem('token');
-            const res = await axios.post('/api/upload', fd, {
-                headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` },
-            });
-            const alt = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
-            const ta = textareaRef.current;
-            if (ta) {
-                const pos = ta.selectionStart;
-                const text = ta.value;
-                const img = `\n![${alt}](${res.data.url})\n`;
-                setArticleData(prev => ({ ...prev, content: text.substring(0, pos) + img + text.substring(pos) }));
-                setTimeout(() => { ta.focus(); ta.selectionStart = ta.selectionEnd = pos + img.length; }, 0);
-            }
-        } catch (err: any) {
-            alert(err.response?.data?.message || 'Upload failed');
-        } finally {
-            setIsInlineUploading(false);
-            if (inlineImgRef.current) inlineImgRef.current.value = '';
-        }
-    }, []);
-
-    const handleEditorDrop = useCallback(async (e: React.DragEvent) => {
-        const file = e.dataTransfer?.files?.[0];
-        if (!file || !file.type.startsWith('image/')) return;
-        e.preventDefault();
-        e.stopPropagation();
-        setIsInlineUploading(true);
-        try {
-            const compressed = await compressImage(file);
-            const fd = new FormData();
-            fd.append('file', compressed);
-            const token = localStorage.getItem('token');
-            const res = await axios.post('/api/upload', fd, {
-                headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` },
-            });
-            const alt = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
-            const ta = textareaRef.current;
-            if (ta) {
-                const pos = ta.selectionStart;
-                const text = ta.value;
-                const img = `\n![${alt}](${res.data.url})\n`;
-                setArticleData(prev => ({ ...prev, content: text.substring(0, pos) + img + text.substring(pos) }));
-                setTimeout(() => { ta.focus(); ta.selectionStart = ta.selectionEnd = pos + img.length; }, 0);
-            }
-        } catch (err: any) {
-            alert(err.response?.data?.message || 'Upload failed');
-        } finally {
-            setIsInlineUploading(false);
-        }
-    }, []);
-
-    const handleEditorKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        const mod = e.metaKey || e.ctrlKey;
-        if (mod && e.key === 'b') { e.preventDefault(); wrapSelection('**', '**'); }
-        else if (mod && e.key === 'i') { e.preventDefault(); wrapSelection('*', '*'); }
-        else if (mod && e.key === 'k') { e.preventDefault(); openLinkDialog('link'); }
-        else if (e.key === 'Tab') {
-            e.preventDefault();
-            const ta = textareaRef.current;
-            if (!ta) return;
-            const start = ta.selectionStart;
-            const text = ta.value;
-            setArticleData(prev => ({ ...prev, content: text.substring(0, start) + '  ' + text.substring(start) }));
-            setTimeout(() => { ta.focus(); ta.selectionStart = ta.selectionEnd = start + 2; }, 0);
-        }
-    }, [wrapSelection, openLinkDialog]);
 
     const filteredArticles = articles.filter((article) => {
         if (!searchQuery.trim()) return true;
@@ -516,58 +333,6 @@ export default function ArticlesTab() {
         const cmp = String(aVal).localeCompare(String(bVal));
         return sortOrder === 'asc' ? cmp : -cmp;
     });
-
-    /* ─── Markdown preview components (renders CTA blocks as styled cards) ─── */
-    const previewComponents = {
-        pre: ({ children }: any) => {
-            const child = Array.isArray(children) ? children[0] : children;
-            const cls = child?.props?.className || '';
-            const lang = typeof cls === 'string' ? cls.replace(/^language-/, '') : '';
-            const codeContent = String(child?.props?.children ?? '');
-            if (lang === 'cta') {
-                const lines = codeContent.trim().split('\n');
-                let url = '', text = '', description = '', headline = '';
-                for (const line of lines) {
-                    const idx = line.indexOf(':');
-                    if (idx === -1) continue;
-                    const key = line.slice(0, idx).trim().toLowerCase();
-                    const val = line.slice(idx + 1).trim();
-                    if (key === 'url') url = val;
-                    else if (key === 'text') text = val;
-                    else if (key === 'description') description = val;
-                    else if (key === 'headline' || key === 'title') headline = val;
-                }
-                if (!url || !text) return null;
-                const heading = headline || 'Ready to continue?';
-                return (
-                    <div className="not-prose my-5">
-                        <div className="mx-auto max-w-2xl relative overflow-hidden rounded-2xl border border-[#b31b1b]/20 bg-gradient-to-br from-[#140909] via-[#0f0f0f] to-[#090909]">
-                            <div className="absolute -top-20 -right-16 w-56 h-56 rounded-full bg-[#b31b1b]/15 blur-[90px] pointer-events-none" />
-                            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#ff4d4d]/35 to-transparent" />
-                            <div className="relative z-10 px-5 py-6 text-center">
-                                <h4 className="text-white text-lg font-black">{heading}</h4>
-                                {description && <p className="mt-2 text-gray-300 text-xs leading-relaxed max-w-xl mx-auto">{description}</p>}
-                                <div className="mt-5 flex justify-center">
-                                    <a
-                                        href={url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{ textDecoration: 'none', pointerEvents: 'auto', cursor: 'pointer' }}
-                                        className="group inline-flex w-full sm:w-auto sm:min-w-[300px] items-center justify-center gap-2.5 px-8 py-4 rounded-xl font-black text-sm uppercase tracking-[0.1em] text-white bg-gradient-to-b from-[#ff4d4d] to-[#b31b1b] border border-[#ff6b6b]/50 ring-1 ring-white/10 hover:from-[#ff5d5d] hover:to-[#c61f1f] shadow-[0_14px_30px_rgba(179,27,27,0.52),inset_0_1px_0_rgba(255,255,255,0.25)] transition-all duration-150 hover:-translate-y-0.5 hover:scale-[1.02] whitespace-nowrap"
-                                    >
-                                        {text}
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 transition-transform duration-150 group-hover:translate-x-1"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
-                                    </a>
-                                </div>
-                            </div>
-                            <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#b31b1b]/25 to-transparent" />
-                        </div>
-                    </div>
-                );
-            }
-            return <pre className="bg-[#111] p-4 rounded-lg overflow-x-auto my-4 border border-white/10 text-sm">{children}</pre>;
-        },
-    };
 
     if (showEditor) {
         return (
@@ -707,156 +472,122 @@ export default function ArticlesTab() {
                         </div>
                     </div>
 
-                    {/* ─── Rich Markdown Editor ─── */}
-                    <div className="glass rounded-2xl border border-white/5 overflow-hidden">
+                    {/* ─── Visual Article Editor (TipTap) ─── */}
+                    {articleData.content ? (
+                        <ArticleEditor
+                            key={editingArticle?._id || 'new'}
+                            content={articleData.content}
+                            onChange={(md) => setArticleData(prev => ({ ...prev, content: md }))}
+                        />
+                    ) : !editingArticle ? (
+                        <ArticleEditor
+                            content=""
+                            onChange={(md) => setArticleData(prev => ({ ...prev, content: md }))}
+                        />
+                    ) : (
+                        <div className="flex items-center justify-center py-20 text-gray-400 text-sm">Loading article content...</div>
+                    )}
 
-                        {/* Toolbar */}
-                        <div className="flex flex-wrap items-center gap-0.5 px-3 py-2 bg-[#111] border-b border-white/10">
-                            {/* Headings */}
-                            <button type="button" title="Heading 1" onClick={() => prefixLines('# ')} className="toolbar-btn">{ICONS.h1}</button>
-                            <button type="button" title="Heading 2" onClick={() => prefixLines('## ')} className="toolbar-btn">{ICONS.h2}</button>
-                            <button type="button" title="Heading 3" onClick={() => prefixLines('### ')} className="toolbar-btn">{ICONS.h3}</button>
-                            <span className="w-px h-5 bg-white/10 mx-1.5" />
-
-                            {/* Inline formatting */}
-                            <button type="button" title="Bold (Ctrl+B)" onClick={() => wrapSelection('**', '**')} className="toolbar-btn">{ICONS.bold}</button>
-                            <button type="button" title="Italic (Ctrl+I)" onClick={() => wrapSelection('*', '*')} className="toolbar-btn">{ICONS.italic}</button>
-                            <button type="button" title="Strikethrough" onClick={() => wrapSelection('~~', '~~')} className="toolbar-btn">{ICONS.strike}</button>
-                            <span className="w-px h-5 bg-white/10 mx-1.5" />
-
-                            {/* Link & Image */}
-                            <button type="button" title="Insert Link (Ctrl+K)" onClick={() => openLinkDialog('link')} className="toolbar-btn">{ICONS.link}</button>
-                            <button type="button" title="Upload Image" onClick={() => inlineImgRef.current?.click()} className="toolbar-btn relative">
-                                {ICONS.image}
-                                {isInlineUploading && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-amber-400 rounded-full animate-pulse" />}
-                            </button>
-                            <input ref={inlineImgRef} type="file" accept="image/*" className="hidden" onChange={handleInlineImage} />
-                            <span className="w-px h-5 bg-white/10 mx-1.5" />
-
-                            {/* Block formatting */}
-                            <button type="button" title="Blockquote" onClick={() => prefixLines('> ')} className="toolbar-btn">{ICONS.quote}</button>
-                            <button type="button" title="Bullet List" onClick={() => prefixLines('- ')} className="toolbar-btn">{ICONS.ul}</button>
-                            <button type="button" title="Numbered List" onClick={() => prefixLines('1. ')} className="toolbar-btn">{ICONS.ol}</button>
-                            <button type="button" title="Inline Code" onClick={() => wrapSelection('`', '`')} className="toolbar-btn">{ICONS.code}</button>
-                            <button type="button" title="Horizontal Rule" onClick={() => insertAtCursor('\n---\n')} className="toolbar-btn">{ICONS.hr}</button>
-                            <span className="w-px h-5 bg-white/10 mx-1.5" />
-
-                            {/* CTA Block */}
-                            <button type="button" title="Insert CTA Block (tracked button)" onClick={() => openLinkDialog('cta')} className="toolbar-btn !px-2.5 bg-[#b31b1b]/10 border border-[#b31b1b]/20 text-[#ff6b6b] hover:bg-[#b31b1b]/20">
-                                {ICONS.cta}
-                            </button>
-
-                            {/* Right-aligned: view mode toggle */}
-                            <div className="ml-auto flex items-center gap-1 pl-3">
-                                {(['edit', 'split', 'preview'] as const).map(m => (
-                                    <button
-                                        key={m}
-                                        type="button"
-                                        onClick={() => setEditorMode(m)}
-                                        className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors ${editorMode === m ? 'bg-[#b31b1b] text-white' : 'text-gray-500 hover:text-white hover:bg-white/10'}`}
-                                    >
-                                        {m === 'edit' ? 'Write' : m === 'split' ? 'Split' : 'Preview'}
-                                    </button>
-                                ))}
+                    {/* ─── Embedded Media & CTAs (visual cards) ─── */}
+                    <div className="mt-6 space-y-3">
+                        <div className="flex items-center justify-between px-1">
+                            <h3 className="text-white font-bold text-sm">Embedded Media & CTAs ({articleData.videoBlocks.length + articleData.ctaBlocks.length})</h3>
+                            <div className="flex gap-2">
+                                <button type="button" onClick={() => setArticleData(prev => ({ ...prev, videoBlocks: [...prev.videoBlocks, { url: '', caption: '', link: '', linktext: '', position: 'after_intro' }] }))}
+                                    className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold transition-colors">+ Video</button>
+                                <button type="button" onClick={() => setArticleData(prev => ({ ...prev, ctaBlocks: [...prev.ctaBlocks, { url: '', text: '', headline: '', description: '', position: 'after_intro' }] }))}
+                                    className="px-3 py-1.5 text-xs bg-green-600 hover:bg-green-500 text-white rounded-lg font-bold transition-colors">+ CTA</button>
                             </div>
                         </div>
 
-                        {/* Link / CTA Dialog */}
-                        {linkDialog.open && (
-                            <div className="px-4 py-3 bg-[#0d0d0d] border-b border-white/10 flex flex-wrap items-end gap-3">
-                                <div className="flex-1 min-w-[200px]">
-                                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">URL *</label>
-                                    <input
-                                        autoFocus
-                                        type="url"
-                                        value={linkUrl}
-                                        onChange={e => setLinkUrl(e.target.value)}
-                                        placeholder="https://"
-                                        className="w-full px-3 py-1.5 bg-[#1a1a1a] border border-white/10 rounded-lg text-white text-sm outline-none focus:ring-1 focus:ring-[#b31b1b]"
-                                        onKeyDown={e => e.key === 'Enter' && confirmLinkDialog()}
-                                    />
-                                </div>
-                                <div className="flex-1 min-w-[160px]">
-                                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{linkDialog.mode === 'cta' ? 'Button text' : 'Link text'}</label>
-                                    <input
-                                        type="text"
-                                        value={linkText}
-                                        onChange={e => setLinkText(e.target.value)}
-                                        placeholder={linkDialog.mode === 'cta' ? 'Learn More' : 'Click here'}
-                                        className="w-full px-3 py-1.5 bg-[#1a1a1a] border border-white/10 rounded-lg text-white text-sm outline-none focus:ring-1 focus:ring-[#b31b1b]"
-                                        onKeyDown={e => e.key === 'Enter' && confirmLinkDialog()}
-                                    />
-                                </div>
-                                {linkDialog.mode === 'cta' && (
-                                    <div className="flex-1 min-w-[200px]">
-                                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Description</label>
-                                        <input
-                                            type="text"
-                                            value={ctaDesc}
-                                            onChange={e => setCtaDesc(e.target.value)}
-                                            placeholder="Optional description text"
-                                            className="w-full px-3 py-1.5 bg-[#1a1a1a] border border-white/10 rounded-lg text-white text-sm outline-none focus:ring-1 focus:ring-[#b31b1b]"
-                                            onKeyDown={e => e.key === 'Enter' && confirmLinkDialog()}
-                                        />
-                                    </div>
-                                )}
-                                <button type="button" onClick={confirmLinkDialog} className="px-4 py-1.5 bg-[#b31b1b] hover:bg-[#c42b2b] text-white text-sm font-bold rounded-lg transition-colors">
-                                    Insert
-                                </button>
-                                <button type="button" onClick={() => setLinkDialog(p => ({ ...p, open: false }))} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-400 text-sm rounded-lg transition-colors">
-                                    Cancel
-                                </button>
-                            </div>
+                        {articleData.videoBlocks.length === 0 && articleData.ctaBlocks.length === 0 && (
+                            <div className="text-center py-8 text-gray-500 text-sm border border-dashed border-white/10 rounded-xl">No videos or CTAs yet. Click + Video or + CTA to add.</div>
                         )}
 
-                        {/* Upload overlay */}
-                        {isInlineUploading && (
-                            <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2">
-                                <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
-                                <span className="text-amber-400 text-xs font-medium">Uploading image...</span>
-                            </div>
-                        )}
-
-                        {/* Editor body */}
-                        {editorMode === 'edit' || editorMode === 'split' ? (
-                            <div className={editorMode === 'split' ? 'grid grid-cols-1 lg:grid-cols-2 gap-0' : ''}>
-                                <div
-                                    className="relative"
-                                    onDrop={handleEditorDrop}
-                                    onDragOver={e => { if (e.dataTransfer?.types?.includes('Files')) e.preventDefault(); }}
-                                >
-                                    <textarea
-                                        ref={textareaRef}
-                                        value={articleData.content}
-                                        onChange={(e) => setArticleData({ ...articleData, content: e.target.value })}
-                                        onKeyDown={handleEditorKeyDown}
-                                        className="w-full h-[600px] p-5 bg-transparent text-white placeholder:text-gray-600 focus:outline-none resize-none font-mono text-sm leading-relaxed"
-                                        placeholder="Start writing your article..."
-                                    />
-                                </div>
-                                {editorMode === 'split' && (
-                                    <div className="p-6 border-t lg:border-t-0 lg:border-l border-white/10 overflow-auto max-h-[640px] prose prose-invert max-w-none">
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={previewComponents}>{articleData.content}</ReactMarkdown>
+                        {/* Video cards */}
+                        {articleData.videoBlocks.map((v, i) => (
+                            <div key={`v-${i}`} className="rounded-xl border border-blue-500/30 bg-blue-500/5 overflow-hidden">
+                                {/* Preview */}
+                                {v.url && (
+                                    <div className="bg-black aspect-video max-h-[200px] overflow-hidden">
+                                        {/\.(mp4|webm|ogg)(\?|$)/i.test(v.url) ? (
+                                            <video src={v.url} className="w-full h-full object-contain" preload="metadata" />
+                                        ) : (
+                                            <iframe src={v.url} className="w-full h-full border-none" />
+                                        )}
                                     </div>
                                 )}
+                                <div className="p-3 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-blue-400 flex items-center gap-1.5">🎬 Video {i + 1}
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 uppercase">{v.position === 'after_intro' ? 'Top' : v.position === 'middle' ? 'Mid' : 'Bottom'}</span>
+                                        </span>
+                                        <button type="button" onClick={() => setArticleData(prev => ({ ...prev, videoBlocks: prev.videoBlocks.filter((_, idx) => idx !== i) }))}
+                                            className="text-xs text-red-400 hover:text-red-300 font-bold">✕ Delete</button>
+                                    </div>
+                                    <input placeholder="Video URL *" value={v.url} onChange={e => { const b = [...articleData.videoBlocks]; b[i] = { ...b[i], url: e.target.value }; setArticleData(prev => ({ ...prev, videoBlocks: b })); }}
+                                        className="w-full p-2 bg-[#1a1a1a] border border-white/10 rounded-lg text-white text-xs placeholder:text-gray-600 outline-none" />
+                                    <div className="flex gap-2">
+                                        <input placeholder="Caption" value={v.caption} onChange={e => { const b = [...articleData.videoBlocks]; b[i] = { ...b[i], caption: e.target.value }; setArticleData(prev => ({ ...prev, videoBlocks: b })); }}
+                                            className="flex-1 p-2 bg-[#1a1a1a] border border-white/10 rounded-lg text-white text-xs placeholder:text-gray-600 outline-none" />
+                                        <select value={v.position} onChange={e => { const b = [...articleData.videoBlocks]; b[i] = { ...b[i], position: e.target.value }; setArticleData(prev => ({ ...prev, videoBlocks: b })); }}
+                                            className="p-2 bg-[#1a1a1a] border border-white/10 rounded-lg text-white text-xs outline-none w-28">
+                                            <option value="after_intro">📍 Top</option>
+                                            <option value="middle">📍 Middle</option>
+                                            <option value="end">📍 Bottom</option>
+                                        </select>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <input placeholder="CTA Link" value={v.link} onChange={e => { const b = [...articleData.videoBlocks]; b[i] = { ...b[i], link: e.target.value }; setArticleData(prev => ({ ...prev, videoBlocks: b })); }}
+                                            className="flex-1 p-2 bg-[#1a1a1a] border border-white/10 rounded-lg text-white text-xs placeholder:text-gray-600 outline-none" />
+                                        <input placeholder="Button text" value={v.linktext} onChange={e => { const b = [...articleData.videoBlocks]; b[i] = { ...b[i], linktext: e.target.value }; setArticleData(prev => ({ ...prev, videoBlocks: b })); }}
+                                            className="w-40 p-2 bg-[#1a1a1a] border border-white/10 rounded-lg text-white text-xs placeholder:text-gray-600 outline-none" />
+                                    </div>
+                                </div>
                             </div>
-                        ) : (
-                            <div className="p-6 overflow-auto max-h-[640px] prose prose-invert max-w-none">
-                                <ReactMarkdown remarkPlugins={[remarkGfm]} components={previewComponents}>{articleData.content}</ReactMarkdown>
+                        ))}
+
+                        {/* CTA cards */}
+                        {articleData.ctaBlocks.map((c, i) => (
+                            <div key={`c-${i}`} className="rounded-xl border border-green-500/30 bg-green-500/5 overflow-hidden">
+                                {/* CTA Preview */}
+                                {c.url && c.text && (
+                                    <div className="bg-gradient-to-br from-[#140909] via-[#0f0f0f] to-[#090909] p-5 text-center">
+                                        <p className="text-white font-bold text-sm">{c.headline || 'Ready to continue?'}</p>
+                                        {c.description && <p className="text-gray-400 text-xs mt-1">{c.description}</p>}
+                                        <span className="inline-block mt-2 px-4 py-1.5 rounded-lg text-xs font-bold text-white bg-gradient-to-b from-[#22c55e] to-[#15803d]">{c.text}</span>
+                                    </div>
+                                )}
+                                <div className="p-3 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-green-400 flex items-center gap-1.5">🔗 CTA {i + 1}
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-300 uppercase">{c.position === 'after_intro' ? 'Top' : c.position === 'middle' ? 'Mid' : 'Bottom'}</span>
+                                        </span>
+                                        <button type="button" onClick={() => setArticleData(prev => ({ ...prev, ctaBlocks: prev.ctaBlocks.filter((_, idx) => idx !== i) }))}
+                                            className="text-xs text-red-400 hover:text-red-300 font-bold">✕ Delete</button>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <input placeholder="URL *" value={c.url} onChange={e => { const b = [...articleData.ctaBlocks]; b[i] = { ...b[i], url: e.target.value }; setArticleData(prev => ({ ...prev, ctaBlocks: b })); }}
+                                            className="flex-1 p-2 bg-[#1a1a1a] border border-white/10 rounded-lg text-white text-xs placeholder:text-gray-600 outline-none" />
+                                        <input placeholder="Button text *" value={c.text} onChange={e => { const b = [...articleData.ctaBlocks]; b[i] = { ...b[i], text: e.target.value }; setArticleData(prev => ({ ...prev, ctaBlocks: b })); }}
+                                            className="w-40 p-2 bg-[#1a1a1a] border border-white/10 rounded-lg text-white text-xs placeholder:text-gray-600 outline-none" />
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <input placeholder="Headline" value={c.headline} onChange={e => { const b = [...articleData.ctaBlocks]; b[i] = { ...b[i], headline: e.target.value }; setArticleData(prev => ({ ...prev, ctaBlocks: b })); }}
+                                            className="flex-1 p-2 bg-[#1a1a1a] border border-white/10 rounded-lg text-white text-xs placeholder:text-gray-600 outline-none" />
+                                        <select value={c.position} onChange={e => { const b = [...articleData.ctaBlocks]; b[i] = { ...b[i], position: e.target.value }; setArticleData(prev => ({ ...prev, ctaBlocks: b })); }}
+                                            className="p-2 bg-[#1a1a1a] border border-white/10 rounded-lg text-white text-xs outline-none w-28">
+                                            <option value="after_intro">📍 Top</option>
+                                            <option value="middle">📍 Middle</option>
+                                            <option value="end">📍 Bottom</option>
+                                        </select>
+                                    </div>
+                                    <input placeholder="Description" value={c.description} onChange={e => { const b = [...articleData.ctaBlocks]; b[i] = { ...b[i], description: e.target.value }; setArticleData(prev => ({ ...prev, ctaBlocks: b })); }}
+                                        className="w-full p-2 bg-[#1a1a1a] border border-white/10 rounded-lg text-white text-xs placeholder:text-gray-600 outline-none" />
+                                </div>
                             </div>
-                        )}
+                        ))}
                     </div>
-
-                    {/* Toolbar CSS */}
-                    <style>{`
-                        .toolbar-btn {
-                            display: inline-flex; align-items: center; justify-content: center;
-                            width: 32px; height: 32px; border-radius: 6px;
-                            color: #999; transition: all 0.15s;
-                        }
-                        .toolbar-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
-                        .toolbar-btn:active { background: rgba(255,255,255,0.12); transform: scale(0.95); }
-                    `}</style>
                 </div>
 
                 {/* Sticky bottom bar */}

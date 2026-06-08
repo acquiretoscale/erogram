@@ -331,13 +331,13 @@ export default function AINSFWPricingClient() {
               ))}
             </ul>
 
-            <Link
-              href="/advertise"
+            <a
+              href="mailto:isabella@erogram.biz"
               className="block w-full py-4 text-sm font-black uppercase tracking-widest text-center text-white transition-all hover:opacity-95 active:translate-x-[2px] active:translate-y-[2px]"
               style={{ background: ACCENT, border: BORDER, boxShadow: SHADOW }}
             >
               Get a Quote →
-            </Link>
+            </a>
             <p className="text-[10px] text-sky-400/50 text-center mt-2.5 font-semibold uppercase tracking-widest">
               Custom pricing · Contact our team
             </p>
@@ -594,8 +594,8 @@ export default function AINSFWPricingClient() {
               {/* Support */}
               <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row items-center justify-center gap-3 text-[11px] text-white/30 font-semibold">
                 <span>Questions? Reach us at:</span>
-                <a href="mailto:erogram@gmail.com" className="text-sky-400 hover:text-sky-300 transition-colors">
-                  erogram@gmail.com
+                <a href="mailto:isabella@erogram.biz" className="text-sky-400 hover:text-sky-300 transition-colors">
+                  isabella@erogram.biz
                 </a>
                 <span className="hidden sm:inline text-white/15">·</span>
                 <a
@@ -619,11 +619,11 @@ export default function AINSFWPricingClient() {
           <p className="text-sm font-black text-white">Need help?</p>
           <div className="flex flex-col sm:flex-row gap-3">
             <a
-              href="mailto:erogram@gmail.com"
+              href="mailto:isabella@erogram.biz"
               className="flex items-center gap-2 px-5 py-3 text-sm font-black text-white transition-all hover:opacity-90"
               style={{ background: 'rgba(255,255,255,0.08)', border: '2px solid rgba(255,255,255,0.15)' }}
             >
-              ✉️ erogram@gmail.com
+              ✉️ isabella@erogram.biz
             </a>
             <a
               href="https://t.me/RVN8888"
@@ -656,13 +656,13 @@ export default function AINSFWPricingClient() {
               <span className="text-white/80 text-xl">40× more exposure.</span>
             </h3>
           </div>
-          <Link
-            href="/advertise"
+          <a
+            href="mailto:isabella@erogram.biz"
             className="shrink-0 px-8 py-4 text-sm font-black uppercase tracking-widest text-white text-center transition-all hover:opacity-90 active:translate-x-[2px] active:translate-y-[2px] whitespace-nowrap"
             style={{ background: ACCENT, border: BORDER, boxShadow: SHADOW }}
           >
             Get a Quote →
-          </Link>
+          </a>
         </div>
 
       </main>

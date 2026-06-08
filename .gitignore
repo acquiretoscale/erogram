@@ -52,3 +52,8 @@ erogram-v2/
 
 # downloaded images (local scraping artifacts)
 downloads/
+
+# BRAIN — LOCAL ONLY. NEVER PUSH. Contains business logic, client data, revenue info.
+brain/
+erogram-brain/
+.cursor/rules/
