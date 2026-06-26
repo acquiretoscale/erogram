@@ -4,7 +4,7 @@ export default function BotCardSkeleton() {
     return (
         <div className="glass rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col backdrop-blur-xl border border-white/5 animate-pulse">
             {/* Image skeleton */}
-            <div className="relative w-full h-32 sm:h-52 bg-gray-800">
+            <div className="relative w-full aspect-square bg-gray-800">
                 <div className="w-full h-full bg-gray-700 animate-pulse"></div>
             </div>
 

@@ -32,6 +32,7 @@ interface Creator {
   isFree: boolean;
   url: string;
   clicks: number;
+  redirectToOF?: boolean;
   liveHourStart?: number;
   liveHourEnd?: number;
 }
@@ -112,12 +113,8 @@ function CreatorCard({
   const handleViewProfile = (e: React.MouseEvent) => {
     e.preventDefault();
     onClickTrack(creator.slug);
-    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) {
-      window.open(`/join-erogram?redirect=/${creator.username}-onlyfans`, '_blank', 'noopener,noreferrer');
-      return;
-    }
-    window.open(`/${creator.username}-onlyfans`, '_blank', 'noopener,noreferrer');
+    // Natural click → straight to the creator's OnlyFans page.
+    if (creator.url) window.open(creator.url, '_blank', 'noopener');
   };
 
   if (deleted) return null;
@@ -255,7 +252,7 @@ function CreatorPostModal({ creator, onClose }: { creator: Creator; onClose: () 
 
   useEffect(() => {
     if (redirecting && countdown === 0) {
-      window.open(creator.url, '_blank', 'noopener,noreferrer');
+      window.open(creator.url, '_blank', 'noopener');
       setRedirecting(false);
     }
   }, [redirecting, countdown, creator.url]);
@@ -320,12 +317,7 @@ function Top10CategoryCard({ list }: { list: Top10List }) {
   const top10 = list.creators.slice(0, 10);
 
   const handleCreatorClick = (c: Creator) => {
-    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) {
-      window.open(`/join-erogram?redirect=/${c.username}-onlyfans`, '_blank', 'noopener,noreferrer');
-      return;
-    }
-    window.open(`/${c.username}-onlyfans`, '_blank', 'noopener,noreferrer');
+    if (c.url) window.open(c.url, '_blank', 'noopener');
   };
 
   return (
@@ -429,12 +421,12 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
   const isLiveVisitors = liveUsers > 0;
 
   const [recentPool, setRecentPool] = useState<Creator[]>(recentlyAdded);
-  const [recentPicks, setRecentPicks] = useState<Creator[]>(() => recentlyAdded.slice(0, 4));
-  const shuffleRecent = () => setRecentPicks(shuffle(recentPool).slice(0, 4));
+  const [recentPicks, setRecentPicks] = useState<Creator[]>(() => recentlyAdded.slice(0, 8));
+  const shuffleRecent = () => setRecentPicks(shuffle(recentPool).slice(0, 8));
 
   useEffect(() => {
     if (recentlyAdded.length > 0) {
-      setRecentPicks(shuffle(recentlyAdded).slice(0, 4));
+      setRecentPicks(shuffle(recentlyAdded).slice(0, 8));
     }
   }, []);
 
@@ -891,14 +883,22 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
             ) : searchResults.length > 0 ? (
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
                 {(() => {
-                  const AD_EVERY = 9;
+                  const FEATURED_EVERY = 8;
+                  const BLOCK_FIRST_AT = 18;
+                  const AD_BLOCK_EVERY = 83;
                   const items: React.ReactNode[] = [];
                   let adIdx = 0;
+                  // Grid is 2-col (mobile) / 4-col (desktop). The full-width block (col-span-4) must ONLY
+                  // be inserted on a 4-cell row boundary or it leaves empty cells (the "black gap").
+                  let cellCount = 0;
+                  let blocksShown = 0;
 
-                  searchResults.forEach((creator, i) => {
-                    if (allFeatured.length > 0 && i > 0 && i % AD_EVERY === 0) {
+                  // First slot + every 8 → featured OF creator. Renders the same featured card (1 cell).
+                  const pushFeatured = (slotNum: number) => {
+                      if (allFeatured.length === 0) return;
                       const tc = allFeatured[adIdx % allFeatured.length];
-                      const slotNum = Math.floor(i / AD_EVERY);
+                      adIdx++;
+                      cellCount++;
                       items.push(
                         <motion.div
                           key={`search-ad-slot-${slotNum}`}
@@ -911,7 +911,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                             type="button"
                             onClick={() => {
                               trackTrendingClick(tc._id);
-                              window.open(tc.url, '_blank', 'noopener,noreferrer');
+                              window.open(tc.url, '_blank', 'noopener');
                             }}
                             className="group w-full text-left rounded-2xl overflow-hidden bg-gradient-to-br from-[#0B1D3A] via-[#122B53] to-[#1A3F73] shadow-[0_14px_36px_-12px_rgba(6,16,36,0.9)] hover:shadow-[0_18px_44px_-10px_rgba(10,27,58,0.95)] ring-[3px] ring-[#FF6A00] hover:ring-[#FF8C3A] transition-all duration-300 cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-[#C7DAFF]/50"
                           >
@@ -958,9 +958,75 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                           </button>
                         </motion.div>
                       );
-                      adIdx++;
+                  };
+
+                  // "FEATURED ONLYFANS CREATORS" block — OF creators ONLY. Same white/ONLYFANS-blue
+                  // design as the top browse block (minus "Submit Your Creator"). Shows only the
+                  // distinct creators available (never repeats one X4): take up to 4 unique, no padding.
+                  const pushAdBlock = (blockNum: number) => {
+                    if (allFeatured.length === 0) return;
+                    const take = Math.min(4, allFeatured.length);
+                    const four = Array.from({ length: take }, (_, k) => allFeatured[(adIdx + k) % allFeatured.length]);
+                    adIdx += take;
+                    items.push(
+                      <div key={`search-adblock-${blockNum}`} className="col-span-2 lg:col-span-4">
+                        <div className="rounded-2xl border border-[#00AFF0]/20 bg-white p-4 sm:p-6 shadow-[0_24px_60px_-18px_rgba(0,175,240,0.15)]">
+                          <div className="flex items-center gap-2 mb-4">
+                            <Crown size={14} className="text-[#00AFF0]" fill="currentColor" />
+                            <h2 className="text-sm sm:text-base font-black text-gray-900">Featured <span className="text-[#00AFF0]">OnlyFans Creators</span></h2>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5">
+                            {four.map((tc, k) => (
+                              <button
+                                key={`ofcat-search-${blockNum}-${tc._id || tc.username}-${k}`}
+                                type="button"
+                                onClick={() => { trackTrendingClick(tc._id); window.open(tc.url, '_blank', 'noopener'); }}
+                                className="group w-full text-left rounded-2xl overflow-hidden bg-white ring-[2px] ring-[#00AFF0]/30 hover:ring-[#00AFF0] shadow-[0_8px_28px_-8px_rgba(0,175,240,0.25)] hover:shadow-[0_12px_36px_-6px_rgba(0,175,240,0.35)] hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none"
+                              >
+                                <div className="relative aspect-[3/4] bg-[#f0f8ff]">
+                                  {tc.avatar ? <img src={tc.avatar} alt={`${tc.name} OnlyFans`} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" loading="lazy" referrerPolicy="no-referrer" /> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#00AFF0] bg-[#f0f8ff]">{tc.name.charAt(0)}</div>}
+                                </div>
+                                <div className="px-3 pt-2.5 sm:px-4 sm:pt-3">
+                                  <div className="flex items-center gap-1.5">
+                                    <h3 className="font-bold text-[13px] sm:text-[15px] text-gray-900 truncate leading-tight">{tc.name}</h3>
+                                    {isCreatorLiveNow(tc.liveHourStart ?? -1, tc.liveHourEnd ?? -1) && (
+                                      <span className="inline-flex items-center gap-1 shrink-0">
+                                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-[pulse_2s_ease-in-out_infinite]" />
+                                        <span className="text-[9px] font-bold text-emerald-400 uppercase">Live</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[11px] sm:text-[13px] text-[#00AFF0] font-semibold mt-0.5">@{tc.username}</p>
+                                  {(tc.likesCount > 0) && (
+                                    <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5">{formatCount(tc.likesCount)} {t('ofSearch.likes')}</p>
+                                  )}
+                                </div>
+                                <div className="px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3"><div className="w-full py-2 sm:py-2.5 rounded-xl bg-[#00AFF0] text-white text-[12px] sm:text-sm font-black text-center shadow-lg border border-[#00AFF0] group-hover:bg-[#009AD6] transition-colors">{t('ofSearch.viewProfile')}</div></div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  };
+
+                  // FIRST slot — always a featured OF creator.
+                  pushFeatured(0);
+
+                  searchResults.forEach((creator, i) => {
+                    // Single featured creator every ~8 (1 cell).
+                    if (i > 0 && i % FEATURED_EVERY === 0) {
+                      pushFeatured(Math.floor(i / FEATURED_EVERY));
                     }
 
+                    // Full-width block: once past the threshold AND on a clean 4-cell row boundary.
+                    const threshold = BLOCK_FIRST_AT + blocksShown * AD_BLOCK_EVERY;
+                    if (cellCount >= threshold && cellCount % 4 === 0) {
+                      pushAdBlock(blocksShown);
+                      blocksShown++;
+                    }
+
+                    cellCount++;
                     items.push(
                       <motion.div
                         key={creator._id}
@@ -1030,7 +1096,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5">
                     {blockFeatured.map((tc) => (
-                      <button key={`feat-${tc._id}`} type="button" onClick={() => { trackTrendingClick(tc._id); window.open(tc.url, '_blank', 'noopener,noreferrer'); }} className="group w-full text-left rounded-2xl overflow-hidden bg-white ring-[2px] ring-[#00AFF0]/30 hover:ring-[#00AFF0] shadow-[0_8px_28px_-8px_rgba(0,175,240,0.25)] hover:shadow-[0_12px_36px_-6px_rgba(0,175,240,0.35)] hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none">
+                      <button key={`feat-${tc._id}`} type="button" onClick={() => { trackTrendingClick(tc._id); window.open(tc.url, '_blank', 'noopener'); }} className="group w-full text-left rounded-2xl overflow-hidden bg-white ring-[2px] ring-[#00AFF0]/30 hover:ring-[#00AFF0] shadow-[0_8px_28px_-8px_rgba(0,175,240,0.25)] hover:shadow-[0_12px_36px_-6px_rgba(0,175,240,0.35)] hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none">
                         <div className="relative aspect-[3/4] bg-[#f0f8ff]">
                           {tc.avatar ? <img src={tc.avatar} alt={`${tc.name} OnlyFans`} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" loading="lazy" referrerPolicy="no-referrer" /> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#00AFF0] bg-[#f0f8ff]">{tc.name.charAt(0)}</div>}
                         </div>
@@ -1061,70 +1127,6 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                         <div className="px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3"><div className="w-full py-2 sm:py-2.5 rounded-xl bg-[#00AFF0] text-white text-[12px] sm:text-sm font-black text-center shadow-lg border border-[#00AFF0] group-hover:bg-[#009AD6] transition-colors">{t('ofSearch.viewProfile')}</div></div>
                       </button>
                     ))}
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {/* Trending on Erogram */}
-            {trendingOnErogram.length > 0 && (
-              <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-                <div className="relative overflow-hidden rounded-2xl border border-[#00AFF0]/20 bg-gradient-to-br from-[#061018] via-[#0a1c2e] to-[#0d2844] p-4 sm:p-6 shadow-[0_20px_50px_-12px_rgba(0,175,240,0.18),inset_0_1px_0_0_rgba(255,255,255,0.06)]">
-                  <div className="pointer-events-none absolute -top-28 -right-20 h-56 w-56 rounded-full bg-[#00AFF0]/20 blur-3xl" />
-                  <div className="pointer-events-none absolute -bottom-24 -left-16 h-48 w-48 rounded-full bg-[#00D4FF]/12 blur-3xl" />
-                  <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(0,175,240,0.06)_0%,transparent_45%,rgba(0,212,255,0.04)_100%)]" />
-                  <div className="relative">
-                    <div className="flex items-center gap-3 mb-5">
-                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-[#00AFF0] to-[#00D4FF] flex items-center justify-center shrink-0 shadow-lg shadow-[#00AFF0]/30">
-                        <TrendingUp size={18} className="text-white" />
-                      </div>
-                      <div>
-                        <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">
-                          Trending on <span className="text-[#00D4FF]">Erogram</span>
-                        </h2>
-                        <p className="text-[11px] text-white/50 font-semibold">Top {trendingOnErogram.length} chart · Last 7 days</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                      {[0, 1, 2, 3].map((col) => {
-                        const perCol = Math.ceil(trendingOnErogram.length / 4);
-                        const chunk = trendingOnErogram.slice(col * perCol, col * perCol + perCol);
-                        if (chunk.length === 0) return null;
-                        return (
-                          <div key={col} className="rounded-xl bg-white overflow-hidden shadow-md">
-                            {chunk.map((tc, j) => (
-                              <a
-                                key={tc._id}
-                                href={`/${tc.username}-onlyfans`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={() => trackClick(tc.slug)}
-                                className={`w-full flex items-center hover:brightness-95 transition-all ${
-                                  j < chunk.length - 1 ? 'border-b border-gray-100' : ''
-                                }`}
-                              >
-                                <span className="w-6 h-6 rounded-md bg-gray-900 text-white text-[10px] font-black flex items-center justify-center shrink-0 tabular-nums ml-2">
-                                  {tc.rank}
-                                </span>
-                                <div className="flex items-center gap-3 px-2 py-2.5 flex-1 min-w-0">
-                                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 shrink-0">
-                                    {tc.avatar ? (
-                                      <img src={tc.avatar} alt={tc.name} className="w-full h-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center text-sm font-bold text-gray-400">{tc.name.charAt(0)}</div>
-                                    )}
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <p className="text-[13px] font-bold text-gray-900 truncate">{tc.name}</p>
-                                    <p className="text-[11px] text-gray-500 mt-0.5">@{tc.username}</p>
-                                  </div>
-                                </div>
-                              </a>
-                            ))}
-                          </div>
-                        );
-                      })}
-                    </div>
                   </div>
                 </div>
               </section>
@@ -1182,23 +1184,30 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
               </section>
             )}
 
-          {/* Top by Category */}
-            {top10Lists.filter((l) => l.creators.length > 0).length > 0 && (
-              <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-[#00AFF0] to-[#00D4FF] flex items-center justify-center flex-shrink-0">
-                    <Crown size={18} className="text-white" />
-                  </div>
-                  <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">Top 10 OnlyFans Creators by Category</h2>
-                  <div className="flex-1 h-px bg-white/[0.06]" />
+          {/* Browse by Category — quick access to each dedicated category page (/{slug}onlyfans) */}
+            <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-[#00AFF0] to-[#00D4FF] flex items-center justify-center flex-shrink-0">
+                  <Crown size={18} className="text-white" />
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
-                  {top10Lists.filter((l) => l.creators.length > 0).map((list) => (
-                    <Top10CategoryCard key={`top-${list.category}`} list={list} />
-                  ))}
-                </div>
-              </section>
-            )}
+                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">Browse OnlyFans Creators by Category</h2>
+                <div className="flex-1 h-px bg-white/[0.06]" />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+                {OF_CATEGORIES.slice(0, 12).map((cat) => (
+                  <Link
+                    key={`browse-${cat.slug}`}
+                    href={lp(ofCategoryUrl(cat.slug))}
+                    className="group flex items-center justify-between gap-2 rounded-xl border border-white/[0.10] bg-white/[0.04] px-4 py-3.5 hover:bg-[#00AFF0]/10 hover:border-[#00AFF0]/40 transition-all"
+                  >
+                    <span className="text-sm sm:text-base font-bold text-white/80 group-hover:text-[#00AFF0] transition-colors truncate">
+                      {cat.name} <span className="text-white/30 font-medium">OnlyFans</span>
+                    </span>
+                    <span className="text-white/30 group-hover:text-[#00AFF0] transition-colors shrink-0">→</span>
+                  </Link>
+                ))}
+              </div>
+            </section>
 
           </>
         )}

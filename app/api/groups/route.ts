@@ -4,7 +4,9 @@ import mongoose from 'mongoose';
 import connectDB from '@/lib/db/mongodb';
 import { Group, Bot, User, Post, SystemConfig, Article } from '@/lib/models';
 import { slugify } from '@/lib/utils/slugify';
-import { uploadToR2, getR2PublicUrl } from '@/lib/r2';
+import { uploadToR2, getR2PublicUrl, isR2Configured } from '@/lib/r2';
+import { writeFile, mkdir } from 'fs/promises';
+import path from 'path';
 
 function resolveImageUrl(stored: string | undefined, origin: string): string {
   const placeholder = process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png'; // relative so next/image works locally (no hostname check)
@@ -87,7 +89,7 @@ export async function GET(req: NextRequest) {
       const now = new Date();
       await Group.updateMany(
         { boosted: true, boostExpiresAt: { $lte: now } },
-        { $set: { boosted: false, boostExpiresAt: null, boostDuration: null } }
+        { $set: { boosted: false, boostExpiresAt: null, boostDuration: null, featured: false } }
       );
 
       const featuredGroups = await Group.find({
@@ -142,7 +144,7 @@ export async function GET(req: NextRequest) {
       const now = new Date();
       await Group.updateMany(
         { boosted: true, boostExpiresAt: { $lte: now } },
-        { $set: { boosted: false, boostExpiresAt: null, boostDuration: null } }
+        { $set: { boosted: false, boostExpiresAt: null, boostDuration: null, featured: false } }
       );
 
       const boostedGroups = await Group.find({
@@ -221,7 +223,7 @@ export async function GET(req: NextRequest) {
       // Expire old boosts
       await Group.updateMany(
         { boosted: true, boostExpiresAt: { $lte: now } },
-        { $set: { boosted: false, boostExpiresAt: null, boostDuration: null } }
+        { $set: { boosted: false, boostExpiresAt: null, boostDuration: null, featured: false } }
       );
 
       // Boosted groups (paid) get priority placement in Top Groups
@@ -585,16 +587,31 @@ export async function GET(req: NextRequest) {
 
 
 
-// Simple submit: form data → save to DB → pending for moderation. No login required.
+// Submit: login required → save to DB → pending for moderation.
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
 
+    const user = await authenticate(req);
+    if (!user) {
+      return NextResponse.json(
+        { message: 'You must be logged in to submit a group' },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
-    const { name, category, country, telegramLink, description, image } = body;
+    const { name, category, telegramLink, description, image, contactTelegram, contactEmail } = body;
     const categoriesArr: string[] = Array.isArray(body.categories)
       ? body.categories.slice(0, 3)
       : category ? [category] : [];
+
+    if (!contactTelegram && !contactEmail) {
+      return NextResponse.json(
+        { message: 'Please provide your Telegram username or email so we can reach you' },
+        { status: 400 }
+      );
+    }
 
     if (!name || categoriesArr.length === 0 || !telegramLink || !description) {
       return NextResponse.json(
@@ -631,18 +648,29 @@ export async function POST(req: NextRequest) {
         const buffer = Buffer.from(base64Match[2], 'base64');
         const contentType = `image/${base64Match[1]}`;
         const key = `groups/${slug}.${ext}`;
-        try {
-          finalImage = await uploadToR2(buffer, key, contentType);
-        } catch {
-          // keep default
+        if (isR2Configured()) {
+          try {
+            finalImage = await uploadToR2(buffer, key, contentType);
+          } catch (err) {
+            console.error('R2 upload failed:', err);
+          }
+        } else {
+          try {
+            const dir = path.join(process.cwd(), 'public', 'uploads', 'groups');
+            await mkdir(dir, { recursive: true });
+            const filePath = path.join(dir, `${slug}.${ext}`);
+            await writeFile(filePath, buffer);
+            finalImage = `/uploads/groups/${slug}.${ext}`;
+          } catch (err) {
+            console.error('Local image save failed:', err);
+          }
         }
       }
     } else if (image?.startsWith('https://')) {
       finalImage = image;
     }
 
-    const user = await authenticate(req);
-    const doc: Record<string, unknown> = {
+    const group = await Group.create({
       name,
       slug,
       categories: categoriesArr,
@@ -652,10 +680,10 @@ export async function POST(req: NextRequest) {
       description,
       image: finalImage,
       status: 'pending',
-    };
-    if (user?._id) doc.createdBy = user._id;
-
-    const group = await Group.create(doc);
+      createdBy: user._id,
+      contactTelegram: (contactTelegram || '').trim(),
+      contactEmail: (contactEmail || '').trim(),
+    });
     return NextResponse.json(group);
   } catch (error: any) {
     console.error('Error creating group:', error);

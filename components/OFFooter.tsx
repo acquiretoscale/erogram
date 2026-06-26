@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { RtaBadge } from './AgeGate';
-import { ofCategoryUrl, OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
+import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
 
 export default function OFFooter() {
@@ -35,7 +35,7 @@ export default function OFFooter() {
               {t('ofSearch.footerTaglineSub')}
             </p>
             <a
-              href="https://t.me/erogrampro"
+              href="https://t.me/erogramDOTpro"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex w-9 h-9 rounded-full border border-white/10 items-center justify-center text-[#888] hover:bg-[#00AFF0]/15 hover:text-[#00AFF0] hover:border-[#00AFF0]/30 transition-all"
@@ -67,13 +67,13 @@ export default function OFFooter() {
                 </Link>
               </li>
               <li>
-                <Link href="/articles" className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
+                <Link href="/blog" className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
                   Articles &amp; Guides
                 </Link>
               </li>
               {OF_CATEGORIES.slice(0, 6).map((cat) => (
                 <li key={cat.slug}>
-                  <Link href={lp(ofCategoryUrl(cat.slug))} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
+                  <Link href={lp(`/best-onlyfans-accounts/${cat.slug}`)} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
                     {t('ofSearch.catOnlyfans').replace('{cat}', cat.name)}
                   </Link>
                 </li>

@@ -22,10 +22,7 @@ const nextConfig: NextConfig = {
 
   serverExternalPackages: ['@ffmpeg-installer/ffmpeg', 'fluent-ffmpeg'],
 
-  webpack: (config, { dev }) => {
-    if (dev) {
-      config.cache = false;
-    }
+  webpack: (config) => {
     return config;
   },
 
@@ -81,6 +78,17 @@ const nextConfig: NextConfig = {
       {
         source: '/groups/page/',
         destination: '/groups',
+        permanent: true,
+      },
+      // Blog migration: old /articles → new /blog (301, preserves slug)
+      {
+        source: '/articles',
+        destination: '/blog',
+        permanent: true,
+      },
+      {
+        source: '/articles/:slug',
+        destination: '/blog/:slug',
         permanent: true,
       },
     ];
@@ -199,23 +207,6 @@ const nextConfig: NextConfig = {
         headers: [
           { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, max-age=0" },
           { key: "Pragma", value: "no-cache" },
-        ],
-      },
-      // Creator profiles: never cache, never index
-      {
-        source: "/enzogonzo",
-        headers: [
-          { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, private, max-age=0" },
-          { key: "Pragma", value: "no-cache" },
-          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive, nosnippet" },
-        ],
-      },
-      {
-        source: "/vickykovaks",
-        headers: [
-          { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, private, max-age=0" },
-          { key: "Pragma", value: "no-cache" },
-          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive, nosnippet" },
         ],
       },
     ];

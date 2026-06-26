@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
 import { Group, Bot } from '@/lib/models';
+import { validateCoupon, recordCouponUsage } from '@/lib/actions/coupons';
 
 const BOT_TOKEN = process.env.TELEGRAM_PAYMENT_BOT_TOKEN || '';
 
@@ -21,7 +22,7 @@ const GROUP_PLANS: Partial<Record<SubmissionType, { title: string; description: 
   boost_month: {
     title: 'Instant + Boost (1 Month)',
     description: 'Instantly approved AND boosted in Top Groups for 30 days (40× more exposure)',
-    amount: 6000,
+    amount: 5000,
   },
 };
 
@@ -53,14 +54,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: 'Payments are not configured. Contact admin.' }, { status: 503 });
   }
 
-  let body: { groupId?: string; type?: SubmissionType; entityType?: EntityType };
+  let body: { groupId?: string; type?: SubmissionType; entityType?: EntityType; couponCode?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ message: 'Invalid request body' }, { status: 400 });
   }
 
-  const { groupId, type, entityType = 'group' } = body;
+  const { groupId, type, entityType = 'group', couponCode } = body;
 
   const plans = entityType === 'bot' ? BOT_PLANS : GROUP_PLANS;
 
@@ -77,19 +78,60 @@ export async function POST(req: NextRequest) {
   }
 
   const plan = plans[type];
+  let finalAmount = plan.amount;
+  let couponValidation: any = null;
+
+  if (couponCode) {
+    const service = entityType === 'bot' ? 'bots' : 'groups';
+    couponValidation = await validateCoupon(couponCode, service, plan.amount);
+    if (!couponValidation.valid) {
+      return NextResponse.json({ message: couponValidation.error }, { status: 400 });
+    }
+    finalAmount = couponValidation.discountedStars;
+  }
 
   try {
-    const invoicePayload = JSON.stringify({ groupId, type, entityType });
+    // 100% discount — skip Telegram invoice, approve directly
+    if (finalAmount <= 0) {
+      const now = new Date();
+      const updateFields: Record<string, any> = { paidBoost: true, paidBoostStars: 0 };
+      if (type === 'instant_approval' || type === 'boost_week' || type === 'boost_month') {
+        updateFields.status = 'approved';
+      }
+      if (type === 'boost_week') {
+        const exp = new Date(now); exp.setDate(exp.getDate() + 7);
+        Object.assign(updateFields, { featured: true, featuredAt: now, boosted: true, boostExpiresAt: exp, boostDuration: '7d' });
+      } else if (type === 'boost_month') {
+        const exp = new Date(now); exp.setDate(exp.getDate() + 30);
+        Object.assign(updateFields, { featured: true, featuredAt: now, boosted: true, boostExpiresAt: exp, boostDuration: '30d' });
+      }
+      await Model.findByIdAndUpdate(groupId, { $set: updateFields });
+
+      if (couponValidation?.couponId) {
+        await recordCouponUsage(couponValidation.couponId, {
+          service: entityType === 'bot' ? 'bots' : 'groups',
+          entityId: groupId,
+          originalStars: plan.amount,
+          discountedStars: 0,
+          savedStars: plan.amount,
+          couponCode: couponCode!,
+        });
+      }
+
+      return NextResponse.json({ url: null, freeApproval: true });
+    }
+
+    const invoicePayload = JSON.stringify({ groupId, type, entityType, couponCode: couponCode || undefined, couponId: couponValidation?.couponId });
     const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/createInvoiceLink`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: plan.title,
-        description: plan.description,
+        description: couponCode ? `${plan.description} (Coupon: ${couponCode})` : plan.description,
         payload: invoicePayload,
         provider_token: '',
         currency: 'XTR',
-        prices: [{ label: plan.title, amount: plan.amount }],
+        prices: [{ label: plan.title, amount: finalAmount }],
       }),
     });
 

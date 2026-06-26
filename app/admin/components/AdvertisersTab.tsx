@@ -8,8 +8,82 @@ import { adminCreateCampaign, adminUpdateCampaign, adminDeleteCampaign, getAdver
 import { getBots } from '@/lib/actions/adminBots';
 import { getOFMTrending, searchOFMCreators } from '@/lib/actions/ofm';
 import { ensureR2Avatar } from '@/lib/actions/creatorImages';
+import { getTrendingCreatorStats } from '@/lib/actions/onlyfansTracking';
 import { fetchCreatorFromApify } from '@/lib/actions/submitCreator';
 import FeaturedCreatorsManager from '@/app/OF/featured/FeaturedCreatorsManager';
+import { PLACEMENTS, placementToTierSlot } from '@/lib/adPlacements';
+
+// ── Launch placement picker, organized into the owner's mental tiers ──
+// Each entry maps to REAL placement ids from lib/adPlacements.ts (the engine's source of truth).
+// Picking a placement = WHERE the ad shows. Agnostic: any creative runs in any placement.
+const LAUNCH_TIERS: { tier: string; hint: string; sections: { label: string; placements: string[] }[] }[] = [
+  {
+    tier: 'TOP TIER',
+    hint: 'Highest-value core spots',
+    sections: [
+      { label: 'Top Groups', placements: ['top-groups-1', 'top-groups-2', 'top-groups-3', 'top-groups-4'] },
+      { label: 'Top Bots', placements: ['top-bots-1', 'top-bots-2', 'top-bots-3', 'top-bots-4'] },
+      { label: 'Top AI NSFW', placements: ['ainsfw-featured'] },
+    ],
+  },
+  {
+    tier: 'IN FEED',
+    hint: 'Single ad cards inside the scrolling feed',
+    sections: [
+      { label: 'In-Feed (Groups / Bots / OnlyFans)', placements: ['feed-2', 'feed-3', 'feed-4', 'feed-5'] },
+      { label: 'In-Feed AI NSFW', placements: ['ainsfw-feed'] },
+    ],
+  },
+  {
+    tier: 'IN-PAGE',
+    hint: 'The block of up to 4 ads on individual group / bot / AI NSFW pages',
+    sections: [
+      { label: 'In-page block (group / bot / AI NSFW pages)', placements: ['group-sidebar'] },
+    ],
+  },
+  {
+    tier: 'SPOTLIGHT (MAIN)',
+    hint: 'Versatile blocks on /main (SPOTLIGHT) — each rotates a wide banner (image/video) OR a 4-up card grid',
+    sections: [
+      { label: 'SPOTLIGHT — Adspace 1 / Adspace 2', placements: ['home-block-1', 'home-block-2'] },
+    ],
+  },
+  {
+    tier: 'TOP 10s',
+    hint: 'Integrated into Top-10 listing pages (keyword-targetable)',
+    sections: [
+      { label: 'Best Telegram Groups', placements: ['best-groups'] },
+      { label: 'Best OnlyFans Accounts', placements: ['best-of'] },
+      { label: 'OnlyFans Search categories', placements: ['of-cat'] },
+    ],
+  },
+  {
+    tier: 'BANNERS & CTA',
+    hint: 'Global banners and call-to-action buttons',
+    sections: [
+      { label: 'Top Banner', placements: ['top-banner'] },
+      { label: 'Navbar CTA', placements: ['navbar-cta'] },
+      { label: 'Join CTA (group/bot pages)', placements: ['join-cta'] },
+    ],
+  },
+];
+
+// CORE NETWORK BLAST — the one-click "show everywhere that matters" set.
+// Top Groups (4) + Top Bots (4) + Top AI NSFW + ALL In-Feed + In-Page block.
+// Deliberately EXCLUDES: Top-10s (hand-picked), OnlyFans-cat feed, Banners & CTA (different ad type),
+// and Articles CTA (managed from Articles).
+const CORE_BLAST_PLACEMENTS: string[] = [
+  'top-groups-1', 'top-groups-2', 'top-groups-3', 'top-groups-4',
+  'top-bots-1', 'top-bots-2', 'top-bots-3', 'top-bots-4',
+  'ainsfw-featured',
+  'feed-2', 'feed-3', 'feed-4', 'feed-5',
+  'group-sidebar',
+];
+
+// Label lookup for placements (falls back to id).
+const PLACEMENT_PICK_LABEL: Record<string, string> = {
+  ...Object.fromEntries(PLACEMENTS.map((p) => [p.id, p.label])),
+};
 
 interface AdvertiserRow {
   _id: string;
@@ -19,6 +93,8 @@ interface AdvertiserRow {
   logo: string;
   notes: string;
   status: string;
+  dailyClickCap: number;
+  isOfAgency?: boolean;
   campaignCount: number;
   createdAt: string;
 }
@@ -45,7 +121,7 @@ interface CampaignRow {
   category: string;
   country: string;
   buttonText: string;
-  feedPlacement?: 'groups' | 'bots' | 'both';
+  feedPlacement?: 'groups' | 'bots' | 'ainsfw' | 'both';
   internalName?: string;
   videoUrl?: string;
 }
@@ -93,6 +169,82 @@ const SLOT_LABELS: Record<string, string> = {
   'featured-groups': 'Featured Groups',
   'article-link': 'Article Link',
   ainsfw: 'AI NSFW Featured',
+  // New ad spaces (named placements) — surfaced as their own lines in the Overview.
+  // Top-tier families (4 spots each roll up into one line).
+  'top-groups': 'Top Groups',
+  'top-bots': 'Top Bots',
+  // Spot-level labels (used in detailed-tracking drill).
+  'top-groups-1': 'Top Groups — Spot 1',
+  'top-groups-2': 'Top Groups — Spot 2',
+  'top-groups-3': 'Top Groups — Spot 3',
+  'top-groups-4': 'Top Groups — Spot 4',
+  'top-bots-1': 'Top Bots — Spot 1',
+  'top-bots-2': 'Top Bots — Spot 2',
+  'top-bots-3': 'Top Bots — Spot 3',
+  'top-bots-4': 'Top Bots — Spot 4',
+  'ainsfw-featured': 'Top AI NSFW',
+  // 4-ad BLOCKS, per host page (each tracked separately).
+  'group-sidebar': 'Block — Group/Bot/AI Page',
+  'group-sidebar-groups': 'Block — Groups Page',
+  'group-sidebar-bots': 'Block — Bots Page',
+  'group-sidebar-ainsfw': 'Block — AI NSFW Page',
+  'best-of': 'Best OnlyFans (Top 10)',
+  'best-groups': 'Best Telegram Groups (Top 10)',
+  'of-cat': 'OnlyFans Search Pages',
+};
+
+// ── Breakdown lenses for "Clicks by ad space" ──
+// Maps a normalized ad-space (from getDashboardStats.bySlot) into the owner's 3 mental models.
+// Anything unmapped falls into a sensible default so no clicks are ever dropped from the view.
+
+// FAMILY: the 7 placement families from the spec.
+const SPACE_TO_FAMILY: Record<string, string> = {
+  'top-groups': 'Top Placements', 'top-bots': 'Top Placements', 'ainsfw-featured': 'Top Placements',
+  feed: 'In-Feed',
+  'group-sidebar': 'Blocks', 'group-sidebar-groups': 'Blocks', 'group-sidebar-bots': 'Blocks', 'group-sidebar-ainsfw': 'Blocks',
+  'top-banner': 'Banners', 'homepage-hero': 'Banners',
+  'navbar-cta': 'CTA', 'join-cta': 'CTA', 'filter-cta': 'CTA',
+  'article-link': 'Articles',
+  'best-of': 'Integrated (Top 10s)', 'best-groups': 'Integrated (Top 10s)', 'of-cat': 'Integrated (Top 10s)',
+  'featured-groups': 'Blocks',
+};
+const FAMILY_ORDER = ['Top Placements', 'In-Feed', 'Blocks', 'Banners', 'CTA', 'Articles', 'Integrated (Top 10s)'];
+
+// TIER: Top / Mid / Other (launch tiers).
+const SPACE_TO_TIER: Record<string, string> = {
+  'top-groups': 'Top Tier', 'top-bots': 'Top Tier', 'ainsfw-featured': 'Top Tier',
+  feed: 'Mid Tier', 'group-sidebar': 'Mid Tier', 'group-sidebar-groups': 'Mid Tier', 'group-sidebar-bots': 'Mid Tier', 'group-sidebar-ainsfw': 'Mid Tier',
+  'best-of': 'Mid Tier', 'best-groups': 'Mid Tier', 'of-cat': 'Mid Tier',
+  'top-banner': 'Other', 'homepage-hero': 'Other', 'navbar-cta': 'Other', 'join-cta': 'Other', 'filter-cta': 'Other', 'article-link': 'Other', 'featured-groups': 'Mid Tier',
+};
+const TIER_ORDER = ['Top Tier', 'Mid Tier', 'Other'];
+
+// Curated ad-space filter list — the REAL spaces we run, ordered by family. No junk
+// (vault-premium removed: 0 clicks, nothing serves it). These are the slugs getDashboardStats
+// understands via normalizeAdSpace, so selecting any one scopes the whole Overview to it.
+const AD_SPACE_FILTER_OPTIONS = [
+  // Top Placements
+  'top-groups', 'top-bots', 'ainsfw-featured',
+  // In-Feed
+  'feed',
+  // Blocks (per host page)
+  'group-sidebar-groups', 'group-sidebar-bots', 'group-sidebar-ainsfw',
+  // Banners
+  'top-banner', 'homepage-hero',
+  // CTA
+  'navbar-cta', 'join-cta',
+  // Articles
+  'article-link',
+  // Integrated (Top 10s)
+  'best-of', 'best-groups', 'of-cat',
+  // Boosted featured groups (entity store)
+  'featured-groups',
+];
+
+const FAMILY_COLORS: Record<string, string> = {
+  'Top Placements': '#ef4444', 'In-Feed': '#10b981', 'Blocks': '#8b5cf6', 'Banners': '#3b82f6',
+  'CTA': '#f59e0b', 'Articles': '#06b6d4', 'Integrated (Top 10s)': '#ec4899',
+  'Top Tier': '#ef4444', 'Mid Tier': '#10b981', 'Other': '#6b7280',
 };
 
 const FEED_SLOTS = ['feed'];
@@ -489,9 +641,10 @@ interface AdvertisersTabProps {
   setActiveTab?: (tab: string) => void;
   initialSection?: SectionTabType;
   hideSectionTabs?: boolean;
+  openFormOnMount?: boolean;
 }
 
-export default function AdvertisersTab({ setActiveTab, initialSection = 'overview', hideSectionTabs = false }: AdvertisersTabProps = {}) {
+export default function AdvertisersTab({ setActiveTab, initialSection = 'overview', hideSectionTabs = false, openFormOnMount = false }: AdvertisersTabProps = {}) {
   const [advertisers, setAdvertisers] = useState<AdvertiserRow[]>([]);
   const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
   const [slots, setSlots] = useState<SlotInfo[]>([]);
@@ -500,9 +653,22 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
   const [slotTotals, setSlotTotals] = useState<Array<{ slot: string; totalClicks: number; campaignCount: number }>>([]);
   const [clicksByAdvertiser, setClicksByAdvertiser] = useState<Array<{ advertiserId: string; advertiserName: string; totalClicks: number; last7Days: number; last30Days: number }>>([]);
   const [feedClickStats, setFeedClickStats] = useState<Record<string, { total: number; last24h: number; last48h?: number; last7d: number; last30d: number; impressions?: number; ctr?: number; impressions24h?: number; ctr24h?: number; impressions48h?: number; ctr48h?: number }>>({});
+  // Real /OF trending-grid clicks, keyed by lowercase username (different store than CampaignClick).
+  const [trendingStats, setTrendingStats] = useState<Record<string, { total: number; last24h: number; last7d: number; last30d: number }>>({});
+  // Feed Ads view options
+  const [showCTR, setShowCTR] = useState(true);
+  const [showImpressions, setShowImpressions] = useState(true);
   const [feedABStats, setFeedABStats] = useState<Record<string, { feedTier: number; tierSlot: number; variants: { _id: string; name: string; advertiserName: string; impressions: number; clicks: number; ctr: number; status: string; isWinner: boolean }[] }>>({});
   // Filtered dashboard (Overview KPIs + charts)
   const [dashboardRange, setDashboardRange] = useState<'today' | '7d' | '30d' | 'custom' | 'lifetime'>('30d');
+  // Big top-level lens: which click universe to focus on. 'advertisers' = sponsor ad-space (default,
+  // existing behaviour). 'of' = OnlyFans creators only. 'boost' = paid group/bot boosts only.
+  const [overviewView, setOverviewView] = useState<'advertisers' | 'of' | 'boost'>('advertisers');
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedUniverses, setSelectedUniverses] = useState<Set<'all' | 'advertisers' | 'of' | 'boost'>>(new Set(['all']));
+  // Breakdown lens for the "Clicks by ad space" panel: group placements into the owner's
+  // mental models — by placement Family, by Tier (Top/Mid/Other), or by Category (OF/AI/Boost/Ad).
+  const [breakdownLens, setBreakdownLens] = useState<'family' | 'tier' | 'category'>('family');
   const [dashboardSlots, setDashboardSlots] = useState<string[]>([]);
   const [dashboardAdvertiserIds, setDashboardAdvertiserIds] = useState<string[]>([]);
   const [dashboardFrom, setDashboardFrom] = useState('');
@@ -519,6 +685,9 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
     clicksByDayBySlot?: { date: string; slots: Record<string, number> }[];
     advertiserSlotBreakdown?: { advertiserId: string; advertiserName: string; slots: { slot: string; clicks: number }[] }[];
     featuredGroups?: { groupId: string; name: string; advertiserId: string; advertiserName: string; clickCount: number; lastClickedAt?: string }[];
+    networkTotals?: { adSpace: number; boost: number; of: number; ofFeatured: number; ofOrganic: number; grandTotal: number };
+    ofDetail?: { name: string; username: string; clicks: number; kind: 'featured' | 'organic' }[];
+    boostDetail?: { name: string; entityType: 'group' | 'bot'; clicks: number }[];
   } | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [overviewAdvSortBy, setOverviewAdvSortBy] = useState<'period' | '7d' | '30d' | 'share'>('period');
@@ -559,8 +728,9 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
 
   // Advertiser form
   const [editingAdvertiser, setEditingAdvertiser] = useState<AdvertiserRow | null>(null);
-  const [advForm, setAdvForm] = useState({ name: '', email: '', company: '', logo: '', notes: '', status: 'active' });
+  const [advForm, setAdvForm] = useState({ name: '', email: '', company: '', logo: '', notes: '', status: 'active', dailyClickCap: 0, isOfAgency: false });
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   // Campaign form: type drives whether we show text+link, image+link, or premium mosaic
   const [campaignType, setCampaignType] = useState<'text' | 'image' | 'premium' | 'onlyfans-creator'>('image');
@@ -583,16 +753,19 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
     category: 'All',
     country: 'All',
     buttonText: 'Visit Site',
-    feedPlacement: 'both' as 'groups' | 'bots' | 'both',
+    feedPlacement: 'both' as 'groups' | 'bots' | 'ainsfw' | 'both',
     videoUrl: '',
     badgeText: '',
     verified: false,
     adType: 'advertiser' as 'advertiser' | 'premium' | 'onlyfans-creator',
+    blockFormat: 'card' as 'banner' | 'card',
     premiumCategory: '',
     socialProof: 'random',
     bannerPages: [] as string[],
     bannerDevice: 'all' as 'all' | 'mobile' | 'desktop',
     ofUsername: '',
+    placements: [] as string[],
+    dailyClickCap: '' as string,
   });
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
@@ -731,6 +904,8 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       setError('');
       // Also refresh top group slots
       getTopGroupSlots(token).then(s => setTopGroupSlots(s)).catch(err => console.error('getTopGroupSlots failed:', err));
+      // Real OF trending-grid clicks (additive, read-only) for OF-creator ad rows.
+      getTrendingCreatorStats().then(s => setTrendingStats(s)).catch(err => console.error('getTrendingCreatorStats failed:', err));
     } catch (err: any) {
       setError(err.message || 'Failed to load data');
     } finally {
@@ -808,10 +983,27 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
     }
   }, [view, editingCampaign, advertisers, campForm.advertiserId]);
 
+  // Launch page: open the New Campaign form straight away (skip the list).
+  const launchFormOpenedRef = useRef(false);
+  useEffect(() => {
+    if (!openFormOnMount || launchFormOpenedRef.current || advertisers.length === 0) return;
+    launchFormOpenedRef.current = true;
+    setEditingCampaign(null);
+    setCampaignType('image');
+    setCampForm((prev) => ({
+      ...prev,
+      slot: 'feed', advertiserId: advertisers[0]?._id || '', internalName: '', name: '',
+      creative: '', destinationUrl: '', description: '', category: 'All', country: 'All',
+      buttonText: 'Visit Site', feedTier: 1, tierSlot: 1, position: 1, feedPlacement: 'both',
+      videoUrl: '', badgeText: '', socialProof: 'random', placements: [], dailyClickCap: '', blockFormat: 'card',
+    }) as any);
+    setView('editCampaign');
+  }, [openFormOnMount, advertisers]);
+
   // Advertiser CRUD
   const openNewAdvertiser = () => {
     setEditingAdvertiser(null);
-    setAdvForm({ name: '', email: '', company: '', logo: '', notes: '', status: 'active' });
+    setAdvForm({ name: '', email: '', company: '', logo: '', notes: '', status: 'active', dailyClickCap: 0, isOfAgency: false });
     setView('editAdvertiser');
   };
 
@@ -824,6 +1016,8 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       logo: adv.logo,
       notes: adv.notes,
       status: adv.status,
+      dailyClickCap: adv.dailyClickCap || 0,
+      isOfAgency: Boolean(adv.isOfAgency),
     });
     setView('editAdvertiser');
   };
@@ -898,11 +1092,14 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       badgeText: '',
       verified: false,
       adType: 'advertiser',
+      blockFormat: 'card',
       premiumCategory: '',
       socialProof: 'random',
       bannerPages: [],
       bannerDevice: 'all',
       ofUsername: '',
+      placements: [],
+      dailyClickCap: '',
     });
     setView('editCampaign');
   };
@@ -936,16 +1133,19 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       category: camp.category || 'All',
       country: camp.country || 'All',
       buttonText: camp.buttonText || 'Visit Site',
-      feedPlacement: (camp.feedPlacement || 'both') as 'groups' | 'bots' | 'both',
+      feedPlacement: (camp.feedPlacement || 'both') as 'groups' | 'bots' | 'ainsfw' | 'both',
       videoUrl: (camp as any).videoUrl || '',
       badgeText: (camp as any).badgeText || '',
       verified: Boolean((camp as any).verified),
       adType: (camp as any).adType || 'advertiser',
+      blockFormat: ((camp as any).blockFormat as 'banner' | 'card') || 'card',
       premiumCategory: premCat,
       socialProof: (camp as any).socialProof || 'random',
       bannerPages: (camp as any).bannerPages || [],
       bannerDevice: (camp as any).bannerDevice || 'all',
       ofUsername: (camp as any).ofUsername || '',
+      placements: Array.isArray((camp as any).placements) ? (camp as any).placements : [],
+      dailyClickCap: (camp as any).dailyClickCap != null && (camp as any).dailyClickCap > 0 ? String((camp as any).dailyClickCap) : '',
     });
     const savedIds: string[] = (camp as any).premiumGroupIds || [];
     setSelectedGroupIds(new Set(savedIds));
@@ -1047,38 +1247,54 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       return;
     }
 
-    const isCta = isTextOnlySlot(campForm.slot) || (editingCampaign ? isTextOnlySlot(editingCampaign.slot) : false) || ['navbar-cta', 'join-cta', 'filter-cta'].includes(campForm.slot?.trim() ?? '');
+    setSaveError('');
+    // UNIFIED "WHERE": `slot` stays as chosen (default 'feed' = the universal carrier).
+    // The `placements[]` array is the single source of truth for where the ad shows — every
+    // serving query (feed, placement, banner/CTA) is now placement-aware, so one campaign can
+    // target ANY mix of surfaces at once. We never rewrite slot from the picked placement.
+    const effectiveSlot = campForm.slot;
+    const isCta = isTextOnlySlot(effectiveSlot) || (editingCampaign ? isTextOnlySlot(editingCampaign.slot) : false) || ['navbar-cta', 'join-cta', 'filter-cta'].includes(effectiveSlot?.trim() ?? '');
+    // Also treat selected CTA placements as text-only (no image required)
+    const hasCtaPlacement = campForm.placements.some(p => ['navbar-cta', 'join-cta', 'filter-cta'].includes(p));
+    const effectiveCta = isCta || hasCtaPlacement;
     if (!campForm.name || !campForm.destinationUrl) {
-      alert('Name and destination URL are required');
+      const msg = 'Name and destination URL are required';
+      setSaveError(msg); alert(msg);
       return;
     }
-    const hasVideoUrl = FEED_SLOTS.includes(campForm.slot) && !!(campForm as any).videoUrl;
-    if (!isCta && campForm.adType !== 'premium' && (campForm.adType as string) !== 'featured-bot' && !campForm.creative && !hasVideoUrl) {
-      alert('Creative image is required (or provide a video URL for feed ads)');
+    const hasVideoUrl = !!(campForm as any).videoUrl;
+    if (!effectiveCta && campForm.adType !== 'premium' && (campForm.adType as string) !== 'featured-bot' && !campForm.creative && !hasVideoUrl) {
+      const msg = 'Creative image is required (or provide a video URL for feed ads)';
+      setSaveError(msg); alert(msg);
       return;
     }
     const ctaLabel = (campForm.description || campForm.buttonText || '').trim();
-    if (isCta && !ctaLabel) {
-      alert('Button label is required for text (CTA) campaigns.');
+    if (effectiveCta && !ctaLabel) {
+      const msg = 'Button label is required for text (CTA) campaigns.';
+      setSaveError(msg); alert(msg);
       return;
     }
     if (!editingCampaign && !campForm.advertiserId) {
-      alert('Please select an Advertiser above (required for new campaigns).');
+      const msg = 'Please select an Advertiser above (required for new campaigns).';
+      setSaveError(msg); alert(msg);
       return;
     }
-    const isFeed = FEED_SLOTS.includes(campForm.slot);
-    const isBannerSlot = campForm.slot === 'top-banner' || campForm.slot === 'homepage-hero';
-    const feedPosition = campForm.slot === 'feed' ? (campForm.position != null ? Number(campForm.position) : 0) : 0;
-    if (campForm.slot === 'feed' && feedPosition < 1) {
-      alert('Position (1 or higher) is required for feed ads');
+    const isFeed = FEED_SLOTS.includes(effectiveSlot);
+    const isBannerSlot = effectiveSlot === 'top-banner' || effectiveSlot === 'homepage-hero';
+    // Feed ads need at least one placement picked (placements drive WHERE — no legacy position field).
+    if (effectiveSlot === 'feed' && (!Array.isArray(campForm.placements) || campForm.placements.length === 0)) {
+      const msg = 'Pick at least one placement (where the ad shows).';
+      setSaveError(msg); alert(msg);
       return;
     }
     if (isFeed && !campForm.advertiserId) {
-      alert('Please select an Advertiser (required for feed ads).');
+      const msg = 'Please select an Advertiser (required for feed ads).';
+      setSaveError(msg); alert(msg);
       return;
     }
     if (!campForm.destinationUrl.startsWith('http://') && !campForm.destinationUrl.startsWith('https://') && !campForm.destinationUrl.startsWith('/')) {
-      alert('Destination URL must start with http://, https://, or / for internal pages');
+      const msg = 'Destination URL must start with http://, https://, or / for internal pages';
+      setSaveError(msg); alert(msg);
       return;
     }
     if (savingRef.current) return;
@@ -1087,11 +1303,11 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
     try {
       const descriptionVal = isCta ? (campForm.description || campForm.buttonText || 'Visit Site').trim() : (campForm.description ?? '').trim();
       const buttonTextVal = (campForm.buttonText ?? 'Visit Site').trim();
-      const feedPos = campForm.slot === 'feed' ? Math.max(1, Math.floor(Number(campForm.position) || 1)) : null;
+      const feedPos = effectiveSlot === 'feed' ? Math.max(1, Math.floor(Number(campForm.position) || 1)) : null;
       const payload: Record<string, unknown> = {
         name: (campForm.name ?? '').trim() || (isCta ? ctaLabel : 'Campaign'),
         internalName: (campForm.internalName ?? '').trim(),
-        slot: String(campForm.slot ?? ''),
+        slot: String(effectiveSlot ?? ''),
         creative: isCta ? '' : String(campForm.creative ?? ''),
         destinationUrl: String((campForm.destinationUrl ?? '').trim()),
         startDate: campForm.startDate,
@@ -1108,15 +1324,24 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
         badgeText: isFeed ? ((campForm as any).badgeText || '') : '',
         verified: isFeed ? Boolean(campForm.verified) : false,
         adType: campForm.adType || 'advertiser',
+        blockFormat: campForm.blockFormat || 'card',
         premiumCategory: campForm.adType === 'premium' ? (campForm.premiumCategory || '') : '',
         premiumGroupIds: campForm.adType === 'premium' ? [...selectedGroupIds] : [],
         socialProof: isFeed ? ((campForm as any).socialProof || 'random') : 'random',
         bannerPages: isBannerSlot ? (campForm.bannerPages || []) : [],
         bannerDevice: isBannerSlot ? (campForm.bannerDevice || 'all') : 'all',
+        placements: Array.isArray(campForm.placements) ? campForm.placements : [],
+        dailyClickCap: campForm.dailyClickCap?.trim() ? Math.max(0, Math.floor(Number(campForm.dailyClickCap))) : null,
+        // A cap means "show this MORE until it burns" → mark boost so it wins its slot.
+        priority: campForm.dailyClickCap?.trim() && Number(campForm.dailyClickCap) > 0 ? 'boost' : 'normal',
       };
       if (isFeed && !editingCampaign) {
         payload.feedTier = 1;
-        payload.tierSlot = feedPos ?? 1;
+        // Derive tierSlot from the first selected placement (new system),
+        // falling back to the Position field (legacy).
+        const firstPlacement = Array.isArray(campForm.placements) && campForm.placements.length > 0 ? campForm.placements[0] : null;
+        const derivedSlot = firstPlacement ? placementToTierSlot(firstPlacement) : null;
+        payload.tierSlot = derivedSlot ?? feedPos ?? 1;
       }
       const assignableSlots = FEED_SLOTS.includes(campForm.slot) || CTA_SLOTS.includes(campForm.slot) || ['homepage-hero', 'top-banner'].includes(campForm.slot);
       if (assignableSlots && campForm.advertiserId) payload.advertiserId = String(campForm.advertiserId).trim();
@@ -1164,18 +1389,23 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
         badgeText: '',
         verified: false,
         adType: 'advertiser',
+        blockFormat: 'card',
         premiumCategory: '',
         socialProof: 'random',
         bannerPages: [],
         bannerDevice: 'all',
         ofUsername: '',
+        placements: [],
+        dailyClickCap: '',
       });
+      setSaveError('');
       setView('list');
       alert('Campaign saved successfully.');
     } catch (err: any) {
       const msg = err?.message;
       const message = typeof msg === 'string' ? msg : 'Failed to save campaign';
       console.error('Save campaign error:', message, err);
+      setSaveError(message);
       alert(`Save failed: ${message}`);
     } finally {
       setIsSaving(false);
@@ -1198,7 +1428,18 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
     const next = camp.status === 'active' ? 'paused' : 'active';
     try {
       const token = getToken();
-      await adminUpdateCampaign(token, camp._id, { status: next });
+      const patch: Record<string, unknown> = { status: next };
+      // Resuming must actually relaunch: a past end date keeps the ad "Ended" and
+      // unserved everywhere. Revive expired/scheduled dates just like Ad Network's Resume.
+      if (next === 'active') {
+        const now = Date.now();
+        patch.isVisible = true;
+        if (camp.startDate && new Date(camp.startDate).getTime() > now) patch.startDate = new Date().toISOString();
+        if (!camp.endDate || new Date(camp.endDate).getTime() < now) {
+          patch.endDate = new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString();
+        }
+      }
+      await adminUpdateCampaign(token, camp._id, patch);
       await fetchAll();
     } catch (err: any) {
       alert(err.message || 'Failed to update');
@@ -1371,6 +1612,32 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
           </div>
 
           <div>
+            <label className="block text-sm font-semibold text-[#999] mb-2">Daily Click Cap (all their ads, platform-wide)</label>
+            <input
+              type="number"
+              min={0}
+              value={advForm.dailyClickCap}
+              onChange={(e) => setAdvForm({ ...advForm, dailyClickCap: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
+              className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-[#b31b1b] outline-none"
+              placeholder="0 = uncapped"
+            />
+            <p className="text-xs text-[#777] mt-1">When this many clicks are reached today (UTC), ALL of this advertiser&apos;s ads stop showing until tomorrow — other advertisers / Erogram ads fill in.</p>
+          </div>
+
+          <div>
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={advForm.isOfAgency}
+                onChange={(e) => setAdvForm({ ...advForm, isOfAgency: e.target.checked })}
+                className="h-4 w-4 rounded accent-[#00AFF0]"
+              />
+              <span className="text-sm font-semibold text-[#999]">OnlyFans Agency</span>
+            </label>
+            <p className="text-xs text-[#777] mt-1 ml-7">Tag this advertiser as an OF agency. Their OF-creator ads roll up under them, and you can filter the network by OF agencies — the foundation for agency self-serve accounts later.</p>
+          </div>
+
+          <div>
             <label className="block text-sm font-semibold text-[#999] mb-2">Internal Notes</label>
             <textarea value={advForm.notes} onChange={(e) => setAdvForm({ ...advForm, notes: e.target.value })} className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-[#b31b1b] outline-none resize-none" rows={3} placeholder="Private admin notes..." />
           </div>
@@ -1395,8 +1662,9 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
               <p className="text-[#999] text-sm mt-1">Slot: {SLOT_LABELS[campForm.slot] || campForm.slot}</p>
             )}
           </div>
-          <div className="flex gap-4">
-            <button type="button" onClick={() => setView('list')} className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors">
+          <div className="flex items-center gap-4">
+            {saveError && <p className="text-red-400 text-sm font-semibold mr-auto">{saveError}</p>}
+            <button type="button" onClick={() => { setView('list'); setSaveError(''); }} className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors">
               Cancel
             </button>
             <button
@@ -1440,121 +1708,84 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
               </select>
             </div>
           )}
-          {/* Type: Text button (CTA) = label + link only. Image ad = image + link. */}
-          <div>
-            <label className="block text-sm font-semibold text-[#999] mb-2">Ad type *</label>
-            <div className="flex gap-3">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="campaignType"
-                  checked={campaignType === 'text'}
-                  onChange={() => {
-                    setCampaignType('text');
-                    setCampForm({ ...campForm, slot: 'navbar-cta', creative: '' });
-                  }}
-                  className="w-4 h-4 text-pink-500 focus:ring-pink-500"
-                />
-                <span className="text-white">Text button (CTA)</span>
-                <span className="text-xs text-[#666]">— label + link only, no image</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="campaignType"
-                  checked={campaignType === 'image'}
-                  onChange={() => {
-                    setCampaignType('image');
-                    const keepSlot = campForm.slot === 'top-banner' || campForm.slot === 'homepage-hero';
-                    setCampForm({ ...campForm, slot: keepSlot ? campForm.slot : 'homepage-hero', adType: 'advertiser', premiumCategory: '' });
-                  }}
-                  className="w-4 h-4 text-[#b31b1b] focus:ring-[#b31b1b]"
-                />
-                <span className="text-white">Image ad</span>
-                <span className="text-xs text-[#666]">— upload image + link</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="campaignType"
-                  checked={campaignType === 'premium'}
-                  onChange={() => {
-                    const eroAdv = advertisers.find(a => a.name === 'EROGRAM');
-                    setCampaignType('premium');
-                    setCampForm({
-                      ...campForm,
-                      slot: 'feed',
-                      adType: 'premium',
-                      creative: '',
-                      videoUrl: '',
-                      advertiserId: eroAdv?._id || campForm.advertiserId,
-                      destinationUrl: campForm.destinationUrl || 'https://erogram.pro/premium',
-                      buttonText: campForm.buttonText || 'Unlock The Vault',
-                    });
-                    fetchAllPremiumGroups();
-                  }}
-                  className="w-4 h-4 text-orange-500 focus:ring-orange-500"
-                />
-                <span className="text-white">Premium</span>
-                <span className="text-xs text-[#666]">— group mosaic by category</span>
-              </label>
-              <label className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 cursor-pointer hover:bg-white/[0.05] transition-colors">
-                <input
-                  type="radio"
-                  name="campaignType"
-                  checked={campaignType === 'featured-bot' as any}
-                  onChange={() => {
-                    (setCampaignType as any)('featured-bot');
-                    setCampForm({
-                      ...campForm,
-                      slot: 'feed',
-                      adType: 'featured-bot' as any,
-                      position: 5,
-                      feedTier: 1,
-                      tierSlot: 5,
-                      buttonText: campForm.buttonText || 'Open Bot',
-                      feedPlacement: 'groups',
-                    });
-                    fetchBotsForPicker();
-                  }}
-                  className="w-4 h-4 text-cyan-500 focus:ring-cyan-500"
-                />
-                <span className="text-white">🤖 Featured Bot</span>
-                <span className="text-xs text-[#666]">— slot 5, groups feed only</span>
-              </label>
-              <label className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 cursor-pointer hover:bg-white/[0.05] transition-colors">
-                <input
-                  type="radio"
-                  name="campaignType"
-                  checked={campaignType === 'onlyfans-creator'}
-                  onChange={() => {
-                    const eroAdv = advertisers.find(a => a.name === 'EROGRAM');
-                    setCampaignType('onlyfans-creator');
-                    setCampForm({
-                      ...campForm,
-                      slot: 'feed',
-                      adType: 'onlyfans-creator',
-                      position: 2,
-                      feedTier: 1,
-                      tierSlot: 2,
-                      feedPlacement: 'both',
-                      buttonText: 'View Profile',
-                      creative: '',
-                      videoUrl: '',
-                      advertiserId: campForm.advertiserId || eroAdv?._id || '',
-                      ofUsername: '',
-                    });
-                    setSelectedCreators([]);
-                    setCreatorSearchQuery('');
-                    setCreatorSearchResults([]);
-                    setCreatorPickerTab('featured');
-                    fetchFeaturedCreatorsForPicker();
-                  }}
-                  className="w-4 h-4 text-pink-500 focus:ring-pink-500"
-                />
-                <span className="text-white">💋 OnlyFans Creator</span>
-                <span className="text-xs text-[#666]">— pick creators, links straight to OnlyFans</span>
-              </label>
+          {/* ── WHERE: Placement picker (agnostic) — pick one or many spots, organized by tier ── */}
+          <div className="pb-4 border-b border-white/10">
+            <div className="flex items-baseline justify-between gap-2 mb-1">
+              <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider">Where it shows — placements</h3>
+              <span className="text-[11px] text-white/40">{campForm.placements.length > 0 ? `${campForm.placements.length} selected` : 'none = legacy default'}</span>
+            </div>
+            <p className="text-[11px] text-[#666] mb-3">Pick every spot this ad should run on. One ad → many spots (it rotates, shows in one at a time).</p>
+            {(() => {
+              const allCoreOn = CORE_BLAST_PLACEMENTS.every((p) => campForm.placements.includes(p));
+              return (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setCampForm((prev) => ({
+                      ...prev,
+                      placements: allCoreOn
+                        ? prev.placements.filter((p) => !CORE_BLAST_PLACEMENTS.includes(p))
+                        : Array.from(new Set([...prev.placements, ...CORE_BLAST_PLACEMENTS])),
+                    }))}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide border transition-colors ${allCoreOn ? 'bg-[#b31b1b] text-white border-[#b31b1b]' : 'bg-emerald-600/15 text-emerald-300 border-emerald-500/40 hover:bg-emerald-600/25'}`}
+                    title="Top Groups + Top Bots + Top AI NSFW + all In-Feed + In-Page block (no Top-10s, no OF feed, no banners/CTA)"
+                  >
+                    {allCoreOn ? '✓ Core network selected' : '⚡ All core placements (Top + In-Feed + In-Page)'}
+                  </button>
+                  {campForm.placements.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setCampForm((prev) => ({ ...prev, placements: [] }))}
+                      className="px-3 py-1.5 rounded-lg text-[11px] font-semibold border border-white/10 bg-[#1a1a1a] text-[#999] hover:border-white/25 transition-colors"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+            <div className="space-y-3">
+              {LAUNCH_TIERS.map((t) => {
+                const allInTier = t.sections.flatMap((s) => s.placements);
+                const selectedInTier = allInTier.filter((p) => campForm.placements.includes(p)).length;
+                return (
+                  <div key={t.tier} className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div>
+                        <span className="text-xs font-black text-white tracking-wide">{t.tier}</span>
+                        <span className="text-[10px] text-[#666] ml-2">{t.hint}</span>
+                      </div>
+                      <span className="text-[10px] text-white/40">{selectedInTier}/{allInTier.length}</span>
+                    </div>
+                    <div className="space-y-2">
+                      {t.sections.map((sec) => (
+                        <div key={sec.label}>
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-white/35 mb-1">{sec.label}</div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {sec.placements.map((pid) => {
+                              const on = campForm.placements.includes(pid);
+                              return (
+                                <button
+                                  key={pid}
+                                  type="button"
+                                  onClick={() => setCampForm((prev) => ({
+                                    ...prev,
+                                    placements: on ? prev.placements.filter((x) => x !== pid) : [...prev.placements, pid],
+                                  }))}
+                                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors ${on ? 'bg-[#b31b1b] text-white border-[#b31b1b]' : 'bg-[#1a1a1a] text-[#999] border-white/10 hover:border-white/25'}`}
+                                  title={PLACEMENT_PICK_LABEL[pid] || pid}
+                                >
+                                  {PLACEMENT_PICK_LABEL[pid] || pid}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -1724,8 +1955,8 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
               <input type="text" value={campForm.internalName} onChange={(e) => setCampForm({ ...campForm, internalName: e.target.value })} className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-[#b31b1b] outline-none" placeholder="e.g. CPA Offer #3 — Dating" />
               <p className="text-[#666] text-xs mt-1">Only visible to you in the admin panel</p>
             </div>
-            {/* Slot: hidden for feed ads (fixed In-Feed); show for other campaign types */}
-            {!FEED_SLOTS.includes(campForm.slot) ? (
+            {/* Slot: hidden for feed ads (placements drive WHERE); show for other campaign types */}
+            {!FEED_SLOTS.includes(campForm.slot) && (
               <div>
                 <label className="block text-sm font-semibold text-[#999] mb-2">Slot *</label>
                 <select
@@ -1752,11 +1983,6 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                         </option>
                       ))}
                 </select>
-              </div>
-            ) : (
-              <div>
-                <label className="block text-sm font-semibold text-[#999] mb-2">Placement</label>
-                <div className="w-full p-3 bg-[#1a1a1a]/50 border border-white/10 rounded-xl text-[#999]">In-Feed</div>
               </div>
             )}
           </div>
@@ -2079,21 +2305,6 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
           {/* Feed-specific fields (only when slot is feed) */}
           {FEED_SLOTS.includes(campForm.slot) && (
             <>
-              {campForm.slot === 'feed' && (
-                <div className="border-t border-white/10 pt-4 mt-2">
-                  <label className="block text-sm font-semibold text-[#999] mb-2">Position *</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={campForm.position ?? ''}
-                    onChange={(e) => setCampForm({ ...campForm, position: e.target.value ? Math.max(1, Math.floor(Number(e.target.value))) : null })}
-                    className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] outline-none"
-                    placeholder="1"
-                  />
-                  <p className="text-xs text-[#666] mt-1">Slot 1=Top Section, 2=after 2 groups, 3=after 7 groups, 4=after 12+ (loops), 5=🤖 Featured Bot (after 4 groups). Each slot holds up to 4 A/B variants.</p>
-                </div>
-              )}
-
               <div>
                 <label className="block text-sm font-semibold text-[#999] mb-2">Ad Description</label>
                 <textarea
@@ -2119,14 +2330,35 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                 <label className="block text-sm font-semibold text-[#999] mb-2">Show on</label>
                 <select
                   value={campForm.feedPlacement || 'both'}
-                  onChange={(e) => setCampForm({ ...campForm, feedPlacement: e.target.value as 'groups' | 'bots' | 'both' })}
+                  onChange={(e) => setCampForm({ ...campForm, feedPlacement: e.target.value as 'groups' | 'bots' | 'ainsfw' | 'both' })}
                   className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] outline-none"
                 >
                   <option value="both">Groups + Bots</option>
                   <option value="groups">Groups only</option>
                   <option value="bots">Bots only</option>
+                  <option value="ainsfw">AI NSFW only</option>
                 </select>
               </div>
+
+              {/* SPOTLIGHT block format — only relevant when this ad targets a Home adspace */}
+              {Array.isArray(campForm.placements) && (campForm.placements.includes('home-block-1') || campForm.placements.includes('home-block-2')) && (
+                <div className="border border-[#c0392f]/30 rounded-xl p-4 bg-[#c0392f]/5">
+                  <label className="block text-sm font-semibold text-[#e0796f] mb-2">🏠 SPOTLIGHT block format</label>
+                  <div className="flex gap-3">
+                    {([['card', 'Card (part of 4-up grid)'], ['banner', 'Banner (1 wide image/video)']] as const).map(([val, lbl]) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setCampForm({ ...campForm, blockFormat: val })}
+                        className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold border transition-all ${campForm.blockFormat === val ? 'bg-[#c0392f] text-white border-[#c0392f]' : 'bg-white/5 text-[#999] border-white/10 hover:border-white/20'}`}
+                      >
+                        {lbl}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-[#666] mt-2">Banner = a single wide horizontal image or video. Card = appears in the 4-up grid. The block rotates between every banner and the grid on each visit.</p>
+                </div>
+              )}
 
               {campForm.slot === 'feed' && (
                 <div className="border border-orange-500/30 rounded-xl p-4 bg-orange-500/5">
@@ -2212,6 +2444,22 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
           )}
           </>
           )}
+
+          {/* ── Daily click cap — the one control dial. Empty = uncapped (normal rotation). ── */}
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+            <label className="block text-sm font-semibold text-emerald-300 mb-2">Daily click cap <span className="text-[#666] font-normal">(optional)</span></label>
+            <input
+              type="number"
+              min={0}
+              value={campForm.dailyClickCap}
+              onChange={(e) => setCampForm({ ...campForm, dailyClickCap: e.target.value.replace(/[^0-9]/g, '') })}
+              className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-emerald-500 outline-none"
+              placeholder="Uncapped — shows normally and rotates"
+            />
+            <p className="text-xs text-[#666] mt-1">
+              Set a number → this ad gets PRIORITY (shows more) until it burns that many clicks today, then yields its slot to others. Empty = normal rotation, no cap. (For a platform-wide cap across ALL an advertiser&apos;s ads, set it on the advertiser.)
+            </p>
+          </div>
 
           <div>
             <label className="block text-sm font-semibold text-[#999] mb-2">Duration</label>
@@ -2310,118 +2558,120 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       {/* ─── Overview tab: marketer-first dashboard ─────────────────────────────────────── */}
       {sectionTab === 'overview' && (
         <div className="rounded-2xl bg-white p-5 sm:p-6 space-y-5" style={{ color: '#1e293b' }}>
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">Advertiser Performance Overview</h2>
-              <p className="text-sm text-slate-500">Top-line results first, then trend and breakdowns.</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 space-y-2">
-              <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Advertisers</div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => setDashboardAdvertiserIds([])}
-                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${dashboardAdvertiserIds.length === 0 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'}`}
-                >
-                  All
-                </button>
-                {advertisers.map((a) => {
-                  const sel = dashboardAdvertiserIds.includes(a._id);
+          {/* ── HERO: Universe selector cards — multi-select, always visible ── */}
+          {(() => {
+            const nt = dashboardStats?.networkTotals;
+            const universes = [
+              { id: 'all' as const, label: 'Erogram Network', value: nt ? nt.grandTotal : 0, color: '#1e293b', bg: 'bg-slate-900', ring: 'ring-slate-900' },
+              { id: 'advertisers' as const, label: 'Advertisers', value: nt ? nt.adSpace : 0, color: '#2563eb', bg: 'bg-blue-600', ring: 'ring-blue-600' },
+              { id: 'of' as const, label: 'OnlyFans', value: nt ? nt.of : 0, color: '#ec4899', bg: 'bg-pink-500', ring: 'ring-pink-500' },
+              { id: 'boost' as const, label: 'Boosts', value: nt ? nt.boost : 0, color: '#f59e0b', bg: 'bg-amber-500', ring: 'ring-amber-500' },
+            ];
+            const toggleUniverse = (id: typeof universes[number]['id']) => {
+              setSelectedUniverses((prev) => {
+                const next = new Set(prev);
+                if (id === 'all') return new Set(['all']);
+                next.delete('all');
+                if (next.has(id)) next.delete(id);
+                else next.add(id);
+                if (next.size === 0) return new Set(['all']);
+                return next;
+              });
+            };
+            return (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {universes.map((u) => {
+                  const active = selectedUniverses.has(u.id);
                   return (
-                    <button
-                      key={a._id}
-                      type="button"
-                      onClick={() => setDashboardAdvertiserIds((prev) => (sel ? prev.filter((id) => id !== a._id) : [...prev, a._id]))}
-                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${sel ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'}`}
+                    <button key={u.id} type="button" onClick={() => toggleUniverse(u.id)}
+                      className={`relative text-left px-4 py-3 rounded-xl border-2 transition-all ${active ? `${u.bg} text-white border-transparent shadow-lg shadow-${u.id === 'all' ? 'slate' : u.id === 'advertisers' ? 'blue' : u.id === 'of' ? 'pink' : 'amber'}-500/20` : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'}`}
                     >
-                      {a.name}
+                      <div className={`text-[11px] font-semibold uppercase tracking-wider ${active ? 'text-white/70' : 'text-gray-400'}`}>{u.label}</div>
+                      <div className="text-2xl font-black tabular-nums mt-0.5">{u.value.toLocaleString()}</div>
+                      <div className={`text-[10px] mt-0.5 ${active ? 'text-white/60' : 'text-gray-400'}`}>total clicks</div>
+                      {active && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-white/80" />}
                     </button>
                   );
                 })}
-                {advertisers.length > 2 && dashboardAdvertiserIds.length !== advertisers.length && (
-                  <button type="button" onClick={() => setDashboardAdvertiserIds(advertisers.map((a) => a._id))} className="text-[11px] text-gray-400 hover:text-blue-500 underline">
-                    Select all
-                  </button>
-                )}
-                {dashboardAdvertiserIds.length > 0 && (
-                  <button type="button" onClick={() => setDashboardAdvertiserIds([])} className="text-[11px] text-gray-400 hover:text-blue-500 underline">
-                    Clear
-                  </button>
-                )}
               </div>
-            </div>
+            );
+          })()}
 
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 space-y-2">
-              <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Ad spaces</div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => setDashboardSlots([])}
-                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${dashboardSlots.length === 0 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'}`}
-                >
-                  All
-                </button>
-                {[...displaySlots.map((s) => s.slot).filter((sl) => sl !== 'filter-cta'), 'featured-groups', 'article-link'].map((sl) => {
-                  const sel = dashboardSlots.includes(sl);
-                  return (
-                    <button
-                      key={sl}
-                      type="button"
-                      onClick={() => setDashboardSlots((prev) => (sel ? prev.filter((x) => x !== sl) : [...prev, sl]))}
-                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${sel ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'}`}
-                    >
-                      {SLOT_LABELS[sl] || sl}
-                    </button>
-                  );
-                })}
-                {dashboardSlots.length > 0 && (
-                  <button type="button" onClick={() => setDashboardSlots([])} className="text-[11px] text-gray-400 hover:text-blue-500 underline">
-                    Clear
-                  </button>
-                )}
-              </div>
+          {/* ── Period + Filters bar ── */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            {/* Period — always visible, the #1 thing you set */}
+            <div className="flex items-center gap-1.5">
+              {(['today', '7d', '30d', 'lifetime'] as const).map((r) => {
+                const labels: Record<string, string> = { today: 'Today', '7d': '7 days', '30d': '30 days', lifetime: 'Lifetime' };
+                return (
+                  <button key={r} type="button" onClick={() => setDashboardRange(r)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${dashboardRange === r ? 'bg-slate-900 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                  >{labels[r]}</button>
+                );
+              })}
+              <button type="button" onClick={() => setDashboardRange('custom')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${dashboardRange === 'custom' ? 'bg-slate-900 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              >Custom</button>
+              {dashboardRange === 'custom' && (
+                <>
+                  <input type="date" value={dashboardFrom} onChange={(e) => setDashboardFrom(e.target.value)} className="rounded-lg border border-gray-200 bg-white text-gray-700 px-2 py-1 text-xs" />
+                  <span className="text-gray-300">→</span>
+                  <input type="date" value={dashboardTo} onChange={(e) => setDashboardTo(e.target.value)} className="rounded-lg border border-gray-200 bg-white text-gray-700 px-2 py-1 text-xs" />
+                </>
+              )}
             </div>
-
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 space-y-2">
-              <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Period</div>
-              <div className="flex items-center gap-2 flex-wrap">
-                {(['today', '7d', '30d', 'lifetime'] as const).map((r) => {
-                  const labels: Record<string, string> = { today: 'Today', '7d': '7 days', '30d': '30 days', lifetime: 'Lifetime' };
-                  return (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => setDashboardRange(r)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${dashboardRange === r ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'}`}
-                    >
-                      {labels[r]}
-                    </button>
-                  );
-                })}
-                <button
-                  type="button"
-                  onClick={() => setDashboardRange('custom')}
-                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${dashboardRange === 'custom' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'}`}
-                >
-                  Custom
-                </button>
-                {dashboardRange === 'custom' && (
-                  <>
-                    <input type="date" value={dashboardFrom} onChange={(e) => setDashboardFrom(e.target.value)} className="rounded-lg border border-gray-200 bg-white text-gray-700 px-2 py-1 text-xs" />
-                    <span className="text-gray-300">-</span>
-                    <input type="date" value={dashboardTo} onChange={(e) => setDashboardTo(e.target.value)} className="rounded-lg border border-gray-200 bg-white text-gray-700 px-2 py-1 text-xs" />
-                  </>
-                )}
-              </div>
-            </div>
+            {/* Expand filters toggle */}
+            <button type="button" onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${showFilters ? 'bg-slate-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 4h18M3 12h12M3 20h6" /></svg>
+              Filters {(dashboardAdvertiserIds.length > 0 || dashboardSlots.length > 0) && <span className="w-2 h-2 rounded-full bg-blue-500" />}
+            </button>
           </div>
 
-          <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
-            {`Active filters: ${dashboardAdvertiserIds.length === 0 ? 'All advertisers (including unassigned)' : `${dashboardAdvertiserIds.length} advertiser${dashboardAdvertiserIds.length > 1 ? 's' : ''}`} · ${dashboardSlots.length === 0 ? 'All ad spaces' : dashboardSlots.map((s) => SLOT_LABELS[s] || s).join(', ')} · ${dashboardRange === 'custom' ? (dashboardFrom && dashboardTo ? `${dashboardFrom} to ${dashboardTo}` : 'Custom range') : ({ today: 'Today', '7d': 'Last 7 days', '30d': 'Last 30 days', lifetime: 'Lifetime' } as Record<string, string>)[dashboardRange]}`}
-          </div>
+          {/* Expandable filter panel — Advertiser + Ad space. Hidden by default, revealed on click. */}
+          {showFilters && (
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Advertiser</span>
+                  {advertisers.some((a) => a.isOfAgency) && (
+                    <button type="button" onClick={() => setDashboardAdvertiserIds(advertisers.filter((a) => a.isOfAgency).map((a) => a._id))}
+                      className="px-2 py-0.5 rounded-full text-[10px] font-bold border border-pink-200 bg-pink-50 text-pink-700 hover:bg-pink-100 transition-all">💋 OF Agencies</button>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button type="button" onClick={() => setDashboardAdvertiserIds([])}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${dashboardAdvertiserIds.length === 0 ? 'bg-slate-900 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-400'}`}>All</button>
+                  {advertisers.map((a) => {
+                    const sel = dashboardAdvertiserIds.includes(a._id);
+                    return (
+                      <button key={a._id} type="button" onClick={() => setDashboardAdvertiserIds((prev) => (sel ? prev.filter((id) => id !== a._id) : [...prev, a._id]))}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${sel ? 'bg-slate-900 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-400'}`}>
+                        {a.isOfAgency && <span className="mr-0.5">💋</span>}{a.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Ad space</span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button type="button" onClick={() => setDashboardSlots([])}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${dashboardSlots.length === 0 ? 'bg-slate-900 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-400'}`}>All</button>
+                  {AD_SPACE_FILTER_OPTIONS.map((sl) => {
+                    const sel = dashboardSlots.includes(sl);
+                    return (
+                      <button key={sl} type="button" onClick={() => setDashboardSlots((prev) => (sel ? prev.filter((x) => x !== sl) : [...prev, sl]))}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${sel ? 'bg-slate-900 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-400'}`}>
+                        {SLOT_LABELS[sl] || sl}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
 
           {dashboardLoading && <div className="py-16 text-center text-gray-400 text-sm">Loading dashboard...</div>}
 
@@ -2453,11 +2703,12 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
               }
             };
 
+            const nt = dashboardStats.networkTotals;
             return (
               <>
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
                   {[
-                    { title: 'Selected period clicks', value: currentTotal, helper: 'Primary KPI for selected filters', tone: 'bg-blue-600 text-white border-blue-600' },
+                    { title: nt ? 'Ecosystem clicks' : 'Selected period clicks', value: nt ? nt.grandTotal : currentTotal, helper: nt ? 'Whole Erogram: ad-space + boosts + OnlyFans' : 'Primary KPI for selected filters', tone: 'bg-blue-600 text-white border-blue-600' },
                     { title: 'Period vs previous', value: `${prevTotal > 0 ? (periodDelta >= 0 ? '+' : '') + periodDelta.toFixed(1) : '0.0'}%`, helper: `Prev: ${prevTotal.toLocaleString()} clicks`, tone: periodDelta >= 0 ? 'bg-green-50 text-green-800 border-green-200' : 'bg-red-50 text-red-800 border-red-200' },
                     { title: 'Today clicks', value: kpi.todayClicks, helper: 'Since today 00:00', tone: 'bg-white text-gray-900 border-gray-200' },
                     { title: 'Last 7 days', value: kpi.last7d, helper: 'Rolling 7-day click volume', tone: 'bg-white text-gray-900 border-gray-200' },
@@ -2471,6 +2722,35 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                     </div>
                   ))}
                 </div>
+
+                {/* Network total breakdown — the grand total split into its 3 stores, side by side,
+                    so you always see Ad-space + OnlyFans + Boosts adding up to the whole. */}
+                {nt && (
+                  <div className="rounded-xl border border-gray-200 bg-white p-4">
+                    <div className="flex items-baseline justify-between mb-3">
+                      <h3 className="text-sm font-semibold text-gray-700">Total Erogram network</h3>
+                      <span className="text-xs text-gray-500">Grand total <span className="font-bold text-gray-900">{nt.grandTotal.toLocaleString()}</span> clicks</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mb-3 h-3 rounded-full overflow-hidden">
+                      {[
+                        { v: nt.adSpace, c: '#2563eb' }, { v: nt.of, c: '#ec4899' }, { v: nt.boost, c: '#f59e0b' },
+                      ].map((s, i) => s.v > 0 && <div key={i} style={{ width: `${(s.v / Math.max(1, nt.grandTotal)) * 100}%`, backgroundColor: s.c }} className="h-full" />)}
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { label: 'Advertisers (ad-space)', value: nt.adSpace, tone: 'bg-blue-50 text-blue-900 border-blue-200' },
+                        { label: 'OnlyFans creators', value: nt.of, tone: 'bg-pink-50 text-pink-900 border-pink-200' },
+                        { label: 'Boosts (groups/bots)', value: nt.boost, tone: 'bg-amber-50 text-amber-900 border-amber-200' },
+                      ].map((c) => (
+                        <div key={c.label} className={`rounded-lg border p-3 ${c.tone}`}>
+                          <div className="text-[11px] font-medium opacity-70">{c.label}</div>
+                          <div className="text-xl font-bold tabular-nums mt-1">{c.value.toLocaleString()}</div>
+                          <div className="text-[10px] mt-1 opacity-60">{nt.grandTotal ? ((c.value / nt.grandTotal) * 100).toFixed(1) : '0'}% of network</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {isSingle && (
                   <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
@@ -2595,14 +2875,30 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {dashboardStats.bySlot.length > 0 && (() => {
-                    const slotColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4'];
-                    const totalSlotClicks = dashboardStats.bySlot.reduce((s, r) => s + r.totalClicks, 0);
+                    const slotColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899'];
+                    // Apply the chosen lens: roll raw ad-spaces up into Family / Tier groups,
+                    // or keep them spot-level. 'category' reuses the family map (closest content grouping).
+                    const lensMap = breakdownLens === 'tier' ? SPACE_TO_TIER : SPACE_TO_FAMILY;
+                    const lensOrder = breakdownLens === 'tier' ? TIER_ORDER : FAMILY_ORDER;
+                    const grouped = new Map<string, number>();
+                    for (const row of dashboardStats.bySlot) {
+                      const key = lensMap[row.slot] || (SLOT_LABELS[row.slot] || row.slot);
+                      grouped.set(key, (grouped.get(key) || 0) + row.totalClicks);
+                    }
+                    const groupedRows = Array.from(grouped.entries())
+                      .map(([slot, totalClicks]) => ({ slot, totalClicks, campaignCount: 0 }))
+                      .sort((a, b) => {
+                        const ai = lensOrder.indexOf(a.slot); const bi = lensOrder.indexOf(b.slot);
+                        if (ai !== -1 || bi !== -1) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+                        return b.totalClicks - a.totalClicks;
+                      });
+                    const totalSlotClicks = groupedRows.reduce((s, r) => s + r.totalClicks, 0);
                     let cumAngle = 0;
-                    const arcs = dashboardStats.bySlot.map((row, i) => {
+                    const arcs = groupedRows.map((row, i) => {
                       const pct = totalSlotClicks ? row.totalClicks / totalSlotClicks : 0;
                       const start = cumAngle;
                       cumAngle += pct * 360;
-                      return { ...row, pct, start, end: cumAngle, color: slotColors[i % slotColors.length] };
+                      return { ...row, pct, start, end: cumAngle, color: FAMILY_COLORS[row.slot] || slotColors[i % slotColors.length] };
                     });
                     const r = 60;
                     const ir = 38;
@@ -2624,9 +2920,29 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                     };
                     return (
                       <div className="rounded-xl border border-gray-100 p-4">
-                        <h3 className="text-sm font-semibold text-gray-700 mb-1">Clicks by ad space</h3>
-                        <p className="text-[11px] text-gray-400 mb-3">Distribution of clicks across placements for selected filters.</p>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <div>
+                            <h3 className="text-sm font-semibold text-gray-700">Clicks by ad space</h3>
+                            <p className="text-[11px] text-gray-400">Grouped {breakdownLens === 'tier' ? 'by launch tier' : breakdownLens === 'category' ? 'by category' : 'by placement family'}.</p>
+                          </div>
+                          <div className="flex rounded-lg border border-gray-200 overflow-hidden shrink-0">
+                            {([
+                              { id: 'family', label: 'Family' },
+                              { id: 'tier', label: 'Tier' },
+                              { id: 'category', label: 'Category' },
+                            ] as const).map((l) => (
+                              <button
+                                key={l.id}
+                                type="button"
+                                onClick={() => setBreakdownLens(l.id)}
+                                className={`px-2.5 py-1 text-[11px] font-semibold transition-colors ${breakdownLens === l.id ? 'bg-blue-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                              >
+                                {l.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4 mt-3">
                           <svg width={140} height={140} viewBox="0 0 140 140">
                             {arcs.map((a) => a.pct > 0 && (
                               <path key={a.slot} d={toPath(a.start, Math.min(a.end, a.start + 359.99), r, ir)} fill={a.color}>
@@ -2666,13 +2982,20 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                           </tr>
                         </thead>
                         <tbody>
-                          {sortedAdvertisers.map((row, i) => (
-                            <tr key={row.advertiserId} className={`${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${row.advertiserId === '__unassigned__' ? 'border-t border-gray-200' : ''}`}>
+                          {sortedAdvertisers.map((row, i) => {
+                            const isEco = row.advertiserId === '__onlyfans__' || row.advertiserId === '__boosts__';
+                            const dotColor = row.advertiserId === '__unassigned__' ? '#9ca3af'
+                              : row.advertiserId === '__onlyfans__' ? '#ec4899'
+                              : row.advertiserId === '__boosts__' ? '#f59e0b'
+                              : CHART_COLORS[i % CHART_COLORS.length];
+                            return (
+                            <tr key={row.advertiserId} className={`${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${row.advertiserId === '__unassigned__' ? 'border-t border-gray-200' : ''} ${isEco ? 'bg-gray-50' : ''}`}>
                               <td className="py-1.5 text-gray-800 font-medium flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: row.advertiserId === '__unassigned__' ? '#9ca3af' : CHART_COLORS[i % CHART_COLORS.length] }} />
+                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: dotColor }} />
                                 <span className={row.advertiserId === '__unassigned__' ? 'text-gray-400 italic' : ''}>
                                   {row.advertiserName}
                                   {row.advertiserName === 'Unknown' && <span className="ml-1 text-[9px] px-1 py-0.5 rounded bg-amber-50 text-amber-600 font-normal">orphaned</span>}
+                                  {isEco && <span className="ml-1 text-[9px] px-1 py-0.5 rounded bg-gray-200 text-gray-500 font-normal">ecosystem</span>}
                                 </span>
                               </td>
                               <td className="py-1.5 text-right font-semibold text-gray-900 tabular-nums">{row.totalClicks.toLocaleString()}</td>
@@ -2682,7 +3005,8 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                                 <span className="inline-block px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-semibold">{((row.totalClicks / totalByAdvertiser) * 100).toFixed(1)}%</span>
                               </td>
                             </tr>
-                          ))}
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -2845,6 +3169,60 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                     )}
                   </div>
                 </div>
+
+                {/* ── Expandable detail: OnlyFans creators ── */}
+                {dashboardStats.ofDetail && dashboardStats.ofDetail.length > 0 && (
+                  <details className="rounded-xl border border-pink-100 bg-pink-50/30">
+                    <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-pink-800 select-none hover:bg-pink-50 rounded-xl transition-colors">
+                      OnlyFans creator detail ({dashboardStats.ofDetail.length}) — {nt ? nt.of.toLocaleString() : '—'} total clicks
+                    </summary>
+                    <div className="px-4 pb-4 max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs mt-2">
+                        <thead className="sticky top-0 bg-pink-50"><tr className="text-[10px] text-gray-400 uppercase border-b border-pink-100">
+                          <th className="text-left py-1.5 font-medium">Creator</th>
+                          <th className="text-left py-1.5 font-medium">Type</th>
+                          <th className="text-right py-1.5 font-medium">Clicks</th>
+                        </tr></thead>
+                        <tbody>
+                          {dashboardStats.ofDetail.map((c, i) => (
+                            <tr key={`${c.username}-${i}`} className={i % 2 ? 'bg-pink-50/50' : ''}>
+                              <td className="py-1.5 text-gray-800 font-medium">{c.name}{c.username ? <span className="text-gray-400 font-normal ml-1">@{c.username}</span> : null}</td>
+                              <td className="py-1.5"><span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${c.kind === 'featured' ? 'bg-pink-100 text-pink-700' : 'bg-gray-100 text-gray-500'}`}>{c.kind === 'featured' ? 'Featured' : 'Organic'}</span></td>
+                              <td className="py-1.5 text-right font-semibold text-gray-900 tabular-nums">{c.clicks.toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </details>
+                )}
+
+                {/* ── Expandable detail: Boosted items ── */}
+                {dashboardStats.boostDetail && dashboardStats.boostDetail.length > 0 && (
+                  <details className="rounded-xl border border-amber-100 bg-amber-50/30">
+                    <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-amber-800 select-none hover:bg-amber-50 rounded-xl transition-colors">
+                      Boost detail ({dashboardStats.boostDetail.length}) — {nt ? nt.boost.toLocaleString() : '—'} total clicks
+                    </summary>
+                    <div className="px-4 pb-4 max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs mt-2">
+                        <thead className="sticky top-0 bg-amber-50"><tr className="text-[10px] text-gray-400 uppercase border-b border-amber-100">
+                          <th className="text-left py-1.5 font-medium">Item</th>
+                          <th className="text-left py-1.5 font-medium">Type</th>
+                          <th className="text-right py-1.5 font-medium">Clicks</th>
+                        </tr></thead>
+                        <tbody>
+                          {dashboardStats.boostDetail.map((b, i) => (
+                            <tr key={`${b.name}-${i}`} className={i % 2 ? 'bg-amber-50/50' : ''}>
+                              <td className="py-1.5 text-gray-800 font-medium">{b.name}</td>
+                              <td className="py-1.5"><span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${b.entityType === 'bot' ? 'bg-cyan-100 text-cyan-700' : 'bg-emerald-100 text-emerald-700'}`}>{b.entityType === 'bot' ? 'Bot' : 'Group'}</span></td>
+                              <td className="py-1.5 text-right font-semibold text-gray-900 tabular-nums">{b.clicks.toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </details>
+                )}
               </>
             );
           })()}
@@ -3342,30 +3720,85 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       {sectionTab === 'feedAds' && !isLoading && !error && (
         <>
           {(() => {
-            const feedCampaigns = campaigns.filter((c) => c.slot === 'feed');
+            // Include feed ads + legacy slot='ainsfw' ads (the latter map to the ainsfw-featured slot).
+            const feedCampaigns = campaigns.filter((c) => c.slot === 'feed' || c.slot === 'ainsfw');
             const filteredByAdvertiser = feedAdsFilterAdvertiser === 'all' ? feedCampaigns : feedCampaigns.filter((c) => c.advertiserId === feedAdsFilterAdvertiser);
             const filteredByStatus = feedAdsFilterStatus === 'all' ? filteredByAdvertiser : filteredByAdvertiser.filter((c) => c.status === feedAdsFilterStatus);
             const filteredByShowOn = feedAdsFilterShowOn === 'all' ? filteredByStatus : filteredByStatus.filter((c) => (c.feedPlacement || 'both') === feedAdsFilterShowOn);
 
             const getStats = (cid: string, c: CampaignRow) => {
               const s = feedClickStats[cid] || { total: c.clicks ?? 0, last24h: 0, last7d: 0, last30d: 0, impressions: c.impressions ?? 0, ctr: 0 };
+              // OF-creator ads also accrue clicks on the /OF trending grid (TrendingClickDaily,
+              // a separate store). Surface those so the row reflects the creator's REAL clicks.
+              const ofUser = ((c as any).ofUsername || '').toLowerCase();
+              if (ofUser && trendingStats[ofUser]) {
+                const t = trendingStats[ofUser];
+                return {
+                  ...s,
+                  total: (s.total || 0) + t.total,
+                  last24h: (s.last24h || 0) + t.last24h,
+                  last7d: (s.last7d || 0) + t.last7d,
+                  last30d: (s.last30d || 0) + t.last30d,
+                };
+              }
               return s;
             };
 
-            // Build 5 slots (tier 1, tierSlot 1-5), populate from filtered campaigns
-            const posGroups: Record<string, { feedTier: number; tierSlot: number; campaigns: CampaignRow[] }> = {};
-            for (let ts = 1; ts <= 5; ts++) {
-              posGroups[`1-${ts}`] = { feedTier: 1, tierSlot: ts, campaigns: [] };
-            }
+            // ── NEW: placement-based hierarchy ──
+            // Core network placements grouped into tiers → sections → slots.
+            // Each campaign resolves to its placements[] (new system) or falls back
+            // to tierSlot → placement via the bridge map (legacy).
+            const TIER_STRUCTURE: { tier: string; sections: { label: string; placements: string[] }[] }[] = [
+              { tier: 'TOP TIER', sections: [
+                { label: 'Top Groups', placements: ['top-groups-1','top-groups-2','top-groups-3','top-groups-4'] },
+                { label: 'Top Bots', placements: ['top-bots-1','top-bots-2','top-bots-3','top-bots-4'] },
+                { label: 'Top AI NSFW', placements: ['ainsfw-featured'] },
+              ]},
+              { tier: 'IN FEED', sections: [
+                { label: 'In-Feed (Groups/Bots)', placements: ['feed-2','feed-3','feed-4','feed-5'] },
+                { label: 'In-Feed AI NSFW', placements: ['ainsfw-feed'] },
+              ]},
+              { tier: 'IN-PAGE', sections: [
+                { label: 'In-Page block', placements: ['group-sidebar'] },
+              ]},
+              { tier: 'SPOTLIGHT (MAIN)', sections: [
+                { label: 'Home blocks', placements: ['home-block-1','home-block-2'] },
+              ]},
+            ];
+            const SLOT_LABEL: Record<string, string> = {};
+            for (const p of PLACEMENTS) SLOT_LABEL[p.id] = p.label;
+            // Legacy bridge: tierSlot → placement id
+            const LEGACY_BRIDGE: Record<number, string> = { 6:'top-groups-1',1:'top-groups-2',11:'top-groups-3',5:'top-groups-4',2:'feed-2',3:'feed-3',4:'feed-4',7:'top-bots-1',8:'top-bots-2',9:'top-bots-3',10:'top-bots-4' };
+            const ALL_CORE_PLACEMENTS = TIER_STRUCTURE.flatMap(t => t.sections.flatMap(s => s.placements));
+
+            // Resolve each campaign → set of placement ids it occupies
+            const campaignPlacements = (c: CampaignRow): string[] => {
+              // Legacy AI NSFW ads (slot='ainsfw') map to the ainsfw-featured slot.
+              if (c.slot === 'ainsfw') return ['ainsfw-featured'];
+              const pls: string[] = Array.isArray((c as any).placements) ? (c as any).placements : [];
+              if (pls.length > 0) return pls.filter(p => ALL_CORE_PLACEMENTS.includes(p));
+              // AI NSFW in-feed ads route to the dedicated ainsfw-feed slot.
+              if ((c as any).feedPlacement === 'ainsfw') return ['ainsfw-feed'];
+              // Legacy fallback
+              const ts = c.tierSlot;
+              if (ts != null && LEGACY_BRIDGE[ts]) return [LEGACY_BRIDGE[ts]];
+              // Default in-feed
+              return ['feed-4'];
+            };
+
+            // Group campaigns by placement (a multi-placement ad appears in each)
+            const posGroups: Record<string, { campaigns: CampaignRow[] }> = {};
+            for (const pid of ALL_CORE_PLACEMENTS) posGroups[pid] = { campaigns: [] };
             for (const c of filteredByShowOn) {
-              const tier = c.feedTier;
-              const slot = c.tierSlot;
-              if (tier == null || slot == null) continue;
-              const key = `${tier}-${slot}`;
-              if (posGroups[key]) posGroups[key].campaigns.push(c);
+              for (const pid of campaignPlacements(c)) {
+                if (posGroups[pid]) posGroups[pid].campaigns.push(c);
+              }
             }
 
-            const sortedPositions = Object.entries(posGroups).sort(([, a], [, b]) => a.tierSlot - b.tierSlot);
+            // Flattened for KPI totals (deduplicated campaign IDs)
+            const uniqueCampaignIds = new Set(filteredByShowOn.map(c => c._id));
+            // For the legacy slot header render, build sortedPositions as tier→section→placement
+            // but we render differently now (see below).
 
             const feedTotals = Object.values(feedClickStats).reduce(
               (acc, s) => ({
@@ -3452,8 +3885,8 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
             return (
               <>
                 <div className="mb-6">
-                  <h2 className="text-xl font-bold text-white mb-2">Feed Ads — A/B Testing</h2>
-                  <p className="text-[#999] text-sm">5 slots (Slot 1: Top Groups section + featured groups, Slot 2: after 2 groups, Slot 3: after 7 groups, Slot 4: after 12+ groups, Slot 5: 🤖 Featured Bot after 4 groups). Each holds up to 4 A/B variants. One random variant shown per impression. Click a slot to manage its ads.</p>
+                  <h2 className="text-xl font-bold text-white mb-2">Feed Ads — by Placement</h2>
+                  <p className="text-[#999] text-sm">Core network placements: Top Tier (Groups/Bots/AI NSFW) · In-Feed · In-Page. Click a tier to expand, then a slot to manage its ads.</p>
                 </div>
 
                 {/* KPI row */}
@@ -3523,20 +3956,20 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                   </select>
                   <div className="flex items-center gap-2">
                     <span className="text-[#666] text-sm">Show on:</span>
-                    {['all', 'both', 'groups', 'bots'].map((v) => (
+                    {['all', 'both', 'groups', 'bots', 'ainsfw'].map((v) => (
                       <button
                         key={v}
                         type="button"
                         onClick={() => setFeedAdsFilterShowOn(v)}
                         className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${feedAdsFilterShowOn === v ? 'bg-[#b31b1b] text-white border-[#b31b1b]' : 'bg-white/5 text-[#999] border-white/10 hover:border-white/20'}`}
                       >
-                        {v === 'all' ? 'All' : v === 'both' ? 'Both' : v === 'groups' ? 'Groups' : 'Bots'}
+                        {v === 'all' ? 'All' : v === 'both' ? 'Both' : v === 'groups' ? 'Groups' : v === 'bots' ? 'Bots' : 'AI NSFW'}
                       </button>
                     ))}
                   </div>
                   <button
                     onClick={() => {
-                      setCampForm({ ...campForm, slot: 'feed', advertiserId: advertisers[0]?._id || '', internalName: '', name: '', creative: '', destinationUrl: '', description: '', category: 'All', country: 'All', buttonText: 'Visit Site', feedTier: 1, tierSlot: 1, position: 1, feedPlacement: 'both', videoUrl: '', badgeText: '', socialProof: 'random' } as any);
+                      setCampForm({ ...campForm, slot: 'feed', advertiserId: advertisers[0]?._id || '', internalName: '', name: '', creative: '', destinationUrl: '', description: '', category: 'All', country: 'All', buttonText: 'Visit Site', feedTier: 1, tierSlot: 1, position: 1, feedPlacement: 'both', videoUrl: '', badgeText: '', socialProof: 'random', placements: [], dailyClickCap: '', blockFormat: 'card' } as any);
                       setEditingCampaign(null);
                       setView('editCampaign');
                     }}
@@ -3545,6 +3978,48 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                     + New feed ad
                   </button>
                 </div>
+
+                {/* Column toggles */}
+                <div className="flex items-center gap-4 mb-4 text-xs">
+                  <span className="text-[#666] font-medium">Columns:</span>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-[#999] hover:text-white">
+                    <input type="checkbox" checked={showCTR} onChange={(e) => setShowCTR(e.target.checked)} className="accent-[#b31b1b]" />
+                    CTR
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-[#999] hover:text-white">
+                    <input type="checkbox" checked={showImpressions} onChange={(e) => setShowImpressions(e.target.checked)} className="accent-[#b31b1b]" />
+                    Impressions
+                  </label>
+                </div>
+
+                {/* Per-advertiser bird's-eye total line (when one advertiser is selected) */}
+                {feedAdsFilterAdvertiser !== 'all' && (() => {
+                  const advName = advertisers.find((a) => a._id === feedAdsFilterAdvertiser)?.name || 'Advertiser';
+                  const tot = filteredByShowOn.reduce((acc, c) => {
+                    const s = getStats(c._id, c);
+                    return {
+                      total: acc.total + (s.total || 0),
+                      last24h: acc.last24h + (s.last24h || 0),
+                      last7d: acc.last7d + (s.last7d || 0),
+                      last30d: acc.last30d + (s.last30d || 0),
+                      impressions: acc.impressions + ((s as any).impressions || 0),
+                    };
+                  }, { total: 0, last24h: 0, last7d: 0, last30d: 0, impressions: 0 });
+                  const ctr = tot.impressions > 0 ? ((tot.total / tot.impressions) * 100).toFixed(2) : '0.00';
+                  return (
+                    <div className="mb-4 rounded-lg border border-[#b31b1b]/30 bg-[#b31b1b]/10 px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                        <div className="text-sm font-bold text-white mr-2">{advName} — all placements</div>
+                        <div><span className="text-lg font-black text-white">{tot.last24h.toLocaleString()}</span> <span className="text-[10px] text-[#999] uppercase">24h</span></div>
+                        <div><span className="text-lg font-black text-white">{tot.last7d.toLocaleString()}</span> <span className="text-[10px] text-[#999] uppercase">7d</span></div>
+                        <div><span className="text-lg font-black text-white">{tot.last30d.toLocaleString()}</span> <span className="text-[10px] text-[#999] uppercase">30d</span></div>
+                        <div><span className="text-lg font-black text-white">{tot.total.toLocaleString()}</span> <span className="text-[10px] text-[#999] uppercase">Lifetime</span></div>
+                        {showImpressions && <div><span className="text-lg font-black text-white">{tot.impressions.toLocaleString()}</span> <span className="text-[10px] text-[#999] uppercase">Impr</span></div>}
+                        {showCTR && <div><span className="text-lg font-black text-blue-400">{ctr}%</span> <span className="text-[10px] text-[#999] uppercase">CTR</span></div>}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Bulk action bar */}
                 {feedAdsSelectedIds.size > 0 && (
@@ -3610,348 +4085,193 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                   />
                 )}
 
-                {/* Slot-grouped view */}
-                <div className="space-y-2">
-                  {sortedPositions.map(([posKey, group]) => {
-                    const isExpanded = expandedPositions.has(posKey);
-                    const variantCount = group.campaigns.length;
-                    const activeVariants = group.campaigns.filter((c) => c.status === 'active').length;
-                    const slotNum = group.tierSlot;
-
-                    // Unique advertiser names in this slot
-                    const advNames = [...new Set(group.campaigns.map((c) => c.advertiserName || advertisers.find((a) => a._id === c.advertiserId)?.name || '').filter(Boolean))];
-
-                    // Aggregate stats for the slot
-                    const slotClicks = group.campaigns.reduce((sum, c) => sum + (getStats(c._id, c).total || 0), 0);
-                    const slotClicks24h = group.campaigns.reduce((sum, c) => sum + (getStats(c._id, c).last24h || 0), 0);
-                    const slotClicks7d = group.campaigns.reduce((sum, c) => sum + (getStats(c._id, c).last7d || 0), 0);
-                    const slotClicks30d = group.campaigns.reduce((sum, c) => sum + (getStats(c._id, c).last30d || 0), 0);
-                    // Trend: compare last 7d vs previous 7d (approx from 30d minus 7d)
-                    const prev7d = slotClicks30d - slotClicks7d;
-                    const trendPct = prev7d > 0 ? Math.round(((slotClicks7d - prev7d) / prev7d) * 100) : (slotClicks7d > 0 ? 100 : 0);
-
-                    // Determine position-level best CTR for winner badge
-                    const variantStats = group.campaigns.map((c) => {
-                      const s = getStats(c._id, c);
-                      return { _id: c._id, impressions: s.impressions ?? 0, clicks: s.total, ctr: s.ctr ?? 0 };
-                    });
-                    const eligible = variantStats.filter((v) => v.impressions >= 100);
-                    const winnerId = eligible.length > 0 ? eligible.sort((a, b) => b.ctr - a.ctr)[0]._id : null;
+                {/* Tier → Section → Slot hierarchy */}
+                <div className="space-y-3">
+                  {TIER_STRUCTURE.map((tier) => {
+                    const tierKey = `tier-${tier.tier}`;
+                    const tierExpanded = expandedPositions.has(tierKey);
+                    const allTierPlacements = tier.sections.flatMap(s => s.placements);
+                    const tierCampaigns = allTierPlacements.flatMap(pid => posGroups[pid]?.campaigns || []);
+                    const tierUnique = [...new Map(tierCampaigns.map(c => [c._id, c])).values()];
+                    const tierActive = tierUnique.filter(c => c.status === 'active').length;
+                    const tierClicks = tierUnique.reduce((s, c) => s + (getStats(c._id, c).total || 0), 0);
+                    const tierClicks24h = tierUnique.reduce((s, c) => s + (getStats(c._id, c).last24h || 0), 0);
+                    const tierClicks7d = tierUnique.reduce((s, c) => s + (getStats(c._id, c).last7d || 0), 0);
 
                     return (
-                      <div key={posKey} className={`rounded-xl border ${isExpanded ? 'overflow-visible z-20 relative' : 'overflow-hidden'} ${variantCount > 0 ? 'border-white/10' : 'border-white/5 opacity-60'}`}>
-                        {/* Slot header — always visible */}
-                        <button
-                          onClick={() => togglePosition(posKey)}
-                          className="w-full flex items-center gap-3 px-4 py-3 bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-left"
-                        >
-                          <svg className={`w-4 h-4 text-[#999] transition-transform shrink-0 ${isExpanded ? 'rotate-90' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6" /></svg>
-                          <span className="text-white font-bold text-sm min-w-[52px]">Slot {slotNum}</span>
-                          <span className="text-[#555] text-[10px] shrink-0">{slotNum === 1 ? '👑 Top Groups Section' : slotNum === 2 ? 'After 2 groups' : slotNum === 3 ? 'After 7 groups' : slotNum === 5 ? '🤖 Featured Bot (after 4 groups)' : 'After 12 groups + loops'}</span>
-                          {slotNum === 1 && topGroupSlots.length > 0 && (
-                            <span className="text-amber-400 text-[10px] font-semibold">{topGroupSlots.length} featured group{topGroupSlots.length > 1 ? 's' : ''}</span>
-                          )}
-                          {variantCount > 0 ? (
-                            <span className="text-[#666] text-xs truncate">{advNames.join(', ')}</span>
-                          ) : (
-                            <span className="text-[#555] text-xs italic">Empty</span>
-                          )}
+                      <div key={tierKey} className="rounded-xl border border-white/10 overflow-hidden">
+                        {/* Tier header */}
+                        <button onClick={() => togglePosition(tierKey)} className="w-full flex items-center gap-3 px-4 py-3 bg-white/[0.04] hover:bg-white/[0.07] transition-colors text-left">
+                          <svg className={`w-4 h-4 text-[#999] transition-transform shrink-0 ${tierExpanded ? 'rotate-90' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6" /></svg>
+                          <span className="text-white font-black text-xs uppercase tracking-wider">{tier.tier}</span>
+                          <span className="text-[#555] text-[10px]">{tier.sections.length} section{tier.sections.length > 1 ? 's' : ''} · {allTierPlacements.length} slot{allTierPlacements.length > 1 ? 's' : ''}</span>
                           <div className="ml-auto flex items-center gap-3 shrink-0">
-                            {variantCount > 0 && (
-                              <>
-                                <span className="text-white text-xs tabular-nums font-semibold">{slotClicks.toLocaleString()} <span className="text-[#666] font-normal">total</span></span>
-                                <span className="text-green-400 text-xs tabular-nums">+{slotClicks24h} <span className="text-[#666]">24h</span></span>
-                                <span className="text-[#999] text-xs tabular-nums">{slotClicks7d.toLocaleString()} <span className="text-[#666]">7d</span></span>
-                                {(slotClicks7d > 0 || prev7d > 0) && (
-                                  <span className={`text-xs font-semibold tabular-nums ${trendPct > 0 ? 'text-green-400' : trendPct < 0 ? 'text-red-400' : 'text-[#666]'}`}>
-                                    {trendPct > 0 ? '↑' : trendPct < 0 ? '↓' : '→'}{Math.abs(trendPct)}%
-                                  </span>
-                                )}
-                              </>
-                            )}
-                            <span className={`text-xs px-2 py-0.5 rounded ${activeVariants > 0 ? 'bg-green-500/20 text-green-400' : 'bg-white/5 text-[#666]'}`}>
-                              {variantCount > 0 ? `${activeVariants}/${variantCount} ads` : 'empty'}
+                            <span className="text-white text-xs tabular-nums font-semibold">{tierClicks.toLocaleString()} <span className="text-[#666] font-normal">total</span></span>
+                            <span className="text-green-400 text-xs tabular-nums">+{tierClicks24h} <span className="text-[#666]">24h</span></span>
+                            <span className="text-[#999] text-xs tabular-nums">{tierClicks7d.toLocaleString()} <span className="text-[#666]">7d</span></span>
+                            <span className={`text-xs px-2 py-0.5 rounded ${tierActive > 0 ? 'bg-green-500/20 text-green-400' : 'bg-white/5 text-[#666]'}`}>
+                              {tierActive}/{tierUnique.length} ads
                             </span>
-                            {variantCount < 4 && (
-                              <div
-                                role="button"
-                                tabIndex={0}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setCampForm({ ...campForm, slot: 'feed', advertiserId: advertisers[0]?._id || '', internalName: '', name: '', creative: '', destinationUrl: '', description: '', category: 'All', country: 'All', buttonText: 'Visit Site', feedTier: group.feedTier, tierSlot: group.tierSlot, position: slotNum, feedPlacement: 'both', videoUrl: '', badgeText: '', socialProof: 'random' } as any);
-                                  setEditingCampaign(null);
-                                  setView('editCampaign');
-                                }}
-                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.currentTarget.click(); }}
-                                className="px-3 py-1 bg-[#b31b1b]/80 hover:bg-[#b31b1b] text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
-                              >
-                                + Add{variantCount > 0 ? ' Variant' : ' Ad'}
-                              </div>
-                            )}
                           </div>
                         </button>
 
-                        {/* Expanded variant table */}
-                        {isExpanded && (
+                        {tierExpanded && (
                           <div className="border-t border-white/5">
-                            {/* Manual Top Groups — only inside Slot 1 */}
-                            {slotNum === 1 && (
-                              <div className="border-b border-amber-500/20">
-                                <table className="w-full text-sm">
-                                  <thead className="bg-amber-500/[0.06]">
-                                    <tr>
-                                      <th className="px-3 py-2 text-left font-bold text-amber-400 text-xs uppercase" colSpan={2}>Featured Group</th>
-                                      <th className="px-3 py-2 text-left font-bold text-amber-400/70 text-xs uppercase">Image</th>
-                                      <th className="px-3 py-2 text-left font-bold text-amber-400/70 text-xs uppercase">Name</th>
-                                      <th className="px-3 py-2 text-right font-bold text-amber-400/70 text-xs uppercase">Views</th>
-                                      <th className="px-3 py-2 text-right font-bold text-amber-400/70 text-xs uppercase">Weekly</th>
-                                      <th className="px-3 py-2 text-right font-bold text-amber-400/70 text-xs uppercase">Clicks</th>
-                                      <th className="px-3 py-2 text-center font-bold text-amber-400/70 text-xs uppercase w-24"></th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-white/5">
-                                    {([1, 2] as const).map((tgSlot) => {
-                                      const assigned = topGroupSlots.find(g => g.topGroupSlot === tgSlot);
-                                      const isEditing = topSlotEditingSlot === tgSlot;
-                                      return (
-                                        <tr key={tgSlot} className="hover:bg-amber-500/[0.03] transition-colors">
-                                          <td className="px-3 py-2 text-amber-400 font-bold text-xs w-8">#{tgSlot}</td>
-                                          {assigned && !isEditing ? (
-                                            <>
-                                              <td className="px-3 py-2 w-4"></td>
-                                              <td className="px-3 py-2">{assigned.image ? <img src={assigned.image} alt="" className="h-10 w-14 object-cover rounded" /> : <span className="text-[#666]">—</span>}</td>
-                                              <td className="px-3 py-2">
-                                                <div className="text-white font-medium">{assigned.name}</div>
-                                                <div className="text-[10px] text-[#666]">/{assigned.slug} · {assigned.category}</div>
-                                              </td>
-                                              <td className="px-3 py-2 text-right text-white tabular-nums">{assigned.views.toLocaleString()}</td>
-                                              <td className="px-3 py-2 text-right text-green-400 tabular-nums">{assigned.weeklyClicks.toLocaleString()}</td>
-                                              <td className="px-3 py-2 text-right text-white tabular-nums font-semibold">{assigned.clickCount.toLocaleString()}</td>
-                                              <td className="px-3 py-2 text-center">
-                                                <div className="flex items-center justify-center gap-2">
-                                                  <button onClick={() => { setTopSlotEditingSlot(tgSlot); setTopSlotSearch(''); setTopSlotResults([]); }} className="text-[10px] text-amber-400 hover:text-amber-300 font-semibold">Change</button>
-                                                  <button
-                                                    onClick={async () => {
-                                                      if (!confirm(`Remove "${assigned.name}" from Position ${tgSlot}?`)) return;
-                                                      setTopSlotSaving(true);
-                                                      try { await clearTopGroupSlot(getToken(), tgSlot); await fetchTopSlots(); } catch (e: any) { alert(e.message || 'Failed'); } finally { setTopSlotSaving(false); }
-                                                    }}
-                                                    disabled={topSlotSaving}
-                                                    className="text-[10px] text-red-400 hover:text-red-300 font-semibold"
-                                                  >Remove</button>
-                                                </div>
-                                              </td>
-                                            </>
+                            {tier.sections.map((section) => {
+                              const secKey = `sec-${section.label}`;
+                              const secExpanded = expandedPositions.has(secKey);
+                              const secCampaigns = section.placements.flatMap(pid => posGroups[pid]?.campaigns || []);
+                              const secUnique = [...new Map(secCampaigns.map(c => [c._id, c])).values()];
+                              const secActive = secUnique.filter(c => c.status === 'active').length;
+                              const secClicks = secUnique.reduce((s, c) => s + (getStats(c._id, c).total || 0), 0);
+                              const secClicks24h = secUnique.reduce((s, c) => s + (getStats(c._id, c).last24h || 0), 0);
+
+                              return (
+                                <div key={secKey} className="border-b border-white/5 last:border-b-0">
+                                  {/* Section header (e.g. "Top Groups") */}
+                                  <button onClick={() => togglePosition(secKey)} className="w-full flex items-center gap-3 px-6 py-2.5 bg-white/[0.02] hover:bg-white/[0.04] transition-colors text-left">
+                                    <svg className={`w-3.5 h-3.5 text-[#666] transition-transform shrink-0 ${secExpanded ? 'rotate-90' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6" /></svg>
+                                    <span className="text-white font-bold text-sm">{section.label}</span>
+                                    <span className="text-[#555] text-[10px]">{section.placements.length} slot{section.placements.length > 1 ? 's' : ''}</span>
+                                    <div className="ml-auto flex items-center gap-3 shrink-0">
+                                      <span className="text-white text-xs tabular-nums font-semibold">{secClicks.toLocaleString()}</span>
+                                      <span className="text-green-400 text-xs tabular-nums">+{secClicks24h}</span>
+                                      <span className={`text-xs px-2 py-0.5 rounded ${secActive > 0 ? 'bg-green-500/20 text-green-400' : 'bg-white/5 text-[#666]'}`}>
+                                        {secActive}/{secUnique.length}
+                                      </span>
+                                    </div>
+                                  </button>
+
+                                  {secExpanded && section.placements.map((pid, pidx) => {
+                                    const group = posGroups[pid] || { campaigns: [] };
+                                    const slotKey = `slot-${pid}`;
+                                    const slotExpanded = expandedPositions.has(slotKey);
+                                    const variantCount = group.campaigns.length;
+                                    const activeVariants = group.campaigns.filter(c => c.status === 'active').length;
+                                    const advNames = [...new Set(group.campaigns.map(c => c.advertiserName || advertisers.find(a => a._id === c.advertiserId)?.name || '').filter(Boolean))];
+                                    const slotClicks = group.campaigns.reduce((sum, c) => sum + (getStats(c._id, c).total || 0), 0);
+                                    const slotClicks24h = group.campaigns.reduce((sum, c) => sum + (getStats(c._id, c).last24h || 0), 0);
+                                    const slotClicks7d = group.campaigns.reduce((sum, c) => sum + (getStats(c._id, c).last7d || 0), 0);
+                                    const slotClicks30d = group.campaigns.reduce((sum, c) => sum + (getStats(c._id, c).last30d || 0), 0);
+                                    const prev7d = slotClicks30d - slotClicks7d;
+                                    const trendPct = prev7d > 0 ? Math.round(((slotClicks7d - prev7d) / prev7d) * 100) : (slotClicks7d > 0 ? 100 : 0);
+                                    const variantStats = group.campaigns.map(c => { const s = getStats(c._id, c); return { _id: c._id, impressions: s.impressions ?? 0, clicks: s.total, ctr: s.ctr ?? 0 }; });
+                                    const eligible = variantStats.filter(v => v.impressions >= 100);
+                                    const winnerId = eligible.length > 0 ? eligible.sort((a, b) => b.ctr - a.ctr)[0]._id : null;
+                                    const shortLabel = SLOT_LABEL[pid]?.replace(/^.*—\s*/, '') || pid;
+
+                                    return (
+                                      <div key={pid} className={`${pidx > 0 ? 'border-t border-white/5' : ''}`}>
+                                        {/* Slot header */}
+                                        <button onClick={() => togglePosition(slotKey)} className={`w-full flex items-center gap-3 pl-10 pr-4 py-2 hover:bg-white/[0.03] transition-colors text-left ${variantCount === 0 ? 'opacity-50' : ''}`}>
+                                          <svg className={`w-3 h-3 text-[#555] transition-transform shrink-0 ${slotExpanded ? 'rotate-90' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6" /></svg>
+                                          <span className="text-white/80 font-semibold text-xs">{shortLabel}</span>
+                                          {variantCount > 0 ? (
+                                            <span className="text-[#555] text-[10px] truncate">{advNames.join(', ')}</span>
                                           ) : (
-                                            <td className="px-3 py-2" colSpan={6}>
-                                              <div className="flex items-center gap-2 max-w-md relative">
-                                                <input
-                                                  type="text"
-                                                  value={isEditing ? topSlotSearch : ''}
-                                                  onChange={async (e) => {
-                                                    const q = e.target.value;
-                                                    setTopSlotSearch(q);
-                                                    if (!isEditing) setTopSlotEditingSlot(tgSlot);
-                                                    if (q.length < 2) { setTopSlotResults([]); return; }
-                                                    setTopSlotSearching(true);
-                                                    try { const r = await searchGroupsForTopSlot(getToken(), q); setTopSlotResults(r); } catch (err: any) { console.error('Top slot search failed:', err); } finally { setTopSlotSearching(false); }
-                                                  }}
-                                                  onFocus={() => { if (!isEditing) setTopSlotEditingSlot(tgSlot); }}
-                                                  placeholder={assigned ? assigned.name : 'Search group to assign...'}
-                                                  className="flex-1 bg-[#1a1a1a] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder:text-[#555]"
-                                                />
-                                                {isEditing && <button onClick={() => { setTopSlotEditingSlot(null); setTopSlotSearch(''); setTopSlotResults([]); }} className="text-[10px] text-[#999] hover:text-white shrink-0">Cancel</button>}
-                                                {isEditing && topSlotResults.length > 0 && (
-                                                  <div className="absolute top-full left-0 right-0 mt-1 max-h-36 overflow-y-auto rounded-lg border border-white/10 bg-[#111] z-30 shadow-xl">
-                                                    {topSlotResults.map((g) => (
-                                                      <button
-                                                        key={g._id}
-                                                        onClick={async () => {
-                                                          setTopSlotSaving(true);
-                                                          try { await setTopGroupSlot(getToken(), g._id, tgSlot); await fetchTopSlots(); setTopSlotEditingSlot(null); setTopSlotSearch(''); setTopSlotResults([]); } catch (e: any) { console.error('Set top slot failed:', e); alert(e.message || 'Failed'); } finally { setTopSlotSaving(false); }
-                                                        }}
-                                                        disabled={topSlotSaving}
-                                                        className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-white/5 text-left transition-colors"
-                                                      >
-                                                        {g.image && <img src={g.image} alt="" className="h-7 w-7 rounded object-cover border border-white/10" />}
-                                                        <div className="flex-1 min-w-0">
-                                                          <div className="text-xs text-white truncate">{g.name}</div>
-                                                          <div className="text-[10px] text-[#666]">/{g.slug} · {g.category} · {g.views.toLocaleString()} views</div>
-                                                        </div>
-                                                      </button>
-                                                    ))}
-                                                  </div>
+                                            <span className="text-[#444] text-[10px] italic">empty</span>
+                                          )}
+                                          <div className="ml-auto flex items-center gap-3 shrink-0">
+                                            {variantCount > 0 && (
+                                              <>
+                                                <span className="text-white text-xs tabular-nums font-semibold">{slotClicks.toLocaleString()}</span>
+                                                <span className="text-green-400 text-xs tabular-nums">+{slotClicks24h}</span>
+                                                <span className="text-[#999] text-xs tabular-nums">{slotClicks7d.toLocaleString()} <span className="text-[#666]">7d</span></span>
+                                                {(slotClicks7d > 0 || prev7d > 0) && (
+                                                  <span className={`text-xs font-semibold tabular-nums ${trendPct > 0 ? 'text-green-400' : trendPct < 0 ? 'text-red-400' : 'text-[#666]'}`}>
+                                                    {trendPct > 0 ? '↑' : trendPct < 0 ? '↓' : '→'}{Math.abs(trendPct)}%
+                                                  </span>
                                                 )}
-                                                {isEditing && topSlotSearching && <span className="text-[10px] text-[#666]">Searching...</span>}
-                                              </div>
-                                              {!isEditing && !assigned && <div className="text-[10px] text-[#555] italic mt-1">Empty — click to assign</div>}
-                                            </td>
-                                          )}
-                                        </tr>
-                                      );
-                                    })}
-                                  </tbody>
-                                </table>
-                              </div>
-                            )}
-                            <table className="w-full text-sm">
-                              <thead className="bg-white/[0.02]">
-                                <tr>
-                                  <th className="px-3 py-2 w-10"></th>
-                                  <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Advertiser</th>
-                                  <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Image</th>
-                                  <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Name</th>
-                                  <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Show on</th>
-                                  <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">Impr.</th>
-                                  <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">Clicks</th>
-                                  <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">CTR</th>
-                                  <th className="px-3 py-2 text-right font-bold text-green-500/70 text-xs uppercase">CTR 24h</th>
-                                  <th className="px-3 py-2 text-right font-bold text-yellow-500/70 text-xs uppercase">CTR 48h</th>
-                                  <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">24h</th>
-                                  <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">7d</th>
-                                  <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">30d</th>
-                                  <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Status</th>
-                                  <th className="px-3 py-2 text-center font-bold text-[#999] text-xs uppercase w-12"></th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-white/5">
-                                {group.campaigns.map((c) => {
-                                  const stats = getStats(c._id, c);
-                                  const impressions = stats.impressions ?? 0;
-                                  const ctr = stats.ctr ?? (impressions > 0 ? Number(((stats.total / impressions) * 100).toFixed(2)) : 0);
-                                  const ctr24h = (stats as any).ctr24h ?? 0;
-                                  const ctr48h = (stats as any).ctr48h ?? 0;
-                                  const isWinner = c._id === winnerId;
-                                  return (
-                                    <tr key={c._id} className="hover:bg-white/5 transition-colors">
-                                      <td className="px-3 py-2">
-                                        <input
-                                          type="checkbox"
-                                          checked={feedAdsSelectedIds.has(c._id)}
-                                          onChange={() => toggleFeedAdsSelect(c._id)}
-                                          className="rounded border-white/30 text-[#b31b1b] focus:ring-[#b31b1b]"
-                                        />
-                                      </td>
-                                      <td className="px-3 py-2 text-white">{c.advertiserName || advertisers.find((a) => a._id === c.advertiserId)?.name || '—'}</td>
-                                      <td className="px-3 py-2">
-                                        {c.creative ? <img src={c.creative} alt="" className="h-10 w-14 object-cover rounded" /> : <span className="text-[#666]">—</span>}
-                                      </td>
-                                      <td className="px-3 py-2">
-                                        <span className="inline-flex items-center gap-1.5 text-white font-medium">
-                                          {(c as any).internalName || c.name}
-                                          {(c as any).videoUrl && (
-                                            <svg className="w-4 h-4 text-purple-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
-                                          )}
-                                          {isWinner && (
-                                            <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-black uppercase bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">Winner</span>
-                                          )}
-                                        </span>
-                                        {(c as any).internalName && <span className="block text-[#666] text-xs mt-0.5 truncate max-w-[200px]">{c.name}</span>}
-                                      </td>
-                                      <td className="px-3 py-2 text-[#999]">{c.feedPlacement === 'both' ? 'Both' : c.feedPlacement === 'groups' ? 'Groups' : c.feedPlacement === 'bots' ? 'Bots' : 'Both'}</td>
-                                      <td className="px-3 py-2 text-right text-[#999] tabular-nums">{impressions.toLocaleString()}</td>
-                                      <td className="px-3 py-2 text-right font-semibold text-white tabular-nums">{stats.total.toLocaleString()}</td>
-                                      <td className="px-3 py-2 text-right tabular-nums">
-                                        <span className={`font-bold ${ctr > 3 ? 'text-green-400' : ctr > 1 ? 'text-blue-400' : 'text-[#999]'}`}>{ctr}%</span>
-                                      </td>
-                                      <td className="px-3 py-2 text-right tabular-nums">
-                                        <span className={`font-bold ${ctr24h > 3 ? 'text-green-400' : ctr24h > 1 ? 'text-green-400/70' : 'text-[#666]'}`}>{ctr24h > 0 ? `${ctr24h}%` : '—'}</span>
-                                      </td>
-                                      <td className="px-3 py-2 text-right tabular-nums">
-                                        <span className={`font-bold ${ctr48h > 3 ? 'text-yellow-400' : ctr48h > 1 ? 'text-yellow-400/70' : 'text-[#666]'}`}>{ctr48h > 0 ? `${ctr48h}%` : '—'}</span>
-                                      </td>
-                                      <td className="px-3 py-2 text-right text-green-400 tabular-nums">{stats.last24h.toLocaleString()}</td>
-                                      <td className="px-3 py-2 text-right text-[#999] tabular-nums">{stats.last7d.toLocaleString()}</td>
-                                      <td className="px-3 py-2 text-right text-[#999] tabular-nums">{stats.last30d.toLocaleString()}</td>
-                                      <td className="px-3 py-2">
-                                        <span className={`px-2 py-0.5 rounded text-xs ${c.status === 'active' ? 'bg-green-500/20 text-green-400' : 'text-[#666]'}`}>{c.status}</span>
-                                      </td>
-                                      <td className="px-3 py-2 text-center">
-                                        <div className="relative inline-block">
-                                          <button
-                                            onClick={() => setFeedAdsMenuOpen(feedAdsMenuOpen === c._id ? null : c._id)}
-                                            className="p-1.5 rounded-lg hover:bg-white/10 text-[#999] hover:text-white transition-colors"
-                                          >
-                                            <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="3" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="13" r="1.5"/></svg>
-                                          </button>
-                                          {feedAdsMenuOpen === c._id && (
-                                            <>
-                                              <div className="fixed inset-0 z-40" onClick={() => setFeedAdsMenuOpen(null)} />
-                                              <div className="absolute right-0 top-8 z-50 w-48 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-xl overflow-hidden">
-                                                <button
-                                                  onClick={() => { setFeedAdsMenuOpen(null); openEditCampaign(c); }}
-                                                  className="w-full text-left px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2"
-                                                >
-                                                  <span className="text-blue-400">✎</span> Edit
-                                                </button>
-                                                <button
-                                                  onClick={async () => {
-                                                    setFeedAdsMenuOpen(null);
-                                                    try { await duplicateCampaigns([c._id]); } catch (err: any) { alert(err.response?.data?.message || 'Duplicate failed'); }
-                                                  }}
-                                                  className="w-full text-left px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2"
-                                                >
-                                                  <span className="text-purple-400">⧉</span> Duplicate (same slot)
-                                                </button>
-                                                <div className="border-t border-white/5" />
-                                                <div className="px-4 py-1.5 text-[10px] text-white/30 uppercase tracking-wider font-bold">Duplicate to slot…</div>
-                                                <div className="flex gap-1 px-4 pb-2">
-                                                  {[1, 2, 3, 4, 5].map(ts => {
-                                                    const isCurrent = (c.tierSlot ?? 1) === ts;
-                                                    return (
-                                                      <button
-                                                        key={ts}
-                                                        disabled={isCurrent}
-                                                        onClick={async () => {
-                                                          setFeedAdsMenuOpen(null);
-                                                          try { await duplicateCampaigns([c._id], [ts]); } catch (err: any) { alert(err.response?.data?.message || 'Duplicate failed'); }
-                                                        }}
-                                                        className={`flex-1 py-1.5 rounded text-xs font-bold transition-all ${
-                                                          isCurrent
-                                                            ? 'bg-white/5 text-white/20 cursor-not-allowed'
-                                                            : 'bg-purple-600/20 text-purple-300 hover:bg-purple-600 hover:text-white'
-                                                        }`}
-                                                        title={isCurrent ? 'Already in this slot' : `Duplicate to slot ${ts}`}
-                                                      >
-                                                        {ts}
-                                                      </button>
-                                                    );
-                                                  })}
-                                                </div>
-                                                <button
-                                                  onClick={async () => {
-                                                    setFeedAdsMenuOpen(null);
-                                                    const otherSlots = [1, 2, 3, 4, 5].filter(ts => ts !== (c.tierSlot ?? 1));
-                                                    try { await duplicateCampaigns([c._id], otherSlots); } catch (err: any) { alert(err.response?.data?.message || 'Duplicate failed'); }
-                                                  }}
-                                                  className="w-full text-left px-4 py-2 text-xs text-purple-300 hover:bg-purple-600/20 transition-colors flex items-center gap-2 font-medium"
-                                                >
-                                                  <span className="text-purple-400">⧉</span> Duplicate to ALL other slots
-                                                </button>
-                                                <div className="border-t border-white/5" />
-                                                <button
-                                                  onClick={() => { setFeedAdsMenuOpen(null); toggleCampaignStatus(c); }}
-                                                  className="w-full text-left px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2"
-                                                >
-                                                  <span className="text-yellow-400">{c.status === 'active' ? '⏸' : '▶'}</span> {c.status === 'active' ? 'Pause' : 'Start'}
-                                                </button>
-                                                <div className="border-t border-white/5" />
-                                                <button
-                                                  onClick={() => { setFeedAdsMenuOpen(null); handleDeleteCampaign(c._id); }}
-                                                  className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2"
-                                                >
-                                                  <span>🗑</span> Delete
-                                                </button>
-                                              </div>
-                                            </>
-                                          )}
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
+                                              </>
+                                            )}
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${activeVariants > 0 ? 'bg-green-500/20 text-green-400' : 'bg-white/5 text-[#555]'}`}>
+                                              {variantCount > 0 ? `${activeVariants}/${variantCount}` : '—'}
+                                            </span>
+                                          </div>
+                                        </button>
+
+                                        {/* Expanded variant table — same structure as before */}
+                                        {slotExpanded && variantCount > 0 && (
+                                          <div className="border-t border-white/5">
+                                            <table className="w-full text-sm">
+                                              <thead className="bg-white/[0.02]">
+                                                <tr>
+                                                  <th className="px-3 py-2 w-10"></th>
+                                                  <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Advertiser</th>
+                                                  <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Image</th>
+                                                  <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Name</th>
+                                                  <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Show on</th>
+                                                  {showImpressions && <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">Impr.</th>}
+                                                  <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">Clicks</th>
+                                                  {showCTR && <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">CTR</th>}
+                                                  <th className="px-3 py-2 text-right font-bold text-green-500/70 text-xs uppercase">24h</th>
+                                                  <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">7d</th>
+                                                  <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">30d</th>
+                                                  <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Status</th>
+                                                  <th className="px-3 py-2 text-center font-bold text-[#999] text-xs uppercase w-12"></th>
+                                                </tr>
+                                              </thead>
+                                              <tbody className="divide-y divide-white/5">
+                                                {group.campaigns.map((c) => {
+                                                  const stats = getStats(c._id, c);
+                                                  const impressions = stats.impressions ?? 0;
+                                                  const ctr = stats.ctr ?? (impressions > 0 ? Number(((stats.total / impressions) * 100).toFixed(2)) : 0);
+                                                  const isWinner = c._id === winnerId;
+                                                  return (
+                                                    <tr key={c._id} className="hover:bg-white/5 transition-colors">
+                                                      <td className="px-3 py-2">
+                                                        <input type="checkbox" checked={feedAdsSelectedIds.has(c._id)} onChange={() => toggleFeedAdsSelect(c._id)} className="rounded border-white/30 text-[#b31b1b] focus:ring-[#b31b1b]" />
+                                                      </td>
+                                                      <td className="px-3 py-2 text-white text-xs">{c.advertiserName || advertisers.find(a => a._id === c.advertiserId)?.name || '—'}</td>
+                                                      <td className="px-3 py-2">{c.creative ? <img src={c.creative} alt="" className="h-8 w-12 object-cover rounded" /> : <span className="text-[#666]">—</span>}</td>
+                                                      <td className="px-3 py-2">
+                                                        <span className="inline-flex items-center gap-1.5 text-white font-medium text-xs">
+                                                          {(c as any).internalName || c.name}
+                                                          {(c as any).videoUrl && <svg className="w-3.5 h-3.5 text-purple-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>}
+                                                          {isWinner && <span className="ml-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">W</span>}
+                                                        </span>
+                                                      </td>
+                                                      <td className="px-3 py-2 text-[#999] text-xs">{c.feedPlacement === 'both' ? 'Both' : c.feedPlacement === 'groups' ? 'Groups' : c.feedPlacement === 'bots' ? 'Bots' : 'Both'}</td>
+                                                      {showImpressions && <td className="px-3 py-2 text-right text-[#999] tabular-nums text-xs">{impressions.toLocaleString()}</td>}
+                                                      <td className="px-3 py-2 text-right font-semibold text-white tabular-nums text-xs">{stats.total.toLocaleString()}</td>
+                                                      {showCTR && <td className="px-3 py-2 text-right tabular-nums text-xs"><span className={`font-bold ${ctr > 3 ? 'text-green-400' : ctr > 1 ? 'text-blue-400' : 'text-[#999]'}`}>{ctr}%</span></td>}
+                                                      <td className="px-3 py-2 text-right text-green-400 tabular-nums text-xs">{stats.last24h.toLocaleString()}</td>
+                                                      <td className="px-3 py-2 text-right text-[#999] tabular-nums text-xs">{stats.last7d.toLocaleString()}</td>
+                                                      <td className="px-3 py-2 text-right text-[#999] tabular-nums text-xs">{stats.last30d.toLocaleString()}</td>
+                                                      <td className="px-3 py-2"><span className={`px-2 py-0.5 rounded text-[10px] ${c.status === 'active' ? 'bg-green-500/20 text-green-400' : 'text-[#666]'}`}>{c.status}</span></td>
+                                                      <td className="px-3 py-2 text-center">
+                                                        <div className="relative inline-block">
+                                                          <button onClick={() => setFeedAdsMenuOpen(feedAdsMenuOpen === c._id ? null : c._id)} className="p-1 rounded hover:bg-white/10 text-[#999] hover:text-white transition-colors">
+                                                            <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="3" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="13" r="1.5"/></svg>
+                                                          </button>
+                                                          {feedAdsMenuOpen === c._id && (
+                                                            <>
+                                                              <div className="fixed inset-0 z-40" onClick={() => setFeedAdsMenuOpen(null)} />
+                                                              <div className="absolute right-0 top-8 z-50 w-48 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-xl overflow-hidden">
+                                                                <button onClick={() => { setFeedAdsMenuOpen(null); openEditCampaign(c); }} className="w-full text-left px-4 py-2 text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2"><span className="text-blue-400">✎</span> Edit</button>
+                                                                <button onClick={async () => { setFeedAdsMenuOpen(null); try { await duplicateCampaigns([c._id]); } catch (err: any) { alert(err.message || 'Duplicate failed'); } }} className="w-full text-left px-4 py-2 text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2"><span className="text-purple-400">⧉</span> Duplicate</button>
+                                                                <div className="border-t border-white/5" />
+                                                                <button onClick={() => { setFeedAdsMenuOpen(null); toggleCampaignStatus(c); }} className="w-full text-left px-4 py-2 text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2"><span className="text-yellow-400">{c.status === 'active' ? '⏸' : '▶'}</span> {c.status === 'active' ? 'Pause' : 'Start'}</button>
+                                                                <div className="border-t border-white/5" />
+                                                                <button onClick={() => { setFeedAdsMenuOpen(null); handleDeleteCampaign(c._id); }} className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2"><span>🗑</span> Delete</button>
+                                                              </div>
+                                                            </>
+                                                          )}
+                                                        </div>
+                                                      </td>
+                                                    </tr>
+                                                  );
+                                                })}
+                                              </tbody>
+                                            </table>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -3959,64 +4279,10 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                   })}
                 </div>
 
-                {sortedPositions.length === 0 && (
-                  <div className="p-8 text-center text-[#666]">No feed ads match the current filters. Create one with &quot;+ New feed ad&quot;.</div>
+                {filteredByShowOn.length === 0 && (
+                  <div className="p-8 text-center text-[#666]">No feed ads match the current filters.</div>
                 )}
 
-                {/* ─── AI NSFW Featured section ─── */}
-                {(() => {
-                  const nsfwCampaigns = campaigns.filter((c) => c.slot === 'ainsfw');
-                  if (nsfwCampaigns.length === 0) return null;
-                  return (
-                    <div className="mt-10">
-                      <div className="flex items-center gap-3 mb-4">
-                        <h2 className="text-lg font-bold text-white">AI NSFW Featured</h2>
-                        <span className="text-[10px] font-bold bg-purple-600/30 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded">{nsfwCampaigns.length} campaign{nsfwCampaigns.length !== 1 ? 's' : ''}</span>
-                      </div>
-                      <div className="overflow-x-auto rounded-lg border border-white/10">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b border-white/10 text-left">
-                              <th className="px-4 py-2 text-[#999] text-xs font-semibold">Tool</th>
-                              <th className="px-4 py-2 text-[#999] text-xs font-semibold">Status</th>
-                              <th className="px-4 py-2 text-[#999] text-xs font-semibold text-right">Impressions</th>
-                              <th className="px-4 py-2 text-[#999] text-xs font-semibold text-right">Clicks (24h)</th>
-                              <th className="px-4 py-2 text-[#999] text-xs font-semibold text-right">Clicks (7d)</th>
-                              <th className="px-4 py-2 text-[#999] text-xs font-semibold text-right">Clicks (30d)</th>
-                              <th className="px-4 py-2 text-[#999] text-xs font-semibold text-right">Total Clicks</th>
-                              <th className="px-4 py-2 text-[#999] text-xs font-semibold text-right">CTR</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {nsfwCampaigns.map((c) => {
-                              const s = feedClickStats[c._id] || { total: c.clicks ?? 0, last24h: 0, last7d: 0, last30d: 0, impressions: c.impressions ?? 0, ctr: 0 };
-                              const ctr = s.impressions ? ((s.total / s.impressions) * 100).toFixed(2) : '0.00';
-                              return (
-                                <tr key={c._id} className="border-b border-white/5 hover:bg-white/[0.02]">
-                                  <td className="px-4 py-2.5">
-                                    <div className="font-semibold text-white text-xs">{c.name}</div>
-                                    <div className="text-[10px] text-[#666]">{c.internalName || c.destinationUrl}</div>
-                                  </td>
-                                  <td className="px-4 py-2.5">
-                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${c.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>{c.status}</span>
-                                  </td>
-                                  <td className="px-4 py-2.5 text-right text-[#999] text-xs">{(s.impressions || 0).toLocaleString()}</td>
-                                  <td className="px-4 py-2.5 text-right text-[#999] text-xs">{s.last24h.toLocaleString()}</td>
-                                  <td className="px-4 py-2.5 text-right text-[#999] text-xs">{s.last7d.toLocaleString()}</td>
-                                  <td className="px-4 py-2.5 text-right text-[#999] text-xs">{s.last30d.toLocaleString()}</td>
-                                  <td className="px-4 py-2.5 text-right font-semibold text-white text-xs">{s.total.toLocaleString()}</td>
-                                  <td className="px-4 py-2.5 text-right text-xs">
-                                    <span className={`font-bold ${Number(ctr) > 0 ? 'text-green-400' : 'text-[#666]'}`}>{ctr}%</span>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  );
-                })()}
               </>
             );
           })()}
@@ -4353,12 +4619,8 @@ function PremiumPlacementsSection() {
                         )}
                       </td>
                       <td className="px-5 py-3">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          ad.slot === 'vault-premium'
-                            ? 'bg-purple-500/15 text-purple-400'
-                            : 'bg-blue-500/15 text-blue-400'
-                        }`}>
-                          {ad.slot === 'vault-premium' ? 'Vault' : 'Feed'}
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/15 text-blue-400">
+                          Feed
                         </span>
                       </td>
                       <td className="px-5 py-3">

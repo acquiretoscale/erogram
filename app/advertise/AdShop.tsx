@@ -451,7 +451,7 @@ function CampaignTotal({ cart, onRemove }: { cart: Map<string, CartItem>; onRemo
 </div>
 
 <div style="margin-top:40px;padding-top:20px;border-top:1px solid #eee;text-align:center">
-  <p style="font-size:11px;font-weight:700;color:#1a1a1a;margin-bottom:4px">Contact: erogrampro@gmail.com &nbsp;/&nbsp; Telegram: @erogramDOTpro</p>
+  <p style="font-size:11px;font-weight:700;color:#1a1a1a;margin-bottom:4px">Contact: isabella@erogram.biz &nbsp;/&nbsp; Telegram: @erogramDOTpro</p>
   <p style="font-size:10px;color:#aaa;margin-top:8px">Multi-month bookings unlock up to 30% discount. Prices are in USD. This quote is informational — final pricing confirmed upon order submission at erogram.pro/advertise</p>
 </div>
 
@@ -511,8 +511,8 @@ function CampaignTotal({ cart, onRemove }: { cart: Map<string, CartItem>; onRemo
           <svg className="w-4 h-4 text-[#888]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
           <span className="text-[11px] font-bold text-[#555]">Email us directly:</span>
         </div>
-        <a href="mailto:erogrampro@gmail.com" className="text-[13px] font-black text-[#1a1a1a] hover:text-[#0ea5e9] transition-colors underline underline-offset-2">
-          erogrampro@gmail.com
+        <a href="mailto:isabella@erogram.biz" className="text-[13px] font-black text-[#1a1a1a] hover:text-[#0ea5e9] transition-colors underline underline-offset-2">
+          isabella@erogram.biz
         </a>
       </div>
 

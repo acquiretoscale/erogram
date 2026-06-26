@@ -3,6 +3,8 @@ import connectDB from '@/lib/db/mongodb';
 import { Group, Article, Bot } from '@/lib/models';
 import { categories } from '@/app/groups/constants';
 import { LOCALES, LOCALE_HREFLANG, localePath } from '@/lib/i18n/config';
+import { BLOG_CATEGORY_SLUGS } from '@/lib/blog/categories';
+import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
 
 /** Build alternates object for a given path — tells Google about all language versions. */
 function buildAlternates(basePath: string, canonicalBase: string) {
@@ -25,7 +27,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const [groups, bots, articles, totalGroups, totalBots, dbCountries, categoryCounts, countryCounts] = await Promise.all([
       Group.find({ status: 'approved', premiumOnly: { $ne: true }, category: { $ne: 'Hentai' } }).select('slug updatedAt description_de description_es').lean(),
       Bot.find({ status: 'approved' }).select('slug updatedAt description_de description_es').lean(),
-      Article.find({}).select('slug updatedAt publishedAt').lean(),
+      Article.find({ status: 'published' }).select('slug updatedAt publishedAt').lean(),
       Group.countDocuments({ status: 'approved', premiumOnly: { $ne: true } }),
       Bot.countDocuments({ status: 'approved' }),
       Group.distinct('country', { status: 'approved', premiumOnly: { $ne: true } }),
@@ -48,14 +50,42 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       { url: baseUrl, lastModified: new Date(), changeFrequency: 'daily', priority: 1, alternates: buildAlternates('/', canonicalBase) },
       { url: `${baseUrl}/groups`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9, alternates: buildAlternates('/groups', canonicalBase) },
       { url: `${baseUrl}/bots`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9, alternates: buildAlternates('/bots', canonicalBase) },
-      { url: `${baseUrl}/articles`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+      { url: `${baseUrl}/blog`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+      ...BLOG_CATEGORY_SLUGS.map((slug) => ({
+        url: `${baseUrl}/blog/category/${slug}`,
+        lastModified: new Date(),
+        changeFrequency: 'weekly' as const,
+        priority: 0.8,
+      })),
+      // OnlyFans section — main search page + "by category" hub. The per-category
+      // top-10 ranking pages are added below (ofBestCategoryRoutes). The /{cat}onlyfans
+      // browse pages are intentionally NOT listed: they conflict with the top-10s.
+      { url: `${baseUrl}/onlyfanssearch`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+      { url: `${baseUrl}/best-onlyfans-creators`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8 },
+      // AI NSFW section hub only (individual tool pages are intentionally excluded).
+      { url: `${baseUrl}/ainsfw`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
       { url: `${baseUrl}/best-telegram-groups`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8, alternates: buildAlternates('/best-telegram-groups', canonicalBase) },
       { url: `${baseUrl}/add`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6, alternates: buildAlternates('/add', canonicalBase) },
-      { url: `${baseUrl}/advertise`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
       { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5, alternates: buildAlternates('/about', canonicalBase) },
       { url: `${baseUrl}/terms`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3 },
       { url: `${baseUrl}/privacy`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3 },
     ];
+
+    // OnlyFans "10 Best {Category}" top-10 ranking pages — curated, indexable,
+    // locale-aware (EN/DE/ES). These are the OF top-10s the sitemap should carry.
+    // NOTE: individual AI NSFW tool pages are intentionally NOT listed in any
+    // sitemap (per owner). The main sitemap only carries the /ainsfw section hub
+    // (added in staticRoutes above); tool pages stay discoverable via internal links.
+    const ofBestCategoryRoutes: MetadataRoute.Sitemap = OF_CATEGORIES.map((cat) => {
+      const path = `/best-onlyfans-accounts/${cat.slug}`;
+      return {
+        url: `${baseUrl}${path}`,
+        lastModified: new Date(),
+        changeFrequency: 'weekly' as const,
+        priority: 0.8,
+        alternates: buildAlternates(path, canonicalBase),
+      };
+    });
 
     const bestGroupsCategoryRoutes: MetadataRoute.Sitemap = categories
       .filter(cat => cat !== 'All' && activeCategories.has(cat))
@@ -156,7 +186,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
 
     const articleRoutes: MetadataRoute.Sitemap = articles.map((article: any) => ({
-      url: `${baseUrl}/articles/${article.slug}`,
+      url: `${baseUrl}/blog/${article.slug}`,
       lastModified: article.updatedAt || article.publishedAt || new Date(),
       changeFrequency: 'weekly' as const,
       priority: 0.8,
@@ -164,6 +194,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     return [
       ...staticRoutes,
+      ...ofBestCategoryRoutes,
       ...bestGroupsCategoryRoutes,
       ...bestGroupsCountryRoutes,
       ...groupPaginationRoutes,
@@ -181,7 +212,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       { url: baseUrl, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
       { url: `${baseUrl}/groups`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
       { url: `${baseUrl}/bots`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
-      { url: `${baseUrl}/articles`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+      { url: `${baseUrl}/blog`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+      { url: `${baseUrl}/onlyfanssearch`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+      { url: `${baseUrl}/best-onlyfans-creators`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8 },
+      { url: `${baseUrl}/ainsfw`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
       { url: `${baseUrl}/best-telegram-groups`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8 },
       { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
       { url: `${baseUrl}/terms`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3 },

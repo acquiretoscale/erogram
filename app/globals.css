@@ -2,9 +2,15 @@
 @plugin "@tailwindcss/typography";
 
 :root {
-  --background: #111111;
-  --foreground: #f5f5f5;
-  --accent: #b31b1b;
+  --background: #0a0a0b;
+  --foreground: #f4f5f7;
+  --accent: #00AFF0;
+  --accent-hover: #009dd9;
+  --accent-bright: #00d4ff;
+  --surface: rgba(255, 255, 255, 0.03);
+  --surface-2: rgba(255, 255, 255, 0.045);
+  --hairline: rgba(255, 255, 255, 0.08);
+  --hairline-strong: rgba(255, 255, 255, 0.12);
 }
 
 @theme inline {
@@ -23,10 +29,15 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+  background-image:
+    radial-gradient(900px 500px at 50% -8%, rgba(0, 175, 240, 0.07), transparent 70%),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.025'/%3E%3C/svg%3E");
+  background-attachment: fixed;
   overflow-x: hidden;
   width: 100%;
   max-width: 100vw;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 /* Scrollbar hide utility for story bar */
@@ -86,36 +97,39 @@ body {
   animation: slideInRight 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-/* Glassmorphism effect */
+/* Surface card — premium, structured (replaces old glassmorphism) */
 .glass {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 16px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 18px 40px -24px rgba(0, 0, 0, 0.8);
+  transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
 }
 
 .glass-strong {
-  background: rgba(20, 20, 20, 0.6);
+  background: rgba(16, 18, 22, 0.72);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 16px;
 }
 
-/* Gradient text */
+/* Gradient text — single confident cyan accent */
 .gradient-text {
-  background: linear-gradient(135deg, #ff3366, #ff0000);
+  background: linear-gradient(100deg, #00AFF0 0%, #00d4ff 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  filter: drop-shadow(0 0 20px rgba(255, 51, 102, 0.3));
 }
 
-/* Hover glow effect */
+/* Hover lift — refined cyan edge + depth, no cartoon glow */
+.hover-glow {
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease, background 0.25s ease;
+}
 .hover-glow:hover {
-  box-shadow: 0 0 40px rgba(179, 27, 27, 0.4);
-  transform: translateY(-2px);
-  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  border-color: rgba(0, 175, 240, 0.45);
+  box-shadow: 0 0 0 1px rgba(0, 175, 240, 0.25), 0 24px 50px -28px rgba(0, 175, 240, 0.45);
+  transform: translateY(-3px);
 }
 
 /* Gradient animations for featured groups */
@@ -231,4 +245,589 @@ body {
 @keyframes toastSlideIn {
   from { opacity: 0; transform: translateY(12px) scale(0.95); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ============================================================
+   FIRE BUTTONS — TIER-ONE neo-brutalism (Gumroad-style) + LIVE FIRE
+   Sharp corners, thick black border, hard offset shadow that
+   snaps on press. Yellow→orange→red molten face that BURNS:
+   an animated flame layer rises on hover. No rounded 1999 pills.
+   ============================================================ */
+@keyframes fireBurn {
+  0%   { background-position: 0% 0%,   50% 100%, 100% 0%; }
+  50%  { background-position: 0% 12%,  50% 78%,  100% 18%; }
+  100% { background-position: 0% 0%,   50% 100%, 100% 0%; }
+}
+@keyframes fireFlicker {
+  0%, 100% { opacity: 0.85; filter: saturate(1.1) brightness(1.02); }
+  35%      { opacity: 1;    filter: saturate(1.35) brightness(1.12); }
+  70%      { opacity: 0.9;  filter: saturate(1.2) brightness(1.05); }
+}
+
+.fire-btn {
+  position: relative;
+  isolation: isolate;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.6rem;
+  width: 100%;
+  min-width: 0;
+  padding: 1rem 1.1rem;
+  border: 2.5px solid #1a0600;
+  border-radius: 10px;
+  font-weight: 900;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.05;
+  color: #1a0400;
+  cursor: pointer;
+  user-select: none;
+  overflow: hidden;
+  /* molten: bright yellow core → volcanic orange → deep ember red */
+  background: linear-gradient(170deg, #ffe033 0%, #ffaa00 25%, #ff5a00 60%, #cc1500 100%);
+  /* hard offset shadow + outer ember glow (kept tight so it never bleeds off-screen) */
+  box-shadow:
+    3px 3px 0 0 #1a0600,
+    0 0 22px 3px rgba(255, 100, 0, 0.5),
+    0 0 48px 6px rgba(255, 60, 0, 0.25);
+  transform: translate(0, 0);
+  transition: transform 0.08s cubic-bezier(.2,.8,.2,1), box-shadow 0.08s cubic-bezier(.2,.8,.2,1), filter 0.15s ease;
+}
+
+/* Desktop: slightly larger label + offset, more presence in the flex row */
+@media (min-width: 640px) {
+  .fire-btn {
+    gap: 0.55rem;
+    padding: 0.95rem 1.1rem;
+    font-size: 0.92rem;
+    letter-spacing: 0.05em;
+    box-shadow:
+      4px 4px 0 0 #1a0600,
+      0 0 26px 4px rgba(255, 100, 0, 0.55),
+      0 0 56px 8px rgba(255, 60, 0, 0.28);
+  }
+}
+
+/* animated flame layer — sits behind the label, climbs + flickers on hover */
+.fire-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0;
+  background-image:
+    radial-gradient(38% 80% at 18% 120%, #fff36b 0%, #ffd21f 22%, rgba(255,138,0,0) 70%),
+    radial-gradient(46% 95% at 50% 125%, #ffd21f 0%, #ff7a12 30%, rgba(226,29,5,0) 72%),
+    radial-gradient(38% 80% at 82% 120%, #fff36b 0%, #ff9d12 24%, rgba(255,90,0,0) 70%);
+  background-size: 120% 180%, 130% 200%, 120% 180%;
+  background-repeat: no-repeat;
+  background-position: 0% 100%, 50% 130%, 100% 100%;
+  transition: opacity 0.18s ease;
+  pointer-events: none;
+}
+/* glossy top sheen */
+.fire-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 46%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0));
+  pointer-events: none;
+}
+
+.fire-btn:hover {
+  transform: translate(-1px, -1px);
+  filter: brightness(1.08) saturate(1.1);
+  box-shadow:
+    5px 5px 0 0 #1a0600,
+    0 0 38px 7px rgba(255, 120, 0, 0.75),
+    0 0 78px 14px rgba(255, 60, 0, 0.4);
+}
+.fire-btn:hover::before {
+  opacity: 1;
+  animation: fireBurn 1.1s ease-in-out infinite, fireFlicker 0.42s steps(2, end) infinite;
+}
+
+.fire-btn:active {
+  transform: translate(3px, 3px);
+  box-shadow:
+    0 0 0 0 #1a0600,
+    0 0 20px 4px rgba(255, 80, 0, 0.6);
+}
+
+/* label/icon ride above both layers */
+.fire-btn > * { position: relative; z-index: 1; }
+
+/* OnlyFans variant — keep brand white face + blue, same brutalist push */
+.fire-btn--ice {
+  color: #0b0b0b;
+  background: #ffffff;
+  border-color: #06212b;
+  box-shadow:
+    3px 3px 0 0 #06212b,
+    0 0 22px 3px rgba(0, 175, 240, 0.35);
+}
+@media (min-width: 640px) {
+  .fire-btn--ice {
+    box-shadow:
+      4px 4px 0 0 #06212b,
+      0 0 26px 4px rgba(0, 175, 240, 0.4);
+  }
+}
+.fire-btn--ice::before {
+  background-image:
+    radial-gradient(46% 95% at 50% 125%, #79e0ff 0%, #00aff0 32%, rgba(0,120,200,0) 72%),
+    radial-gradient(40% 85% at 18% 120%, #bff0ff 0%, #2cc4ff 26%, rgba(0,175,240,0) 70%),
+    radial-gradient(40% 85% at 82% 120%, #bff0ff 0%, #2cc4ff 26%, rgba(0,175,240,0) 70%);
+}
+.fire-btn--ice::after {
+  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0));
+}
+.fire-btn--ice:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 0 #06212b, 0 0 30px rgba(0, 175, 240, 0.6);
+}
+.fire-btn--ice:hover::before {
+  opacity: 1;
+  animation: fireBurn 1.1s ease-in-out infinite;
+}
+.fire-btn--ice:active {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 0 #06212b, 0 0 24px rgba(0, 175, 240, 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fire-btn:hover::before { animation: none; }
+}
+
+.fire-btn__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   EROGRAM MASCOT — gentle float + tail-sway ONLY on hover.
+   ============================================================ */
+@keyframes mascotFloat {
+  0%   { transform: translateY(0) rotate(0deg); }
+  25%  { transform: translateY(-5px) rotate(1.5deg); }
+  50%  { transform: translateY(-2px) rotate(0deg); }
+  75%  { transform: translateY(-7px) rotate(-1.5deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+.erogram-mascot {
+  cursor: pointer;
+  transition: transform 0.3s ease, filter 0.3s ease;
+}
+.erogram-mascot:hover {
+  animation: mascotFloat 1.8s ease-in-out infinite;
+  filter: drop-shadow(0 8px 20px rgba(185, 28, 28, 0.55));
+}
+@media (prefers-reduced-motion: reduce) {
+  .erogram-mascot:hover { animation: none; }
+}
+
+/* ============================================================
+   HERO NAV CARDS — white, compact, neobrutalism 3D on hover.
+   Background always stays white/light. No fire, no dark flip.
+   ============================================================ */
+.hero-nav-card {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 12px;
+  border: 2px solid #111;
+  background: #fff;
+  cursor: pointer;
+  user-select: none;
+  overflow: hidden;
+  text-align: left;
+  box-shadow: 3px 3px 0 0 #111;
+  transform: translate(0, 0);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.hero-nav-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 0 #111;
+}
+.hero-nav-card:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 0 #111;
+}
+
+.hero-nav-card__ring {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  background: transparent;
+}
+
+/* No-ring icon (EROGRAM SPOTLIGHT mascot) — full button height, no constraints */
+.hero-nav-card__bare {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+/* Outer column: top row + subtitle */
+.hero-nav-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  min-width: 0;
+  flex: 1;
+}
+
+/* Top row: icon + title + arrow all on one line */
+.hero-nav-card__top {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.hero-nav-card__title {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #111;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+}
+
+.hero-nav-card__sub {
+  font-size: 0.62rem;
+  font-weight: 500;
+  color: #777;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+}
+
+.hero-nav-card__arrow {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: #bbb;
+  transition: transform 0.12s ease, color 0.12s ease;
+}
+.hero-nav-card:hover .hero-nav-card__arrow {
+  transform: translate(2px, -2px);
+  color: #111;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-nav-card { transition: none; }
+}
+
+/* ============================================================
+   EROGRAM SPOTLIGHT — full-width featured banner CTA
+   ============================================================ */
+.erogram-uncut-cta {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 0 1.5rem 0 0;
+  border-radius: 14px;
+  border: 2px solid #7f1d1d;
+  background: linear-gradient(110deg, #7f1d1d 0%, #991b1b 40%, #b91c1c 100%);
+  cursor: pointer;
+  user-select: none;
+  overflow: hidden;
+  text-align: left;
+  box-shadow: 3px 3px 0 0 #450a0a;
+  transform: translate(0, 0);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.15s ease;
+}
+.erogram-uncut-cta:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 0 #450a0a;
+  filter: brightness(1.08);
+}
+.erogram-uncut-cta:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 0 #450a0a;
+}
+
+.erogram-uncut-cta__mascot {
+  height: 80px;
+  width: auto;
+  flex-shrink: 0;
+  object-fit: contain;
+  display: block;
+}
+
+.erogram-uncut-cta__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.erogram-uncut-cta__label {
+  font-size: 1rem;
+  font-weight: 900;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+}
+
+.erogram-uncut-cta__sub {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.3;
+}
+
+.erogram-uncut-cta__arrow {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.7);
+  transition: transform 0.12s ease, color 0.12s ease;
+}
+.erogram-uncut-cta:hover .erogram-uncut-cta__arrow {
+  transform: translateX(4px);
+  color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .erogram-uncut-cta { transition: none; }
+  .erogram-uncut-cta:hover .erogram-mascot { animation: none; }
+}
+
+/* PRIMARY hero CTA — the biggest, hottest button. Full-width, taller,
+   stronger ember bloom + a slow idle flicker so it always looks alive. */
+.fire-btn--hero {
+  flex: none;
+  width: 100%;
+  max-width: 100%;
+  padding: 1.1rem 1.5rem;
+  font-size: 1rem;
+  letter-spacing: 0.14em;
+  border-width: 2px;
+  border-color: rgba(180, 80, 0, 0.6);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffaa33 0%, #ff7a00 40%, #e65c00 100%);
+  box-shadow:
+    0 4px 20px rgba(255, 120, 0, 0.5),
+    0 0 60px 8px rgba(255, 90, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+.fire-btn--hero::before { opacity: 0.4; }
+.fire-btn--hero::after {
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.25), rgba(255,255,255,0));
+  border-radius: 12px 12px 0 0;
+}
+.fire-btn--hero:not(:hover)::before {
+  animation: fireBurn 2.4s ease-in-out infinite;
+}
+.fire-btn--hero:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 6px 28px rgba(255, 120, 0, 0.7),
+    0 0 80px 12px rgba(255, 90, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.fire-btn--hero:active {
+  transform: translateY(1px);
+  box-shadow:
+    0 2px 12px rgba(255, 100, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+@media (min-width: 640px) {
+  .fire-btn--hero {
+    padding: 1.25rem 2rem;
+    font-size: 1.15rem;
+    letter-spacing: 0.16em;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fire-btn--hero:not(:hover)::before { animation: none; }
+}
+
+/* ── AINSFW FUTURISTIC DESIGN SYSTEM ──────────────────────────── */
+
+/* Cyberpunk black + dark-green branding background.
+   Used on every AI NSFW surface (hub + individual tool pages). */
+.ainsfw-bg {
+  background-color: #04140c;
+  background-image:
+    radial-gradient(900px circle at 12% -10%, rgba(34, 197, 94, 0.16), transparent 55%),
+    radial-gradient(800px circle at 100% 0%, rgba(16, 185, 129, 0.10), transparent 50%),
+    linear-gradient(180deg, #04140c 0%, #03100a 40%, #020a06 100%);
+  background-attachment: fixed;
+}
+
+/* Scanline overlay — creates the horizontal stripe / electric CRT texture */
+.ainsfw-scanlines {
+  position: relative;
+}
+.ainsfw-scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.18) 2px,
+    rgba(0, 0, 0, 0.18) 4px
+  );
+  z-index: 1;
+}
+
+/* Hero headline — heavy wide italic grotesque with scanline cut-through,
+   matching the Arial-Black-Italic reference exactly. */
+.ainsfw-hero-title {
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 0.92;
+  text-transform: uppercase;
+  font-family: var(--font-archivo, 'Arial Black', 'Arial', sans-serif);
+  color: #fff;
+  -webkit-text-fill-color: transparent;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    #ffffff 0px,
+    #ffffff 3px,
+    #9a9a9a 3px,
+    #9a9a9a 5px
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* Green scanline button — the electric CRT effect on the CTA */
+.ainsfw-cta-btn {
+  position: relative;
+  overflow: hidden;
+  background-color: #22c55e;
+  color: #000;
+  font-style: italic;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-family: var(--font-archivo, 'Arial Black', 'Arial', sans-serif);
+  transition: background-color 0.15s ease;
+}
+.ainsfw-cta-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.12) 2px,
+    rgba(0, 0, 0, 0.12) 4px
+  );
+  z-index: 1;
+}
+.ainsfw-cta-btn:hover {
+  background-color: #16a34a;
+}
+.ainsfw-cta-btn > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Category grid cards — dark with scanline on hover */
+.ainsfw-cat-card {
+  position: relative;
+  overflow: hidden;
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: border-color 0.2s ease;
+}
+.ainsfw-cat-card:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+.ainsfw-cat-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(255, 255, 255, 0.02) 3px,
+    rgba(255, 255, 255, 0.02) 4px
+  );
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 1;
+}
+.ainsfw-cat-card:hover::after {
+  opacity: 1;
+}
+.ainsfw-cat-card-inner {
+  position: relative;
+  z-index: 2;
+}
+.ainsfw-cat-card-label {
+  font-style: italic;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  font-family: var(--font-archivo, 'Arial Black', 'Arial', sans-serif);
+  font-size: 1.15rem;
+  color: #fff;
+  transition: color 0.15s ease;
+}
+.ainsfw-cat-card:hover .ainsfw-cat-card-label {
+  color: #22c55e;
+}
+.ainsfw-cat-card-num {
+  font-family: 'Courier New', 'Courier', monospace;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+}
+
+/* AINSFW page navbar logo override — condensed italic scanline style.
+   Targets the "EROGRAM" wordmark span inside the shared masthead, scoped to
+   .ainsfw-page so it never affects any other page. Purely visual: no DOM /
+   functionality change. The masthead link's first span holds the wordmark. */
+.ainsfw-page header a[href="/"] > span.text-white {
+  font-style: italic;
+  font-family: var(--font-archivo, 'Arial Black', 'Arial', sans-serif);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  -webkit-text-fill-color: transparent;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    #ffffff 0px,
+    #ffffff 2px,
+    #8c8c8c 2px,
+    #8c8c8c 4px
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* Logo accent dot → brand green on AI NSFW pages (same square shape). */
+.ainsfw-page header a[href="/"] > span:last-child {
+  background-color: #22c55e !important;
 }

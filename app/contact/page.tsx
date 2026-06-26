@@ -15,8 +15,8 @@ const contacts = [
   {
     department: 'Content Removal',
     description: 'DMCA requests, privacy concerns, takedown inquiries.',
-    email: 'removal@erogram.biz',
-    href: 'mailto:removal@erogram.biz',
+    email: 'support@erogram.biz',
+    href: 'mailto:support@erogram.biz',
   },
   {
     department: 'Partnership & Advertising',
@@ -27,8 +27,8 @@ const contacts = [
   {
     department: 'Telegram',
     description: 'For direct messages and urgent matters.',
-    email: '@RVN8888',
-    href: 'https://t.me/RVN8888',
+    email: '@erogramDOTpro',
+    href: 'https://t.me/erogramDOTpro',
     external: true,
   },
 ];

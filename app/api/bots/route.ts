@@ -4,6 +4,8 @@ import connectDB from '@/lib/db/mongodb';
 import { Bot, User } from '@/lib/models';
 import { slugify } from '@/lib/utils/slugify';
 import { uploadToR2, isR2Configured } from '@/lib/r2';
+import { writeFile, mkdir } from 'fs/promises';
+import path from 'path';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -81,8 +83,18 @@ export async function GET(req: NextRequest) {
 
     const topBotParam = searchParams.get('topBot');
     if (topBotParam === 'true') {
-      query.topBot = true;
-      sortCriteria = { createdAt: -1 };
+      const now = new Date();
+      // Auto-expire stale paid boosts so they cleanly fall back to normal listings
+      await Bot.updateMany(
+        { boosted: true, boostExpiresAt: { $lte: now } },
+        { $set: { boosted: false, boostExpiresAt: null, boostDuration: null, featured: false } }
+      );
+      // Top Bots = manually curated (topBot) OR an active paid boost (mirrors Top Groups)
+      const topBotOr = { $or: [{ topBot: true }, { boosted: true, boostExpiresAt: { $gt: now } }] };
+      if (query.$and) query.$and.push(topBotOr);
+      else query.$and = [topBotOr];
+      // Boosted bots first, soonest-expiring next, then newest
+      sortCriteria = { boosted: -1, boostExpiresAt: 1, createdAt: -1 };
     } else if (sortBy === 'clickCount') {
       query = { status: 'approved', pinned: { $ne: true } };
       sortCriteria = { clickCount: -1 };
@@ -179,6 +191,8 @@ export async function GET(req: NextRequest) {
       advertisementUrl: b.advertisementUrl || null,
       pinned: b.pinned || false,
       topBot: b.topBot || false,
+      boosted: b.boosted || false,
+      boostExpiresAt: b.boostExpiresAt || null,
       clickCount: b.clickCount || 0,
       views: b.views || 0,
       memberCount: b.memberCount || 0,
@@ -204,16 +218,31 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// Simple submit: form data → save to DB → pending for moderation. No login required.
+// Submit: login required → save to DB → pending for moderation.
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
 
+    const user = await authenticate(req);
+    if (!user) {
+      return NextResponse.json(
+        { message: 'You must be logged in to submit a bot' },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
-    const { name, category, country, telegramLink, description, image } = body;
+    const { name, category, telegramLink, description, image, contactTelegram, contactEmail } = body;
     const categoriesArr: string[] = Array.isArray(body.categories)
       ? body.categories.slice(0, 3)
       : category ? [category] : [];
+
+    if (!contactTelegram && !contactEmail) {
+      return NextResponse.json(
+        { message: 'Please provide your Telegram username or email so we can reach you' },
+        { status: 400 }
+      );
+    }
 
     if (!name || categoriesArr.length === 0 || !telegramLink || !description) {
       return NextResponse.json(
@@ -243,21 +272,36 @@ export async function POST(req: NextRequest) {
 
     const defaultImage = process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png';
     let finalImage = defaultImage;
-    if (image?.startsWith('data:image/') && isR2Configured()) {
+    if (image?.startsWith('data:image/')) {
       const base64Match = image.match(/^data:image\/(\w+);base64,(.+)$/);
       if (base64Match?.[2]) {
         const ext = base64Match[1].replace('jpeg', 'jpg');
         const buffer = Buffer.from(base64Match[2], 'base64');
         const key = `bots/${slug}.${ext}`;
         const contentType = `image/${base64Match[1]}`;
-        finalImage = await uploadToR2(buffer, key, contentType);
+        if (isR2Configured()) {
+          try {
+            finalImage = await uploadToR2(buffer, key, contentType);
+          } catch (err) {
+            console.error('R2 upload failed:', err);
+          }
+        } else {
+          try {
+            const dir = path.join(process.cwd(), 'public', 'uploads', 'bots');
+            await mkdir(dir, { recursive: true });
+            const filePath = path.join(dir, `${slug}.${ext}`);
+            await writeFile(filePath, buffer);
+            finalImage = `/uploads/bots/${slug}.${ext}`;
+          } catch (err) {
+            console.error('Local image save failed:', err);
+          }
+        }
       }
     } else if (image && image !== defaultImage && image !== '/assets/image.jpg') {
       finalImage = image;
     }
 
-    const user = await authenticate(req);
-    const doc: Record<string, unknown> = {
+    const bot = await Bot.create({
       name,
       slug,
       categories: categoriesArr,
@@ -267,10 +311,10 @@ export async function POST(req: NextRequest) {
       description,
       image: finalImage,
       status: 'pending',
-    };
-    if (user?._id) doc.createdBy = user._id;
-
-    const bot = await Bot.create(doc);
+      createdBy: user._id,
+      contactTelegram: (contactTelegram || '').trim(),
+      contactEmail: (contactEmail || '').trim(),
+    });
     return NextResponse.json(bot);
   } catch (error: any) {
     console.error('Error creating bot:', error);

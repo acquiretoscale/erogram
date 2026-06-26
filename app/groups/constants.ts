@@ -4,14 +4,14 @@
 // ---------------------------------------------------------------------------
 
 export const filterCategories = [
-    'AI NSFW', 'Amateur', 'Anal', 'Anime', 'Argentina',
+    'AI NSFW', 'Amateur', 'Anal', 'Anime',
     'Asian', 'BDSM', 'Big Ass', 'Big Tits', 'Black', 'Blonde', 'Blowjob',
-    'Brazil', 'Brunette', 'China', 'Colombia', 'Cosplay', 'Creampie',
+    'Brazil', 'China', 'Colombia', 'Cosplay', 'Creampie',
     'Cuckold', 'Ebony', 'Fantasy', 'Feet', 'Fetish', 'France', 'Free-use',
-    'Germany', 'Hardcore', 'Italy',
-    'Japan', 'Latina', 'Lesbian', 'Masturbation', 'Mexico', 'MILF',
-    'NSFW-Telegram', 'Onlyfans', 'Onlyfans Leaks', 'Petite', 'Philippines', 'Privacy', 'Public', 'Red Hair', 'Russian',
-    'Spain', 'Telegram-Porn', 'Threesome', 'UK', 'Ukraine', 'USA', 'Vietnam',
+    'Germany', 'Hardcore',
+    'Japan', 'Latina', 'Lesbian', 'Masturbation', 'MILF',
+    'NSFW-Telegram', 'Onlyfans', 'Onlyfans Leaks', 'Petite', 'Privacy', 'Public', 'Russian',
+    'Spain', 'Telegram-Porn', 'Threesome', 'UK', 'Ukraine', 'USA',
 ];
 
 export const filterOptions: Array<{ label: string; value: string }> =

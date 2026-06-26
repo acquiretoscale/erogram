@@ -506,7 +506,7 @@ export default function CreatorProfileClient({
 
   const handleViewProfile = () => {
     trackCreatorClick(creator._id).catch(() => {});
-    window.open(creator.url, '_blank', 'noopener,noreferrer');
+    window.open(creator.url, '_blank', 'noopener');
   };
 
   const displayPrice = creator.isFree

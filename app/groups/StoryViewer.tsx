@@ -426,9 +426,6 @@ export default function StoryViewer({
               {currentSlide.type === 'group' && currentSlide.data.createdAt && (
                 <span className="text-white/50 text-[11px] font-medium ml-1">{timeAgo(currentSlide.data.createdAt)}</span>
               )}
-              {cat?.storyType === 'advert' && (
-                <span className="text-white/40 text-[10px] font-medium ml-1">Sponsored</span>
-              )}
             </div>
             {/* 24h countdown — like Instagram */}
             {(() => {

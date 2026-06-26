@@ -101,6 +101,12 @@ export default function SubmitCreatorPage() {
     e.preventDefault();
     if (!name.trim() || !onlyfansUrl.trim() || !description.trim() || !hasImages) return;
 
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      setResult({ success: false, error: 'Please log in (or create a free account) to submit your profile.' });
+      return;
+    }
+
     setSubmitting(true);
     setResult(null);
 
@@ -122,6 +128,7 @@ export default function SubmitCreatorPage() {
         location: location.trim(),
         categories,
         price: price.trim(),
+        token,
       });
       setResult(res);
     } catch (err: any) {
@@ -191,7 +198,12 @@ export default function SubmitCreatorPage() {
             {result?.error && (
               <div className="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
                 <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                {result.error}
+                <span className="flex-1">{result.error}</span>
+                {/login|log in|logged in/i.test(result.error) && (
+                  <Link href={lp('/join-erogram?redirect=/submit')} className="shrink-0 px-3 py-1.5 rounded-lg bg-[#00AFF0] text-white font-bold text-xs hover:bg-[#009AD6] transition-colors">
+                    Log in
+                  </Link>
+                )}
               </div>
             )}
 
@@ -398,20 +410,20 @@ export default function SubmitCreatorPage() {
                 </div>
                 <div className="shrink-0 flex flex-col gap-2.5 w-full sm:w-auto">
                   <a
-                    href="mailto:Isabella@erogram.biz"
+                    href="mailto:isabella@erogram.biz"
                     className="flex items-center justify-center gap-2.5 px-5 py-3 rounded-xl bg-[#00AFF0] text-white font-bold text-sm hover:bg-[#009AD6] transition-colors whitespace-nowrap"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-                    Isabella@erogram.biz
+                    isabella@erogram.biz
                   </a>
                   <a
-                    href="https://t.me/RVN8888"
+                    href="https://t.me/erogramDOTpro"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2.5 px-5 py-3 rounded-xl bg-gray-900 text-white font-bold text-sm hover:bg-gray-800 transition-colors whitespace-nowrap"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="shrink-0"><path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/></svg>
-                    @RVN8888 on Telegram
+                    @erogramDOTpro on Telegram
                   </a>
                 </div>
               </div>

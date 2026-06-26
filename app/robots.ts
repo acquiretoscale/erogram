@@ -14,49 +14,45 @@ export default function robots(): MetadataRoute.Robots {
       },
       {
         userAgent: 'GPTBot',
-        allow: ['/', '/groups', '/bots', '/articles', '/best-telegram-groups', '/about', '/onlyfanssearch', '/ainsfw'],
+        allow: ['/', '/groups', '/bots', '/blog', '/best-telegram-groups', '/about', '/onlyfanssearch', '/ainsfw'],
         disallow: commonDisallow,
       },
       {
         userAgent: 'ChatGPT-User',
-        allow: ['/', '/groups', '/bots', '/articles', '/best-telegram-groups', '/about', '/ainsfw'],
+        allow: ['/', '/groups', '/bots', '/blog', '/best-telegram-groups', '/about', '/ainsfw'],
         disallow: commonDisallow,
       },
       {
         userAgent: 'ClaudeBot',
-        allow: ['/', '/groups', '/bots', '/articles', '/best-telegram-groups', '/about', '/ainsfw'],
+        allow: ['/', '/groups', '/bots', '/blog', '/best-telegram-groups', '/about', '/ainsfw'],
         disallow: commonDisallow,
       },
       {
         userAgent: 'Anthropic-ai',
-        allow: ['/', '/groups', '/bots', '/articles', '/best-telegram-groups', '/about', '/ainsfw'],
+        allow: ['/', '/groups', '/bots', '/blog', '/best-telegram-groups', '/about', '/ainsfw'],
         disallow: commonDisallow,
       },
       {
         userAgent: 'CCBot',
-        allow: ['/', '/groups', '/bots', '/articles', '/best-telegram-groups', '/about', '/ainsfw'],
+        allow: ['/', '/groups', '/bots', '/blog', '/best-telegram-groups', '/about', '/ainsfw'],
         disallow: commonDisallow,
       },
       {
         userAgent: 'PerplexityBot',
-        allow: ['/', '/groups', '/bots', '/articles', '/best-telegram-groups', '/about', '/ainsfw'],
+        allow: ['/', '/groups', '/bots', '/blog', '/best-telegram-groups', '/about', '/ainsfw'],
         disallow: commonDisallow,
       },
       {
         userAgent: 'Bytespider',
-        allow: ['/', '/groups', '/bots', '/articles', '/best-telegram-groups', '/about', '/ainsfw'],
+        allow: ['/', '/groups', '/bots', '/blog', '/best-telegram-groups', '/about', '/ainsfw'],
         disallow: commonDisallow,
       },
       {
         userAgent: 'cohere-ai',
-        allow: ['/', '/groups', '/bots', '/articles', '/best-telegram-groups', '/about', '/ainsfw'],
+        allow: ['/', '/groups', '/bots', '/blog', '/best-telegram-groups', '/about', '/ainsfw'],
         disallow: commonDisallow,
       },
     ],
-    sitemap: [
-      `${baseUrl}/sitemap.xml`,
-      `${baseUrl}/sitemapof.xml`,
-      `${baseUrl}/sitemapAInsfw.xml`,
-    ],
+    sitemap: `${baseUrl}/sitemap.xml`,
   };
 }

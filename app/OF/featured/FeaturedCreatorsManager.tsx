@@ -14,6 +14,7 @@ import {
   resetTrendingClicks,
 } from '@/lib/actions/ofm';
 import { fetchCreatorFromApify } from '@/lib/actions/submitCreator';
+import { assignCreatorToUncut, getBlogFeaturedCreatorAdmin, clearBlogFeaturedCreator, type BlogFeaturedCreatorData } from '@/lib/actions/blogFeatured';
 
 interface TrendingSlot {
   _id: string;
@@ -235,6 +236,7 @@ export default function FeaturedCreatorsManager() {
   const [dailyClicks, setDailyClicks] = useState<DailyClick[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
+  const [spotlight, setSpotlight] = useState<BlogFeaturedCreatorData | null>(null);
 
   // Add
   const [addOpen, setAddOpen] = useState(false);
@@ -274,6 +276,21 @@ export default function FeaturedCreatorsManager() {
     setTimeout(() => setToast(''), 3500);
   };
 
+  const loadSpotlight = async () => {
+    try { setSpotlight(await getBlogFeaturedCreatorAdmin(token())); } catch { /* silent */ }
+  };
+
+  const handleRemoveSpotlight = async () => {
+    if (!confirm('Remove the SPOTLIGHT Creator of the Month? The cover will be hidden on /main.')) return;
+    try {
+      await clearBlogFeaturedCreator(token());
+      setSpotlight(null);
+      showToast('SPOTLIGHT cover removed');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to remove');
+    }
+  };
+
   const load = async () => {
     setLoading(true);
     try {
@@ -283,6 +300,7 @@ export default function FeaturedCreatorsManager() {
       ]);
       setCreators(slots as TrendingSlot[]);
       setDailyClicks(chart as DailyClick[]);
+      void loadSpotlight();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to load');
     } finally {
@@ -417,6 +435,23 @@ export default function FeaturedCreatorsManager() {
     }
   };
 
+  const handleAssignSpotlight = async (slot: TrendingSlot) => {
+    if (!confirm(`Feature ${slot.name} as Creator of the Month on the /blog (SPOTLIGHT) cover?`)) return;
+    try {
+      await assignCreatorToUncut(token(), {
+        name: slot.name,
+        username: slot.username,
+        avatar: slot.avatar,
+        url: slot.url,
+        bio: slot.bio,
+      });
+      showToast('Set as SPOTLIGHT cover ★');
+      void loadSpotlight();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed');
+    }
+  };
+
   const handleResetClicks = async (slot: TrendingSlot) => {
     if (!confirm(`Reset all clicks for ${slot.name}? This cannot be undone.`)) return;
     try {
@@ -476,6 +511,34 @@ export default function FeaturedCreatorsManager() {
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
             Add Creator
+          </button>
+        )}
+      </div>
+
+      {/* SPOTLIGHT cover status */}
+      <div className="flex items-center justify-between gap-3 flex-wrap rounded-2xl border border-[#cba24f]/25 bg-[#cba24f]/[0.06] px-4 py-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="px-2 py-1 rounded-lg text-[10px] font-black tracking-wider" style={{ background: 'linear-gradient(90deg,#e8c873,#cba24f)', color: '#0a0807' }}>SPOTLIGHT</span>
+          {spotlight ? (
+            <div className="flex items-center gap-2.5 min-w-0">
+              {spotlight.avatar
+                ? <img src={spotlight.avatar} alt={spotlight.name} className="w-8 h-8 rounded-full object-cover bg-white/5" />
+                : <div className="w-8 h-8 rounded-full bg-[#cba24f]/20 flex items-center justify-center text-[#e8c873] font-black text-xs">{spotlight.name.charAt(0)}</div>}
+              <div className="min-w-0">
+                <div className="text-white font-bold text-sm truncate">Creator of the Month: {spotlight.name}</div>
+                {spotlight.username && <div className="text-[#e8c873] text-xs truncate">@{spotlight.username}</div>}
+              </div>
+            </div>
+          ) : (
+            <span className="text-white/50 text-sm">No Creator of the Month set — the SPOTLIGHT cover is hidden.</span>
+          )}
+        </div>
+        {spotlight && (
+          <button
+            onClick={handleRemoveSpotlight}
+            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-red-500/15 border border-red-500/30 text-red-300 hover:bg-red-500/25 transition"
+          >
+            Remove SPOTLIGHT
           </button>
         )}
       </div>
@@ -594,6 +657,14 @@ export default function FeaturedCreatorsManager() {
 
                 {/* Actions */}
                 <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => handleAssignSpotlight(slot)}
+                    title="Feature on /blog SPOTLIGHT cover"
+                    className="px-2.5 py-2 rounded-lg text-[10px] font-black tracking-wider transition"
+                    style={{ background: 'linear-gradient(90deg,#e8c873,#cba24f)', color: '#0a0807' }}
+                  >
+                    SPOTLIGHT
+                  </button>
                   <button
                     onClick={() => handleToggle(slot)}
                     title={slot.active ? 'Pause' : 'Activate'}

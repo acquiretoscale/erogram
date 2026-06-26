@@ -35,6 +35,14 @@ const CATEGORY_BTN: Record<string, string> = {
 
 function getBookmarkKey(slug: string) { return `ainsfw_bookmark_${slug}`; }
 
+/** Cap a description to N words (default 18) so card previews stay short + uniform. */
+function capWords(text: string, max = 18): string {
+  if (!text) return '';
+  const words = text.trim().split(/\s+/);
+  if (words.length <= max) return text;
+  return words.slice(0, max).join(' ') + '…';
+}
+
 export default function ToolCard({ tool, index, initialStats, onVoteChange, featured, campaignId }: ToolCardProps) {
   const placeholder = '/assets/image.jpg';
   const mainImg = tool.image && (tool.image.startsWith('https://') || tool.image.startsWith('/'))
@@ -182,11 +190,11 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
           <Link href={`/${tool.slug}`} className="block h-full" onClick={handleFeaturedClick}>
             <div
               ref={cardRef}
-              className="group h-full rounded-2xl overflow-hidden bg-gradient-to-br from-[#0B1D3A] via-[#122B53] to-[#1A3F73] ring-[3px] ring-[#FF6A00] hover:ring-[#FF8C3A] shadow-[0_8px_28px_-8px_rgba(255,106,0,0.45)] hover:shadow-[0_12px_36px_-6px_rgba(255,106,0,0.55)] hover:-translate-y-1 transition-all duration-300 flex flex-col"
+              className="group h-full rounded-xl overflow-hidden bg-[#0a0a0a] border border-white/10 hover:border-[#22c55e]/40 transition-all flex flex-col"
             >
               {/* Image */}
               <div
-                className="relative w-full h-32 sm:h-36 overflow-hidden bg-[#0F274C] shrink-0 ring-1 ring-inset ring-[#9FC3FF]/20"
+                className="relative w-full h-32 sm:h-36 overflow-hidden bg-[#0a0a0a] shrink-0"
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
               >
@@ -203,22 +211,22 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
 
                 {gallery.length > 1 && (
                   <>
-                    <button onClick={(e) => goSlide(-1, e)} className="absolute left-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/50 text-white flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70">‹</button>
-                    <button onClick={(e) => goSlide(1, e)} className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/50 text-white flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70">›</button>
+                    <button onClick={(e) => goSlide(-1, e)} className="absolute left-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80">‹</button>
+                    <button onClick={(e) => goSlide(1, e)} className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80">›</button>
                   </>
                 )}
 
                 {gallery.length > 1 && (
                   <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1">
                     {gallery.map((_, i) => (
-                      <button key={i} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSlideIdx(i); }} className={`w-1.5 h-1.5 rounded-full transition-all ${i === slideIdx ? 'bg-white scale-125 shadow' : 'bg-white/40'}`} />
+                      <button key={i} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSlideIdx(i); }} className={`w-1.5 h-1.5 rounded-full transition-all ${i === slideIdx ? 'bg-white scale-125' : 'bg-white/30'}`} />
                     ))}
                   </div>
                 )}
 
                 {/* Featured badge */}
                 <div className="absolute top-1.5 left-1.5 z-10">
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#FF6A00] text-white text-[9px] font-black uppercase tracking-widest shadow-lg">
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#22c55e] text-black text-[9px] font-black uppercase tracking-widest">
                     <svg className="w-2 h-2" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3a2 2 0 01-2 2H7a2 2 0 01-2-2v-1h14v1z"/></svg>
                     Featured
                   </span>
@@ -249,22 +257,10 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                 </h3>
                 <p className="text-[9px] sm:text-[10px] text-[#7BAEFF] mb-1 truncate">{tool.vendor}</p>
 
-                <p className="text-[#A0B8DB] text-[10px] sm:text-xs line-clamp-2 leading-relaxed flex-grow mb-2">
-                  {tool.description}
+                {/* Description — hard-capped to ~18 words (string-level) + 2-line clamp for a tidy, uniform preview */}
+                <p className="text-white/70 text-[10px] sm:text-xs line-clamp-2 leading-relaxed flex-grow mb-2">
+                  {capWords(tool.description)}
                 </p>
-
-                {reviews.length > 0 && (
-                  <div className="flex items-center gap-1 mb-1.5">
-                    <div className="flex">
-                      {[1,2,3,4,5].map((s) => (
-                        <svg key={s} className={`w-2.5 h-2.5 ${s <= avgRating ? 'text-yellow-400' : 'text-white/15'}`} viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                        </svg>
-                      ))}
-                    </div>
-                    <span className="text-[9px] text-[#7BAEFF]/60">({reviews.length})</span>
-                  </div>
-                )}
 
                 {/* Votes row */}
                 <div className="flex items-center justify-between pt-1.5 border-t border-white/[0.08] mb-2">
@@ -302,7 +298,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                 </div>
 
                 {/* CTA */}
-                <div className="bg-yellow-400 hover:bg-yellow-300 text-black text-[10px] sm:text-xs font-black uppercase tracking-widest text-center py-1.5 rounded-lg border border-yellow-300 shadow-[0_4px_12px_-4px_rgba(250,204,21,0.5)] transition-colors cursor-pointer">
+                <div className="bg-yellow-400 hover:bg-yellow-300 text-black text-[10px] sm:text-xs font-black uppercase tracking-[1px] text-center py-1.5 rounded-lg transition-colors cursor-pointer">
                   TRY NOW →
                 </div>
               </div>
@@ -313,28 +309,28 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
         {/* Review Modal */}
         {showReview && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowReview(false); }}>
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-white rounded-2xl border-2 border-black shadow-[6px_6px_0_#000] p-5 sm:p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-[#111] rounded-2xl border border-white/10 p-5 sm:p-6 w-full max-w-sm text-white" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-start justify-between mb-4">
-                <h3 className="text-black font-black text-base">Review {tool.name}</h3>
-                <button onClick={() => setShowReview(false)} className="text-gray-400 hover:text-black transition-colors ml-4"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                <h3 className="text-white font-black text-base">Review {tool.name}</h3>
+                <button onClick={() => setShowReview(false)} className="text-white/40 hover:text-white transition-colors ml-4"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
               </div>
               <div className="flex gap-2 mb-4">
                 {[1,2,3,4,5].map((s) => (<button key={s} onClick={() => setReviewRating(s)} className={`text-2xl leading-none transition-transform hover:scale-125 ${s <= reviewRating ? 'text-yellow-400' : 'text-gray-200 hover:text-yellow-300'}`}>★</button>))}
-                <span className="ml-1 text-sm font-bold text-gray-500 self-center">{reviewRating}/5</span>
+                <span className="ml-1 text-sm font-bold text-white/50 self-center">{reviewRating}/5</span>
               </div>
-              <textarea value={reviewText} onChange={(e) => setReviewText(e.target.value)} placeholder={`Share your experience with ${tool.name}...`} rows={3} className="w-full bg-gray-50 border-2 border-black rounded-xl px-3 py-2.5 text-sm text-black placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-black mb-4" />
+              <textarea value={reviewText} onChange={(e) => setReviewText(e.target.value)} placeholder={`Share your experience with ${tool.name}...`} rows={3} className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 resize-none focus:outline-none focus:ring-2 focus:ring-[#22c55e]/40 mb-4" />
               {reviews.length > 0 && (
                 <div className="mb-4 space-y-2 max-h-36 overflow-y-auto">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Previous reviews</p>
+                  <p className="text-xs font-bold text-white/50 uppercase tracking-wide mb-1">Previous reviews</p>
                   {reviews.slice(0, 5).map((r, i) => (
-                    <div key={i} className="bg-gray-50 rounded-lg px-3 py-2 border border-gray-200">
-                      <div className="flex items-center gap-2 mb-0.5"><div className="flex">{[1,2,3,4,5].map((s) => (<svg key={s} className={`w-3 h-3 ${s <= r.rating ? 'text-yellow-400' : 'text-gray-200'}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>))}</div><span className="text-gray-400 text-[10px]">{r.date}</span></div>
-                      <p className="text-gray-600 text-xs line-clamp-2">{r.text}</p>
+                    <div key={i} className="bg-white/[0.04] rounded-lg px-3 py-2 border border-white/10">
+                      <div className="flex items-center gap-2 mb-0.5"><div className="flex">{[1,2,3,4,5].map((s) => (<svg key={s} className={`w-3 h-3 ${s <= r.rating ? 'text-[#22c55e]' : 'text-white/30'}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>))}</div><span className="text-white/40 text-[10px]">{r.date}</span></div>
+                      <p className="text-white/70 text-xs line-clamp-2">{r.text}</p>
                     </div>
                   ))}
                 </div>
               )}
-              <button onClick={handleReviewSubmit} disabled={!reviewText.trim() || reviewSubmitted} className="w-full py-2.5 rounded-xl font-black text-sm bg-yellow-400 text-black border-2 border-black shadow-[3px_3px_0_#000] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all disabled:opacity-40">{reviewSubmitted ? '✓ Submitted!' : 'Submit Review'}</button>
+              <button onClick={handleReviewSubmit} disabled={!reviewText.trim() || reviewSubmitted} className="w-full py-2.5 rounded-xl font-black text-sm bg-[#22c55e] text-black active:bg-[#16a34a] transition-all disabled:opacity-40">{reviewSubmitted ? '✓ Submitted!' : 'Submit Review'}</button>
             </motion.div>
           </div>
         )}
@@ -354,11 +350,11 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
         <Link href={`/${tool.slug}`} className="block h-full">
           <div
             ref={cardRef}
-            className="bg-white rounded-xl overflow-hidden h-full flex flex-col border-2 border-black shadow-[3px_3px_0_#000] hover:shadow-[5px_5px_0_#000] hover:-translate-y-0.5 transition-all duration-150 group"
+            className="bg-[#111] rounded-xl overflow-hidden h-full flex flex-col border border-white/10 hover:border-[#22c55e]/50 transition-all duration-150 group"
           >
             {/* Image carousel */}
             <div
-              className="relative w-full h-32 sm:h-36 overflow-hidden bg-gray-100 shrink-0"
+              className="relative w-full h-32 sm:h-36 overflow-hidden bg-[#0a0a0a] shrink-0"
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
             >
@@ -375,15 +371,15 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
 
               {gallery.length > 1 && (
                 <>
-                  <button onClick={(e) => goSlide(-1, e)} className="absolute left-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/90 text-black flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-white">‹</button>
-                  <button onClick={(e) => goSlide(1, e)} className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/90 text-black flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-white">›</button>
+                  <button onClick={(e) => goSlide(-1, e)} className="absolute left-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80">‹</button>
+                  <button onClick={(e) => goSlide(1, e)} className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80">›</button>
                 </>
               )}
 
               {gallery.length > 1 && (
                 <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1">
                   {gallery.map((_, i) => (
-                    <button key={i} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSlideIdx(i); }} className={`w-1.5 h-1.5 rounded-full transition-all ${i === slideIdx ? 'bg-white scale-125 shadow' : 'bg-white/50'}`} />
+                    <button key={i} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSlideIdx(i); }} className={`w-1.5 h-1.5 rounded-full transition-all ${i === slideIdx ? 'bg-white scale-125' : 'bg-white/30'}`} />
                   ))}
                 </div>
               )}
@@ -392,8 +388,8 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                 <span className={`${badge} text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider border border-black/20`}>{tool.category}</span>
               </div>
 
-              <button onClick={handleBookmark} title={bookmarked ? 'Remove bookmark' : 'Save'} className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center transition-all hover:scale-110 shadow-sm">
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill={bookmarked ? '#f43f5e' : 'none'} stroke={bookmarked ? '#f43f5e' : '#000'} strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              <button onClick={handleBookmark} title={bookmarked ? 'Remove bookmark' : 'Save'} className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center transition-all hover:scale-110 hover:bg-black/70">
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill={bookmarked ? '#f43f5e' : 'none'} stroke={bookmarked ? '#f43f5e' : '#fff'} strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
               </button>
 
               {gallery.length > 1 && (
@@ -403,33 +399,33 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
 
             {/* Body */}
             <div className="p-2.5 sm:p-3 flex-grow flex flex-col">
-              <h3 className="text-xs sm:text-sm font-black text-black mb-0.5 leading-tight truncate group-hover:text-indigo-700 transition-colors">{tool.name}</h3>
-              <p className="text-[9px] sm:text-[10px] text-gray-400 mb-1 truncate">{tool.vendor}</p>
+              <h3 className="text-xs sm:text-sm font-black text-white mb-0.5 leading-tight truncate group-hover:text-[#22c55e] transition-colors">{tool.name}</h3>
+              <p className="text-[9px] sm:text-[10px] text-white/50 mb-1 truncate">{tool.vendor}</p>
 
-              <p className="text-gray-600 text-[10px] sm:text-xs line-clamp-2 leading-relaxed flex-grow mb-2">{tool.description}</p>
+              <p className="text-white/70 text-[10px] sm:text-xs line-clamp-2 leading-relaxed flex-grow mb-2">{capWords(tool.description)}</p>
 
               {reviews.length > 0 && (
                 <div className="flex items-center gap-1 mb-1.5">
-                  <div className="flex">{[1,2,3,4,5].map((s) => (<svg key={s} className={`w-2.5 h-2.5 ${s <= avgRating ? 'text-yellow-400' : 'text-gray-200'}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>))}</div>
-                  <span className="text-[9px] text-gray-400">({reviews.length})</span>
+                  <div className="flex">{[1,2,3,4,5].map((s) => (<svg key={s} className={`w-2.5 h-2.5 ${s <= avgRating ? 'text-[#22c55e]' : 'text-white/20'}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>))}</div>
+                  <span className="text-[9px] text-white/50">({reviews.length})</span>
                 </div>
               )}
 
-              <div className="flex items-center justify-between pt-1.5 border-t border-gray-100 mb-2">
+              <div className="flex items-center justify-between pt-1.5 border-t border-white/10 mb-2">
                 <div className="flex items-center gap-1">
-                  <button onClick={(e) => handleVote(e, 'up')} title="Upvote" className={`flex items-center justify-center w-6 h-6 rounded border text-[10px] font-bold transition-all ${userVote === 'up' ? 'bg-green-500 border-black text-white shadow-[1px_1px_0_#000]' : 'bg-white border-gray-300 text-gray-500 hover:border-green-500 hover:text-green-600'}`}>
+                  <button onClick={(e) => handleVote(e, 'up')} title="Upvote" className={`flex items-center justify-center w-6 h-6 rounded text-[10px] font-bold transition-all ${userVote === 'up' ? 'bg-green-500 text-white' : 'bg-white/10 text-white/50 hover:bg-green-500/20 hover:text-green-300'}`}>
                     <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l8 8H4z"/></svg>
                   </button>
-                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded border ${score > 0 ? 'bg-green-100 border-green-400 text-green-700' : score < 0 ? 'bg-red-100 border-red-400 text-red-600' : 'bg-gray-100 border-gray-300 text-gray-400'}`}>
+                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${score > 0 ? 'bg-green-500/20 text-green-300' : score < 0 ? 'bg-red-500/20 text-red-300' : 'bg-white/5 text-white/30'}`}>
                     {score > 0 ? `+${score}` : score}
                   </span>
-                  <button onClick={(e) => handleVote(e, 'down')} title="Downvote" className={`flex items-center justify-center w-6 h-6 rounded border text-[10px] font-bold transition-all ${userVote === 'down' ? 'bg-red-500 border-black text-white shadow-[1px_1px_0_#000]' : 'bg-white border-gray-300 text-gray-500 hover:border-red-500 hover:text-red-600'}`}>
+                  <button onClick={(e) => handleVote(e, 'down')} title="Downvote" className={`flex items-center justify-center w-6 h-6 rounded text-[10px] font-bold transition-all ${userVote === 'down' ? 'bg-red-500 text-white' : 'bg-white/10 text-white/50 hover:bg-red-500/20 hover:text-red-300'}`}>
                     <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20l-8-8h16z"/></svg>
                   </button>
                 </div>
               </div>
 
-              <div className={`${btnCls} text-[10px] sm:text-xs font-black uppercase tracking-widest text-center py-1.5 rounded border-2 border-yellow-500 shadow-[2px_2px_0_#000] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all duration-75 cursor-pointer`}>
+              <div className={`${btnCls} text-[10px] sm:text-xs font-black uppercase tracking-[1px] text-center py-1.5 rounded transition-all cursor-pointer`}>
                 TRY NOW →
               </div>
             </div>
@@ -439,28 +435,28 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
 
       {showReview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowReview(false); }}>
-          <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-white rounded-2xl border-2 border-black shadow-[6px_6px_0_#000] p-5 sm:p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+          <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-[#111] rounded-2xl border border-white/10 p-5 sm:p-6 w-full max-w-sm text-white" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between mb-4">
-              <h3 className="text-black font-black text-base">Review {tool.name}</h3>
-              <button onClick={() => setShowReview(false)} className="text-gray-400 hover:text-black transition-colors ml-4"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                <h3 className="text-white font-black text-base">Review {tool.name}</h3>
+                <button onClick={() => setShowReview(false)} className="text-white/40 hover:text-white transition-colors ml-4"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
             </div>
             <div className="flex gap-2 mb-4">
               {[1,2,3,4,5].map((s) => (<button key={s} onClick={() => setReviewRating(s)} className={`text-2xl leading-none transition-transform hover:scale-125 ${s <= reviewRating ? 'text-yellow-400' : 'text-gray-200 hover:text-yellow-300'}`}>★</button>))}
-              <span className="ml-1 text-sm font-bold text-gray-500 self-center">{reviewRating}/5</span>
+              <span className="ml-1 text-sm font-bold text-white/50 self-center">{reviewRating}/5</span>
             </div>
-            <textarea value={reviewText} onChange={(e) => setReviewText(e.target.value)} placeholder={`Share your experience with ${tool.name}...`} rows={3} className="w-full bg-gray-50 border-2 border-black rounded-xl px-3 py-2.5 text-sm text-black placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-black mb-4" />
+              <textarea value={reviewText} onChange={(e) => setReviewText(e.target.value)} placeholder={`Share your experience with ${tool.name}...`} rows={3} className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 resize-none focus:outline-none focus:ring-2 focus:ring-[#22c55e]/40 mb-4" />
             {reviews.length > 0 && (
               <div className="mb-4 space-y-2 max-h-36 overflow-y-auto">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Previous reviews</p>
+                <p className="text-xs font-bold text-white/50 uppercase tracking-wide mb-1">Previous reviews</p>
                 {reviews.slice(0, 5).map((r, i) => (
-                  <div key={i} className="bg-gray-50 rounded-lg px-3 py-2 border border-gray-200">
-                    <div className="flex items-center gap-2 mb-0.5"><div className="flex">{[1,2,3,4,5].map((s) => (<svg key={s} className={`w-3 h-3 ${s <= r.rating ? 'text-yellow-400' : 'text-gray-200'}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>))}</div><span className="text-gray-400 text-[10px]">{r.date}</span></div>
-                    <p className="text-gray-600 text-xs line-clamp-2">{r.text}</p>
-                  </div>
+                    <div key={i} className="bg-white/[0.04] rounded-lg px-3 py-2 border border-white/10">
+                      <div className="flex items-center gap-2 mb-0.5"><div className="flex">{[1,2,3,4,5].map((s) => (<svg key={s} className={`w-3 h-3 ${s <= r.rating ? 'text-[#22c55e]' : 'text-white/30'}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>))}</div><span className="text-white/40 text-[10px]">{r.date}</span></div>
+                      <p className="text-white/70 text-xs line-clamp-2">{r.text}</p>
+                    </div>
                 ))}
               </div>
             )}
-            <button onClick={handleReviewSubmit} disabled={!reviewText.trim() || reviewSubmitted} className="w-full py-2.5 rounded-xl font-black text-sm bg-yellow-400 text-black border-2 border-black shadow-[3px_3px_0_#000] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all disabled:opacity-40">{reviewSubmitted ? '✓ Submitted!' : 'Submit Review'}</button>
+            <button onClick={handleReviewSubmit} disabled={!reviewText.trim() || reviewSubmitted} className="w-full py-2.5 rounded-xl font-black text-sm bg-[#22c55e] text-black active:bg-[#16a34a] transition-all disabled:opacity-40">{reviewSubmitted ? '✓ Submitted!' : 'Submit Review'}</button>
           </motion.div>
         </div>
       )}

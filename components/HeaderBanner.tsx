@@ -13,6 +13,9 @@ export interface HeaderBannerCampaign {
 interface HeaderBannerProps {
   campaigns?: HeaderBannerCampaign[];
   className?: string;
+  /** Ad-space name for click tracking. Defaults to 'top-banner'; the homepage hero passes 'homepage-hero'
+   *  so its clicks show as their own line on the dashboard instead of being lumped into Top Banner. */
+  placement?: string;
 }
 
 const DEVICE_CLASS: Record<string, string> = {
@@ -25,7 +28,7 @@ const DEVICE_CLASS: Record<string, string> = {
  * Shows exactly one banner per page; a different one is picked each time the user views a page (on mount).
  * Respects bannerDevice: 'mobile' renders only on <md, 'desktop' only on md+, 'all' everywhere.
  */
-export default function HeaderBanner({ campaigns = [], className = '' }: HeaderBannerProps) {
+export default function HeaderBanner({ campaigns = [], className = '', placement = 'top-banner' }: HeaderBannerProps) {
   const items = useMemo(() => (campaigns ?? []).filter((c) => c?.creative), [campaigns]);
   const [currentIndex] = useState(() =>
     items.length > 1 ? Math.floor(Math.random() * items.length) : 0
@@ -34,9 +37,9 @@ export default function HeaderBanner({ campaigns = [], className = '' }: HeaderB
   const current = items[currentIndex] ?? items[0];
 
   const handleClick = useCallback((campaign: HeaderBannerCampaign) => {
-    trackClick(campaign._id, 'top-banner');
+    trackClick(campaign._id, placement);
     window.open(campaign.destinationUrl, '_blank', 'noopener,noreferrer');
-  }, []);
+  }, [placement]);
 
   if (!items.length || !current) return null;
 

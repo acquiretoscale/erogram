@@ -349,3 +349,43 @@ export async function getApprovedSubmissions(existingSlugs: Set<string>): Promis
       sourceUrl: d.websiteUrl,
     }));
 }
+
+export interface BlogTopAITool {
+  slug: string;
+  name: string;
+  category: string;
+  image: string;
+  upvotes: number;
+  score: number;
+  featured: boolean;
+}
+
+/** Top AI NSFW tools for the blog hub — featured first, then highest score. */
+export async function getTopAINsfwForBlog(limit = 5): Promise<BlogTopAITool[]> {
+  try {
+    const { AI_NSFW_TOOLS } = await import('@/app/ainsfw/data');
+    const staticSlugs = new Set(AI_NSFW_TOOLS.map((t) => t.slug));
+    const submissions = await getApprovedSubmissions(staticSlugs);
+    const allTools = [...AI_NSFW_TOOLS, ...submissions];
+    const stats = await getAllToolStats(allTools.map((t) => t.slug));
+
+    return allTools
+      .map((t) => {
+        const s = stats[t.slug] || { upvotes: 0, downvotes: 0, featured: false };
+        return {
+          slug: t.slug,
+          name: t.name,
+          category: t.category,
+          image: t.image && (t.image.startsWith('http') || t.image.startsWith('/')) ? t.image : '/assets/image.jpg',
+          upvotes: s.upvotes || 0,
+          score: (s.upvotes || 0) - (s.downvotes || 0),
+          featured: !!s.featured,
+        };
+      })
+      .sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0) || b.score - a.score || b.upvotes - a.upvotes)
+      .slice(0, limit);
+  } catch (e) {
+    console.error('[ainsfw] getTopAINsfwForBlog failed:', e);
+    return [];
+  }
+}

@@ -9,6 +9,8 @@ import { categories } from '@/app/groups/constants';
 import Navbar from '@/components/Navbar';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
+import { getKeywordPlacementCampaigns } from '@/lib/actions/campaigns';
+import BestGroupsAds from '@/app/best-telegram-groups/BestGroupsAds';
 
 interface PageProps {
     params: Promise<{ category: string }>;
@@ -157,6 +159,12 @@ export default async function BestGroupsPage({ params }: PageProps) {
         }));
     }
 
+    // Ad network: agnostic ads for this Top-10 page (keyword-targeted to this category).
+    // Up to 5 → 1 blends in as the top slot, up to 4 fill the mid 4-up block before #6.
+    const bestGroupsAds = await getKeywordPlacementCampaigns('best-groups', decodedSlug, 5).catch(() => []);
+    const topGroupAd = (bestGroupsAds as any[])[0] || null;
+    const midGroupAds = (bestGroupsAds as any[]).slice(1, 5);
+
     return (
         <div className="min-h-screen bg-[#111111] text-[#f5f5f5]">
             <Navbar />
@@ -177,12 +185,21 @@ export default async function BestGroupsPage({ params }: PageProps) {
                     </p>
                 </header>
 
+                {/* Top agnostic ad slot — blends in above the #1 ranking (any ad type). */}
+                {topGroupAd && (
+                    <BestGroupsAds variant="top" ads={[topGroupAd as any]} />
+                )}
+
                 {/* Main List */}
                 {groups.length > 0 ? (
                     <div className="space-y-12 mb-20">
                         {groups.map((group: any, index: number) => (
+                            <React.Fragment key={group._id}>
+                            {/* Mid 4-up agnostic ad block — sits just before the 6th group. */}
+                            {index === 5 && midGroupAds.length > 0 && (
+                                <BestGroupsAds variant="grid" ads={midGroupAds as any} />
+                            )}
                             <div
-                                key={group._id}
                                 className="glass rounded-3xl p-6 md:p-8 border border-white/10 relative overflow-hidden"
                             >
                                 {/* Rank Badge */}
@@ -237,6 +254,7 @@ export default async function BestGroupsPage({ params }: PageProps) {
                                     </div>
                                 </div>
                             </div>
+                            </React.Fragment>
                         ))}
                     </div>
                 ) : (

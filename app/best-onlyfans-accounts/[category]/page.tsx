@@ -214,9 +214,10 @@ export default async function BestOnlyfansPage({ params }: PageProps) {
                                             ? 'border-gray-200 shadow-sm'
                                             : 'border-gray-200'
                                     }`}>
-                                        <a
-                                            href={`/join-erogram?redirect=/${creator.slug || creator.username}`}
-                                            className="flex items-start gap-3 p-3 sm:p-3.5"
+                                        <button
+                                            type="button"
+                                            onClick={() => { if (creator.url) window.open(creator.url, '_blank', 'noopener'); }}
+                                            className="w-full text-left flex items-start gap-3 p-3 sm:p-3.5 cursor-pointer"
                                         >
                                             {/* Rank badge */}
                                             <span className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black ${rankBadge}`}>
@@ -300,7 +301,7 @@ export default async function BestOnlyfansPage({ params }: PageProps) {
                                             <span className="flex-shrink-0 px-5 py-3 rounded-xl bg-[#00AFF0] group-hover:bg-[#009ADB] text-white text-sm font-black transition-colors whitespace-nowrap shadow-md shadow-[#00AFF0]/30">
                                                 {dict.bestOnlyfans.view} →
                                             </span>
-                                        </a>
+                                        </button>
                                     </article>
                                 </li>
                             );

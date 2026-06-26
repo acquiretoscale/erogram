@@ -130,6 +130,7 @@ export async function getTrendingOnErogram() {
   const docs = await OnlyFansCreator.find({
     avatar: { $ne: '' },
     deleted: { $ne: true },
+    redirectToOF: { $ne: true },
     likesCount: { $gt: 0 },
   })
     .sort({ likesCount: -1 })

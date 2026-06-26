@@ -1,9 +1,12 @@
 'use server';
 
 import connectDB from '@/lib/db/mongodb';
-import { OnlyFansCreator } from '@/lib/models';
+import { OnlyFansCreator, User } from '@/lib/models';
 import sharp from 'sharp';
 import { uploadToR2, isR2Configured } from '@/lib/r2';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
 export interface CreatorLookupResult {
   source: 'db' | 'apify';
@@ -294,6 +297,7 @@ interface SubmitCreatorInput {
   photosCount?: number;
   videosCount?: number;
   postsCount?: number;
+  token?: string;
 }
 
 async function optimizeAndUploadToR2(sourceUrl: string, key: string): Promise<string | null> {
@@ -322,6 +326,18 @@ async function optimizeAndUploadToR2(sourceUrl: string, key: string): Promise<st
 export async function submitCreator(input: SubmitCreatorInput) {
   const { name, onlyfansUrl, photoUrls } = input;
 
+  // Require login so every OF submission is tied to an account (owner/promoter DB)
+  let submitterId: string | null = null;
+  let submitterUsername = '';
+  try {
+    if (!input.token) return { success: false, error: 'You must be logged in to submit a creator.' };
+    const decoded = jwt.verify(input.token, JWT_SECRET) as any;
+    submitterId = decoded?.id || null;
+    if (!submitterId) return { success: false, error: 'You must be logged in to submit a creator.' };
+  } catch {
+    return { success: false, error: 'Your session expired. Please log in again.' };
+  }
+
   if (!name?.trim() || !onlyfansUrl?.trim() || !photoUrls?.length) {
     return { success: false, error: 'Name, OnlyFans URL, and at least one photo are required.' };
   }
@@ -340,10 +356,15 @@ export async function submitCreator(input: SubmitCreatorInput) {
 
   await connectDB();
 
+  try {
+    const u = await User.findById(submitterId).select('username').lean() as any;
+    submitterUsername = u?.username || '';
+  } catch { /* non-fatal */ }
+
   const existing = await OnlyFansCreator.findOne({ slug }).lean() as any;
   if (existing) {
     const merged = [...new Set([...(existing.categories || []), ...(input.categories || [])])];
-    const updateFields: Record<string, any> = { categories: merged, submissionStatus: 'pending', submittedByUser: true };
+    const updateFields: Record<string, any> = { categories: merged, submissionStatus: 'pending', submittedByUser: true, submittedBy: submitterId, submittedByUsername: submitterUsername };
     if (input.description?.trim()) updateFields.bio = input.description.trim();
     if (input.telegram?.trim()) updateFields.telegramUrl = input.telegram.trim();
     if (input.instagram?.trim()) updateFields.instagramUrl = input.instagram.trim();
@@ -431,6 +452,8 @@ export async function submitCreator(input: SubmitCreatorInput) {
         telegramUrl: input.telegram?.trim() || '',
         bio: input.description.trim(),
         submittedByUser: true,
+        submittedBy: submitterId,
+        submittedByUsername: submitterUsername,
         submissionStatus: 'pending',
         extraPhotos: r2Urls.slice(2),
       },

@@ -7,7 +7,7 @@ import { Group, Bot, Post, OnlyFansCreator } from '@/lib/models';
 import JoinClient from './JoinClient';
 import { getTelegramMemberCount } from '@/lib/utils/telegram';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
-import { getActiveCampaigns } from '@/lib/actions/campaigns';
+import { getActiveCampaigns, getPlacementFeedCampaigns } from '@/lib/actions/campaigns';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { LOCALES, localePath } from '@/lib/i18n';
 import type { Locale } from '@/lib/i18n';
@@ -17,8 +17,7 @@ import type { AINsfwTool } from '@/app/ainsfw/types';
 import ToolDetailClient from '@/app/ainsfw/[slug]/ToolDetailClient';
 import { getToolStats } from '@/lib/actions/ainsfw';
 import { getBotStats } from '@/lib/actions/botVotes';
-import { getCreatorBySlug, getRelatedCreators, getCreatorReviews } from '@/lib/actions/ofCreatorProfile';
-import CreatorProfileClient from '@/app/onlyfanssearch/CreatorProfileClient';
+import { getCreatorBySlug } from '@/lib/actions/ofCreatorProfile';
 import { getTrendingOnErogram, getTrendingCreators } from '@/lib/actions/publicData';
 
 // ISR for public join pages (keeps SSR output crawlable while avoiding per-request rendering)
@@ -617,98 +616,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  // Resolve OnlyFans creator. Every registered user must be able to view any
-  // creator at /{username}-onlyfans. Google stays out of non-admin profiles via
-  // the robots: noindex flag below — but the page itself must render, never 404.
+  // Creator profile pages are ARCHIVED.
+  // No metadata, no titles, no JSON-LD, no pages.
   const creator = await getCreatorBySlug(slug);
   if (creator) {
-    const pageUrl = `${BASE_URL}/${slug}`;
-    const name = creator.name;
-    const username = creator.username;
-    const primaryCat = creator.categories[0] || 'onlyfans';
-
-    const fmtNum = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(0)}K` : `${n}K`;
-
-    const statsLabels: Record<Locale, { likes: string; fans: string; photos: string; videos: string }> = {
-      en: { likes: 'likes', fans: 'fans', photos: 'photos', videos: 'videos' },
-      de: { likes: 'Likes', fans: 'Fans', photos: 'Fotos', videos: 'Videos' },
-      es: { likes: 'me gusta', fans: 'fans', photos: 'fotos', videos: 'videos' },
-    };
-    const sl = statsLabels[locale] || statsLabels.en;
-    const statsSnippet = [
-      creator.likesCount > 0 ? `${fmtNum(creator.likesCount)} ${sl.likes}` : '',
-      creator.subscriberCount > 0 ? `${fmtNum(creator.subscriberCount)} ${sl.fans}` : '',
-      creator.photosCount > 0 ? `${creator.photosCount.toLocaleString()} ${sl.photos}` : '',
-      creator.videosCount > 0 ? `${creator.videosCount.toLocaleString()} ${sl.videos}` : '',
-    ].filter(Boolean).join(', ');
-
-    const priceTexts: Record<Locale, { free: string; perMonth: string }> = {
-      en: { free: 'Free subscription', perMonth: '/month' },
-      de: { free: 'Kostenloses Abo', perMonth: '/Monat' },
-      es: { free: 'Suscripción gratis', perMonth: '/mes' },
-    };
-    const pt = priceTexts[locale] || priceTexts.en;
-    const priceText = creator.isFree ? pt.free : creator.price > 0 ? `$${creator.price.toFixed(2)}${pt.perMonth}` : '';
-
-    const socialHint = [
-      creator.instagramUrl ? 'Instagram' : '',
-      creator.twitterUrl ? 'Twitter' : '',
-      creator.tiktokUrl ? 'TikTok' : '',
-    ].filter(Boolean);
-    const alsoOn: Record<Locale, string> = {
-      en: 'Also on',
-      de: 'Auch auf',
-      es: 'También en',
-    };
-    const socialText = socialHint.length > 0 ? ` ${alsoOn[locale] || alsoOn.en} ${socialHint.join(', ')}.` : '';
-
-    const descTemplates: Record<Locale, string> = {
-      en: `${name} OnlyFans profile (@${username}). ${statsSnippet ? `${statsSnippet}. ` : ''}${priceText ? `${priceText}. ` : ''}${socialText}Browse verified OnlyFans creators on Erogram — the #1 OnlyFans search tool.`,
-      de: `${name} OnlyFans-Profil (@${username}). ${statsSnippet ? `${statsSnippet}. ` : ''}${priceText ? `${priceText}. ` : ''}${socialText}Verifizierte OnlyFans Creator auf Erogram entdecken — das #1 OnlyFans Suchtool.`,
-      es: `${name} OnlyFans perfil (@${username}). ${statsSnippet ? `${statsSnippet}. ` : ''}${priceText ? `${priceText}. ` : ''}${socialText}Explora creadoras verificadas en Erogram — el #1 buscador de OnlyFans.`,
-    };
-    let desc = descTemplates[locale] || descTemplates.en;
-    if (desc.length > 160) desc = desc.slice(0, 157) + '...';
-
-    const ogImage = creator.header && creator.header.startsWith('https://')
-      ? { url: creator.header, width: 1200, height: 630, alt: `${name} OnlyFans` }
-      : creator.avatar && creator.avatar.startsWith('https://')
-        ? { url: creator.avatar, width: 400, height: 400, alt: `${name} OnlyFans` }
-        : null;
-
-    const titleTemplates: Record<Locale, string> = {
-      en: `${name} OnlyFans — @${username} Profile, Photos & Videos (2026)`,
-      de: `${name} OnlyFans — @${username} Profil, Fotos & Videos (2026)`,
-      es: `${name} OnlyFans — @${username} Perfil, Fotos y Videos (2026)`,
-    };
-    const ogTitleTemplates: Record<Locale, string> = {
-      en: `${name} OnlyFans — @${username} | Erogram`,
-      de: `${name} OnlyFans — @${username} | Erogram`,
-      es: `${name} OnlyFans — @${username} | Erogram`,
-    };
-
-    return {
-      title: titleTemplates[locale] || titleTemplates.en,
-      description: desc,
-      keywords: `${name} OnlyFans, @${username} OnlyFans, ${primaryCat} OnlyFans creator, OnlyFans profile, ${creator.categories.join(', ')}, best OnlyFans 2026`,
-      robots: { index: false, follow: false },
-      other: { rating: 'adult' },
-      alternates: { canonical: pageUrl },
-      openGraph: {
-        title: ogTitleTemplates[locale] || ogTitleTemplates.en,
-        description: desc,
-        type: 'profile',
-        url: pageUrl,
-        siteName: 'Erogram',
-        images: ogImage ? [ogImage] : [],
-      },
-      twitter: {
-        card: 'summary_large_image',
-        title: ogTitleTemplates[locale] || ogTitleTemplates.en,
-        description: desc,
-        images: ogImage ? [ogImage.url] : [],
-      },
-    };
+    return { robots: { index: false, follow: false } };
   }
 
   // If nothing found
@@ -796,15 +708,19 @@ export default async function JoinPage({ params }: PageProps) {
       };
     }
 
-    const [joinCtaCampaigns, topBannerCampaigns, vaultTeaser, featuredCreators] = await Promise.all([
+    const [joinCtaCampaigns, topBannerCampaigns, vaultTeaser, featuredCreators, sidebarAdsAgnostic] = await Promise.all([
       getActiveCampaigns('join-cta'),
       getActiveCampaigns('top-banner', { page: 'join', device: isMobile ? 'mobile' : 'desktop' }),
       getVaultTeaser(),
       getTrendingCreators().catch(() => []),
+      // Agnostic group-sidebar ads (any adType: OF creator, advertiser, …) — up to 4, like Top Groups.
+      getPlacementFeedCampaigns('group-sidebar', 4).catch(() => []),
     ]);
     const joinCtaCampaign = joinCtaCampaigns[0] ?? null;
     const topBannerForPage =
       topBannerCampaigns.length > 0 && topBannerCampaigns[0].creative ? topBannerCampaigns : [];
+    // Trending creators are only a fallback when no agnostic sidebar ads are assigned.
+    const sidebarCreators = featuredCreators;
 
     return (
       <>
@@ -825,7 +741,7 @@ export default async function JoinPage({ params }: PageProps) {
             />
           </>
         )}
-        <JoinClient entity={group} type="group" similarGroups={similarGroups} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} isDeleted={group.status === 'deleted'} vaultTeaser={vaultTeaser} featuredCreators={featuredCreators} />
+        <JoinClient entity={group} type="group" similarGroups={similarGroups} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} isDeleted={group.status === 'deleted'} vaultTeaser={vaultTeaser} featuredCreators={sidebarCreators} sidebarAds={sidebarAdsAgnostic} />
       </>
     );
   }
@@ -903,16 +819,18 @@ export default async function JoinPage({ params }: PageProps) {
       } : {}),
     };
 
-    const [joinCtaCampaigns2, topBannerCampaigns2, vaultTeaser2, featuredCreators2, botStatsData] = await Promise.all([
+    const [joinCtaCampaigns2, topBannerCampaigns2, vaultTeaser2, featuredCreators2, botStatsData, sidebarAdsAgnostic2] = await Promise.all([
       getActiveCampaigns('join-cta'),
       getActiveCampaigns('top-banner', { page: 'join', device: isMobile ? 'mobile' : 'desktop' }),
       getVaultTeaser(),
       getTrendingCreators().catch(() => []),
       getBotStats(bot.slug),
+      getPlacementFeedCampaigns('group-sidebar', 4).catch(() => []),
     ]);
     const joinCtaCampaign = joinCtaCampaigns2[0] ?? null;
     const topBannerForPage =
       topBannerCampaigns2.length > 0 && topBannerCampaigns2[0].creative ? topBannerCampaigns2 : [];
+    const sidebarCreators2 = featuredCreators2;
 
     return (
       <>
@@ -928,7 +846,7 @@ export default async function JoinPage({ params }: PageProps) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplicationJsonLd) }}
         />
-        <JoinClient entity={bot} type="bot" similarGroups={[]} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} vaultTeaser={vaultTeaser2} featuredCreators={featuredCreators2} botStats={botStatsData} />
+        <JoinClient entity={bot} type="bot" similarGroups={[]} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} vaultTeaser={vaultTeaser2} featuredCreators={sidebarCreators2} sidebarAds={sidebarAdsAgnostic2} botStats={botStatsData} />
       </>
     );
   }
@@ -936,9 +854,10 @@ export default async function JoinPage({ params }: PageProps) {
   // If neither found, try AI NSFW tool (static list, then DB submissions)
   const aiTool = getToolBySlug(slug) || await getSubmissionTool(slug);
   if (aiTool) {
-    const [similar, toolStats] = await Promise.all([
+    const [similar, toolStats, sidebarAdsAgnostic3] = await Promise.all([
       Promise.resolve(getToolsByCategory(aiTool.category).filter((t) => t.slug !== aiTool.slug).slice(0, 6)),
       getToolStats(aiTool.slug),
+      getPlacementFeedCampaigns('group-sidebar', 4).catch(() => []),
     ]);
 
     const toolPageUrl = `${BASE_URL}/${aiTool.slug}`;
@@ -987,107 +906,19 @@ export default async function JoinPage({ params }: PageProps) {
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(toolBreadcrumb) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(toolWebPage) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(toolSoftware) }} />
-        <ToolDetailClient tool={aiTool} similar={similar} initialStats={toolStats} />
+        <ToolDetailClient tool={aiTool} similar={similar} initialStats={toolStats} sidebarAds={sidebarAdsAgnostic3} />
       </>
     );
   }
 
-  // Resolve OnlyFans creator. Registered users get the full profile for any
-  // creator. Non-admin creators stay noindex (set in generateMetadata above) so
-  // Google never sees them, and CreatorProfileClient's own auth check bounces
-  // non-logged-in visitors. We must never 404 a real creator here.
+  // Creator profile pages ARCHIVED — completely removed from frontend for all 11K+ creators.
+  // Clicks anywhere now go straight to the creator's OnlyFans page (no Erogram in-between).
+  // Full scraped data stays in the DB forever (APIFY investment safe). 
+  // We can re-enable pages LATER but ONLY for promoted/paid models.
+  // ZERO public page = ZERO footprint for Google on these URLs.
   const creator = await getCreatorBySlug(slug);
   if (creator) {
-    const [related, trendingOnErogram, reviewData] = await Promise.all([
-      getRelatedCreators(creator.categories, creator.slug, 6),
-      getTrendingOnErogram().catch(() => []),
-      getCreatorReviews(creator.slug).catch(() => ({ reviews: [], avg: 0, count: 0 })),
-    ]);
-    const pageUrl = `${BASE_URL}/${slug}`;
-
-    const breadcrumbJsonLd = {
-      '@context': 'https://schema.org',
-      '@type': 'BreadcrumbList',
-      itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
-        { '@type': 'ListItem', position: 2, name: 'Top OnlyFans Creators', item: `${BASE_URL}/Toponlyfanscreators` },
-        { '@type': 'ListItem', position: 3, name: creator.name, item: pageUrl },
-      ],
-    };
-
-    const webPageJsonLd: Record<string, any> = {
-      '@context': 'https://schema.org',
-      '@type': 'WebPage',
-      name: `${creator.name} OnlyFans — @${creator.username}`,
-      description: `${creator.name} OnlyFans profile. Browse photos, videos, and subscription info.`,
-      url: pageUrl,
-      isPartOf: { '@type': 'WebSite', name: 'Erogram', url: BASE_URL },
-    };
-
-    const personJsonLd: Record<string, any> = {
-      '@context': 'https://schema.org',
-      '@type': 'ProfilePage',
-      mainEntity: {
-        '@type': 'Person',
-        name: creator.name,
-        alternateName: `@${creator.username}`,
-        url: pageUrl,
-        ...(creator.avatar ? { image: creator.avatar } : {}),
-        sameAs: [
-          creator.url,
-          creator.instagramUrl,
-          creator.twitterUrl,
-          creator.tiktokUrl,
-        ].filter(Boolean),
-      },
-    };
-
-    if (reviewData.count > 0) {
-      personJsonLd.mainEntity.aggregateRating = {
-        '@type': 'AggregateRating',
-        ratingValue: reviewData.avg,
-        ratingCount: reviewData.count,
-        bestRating: 5,
-        worstRating: 1,
-      };
-    } else if (creator.likesCount > 0) {
-      const rating = Math.min(5, 3.5 + (Math.log10(Math.max(creator.likesCount, 1)) / Math.log10(5_000_000)) * 1.5);
-      personJsonLd.mainEntity.aggregateRating = {
-        '@type': 'AggregateRating',
-        ratingValue: Math.round(rating * 10) / 10,
-        ratingCount: creator.likesCount,
-        bestRating: 5,
-        worstRating: 1,
-      };
-    }
-
-    const offerJsonLd = {
-      '@context': 'https://schema.org',
-      '@type': 'Product',
-      name: `${creator.name} OnlyFans Subscription`,
-      ...(creator.avatar ? { image: creator.avatar } : {}),
-      url: pageUrl,
-      offers: {
-        '@type': 'Offer',
-        price: creator.isFree ? '0' : creator.price > 0 ? creator.price.toFixed(2) : '0',
-        priceCurrency: 'USD',
-        availability: 'https://schema.org/InStock',
-      },
-    };
-
-    return (
-      <>
-        {creator.adminImported && (
-          <>
-            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
-            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageJsonLd) }} />
-            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }} />
-            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(offerJsonLd) }} />
-          </>
-        )}
-        <CreatorProfileClient creator={creator} related={related} trendingOnErogram={trendingOnErogram} publicAccess={creator.adminImported} />
-      </>
-    );
+    notFound();
   }
 
   // If nothing found, show not found

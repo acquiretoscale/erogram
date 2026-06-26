@@ -675,8 +675,8 @@ export default function Premium15Client({ vaultTeaser: rawVaultTeaser = [] }: Pr
               <p className="text-[13px] font-bold" style={{ color: '#1e1510' }}>Having trouble with your purchase?</p>
               <p className="text-[11px]" style={{ color: '#3a2f1e' }}>Reach out to our support team.</p>
               <div className="flex flex-col items-center gap-2 mt-2">
-                <a href="https://t.me/erogram1" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-bold text-white transition-all hover:brightness-110" style={{ background: '#229ED9' }}>
-                  Telegram: @erogram1
+                <a href="https://t.me/erogramDOTpro" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-bold text-white transition-all hover:brightness-110" style={{ background: '#229ED9' }}>
+                  Telegram: @erogramDOTpro
                 </a>
                 <a href="mailto:support@erogram.biz" className="text-[12px] font-semibold underline transition-colors hover:opacity-80" style={{ color: '#1e1510' }}>
                   support@erogram.biz

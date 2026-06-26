@@ -121,17 +121,17 @@ export default function AdvertiseContactForm() {
 
       <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row items-center justify-center gap-3 text-[11px] text-white/30 font-semibold">
         <span>Questions? Reach us at:</span>
-        <a href="mailto:erogram@gmail.com" className="text-sky-400 hover:text-sky-300 transition-colors">
-          erogram@gmail.com
+        <a href="mailto:isabella@erogram.biz" className="text-sky-400 hover:text-sky-300 transition-colors">
+          isabella@erogram.biz
         </a>
         <span className="hidden sm:inline text-white/15">·</span>
         <a
-          href="https://t.me/RVN8888"
+          href="https://t.me/erogramDOTpro"
           target="_blank"
           rel="noopener noreferrer"
           className="text-sky-400 hover:text-sky-300 transition-colors"
         >
-          @RVN8888 on Telegram
+          @erogramDOTpro on Telegram
         </a>
       </div>
     </form>

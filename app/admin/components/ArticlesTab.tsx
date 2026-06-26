@@ -4,8 +4,12 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { getArticles, getArticle, createArticle, updateArticle, deleteArticle, getArticleStats } from '@/lib/actions/adminArticles';
 import { getAdvertisersDashboard } from '@/lib/actions/adminCampaigns';
+import { getAuthors, upsertAuthor, deleteAuthor, type AuthorProfile } from '@/lib/actions/authors';
 import { compressImage } from '@/lib/utils/compressImage';
 import ArticleEditor from './ArticleEditor';
+import AuthorsManager from './AuthorsManager';
+import CreatorOfMonthManager from './CreatorOfMonthManager';
+import { BLOG_CATEGORIES } from '@/lib/blog/categories';
 
 
 export default function ArticlesTab() {
@@ -23,6 +27,8 @@ export default function ArticlesTab() {
         excerpt: '',
         featuredImage: '',
         status: 'draft' as 'draft' | 'published',
+        blogCategory: 'adult-entertainment',
+        authorSlug: 'eros',
         tags: [] as string[],
         advertiserId: '',
         metaTitle: '',
@@ -40,6 +46,9 @@ export default function ArticlesTab() {
     });
     const [tagInput, setTagInput] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const [authors, setAuthors] = useState<AuthorProfile[]>([]);
+    const [showAuthors, setShowAuthors] = useState(false);
+    const refreshAuthors = () => getAuthors().then(setAuthors).catch(() => {});
 
     type SortKey = 'title' | 'advertiser' | 'clicks' | 'views24h' | 'views7d' | 'views30d' | 'published' | 'status';
     const [sortBy, setSortBy] = useState<SortKey>('views30d');
@@ -74,6 +83,7 @@ export default function ArticlesTab() {
         getArticleStats(token || '')
             .then((data) => setArticleStats({ totalClicks: data?.totalClicks ?? 0, totalClicks24h: data?.totalClicks24h ?? 0, totalClicks7d: data?.totalClicks7d ?? 0, totalClicks30d: data?.totalClicks30d ?? 0, count: data?.count ?? 0 }))
             .catch(() => {});
+        refreshAuthors();
     }, []);
 
     const fetchArticles = async () => {
@@ -104,6 +114,8 @@ export default function ArticlesTab() {
             excerpt: '',
             featuredImage: '',
             status: 'draft',
+            blogCategory: 'adult-entertainment',
+            authorSlug: 'eros',
             tags: [],
             advertiserId: '',
             metaTitle: '',
@@ -132,6 +144,8 @@ export default function ArticlesTab() {
             excerpt: article.excerpt || '',
             featuredImage: article.featuredImage || '',
             status: (article.status === 'published' || article.status === 'draft') ? article.status : 'draft',
+            blogCategory: article.blogCategory || 'adult-entertainment',
+            authorSlug: article.authorSlug || 'eros',
             tags: article.tags || [],
             advertiserId: article.advertiserId || '',
             metaTitle: article.metaTitle || '',
@@ -162,6 +176,8 @@ export default function ArticlesTab() {
                 excerpt: full.excerpt ?? prev.excerpt,
                 featuredImage: full.featuredImage ?? prev.featuredImage,
                 status: (full.status === 'published' || full.status === 'draft') ? full.status : prev.status,
+                blogCategory: full.blogCategory || prev.blogCategory,
+                authorSlug: full.authorSlug || prev.authorSlug,
                 tags: full.tags || prev.tags,
                 advertiserId: full.advertiserId || prev.advertiserId,
                 metaTitle: full.metaTitle ?? prev.metaTitle,
@@ -254,6 +270,8 @@ export default function ArticlesTab() {
             const compressedFile = await compressImage(file);
             const formData = new FormData();
             formData.append('file', compressedFile);
+            // Keyword-rich R2 filename from the article title (SEO). Falls back to UUID if empty.
+            if (articleData.title?.trim()) formData.append('name', articleData.title.trim());
 
             const token = localStorage.getItem('token');
             const res = await axios.post('/api/upload', formData, {
@@ -391,6 +409,47 @@ export default function ArticlesTab() {
                                     className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none"
                                     placeholder="Article title"
                                 />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-[#999] mb-2">Blog Category</label>
+                                <select
+                                    value={articleData.blogCategory}
+                                    onChange={(e) => setArticleData({ ...articleData, blogCategory: e.target.value })}
+                                    className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none"
+                                >
+                                    {BLOG_CATEGORIES.map((c) => (
+                                        <option key={c.slug} value={c.slug}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="block text-sm font-semibold text-[#999]">Author (byline)</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAuthors((s) => !s)}
+                                        className="text-xs font-semibold text-[#b31b1b] hover:text-[#e23] transition-colors"
+                                    >
+                                        {showAuthors ? 'Close authors' : 'Manage authors'}
+                                    </button>
+                                </div>
+                                <select
+                                    value={articleData.authorSlug}
+                                    onChange={(e) => setArticleData({ ...articleData, authorSlug: e.target.value })}
+                                    className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none"
+                                >
+                                    {authors.map((a) => (
+                                        <option key={a.slug} value={a.slug}>{a.name}{a.role ? ` — ${a.role}` : ''}</option>
+                                    ))}
+                                </select>
+                                {showAuthors && (
+                                    <AuthorsManager
+                                        authors={authors}
+                                        onChanged={refreshAuthors}
+                                    />
+                                )}
                             </div>
 
                             <div>
@@ -665,6 +724,9 @@ export default function ArticlesTab() {
                     </div>
                 </div>
             </div>
+
+            {/* Blog: Creator of the Month (paid cover slot) */}
+            <CreatorOfMonthManager />
 
             {/* Search */}
             <div className="glass rounded-2xl p-4 border border-white/5">

@@ -25,7 +25,7 @@ function formatLikes(n: number) {
 function TrendingCard({ creator, index }: { creator: TrendingCreator; index: number }) {
   const handleClick = () => {
     trackTrendingClick(creator._id);
-    window.open(creator.url, '_blank', 'noopener,noreferrer');
+    window.open(creator.url, '_blank', 'noopener');
   };
 
   return (
@@ -45,6 +45,7 @@ function TrendingCard({ creator, index }: { creator: TrendingCreator; index: num
             className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500 ease-out"
             loading="lazy"
             referrerPolicy="no-referrer"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-5xl font-black text-[#00AFF0]/40 bg-gradient-to-br from-[#00AFF0]/15 to-[#00AFF0]/5">

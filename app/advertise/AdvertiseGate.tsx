@@ -120,7 +120,7 @@ export default function AdvertiseGate({ children }: AdvertiseGateProps) {
 
         <p className="text-center text-white/30 text-xs mt-6">
           Don&apos;t have access? Contact{' '}
-          <a href="mailto:erogrampro@gmail.com" className="text-sky-400 hover:text-sky-300 transition-colors">
+          <a href="mailto:isabella@erogram.biz" className="text-sky-400 hover:text-sky-300 transition-colors">
             our team
           </a>
         </p>

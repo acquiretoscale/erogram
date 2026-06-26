@@ -85,6 +85,8 @@ export async function getArticles(token: string) {
       excerpt: article.excerpt !== undefined && article.excerpt !== null ? article.excerpt : '',
       featuredImage: article.featuredImage !== undefined && article.featuredImage !== null ? article.featuredImage : '',
       status: article.status !== undefined && article.status !== null ? article.status : 'draft',
+      blogCategory: article.blogCategory || 'adult-entertainment',
+      authorSlug: article.authorSlug || 'eros',
       tags: article.tags || [],
       publishedAt: article.publishedAt || null,
       views: article.views || 0,
@@ -142,6 +144,8 @@ export async function getArticle(token: string, id: string) {
     excerpt: a.excerpt !== undefined && a.excerpt !== null ? a.excerpt : '',
     featuredImage: a.featuredImage !== undefined && a.featuredImage !== null ? a.featuredImage : '',
     status: a.status || 'draft',
+    blogCategory: a.blogCategory || 'adult-entertainment',
+    authorSlug: a.authorSlug || 'eros',
     tags: a.tags || [],
     publishedAt: a.publishedAt || null,
     views: a.views || 0,
@@ -173,7 +177,7 @@ export async function createArticle(token: string, data: Record<string, any>) {
 
   await connectDB();
 
-  const { title, content, excerpt, featuredImage, status, tags, metaTitle, metaDescription, metaKeywords, ogImage, ogTitle, ogDescription, twitterCard, twitterImage, twitterTitle, twitterDescription, advertiserId, videoBlocks, ctaBlocks } = data;
+  const { title, content, excerpt, featuredImage, status, blogCategory, authorSlug, tags, metaTitle, metaDescription, metaKeywords, ogImage, ogTitle, ogDescription, twitterCard, twitterImage, twitterTitle, twitterDescription, advertiserId, videoBlocks, ctaBlocks } = data;
 
   if (!title || !content) {
     throw new Error('Title and content are required');
@@ -198,6 +202,8 @@ export async function createArticle(token: string, data: Record<string, any>) {
     advertiserId: advertiserId && String(advertiserId).trim() ? advertiserId : undefined,
     status: articleStatus,
     publishedAt: articleStatus === 'published' ? new Date() : null,
+    blogCategory: blogCategory || 'adult-entertainment',
+    authorSlug: authorSlug || 'eros',
     tags: tags || [],
     metaTitle: metaTitle || '',
     metaDescription: metaDescription || '',
@@ -235,6 +241,8 @@ export async function createArticle(token: string, data: Record<string, any>) {
 
   const forceUpdateData: any = {
     status: articleStatus,
+    blogCategory: blogCategory || 'adult-entertainment',
+    authorSlug: authorSlug || 'eros',
     excerpt: excerpt !== undefined && excerpt !== null ? excerpt : '',
     featuredImage: featuredImage !== undefined && featuredImage !== null ? featuredImage : '',
     tags: tags || [],
@@ -306,7 +314,7 @@ export async function createArticle(token: string, data: Record<string, any>) {
     };
 
     if (articleStatus === 'published') {
-      pingIndexNow(`https://erogram.pro/articles/${slug}`);
+      pingIndexNow(`https://erogram.pro/blog/${slug}`);
     }
   } catch (err) {
     console.error('Error fetching author:', err);
@@ -327,8 +335,8 @@ export async function createArticle(token: string, data: Record<string, any>) {
     };
   }
 
-  revalidatePath('/articles');
-  revalidatePath(`/articles/${slug}`);
+  revalidatePath('/blog');
+  revalidatePath(`/blog/${slug}`);
   revalidatePath('/sitemap.xml');
 
   return JSON.parse(JSON.stringify(result));
@@ -340,7 +348,7 @@ export async function updateArticle(token: string, id: string, data: Record<stri
 
   await connectDB();
 
-  const { title, content, excerpt, featuredImage, status, tags, metaTitle, metaDescription, metaKeywords, ogImage, ogTitle, ogDescription, twitterCard, twitterImage, twitterTitle, twitterDescription, advertiserId, videoBlocks, ctaBlocks } = data;
+  const { title, content, excerpt, featuredImage, status, blogCategory, authorSlug, tags, metaTitle, metaDescription, metaKeywords, ogImage, ogTitle, ogDescription, twitterCard, twitterImage, twitterTitle, twitterDescription, advertiserId, videoBlocks, ctaBlocks } = data;
 
   const oldArticle = await Article.findById(id);
   if (!oldArticle) throw new Error('Article not found');
@@ -367,6 +375,15 @@ export async function updateArticle(token: string, id: string, data: Record<stri
   // Only overwrite featuredImage if explicitly provided — prevents accidental wipe
   if (featuredImage !== undefined) {
     setFields.featuredImage = featuredImage;
+  }
+
+  // Only set blogCategory when provided — preserve existing otherwise (rule 13)
+  if (blogCategory !== undefined && blogCategory !== null && blogCategory !== '') {
+    setFields.blogCategory = blogCategory;
+  }
+  // Only set authorSlug when provided — preserve existing otherwise (rule 13)
+  if (authorSlug !== undefined && authorSlug !== null && authorSlug !== '') {
+    setFields.authorSlug = authorSlug;
   }
 
   if (title && title !== oldArticle.title) {
@@ -463,6 +480,7 @@ export async function updateArticle(token: string, id: string, data: Record<stri
     excerpt: article.excerpt !== undefined && article.excerpt !== null ? article.excerpt : '',
     featuredImage: article.featuredImage !== undefined && article.featuredImage !== null ? article.featuredImage : '',
     status: article.status !== undefined && article.status !== null ? article.status : 'draft',
+    blogCategory: article.blogCategory || 'adult-entertainment',
     tags: article.tags || [],
     publishedAt: article.publishedAt || null,
     views: article.views || 0,
@@ -484,11 +502,11 @@ export async function updateArticle(token: string, id: string, data: Record<stri
   };
 
   if (setFields.status === 'published' || (oldArticle.status === 'published' && setFields.status !== 'draft')) {
-    pingIndexNow(`https://erogram.pro/articles/${article.slug}`);
+    pingIndexNow(`https://erogram.pro/blog/${article.slug}`);
   }
 
-  revalidatePath('/articles');
-  revalidatePath(`/articles/${article.slug}`);
+  revalidatePath('/blog');
+  revalidatePath(`/blog/${article.slug}`);
   revalidatePath('/sitemap.xml');
 
   return JSON.parse(JSON.stringify(result));
@@ -504,8 +522,8 @@ export async function deleteArticle(token: string, id: string) {
   if (!article) throw new Error('Article not found');
 
   const slug = (article as any).slug;
-  revalidatePath('/articles');
-  if (slug) revalidatePath(`/articles/${slug}`);
+  revalidatePath('/blog');
+  if (slug) revalidatePath(`/blog/${slug}`);
 
   return { message: 'Article deleted successfully' };
 }

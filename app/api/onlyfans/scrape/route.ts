@@ -150,6 +150,11 @@ export async function POST(req: NextRequest) {
         } catch {}
       }
 
+      // Migrate images to R2 (download → brand → R2) so no raw OF/onlyguider URLs persist.
+      for (const c of savedCreators) {
+        try { await processCreatorImages(c.slug); } catch (e: any) { console.error(`Image processing failed for ${c.slug}:`, e.message); }
+      }
+
       await ScrapeRun.findByIdAndUpdate(logEntry._id, { status: 'succeeded', saved: savedCreators.length, totalItems: items.length, completedAt: new Date(), durationMs: Date.now() - scrapeStart });
       return NextResponse.json({ success: true, saved: savedCreators.length, savedCreators, totalItems: items.length });
     }

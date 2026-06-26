@@ -6,9 +6,9 @@ import { getSiteConfig, updateSiteConfig } from '@/lib/actions/adminConfig';
 export default function SettingsTab() {
     const [config, setConfig] = useState<any>({
         siteName: 'Erogram',
-        contactEmail: 'eroverse.8r62k@4wrd.cc',
+        contactEmail: 'support@erogram.biz',
         maintenanceMode: false,
-        telegramLink: 'https://t.me/erogram',
+        telegramLink: 'https://t.me/erogramDOTpro',
         twitterLink: '',
         metaTitleSuffix: ' | Erogram',
         metaDescription: 'The best Telegram groups and bots directory.',

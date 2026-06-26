@@ -101,7 +101,8 @@ export default function ReviewsTab() {
         review.content?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         review.authorName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         review.groupId?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        review.creatorSlug?.toLowerCase().includes(searchQuery.toLowerCase())
+        review.creatorSlug?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        review.articleSlug?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     return (
@@ -167,6 +168,11 @@ export default function ReviewsTab() {
                                                         <>
                                                             <a href={`/${review.creatorSlug}`} target="_blank" className="font-semibold text-orange-400 hover:underline">🔥 {review.creatorSlug}</a>
                                                             <div className="text-xs text-gray-400">Creator</div>
+                                                        </>
+                                                    ) : review.type === 'article' ? (
+                                                        <>
+                                                            <a href={`/blog/${review.articleSlug}`} target="_blank" className="font-semibold text-sky-400 hover:underline">💬 {review.articleSlug}</a>
+                                                            <div className="text-xs text-gray-400">Blog comment</div>
                                                         </>
                                                     ) : (
                                                         <>
@@ -248,6 +254,11 @@ export default function ReviewsTab() {
                                                             <a href={`/${review.creatorSlug}`} target="_blank" className="font-semibold text-orange-400 hover:underline">🔥 {review.creatorSlug}</a>
                                                             <div className="text-xs text-gray-400">Creator</div>
                                                         </>
+                                                    ) : review.type === 'article' ? (
+                                                        <>
+                                                            <a href={`/blog/${review.articleSlug}`} target="_blank" className="font-semibold text-sky-400 hover:underline">💬 {review.articleSlug}</a>
+                                                            <div className="text-xs text-gray-400">Blog comment</div>
+                                                        </>
                                                     ) : (
                                                         <>
                                                             <div className="font-semibold">{review.groupId?.name || 'Unknown Group'}</div>
@@ -259,10 +270,14 @@ export default function ReviewsTab() {
                                                     {review.authorName || 'Anonymous'}
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <div className="flex items-center">
-                                                        <span className="text-yellow-400 mr-1">{review.type === 'creator' ? '🔥' : '⭐'}</span>
-                                                        <span className="text-white font-semibold">{review.rating}/5</span>
-                                                    </div>
+                                                    {review.type === 'article' ? (
+                                                        <span className="text-gray-500">—</span>
+                                                    ) : (
+                                                        <div className="flex items-center">
+                                                            <span className="text-yellow-400 mr-1">{review.type === 'creator' ? '🔥' : '⭐'}</span>
+                                                            <span className="text-white font-semibold">{review.rating}/5</span>
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="text-gray-300 max-w-xs truncate" title={review.content}>

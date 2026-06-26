@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { createAINSFWSubmission, type AINSFWPlan, type AINSFWFormData } from '@/lib/actions/ainsfwPayment';
+import { validateCoupon } from '@/lib/actions/coupons';
 
 const ACCENT      = '#0ea5e9';
 const ACCENT_DARK = '#0369a1';
@@ -43,6 +44,7 @@ const emptyForm: AINSFWFormData = {
   toolName: '',
   websiteUrl: '',
   email: '',
+  contactTelegram: '',
   description: '',
   logoUrl: '',
   category: 'AI Girlfriend',
@@ -60,6 +62,9 @@ export default function AINSFWPricingClient() {
   const [selectedItems, setSelectedItems] = useState<string[]>(['AI Girlfriend']);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [couponCode, setCouponCode] = useState('');
+  const [couponResult, setCouponResult] = useState<{ valid: boolean; discountedStars?: number; savedStars?: number; error?: string } | null>(null);
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -131,9 +136,18 @@ export default function AINSFWPricingClient() {
     if (!selectedPlan) return;
     if (!form.toolName.trim()) { setError('Tool name is required.'); return; }
     if (!form.websiteUrl.trim() || !form.websiteUrl.startsWith('http')) { setError('Enter a valid URL starting with https://'); return; }
-    if (!form.email.trim() || !form.email.includes('@')) { setError('Enter a valid email address.'); return; }
+    const hasEmail = form.email.trim() && form.email.includes('@');
+    const hasTelegram = !!form.contactTelegram?.trim();
+    if (!hasEmail && !hasTelegram) { setError('Provide a contact email or Telegram so we can reach you.'); return; }
     if (!form.description.trim() || form.description.trim().length < 30) { setError('Description must be at least 30 characters.'); return; }
     if (!imageFile) { setError('Please upload a logo / image for your tool.'); return; }
+
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      setError('Please log in to submit — your listing will be saved to your account.');
+      window.location.href = '/join-erogram?redirect=/add/ainsfw';
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -149,8 +163,10 @@ export default function AINSFWPricingClient() {
         category: mainCatsSelected[0] ?? 'AI Girlfriend',
         tags: selectedItems.join(', '),
         extraCategories: mainCatsSelected,
-      });
-      if (result.success && result.invoiceUrl) {
+      }, couponCode.trim() || undefined, token);
+      if (result.freeApproval) {
+        window.location.href = `/add/ainsfw/thank-you?plan=${selectedPlan}&slug=${result.slug}`;
+      } else if (result.success && result.invoiceUrl) {
         window.location.href = result.invoiceUrl;
       } else {
         setError(result.error || 'Something went wrong. Please try again.');
@@ -362,7 +378,7 @@ export default function AINSFWPricingClient() {
                   className="inline-block px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white mb-2"
                   style={{ background: ACCENT, border: '2px solid #000' }}
                 >
-                  {selectedPlan === 'basic' ? 'Basic — $49' : 'Boost — $297 · Instant Approval'}
+                  {selectedPlan === 'basic' ? 'Basic — $49' : 'Boost — $197 · Instant Approval'}
                 </div>
                 <h2 className="text-xl font-black text-white">Submit Your AI Tool</h2>
                 <p className="text-xs text-white/50 mt-1">
@@ -540,9 +556,9 @@ export default function AINSFWPricingClient() {
                 </div>
               </div>
 
-              {/* Email */}
+              {/* Contact — email OR telegram required */}
               <div>
-                <label className="block text-xs font-black uppercase tracking-widest text-sky-300 mb-1.5">Contact Email *</label>
+                <label className="block text-xs font-black uppercase tracking-widest text-sky-300 mb-1.5">Contact — Email or Telegram *</label>
                 <input
                   type="email"
                   value={form.email}
@@ -551,6 +567,15 @@ export default function AINSFWPricingClient() {
                   className={inputCls}
                   style={{ border: `2px solid ${ACCENT}` }}
                 />
+                <input
+                  type="text"
+                  value={form.contactTelegram || ''}
+                  onChange={(e) => setForm(f => ({ ...f, contactTelegram: e.target.value }))}
+                  placeholder="@yourtelegram"
+                  className={`${inputCls} mt-2`}
+                  style={{ border: `2px solid ${ACCENT}` }}
+                />
+                <p className="text-[11px] font-bold text-white/40 mt-1.5">We&apos;ll only use this to reach you about your listing. At least one is required.</p>
               </div>
 
               {error && (
@@ -570,6 +595,39 @@ export default function AINSFWPricingClient() {
                 </span>
               </div>
 
+              {/* Coupon code */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponResult(null); }}
+                  placeholder="Coupon code"
+                  className="flex-1 px-3 py-2.5 bg-white/[0.06] border-2 border-black text-white text-xs font-bold placeholder:text-white/25 outline-none focus:border-sky-500 transition"
+                />
+                <button
+                  type="button"
+                  disabled={!couponCode.trim() || validatingCoupon}
+                  onClick={async () => {
+                    setValidatingCoupon(true);
+                    const priceUsd = selectedPlan === 'boost' ? 197 : 49;
+                    const starsEquiv = Math.round(priceUsd / 0.013);
+                    const res = await validateCoupon(couponCode.trim(), 'ainsfw', starsEquiv);
+                    setCouponResult(res);
+                    setValidatingCoupon(false);
+                  }}
+                  className="px-4 py-2.5 bg-white/[0.1] hover:bg-white/[0.15] border-2 border-black text-white/70 text-xs font-black uppercase tracking-wider disabled:opacity-30 transition"
+                >
+                  {validatingCoupon ? '...' : 'Apply'}
+                </button>
+              </div>
+              {couponResult && (
+                <p className={`text-xs font-bold ${couponResult.valid ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {couponResult.valid
+                    ? `✓ Coupon applied! Discount active.`
+                    : couponResult.error}
+                </p>
+              )}
+
               <button
                 type="submit"
                 disabled={loading}
@@ -581,7 +639,7 @@ export default function AINSFWPricingClient() {
                   : loading
                     ? 'Processing...'
                     : selectedPlan === 'boost'
-                      ? 'Pay $297 — Go Live Instantly →'
+                      ? 'Pay $197 — Go Live Instantly →'
                       : 'Pay $49 in Crypto →'}
               </button>
 
@@ -599,12 +657,12 @@ export default function AINSFWPricingClient() {
                 </a>
                 <span className="hidden sm:inline text-white/15">·</span>
                 <a
-                  href="https://t.me/RVN8888"
+                  href="https://t.me/erogramDOTpro"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sky-400 hover:text-sky-300 transition-colors"
                 >
-                  @RVN8888 on Telegram
+                  @erogramDOTpro on Telegram
                 </a>
               </div>
             </form>
@@ -626,14 +684,14 @@ export default function AINSFWPricingClient() {
               ✉️ isabella@erogram.biz
             </a>
             <a
-              href="https://t.me/RVN8888"
+              href="https://t.me/erogramDOTpro"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 px-5 py-3 text-sm font-black text-white transition-all hover:opacity-90"
               style={{ background: ACCENT, border: `2px solid ${ACCENT}` }}
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.820 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-              @RVN8888 on Telegram
+              @erogramDOTpro on Telegram
             </a>
           </div>
         </div>

@@ -11,7 +11,16 @@ export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData();
         const file = formData.get('file') as File;
-        const folder = formData.get('folder') as string | null;
+        // Optional keyword-rich basename (e.g. article slug) for SEO-friendly R2 keys.
+        const nameHint = formData.get('name') as string | null;
+
+        // Slugify a hint into a safe, keyword-rich filename; '' if none usable.
+        const keywordBase = (nameHint || '')
+            .toLowerCase()
+            .normalize('NFKD')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 90);
 
         if (!file) {
             return NextResponse.json(
@@ -35,10 +44,17 @@ export async function POST(req: NextRequest) {
         let key: string;
         let mime: string;
 
+        // For article uploads with a keyword hint, store under articles/ with the
+        // keyword name (+ short suffix to avoid overwrites). Otherwise keep legacy UUID.
+        const shortId = randomUUID().slice(0, 8);
+        const basename = (ext: string) =>
+            keywordBase
+                ? `articles/${keywordBase}-${shortId}.${ext}`
+                : `uploads/${randomUUID()}.${ext}`;
+
         if (isGif) {
             finalBuffer = buffer;
-            const prefix = folder === 'onlygram' ? 'onlygram/images' : 'uploads';
-            key = `${prefix}/${randomUUID()}.gif`;
+            key = basename('gif');
             mime = 'image/gif';
         } else {
             let compressed = await sharp(buffer)
@@ -60,8 +76,7 @@ export async function POST(req: NextRequest) {
                     .webp({ quality: 45 })
                     .toBuffer();
             }
-            const prefix = folder === 'onlygram' ? 'onlygram/images' : 'uploads';
-            key = `${prefix}/${randomUUID()}.webp`;
+            key = basename('webp');
             mime = 'image/webp';
             finalBuffer = compressed;
         }

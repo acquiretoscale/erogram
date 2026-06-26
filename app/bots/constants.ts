@@ -1,21 +1,17 @@
-// Unified category list for bots (countries merged in as categories)
+// Bot categories — bots are TOOLS/SERVICES (like AI NSFW), NOT location/fetish
+// groups. This taxonomy mirrors the AI NSFW section + a few bot-only delivery types.
+// Do NOT re-add countries or body/fetish tags here — they don't describe a bot.
 export const categories = [
-    'All', 'Amateur', 'Anal', 'Asian', 'BDSM', 'Big Ass', 'Big Tits', 'Black', 'Blonde', 'Blowjob',
-    'Brazil', 'Brunette', 'China', 'Colombia',
-    'Creampie', 'Cuckold', 'Ebony', 'Fetish', 'Gangbang', 'Gay', 'Germany', 'Group',
-    'Hardcore', 'Interracial', 'Japan', 'Latina', 'Lesbian', 'MILF', 'Petite', 'Public', 'Red Hair', 'Roleplay',
-    'Romantic', 'Teen (18+)', 'Threesome', 'Trans', 'UK', 'USA', 'Voyeur', 'LGBTQ+', 'Fantasy',
-    'Adult Chat', 'Cosplay', 'Cosplay - Anime', 'Cosplay - Video Games',
-    'Cosplay - Movies/TV', 'Cosplay - Comics', 'Feet', 'SFW', 'POV', 'Mature',
-    'Vintage', 'BDSM Lite', 'Medical', 'Erotic Horror', 'Office', 'Outdoor',
-    'Celebrity Lookalike', 'Roleplay - Teacher/Student', 'Roleplay - Nurse/Doctor',
-    'Costume', 'Taboo', 'Tickling', 'Uniforms',
-    'Cosplay - Fantasy', 'Furry', 'Pet Play', 'Double Penetration', 'Mind Control',
-    'Submission', 'Domination', 'Glasses', 'Hair Play', 'Oral', 'Lesbian Tribbing',
-    'Masturbation', 'Latex', 'Squirting', 'Spanking', 'Tease & Denial',
-    'Cosplay - Sci-Fi', 'Steampunk',
-    'Anime',
-    'Russia', 'Spain',
+    'All',
+    'AI Girlfriend',
+    'Sexting / NSFW Chat',
+    'Undress AI',
+    'AI Image Generator',
+    'AI Video Generator',
+    'AI Roleplay & Fantasy',
+    'Adult Games',
+    'Creators & Cams',
+    'NSFW Bot',
 ];
 
 // Legacy backward-compat alias

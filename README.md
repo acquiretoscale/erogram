@@ -37,13 +37,14 @@ npm run dev
 
 The `brain/` folder contains the project's knowledge base:
 
-- `brain/CORE.md` -- start here. Priorities, danger connections, owner preferences.
+- `brain/MANDATORY.md` -- start here. The ONE boot file: rules, priorities, danger map, pre-flight checklist.
+- `brain/graph.json` -- the knowledge graph (nodes + edges). Grep it, don't read it whole.
 - `brain/lobes/` -- deep context per area (SEO, ads, payments, content, media, UX, technical, clients, owner)
-- `brain/incidents/log.md` -- things that broke and how they were fixed
+- `brain/incidents/log.md` -- pointer; incidents live as nodes in graph.json
 
 ## Key Rules
 
 - NEVER create new API routes -- use server actions in `lib/actions/`
 - NEVER change slugs, sitemaps, or revalidation config
 - NEVER push to git without explicit permission
-- Read `brain/CORE.md` before making changes to understand priorities and danger zones
+- Read `brain/MANDATORY.md` before making changes to understand priorities and danger zones

@@ -52,8 +52,6 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;
-    const folder = formData.get('folder') as string | null;
-    const isOnlygram = folder === 'onlygram';
 
     if (!file) {
       return NextResponse.json({ message: 'No file uploaded' }, { status: 400 });
@@ -75,9 +73,9 @@ export async function POST(req: NextRequest) {
 
     let finalBuffer: Buffer;
     let key: string;
-    const prefix = isOnlygram ? 'onlygram/videos' : 'campaigns/videos';
+    const prefix = 'campaigns/videos';
 
-    if (!isOnlygram || rawBuffer.length <= TARGET_SIZE) {
+    if (rawBuffer.length <= TARGET_SIZE) {
       const ext = file.type === 'video/quicktime' ? 'mov' : file.type.split('/')[1];
       key = `${prefix}/${id}.${ext}`;
       finalBuffer = rawBuffer;

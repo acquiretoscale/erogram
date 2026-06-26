@@ -1,198 +1,130 @@
 'use client';
 
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import type { StoryCategory } from './types';
 
 interface StoryBarProps {
-  storyData: StoryCategory[];
+  storyData?: StoryCategory[];
   seenStoryMap?: Record<string, string>;
-  onOpenStory: (categoryIndex: number) => void;
+  onOpenStory?: (categoryIndex: number) => void;
+  /** 🔥 Trending categories — top 6 by group count (computed server-side). */
+  trendingCategories?: Array<{ label: string; href: string }>;
+  /** 🌍 Trending countries — top 6 by group count (computed server-side). */
+  trendingCountries?: Array<{ label: string; href: string }>;
+  onToggleFilter?: () => void;
+  filterOpen?: boolean;
+  activeFilterCount?: number;
 }
 
-function VerifiedBadge({ size = 12 }: { size?: number }) {
+// Fallback used only if the server didn't pass trending categories (e.g. DB hiccup).
+const FALLBACK_CATEGORIES: Array<{ label: string; href: string }> = [
+  { label: 'Telegram Porn', href: '/best-telegram-groups/telegram-porn' },
+  { label: 'Amateur', href: '/best-telegram-groups/amateur' },
+  { label: 'Cosplay', href: '/best-telegram-groups/cosplay' },
+  { label: 'Onlyfans', href: '/best-telegram-groups/onlyfans' },
+  { label: 'Latina', href: '/best-telegram-groups/latina' },
+  { label: 'Blowjob', href: '/best-telegram-groups/blowjob' },
+];
+const FALLBACK_COUNTRIES: Array<{ label: string; href: string }> = [
+  { label: 'USA', href: '/best-telegram-groups/usa' },
+  { label: 'Brazil', href: '/best-telegram-groups/brazil' },
+  { label: 'UK', href: '/best-telegram-groups/uk' },
+  { label: 'Germany', href: '/best-telegram-groups/germany' },
+  { label: 'Italy', href: '/best-telegram-groups/italy' },
+  { label: 'Spain', href: '/best-telegram-groups/spain' },
+];
+
+function TrendingRow({ heading, items }: { heading: string; items: Array<{ label: string; href: string }> }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="#3b82f6" className="shrink-0">
-      <path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z" />
-    </svg>
+    <div className="flex items-baseline gap-1.5 flex-wrap">
+      <span
+        className="text-[11px] font-black uppercase tracking-wider shrink-0 mr-0.5"
+        style={{
+          backgroundImage: 'linear-gradient(135deg, #ff5e2a, #ff9432)',
+          WebkitBackgroundClip: 'text',
+          backgroundClip: 'text',
+          color: 'transparent',
+        }}
+      >
+        TOP {heading}
+      </span>
+      {items.map(({ label, href }) => (
+        <Link
+          key={href}
+          href={href}
+          className="px-2.5 py-1 text-[12px] font-semibold rounded-full transition-all duration-200 whitespace-nowrap hover:scale-105 text-gray-200 hover:text-white"
+          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)' }}
+        >
+          {label}
+        </Link>
+      ))}
+    </div>
   );
 }
 
-export default function StoryBar({ storyData, seenStoryMap = {}, onOpenStory }: StoryBarProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-
-  const checkScroll = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 4);
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
-  };
-
-  useEffect(() => {
-    checkScroll();
-    const el = scrollRef.current;
-    if (el) el.addEventListener('scroll', checkScroll, { passive: true });
-    window.addEventListener('resize', checkScroll);
-    return () => {
-      el?.removeEventListener('scroll', checkScroll);
-      window.removeEventListener('resize', checkScroll);
-    };
-  }, [storyData]);
-
-  const scroll = (dir: 'left' | 'right') => {
-    scrollRef.current?.scrollBy({
-      left: dir === 'left' ? -240 : 240,
-      behavior: 'smooth',
-    });
-  };
-
-  const hasStories = storyData.length > 0;
+export default function StoryBar({ trendingCategories = [], trendingCountries = [], onToggleFilter, filterOpen = false, activeFilterCount = 0 }: StoryBarProps) {
+  const cats = trendingCategories.length > 0 ? trendingCategories.slice(0, 6) : FALLBACK_CATEGORIES;
+  const countries = (trendingCountries.length > 0 ? trendingCountries : FALLBACK_COUNTRIES).slice(0, 4);
 
   return (
-    <section className="mb-3">
-      {hasStories && (
-        <style>{`
-          @keyframes story-neon-spin {
-            to { transform: rotate(360deg); }
-          }
-          .story-neon-ring {
-            animation: story-neon-spin 3s linear infinite;
-          }
-          .story-neon-ring-slow {
-            animation: story-neon-spin 5s linear infinite;
-          }
-        `}</style>
-      )}
+    <section className="mt-4 mb-3">
+      <h3 className="sr-only">Trending Telegram Groups</h3>
 
-      <h3 className="sr-only">Recent Groups</h3>
-
-      {hasStories && <div className="relative rounded-xl overflow-hidden flex items-stretch" style={{
-        background: 'linear-gradient(165deg, #0a1520 0%, #0d1a2a 40%, #091218 100%)',
-        border: '1px solid rgba(0,175,240,0.2)',
-        boxShadow: '0 4px 24px rgba(0,175,240,0.08), inset 0 1px 0 rgba(100,200,255,0.06)',
-      }}>
-        <div className="absolute inset-0 pointer-events-none z-0" style={{
-          background: 'linear-gradient(180deg, rgba(0,175,240,0.05) 0%, transparent 40%, transparent 85%, rgba(0,136,204,0.03) 100%)',
-        }} />
-
-        <div className="relative z-[1] shrink-0 flex flex-col items-center justify-center px-1 py-1" style={{
-          background: 'linear-gradient(180deg, #0a0f15 0%, #0c1520 100%)',
-          borderRight: '1px solid rgba(0,175,240,0.15)',
-        }}>
-          <p className="text-[10px] font-black uppercase tracking-widest text-white/60 whitespace-nowrap" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>Stories</p>
+      <nav aria-label="Trending Telegram group categories" className="rounded-2xl px-4 py-3.5 flex items-center gap-3" style={{ background: 'linear-gradient(135deg, #131a24, #0d1117)', border: '1px solid rgba(255,255,255,0.08)' }}>
+        {/* Trending area — inline headings, wrapping pills (compact) */}
+        <div className="flex flex-col gap-2 flex-1 min-w-0 max-w-[640px]">
+          <TrendingRow heading="CATEGORIES" items={cats} />
+          <TrendingRow heading="COUNTRIES" items={countries} />
         </div>
 
-        <div className="relative flex-1 min-w-0 group/scroll">
-          {canScrollLeft && (
+        {/* Right: visiting now only on mobile (Filter moved to bottom CTA row). On desktop show Filter here. */}
+        <div className="shrink-0 flex items-center gap-3 pl-3 self-stretch" style={{ borderLeft: '1px solid rgba(255,255,255,0.08)' }}>
+          {onToggleFilter && (
             <button
-              onClick={() => scroll('left')}
-              className="absolute left-0 top-0 bottom-0 z-10 w-8 flex items-center justify-start pl-1 opacity-0 group-hover/scroll:opacity-100 transition-opacity duration-200"
-              style={{ background: 'linear-gradient(to right, #0a1520 40%, transparent)' }}
-              aria-label="Scroll left"
+              onClick={onToggleFilter}
+              aria-expanded={filterOpen}
+              aria-label="Toggle filters"
+              className="hidden lg:flex items-center gap-1 px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-wide transition-all duration-200 hover:brightness-110 active:scale-95"
+              style={
+                filterOpen
+                  ? { background: '#334155', border: '1px solid transparent', color: '#ffffff' }
+                  : activeFilterCount > 0
+                    ? { background: 'linear-gradient(135deg, #6fd44a, #43c326)', border: '1px solid transparent', color: '#052e16', boxShadow: '0 4px 14px -5px rgba(67,195,38,0.5)' }
+                    : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: '#d1d5db' }
+              }
             >
-              <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="15,18 9,12 15,6" /></svg>
-              </div>
+              {filterOpen ? (
+                <>
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                  CLOSE
+                </>
+              ) : (
+                <>
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                  </svg>
+                  Filter
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                  {activeFilterCount > 0 && (
+                    <span className="flex items-center justify-center min-w-[12px] h-[12px] px-0.5 rounded-full bg-[#052e16] text-[6px] font-black text-[#6fd44a]">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </>
+              )}
             </button>
           )}
 
-          {canScrollRight && (
-            <button
-              onClick={() => scroll('right')}
-              className="absolute right-0 top-0 bottom-0 z-10 w-8 flex items-center justify-end pr-1 opacity-0 group-hover/scroll:opacity-100 transition-opacity duration-200"
-              style={{ background: 'linear-gradient(to left, #0a1520 40%, transparent)' }}
-              aria-label="Scroll right"
-            >
-              <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="9,6 15,12 9,18" /></svg>
-              </div>
-            </button>
-          )}
-
-          <div
-            ref={scrollRef}
-            className="flex gap-3 overflow-x-auto scrollbar-hide px-2.5 py-2"
-          >
-            {storyData.map((cat, i) => (
-              <StoryCircle
-                key={cat.slug}
-                category={cat}
-                seenAt={seenStoryMap[cat.slug]}
-                onClick={() => onOpenStory(i)}
-              />
-            ))}
-            <PremiumUpgradeCircle />
-            <VisitingNowCard />
-          </div>
-        </div>
-      </div>}
-
-      <nav aria-label="Trending Telegram group categories" className="mt-1.5 rounded-lg px-2 py-1.5 shadow-sm" style={{ background: 'linear-gradient(135deg, #0a1520, #0d1825)', border: '1px solid rgba(0,175,240,0.15)' }}>
-        <div className="flex flex-wrap items-center gap-1">
-          <span className="text-[8px] font-black uppercase tracking-wider shrink-0 mr-0.5" style={{ color: '#00AFF0' }}>🔥 Trending on Erogram</span>
-            {[
-              { label: 'Telegram Porn', href: '/best-telegram-groups/porn-telegram' },
-              { label: 'Lesbian', href: '/best-telegram-groups/lesbian' },
-              { label: 'Threesome', href: '/best-telegram-groups/threesome' },
-              { label: 'Blowjob', href: '/best-telegram-groups/blowjob' },
-              { label: 'Amateur', href: '/best-telegram-groups/amateur' },
-              { label: 'Onlyfans', href: '/best-telegram-groups/onlyfans' },
-              { label: 'BDSM', href: '/best-telegram-groups/bdsm' },
-              { label: 'Germany', href: '/groups/country/Germany' },
-            ].map(({ label, href }) => (
-              <Link
-                key={href}
-                href={href}
-                className="px-1.5 py-[2px] text-[8px] font-bold rounded-full transition-all duration-200 whitespace-nowrap hover:scale-105"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(0,175,240,0.15), rgba(0,136,204,0.10))',
-                  color: '#7dd3fc',
-                  border: '1px solid rgba(0,175,240,0.25)',
-                }}
-              >
-                {label}
-              </Link>
-            ))}
+          <VisitingNowCard />
         </div>
       </nav>
     </section>
-  );
-}
-
-function PremiumUpgradeCircle() {
-  return (
-    <Link
-      href="/premium"
-      target="_blank"
-      className="flex flex-col items-center gap-1 shrink-0 group outline-none"
-      aria-label="Upgrade to Erogram Premium"
-    >
-      <div className="relative w-[76px] h-[76px] md:w-[84px] md:h-[84px]">
-        <div className="absolute inset-0 rounded-full overflow-hidden">
-          <div
-            className="story-neon-ring absolute"
-            style={{
-              inset: '-24px',
-              background: 'conic-gradient(from 0deg, #00AFF0, #0088cc, #00D4FF, #38bdf8, #00AFF0)',
-            }}
-          />
-        </div>
-        <div className="absolute inset-[3px] rounded-full" style={{ background: '#0a1520' }} />
-        <div
-          className="absolute inset-[5px] rounded-full flex items-center justify-center"
-          style={{ background: 'linear-gradient(135deg, #0c1a2a, #0d2035)' }}
-        >
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="#00AFF0">
-            <path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/>
-          </svg>
-        </div>
-      </div>
-      <span className="text-[7px] md:text-[8px] font-black uppercase tracking-tight text-center leading-none text-sky-300 group-hover:text-sky-200 transition-colors whitespace-nowrap">
-        ⭐ Erogram<br />Premium
-      </span>
-    </Link>
   );
 }
 
@@ -213,115 +145,14 @@ function VisitingNowCard() {
   }, [fetchCount]);
 
   return (
-    <div className="shrink-0 flex flex-col justify-center gap-2 pl-3 ml-1" style={{ borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
-      <div className="flex items-center gap-1.5">
-        <span className="relative flex h-1.5 w-1.5 shrink-0">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
-          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
-        </span>
-        <div className="flex flex-col leading-none">
-          <span className="text-[17px] font-black text-white/80 tabular-nums">{count > 0 ? count.toLocaleString('en-US') : '—'}</span>
-          <span className="text-[10px] font-medium text-white/40 mt-0.5">visiting now</span>
-        </div>
-      </div>
-
-      <div className="relative rounded-full p-[2px] overflow-hidden" style={{
-        background: 'conic-gradient(from 0deg, #4ade80, #16a34a, #bbf7d0, #22c55e, #4ade80)',
-      }}>
-        <Link
-          href="/premium"
-          target="_blank"
-          className="relative z-10 flex items-center justify-center gap-1 px-3 py-1.5 rounded-full text-[10px] font-black whitespace-nowrap transition-all duration-200 hover:brightness-110"
-          style={{
-            background: 'linear-gradient(180deg, #4ade80 0%, #16a34a 100%)',
-            color: '#fff',
-            boxShadow: '0 0 12px rgba(74,222,128,0.55)',
-            textShadow: '0 1px 2px rgba(0,0,0,0.3)',
-          }}
-        >
-          ⭐ EROGRAM PREMIUM
-        </Link>
-      </div>
+    <div className="flex items-center gap-1.5 text-[13px]">
+      <span className="relative flex h-2 w-2 shrink-0">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+      </span>
+      <span className="font-black text-white/90 tabular-nums leading-none text-[15px]">{count > 0 ? count.toLocaleString('en-US') : '—'}</span>
+      <span className="text-[10px] font-medium text-white/40 whitespace-nowrap leading-none">visiting now</span>
     </div>
   );
 }
 
-function StoryCircle({
-  category,
-  seenAt,
-  onClick,
-}: {
-  category: StoryCategory;
-  seenAt?: string;
-  onClick: () => void;
-}) {
-  const hasContent = category.groups.length > 0 || (category.mediaSlides && category.mediaSlides.length > 0);
-  const hasUnseen = (() => {
-    if (!hasContent) return false;
-    if (seenAt) {
-      const seenMs = new Date(seenAt).getTime();
-      const latestAt = category.groups[0]?.createdAt;
-      if (latestAt) return new Date(latestAt).getTime() > seenMs;
-      return category.hasNewContent;
-    }
-    return true;
-  })();
-
-  const imgSrc =
-    category.profileImage ||
-    category.groups[0]?.image ||
-    category.mediaSlides?.[0]?.mediaUrl ||
-    '/assets/placeholder-no-image.png';
-
-  return (
-    <button
-      onClick={onClick}
-      className="flex flex-col items-center gap-1 shrink-0 group outline-none"
-      aria-label={`View ${category.label} stories`}
-    >
-      <div className="relative w-[76px] h-[76px] md:w-[84px] md:h-[84px]">
-        <div className="absolute inset-0 rounded-full overflow-hidden">
-          {hasUnseen ? (
-            <div
-              className="story-neon-ring absolute"
-              style={{
-                inset: '-24px',
-                background: 'conic-gradient(from 0deg, #00AFF0, #0088cc, #00D4FF, #38bdf8, #7dd3fc, #00AFF0)',
-              }}
-            />
-          ) : (
-            <div
-              className="story-neon-ring-slow absolute"
-              style={{
-                inset: '-24px',
-                background: 'conic-gradient(from 0deg, #1e3a5f, #0c4a6e, #0369a1, #1e3a5f)',
-                opacity: 0.55,
-              }}
-            />
-          )}
-        </div>
-
-        <div
-          className="absolute inset-[3px] rounded-full"
-          style={{ background: '#0a1520' }}
-        />
-
-        <div className="absolute inset-[5px] rounded-full overflow-hidden" style={{ background: '#0d1a2a' }}>
-          <img
-            src={imgSrc}
-            alt={category.label}
-            loading="lazy"
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-          />
-        </div>
-      </div>
-
-      <span className={`flex items-center gap-0.5 text-[10px] md:text-[11px] font-semibold transition-colors duration-200 max-w-[76px] md:max-w-[84px] ${
-        hasUnseen ? 'text-sky-200/90 group-hover:text-sky-100' : 'text-sky-300/30 group-hover:text-sky-300/50'
-      }`}>
-        <span className="truncate">{category.label}</span>
-        {category.verified && <VerifiedBadge size={11} />}
-      </span>
-    </button>
-  );
-}

@@ -551,7 +551,6 @@ function AdFormatComparison() {
                       <span className="text-white font-bold text-sm drop-shadow">4.8</span>
                       <span className="text-gray-400 text-xs drop-shadow">(24)</span>
                     </div>
-                    <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wide drop-shadow">Promoted</span>
                   </div>
                   <div className="w-full py-3.5 px-4 rounded-xl font-black text-white text-sm uppercase tracking-wide bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg text-center">
                     Visit Site
@@ -603,7 +602,6 @@ function AdFormatComparison() {
                     <span className="text-white font-bold text-sm">4.6</span>
                     <span className="text-gray-500 text-xs">(17)</span>
                   </div>
-                  <span className="text-[10px] text-gray-500 font-medium uppercase tracking-wide">Promoted</span>
                 </div>
                 <div className="w-full py-3.5 px-4 rounded-xl font-black text-white text-sm uppercase tracking-wide bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg text-center">
                   {imageAd?.buttonText || 'Visit Site'}

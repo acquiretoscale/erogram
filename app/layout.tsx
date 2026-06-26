@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Inter_Tight, Baloo_2, Bebas_Neue, Archivo } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import LayoutWrapper from "@/components/LayoutWrapper";
@@ -16,6 +16,34 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const interTight = Inter_Tight({
+  variable: "--font-inter-tight",
+  subsets: ["latin"],
+  weight: ["600", "700", "800"],
+});
+
+// Condensed black display font — hero title on homepage.
+const bebasNeue = Bebas_Neue({
+  variable: "--font-bebas",
+  subsets: ["latin"],
+  weight: "400",
+});
+
+// Wide heavy grotesque (Arial Black Italic vibe) — ainsfw futuristic headlines + logo.
+const archivo = Archivo({
+  variable: "--font-archivo",
+  subsets: ["latin"],
+  weight: ["800", "900"],
+  style: ["normal", "italic"],
+});
+
+// Rounded heavy display font — used (for now) only on the home page hero test.
+const baloo2 = Baloo_2({
+  variable: "--font-baloo",
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
@@ -107,8 +135,8 @@ export default async function RootLayout({
 
         {/* SW registered only for admins — see AdminSaleAlert */}
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        <body
+        className={`${geistSans.variable} ${geistMono.variable} ${interTight.variable} ${baloo2.variable} ${bebasNeue.variable} ${archivo.variable} antialiased`}
       >
         {/* Google Analytics 4 */}
         <Script

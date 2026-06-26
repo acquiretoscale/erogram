@@ -7,8 +7,8 @@ ulimit -n 65536 2>/dev/null || true
 lsof -ti:${PORT:-3939} | xargs kill -9 2>/dev/null
 sleep 1
 
-# Always start fresh — wipe Turbopack/Next.js cache to prevent hydration ghosts
-rm -rf .next 2>/dev/null
+# Only wipe .next if explicitly requested: PORT=3939 CLEAN=1 npm run dev
+if [ "${CLEAN:-}" = "1" ]; then rm -rf .next 2>/dev/null; fi
 
 # 3GB heap — Turbopack needs room with 100+ routes + 78 pages.
 # --expose-gc lets Turbopack trigger GC when it detects pressure.

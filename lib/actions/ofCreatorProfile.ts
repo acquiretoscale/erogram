@@ -73,6 +73,9 @@ export async function getCreatorBySlug(slug: string): Promise<CreatorProfile | n
 
     if (!creator) return null;
     if ((creator as any).submissionStatus === 'pending' || (creator as any).submissionStatus === 'rejected') return null;
+    // Big-player creators flagged redirectToOF have NO individual Erogram page.
+    // They still appear as cards on /onlyfanssearch (click goes straight to OnlyFans).
+    if ((creator as any).redirectToOF === true) return null;
 
     const c = creator as any;
     return {
@@ -194,6 +197,7 @@ export async function getRelatedCreators(
       slug: { $ne: excludeSlug },
       avatar: { $ne: '' },
       deleted: { $ne: true },
+      redirectToOF: { $ne: true },
     })
       .sort({ likesCount: -1 })
       .limit(limit)

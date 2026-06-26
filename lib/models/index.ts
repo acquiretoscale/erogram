@@ -97,6 +97,7 @@ export const groupSchema = new Schema(
     boostDuration: { type: String, enum: ['1d', '7d', '14d', '30d', null], default: null },
     paidBoost: { type: Boolean, default: false },
     paidBoostStars: { type: Number, default: null },
+    lastPaymentChargeId: { type: String, default: null },
     topGroupSlot: { type: Number, default: null },
     // CSV bulk-import scheduling fields
     scheduledPublishAt: { type: Date, default: null },
@@ -128,10 +129,13 @@ export const groupSchema = new Schema(
     likes: { type: Number, default: 0 },
     dislikes: { type: Number, default: 0 },
     linkedCreatorSlug: { type: String, default: '' },
+    contactTelegram: { type: String, default: '' },
+    contactEmail: { type: String, default: '' },
   },
   { timestamps: true }
 );
 
+groupSchema.index({ createdBy: 1, status: 1 });
 groupSchema.index({ status: 1, scheduledPublishAt: 1 });
 groupSchema.index({ publishedAt: 1 });
 groupSchema.index({ premiumOnly: 1, status: 1 });
@@ -190,6 +194,10 @@ export const articleSchema = new Schema(
     viewsByDay: { type: Map, of: Number, default: new Map() },
     advertiserId: { type: Schema.Types.ObjectId, ref: 'Advertiser', required: false },
     tags: [{ type: String }],
+    // Blog category slug: 'ai-nsfw' | 'telegram-groups-bots' | 'onlyfans-creators' | 'adult-entertainment'
+    blogCategory: { type: String, default: 'adult-entertainment' },
+    // Byline author — references an Author doc by slug (see authorSchema). Default 'eros'.
+    authorSlug: { type: String, default: 'eros' },
     // SEO Metadata fields
     metaTitle: { type: String, required: false },
     metaDescription: { type: String, required: false },
@@ -226,6 +234,7 @@ export const articleSchema = new Schema(
 // Create indexes for performance
 articleSchema.index({ status: 1, publishedAt: -1, createdAt: -1 });
 articleSchema.index({ author: 1 });
+articleSchema.index({ blogCategory: 1, status: 1, publishedAt: -1 });
 // Note: slug index is already created by unique: true constraint, no need to duplicate
 
 // Advert Schema
@@ -313,6 +322,7 @@ export const botSchema = new Schema(
     boostDuration: { type: String, enum: ['1d', '7d', '14d', '30d', null], default: null },
     paidBoost: { type: Boolean, default: false },
     paidBoostStars: { type: Number, default: null },
+    lastPaymentChargeId: { type: String, default: null },
     publishedAt: { type: Date, default: null },
     views: { type: Number, default: 0 },
     isAdvertisement: { type: Boolean, default: false },
@@ -322,10 +332,13 @@ export const botSchema = new Schema(
     lastClickedAt: { type: Date },
     memberCount: { type: Number, default: 0 },
     memberCountUpdatedAt: { type: Date },
+    contactTelegram: { type: String, default: '' },
+    contactEmail: { type: String, default: '' },
   },
   { timestamps: true }
 );
 
+botSchema.index({ createdBy: 1, status: 1 });
 botSchema.index({ categories: 1, status: 1 });
 
 // Category Schema
@@ -483,6 +496,14 @@ export const advertiserSchema = new Schema(
     logo: { type: String, default: '' },
     notes: { type: String, default: '' },
     status: { type: String, enum: ['active', 'inactive'], default: 'active' },
+    // Per-advertiser daily click cap across ALL their ads platform-wide (brain: ad-vision).
+    // 0 or null = uncapped. When today's clicks >= cap, ALL this advertiser's ads yield
+    // their slots to other advertisers / Erogram-own ads for the rest of the UTC day.
+    dailyClickCap: { type: Number, default: 0 },
+    // OF Agency tag: an advertiser flagged as an OnlyFans agency. Their OF-creator ads roll up
+    // under them for reporting; this is the on-ramp to per-agency self-serve accounts later.
+    // Plain flag (not a new entity) so OF tracking can be cut/filtered fast without a mess.
+    isOfAgency: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
@@ -524,7 +545,9 @@ export const campaignSchema = new Schema(
     country: { type: String, default: 'All' },
     buttonText: { type: String, default: 'Visit Site' },
     // Where to show this feed ad: groups only, bots only, or both
-    feedPlacement: { type: String, enum: ['groups', 'bots', 'both'], default: 'both' },
+    feedPlacement: { type: String, enum: ['groups', 'bots', 'ainsfw', 'both'], default: 'both' },
+    // Home In Feed block format: 'banner' = 1 wide image/video, 'card' = part of the 4-up grid.
+    blockFormat: { type: String, enum: ['banner', 'card'], default: 'card' },
     // Optional video URL for video ad variant (feed slot only)
     videoUrl: { type: String, default: '' },
     // Configurable badge label (e.g. "Trending", "Hot", "New") — shown on the card
@@ -536,6 +559,8 @@ export const campaignSchema = new Schema(
     adType: { type: String, enum: ['advertiser', 'premium', 'featured-bot', 'featured-nsfw', 'onlyfans-creator'], default: 'advertiser' },
     // For onlyfans-creator ads: the creator's username (for display + linkback). destinationUrl stores the OF URL.
     ofUsername: { type: String, default: '' },
+    // UNIFIED OF SYNC (brain: ad-engine-unify): the TrendingOFCreator featured slot this campaign mirrors.
+    ofTrendingId: { type: Schema.Types.ObjectId, ref: 'TrendingOFCreator', default: null },
     // For premium ads: which category to pull featured groups from
     premiumCategory: { type: String, default: '' },
     // For premium ads: hand-picked group IDs to show (overrides automatic category query)
@@ -546,6 +571,19 @@ export const campaignSchema = new Schema(
     bannerPages: { type: [String], default: [] },
     // Banner device targeting: 'all' | 'mobile' | 'desktop'
     bannerDevice: { type: String, enum: ['all', 'mobile', 'desktop'], default: 'all' },
+
+    // ── UNIFIED AD ENGINE (additive — brain node: ad-engine-unify) ──
+    // Named placements this ad targets (e.g. ['top-groups-1','feed-2']). See lib/adPlacements.ts.
+    // EMPTY = legacy tierSlot/feedTier logic still applies (full back-compat, nothing changes).
+    placements: { type: [String], default: [] },
+    // Keyword/category targeting for niche placements (Phase 4): e.g. ['MILF'] → show on MILF pages.
+    targetKeywords: { type: [String], default: [] },
+    // Optional rotation weight (% visibility share when multiple ads share a slot). null = equal rotation.
+    weight: { type: Number, default: null },
+    // Optional daily click cap. When reached, the ad yields its slot for the day. null = uncapped.
+    dailyClickCap: { type: Number, default: null },
+    // Priority tier for slot resolution. 'normal' | 'boost' (boost = higher fill priority). Logic later.
+    priority: { type: String, enum: ['normal', 'boost'], default: 'normal' },
   },
   { timestamps: true }
 );
@@ -774,7 +812,18 @@ export const premiumPricingSchema = new Schema(
   { timestamps: true }
 );
 
+// Newsletter subscribers — lean email capture (no email service yet; just stored + viewed in admin).
+const newsletterSubscriberSchema = new Schema(
+  {
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    source: { type: String, default: 'blog' }, // where they signed up (blog, article slug, etc.)
+    status: { type: String, enum: ['subscribed', 'unsubscribed'], default: 'subscribed' },
+  },
+  { timestamps: true }
+);
+
 // Export models
+export const NewsletterSubscriber = models.NewsletterSubscriber || model('NewsletterSubscriber', newsletterSubscriberSchema);
 export const Vote = models.Vote || model('Vote', voteSchema);
 export const User = models.User || model('User', userSchema);
 export const Group = models.Group || model('Group', groupSchema);
@@ -782,6 +831,25 @@ export const Bot = models.Bot || model('Bot', botSchema);
 export const Post = models.Post || model('Post', postSchema);
 export const Report = models.Report || model('Report', reportSchema);
 export const Article = models.Article || model('Article', articleSchema);
+
+// Blog author — magazine byline identity (E-E-A-T). Managed in /admin article section.
+export const authorSchema = new Schema(
+  {
+    slug: { type: String, required: true, unique: true },
+    name: { type: String, required: true },
+    role: { type: String, default: 'Staff Writer' },
+    bio: { type: String, default: '' },
+    avatar: { type: String, default: '' },
+    socials: {
+      x: { type: String, default: '' },
+      telegram: { type: String, default: '' },
+      instagram: { type: String, default: '' },
+      website: { type: String, default: '' },
+    },
+  },
+  { timestamps: true, minimize: false }
+);
+export const Author = models.Author || model('Author', authorSchema);
 export const Advert = models.Advert || model('Advert', advertSchema);
 export const Category = models.Category || model('Category', categorySchema);
 export const Country = models.Country || model('Country', countrySchema);
@@ -887,6 +955,8 @@ export const onlyFansCreatorSchema = new Schema(
     telegramUrl: { type: String, default: '' },
     extraPhotos: { type: [String], default: [] },
     submittedByUser: { type: Boolean, default: false },
+    submittedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    submittedByUsername: { type: String, default: '' },
     submissionStatus: { type: String, enum: ['approved', 'pending', 'rejected'], default: 'approved' },
     deleted: { type: Boolean, default: false },
     deletedAt: { type: Date, default: null },
@@ -898,6 +968,7 @@ onlyFansCreatorSchema.index({ clicks: -1 });
 onlyFansCreatorSchema.index({ featured: 1 });
 onlyFansCreatorSchema.index({ subscriberCount: -1 });
 onlyFansCreatorSchema.index({ deleted: 1 });
+onlyFansCreatorSchema.index({ submittedBy: 1, submissionStatus: 1 });
 
 export const OnlyFansCreator = models.OnlyFansCreator || model('OnlyFansCreator', onlyFansCreatorSchema);
 
@@ -918,6 +989,41 @@ creatorReviewSchema.index({ creatorSlug: 1, status: 1 });
 creatorReviewSchema.index({ creatorSlug: 1, author: 1 }, { unique: true, sparse: true });
 
 export const CreatorReview = models.CreatorReview || model('CreatorReview', creatorReviewSchema);
+
+// Article Comment Schema — user comments on blog articles (moderated, no rating)
+const articleCommentSchema = new Schema(
+  {
+    articleSlug: { type: String, required: true, index: true },
+    author: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    authorName: { type: String, default: 'Anonymous' },
+    content: { type: String, required: true },
+    status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+    ip: { type: String },
+  },
+  { timestamps: true }
+);
+articleCommentSchema.index({ articleSlug: 1, status: 1 });
+
+export const ArticleComment = models.ArticleComment || model('ArticleComment', articleCommentSchema);
+
+// Blog "Creator of the Month" — single admin-controlled paid cover slot on /blog
+const blogFeaturedCreatorSchema = new Schema(
+  {
+    name: { type: String, required: true },
+    username: { type: String, default: '' },
+    monthLabel: { type: String, default: '' },
+    blurb: { type: String, default: '' },
+    coverImage: { type: String, default: '' },
+    avatar: { type: String, default: '' },
+    destinationUrl: { type: String, default: '' },
+    ctaLabel: { type: String, default: 'See the feature' },
+    active: { type: Boolean, default: true },
+    clicks: { type: Number, default: 0 },
+  },
+  { timestamps: true }
+);
+
+export const BlogFeaturedCreator = models.BlogFeaturedCreator || model('BlogFeaturedCreator', blogFeaturedCreatorSchema);
 
 // Trending on Erogram — admin-curated chart shown on onlyfanssearch
 const trendingErogramSchema = new Schema(
@@ -958,6 +1064,9 @@ const trendingOFCreatorSchema = new Schema(
     isStarPick:    { type: Boolean, default: false }, // true = added by star button (NOT a paid client)
     liveHourStart: { type: Number, default: -1, min: -1, max: 23 }, // -1 = never live; 0–23 = GMT hour start
     liveHourEnd:   { type: Number, default: -1, min: -1, max: 23 }, // -1 = never live; 0–23 = GMT hour end
+    // UNIFIED OF SYNC (brain: ad-engine-unify): which Ad Network campaign owns/mirrors this slot, and where it came from.
+    linkedCampaignId: { type: Schema.Types.ObjectId, ref: 'Campaign', default: null },
+    source:           { type: String, enum: ['ofadmin', 'ad-network', 'self-serve'], default: 'ofadmin' },
   },
   { timestamps: true },
 );
@@ -1087,6 +1196,9 @@ const ainsfwSubmissionSchema = new Schema(
     payment: { type: [String], default: [] },
     tryNowUrl: { type: String, default: '' },
     contactEmail: { type: String, default: '' },
+    contactTelegram: { type: String, default: '' },
+    createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    createdByUsername: { type: String, default: '' },
     status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
     submissionTier: { type: String, enum: ['basic', 'boost', 'free', 'instant', 'platinum'], default: 'basic' },
     paymentStatus: { type: String, enum: ['pending', 'paid', 'none'], default: 'none' },
@@ -1105,53 +1217,9 @@ const ainsfwSubmissionSchema = new Schema(
 ainsfwSubmissionSchema.index({ status: 1 });
 ainsfwSubmissionSchema.index({ featured: 1 });
 ainsfwSubmissionSchema.index({ boosted: 1, boostExpiresAt: 1 });
+ainsfwSubmissionSchema.index({ createdBy: 1 });
 
 export const AINsfwSubmission = models.AINsfwSubmission || model('AINsfwSubmission', ainsfwSubmissionSchema);
-
-// OnlygramPost — private creator profile posts (enzogonzo / vickykovaks)
-const onlygramPostSchema = new Schema({
-  slug: { type: String, required: true, index: true },
-  postId: { type: String, required: true },
-  type: { type: String, enum: ['photo', 'video'], default: 'photo' },
-  thumbnail: { type: String, default: '' },
-  videoUrl: { type: String, default: '' },
-  media: [{ type: { type: String, enum: ['photo', 'video'] }, url: String, thumb: String }],
-  caption: { type: String, default: '' },
-  likes: { type: Number, default: 0 },
-  comments: { type: Number, default: 0 },
-  views: { type: Number, default: 0 },
-  locked: { type: Boolean, default: false },
-  price: { type: Number, default: 0 },
-  postedAt: { type: String, default: '' },
-  postedAtIso: { type: String, default: '' },
-  pinned: { type: Boolean, default: false },
-  tagged: [{ username: String, name: String }],
-  commentList: [{ user: String, text: String, ago: String }],
-}, { timestamps: true });
-
-onlygramPostSchema.index({ slug: 1, createdAt: -1 });
-
-export const OnlygramPost = models.OnlygramPost || model('OnlygramPost', onlygramPostSchema);
-
-// OnlygramCreator — profile data (avatar, cover, bio etc)
-const onlygramCreatorSchema = new Schema({
-  slug: { type: String, required: true, unique: true },
-  name: String,
-  username: String,
-  avatar: String,
-  cover: String,
-  bio: String,
-  verified: { type: Boolean, default: true },
-  location: String,
-  joinedDate: String,
-  subscriptionPrice: Schema.Types.Mixed,
-  totalFans: Number,
-  totalLikes: Number,
-  totalPosts: Number,
-  totalMedia: Number,
-}, { timestamps: true });
-
-export const OnlygramCreator = models.OnlygramCreator || model('OnlygramCreator', onlygramCreatorSchema);
 
 // Bot Stats — votes (per-bot aggregate, mirrors AINsfwToolStats)
 const botStatsSchema = new Schema(
@@ -1179,3 +1247,37 @@ const featureSuggestionSchema = new Schema({
 featureSuggestionSchema.index({ upvoteCount: -1, createdAt: -1 });
 
 export const FeatureSuggestion = models.FeatureSuggestion || model('FeatureSuggestion', featureSuggestionSchema);
+
+// Coupon — global discount system for all Erogram paid services
+const couponSchema = new Schema({
+  code: { type: String, required: true, unique: true, uppercase: true, trim: true },
+  discountType: { type: String, enum: ['percent', 'fixed_stars'], required: true },
+  discountValue: { type: Number, required: true },
+  appliesTo: [{ type: String, enum: ['groups', 'bots', 'premium', 'ainsfw', 'of_advertising'] }],
+  maxUses: { type: Number, default: -1 },
+  usedCount: { type: Number, default: 0 },
+  expiresAt: { type: Date, default: null },
+  active: { type: Boolean, default: true },
+  createdBy: { type: String, default: 'admin' },
+}, { timestamps: true });
+
+couponSchema.index({ active: 1, expiresAt: 1 });
+
+export const Coupon = models.Coupon || model('Coupon', couponSchema);
+
+// CouponUsage — tracks each use of a coupon
+const couponUsageSchema = new Schema({
+  couponId: { type: Schema.Types.ObjectId, ref: 'Coupon', required: true },
+  couponCode: { type: String, required: true },
+  userId: { type: Schema.Types.ObjectId, ref: 'User' },
+  service: { type: String, required: true },
+  entityId: { type: String },
+  originalStars: { type: Number, required: true },
+  discountedStars: { type: Number, required: true },
+  savedStars: { type: Number, required: true },
+}, { timestamps: true });
+
+couponUsageSchema.index({ couponId: 1 });
+couponUsageSchema.index({ userId: 1 });
+
+export const CouponUsage = models.CouponUsage || model('CouponUsage', couponUsageSchema);

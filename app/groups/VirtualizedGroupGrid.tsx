@@ -35,10 +35,20 @@ function buildFeedItems(groups: Group[], campaigns: FeedCampaign[], vaultGroups:
         return groups.map((g, i) => ({ type: 'group' as const, data: g, index: i }));
     }
 
-    const slot2 = campaigns.filter(c => c.tierSlot === 2);
-    const slot3 = campaigns.filter(c => c.tierSlot === 3);
+    // Each in-feed slot rotates: boosted ads win, otherwise a random eligible variant per page load.
+    const rotate = (list: FeedCampaign[]): FeedCampaign | undefined => {
+        if (list.length === 0) return undefined;
+        const boosted = list.filter(c => c.priority === 'boost');
+        const pool = boosted.length > 0 ? boosted : list;
+        return pool[Math.floor(Math.random() * pool.length)];
+    };
+    const slot2all = campaigns.filter(c => c.tierSlot === 2);
+    const slot3all = campaigns.filter(c => c.tierSlot === 3);
     const slot4 = campaigns.filter(c => c.tierSlot === 4);
-    const slot5 = campaigns.filter(c => c.tierSlot === 5);
+    const slot5all = campaigns.filter(c => c.tierSlot === 5);
+    const slot2pick = rotate(slot2all);
+    const slot3pick = rotate(slot3all);
+    const slot5pick = rotate(slot5all);
     const allCampaigns = campaigns;
 
     let groupIdx = 0;
@@ -54,12 +64,12 @@ function buildFeedItems(groups: Group[], campaigns: FeedCampaign[], vaultGroups:
             vaultGroupIdx++;
         }
 
-        if (groupCount === SLOT2_GC && slot2.length > 0) {
-            items.push({ type: 'campaign', data: slot2[0], index: items.length });
-        } else if (groupCount === SLOT5_GC && slot5.length > 0) {
-            items.push({ type: 'campaign', data: slot5[0], index: items.length });
-        } else if (groupCount === SLOT3_GC && slot3.length > 0) {
-            items.push({ type: 'campaign', data: slot3[0], index: items.length });
+        if (groupCount === SLOT2_GC && slot2pick) {
+            items.push({ type: 'campaign', data: slot2pick, index: items.length });
+        } else if (groupCount === SLOT5_GC && slot5pick) {
+            items.push({ type: 'campaign', data: slot5pick, index: items.length });
+        } else if (groupCount === SLOT3_GC && slot3pick) {
+            items.push({ type: 'campaign', data: slot3pick, index: items.length });
         } else if (groupCount === SLOT4_GC && slot4.length > 0) {
             items.push({ type: 'campaign', data: slot4[slot4Idx % slot4.length], index: items.length });
             slot4Idx++;
@@ -96,7 +106,7 @@ const VirtualizedGroupGrid = React.memo(function VirtualizedGroupGrid({
     }, [groups, feedCampaigns, vaultTeaserGroups]);
 
     return (
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
             {items.map((item, idx) => {
                 if (item.type === 'vault-group') {
                     const groupData = item.data as Group;

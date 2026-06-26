@@ -10,6 +10,7 @@ import {
   createOFMTrendingSlot,
 } from '@/lib/actions/ofm';
 import { importOFMCreator } from '@/lib/actions/ofmAdmin';
+import { assignCreatorToUncut } from '@/lib/actions/blogFeatured';
 
 type Creator = {
   _id: string;
@@ -101,6 +102,23 @@ export default function CreatorsPage() {
       showToast('Failed to add to Featured');
     } finally {
       setSendingSlot(null);
+    }
+  };
+
+  const handleAssignSpotlight = async (creator: Creator) => {
+    if (!confirm(`Make ${creator.name} the EROGRAM SPOTLIGHT Creator of the Month?`)) return;
+    const token = localStorage.getItem('token') || '';
+    try {
+      await assignCreatorToUncut(token, {
+        name: creator.name,
+        username: creator.username,
+        avatar: creator.avatar,
+        url: creator.url,
+        bio: creator.bio,
+      });
+      showToast(`${creator.name} set as SPOTLIGHT cover ★`);
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Failed to set SPOTLIGHT');
     }
   };
 
@@ -288,7 +306,7 @@ export default function CreatorsPage() {
               <thead>
                 <tr className="border-b border-white/[0.06]">
                   {['Creator', 'Categories', 'Subs', 'Price', 'Scraped', 'Actions'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-[11px] font-bold text-white/30 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                    <th key={h} className={`px-4 py-3 text-left text-[11px] font-bold text-white/30 uppercase tracking-wider whitespace-nowrap${h === 'Actions' ? ' sticky right-0 bg-[#0c1116]' : ''}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -298,9 +316,9 @@ export default function CreatorsPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5 min-w-0">
                         {c.avatar ? (
-                          <img src={c.avatar} alt={c.name} className="w-7 h-7 rounded-full object-cover bg-white/5 flex-shrink-0" />
+                          <img src={c.avatar} alt={c.name} className="w-14 h-14 rounded-full object-cover bg-white/5 flex-shrink-0" />
                         ) : (
-                          <div className="w-7 h-7 rounded-full bg-[#00AFF0]/10 border border-[#00AFF0]/20 flex items-center justify-center text-[#00AFF0] text-xs font-bold flex-shrink-0">
+                          <div className="w-14 h-14 rounded-full bg-[#00AFF0]/10 border border-[#00AFF0]/20 flex items-center justify-center text-[#00AFF0] text-base font-bold flex-shrink-0">
                             {c.name.charAt(0)}
                           </div>
                         )}
@@ -330,8 +348,16 @@ export default function CreatorsPage() {
                     <td className="px-4 py-3 text-white/30 text-[11px] whitespace-nowrap">
                       {c.scrapedAt ? new Date(c.scrapedAt).toLocaleDateString() : '—'}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 sticky right-0 bg-[#0c1116]">
                       <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleAssignSpotlight(c)}
+                          className="px-3 py-2 rounded-lg text-xs font-black tracking-wider transition hover:brightness-110 shadow-sm"
+                          style={{ background: 'linear-gradient(90deg,#e8c873,#cba24f)', color: '#0a0807' }}
+                          title="Set as EROGRAM SPOTLIGHT Creator of the Month"
+                        >
+                          ★ SPOTLIGHT
+                        </button>
                         <button
                           onClick={() => { setSendToFeatured(c); loadFeaturedSlots(); }}
                           className="p-1.5 text-white/30 hover:text-[#00AFF0] hover:bg-[#00AFF0]/10 rounded-lg transition"

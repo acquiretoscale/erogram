@@ -72,8 +72,14 @@ export interface FeedCampaign {
     verified?: boolean;
     /** Tier slot (1-3): determines which section the ad appears in */
     tierSlot?: number;
+    /** Canonical ad-space name for click tracking (top-groups-1..4, top-bots-1..4, feed-2..5).
+     *  Stamped by the feed from the authoritative placement map. When present, the click tracker
+     *  uses it verbatim so each top-tier spot is its own tracked datapoint. */
+    placement?: string;
     /** 'advertiser' (image/video), 'premium' (group mosaic), 'featured-bot' (slot 5 bot), or 'onlyfans-creator' (OF creator → direct OF link) */
     adType?: 'advertiser' | 'premium' | 'featured-bot' | 'onlyfans-creator';
+    /** Home In Feed block format: 'banner' = 1 wide image/video; 'card' = part of the 4-up grid. */
+    blockFormat?: 'banner' | 'card';
     /** For onlyfans-creator cards (sourced from TrendingOFCreator) */
     ofUsername?: string;
     ofLikesCount?: number;
@@ -88,6 +94,10 @@ export interface FeedCampaign {
     premiumGroups?: PremiumGroupPreview[];
     /** Social proof indicator: 'none' | 'visiting' | 'clicks' | 'trending' | 'random' */
     socialProof?: string;
+    /** 'boost' ads win their slot first; rotation prefers boosted variants. */
+    priority?: 'boost' | 'normal';
+    /** Owning advertiser (so rotation can avoid one advertiser sweeping every spot). */
+    advertiserId?: string | null;
 }
 
 // ─── Story Types ───

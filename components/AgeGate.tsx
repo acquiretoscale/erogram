@@ -49,7 +49,7 @@ export default function AgeGate() {
       aria-modal="true"
       aria-label="Age verification"
       className="fixed inset-0 z-[99999] flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
     >
       <div className="w-full max-w-sm bg-white rounded-2xl overflow-hidden shadow-2xl border border-black/10">
         <div className="px-5 pt-5 pb-1">
@@ -60,7 +60,7 @@ export default function AgeGate() {
 
         <div className="px-5 pb-5 pt-3">
           <p className="text-[#333] text-[14px] font-medium mb-1">
-            This website contains Adult and NSFW content.
+            This website contains Adult content.
           </p>
           <p className="text-[#999] text-[12px] mb-5">
             You must be 18 or older to enter.
@@ -70,16 +70,16 @@ export default function AgeGate() {
             <button
               type="button"
               onClick={confirm}
-              className="w-full py-3 rounded-xl bg-[#22c55e] hover:bg-[#16a34a] text-white text-sm font-semibold active:bg-[#15803d] transition-colors"
+              className="w-full py-3 rounded-xl bg-[#b31b1b] hover:bg-[#8f1515] text-white text-sm font-semibold active:bg-[#7a1111] transition-colors"
             >
-              I am 18 or older — Enter
+              I am 18 or older, Enter
             </button>
             <button
               type="button"
               onClick={deny}
               className="w-full py-3 rounded-xl border border-black/10 text-[#999] text-sm active:text-black active:border-black/20 transition-colors"
             >
-              I am under 18 — Leave
+              I am under 18, Leave
             </button>
           </div>
 

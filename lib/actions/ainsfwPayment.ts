@@ -1,7 +1,11 @@
 'use server';
 
 import connectDB from '@/lib/db/mongodb';
-import { AINsfwSubmission } from '@/lib/models';
+import { AINsfwSubmission, User } from '@/lib/models';
+import { validateCoupon, recordCouponUsage } from '@/lib/actions/coupons';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
 export type AINSFWPlan = 'basic' | 'boost';
 
@@ -9,6 +13,7 @@ export interface AINSFWFormData {
   toolName: string;
   websiteUrl: string;
   email: string;
+  contactTelegram?: string;
   description: string;
   logoUrl: string;
   category: string;
@@ -26,7 +31,7 @@ const PLAN_PRICES: Record<AINSFWPlan, number> = {
 
 const PLAN_DESCRIPTIONS: Record<AINSFWPlan, string> = {
   basic: 'Basic AI NSFW Listing — $49',
-  boost: 'BOOST — Instant Approval + 1 Month Featured AI NSFW — $297',
+  boost: 'BOOST — Instant Approval + 1 Month Featured AI NSFW — $197',
 };
 
 const API_KEY = process.env.NOWPAYMENTS_API_KEY || '';
@@ -42,9 +47,28 @@ function slugify(category: string, name: string): string {
 export async function createAINSFWSubmission(
   plan: AINSFWPlan,
   formData: AINSFWFormData,
-): Promise<{ success: boolean; invoiceUrl?: string; slug?: string; error?: string }> {
+  couponCode?: string,
+  token?: string,
+): Promise<{ success: boolean; invoiceUrl?: string; slug?: string; error?: string; freeApproval?: boolean }> {
   if (!API_KEY) {
     return { success: false, error: 'Crypto payments are not configured.' };
+  }
+
+  // Require login
+  let userId: string | null = null;
+  let username = '';
+  try {
+    if (!token) return { success: false, error: 'You must be logged in to submit a listing.' };
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    userId = decoded?.id || null;
+    if (!userId) return { success: false, error: 'You must be logged in to submit a listing.' };
+  } catch {
+    return { success: false, error: 'Your session expired. Please log in again.' };
+  }
+
+  // Require at least one contact method
+  if (!formData.email?.trim() && !formData.contactTelegram?.trim()) {
+    return { success: false, error: 'Please provide an email or Telegram contact.' };
   }
 
   const slug = slugify(formData.category, formData.toolName);
@@ -59,6 +83,11 @@ export async function createAINSFWSubmission(
   if (existing) {
     return { success: false, error: 'A tool with this name already exists in that category.' };
   }
+
+  try {
+    const u = await User.findById(userId).select('username').lean() as any;
+    username = u?.username || '';
+  } catch { /* non-fatal */ }
 
   const isBoost = plan === 'boost';
   const now = new Date();
@@ -80,6 +109,9 @@ export async function createAINSFWSubmission(
     payment: formData.paymentMethods,
     tryNowUrl: formData.websiteUrl.trim(),
     contactEmail: formData.email.trim(),
+    contactTelegram: (formData.contactTelegram || '').trim(),
+    createdBy: userId,
+    createdByUsername: username,
     status: isBoost ? 'approved' : 'pending',
     submissionTier: plan,
     paymentStatus: 'pending',
@@ -90,6 +122,31 @@ export async function createAINSFWSubmission(
   });
 
   const orderId = `sub__ainsfw__${submission._id}__${plan}__${Date.now()}`;
+  let finalPrice = PLAN_PRICES[plan];
+  let couponValidation: any = null;
+
+  if (couponCode) {
+    const starsEquiv = Math.round(PLAN_PRICES[plan] / 0.013);
+    couponValidation = await validateCoupon(couponCode, 'ainsfw', starsEquiv);
+    if (!couponValidation.valid) {
+      await AINsfwSubmission.deleteOne({ _id: submission._id });
+      return { success: false, error: couponValidation.error };
+    }
+    finalPrice = Math.round(couponValidation.discountedStars * 0.013 * 100) / 100;
+  }
+
+  if (finalPrice <= 0 && couponValidation) {
+    await AINsfwSubmission.updateOne({ _id: submission._id }, { $set: { paymentStatus: 'paid' } });
+    await recordCouponUsage(couponValidation.couponId, {
+      service: 'ainsfw',
+      entityId: submission._id.toString(),
+      originalStars: Math.round(PLAN_PRICES[plan] / 0.013),
+      discountedStars: 0,
+      savedStars: Math.round(PLAN_PRICES[plan] / 0.013),
+      couponCode: couponCode!,
+    });
+    return { success: true, slug, freeApproval: true };
+  }
 
   try {
     const res = await fetch(`${NP_BASE}/invoice`, {
@@ -99,7 +156,7 @@ export async function createAINSFWSubmission(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        price_amount: PLAN_PRICES[plan],
+        price_amount: finalPrice,
         price_currency: 'usd',
         order_id: orderId,
         order_description: `${PLAN_DESCRIPTIONS[plan]} — ${formData.toolName} (${formData.websiteUrl})`,

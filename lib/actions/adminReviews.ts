@@ -3,7 +3,7 @@
 import jwt from 'jsonwebtoken';
 import { revalidatePath } from 'next/cache';
 import connectDB from '@/lib/db/mongodb';
-import { User, Post, CreatorReview } from '@/lib/models';
+import { User, Post, CreatorReview, ArticleComment } from '@/lib/models';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -25,13 +25,14 @@ export async function getReviews(token: string) {
   if (!admin) throw new Error('Unauthorized');
 
   await connectDB();
-  const [groupReviews, creatorRevs] = await Promise.all([
+  const [groupReviews, creatorRevs, articleComments] = await Promise.all([
     Post.find({})
       .populate('groupId', 'name category')
       .populate('reviewedBy', 'username')
       .sort({ createdAt: -1 })
       .lean(),
     CreatorReview.find({}).sort({ createdAt: -1 }).lean(),
+    ArticleComment.find({}).sort({ createdAt: -1 }).lean(),
   ]);
 
   const mapped = groupReviews.map((review: any) => ({
@@ -64,7 +65,22 @@ export async function getReviews(token: string) {
     reviewedBy: null,
   }));
 
-  return [...mapped, ...creatorMapped].sort((a, b) =>
+  const articleMapped = articleComments.map((r: any) => ({
+    _id: r._id.toString(),
+    type: 'article' as const,
+    content: r.content || '',
+    rating: 0,
+    authorName: r.authorName || 'Anonymous',
+    status: r.status,
+    createdAt: r.createdAt,
+    reviewedAt: null,
+    groupId: null,
+    creatorSlug: null as string | null,
+    articleSlug: r.articleSlug as string,
+    reviewedBy: null,
+  }));
+
+  return [...mapped, ...creatorMapped, ...articleMapped].sort((a, b) =>
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 }
@@ -90,7 +106,13 @@ export async function updateReview(
     updateData.reviewedAt = new Date();
   }
 
-  if (data.type === 'creator') {
+  if (data.type === 'article') {
+    const comment = await ArticleComment.findByIdAndUpdate(id, updateData, { new: true }).lean();
+    if (!comment) throw new Error('Comment not found');
+    if (data.status && (comment as any).articleSlug) {
+      revalidatePath(`/blog/${(comment as any).articleSlug}`);
+    }
+  } else if (data.type === 'creator') {
     const review = await CreatorReview.findByIdAndUpdate(id, updateData, { new: true }).lean();
     if (!review) throw new Error('Review not found');
     if (data.status && (review as any).creatorSlug) {
@@ -114,7 +136,11 @@ export async function deleteReview(token: string, id: string, type?: string) {
   if (!admin) throw new Error('Unauthorized');
 
   await connectDB();
-  if (type === 'creator') {
+  if (type === 'article') {
+    const comment = await ArticleComment.findByIdAndDelete(id);
+    if (!comment) throw new Error('Comment not found');
+    if ((comment as any).articleSlug) revalidatePath(`/blog/${(comment as any).articleSlug}`);
+  } else if (type === 'creator') {
     const review = await CreatorReview.findByIdAndDelete(id);
     if (!review) throw new Error('Review not found');
     if ((review as any).creatorSlug) revalidatePath(`/${(review as any).creatorSlug}`);

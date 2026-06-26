@@ -59,10 +59,11 @@ export default async function TopCreatorsPage() {
 
         <div className="space-y-4">
           {creators.map((c: any, i: number) => (
-            <Link
+            <button
               key={c._id}
-              href={`/${c.slug}`}
-              className="group block rounded-2xl border border-black/10 bg-white hover:bg-[#f8fbff] hover:border-[#00AFF0]/40 transition-all shadow-sm hover:shadow-md"
+              type="button"
+              onClick={() => { if (c.url) window.open(c.url, '_blank', 'noopener'); }}
+              className="group w-full text-left block rounded-2xl border border-black/10 bg-white hover:bg-[#f8fbff] hover:border-[#00AFF0]/40 transition-all shadow-sm hover:shadow-md"
             >
               <div className="p-5 sm:p-6">
                 <div className="flex items-start gap-4">
@@ -118,13 +119,13 @@ export default async function TopCreatorsPage() {
                         {c.hasTelegram ? '✈ Telegram' : 'No Telegram'}
                       </span>
                       <span className="text-xs text-[#00AFF0] font-bold group-hover:underline">
-                        Open profile
+                        View on OnlyFans →
                       </span>
                     </div>
                   </div>
                 </div>
               </div>
-            </Link>
+            </button>
           ))}
         </div>
       </main>

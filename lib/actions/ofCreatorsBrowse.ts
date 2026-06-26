@@ -4,12 +4,23 @@ import connectDB from '@/lib/db/mongodb';
 import { Types } from 'mongoose';
 import { OnlyFansCreator, SearchQuery } from '@/lib/models';
 
+function buildR2AvatarMatch() {
+  const raw = process.env.R2_PUBLIC_URL || '';
+  if (!raw) return { $ne: '' };
+  try {
+    const host = new URL(raw).host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return { $regex: new RegExp(host, 'i') };
+  } catch {
+    return { $ne: '' };
+  }
+}
+
 const CREATOR_PROJECT = {
   $project: {
     name: 1, username: 1, slug: 1, avatar: 1, header: 1,
     categories: 1, subscriberCount: 1,
     likesCount: 1, photosCount: 1, videosCount: 1,
-    price: 1, isFree: 1, url: 1, clicks: 1,
+    price: 1, isFree: 1, url: 1, clicks: 1, redirectToOF: 1,
   },
 };
 
@@ -21,7 +32,7 @@ export async function browseCreators(excludeIds: string[] = [], limit = 80) {
   await connectDB();
 
   const match: Record<string, any> = {
-    avatar: { $ne: '' },
+    avatar: buildR2AvatarMatch(),
     gender: 'female',
     categories: { $exists: true, $ne: [] },
     deleted: { $ne: true },
@@ -172,7 +183,7 @@ export async function searchCreators(q: string, limit = 1000, skip = 0) {
   }
 
   const match = {
-    avatar: { $ne: '' },
+    avatar: buildR2AvatarMatch(),
     gender: 'female',
     categories: { $exists: true, $ne: [] },
     deleted: { $ne: true },

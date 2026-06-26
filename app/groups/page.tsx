@@ -6,15 +6,52 @@ import { Group, Bot, StorySlideContent, SiteConfig } from '@/lib/models';
 import GroupsClient from './GroupsClient';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { getActiveCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
+import { getActiveCampaigns, getActiveFeedCampaigns, isPremiumHouseAdLive } from '@/lib/actions/campaigns';
 import { getFeaturedCreatorFeedItems } from '@/lib/actions/publicData';
 import { getStoryCategories, DEFAULT_STORY_CATEGORIES, type StoryCategoryConfig } from '@/lib/actions/siteConfig';
 import { listR2Files } from '@/lib/r2';
 import type { StoryCategory, StoryMediaSlide } from './types';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
+import { filterCategories } from './constants';
 
 const canonicalBase = 'https://erogram.pro';
+
+// Which filter entries are countries vs content categories (countries live in the same list).
+const COUNTRY_FILTERS = new Set([
+  'Argentina', 'Brazil', 'China', 'Colombia', 'France', 'Germany', 'Italy', 'Japan',
+  'Mexico', 'Philippines', 'Russian', 'Spain', 'UK', 'Ukraine', 'USA', 'Vietnam',
+]);
+
+// Build the category + country filter options, keeping only entries that have ≥1 listing.
+async function getFilterOptions(): Promise<{ categories: string[]; countries: string[] }> {
+  try {
+    await connectDB();
+    const base = { status: 'approved', isAdvertisement: { $ne: true }, premiumOnly: { $ne: true }, category: { $ne: 'Hentai' } };
+    const counts = await Promise.all(
+      filterCategories.map(async (c) => ({
+        name: c,
+        count: await Group.countDocuments({ ...base, $or: [{ categories: c }, { category: c }, { country: c }] }),
+      }))
+    );
+    const live = counts.filter((c) => c.count > 0);
+    return {
+      categories: live.filter((c) => !COUNTRY_FILTERS.has(c.name)).sort((a, b) => b.count - a.count).map((c) => c.name),
+      countries: live.filter((c) => COUNTRY_FILTERS.has(c.name)).sort((a, b) => b.count - a.count).map((c) => c.name),
+    };
+  } catch {
+    return { categories: [], countries: [] };
+  }
+}
+
+// 🔥 Trending — top entries by listing count, reusing the already-sorted filter options.
+// Categories and countries are split (COUNTRY_FILTERS) and each capped at 6, highest count first.
+function toTrendingLinks(names: string[]): Array<{ label: string; href: string }> {
+  return names.slice(0, 8).map((name) => ({
+    label: name,
+    href: `/best-telegram-groups/${encodeURIComponent(name.toLowerCase())}`,
+  }));
+}
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
@@ -46,7 +83,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300;
 
 async function getGroups(limit: number, isMobile: boolean = false, locale: string = 'en') {
   try {
@@ -461,24 +498,47 @@ export default async function GroupsPage() {
   let storyConfig = await getStoryCategories();
   if (storyConfig.length === 0) storyConfig = DEFAULT_STORY_CATEGORIES;
 
-  // In-feed ads + story data + vault teaser + featured creators — all in parallel
-  const [topBannerCampaigns, feedCampaignsRaw, storyData, vaultTeaserGroups, featuredCreatorItems] = await Promise.all([
+  // In-feed ads + story data + vault teaser + featured creators + trending + filter options — all in parallel
+  const [topBannerCampaigns, feedCampaignsRaw, storyData, vaultTeaserGroupsRaw, featuredCreatorItems, premiumLive, filterOpts] = await Promise.all([
     getActiveCampaigns('top-banner', { page: 'groups', device: isMobile ? 'mobile' : 'desktop' }),
     getActiveFeedCampaigns('groups'),
     storiesEnabled ? getStoryData(storyConfig, locale) : Promise.resolve([] as StoryCategory[]),
     getVaultTeaser(),
     getFeaturedCreatorFeedItems().catch(() => []),
+    isPremiumHouseAdLive().catch(() => false),
+    getFilterOptions(),
   ]);
 
-  // Merge featured creators into feed, filtering out any campaign-based OF creator ads to avoid dupes
-  const regularAds = feedCampaignsRaw.filter((c: any) => c.adType !== 'onlyfans-creator');
-  const usedSlots = new Set(regularAds.map((c: any) => c.tierSlot));
-  // Bump featured creators to slot 4 if a paying advertiser already occupies their slot
-  const creatorAds = (featuredCreatorItems as any[]).map((c: any) => ({
-    ...c,
-    tierSlot: usedSlots.has(c.tierSlot) ? 4 : c.tierSlot,
-  }));
-  const feedCampaigns = [...regularAds, ...creatorAds];
+  // Two trending rows derived from the already-sorted filter options (top 6 each).
+  const trendingCategories = toTrendingLinks(filterOpts.categories);
+  const trendingCountries = toTrendingLinks(filterOpts.countries);
+
+  // Centralized control: the Vault Teaser house promo only shows when an Erogram
+  // Premium campaign is live in the Ad Network. No live premium campaign → hide it,
+  // so the front end never shows ads the admin can't see/control.
+  const vaultTeaserGroups = premiumLive ? vaultTeaserGroupsRaw : [];
+
+  // AGNOSTIC SLOTS: every ad — including OF creators assigned in /admin/ad-network —
+  // keeps its assigned slot and rotates with any other adType in that slot.
+  // The Ad Network campaigns (feedCampaignsRaw) are the source of truth and are NOT
+  // discarded. The old TrendingOFCreator "featured" source is only a FALLBACK to fill
+  // Top-Groups/in-feed slots that no Ad Network OF creator already claims.
+  const adNetworkAll = feedCampaignsRaw as any[];
+
+  // OF creators already promoted via the Ad Network (by their TrendingOFCreator id / username),
+  // so the fallback source never double-shows the same creator.
+  const claimedOfKeys = new Set(
+    adNetworkAll
+      .filter((c) => c.adType === 'onlyfans-creator')
+      .map((c) => c.ofTrendingId || c.ofUsername)
+      .filter(Boolean),
+  );
+
+  const fallbackCreatorAds = (featuredCreatorItems as any[]).filter(
+    (c) => !claimedOfKeys.has(c.ofTrendingId) && !claimedOfKeys.has(c.ofUsername),
+  );
+
+  const feedCampaigns = [...adNetworkAll, ...fallbackCreatorAds];
 
   const topBannerForPage =
     topBannerCampaigns.length > 0 && topBannerCampaigns[0].creative ? topBannerCampaigns : [];
@@ -503,6 +563,10 @@ export default async function GroupsPage() {
           topBannerCampaigns={topBannerForPage}
           storyData={storyData}
           vaultTeaserGroups={vaultTeaserGroups}
+          trendingCategories={trendingCategories}
+          trendingCountries={trendingCountries}
+          categoryOptions={filterOpts.categories}
+          countryOptions={filterOpts.countries}
         />
       </ErrorBoundary>
     </>

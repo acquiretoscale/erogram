@@ -123,7 +123,7 @@ export default function AdminSaleAlert() {
             <div>
               <p className="text-sm font-bold">New Sale!</p>
               <p className="text-xs opacity-90">
-                {toast.plan === 'yearly' ? 'Yearly' : toast.plan === 'monthly' ? 'Monthly' : 'Lifetime'}
+                {({ monthly: 'Monthly', quarterly: '3 Months', yearly: 'Yearly', lifetime: 'Lifetime' } as Record<string, string>)[toast.plan || ''] || toast.plan || 'Premium'}
                 {' · '}
                 {toast.method === 'stars' ? '⭐ Stars' : '₿ Crypto'}
                 {toast.username ? ` · @${toast.username}` : ''}

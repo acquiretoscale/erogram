@@ -3,19 +3,25 @@ import HomeClient from './HomeClient';
 import connectDB from '@/lib/db/mongodb';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { getActiveCampaigns } from '@/lib/actions/campaigns';
-import { Article, User, Group, Bot } from '@/lib/models';
+import { Article, User, Group, Bot, OnlyFansCreator } from '@/lib/models';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary } from '@/lib/i18n';
+import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
+import { AI_NSFW_TOOLS } from '@/app/ainsfw/data';
 
 export const revalidate = 300;
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
 
+// Display bases so totals read closer to real-world scale, then grow dynamically.
+const AI_BOTS_BASE = 400;
+const OF_CREATORS_BASE = 1_813_055;
+
 async function getFeaturedArticles(limit: number = 6) {
   try {
     await connectDB();
     // Use same Mongoose Article model as admin and articles listing
-    const articlesRaw = await Article.find({})
+    const articlesRaw = await Article.find({ status: 'published' })
       .select('title slug excerpt featuredImage tags publishedAt views author createdAt')
       .sort({ publishedAt: -1, createdAt: -1 })
       .limit(limit)
@@ -119,10 +125,68 @@ async function getNewGroups(limit: number = 8) {
   }
 }
 
-async function getStats() {
+async function getNewestBots(limit: number = 8) {
   try {
     await connectDB();
-    const [groupCount, botCount, userCount, groupViewsAgg, botViewsAgg] = await Promise.all([
+    const bots = await Bot.find({ status: 'approved', isAdvertisement: { $ne: true } })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .select('name slug image category memberCount')
+      .lean();
+    return (bots as any[]).map((b) => ({
+      _id: b._id.toString(),
+      name: b.name || '',
+      slug: b.slug || '',
+      image: (b.image && typeof b.image === 'string' && b.image.startsWith('https://')) ? b.image : '/assets/placeholder-no-image.png',
+      category: b.category || '',
+      memberCount: b.memberCount || 0,
+    }));
+  } catch (error) {
+    console.error('Error fetching newest bots:', error);
+    return [];
+  }
+}
+
+function getNewestAINsfw(limit: number = 8) {
+  // AI NSFW tools are a static curated list; show the most recently added (end of list).
+  return AI_NSFW_TOOLS.slice(-limit).reverse().map((t) => ({
+    slug: t.slug,
+    name: t.name,
+    image: t.image || '/assets/placeholder-no-image.png',
+    category: t.category || '',
+  }));
+}
+
+async function getOFCategoryPreviews() {
+  const fallback = OF_CATEGORIES.slice(0, 12).map((c) => ({ slug: c.slug, name: c.name, emoji: c.emoji, avatar: '' }));
+  try {
+    await connectDB();
+    const slugs = OF_CATEGORIES.slice(0, 12).map((c) => c.slug);
+    const rows = await OnlyFansCreator.aggregate([
+      { $match: { gender: 'female', avatar: { $ne: '' }, deleted: { $ne: true }, categories: { $in: slugs } } },
+      { $unwind: '$categories' },
+      { $match: { categories: { $in: slugs } } },
+      { $sort: { clicks: -1 } },
+      { $group: { _id: '$categories', avatar: { $first: '$avatar' } } },
+    ]);
+    const avatarMap = new Map<string, string>((rows as any[]).map((r) => [r._id, r.avatar]));
+    return OF_CATEGORIES.slice(0, 12).map((c) => ({
+      slug: c.slug,
+      name: c.name,
+      emoji: c.emoji,
+      avatar: avatarMap.get(c.slug) || '',
+    }));
+  } catch (error) {
+    console.error('Error fetching OF category previews:', error);
+    return fallback;
+  }
+}
+
+async function getStats() {
+  const aiNsfwCount = AI_NSFW_TOOLS.length;
+  try {
+    await connectDB();
+    const [groupCount, botCount, userCount, groupViewsAgg, botViewsAgg, ofCount] = await Promise.all([
       Group.countDocuments({ status: 'approved', isAdvertisement: { $ne: true } }),
       Bot.countDocuments({ status: 'approved', isAdvertisement: { $ne: true } }),
       User.countDocuments({}),
@@ -134,16 +198,19 @@ async function getStats() {
         { $match: { status: 'approved' } },
         { $group: { _id: null, total: { $sum: '$views' } } },
       ]),
+      OnlyFansCreator.countDocuments({ deleted: { $ne: true } }),
     ]);
     return {
       groupCount: groupCount || 0,
       botCount: botCount || 0,
       totalMembers: userCount || 0,
       totalViews: (groupViewsAgg[0]?.total || 0) + (botViewsAgg[0]?.total || 0),
+      aiAndBotsCount: AI_BOTS_BASE + aiNsfwCount + (botCount || 0),
+      ofCreatorsCount: OF_CREATORS_BASE + (ofCount || 0),
     };
   } catch (error) {
     console.error('Error fetching stats:', error);
-    return { groupCount: 0, botCount: 0, totalMembers: 0, totalViews: 0 };
+    return { groupCount: 0, botCount: 0, totalMembers: 0, totalViews: 0, aiAndBotsCount: AI_BOTS_BASE + aiNsfwCount, ofCreatorsCount: OF_CREATORS_BASE };
   }
 }
 
@@ -153,12 +220,15 @@ export default async function Home() {
   const faq: { q: string; a: string }[] = dict.home?.faq || [];
   const metaDict = dict.meta || {};
 
-  const [featuredArticles, heroCampaigns, newGroups, stats] = await Promise.all([
+  const [featuredArticles, heroCampaigns, newGroups, stats, ofCategories, newestBots] = await Promise.all([
     getFeaturedArticles(6),
     getActiveCampaigns('homepage-hero'),
     getNewGroups(8),
     getStats(),
+    getOFCategoryPreviews(),
+    getNewestBots(8),
   ]);
+  const newestAINsfw = getNewestAINsfw(8);
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -212,6 +282,9 @@ export default async function Home() {
           heroCampaigns={heroCampaigns}
           newGroups={newGroups}
           stats={stats}
+          ofCategories={ofCategories}
+          newestBots={newestBots}
+          newestAINsfw={newestAINsfw}
           locale={locale}
         />
       </ErrorBoundary>

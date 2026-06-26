@@ -470,7 +470,16 @@ export async function createOFMTrendingSlot(
     isStarPick: isStarPick === true,
     liveHourStart: liveHourStart ?? -1,
     liveHourEnd: liveHourEnd ?? -1,
+    source: 'ofadmin',
   });
+
+  // Unified OF sync: mirror this OFadmin launch into the Ad Network (best-effort).
+  try {
+    const { syncTrendingToCampaign } = await import('@/lib/actions/ofSync');
+    await syncTrendingToCampaign(creator._id.toString());
+  } catch (err) {
+    console.error('[createOFMTrendingSlot] sync failed:', err);
+  }
 
   return JSON.parse(JSON.stringify({
     creator: { ...creator.toObject(), _id: creator._id.toString() },
@@ -504,6 +513,14 @@ export async function updateOFMTrending(token: string, id: string, data: Record<
       { username: (creator as any).username, _id: { $ne: (creator as any)._id } },
       { $set: { active: update.active } },
     );
+  }
+
+  // Unified OF sync: mirror state/display changes into the linked Ad Network campaign (best-effort).
+  try {
+    const { syncTrendingToCampaign } = await import('@/lib/actions/ofSync');
+    await syncTrendingToCampaign(String((creator as any)._id));
+  } catch (err) {
+    console.error('[updateOFMTrending] sync failed:', err);
   }
 
   return JSON.parse(JSON.stringify({

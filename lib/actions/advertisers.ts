@@ -42,6 +42,8 @@ export async function getAdvertisers(token: string) {
     logo: a.logo || '',
     notes: a.notes || '',
     status: a.status,
+    dailyClickCap: a.dailyClickCap || 0,
+    isOfAgency: Boolean(a.isOfAgency),
     campaignCount: countMap.get(a._id.toString()) || 0,
     createdAt: a.createdAt?.toISOString() || '',
     updatedAt: a.updatedAt?.toISOString() || '',
@@ -50,7 +52,7 @@ export async function getAdvertisers(token: string) {
 
 export async function createAdvertiser(
   token: string,
-  data: { name: string; email: string; company?: string; logo?: string; notes?: string }
+  data: { name: string; email: string; company?: string; logo?: string; notes?: string; dailyClickCap?: number; isOfAgency?: boolean }
 ) {
   const admin = await authenticateAdmin(token);
   if (!admin) throw new Error('Unauthorized');
@@ -63,6 +65,8 @@ export async function createAdvertiser(
     company: data.company || '',
     logo: data.logo || '',
     notes: data.notes || '',
+    dailyClickCap: Math.max(0, Math.floor(data.dailyClickCap || 0)),
+    isOfAgency: Boolean(data.isOfAgency),
   });
 
   return { _id: doc._id.toString(), name: doc.name };
@@ -71,7 +75,7 @@ export async function createAdvertiser(
 export async function updateAdvertiser(
   token: string,
   id: string,
-  data: Partial<{ name: string; email: string; company: string; logo: string; notes: string; status: string }>
+  data: Partial<{ name: string; email: string; company: string; logo: string; notes: string; status: string; dailyClickCap: number; isOfAgency: boolean }>
 ) {
   const admin = await authenticateAdmin(token);
   if (!admin) throw new Error('Unauthorized');

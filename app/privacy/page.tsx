@@ -109,7 +109,7 @@ export default function PrivacyPage() {
               <li>Object to data use for marketing.</li>
             </ul>
             <p className="text-[#999] leading-relaxed">
-              Contact us at <a href="mailto:erogrampro@gmail.com" className="text-[#b31b1b] hover:underline">erogrampro@gmail.com</a> to exercise rights.
+              Contact us at <a href="mailto:support@erogram.biz" className="text-[#b31b1b] hover:underline">support@erogram.biz</a> to exercise rights.
             </p>
           </section>
 
@@ -137,7 +137,7 @@ export default function PrivacyPage() {
           <section className="mb-8">
             <h2 className="text-2xl font-bold mb-4 text-[#f5f5f5]">11. Contact Us</h2>
             <p className="text-[#999] leading-relaxed">
-              For questions or to exercise your rights, email <a href="mailto:erogrampro@gmail.com" className="text-[#b31b1b] hover:underline">erogrampro@gmail.com</a>.
+              For questions or to exercise your rights, email <a href="mailto:support@erogram.biz" className="text-[#b31b1b] hover:underline">support@erogram.biz</a>.
             </p>
           </section>
         </div>

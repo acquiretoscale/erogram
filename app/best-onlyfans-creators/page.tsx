@@ -4,7 +4,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator } from '@/lib/models';
-import { OF_CATEGORIES, ofCategoryUrl } from '@/app/onlyfanssearch/constants';
+import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
 
 export const revalidate = 60;
 
@@ -89,7 +89,7 @@ export default async function BestOnlyFansCreatorsPage() {
           {sorted.map((cat) => (
             <Link
               key={cat.slug}
-              href={ofCategoryUrl(cat.slug)}
+              href={`/best-onlyfans-accounts/${cat.slug}`}
               className="group relative rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-[#00AFF0]/40 hover:bg-[#00AFF0]/[0.04] transition-all duration-200 overflow-hidden"
             >
               {/* Avatar strip */}
@@ -124,9 +124,6 @@ export default async function BestOnlyFansCreatorsPage() {
                   </div>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/20 group-hover:text-[#00AFF0] transition-colors flex-shrink-0"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                 </div>
-                <p className="text-[12px] text-white/40">
-                  {cat.count.toLocaleString()} creator{cat.count !== 1 ? 's' : ''}
-                </p>
               </div>
             </Link>
           ))}

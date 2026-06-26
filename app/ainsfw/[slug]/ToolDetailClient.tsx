@@ -9,11 +9,15 @@ import Footer from '@/components/Footer';
 import type { AINsfwTool } from '../types';
 import { voteOnTool, unvoteOnTool, submitReview } from '@/lib/actions/ainsfw';
 import type { ToolStatsData } from '@/lib/actions/ainsfw';
+import AdvertCard from '@/app/groups/AdvertCard';
+import type { FeedCampaign } from '@/app/groups/types';
+import { useIsTelegramBrowser } from '@/app/hooks/useIsTelegramBrowser';
 
 interface ToolDetailClientProps {
   tool: AINsfwTool;
   similar: AINsfwTool[];
   initialStats?: ToolStatsData;
+  sidebarAds?: FeedCampaign[];
 }
 
 const CATEGORY_COLOR: Record<string, string> = {
@@ -40,7 +44,8 @@ const PAYMENT_ICON: Record<string, string> = {
 
 function getBookmarkKey(slug: string) { return `ainsfw_bookmark_${slug}`; }
 
-export default function ToolDetailClient({ tool, similar, initialStats }: ToolDetailClientProps) {
+export default function ToolDetailClient({ tool, similar, initialStats, sidebarAds = [] }: ToolDetailClientProps) {
+  const isTelegram = useIsTelegramBrowser();
   const placeholder = '/assets/image.jpg';
   const [imageSrc, setImageSrc] = useState(
     tool.image && (tool.image.startsWith('https://') || tool.image.startsWith('/'))
@@ -132,11 +137,11 @@ export default function ToolDetailClient({ tool, similar, initialStats }: ToolDe
   const catBadge = CATEGORY_BADGE[tool.category] || 'bg-gray-700 text-white';
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#07080d] via-[#0b0f17] to-[#07080d] text-[#f5f5f5] font-sans overflow-x-hidden">
+    <div className="ainsfw-page ainsfw-bg min-h-screen text-[#f5f5f5] font-sans overflow-x-hidden">
       <Navbar />
 
       {/* Breadcrumb */}
-      <div className="relative z-10 px-4 sm:px-6 py-3 border-b border-white/10 bg-[#0b1018]/80 backdrop-blur-xl mt-14">
+      <div className="relative z-10 px-4 sm:px-6 py-3 border-b border-[#22c55e]/15 bg-[#04140c]/80 backdrop-blur-xl mt-14">
         <div className="max-w-7xl mx-auto">
           <nav className="flex items-center text-xs text-gray-500 gap-1.5">
             <Link href="/" className="hover:text-white transition-colors">Home</Link>
@@ -159,7 +164,7 @@ export default function ToolDetailClient({ tool, similar, initialStats }: ToolDe
               transition={{ duration: 0.5 }}
             >
               {/* Tool image card */}
-              <div className="bg-[#111827]/85 rounded-2xl border border-white/10 shadow-2xl overflow-hidden mb-4">
+              <div className="bg-[#0a1f12]/85 rounded-2xl border border-[#22c55e]/15 shadow-2xl overflow-hidden mb-4">
                 <div className="relative w-full aspect-square bg-gray-100">
                   <Image
                     src={imageSrc}
@@ -227,7 +232,7 @@ export default function ToolDetailClient({ tool, similar, initialStats }: ToolDe
                 <button
                   onClick={handleBookmark}
                   className={`p-2.5 rounded-xl border-2 border-black shadow-[2px_2px_0_#000] transition-all ${
-                    bookmarked ? 'bg-blue-700 text-white' : 'bg-white text-black hover:bg-gray-100'
+                    bookmarked ? 'bg-[#22c55e] text-black' : 'bg-white text-black hover:bg-gray-100'
                   }`}
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill={bookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2.5">
@@ -333,7 +338,7 @@ export default function ToolDetailClient({ tool, similar, initialStats }: ToolDe
                 <div className="flex items-center gap-2 mb-4">
                   <div className="flex">
                     {[1,2,3,4,5].map((s) => (
-                      <svg key={s} className={`w-4 h-4 ${s <= avgRating ? 'text-yellow-400' : 'text-gray-600'}`} viewBox="0 0 24 24" fill="currentColor">
+                      <svg key={s} className={`w-4 h-4 ${s <= avgRating ? 'text-[#22c55e]' : 'text-gray-600'}`} viewBox="0 0 24 24" fill="currentColor">
                         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                       </svg>
                     ))}
@@ -347,8 +352,8 @@ export default function ToolDetailClient({ tool, similar, initialStats }: ToolDe
               </p>
 
               {/* CTA card — immediately after description */}
-              <div className="bg-[#151515] rounded-3xl p-6 sm:p-8 border border-white/10 shadow-xl mb-8 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-600/10 to-purple-600/10 blur-3xl rounded-full pointer-events-none -translate-y-1/2 translate-x-1/2" />
+              <div className="bg-[#0a1f12] rounded-3xl p-6 sm:p-8 border border-[#22c55e]/20 shadow-xl mb-8 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-[#22c55e]/15 to-emerald-600/10 blur-3xl rounded-full pointer-events-none -translate-y-1/2 translate-x-1/2" />
 
                 <h2 className="text-2xl font-bold text-white relative z-10 mb-2">Ready to try {tool.name}?</h2>
                 <p className="text-gray-400 mb-6 relative z-10">Click below to visit {tool.vendor}</p>
@@ -356,7 +361,7 @@ export default function ToolDetailClient({ tool, similar, initialStats }: ToolDe
                 <button
                   onClick={handleVisit}
                   disabled={isRedirecting}
-                  className="relative w-full group rounded-2xl bg-yellow-400 hover:bg-yellow-300 active:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:ring-offset-2 focus:ring-offset-[#111] disabled:opacity-70 shadow-[0_6px_20px_-4px_rgba(250,204,21,0.5)] transition-all duration-150"
+                  className="relative w-full group rounded-2xl bg-yellow-400 hover:bg-yellow-300 active:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:opacity-70 shadow-[0_6px_20px_-4px_rgba(250,204,21,0.5)] transition-all duration-150"
                 >
                   <div className="relative w-full px-8 py-5">
                     <div className="flex items-center justify-center gap-3">
@@ -372,8 +377,23 @@ export default function ToolDetailClient({ tool, similar, initialStats }: ToolDe
                 </p>
               </div>
 
+              {/* FEATURED ON EROGRAM — same agnostic ads as group/bot pages */}
+              {sidebarAds.length > 0 && !isTelegram && (
+                <div className="rounded-2xl border border-[#00AFF0]/30 bg-white p-4 shadow-[0_18px_40px_-20px_rgba(0,175,240,0.45)] mb-8">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-[#00AFF0]" style={{ fontSize: 14 }}>★</span>
+                    <h3 className="text-sm font-black text-[#0f172a]">FEATURED ON <span className="text-[#00AFF0]">EROGRAM</span></h3>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {sidebarAds.map((c, i) => (
+                      <AdvertCard key={c._id} campaign={c} isIndex={i} forceVisible hidePromoted placementOverride="group-sidebar-ainsfw" />
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Reviews section */}
-              <div className="bg-[#111827]/85 rounded-2xl border border-white/10 shadow-2xl p-6 mb-8">
+              <div className="bg-[#0a1f12]/85 rounded-2xl border border-[#22c55e]/15 shadow-2xl p-6 mb-8">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-black text-white">Reviews {reviews.length > 0 && `(${reviews.length})`}</h3>
                   <button
@@ -393,7 +413,7 @@ export default function ToolDetailClient({ tool, similar, initialStats }: ToolDe
                           <button
                             key={s}
                             onClick={() => setReviewRating(s)}
-                            className={`text-2xl leading-none transition-transform hover:scale-125 ${s <= reviewRating ? 'text-yellow-400' : 'text-gray-300'}`}
+                            className={`text-2xl leading-none transition-transform hover:scale-125 ${s <= reviewRating ? 'text-[#22c55e]' : 'text-gray-300'}`}
                           >★</button>
                         ))}
                       </div>
@@ -404,12 +424,12 @@ export default function ToolDetailClient({ tool, similar, initialStats }: ToolDe
                       onChange={(e) => setReviewText(e.target.value)}
                       placeholder={`Share your experience with ${tool.name}...`}
                       rows={3}
-                      className="w-full bg-[#0b1220] border border-white/15 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-white/30 mb-3"
+                      className="w-full bg-[#04140c] border border-[#22c55e]/20 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-[#22c55e]/40 mb-3"
                     />
                     <button
                       onClick={handleReviewSubmit}
                       disabled={!reviewText.trim() || reviewSubmitted}
-                      className="px-5 py-2 font-black text-sm bg-yellow-400 text-black border border-yellow-300 rounded-xl hover:brightness-105 transition-all disabled:opacity-40"
+                      className="px-5 py-2 font-black text-sm bg-[#22c55e] text-black rounded-xl hover:bg-[#16a34a] transition-all disabled:opacity-40"
                     >
                       {reviewSubmitted ? '✓ Submitted!' : 'Submit Review'}
                     </button>
@@ -424,7 +444,7 @@ export default function ToolDetailClient({ tool, similar, initialStats }: ToolDe
                         <div className="flex items-center gap-2 mb-2">
                           <div className="flex">
                             {[1,2,3,4,5].map((s) => (
-                              <svg key={s} className={`w-3.5 h-3.5 ${s <= r.rating ? 'text-yellow-400' : 'text-gray-200'}`} viewBox="0 0 24 24" fill="currentColor">
+                              <svg key={s} className={`w-3.5 h-3.5 ${s <= r.rating ? 'text-[#22c55e]' : 'text-gray-200'}`} viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                               </svg>
                             ))}
@@ -470,7 +490,7 @@ export default function ToolDetailClient({ tool, similar, initialStats }: ToolDe
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, delay: i * 0.05 }}
-                    className="bg-[#111827]/85 rounded-xl border border-white/10 shadow-xl group-hover:-translate-y-0.5 transition-all duration-150 overflow-hidden"
+                    className="bg-[#0a1f12]/85 rounded-xl border border-[#22c55e]/15 shadow-xl group-hover:-translate-y-0.5 group-hover:border-[#22c55e]/40 transition-all duration-150 overflow-hidden"
                   >
                     <div className="relative w-full h-24 sm:h-32 bg-gray-100">
                       <Image
@@ -487,7 +507,7 @@ export default function ToolDetailClient({ tool, similar, initialStats }: ToolDe
                       </div>
                     </div>
                     <div className="p-2.5">
-                      <h3 className="text-xs font-black text-white group-hover:text-blue-300 transition-colors truncate">{s.name}</h3>
+                      <h3 className="text-xs font-black text-white group-hover:text-[#22c55e] transition-colors truncate">{s.name}</h3>
                       <p className="text-[9px] text-gray-400 mt-0.5 truncate">{s.vendor}</p>
                       <div className={`mt-2 ${CATEGORY_COLOR[s.category] || 'bg-gray-700'} text-white text-[9px] font-black text-center py-1 rounded border border-white/20`}>
                         Try Now →

@@ -78,6 +78,9 @@ export async function adminCreateCampaign(token: string, body: Record<string, an
     bannerPages: body.bannerPages ?? undefined,
     bannerDevice: body.bannerDevice ?? undefined,
     ofUsername: body.ofUsername ?? undefined,
+    placements: Array.isArray(body.placements) ? body.placements : undefined,
+    dailyClickCap: body.dailyClickCap != null ? body.dailyClickCap : undefined,
+    priority: body.priority ?? undefined,
   });
   revalidatePublicFeeds();
   return result;

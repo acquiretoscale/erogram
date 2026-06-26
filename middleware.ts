@@ -102,16 +102,6 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Article slug year fix: redirect 2026 → 2025
-  if (pathname.startsWith('/articles/') && pathname.includes('2026')) {
-    const corrected = pathname.replace(/2026/g, '2025');
-    if (corrected !== pathname) {
-      const url = request.nextUrl.clone();
-      url.pathname = corrected;
-      return NextResponse.redirect(url, 301);
-    }
-  }
-
   // ── Localized OnlyFans search paths ─────────────────────────────────────────
   // /de/onlyfans-suche* → rewrite to /onlyfanssearch*, x-locale: de
   // /es/onlyfans-busca* → rewrite to /onlyfanssearch*, x-locale: es
@@ -141,7 +131,7 @@ export function middleware(request: NextRequest) {
 
   // English-only sections: articles and AI NSFW are never translated.
   // 301 redirect /de/... and /es/... → /... for these paths.
-  const englishOnlySections = ['articles', 'ainsfw'];
+  const englishOnlySections = ['articles', 'blog', 'ainsfw'];
   for (const locale of LOCALE_PREFIXES) {
     for (const section of englishOnlySections) {
       if (pathname === `/${locale}/${section}` || pathname.startsWith(`/${locale}/${section}/`)) {
@@ -182,6 +172,6 @@ export const config = {
    * - /advert/...       (advertiser panel — stays English only)
    */
   matcher: [
-    '/((?!api|_next|assets|icons|fonts|favicon|manifest|robots|sitemap|admin|OF|advert|enzogonzo|vickykovaks).*)',
+    '/((?!api|_next|assets|icons|fonts|favicon|manifest|robots|sitemap|admin|OF|advert).*)',
   ],
 };

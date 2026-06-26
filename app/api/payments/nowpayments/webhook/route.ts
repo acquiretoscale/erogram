@@ -15,11 +15,31 @@ function logEvent(data: Record<string, any>) {
   PremiumEvent.create({ source: 'server', ...data }).catch(() => {});
 }
 
+// NowPayments sorts keys recursively (including nested objects) before signing.
+// A flat Object.keys().sort() fails on any nested payload — this caused valid
+// signatures to be rejected and payments to be silently dropped.
+function sortObjectDeep(obj: any): any {
+  if (Array.isArray(obj)) return obj.map(sortObjectDeep);
+  if (obj && typeof obj === 'object') {
+    return Object.keys(obj)
+      .sort()
+      .reduce((acc: Record<string, any>, key) => {
+        acc[key] = sortObjectDeep(obj[key]);
+        return acc;
+      }, {});
+  }
+  return obj;
+}
+
 function verifySignature(body: Record<string, any>, sigHeader: string | null): boolean {
   if (!sigHeader || !IPN_SECRET) return false;
-  const sorted = JSON.stringify(body, Object.keys(body).sort());
+  const sorted = JSON.stringify(sortObjectDeep(body));
   const expected = crypto.createHmac('sha512', IPN_SECRET).update(sorted).digest('hex');
-  return expected === sigHeader;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sigHeader));
+  } catch {
+    return false;
+  }
 }
 
 // ─── Handle listing submission payments (groups, bots, AI NSFW) ───
@@ -46,6 +66,10 @@ async function handleSubmissionPayment(
 
   // ainsfw submissions set correct dates at creation — just confirm payment
   if (entityType === 'ainsfw') {
+    // Idempotency: skip only if THIS exact payment was already recorded
+    if (entity.paymentId === String(paymentId) && entity.paymentStatus === 'paid') {
+      return;
+    }
     await Model.findByIdAndUpdate(entityId, {
       status: 'approved',
       paymentStatus: 'paid',
@@ -144,9 +168,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
 
+  // Log EVERY incoming call before signature check — so dropped payments are never invisible again.
+  logEvent({
+    event: 'crypto_webhook_received',
+    orderId: body?.order_id,
+    paymentId: body?.payment_id,
+    status: body?.payment_status,
+  });
+
   const sig = req.headers.get('x-nowpayments-sig');
   if (!verifySignature(body, sig)) {
-    console.error('NowPayments webhook: invalid signature');
+    console.error('NowPayments webhook: invalid signature', { orderId: body?.order_id, paymentId: body?.payment_id });
+    logEvent({ event: 'crypto_webhook_bad_signature', orderId: body?.order_id, paymentId: body?.payment_id });
     return NextResponse.json({ ok: false }, { status: 403 });
   }
 

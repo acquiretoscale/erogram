@@ -22,9 +22,12 @@ import {
     Bell,
     Sparkles,
     Crown,
-    Flame,
     Lightbulb,
     UserCheck,
+    Megaphone,
+    Network,
+    Target,
+    Mail,
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -49,10 +52,14 @@ const tabs: TabItem[] = [
     { href: '/admin/ainsfw',            name: 'AI NSFW',         icon: Sparkles },
     { href: '/OF',                      name: 'OF Admin',        icon: Crown },
     { href: '/admin/advertisers',      name: 'Advertisers',     icon: Briefcase },
+    { href: '/admin/ad-network',       name: 'Ad Network',      icon: Network },
     { href: '/admin/pending-creators', name: 'Pending Creators', icon: UserCheck },
-    { href: '/admin/creator-profile',  name: 'Creator Beta',    icon: Flame },
     { href: '/admin/users',            name: 'Users',           icon: User },
+    { href: '/admin/leads',            name: 'Leads',           icon: Target },
+    { href: '/admin/newsletter',       name: 'Newsletter',      icon: Mail },
     { href: '/admin/suggestions',      name: 'Feature Ideas',   icon: Lightbulb },
+    { href: '/admin/paid-campaigns',   name: 'Paid Campaigns',  icon: Megaphone },
+    { href: '/admin/coupons',          name: 'Coupons',         icon: Star },
     { href: '/admin/settings',         name: 'Settings',        icon: Settings },
 ];
 

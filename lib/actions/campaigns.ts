@@ -3,7 +3,7 @@
 import jwt from 'jsonwebtoken';
 import mongoose, { type PipelineStage } from 'mongoose';
 import connectDB from '@/lib/db/mongodb';
-import { User, Campaign, CampaignClick, CampaignImpressionDaily, Advertiser, Article, Group, OnlyFansCreator } from '@/lib/models';
+import { User, Campaign, CampaignClick, CampaignImpressionDaily, Advertiser, Article, Group, Bot, OnlyFansCreator, TrendingOFCreator, TrendingClickDaily } from '@/lib/models';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -15,7 +15,6 @@ const SLOT_LIMITS: Record<string, number> = {
   'navbar-cta': 1,
   'join-cta': 1,
   'filter-cta': 1,
-  'vault-premium': 1, // internal EROGRAM premium vault ad
   ainsfw: 10,
 };
 
@@ -73,11 +72,17 @@ export async function getCampaigns(token: string, advertiserId?: string) {
     badgeText: c.badgeText || '',
     verified: Boolean(c.verified),
     adType: c.adType || 'advertiser',
+    blockFormat: c.blockFormat || 'card',
     premiumCategory: c.premiumCategory || '',
     premiumGroupIds: (c.premiumGroupIds || []).map((id: any) => id.toString()),
     bannerPages: c.bannerPages || [],
     bannerDevice: c.bannerDevice || 'all',
     ofUsername: c.ofUsername || '',
+    placements: c.placements || [],
+    targetKeywords: c.targetKeywords || [],
+    weight: c.weight ?? null,
+    dailyClickCap: c.dailyClickCap ?? null,
+    priority: c.priority || 'normal',
   }));
 }
 
@@ -101,17 +106,23 @@ export async function createCampaign(
     category?: string;
     country?: string;
     buttonText?: string;
-    feedPlacement?: 'groups' | 'bots' | 'both';
+    feedPlacement?: 'groups' | 'bots' | 'ainsfw' | 'both';
     videoUrl?: string;
     badgeText?: string;
     verified?: boolean;
     adType?: 'advertiser' | 'premium' | 'onlyfans-creator';
+    blockFormat?: 'banner' | 'card';
     premiumCategory?: string;
     premiumGroupIds?: string[];
     socialProof?: string;
     bannerPages?: string[];
     bannerDevice?: 'all' | 'mobile' | 'desktop';
     ofUsername?: string;
+    placements?: string[];
+    targetKeywords?: string[];
+    weight?: number | null;
+    dailyClickCap?: number | null;
+    priority?: 'normal' | 'boost';
   }
 ) {
   const admin = await authenticateAdmin(token);
@@ -153,12 +164,15 @@ export async function createCampaign(
   const now = new Date();
 
   if (data.slot === 'feed') {
+    const hasNamedPlacements = Array.isArray(data.placements) && data.placements.length > 0;
     const slot = data.tierSlot != null ? Number(data.tierSlot) : null;
-      if (slot != null) {
+      if (slot != null && !hasNamedPlacements) {
+      // Legacy cap check — only applies when campaign has NO named placements.
+      // New placement-based campaigns bypass this; placement rotation is unlimited.
       if (slot < 1 || slot > 5) {
         throw new Error('Feed Slot must be 1–5.');
       }
-      (data as any).feedTier = 1; // all feed ads live in tier 1
+      (data as any).feedTier = 1;
       const variantCount = await Campaign.countDocuments({
         slot: 'feed',
         feedTier: 1,
@@ -171,6 +185,8 @@ export async function createCampaign(
       if (variantCount >= 4) {
         throw new Error(`Slot ${slot} already has 4 A/B variants (max). Pause or remove one first.`);
       }
+    } else if (hasNamedPlacements) {
+      (data as any).feedTier = 1;
     }
   } else {
     const activeCount = await Campaign.countDocuments({
@@ -208,6 +224,7 @@ export async function createCampaign(
     badgeText: data.slot === 'feed' ? (data.badgeText || '') : '',
     verified: data.slot === 'feed' ? Boolean(data.verified) : false,
     adType: data.adType || 'advertiser',
+    blockFormat: data.blockFormat === 'banner' ? 'banner' : 'card',
     premiumCategory: data.adType === 'premium' ? (data.premiumCategory || '') : '',
     premiumGroupIds: data.adType === 'premium' && data.premiumGroupIds?.length
       ? data.premiumGroupIds.map(id => new mongoose.Types.ObjectId(id))
@@ -216,11 +233,22 @@ export async function createCampaign(
     bannerPages: data.bannerPages || [],
     bannerDevice: data.bannerDevice || 'all',
     ofUsername: data.adType === 'onlyfans-creator' ? (data.ofUsername || '').trim() : '',
+    placements: Array.isArray(data.placements) ? data.placements : [],
+    targetKeywords: Array.isArray(data.targetKeywords) ? data.targetKeywords : [],
+    weight: data.weight ?? null,
+    dailyClickCap: data.dailyClickCap ?? null,
+    priority: data.priority === 'boost' ? 'boost' : 'normal',
   });
 
   // Keep feed positions gap-free after a new ad is created
   if (data.slot === 'feed') {
     await normalizeFeedPositions();
+  }
+
+  // Unified OF sync: mirror an OF-creator launch into the featured slots (best-effort).
+  if (doc.adType === 'onlyfans-creator') {
+    const { syncCampaignToTrending } = await import('@/lib/actions/ofSync');
+    await syncCampaignToTrending(doc._id.toString());
   }
 
   return { _id: doc._id.toString() };
@@ -246,18 +274,24 @@ export async function updateCampaign(
     category: string;
     country: string;
     buttonText: string;
-    feedPlacement: 'groups' | 'bots' | 'both';
+    feedPlacement: 'groups' | 'bots' | 'ainsfw' | 'both';
     advertiserId: string;
     videoUrl: string;
     badgeText: string;
     verified: boolean;
     adType: 'advertiser' | 'premium' | 'onlyfans-creator';
+    blockFormat: 'banner' | 'card';
     premiumCategory: string;
     premiumGroupIds: string[];
     socialProof: string;
     bannerPages: string[];
     bannerDevice: 'all' | 'mobile' | 'desktop';
     ofUsername: string;
+    placements: string[];
+    targetKeywords: string[];
+    weight: number | null;
+    dailyClickCap: number | null;
+    priority: 'normal' | 'boost';
   }>
 ) {
   const admin = await authenticateAdmin(token);
@@ -288,6 +322,7 @@ export async function updateCampaign(
   if ('badgeText' in data) updateData.badgeText = String(data.badgeText ?? '').trim();
   if ('verified' in data) updateData.verified = Boolean(data.verified);
   if ('adType' in data) updateData.adType = data.adType || 'advertiser';
+  if ('blockFormat' in data) updateData.blockFormat = data.blockFormat === 'banner' ? 'banner' : 'card';
   if ('ofUsername' in data) updateData.ofUsername = String(data.ofUsername ?? '').trim();
   if ('premiumCategory' in data) updateData.premiumCategory = String(data.premiumCategory ?? '').trim();
   if ('premiumGroupIds' in data) {
@@ -296,6 +331,11 @@ export async function updateCampaign(
   if ('socialProof' in data) updateData.socialProof = data.socialProof || 'random';
   if ('bannerPages' in data) updateData.bannerPages = Array.isArray(data.bannerPages) ? data.bannerPages : [];
   if ('bannerDevice' in data) updateData.bannerDevice = data.bannerDevice || 'all';
+  if ('placements' in data) updateData.placements = Array.isArray(data.placements) ? data.placements : [];
+  if ('targetKeywords' in data) updateData.targetKeywords = Array.isArray(data.targetKeywords) ? data.targetKeywords : [];
+  if ('weight' in data) updateData.weight = data.weight ?? null;
+  if ('dailyClickCap' in data) updateData.dailyClickCap = data.dailyClickCap ?? null;
+  if ('priority' in data) updateData.priority = data.priority === 'boost' ? 'boost' : 'normal';
 
   if (Object.keys(updateData).length === 0) {
     const doc = await Campaign.findById(id).lean();
@@ -315,6 +355,12 @@ export async function updateCampaign(
     await normalizeFeedPositions();
   }
 
+  // Unified OF sync: a pause/end/edit on an OF-creator ad mirrors to its featured slot (best-effort).
+  if ((doc as any).adType === 'onlyfans-creator') {
+    const { syncCampaignToTrending } = await import('@/lib/actions/ofSync');
+    await syncCampaignToTrending(String((doc as any)._id));
+  }
+
   return doc as any;
 }
 
@@ -324,6 +370,13 @@ export async function deleteCampaign(token: string, id: string) {
 
   await connectDB();
   const deleted = await Campaign.findByIdAndDelete(id).lean();
+
+  // Unified OF sync: deleting an OF-creator campaign pulls its linked featured slot (SAME-promotion).
+  if (deleted && (deleted as any).adType === 'onlyfans-creator' && (deleted as any).ofTrendingId) {
+    await TrendingOFCreator.findByIdAndUpdate((deleted as any).ofTrendingId, {
+      $set: { active: false, linkedCampaignId: null },
+    });
+  }
 
   // Compact feed positions after deletion
   if (deleted && (deleted as any).slot === 'feed') {
@@ -350,12 +403,19 @@ export async function getActiveCampaigns(
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
+  // UNIFIED "WHERE": a campaign serves this surface if EITHER its legacy `slot` matches
+  // (old system) OR its named `placements` array contains this surface name (new system).
+  // This makes one campaign assignable to banner/CTA/hero via the SAME placement picker
+  // used for feed surfaces — placements[] is the single source of truth, slot is fallback.
   const filter: Record<string, unknown> = {
-    slot,
     status: 'active',
     isVisible: { $ne: false },
     startDate: { $lte: now },
     endDate: { $gte: startOfToday },
+    $or: [
+      { slot },
+      { placements: slot },
+    ],
   };
 
   const andConditions: Record<string, unknown>[] = [];
@@ -386,9 +446,15 @@ export async function getActiveCampaigns(
 
   const limit = SLOT_LIMITS[slot] ?? undefined;
   const query = Campaign.find(filter)
-    .select('_id creative destinationUrl slot description buttonText bannerDevice')
+    .select('_id creative destinationUrl slot description buttonText bannerDevice advertiserId')
     .sort({ createdAt: -1 });
-  const campaigns = await (limit != null ? query.limit(limit) : query).lean();
+  const allCampaigns = await (limit != null ? query.limit(limit) : query).lean();
+
+  // Per-advertiser daily cap: drop campaigns whose advertiser already hit their cap today.
+  const cappedAdvertisers = await getCappedAdvertiserIds();
+  const campaigns = cappedAdvertisers.size === 0
+    ? allCampaigns
+    : allCampaigns.filter((c: any) => !c.advertiserId || !cappedAdvertisers.has(c.advertiserId.toString()));
 
   return campaigns.map((c: any) => ({
     _id: c._id.toString(),
@@ -399,6 +465,304 @@ export async function getActiveCampaigns(
     buttonText: c.buttonText || '',
     bannerDevice: c.bannerDevice || 'all',
   }));
+}
+
+/**
+ * Active generic ads assigned to a named placement (e.g. 'ainsfw-featured'), shaped for AdvertCard.
+ * Used by surfaces that render AdvertCards outside the groups/bots feed (brain: ad-engine-unify).
+ * Honors dates + visibility + per-campaign and per-advertiser daily caps.
+ */
+export async function getPlacementFeedCampaigns(placement: string, max = 4) {
+  await connectDB();
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const [cappedAdvertisers, cappedCampaigns] = await Promise.all([
+    getCappedAdvertiserIds(),
+    getCappedCampaignIds(),
+  ]);
+
+  const docs = await Campaign.find({
+    status: 'active',
+    isVisible: true,
+    startDate: { $lte: now },
+    endDate: { $gte: startOfToday },
+    placements: placement,
+  })
+    .select('_id creative destinationUrl slot description category country buttonText name videoUrl badgeText verified adType ofUsername advertiserId priority blockFormat')
+    .sort({ priority: -1, createdAt: -1 })
+    .lean();
+
+  const eligible = (docs as any[])
+    .filter((c) =>
+      !cappedCampaigns.has(c._id.toString()) &&
+      (!c.advertiserId || !cappedAdvertisers.has(c.advertiserId.toString())),
+    )
+    .slice(0, max);
+
+  // Enrich OF-creator campaigns with stats + trending link so AdvertCard renders them fully.
+  const ofUsernames = eligible
+    .filter((c) => c.adType === 'onlyfans-creator' && c.ofUsername)
+    .map((c) => String(c.ofUsername).toLowerCase());
+  const ofStats = new Map<string, { likesCount: number; subscriberCount: number }>();
+  const ofTrending = new Map<string, { _id: string; liveHourStart: number; liveHourEnd: number }>();
+  if (ofUsernames.length) {
+    const [docsStats, trendingDocs] = await Promise.all([
+      OnlyFansCreator.find({ username: { $in: ofUsernames } }).select('username likesCount subscriberCount').lean(),
+      TrendingOFCreator.find({ username: { $in: ofUsernames } }).select('username liveHourStart liveHourEnd').lean(),
+    ]);
+    for (const d of docsStats as any[]) ofStats.set(String(d.username).toLowerCase(), { likesCount: d.likesCount || 0, subscriberCount: d.subscriberCount || 0 });
+    for (const t of trendingDocs as any[]) ofTrending.set(String(t.username).toLowerCase(), { _id: String(t._id), liveHourStart: t.liveHourStart ?? -1, liveHourEnd: t.liveHourEnd ?? -1 });
+  }
+
+  return eligible.map((c: any, i: number) => {
+    const uname = String(c.ofUsername || '').toLowerCase();
+    const stats = ofStats.get(uname);
+    const tr = ofTrending.get(uname);
+    return {
+      _id: c._id.toString(),
+      name: c.name || '',
+      creative: c.creative || '',
+      destinationUrl: c.destinationUrl || '',
+      slot: c.slot || 'feed',
+      position: i,
+      description: c.description || '',
+      category: c.category || 'All',
+      country: c.country || 'All',
+      buttonText: c.buttonText || 'Visit Site',
+      videoUrl: c.videoUrl || '',
+      badgeText: c.badgeText || '',
+      verified: Boolean(c.verified),
+      adType: c.adType || 'advertiser',
+      blockFormat: c.blockFormat || 'card',
+      ofUsername: c.ofUsername || '',
+      ofLikesCount: stats?.likesCount ?? 0,
+      ofSubscriberCount: stats?.subscriberCount ?? 0,
+      ofTrendingId: tr?._id ?? '',
+      ofLiveHourStart: tr?.liveHourStart ?? -1,
+      ofLiveHourEnd: tr?.liveHourEnd ?? -1,
+    };
+  });
+}
+
+/**
+ * Keyword-targeted placement fetch for the Top-10 pages (best-onlyfans-accounts / best-telegram-groups).
+ * A campaign matches when:
+ *   - its placements include the page placement id (e.g. 'best-of' or 'best-groups'), AND
+ *   - its targetKeywords is empty (= runs on ALL category pages of that type) OR includes this category slug.
+ * Reuses the same active/visible/in-date + daily-cap filtering and OF enrichment as getPlacementFeedCampaigns.
+ * SEO-safe: callers render the result client-side; pages stay static/SSG.
+ */
+export async function getKeywordPlacementCampaigns(placement: string, categorySlug: string, max = 4) {
+  await connectDB();
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  // Canonicalize so a single keyword matches both OF (big-ass) and group (big ass) pages.
+  const slug = (categorySlug || '').toLowerCase().trim().replace(/[\s_]+/g, '-');
+  const [cappedAdvertisers, cappedCampaigns] = await Promise.all([
+    getCappedAdvertiserIds(),
+    getCappedCampaignIds(),
+  ]);
+
+  const docs = await Campaign.find({
+    status: 'active',
+    isVisible: true,
+    startDate: { $lte: now },
+    endDate: { $gte: startOfToday },
+    placements: placement,
+    // Empty/missing targetKeywords = runs on every category page of this type.
+    $or: [
+      { targetKeywords: { $exists: false } },
+      { targetKeywords: { $size: 0 } },
+      { targetKeywords: slug },
+    ],
+  })
+    .select('_id creative destinationUrl slot description category country buttonText name videoUrl badgeText verified adType ofUsername advertiserId priority targetKeywords')
+    .sort({ priority: -1, createdAt: -1 })
+    .lean();
+
+  const eligible = (docs as any[])
+    .filter((c) =>
+      !cappedCampaigns.has(c._id.toString()) &&
+      (!c.advertiserId || !cappedAdvertisers.has(c.advertiserId.toString())),
+    )
+    .slice(0, max);
+
+  // Enrich OF-creator campaigns with stats + trending link so AdvertCard renders them fully.
+  const ofUsernames = eligible
+    .filter((c) => c.adType === 'onlyfans-creator' && c.ofUsername)
+    .map((c) => String(c.ofUsername).toLowerCase());
+  const ofStats = new Map<string, { likesCount: number; subscriberCount: number; bio: string }>();
+  const ofTrending = new Map<string, { _id: string; liveHourStart: number; liveHourEnd: number }>();
+  if (ofUsernames.length) {
+    const [docsStats, trendingDocs] = await Promise.all([
+      OnlyFansCreator.find({ username: { $in: ofUsernames } }).select('username likesCount subscriberCount bio').lean(),
+      TrendingOFCreator.find({ username: { $in: ofUsernames } }).select('username liveHourStart liveHourEnd').lean(),
+    ]);
+    for (const d of docsStats as any[]) ofStats.set(String(d.username).toLowerCase(), { likesCount: d.likesCount || 0, subscriberCount: d.subscriberCount || 0, bio: d.bio || '' });
+    for (const t of trendingDocs as any[]) ofTrending.set(String(t.username).toLowerCase(), { _id: String(t._id), liveHourStart: t.liveHourStart ?? -1, liveHourEnd: t.liveHourEnd ?? -1 });
+  }
+
+  return eligible.map((c: any, i: number) => {
+    const uname = String(c.ofUsername || '').toLowerCase();
+    const stats = ofStats.get(uname);
+    const tr = ofTrending.get(uname);
+    return {
+      _id: c._id.toString(),
+      name: c.name || '',
+      creative: c.creative || '',
+      destinationUrl: c.destinationUrl || '',
+      slot: c.slot || 'feed',
+      position: i,
+      // Prefer the campaign's own copy; fall back to the creator's real OnlyFans bio.
+      description: c.description || stats?.bio || '',
+      category: c.category || 'All',
+      country: c.country || 'All',
+      buttonText: c.buttonText || 'Visit Site',
+      videoUrl: c.videoUrl || '',
+      badgeText: c.badgeText || '',
+      verified: Boolean(c.verified),
+      adType: c.adType || 'advertiser',
+      ofUsername: c.ofUsername || '',
+      ofBio: stats?.bio ?? '',
+      ofLikesCount: stats?.likesCount ?? 0,
+      ofSubscriberCount: stats?.subscriberCount ?? 0,
+      ofTrendingId: tr?._id ?? '',
+      ofLiveHourStart: tr?.liveHourStart ?? -1,
+      ofLiveHourEnd: tr?.liveHourEnd ?? -1,
+    };
+  });
+}
+
+/**
+ * Admin: per-campaign click counts for Today / last 7d / last 30d.
+ * One aggregation over the last 30 days of CampaignClick. Lifetime lives on Campaign.clicks already.
+ * Returns a map keyed by campaignId string.
+ */
+export async function getCampaignPeriodClicks(
+  token: string,
+): Promise<Record<string, { today: number; last7d: number; last30d: number }>> {
+  const admin = await authenticateAdmin(token);
+  if (!admin) throw new Error('Unauthorized');
+  await connectDB();
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const last7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const last30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const rows = await CampaignClick.aggregate([
+    { $match: { clickedAt: { $gte: last30d } } },
+    {
+      $group: {
+        _id: '$campaignId',
+        today: { $sum: { $cond: [{ $gte: ['$clickedAt', startOfToday] }, 1, 0] } },
+        last7d: { $sum: { $cond: [{ $gte: ['$clickedAt', last7d] }, 1, 0] } },
+        last30d: { $sum: 1 },
+      },
+    },
+  ]);
+  const map: Record<string, { today: number; last7d: number; last30d: number }> = {};
+  for (const r of rows as Array<{ _id: unknown; today: number; last7d: number; last30d: number }>) {
+    if (r._id) map[String(r._id)] = { today: r.today, last7d: r.last7d, last30d: r.last30d };
+  }
+  return map;
+}
+
+export interface GroupSidebarCreator {
+  _id: string; // campaignId — used for click tracking via trackClick(_, 'group-sidebar')
+  name: string;
+  username: string;
+  avatar: string;
+  url: string;
+  likesCount: number;
+  categories: string[];
+  isCampaign: true;
+}
+
+export interface GroupSidebarSlot {
+  creators: GroupSidebarCreator[];
+  ads: Array<{
+    _id: string;
+    name: string;
+    creative: string;
+    destinationUrl: string;
+    slot: string;
+    position: number;
+    description: string;
+    category: string;
+    country: string;
+    buttonText: string;
+    videoUrl: string;
+    verified: boolean;
+    socialProof: string;
+    adType: 'advertiser';
+  }>;
+}
+
+/**
+ * Sidebar promo slot on individual group/bot pages (placement: group-sidebar).
+ * Returns OF-creator campaigns assigned to this placement (up to 4) resolved with avatar/likes,
+ * plus any non-OF campaigns assigned to it (rendered through AdvertCard).
+ * Render-time, no auth. Empty when nothing is assigned — caller falls back to trending creators.
+ */
+export async function getGroupSidebarSlot(): Promise<GroupSidebarSlot> {
+  const { unstable_noStore } = await import('next/cache');
+  unstable_noStore();
+  await connectDB();
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const camps = await Campaign.find({
+    status: 'active',
+    isVisible: { $ne: false },
+    startDate: { $lte: now },
+    endDate: { $gte: startOfToday },
+    placements: 'group-sidebar',
+  })
+    .select('_id name description destinationUrl buttonText creative adType ofUsername videoUrl category country verified socialProof')
+    .lean();
+
+  const ofCamps = (camps as any[]).filter((c) => c.adType === 'onlyfans-creator' && c.ofUsername).slice(0, 4);
+  const otherCamps = (camps as any[]).filter((c) => c.adType !== 'onlyfans-creator');
+
+  const usernames = ofCamps.map((c) => (c.ofUsername as string).toLowerCase());
+  const ofDocs = usernames.length
+    ? await OnlyFansCreator.find({ username: { $in: usernames } })
+        .select('username name avatar likesCount categories')
+        .lean()
+    : [];
+  const ofMap = new Map((ofDocs as any[]).map((d) => [String(d.username).toLowerCase(), d]));
+
+  const creators: GroupSidebarCreator[] = ofCamps.map((c) => {
+    const d = ofMap.get((c.ofUsername as string).toLowerCase());
+    return {
+      _id: c._id.toString(),
+      name: c.name || d?.name || c.ofUsername,
+      username: c.ofUsername,
+      avatar: c.creative || d?.avatar || '',
+      url: c.destinationUrl || '',
+      likesCount: d?.likesCount ?? 0,
+      categories: d?.categories || [],
+      isCampaign: true as const,
+    };
+  });
+
+  const ads = otherCamps.map((c) => ({
+    _id: c._id.toString(),
+    name: c.name || '',
+    creative: c.creative || '',
+    destinationUrl: c.destinationUrl || '',
+    slot: 'group-sidebar',
+    position: 0,
+    description: c.description || '',
+    category: c.category || 'All',
+    country: c.country || 'All',
+    buttonText: c.buttonText || 'Visit Site',
+    videoUrl: c.videoUrl || '',
+    verified: Boolean(c.verified),
+    socialProof: c.socialProof || 'random',
+    adType: 'advertiser' as const,
+  }));
+
+  return { creators, ads };
 }
 
 /**
@@ -520,37 +884,165 @@ async function normalizeFeedPositions(): Promise<void> {
  * placement: 'groups' | 'bots' — only campaigns with feedPlacement matching (or 'both') are returned.
  * Sorted by priority/position 1,2,3…; one ad every 5 entries. No cache.
  */
-export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
+/**
+ * Per-advertiser daily click cap (brain: ad-vision).
+ * Returns the set of advertiserId strings that have already hit their daily click cap today (UTC).
+ * Their ads are then excluded from serving for the rest of the day → other advertisers / Erogram-own ads fill in.
+ * Near-real-time (counts logged CampaignClicks); small overdelivery is acceptable by design.
+ */
+async function getCappedAdvertiserIds(): Promise<Set<string>> {
+  const capped = new Set<string>();
+  try {
+    const startOfDayUTC = new Date();
+    startOfDayUTC.setUTCHours(0, 0, 0, 0);
+
+    // Advertisers that actually have a cap set (cap > 0).
+    const cappedAdvertisers = await Advertiser.find({ dailyClickCap: { $gt: 0 } })
+      .select('_id dailyClickCap')
+      .lean();
+    if (cappedAdvertisers.length === 0) return capped;
+
+    const capMap = new Map<string, number>();
+    for (const a of cappedAdvertisers as any[]) capMap.set(a._id.toString(), a.dailyClickCap);
+
+    // Campaigns belonging to those advertisers.
+    const camps = await Campaign.find({ advertiserId: { $in: cappedAdvertisers.map((a: any) => a._id) } })
+      .select('_id advertiserId')
+      .lean();
+    const campToAdv = new Map<string, string>();
+    for (const c of camps as any[]) campToAdv.set(c._id.toString(), c.advertiserId.toString());
+
+    // Today's clicks grouped by campaign.
+    const clicksByCampaign = await CampaignClick.aggregate([
+      { $match: { clickedAt: { $gte: startOfDayUTC }, campaignId: { $in: camps.map((c: any) => c._id) } } },
+      { $group: { _id: '$campaignId', n: { $sum: 1 } } },
+    ]);
+
+    // Sum per advertiser.
+    const todayByAdv = new Map<string, number>();
+    for (const row of clicksByCampaign as any[]) {
+      const adv = campToAdv.get(row._id.toString());
+      if (!adv) continue;
+      todayByAdv.set(adv, (todayByAdv.get(adv) || 0) + row.n);
+    }
+
+    for (const [adv, cap] of capMap) {
+      if ((todayByAdv.get(adv) || 0) >= cap) capped.add(adv);
+    }
+  } catch (err) {
+    console.error('[getCappedAdvertiserIds] failed, serving uncapped:', err);
+  }
+  return capped;
+}
+
+/**
+ * Per-campaign daily click cap: campaigns whose OWN dailyClickCap (>0) is already hit today.
+ * Used for OnlyFans creators (and any single ad) where the cap is the campaign's, not the advertiser's.
+ */
+async function getCappedCampaignIds(): Promise<Set<string>> {
+  const capped = new Set<string>();
+  try {
+    const startOfDayUTC = new Date();
+    startOfDayUTC.setUTCHours(0, 0, 0, 0);
+    const cappedCampaigns = await Campaign.find({ dailyClickCap: { $gt: 0 } }).select('_id dailyClickCap').lean();
+    if (cappedCampaigns.length === 0) return capped;
+    const capMap = new Map<string, number>();
+    for (const c of cappedCampaigns as any[]) capMap.set(c._id.toString(), c.dailyClickCap);
+    const clicks = await CampaignClick.aggregate([
+      { $match: { clickedAt: { $gte: startOfDayUTC }, campaignId: { $in: cappedCampaigns.map((c: any) => c._id) } } },
+      { $group: { _id: '$campaignId', n: { $sum: 1 } } },
+    ]);
+    const todayByCamp = new Map<string, number>();
+    for (const row of clicks as any[]) todayByCamp.set(row._id.toString(), row.n);
+    for (const [id, cap] of capMap) {
+      if ((todayByCamp.get(id) || 0) >= cap) capped.add(id);
+    }
+  } catch (err) {
+    console.error('[getCappedCampaignIds] failed, serving uncapped:', err);
+  }
+  return capped;
+}
+
+export async function getActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ainsfw') {
   const { unstable_noStore } = await import('next/cache');
   unstable_noStore();
 
   await connectDB();
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const [cappedAdvertisers, cappedCampaigns] = await Promise.all([
+    getCappedAdvertiserIds(),
+    getCappedCampaignIds(),
+  ]);
 
-  const campaigns = await Campaign.find({
+  const allCampaigns = await Campaign.find({
     slot: 'feed',
     status: 'active',
     isVisible: true,
     startDate: { $lte: now },
     endDate: { $gte: startOfToday },
     feedTier: 1,
-    tierSlot: { $gte: 1, $lte: 5 },
-    $or: [
-      { feedPlacement: placement },
-      { feedPlacement: 'both' },
-      { feedPlacement: { $exists: false } },
+    // Include legacy tierSlot 1-5, any named-placement campaign, OR a no-location feed ad
+    // (no tierSlot and empty placements) which defaults to the repeating in-feed slot.
+    $and: [
+      {
+        $or: [
+          { tierSlot: { $gte: 1, $lte: 5 } },
+          { placements: { $exists: true, $ne: [] } },
+          { tierSlot: null, placements: { $in: [null, []] } },
+        ],
+      },
+      {
+        $or: [
+          { feedPlacement: placement },
+          { feedPlacement: 'both' },
+          { feedPlacement: { $exists: false } },
+        ],
+      },
     ],
   })
-    .select('_id creative destinationUrl slot feedTier tierSlot position description category country buttonText name feedPlacement videoUrl badgeText verified adType premiumCategory premiumGroupIds socialProof ofUsername')
+    .select('_id creative destinationUrl slot feedTier tierSlot position description category country buttonText name feedPlacement videoUrl badgeText verified adType premiumCategory premiumGroupIds socialProof ofUsername placements advertiserId priority')
     .lean();
 
-  // Group by tierSlot (1-4) for A/B variant selection
+  // Daily caps: drop campaigns whose advertiser OR whose own campaign cap is hit today.
+  const campaigns = (cappedAdvertisers.size === 0 && cappedCampaigns.size === 0)
+    ? allCampaigns
+    : allCampaigns.filter((c: any) =>
+        !cappedCampaigns.has(c._id.toString()) &&
+        (!c.advertiserId || !cappedAdvertisers.has(c.advertiserId.toString())),
+      );
+
+  // Compatibility read layer: a campaign's effective slots = ALL its named placements (if set), else its legacy tierSlot.
+  // EMPTY placements → legacy tierSlot used as-is, so existing campaigns behave identically.
+  // A multi-placement campaign (e.g. assigned to top-groups-1 AND feed-2/3/4) must appear in EVERY
+  // slot it targets — not just the first — so one advertiser can blast across the whole feed.
+  const { placementToTierSlot, tierSlotToPlacement } = await import('@/lib/adPlacements');
+  const effectiveTierSlots = (c: any): number[] => {
+    const pls: string[] = Array.isArray(c.placements) ? c.placements : [];
+    if (pls.length > 0) {
+      // Named placements are authoritative. Resolve ONLY the ones that map to a feed slot.
+      // If NONE map to a feed slot (e.g. a banner/CTA-only campaign), return [] so it does
+      // NOT leak into the feed — it will be served by its own surface (getActiveCampaigns /
+      // getPlacementFeedCampaigns) instead. No fallback to slot 4 for placement campaigns.
+      const slots = new Set<number>();
+      for (const p of pls) {
+        const ts = placementToTierSlot(p);
+        if (ts != null) slots.add(ts);
+      }
+      return [...slots];
+    }
+    if (c.tierSlot != null) return [c.tierSlot];
+    // Pure-legacy ad with no placement AND no tierSlot → default to the repeating in-feed slot.
+    return [4];
+  };
+
+  // Group by effective tierSlot (1-10) for A/B variant selection. A campaign can land in several slots.
   const slotGroups = new Map<number, any[]>();
   for (const c of campaigns) {
-    const ts = (c as any).tierSlot as number;
-    if (!slotGroups.has(ts)) slotGroups.set(ts, []);
-    slotGroups.get(ts)!.push(c);
+    for (const ts of effectiveTierSlots(c)) {
+      if (!slotGroups.has(ts)) slotGroups.set(ts, []);
+      slotGroups.get(ts)!.push(c);
+    }
   }
 
   // For onlyfans-creator campaigns: one query to get stats + lastSeen
@@ -575,12 +1067,22 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
   // Slots 1-3: pick one random variant (A/B test).
   // Slot 4: return ALL active campaigns so the frontend can cycle through them as the user scrolls.
   // Slot 5: Featured Bot — pick one random variant (shown at position 5 in groups feed).
+  // Slot 6: Top Groups Spot 1 (reachable via named placement top-groups-1).
   const results: any[] = [];
-  for (let s = 1; s <= 5; s++) {
+  for (let s = 1; s <= 11; s++) {
     const variants = slotGroups.get(s);
     if (!variants || variants.length === 0) continue;
 
-    const picks = s === 4 ? variants : [variants[Math.floor(Math.random() * variants.length)]];
+    // AGNOSTIC SLOT LAW (brain: versatile-slots / ad-vision): EVERY ad assigned to a slot
+    // is returned so the client rotates through ALL of them. Boosted ads are NOT exclusive —
+    // they're listed first so the client weights them heavier (more visibility), but
+    // non-boosted ads in the same slot still rotate in. If one advertiser/agency puts 5
+    // creators in a slot, all 5 rotate. No collapsing, no one-per-advertiser.
+    const boosted = variants.filter((v: any) => v.priority === 'boost');
+    const orderedAll = boosted.length > 0
+      ? [...boosted, ...variants.filter((v: any) => v.priority !== 'boost')]
+      : variants;
+    const picks = orderedAll;
     for (const pick of picks) {
       const ofData = (pick as any).adType === 'onlyfans-creator'
         ? ofCreatorMap.get(((pick as any).ofUsername || '').toLowerCase())
@@ -591,7 +1093,12 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
         destinationUrl: pick.destinationUrl,
         slot: pick.slot,
         position: s,
-        tierSlot: (pick as any).tierSlot,
+        // Effective tierSlot: GroupsClient reads tierSlot 1/5/6 for Top Groups spots.
+        tierSlot: s,
+        // Canonical placement for THIS slot (top-groups-1..4 / top-bots-1..4 / feed-2..4 / feed-5).
+        // Stamped here from the authoritative map so the click tracker never has to re-guess.
+        // This is what makes Top Groups / Top Bots show as their own dashboard lines.
+        placement: tierSlotToPlacement(s) || undefined,
         description: pick.description || '',
         category: pick.category || 'All',
         country: pick.country || 'All',
@@ -604,6 +1111,8 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
         premiumCategory: pick.premiumCategory || '',
         socialProof: pick.socialProof || 'random',
         ofUsername: (pick as any).ofUsername || '',
+        priority: (pick as any).priority === 'boost' ? 'boost' : 'normal',
+        advertiserId: pick.advertiserId ? pick.advertiserId.toString() : null,
         ...(ofData ? {
           ofLikesCount: ofData.likesCount,
           ofSubscriberCount: ofData.subscriberCount,
@@ -707,6 +1216,27 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots') {
   }
 
   return results;
+}
+
+/**
+ * Is an Erogram Premium house ad currently live in the network?
+ * The /groups Vault Teaser promo is gated on this so the front end only ever
+ * shows what the Ad Network controls (one centralized switch). No live premium
+ * campaign → no vault teaser. Toggle it from /admin/ad-network like any ad.
+ */
+export async function isPremiumHouseAdLive(): Promise<boolean> {
+  const { unstable_noStore } = await import('next/cache');
+  unstable_noStore();
+  await connectDB();
+  const now = new Date();
+  const count = await Campaign.countDocuments({
+    adType: 'premium',
+    status: 'active',
+    isVisible: true,
+    startDate: { $lte: now },
+    endDate: { $gte: now },
+  });
+  return count > 0;
 }
 
 /**
@@ -1051,9 +1581,48 @@ export interface DashboardStatsResult {
   clicksByDayBySlot?: { date: string; slots: Record<string, number> }[];
   advertiserSlotBreakdown?: { advertiserId: string; advertiserName: string; slots: { slot: string; clicks: number }[] }[];
   featuredGroups?: { groupId: string; name: string; advertiserId: string; advertiserName: string; clickCount: number; lastClickedAt?: string }[];
+  /** Whole-network click totals for the selected period, split by store (read-only).
+   *  adSpace = sponsor CampaignClicks (this dashboard's existing scope, excl. OF creators);
+   *  boost = paid group/bot boosts (entity clickCount); of = OnlyFans creators total.
+   *  ofFeatured = paying/featured creators (TrendingClickDaily); ofOrganic = organic profile
+   *  clicks (OnlyFansCreator.clicks, lifetime — no per-day breakdown). */
+  networkTotals?: { adSpace: number; boost: number; of: number; ofFeatured: number; ofOrganic: number; grandTotal: number };
+  /** Per-creator OnlyFans detail (top creators by clicks in the selected period). Only on the
+   *  unfiltered network view. ofDetail = featured/trending creators; lifetime view also shows organic. */
+  ofDetail?: { name: string; username: string; clicks: number; kind: 'featured' | 'organic' }[];
+  /** Per-boost-item detail (each boosted group/bot, individually). Only on the unfiltered network view. */
+  boostDetail?: { name: string; entityType: 'group' | 'bot'; clicks: number }[];
 }
 
 /** Admin: full dashboard stats with filters (advertiser, slot, date range). For Overview charts and KPIs. */
+/**
+ * Normalize a raw click placement (+ campaign slot fallback) into a friendly ad-space bucket
+ * for the Advertiser Overview. Keeps the in-feed positions collapsed into one "In-Feed" line,
+ * surfaces each Top Groups / Top Bots / AI NSFW / Top-10 / sidebar space as its own line, and
+ * groups all article CTA/link clicks. Older clicks with no placement fall back to the slot.
+ */
+function normalizeAdSpace(placement?: string | null, slot?: string | null): string {
+  const p = (placement || '').trim();
+  if (p) {
+    if (p.startsWith('article:')) return 'article-link';
+    // Top-tier families: roll the 4 spots up into ONE line each so the Overview matches the
+    // owner's mental model (Top Groups / Top Bots as a single family). Spot-level detail lives
+    // in the detailed-tracking drill, not the Overview.
+    if (p.startsWith('top-groups-') || p === 'top-groups') return 'top-groups';
+    if (p.startsWith('top-bots-') || p === 'top-bots') return 'top-bots';
+    if (p.startsWith('feed')) return 'feed';          // feed-2/3/4/5 → In-Feed
+    if (p === 'ainsfw-featured') return 'ainsfw-featured';
+    // 4-ad BLOCKS, tracked per host page so each block's performance is visible separately.
+    if (p.startsWith('group-sidebar')) return p;      // group-sidebar / -groups / -bots / -ainsfw
+    if (p === 'best-of' || p === 'best-groups' || p === 'of-cat') return p;
+    if (p === 'feed') return 'feed';
+    return p; // any other named placement keeps its name
+  }
+  // No placement on the click (legacy rows): fall back to the campaign slot.
+  const s = (slot || '').trim();
+  return s || 'feed';
+}
+
 export async function getDashboardStats(token: string, filters: DashboardFilters): Promise<DashboardStatsResult> {
   const admin = await authenticateAdmin(token);
   if (!admin) throw new Error('Unauthorized');
@@ -1072,7 +1641,13 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
   const campaignMatch: Record<string, unknown> = {};
   if (advertiserIds?.length) campaignMatch.advertiserId = { $in: advertiserIds };
   if (campaignSlots?.length) campaignMatch.slot = campaignSlots.length === 1 ? campaignSlots[0] : { $in: campaignSlots };
-  const campaigns = await Campaign.find(campaignMatch).select('_id advertiserId slot clicks').lean() as any[];
+  // If the user explicitly picked ad spaces but NONE of them are campaign slots (e.g. only
+  // "Featured Groups", which is an entity store, not a Campaign), match ZERO campaigns so the
+  // view shows only featured-group clicks — not the whole network's campaign clicks.
+  const onlyNonCampaignSlots = !!slots?.length && (!campaignSlots || campaignSlots.length === 0);
+  const campaigns = (onlyNonCampaignSlots
+    ? []
+    : await Campaign.find(campaignMatch).select('_id advertiserId slot clicks').lean()) as any[];
   const campaignIds = campaigns.map((c) => c._id);
 
   let rangeStart: Date;
@@ -1135,6 +1710,13 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
         }));
       const fgTotal = featuredGroups.reduce((s, g) => s + g.clickCount, 0);
       if (fgTotal > 0) bySlot.push({ slot: 'featured-groups', totalClicks: fgTotal, campaignCount: featuredGroups.length });
+      // Featured groups track clicks on the entity (clickCount), which is LIFETIME only — there is
+      // no per-day store. Surface that lifetime total as the KPI so the view never shows 0 clicks
+      // when featured groups clearly have clicks.
+      kpis.totalClicks = fgTotal;
+      kpis.last30d = fgTotal;
+      kpis.last7d = 0;
+      kpis.todayClicks = 0;
     }
     return {
       kpis,
@@ -1183,7 +1765,10 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
       { $match: dateMatch },
       { $lookup: { from: 'campaigns', localField: 'campaignId', foreignField: '_id', as: 'camp' } },
       { $unwind: '$camp' },
-      { $group: { _id: '$camp.slot', clicks: { $sum: 1 } } },
+      // Group by the REAL placement the click was tagged with (top-groups-1, top-bots-2,
+      // ainsfw-featured, best-of, group-sidebar, article CTA…), falling back to the campaign
+      // slot when a click has no placement (older rows). Normalized to friendly buckets in JS.
+      { $group: { _id: { placement: '$placement', slot: '$camp.slot' }, clicks: { $sum: 1 } } },
     ]),
   ]);
 
@@ -1326,13 +1911,170 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
     }] : []),
   ];
 
-  const bySlot = (bySlotRows as any[]).map((r) => ({
-    slot: r._id as string,
-    totalClicks: r.clicks as number,
-    campaignCount: campaigns.filter((c: any) => c.slot === r._id).length,
-  }));
+  // Bucket clicks by REAL ad space (normalized placement), not the coarse campaign slot.
+  // This splits the old inflated "In-Feed" blob into Top Groups / Top Bots / AI NSFW / Top-10 /
+  // sidebar lines while keeping the in-feed positions grouped as one "In-Feed".
+  const bySlotAgg = new Map<string, number>();
+  for (const r of bySlotRows as any[]) {
+    const space = normalizeAdSpace(r._id?.placement, r._id?.slot);
+    bySlotAgg.set(space, (bySlotAgg.get(space) ?? 0) + (r.clicks as number));
+  }
+  const bySlot = Array.from(bySlotAgg.entries())
+    .map(([slot, totalClicks]) => ({
+      slot,
+      totalClicks,
+      campaignCount: campaigns.filter((c: any) => c.slot === slot).length,
+    }))
+    .sort((a, b) => b.totalClicks - a.totalClicks);
 
   const articleClicksByAdvertiser = await getArticleClicksByAdvertiser(advertiserIds);
+
+  // ── WHOLE-NETWORK TOTALS (read-only, additive) ──
+  // Stores, never mixed:
+  //   adSpace    = sponsor CampaignClicks in range, EXCLUDING onlyfans-creator campaigns
+  //   boost      = paid group/bot boost clicks in range (entity clickCountByDay)
+  //   ofFeatured = PAYING/featured creators (TrendingClickDaily, date-rangeable)
+  //   ofOrganic  = organic creator profile clicks (OnlyFansCreator.clicks; lifetime only — no
+  //                per-day data, so only counted on the Lifetime range to avoid faking dates)
+  //   of         = ofFeatured + ofOrganic + OF-creator CampaignClicks
+  // Only computed for the unfiltered "all advertisers" view so the headline reflects the network.
+  let networkTotals: { adSpace: number; boost: number; of: number; ofFeatured: number; ofOrganic: number; grandTotal: number } | undefined;
+  let ofDetail: { name: string; username: string; clicks: number; kind: 'featured' | 'organic' }[] | undefined;
+  let boostDetail: { name: string; entityType: 'group' | 'bot'; clicks: number }[] | undefined;
+  if (!advertiserIds?.length && !slots?.length) {
+    const rangeStartDay = rangeStart.toISOString().slice(0, 10);
+    const rangeEndDay = rangeEnd.toISOString().slice(0, 10);
+
+    // OF-creator campaign ids (to split them out of the sponsor ad-space total)
+    const ofCampaignIds = (await Campaign.find({ adType: 'onlyfans-creator' }).select('_id').lean() as any[])
+      .map((c) => c._id);
+    const ofCampaignIdSet = new Set(ofCampaignIds.map((id) => id.toString()));
+
+    const [ofCampaignClicks, ofTrendingRows, ofOrganicRows, boostGroups, boostBots] = await Promise.all([
+      // OF-creator clicks that came through the Campaign/AdvertCard path
+      CampaignClick.countDocuments({
+        campaignId: { $in: ofCampaignIds },
+        ...(isLifetime ? {} : { clickedAt: { $gte: rangeStart, $lte: rangeEnd } }),
+      }),
+      // Featured/paying OF creator clicks via the trending path (read-only — never modify OF)
+      TrendingClickDaily.aggregate([
+        ...(isLifetime ? [] : [{ $match: { date: { $gte: rangeStartDay, $lte: rangeEndDay } } }]),
+        { $group: { _id: null, clicks: { $sum: '$clicks' } } },
+      ]),
+      // Organic profile clicks — OnlyFansCreator.clicks has NO date breakdown, so only on Lifetime.
+      isLifetime
+        ? OnlyFansCreator.aggregate([{ $group: { _id: null, clicks: { $sum: '$clicks' } } }])
+        : Promise.resolve([] as any[]),
+      // Boosted groups — period clicks from clickCountByDay (fallback to lifetime clickCount)
+      Group.find({ boosted: true }).select('name clickCount clickCountByDay').lean(),
+      Bot.find({ boosted: true }).select('name clickCount clickCountByDay').lean(),
+    ]);
+
+    const sumDayMap = (entities: any[]): number => {
+      let total = 0;
+      for (const e of entities) {
+        const m = e.clickCountByDay;
+        if (m && (isLifetime ? false : true)) {
+          // Map may come back as a plain object from .lean()
+          const entries: [string, number][] = m instanceof Map ? Array.from(m.entries()) : Object.entries(m);
+          for (const [day, n] of entries) {
+            if (isLifetime || (day >= rangeStartDay && day <= rangeEndDay)) total += Number(n) || 0;
+          }
+        } else if (isLifetime) {
+          total += e.clickCount || 0;
+        }
+      }
+      return total;
+    };
+
+    const boostTotal = sumDayMap(boostGroups as any[]) + sumDayMap(boostBots as any[]);
+    const ofFeatured = ((ofTrendingRows as any[])[0]?.clicks || 0) + ofCampaignClicks;
+    const ofOrganic = (ofOrganicRows as any[])[0]?.clicks || 0;
+    const ofTotal = ofFeatured + ofOrganic;
+
+    // Sponsor ad-space total = clicks in range on non-OF campaigns
+    const adSpaceTotal = (await CampaignClick.countDocuments({
+      campaignId: { $in: campaignIds.filter((id) => !ofCampaignIdSet.has(id.toString())) },
+      ...(isLifetime ? {} : { clickedAt: { $gte: rangeStart, $lte: rangeEnd } }),
+    }));
+
+    networkTotals = {
+      adSpace: adSpaceTotal,
+      boost: boostTotal,
+      of: ofTotal,
+      ofFeatured,
+      ofOrganic,
+      grandTotal: adSpaceTotal + boostTotal + ofTotal,
+    };
+
+    // ── Per-creator OF detail (top by clicks) ──
+    // Featured/trending creators are date-rangeable via TrendingClickDaily; on Lifetime we rank
+    // by all-time creator clicks. Each creator tracked INDIVIDUALLY, as requested.
+    try {
+      if (isLifetime) {
+        const topCreators = await OnlyFansCreator.find({ clicks: { $gt: 0 } })
+          .select('name username clicks featured').sort({ clicks: -1 }).limit(50).lean() as any[];
+        ofDetail = topCreators.map((c) => ({
+          name: c.name || c.username, username: c.username || '',
+          clicks: c.clicks || 0, kind: c.featured ? 'featured' : 'organic',
+        }));
+      } else {
+        const rows = await TrendingClickDaily.aggregate([
+          { $match: { date: { $gte: rangeStartDay, $lte: rangeEndDay } } },
+          { $group: { _id: '$trendingId', clicks: { $sum: '$clicks' } } },
+          { $sort: { clicks: -1 } }, { $limit: 50 },
+        ]);
+        const ids = (rows as any[]).map((r) => r._id).filter(Boolean);
+        const creators = ids.length
+          ? await TrendingOFCreator.find({ _id: { $in: ids } }).select('name username').lean() as any[]
+          : [];
+        const cmap = new Map(creators.map((c: any) => [c._id.toString(), c]));
+        ofDetail = (rows as any[]).map((r) => {
+          const c = cmap.get(String(r._id));
+          return { name: c?.name || c?.username || 'Creator', username: c?.username || '', clicks: r.clicks, kind: 'featured' as const };
+        }).filter((r) => r.clicks > 0);
+      }
+    } catch { ofDetail = undefined; }
+
+    // ── Per-boost-item detail (each boosted group/bot individually) ──
+    try {
+      const periodClicks = (e: any): number => {
+        const m = e.clickCountByDay;
+        if (!isLifetime && m) {
+          const entries: [string, number][] = m instanceof Map ? Array.from(m.entries()) : Object.entries(m);
+          let t = 0;
+          for (const [day, n] of entries) if (day >= rangeStartDay && day <= rangeEndDay) t += Number(n) || 0;
+          return t;
+        }
+        return e.clickCount || 0;
+      };
+      const gRows = (boostGroups as any[]).map((g) => ({ name: g.name || 'Group', entityType: 'group' as const, clicks: periodClicks(g) }));
+      const bRows = (boostBots as any[]).map((b) => ({ name: b.name || 'Bot', entityType: 'bot' as const, clicks: periodClicks(b) }));
+      boostDetail = [...gRows, ...bRows].filter((r) => r.clicks > 0).sort((a, b) => b.clicks - a.clicks).slice(0, 50);
+    } catch { boostDetail = undefined; }
+
+    // Fold OnlyFans and Boosts into the advertiser breakdown as synthetic rows so the
+    // Advertisers view reflects the WHOLE Erogram ecosystem, not just CampaignClick sponsors.
+    // OWNER RULING: featured/promoted creators = paid clients; ALL their clicks count.
+    if (ofTotal > 0) {
+      byAdvertiser.unshift({
+        advertiserId: '__onlyfans__',
+        advertiserName: 'OnlyFans (all creators)',
+        totalClicks: ofTotal,
+        last7d: 0,
+        last30d: 0,
+      });
+    }
+    if (boostTotal > 0) {
+      byAdvertiser.unshift({
+        advertiserId: '__boosts__',
+        advertiserName: 'Boosts (groups & bots)',
+        totalClicks: boostTotal,
+        last7d: 0,
+        last30d: 0,
+      });
+    }
+  }
 
   // Featured groups (pinned ad groups with advertiserId)
   let featuredGroups: { groupId: string; name: string; advertiserId: string; advertiserName: string; clickCount: number; lastClickedAt?: string }[] | undefined;
@@ -1377,6 +2119,9 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
     clicksByDayBySlot,
     advertiserSlotBreakdown,
     featuredGroups,
+    networkTotals,
+    ofDetail,
+    boostDetail,
   };
 }
 

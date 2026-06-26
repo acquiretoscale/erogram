@@ -412,7 +412,7 @@ export default function OFMAdsClient() {
           <div className="rounded-xl border-2 border-[#00AFF0]/25 bg-white p-5 space-y-3 shadow-sm">
             <p className="text-sm text-gray-500 text-center mb-1">Ready to grow? Reach out and we&apos;ll get your campaign live.</p>
             <a
-              href="mailto:erogram@gmail.com"
+              href="mailto:isabella@erogram.biz"
               className="flex items-center gap-4 rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 hover:border-[#00AFF0]/40 hover:bg-[#00AFF0]/[0.04] transition-all group"
             >
               <div className="w-10 h-10 rounded-xl bg-[#00AFF0]/15 border border-[#00AFF0]/25 flex items-center justify-center shrink-0">
@@ -422,12 +422,12 @@ export default function OFMAdsClient() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] text-gray-400 uppercase tracking-wider font-bold mb-0.5">Email</p>
-                <p className="text-sm font-black text-gray-800 group-hover:text-[#00AFF0] transition-colors">erogram@gmail.com</p>
+                <p className="text-sm font-black text-gray-800 group-hover:text-[#00AFF0] transition-colors">isabella@erogram.biz</p>
               </div>
               <svg className="w-4 h-4 text-gray-300 group-hover:text-[#00AFF0] transition-colors shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
             </a>
             <a
-              href="https://t.me/RVN8888"
+              href="https://t.me/erogramDOTpro"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-4 rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 hover:border-[#00AFF0]/40 hover:bg-[#00AFF0]/[0.04] transition-all group"
@@ -439,7 +439,7 @@ export default function OFMAdsClient() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] text-gray-400 uppercase tracking-wider font-bold mb-0.5">Telegram</p>
-                <p className="text-sm font-black text-gray-800 group-hover:text-[#00AFF0] transition-colors">@RVN8888</p>
+                <p className="text-sm font-black text-gray-800 group-hover:text-[#00AFF0] transition-colors">@erogramDOTpro</p>
               </div>
               <svg className="w-4 h-4 text-gray-300 group-hover:text-[#00AFF0] transition-colors shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
             </a>

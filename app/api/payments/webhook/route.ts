@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
 import { User, PremiumEvent, Group, Bot } from '@/lib/models';
+import { recordCouponUsage } from '@/lib/actions/coupons';
 import { MAX_PREMIUM_SLOTS } from '@/lib/auth';
 import { notifyAdminsOfSale } from '@/lib/utils/notifyAdmins';
 import { getPremiumPricing } from '@/lib/premiumPricing';
@@ -26,7 +27,7 @@ async function answerPreCheckoutQuery(id: string, ok: boolean, errorMessage?: st
   });
 }
 
-const VALID_PLANS = new Set(['monthly', 'quarterly', 'yearly']);
+const VALID_PLANS = new Set(['monthly', 'quarterly', 'yearly', 'lifetime']);
 
 export async function POST(req: NextRequest) {
   try {
@@ -118,25 +119,34 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ ok: true });
           }
 
-          // Idempotency: skip if already processed via paid boost
-          if (entity.paidBoost) {
-            console.log(`[Webhook] ${payload.entityType || 'group'} ${payload.groupId} already processed — skipping`);
+          // Idempotency: skip ONLY if THIS exact payment was already processed.
+          // Using the unique Telegram charge id (not the paidBoost flag) so that
+          // re-boosts / repeat campaigns on the same listing always go through.
+          const chargeId = payment.telegram_payment_charge_id || '';
+          if (chargeId && entity.lastPaymentChargeId === chargeId) {
+            console.log(`[Webhook] ${payload.entityType || 'group'} ${payload.groupId} charge ${chargeId} already processed — skipping`);
             return NextResponse.json({ ok: true });
           }
 
           const now = new Date();
-          const GROUP_STARS: Record<string, number> = { instant_approval: 1000, boost_week: 3000, boost_month: 6000 };
+          const GROUP_STARS: Record<string, number> = { instant_approval: 600, boost_week: 2000, boost_month: 5000 };
           const BOT_STARS: Record<string, number> = { normal_listing: 1000, instant_approval: 1500, boost_week: 3000, boost_month: 6000 };
           const STARS_AMOUNTS = payload.entityType === 'bot' ? BOT_STARS : GROUP_STARS;
 
+          // If a boost is still active, stack new days on top of the remaining time
+          // instead of resetting to now. Otherwise start from now.
+          const currentExpiry = entity.boostExpiresAt ? new Date(entity.boostExpiresAt) : null;
+          const boostBase = currentExpiry && currentExpiry > now ? currentExpiry : now;
+
           const updateFields: Record<string, any> = {};
+          if (chargeId) updateFields.lastPaymentChargeId = chargeId;
 
           if (payload.type === 'normal_listing') {
             updateFields.paidBoost = true;
             updateFields.paidBoostStars = STARS_AMOUNTS.normal_listing;
           } else if (payload.type === 'boost_week') {
             updateFields.status = 'approved';
-            const boostExpiry = new Date(now);
+            const boostExpiry = new Date(boostBase);
             boostExpiry.setDate(boostExpiry.getDate() + 7);
             updateFields.featured = true;
             updateFields.featuredAt = now;
@@ -147,7 +157,7 @@ export async function POST(req: NextRequest) {
             updateFields.paidBoostStars = STARS_AMOUNTS.boost_week;
           } else if (payload.type === 'boost_month') {
             updateFields.status = 'approved';
-            const boostExpiry = new Date(now);
+            const boostExpiry = new Date(boostBase);
             boostExpiry.setDate(boostExpiry.getDate() + 30);
             updateFields.featured = true;
             updateFields.featuredAt = now;
@@ -163,6 +173,18 @@ export async function POST(req: NextRequest) {
           }
 
           await Model.findByIdAndUpdate(payload.groupId, { $set: updateFields });
+
+          if (payload.couponId && payload.couponCode) {
+            const STARS_AMOUNT = STARS_AMOUNTS[payload.type] || 0;
+            await recordCouponUsage(payload.couponId, {
+              service: payload.entityType === 'bot' ? 'bots' : 'groups',
+              entityId: payload.groupId,
+              originalStars: STARS_AMOUNT,
+              discountedStars: payment.total_amount,
+              savedStars: STARS_AMOUNT - payment.total_amount,
+              couponCode: payload.couponCode,
+            });
+          }
 
           const entityLabel = payload.entityType === 'bot' ? 'bot' : 'group';
           const boostLabels: Record<string, string> = {
@@ -219,11 +241,15 @@ export async function POST(req: NextRequest) {
           lastPaymentChargeId: chargeId,
         };
 
-        const pricing = await getPremiumPricing();
-        const planConfig = plan === 'yearly' ? pricing.yearly : plan === 'quarterly' ? pricing.quarterly : pricing.monthly;
-        const expiresAt = new Date(now);
-        expiresAt.setDate(expiresAt.getDate() + planConfig.days);
-        updateData.premiumExpiresAt = expiresAt;
+        if (plan === 'lifetime') {
+          updateData.premiumExpiresAt = null; // forever
+        } else {
+          const pricing = await getPremiumPricing();
+          const planConfig = plan === 'yearly' ? pricing.yearly : plan === 'quarterly' ? pricing.quarterly : pricing.monthly;
+          const expiresAt = new Date(now);
+          expiresAt.setDate(expiresAt.getDate() + planConfig.days);
+          updateData.premiumExpiresAt = expiresAt;
+        }
 
         await User.findByIdAndUpdate(userId, updateData);
         logEvent({ event: 'payment_success', userId, plan, chargeId, paymentMethod: 'stars' });

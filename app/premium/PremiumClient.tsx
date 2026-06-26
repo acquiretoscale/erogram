@@ -676,7 +676,7 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                     Complete payment in Telegram · This page updates automatically · After payment you will be redirected back to Erogram
                   </p>
                   <p className="text-[10px] text-gray-400 text-center">
-                    Need help? Telegram: <a href="https://t.me/erogram1" target="_blank" rel="noopener noreferrer" className="font-bold underline">@erogram1</a> · <a href="mailto:support@erogram.biz" className="font-bold underline">support@erogram.biz</a>
+                    Need help? Telegram: <a href="https://t.me/erogramDOTpro" target="_blank" rel="noopener noreferrer" className="font-bold underline">@erogramDOTpro</a> · <a href="mailto:support@erogram.biz" className="font-bold underline">support@erogram.biz</a>
                   </p>
                 </div>
               </div>

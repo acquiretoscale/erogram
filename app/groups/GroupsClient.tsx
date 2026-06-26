@@ -7,14 +7,13 @@ import axios from 'axios';
 import dynamic from 'next/dynamic';
 import Navbar from '@/components/Navbar';
 import HeaderBanner from '@/components/HeaderBanner';
-import { filterOptions, filterCategories } from './constants';
 import { Group, FeedCampaign, StoryCategory } from './types';
 import GroupCard from './GroupCard';
 import AdvertCard from './AdvertCard';
 import VirtualizedGroupGrid from './VirtualizedGroupGrid';
 import { checkBookmarks } from '@/lib/actions/publicData';
 import GroupCardSkeleton from './GroupCardSkeleton';
-import StoryBar from './StoryBar';
+import { filterCategories } from './constants';
 import type { VaultTeaserItem } from './VaultTeaserFeed';
 import { useTranslation, useLocalePath, useLocale } from '@/lib/i18n';
 // Lazy load modals to reduce initial bundle size
@@ -41,15 +40,22 @@ interface GroupsClientProps {
   topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string }>;
   storyData?: StoryCategory[];
   vaultTeaserGroups?: VaultTeaserItem[];
+  trendingCategories?: Array<{ label: string; href: string }>;
+  trendingCountries?: Array<{ label: string; href: string }>;
+  categoryOptions?: string[];
+  countryOptions?: string[];
 }
 
-export default function GroupsClient({ initialGroups, feedCampaigns = [], initialCountry, initialIsMobile = false, initialIsTelegram = false, topBannerCampaigns = [], storyData = [], vaultTeaserGroups = [] }: GroupsClientProps) {
+export default function GroupsClient({ initialGroups, feedCampaigns = [], initialCountry, initialIsMobile = false, initialIsTelegram = false, topBannerCampaigns = [], storyData = [], vaultTeaserGroups = [], trendingCategories = [], trendingCountries = [], categoryOptions = [], countryOptions = [] }: GroupsClientProps) {
+  const TOP_SLOT_GROWTH: number[] = [14.2, 11.8, 9.6, 12.9];
   const STORY_SEEN_KEY = 'erogram:stories:seen:v1';
   const [username, setUsername] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState(initialCountry || 'All');
+  const [selectedCountry, setSelectedCountry] = useState('All');
   const [selectedSort, setSelectedSort] = useState('random');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
+  const [searchExpanded, setSearchExpanded] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [showAddGroupModal, setShowAddGroupModal] = useState(false);
   const [isStoryOpen, setIsStoryOpen] = useState(false);
   const [activeStoryIndex, setActiveStoryIndex] = useState(0);
@@ -95,8 +101,6 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
   const [topGroups, setTopGroups] = useState<Group[]>([]);
   const [topGroupsLoading, setTopGroupsLoading] = useState(true);
-  const [featuredGroups, setFeaturedGroups] = useState<Group[]>([]);
-  const [featuredLoading, setFeaturedLoading] = useState(true);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedGroupForReview, setSelectedGroupForReview] = useState<Group | null>(null);
   const [groupReviews, setGroupReviews] = useState<any[]>([]);
@@ -114,7 +118,6 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
   useEffect(() => {
     setTopGroupsLoading(true);
-    setFeaturedLoading(true);
 
     fetch(`/api/groups?topGroup=true&limit=4&locale=${locale}`)
       .then(r => r.json())
@@ -122,21 +125,14 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
       .catch(err => console.error('Failed to fetch top groups:', err))
       .finally(() => setTopGroupsLoading(false));
 
-    fetch(`/api/groups?featured=true&limit=8&locale=${locale}`)
-      .then(res => res.json())
-      .then(data => { if (data.groups) setFeaturedGroups(data.groups); })
-      .catch(err => console.error('Failed to fetch featured groups:', err))
-      .finally(() => setFeaturedLoading(false));
-
   }, []);
 
   const allGroupIds = useMemo(() => {
     const ids = new Set<string>();
     regularGroups.forEach(g => ids.add(g._id));
     topGroups.forEach(g => ids.add(g._id));
-    featuredGroups.forEach(g => ids.add(g._id));
     return Array.from(ids);
-  }, [regularGroups, topGroups, featuredGroups]);
+  }, [regularGroups, topGroups]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || allGroupIds.length === 0) return;
@@ -383,6 +379,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
         selectedSort === 'random' &&
         !debouncedSearchQuery &&
         selectedCategory === (initialCountry || 'All') &&
+        selectedCountry === 'All' &&
         regularGroups.length > 0
       ) {
         isFirstLoad.current = false;
@@ -395,7 +392,8 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
       try {
         const searchParam = debouncedSearchQuery ? `&search=${encodeURIComponent(debouncedSearchQuery)}` : '';
         const categoryParam = selectedCategory !== 'All' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
-        const response = await fetch(`/api/groups?skip=0&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}&locale=${locale}`, { cache: 'no-store' });
+        const countryParam = selectedCountry !== 'All' ? `&country=${encodeURIComponent(selectedCountry)}` : '';
+        const response = await fetch(`/api/groups?skip=0&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${countryParam}&locale=${locale}`, { cache: 'no-store' });
         const data = await response.json();
         if (!response.ok || !Array.isArray(data.groups)) {
           setGroupsLoadError(true);
@@ -426,7 +424,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
     fetchGroups();
     lastVisibleIndexRef.current = -1;
-  }, [selectedSort, debouncedSearchQuery, selectedCategory]);
+  }, [selectedSort, debouncedSearchQuery, selectedCategory, selectedCountry]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -438,11 +436,12 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
         setLoading(true);
         const searchParam = debouncedSearchQuery ? `&search=${encodeURIComponent(debouncedSearchQuery)}` : '';
         const categoryParam = selectedCategory !== 'All' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
+        const countryParam = selectedCountry !== 'All' ? `&country=${encodeURIComponent(selectedCountry)}` : '';
         const excludeParam = selectedSort === 'random' && regularGroups.length > 0
           ? `&exclude=${encodeURIComponent(regularGroups.map(g => g._id).join(','))}`
           : '';
         const skipParam = selectedSort === 'random' ? 0 : skip;
-        fetch(`/api/groups?skip=${skipParam}&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${excludeParam}&locale=${locale}`)
+        fetch(`/api/groups?skip=${skipParam}&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${countryParam}${excludeParam}&locale=${locale}`)
           .then(res => res.json())
           .then(data => {
             if (data.groups && data.groups.length > 0) {
@@ -464,41 +463,70 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [skip, loading, hasMore, selectedSort, debouncedSearchQuery, selectedCategory, regularGroups]);
+  }, [skip, loading, hasMore, selectedSort, debouncedSearchQuery, selectedCategory, selectedCountry, regularGroups]);
 
   const displayGroups = useMemo(() => {
     return regularGroups;
   }, [regularGroups]);
 
-  const filterValue = selectedCategory;
+  // Top Groups versatile slots (brain: versatile-slots node):
+  //   Spot 1 → MIXED (any adType: OF creator, AI NSFW, affiliate, group/bot…). Tier 6 preferred.
+  //   Spot 2 → MIXED (any adType). Tier 1 preferred, else any leftover campaign.
+  //   Spot 4 → MIXED (any adType). Tier 5 preferred, else any leftover campaign.
+  //   Spot 3 → organic random group (handled in render).
+  //   Tier 2/3/4 → main grid (positions after 2, 8, 12 groups).
 
-  const handleFilterChange = (value: string) => {
-    setSelectedCategory(value || 'All');
-  };
+  // ── Top Groups spot allocation — AGNOSTIC ROTATING AD NETWORK ──
+  // BRAIN LAW (versatile-slots / ad-vision): whatever I assign to a Top Groups spot SHOWS in
+  // that spot and ROTATES with every other ad assigned to the same spot. Boosted ads get MORE
+  // visibility (weighted), not exclusivity. Same rule for spots 1/2/3/4. The named placements
+  // top-groups-1..4 map to tierSlots 6/1/11/5 server-side — that's just internal plumbing.
+  const SPOT_TIERSLOT: Record<number, number> = { 0: 6, 1: 1, 2: 11, 3: 5 };
 
-  // Split feed campaigns by tier:
-  // Tier 6 → Top Groups section (slot 1, versatile: groups/bots/advertisers)
-  // Tier 1 → Top Groups section (slot 2)
-  // Tier 5 → Top Groups section (slot 4, Featured Bot)
-  // Tier 2/3/4 → main grid (positions after 2, 8, 12 groups)
-  const tier6Campaign = useMemo(() => {
-    return feedCampaigns.find(c => c.tierSlot === 6) ?? null;
-  }, [feedCampaigns]);
+  const topSpotCampaigns = useMemo(() => {
+    const picks: Record<number, FeedCampaign | null> = { 0: null, 1: null, 2: null, 3: null };
+    // An ad assigned to several spots must appear in only ONE at a time — never the same ad
+    // duplicated across spots simultaneously. We track ad ids already placed and exclude them.
+    const usedIds = new Set<string>();
 
-  const tier1Campaign = useMemo(() => {
-    return feedCampaigns.find(c => c.tierSlot === 1) ?? null;
-  }, [feedCampaigns]);
+    // Weighted rotation: a boosted ad gets several entries in the draw so it appears more often,
+    // but non-boosted ads assigned to the same spot still rotate in. Per page load.
+    const pickForSlot = (tierSlot: number): FeedCampaign | null => {
+      const pool = feedCampaigns.filter((c) => c.tierSlot === tierSlot && !usedIds.has(c._id));
+      if (pool.length === 0) return null;
+      const draw: FeedCampaign[] = [];
+      for (const c of pool) {
+        const weight = c.priority === 'boost' ? 3 : 1;
+        for (let i = 0; i < weight; i++) draw.push(c);
+      }
+      return draw[Math.floor(Math.random() * draw.length)];
+    };
 
-  const tier5Campaign = useMemo(() => {
-    return feedCampaigns.find(c => c.tierSlot === 5) ?? null;
+    for (let spot = 0; spot < 4; spot++) {
+      const pick = pickForSlot(SPOT_TIERSLOT[spot]);
+      if (pick) {
+        picks[spot] = pick;
+        usedIds.add(pick._id);
+      }
+    }
+    return picks;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [feedCampaigns]);
 
   const gridCampaigns = useMemo(() => {
-    return feedCampaigns.filter(c => c.tierSlot !== 1 && c.tierSlot !== 5 && c.tierSlot !== 6);
-  }, [feedCampaigns]);
+    // Exclude only the exact slot ROWS consumed by Top Groups, not every row sharing that _id.
+    // A multi-placement ad assigned to BOTH Top Groups and in-feed (tier 2/3/4) keeps its
+    // in-feed copies so it still renders down the feed. We match _id + tierSlot of the picks.
+    const usedKeys = new Set(
+      Object.values(topSpotCampaigns)
+        .filter(Boolean)
+        .map((c) => `${c!._id}-${c!.tierSlot}`),
+    );
+    return feedCampaigns.filter(c => !usedKeys.has(`${c._id}-${c.tierSlot}`));
+  }, [feedCampaigns, topSpotCampaigns]);
 
   return (
-    <div className="min-h-screen bg-[#111111]">
+    <div className="min-h-screen bg-[#0d1117]">
       <style>{`
         @keyframes vault-led-spin {
           0% { transform: rotate(0deg); }
@@ -508,7 +536,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
       {/* Animated Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
-          className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#b31b1b] rounded-full blur-3xl opacity-10"
+          className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#ff5e2a] rounded-full blur-3xl opacity-10"
           animate={{
             scale: [1, 1.2, 1],
             x: [0, 100, 0],
@@ -521,7 +549,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
           }}
         />
         <motion.div
-          className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#b31b1b] rounded-full blur-3xl opacity-10"
+          className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#ff9432] rounded-full blur-3xl opacity-10"
           animate={{
             scale: [1.2, 1, 1.2],
             x: [0, -100, 0],
@@ -544,179 +572,195 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
       />
 
       {/* Main Content */}
-      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 sm:pt-20 pb-8 min-h-screen">
-        {/* Stories — always first on mobile, full-width on all sizes */}
-        <StoryBar
-          storyData={storyData}
-          seenStoryMap={seenStoryMap}
-          onOpenStory={handleOpenStory}
-        />
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 xl:px-16 pt-20 sm:pt-24 pb-8 min-h-screen">
+        {/* Hero — same framework as AI NSFW (badge + title + subtitle) */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-6 sm:mb-8"
+        >
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#ff5e2a]/10 border border-[#ff5e2a]/30 text-[#ff7a3d] text-xs font-bold uppercase tracking-[2px] mb-4">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#ff7a3d] animate-pulse" />
+            Curated &amp; Verified
+          </div>
+          <h1 className="text-[32px] sm:text-[50px] md:text-[58px] font-black leading-[1.05] tracking-tight text-white mb-3">
+            {t('groups.title')}
+          </h1>
+          <p className="text-white/50 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
+            {t('groups.heroSubtitle', 'Browse and join the best Adult and Porn Telegram groups, curated, verified and updated daily.')}
+          </p>
+        </motion.div>
+
+        {/* Filter bar — one sleek unified pill: search + filters + live stat, single line */}
+        <div className="mb-6 sm:mb-8 flex justify-center">
+          <div className="flex items-center gap-1.5 sm:gap-2 w-full max-w-3xl rounded-full border border-white/10 bg-white/[0.03] backdrop-blur-sm p-1.5 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.6)]">
+            {/* Category */}
+            <div className="relative shrink-0">
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value || 'All')}
+                aria-label={t('common.category')}
+                className="pl-2.5 pr-6 py-2 rounded-full bg-transparent hover:bg-white/[0.06] text-white text-[11px] font-bold focus:outline-none transition-colors appearance-none cursor-pointer"
+              >
+                <option value="All" className="bg-[#131a24]">All Categories</option>
+                {categoryOptions.map((c) => (
+                  <option key={c} value={c} className="bg-[#131a24]">{c}</option>
+                ))}
+              </select>
+              <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-white/40 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+
+            <div className="h-5 w-px bg-white/10 shrink-0" />
+
+            {/* Country */}
+            <div className="relative shrink-0">
+              <select
+                value={selectedCountry}
+                onChange={(e) => setSelectedCountry(e.target.value || 'All')}
+                aria-label={t('common.country')}
+                className="pl-2.5 pr-6 py-2 rounded-full bg-transparent hover:bg-white/[0.06] text-white text-[11px] font-bold focus:outline-none transition-colors appearance-none cursor-pointer"
+              >
+                <option value="All" className="bg-[#131a24]">All Countries</option>
+                {countryOptions.map((c) => (
+                  <option key={c} value={c} className="bg-[#131a24]">{c}</option>
+                ))}
+              </select>
+              <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-white/40 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+
+            <div className="h-5 w-px bg-white/10 shrink-0" />
+
+            {/* Spacer — pushes the stat right while search is collapsed */}
+            {!(searchExpanded || searchQuery) && <div className="flex-1" />}
+
+            {/* Search — compact icon that expands on click (top-tier pattern) */}
+            <div className={`relative flex items-center ${searchExpanded || searchQuery ? 'flex-1 min-w-0' : 'shrink-0'}`}>
+              <button
+                type="button"
+                onClick={() => { setSearchExpanded(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}
+                aria-label={t('groups.searchGroups')}
+                className={`flex items-center justify-center w-8 h-8 rounded-full text-white/70 hover:text-white hover:bg-white/[0.06] transition-colors ${searchExpanded || searchQuery ? 'absolute left-0.5 top-1/2 -translate-y-1/2 pointer-events-none' : ''}`}
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              </button>
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onBlur={() => { if (!searchQuery) setSearchExpanded(false); }}
+                placeholder={t('groups.searchGroups')}
+                aria-label={t('groups.searchGroups')}
+                className={`rounded-full bg-transparent text-white text-sm placeholder:text-white/35 focus:outline-none transition-all duration-300 ${
+                  searchExpanded || searchQuery ? 'w-full pl-9 pr-8 py-2 opacity-100' : 'w-0 p-0 opacity-0 pointer-events-none'
+                }`}
+              />
+              {searchQuery && (
+                <button onClick={() => { setSearchQuery(''); setSearchExpanded(false); }} aria-label="Clear search" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+              )}
+            </div>
+
+            <div className="h-5 w-px bg-white/10 shrink-0" />
+
+            {/* Live visiting stat — anchored right */}
+            <div className="flex items-center gap-1.5 pl-1 pr-3 shrink-0">
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+              </span>
+              <VisitingCount />
+            </div>
+          </div>
+        </div>
+
+        {/* Trending on Erogram — top 6 categories, homogeneous with the filter bar */}
+        {trendingCategories.length > 0 && (
+          <div className="mb-6 sm:mb-8 flex flex-wrap items-center justify-center gap-2">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-white/70 mr-0.5">
+              <svg className="w-3.5 h-3.5 text-[#ff7a3d]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+              Trending on Erogram
+            </span>
+            {trendingCategories.slice(0, 8).map(({ label, href }) => (
+              <Link
+                key={href}
+                href={href}
+                className="px-3 py-1.5 rounded-full border border-white/10 bg-white/[0.03] text-white/70 text-xs font-bold hover:text-white hover:border-[#ff5e2a]/40 hover:bg-[#ff5e2a]/[0.06] transition-all whitespace-nowrap"
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
+        )}
+
         {/* Global top banner (below stories) */}
         <div className="w-full mb-4">
           <HeaderBanner campaigns={topBannerCampaigns} />
         </div>
 
-        {/* Filter toggle + Explore navigation — mobile only */}
-        <div className="lg:hidden grid grid-cols-4 gap-1.5 mb-3">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center justify-center gap-1 px-1 py-1.5 text-[11px] font-bold rounded-md text-white whitespace-nowrap transition-all duration-200 hover:brightness-125 active:scale-95"
-            style={{
-              background: 'linear-gradient(135deg, #0a1520, #0d1a2a)',
-              border: '1px solid rgba(0,175,240,0.2)',
-            }}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-            </svg>
-            Filter
-          </button>
+        {/* Explore navigation — mobile only (Neo-brutalism). */}
+        <div className="lg:hidden grid grid-cols-3 gap-1.5 mb-3">
           <Link
             href={lp('/bots')}
-            className="flex items-center justify-center gap-1 px-1 py-1.5 text-[11px] font-bold rounded-md text-white whitespace-nowrap transition-all duration-200 hover:brightness-110 active:scale-95"
-            style={{
-              background: 'linear-gradient(135deg, #00AFF0, #0088cc)',
-              border: '1px solid rgba(0,175,240,0.5)',
-            }}
+            className="flex items-center justify-center gap-1 px-1 py-2.5 text-[10px] font-black uppercase tracking-tight rounded-lg whitespace-nowrap transition-all duration-150 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0_0_#fff] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
+            style={{ background: '#00AFF0', color: '#ffffff', border: '2px solid #fff', boxShadow: '4px 4px 0 0 #fff' }}
           >
             Telegram Bots
           </Link>
           <Link
             href={lp('/ainsfw')}
-            className="flex items-center justify-center gap-1 px-1 py-1.5 text-[11px] font-bold rounded-md text-white whitespace-nowrap transition-all duration-200 hover:brightness-110 active:scale-95"
-            style={{
-              background: 'linear-gradient(135deg, #00AFF0, #0088cc)',
-              border: '1px solid rgba(0,175,240,0.5)',
-            }}
+            className="flex items-center justify-center gap-1 px-1 py-2.5 text-[10px] font-black uppercase tracking-tight rounded-lg whitespace-nowrap transition-all duration-150 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0_0_#fff] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
+            style={{ background: '#00AFF0', color: '#ffffff', border: '2px solid #fff', boxShadow: '4px 4px 0 0 #fff' }}
           >
             AI NSFW
           </Link>
           <Link
             href={lp('/onlyfanssearch')}
-            className="flex items-center justify-center gap-1 px-1 py-1.5 text-[11px] font-bold rounded-md text-white whitespace-nowrap transition-all duration-200 hover:brightness-110 active:scale-95"
-            style={{
-              background: 'linear-gradient(135deg, #00AFF0, #0088cc)',
-              border: '1px solid rgba(0,175,240,0.5)',
-            }}
+            className="flex items-center justify-center gap-1 px-1 py-2.5 text-[10px] font-black uppercase tracking-tight rounded-lg whitespace-nowrap transition-all duration-150 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0_0_#fff] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
+            style={{ background: '#ffffff', color: '#0f172a', border: '2px solid #cbd5e1', boxShadow: '4px 4px 0 0 #cbd5e1' }}
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#00AFF0" className="shrink-0">
               <path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z" />
             </svg>
             OF Search
           </Link>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+        <div className="flex flex-col gap-6">
 
-          {/* Sidebar Filters */}
-          <aside className={`${showFilters ? 'block' : 'hidden'} lg:block lg:w-1/4 min-w-0 shrink-0`} suppressHydrationWarning>
-            <div className="glass rounded-2xl p-6 backdrop-blur-lg border border-white/10">
-              {/* Header */}
-              <div className="text-center mb-8">
-                <h2 className="text-2xl font-black text-[#f5f5f5] mb-2">🔍 {t('groups.filters')}</h2>
-                <p className="text-[#999] text-sm">{t('groups.findPerfect')}</p>
-              </div>
-
-              {/* Category */}
-              <div className="mb-6">
-                <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
-                  <span className="mr-2" suppressHydrationWarning>📂</span>
-                  {t('common.category')}
-                </label>
-                <select
-                  value={filterValue}
-                  onChange={(e) => handleFilterChange(e.target.value)}
-                  className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none transition-all"
-                >
-                  <option value="All" className="bg-[#222]">All</option>
-                  {filterOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value} className="bg-[#222]">
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Search */}
-              <div className="mb-6">
-                <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
-                  <span className="mr-2" suppressHydrationWarning>🔍</span>
-                  {t('groups.searchGroups')}
-                </label>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={t('groups.searchByName')}
-                  className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] placeholder:text-gray-500 focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none transition-all"
-                />
-              </div>
-
-              {/* Filter Actions */}
-              <div className="flex flex-col gap-3">
-                <button
-                  onClick={() => {
-                    setShowFilters(false);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className="w-full px-4 py-3 bg-[#b31b1b] hover:bg-[#c42b2b] text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
-                >
-                  <span className="text-lg">🔍</span>
-                  {filterValue !== 'All' || searchQuery
-                    ? t('groups.applyFilters')
-                    : t('groups.showResults')}
-                </button>
-
-                {(filterValue !== 'All' || searchQuery) && (
-                  <button
-                    onClick={() => {
-                      handleFilterChange('All');
-                      setSearchQuery('');
-                    }}
-                    className="w-full px-4 py-3 bg-white/5 hover:bg-white/10 text-[#999] hover:text-white rounded-xl font-bold transition-colors border border-white/10"
-                  >
-                    {t('groups.resetFilters')}
-                  </button>
-                )}
-              </div>
-
-            </div>
-          </aside>
-
-          <div className="lg:w-3/4 min-w-0 shrink-0">
+          <div className="w-full min-w-0">
             <div className="relative">
               {/* Top Groups — hidden during search or when a filter is active */}
-              {!debouncedSearchQuery && selectedCategory === (initialCountry || 'All') && topGroups.length > 0 && (
-                <div className="mb-5 relative rounded-2xl p-[2px]" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706, #92400e, #d97706, #f59e0b, #fcd34d, #f59e0b)' }}>
-                  {/* Shimmer sweep */}
-                  <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
-                    <div className="absolute inset-0 opacity-30" style={{ background: 'linear-gradient(105deg, transparent 40%, rgba(252,211,77,0.4) 50%, transparent 60%)', animation: 'shimmer 3s infinite' }} />
-                  </div>
-                  <style>{`@keyframes shimmer { 0%,100%{transform:translateX(-100%)} 50%{transform:translateX(100%)} }`}</style>
-
-                  <div className="relative rounded-[20px] overflow-hidden" style={{ background: 'linear-gradient(145deg, #0f0f0f 0%, #141008 40%, #0f0f0f 100%)' }}>
-
-                    <div className="relative p-3 sm:p-4">
+              {!debouncedSearchQuery && selectedCategory === (initialCountry || 'All') && selectedCountry === 'All' && topGroups.length > 0 && (
+                <div className="mb-5 relative rounded-2xl overflow-hidden bg-white">
+                  <div className="relative p-3 sm:p-4">
                       {/* Header */}
-                      <div className="flex items-center gap-2 mb-3">
-                        <svg className="w-4 h-4 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm2 3a1 1 0 000 2h10a1 1 0 000-2H7z"/>
-                        </svg>
-                        <h2 className="text-sm font-black text-white leading-none">{t('groups.topGroups')}</h2>
-                        <span className="text-amber-400/60 text-xs font-medium">{t('groups.topGroupsDesc')}</span>
+                      <div className="flex items-baseline gap-2.5 mb-3">
+                        <h2 className="text-base font-black text-[#0f172a] leading-none tracking-tight">{t('groups.topGroups')}</h2>
+                        <span className="text-[#0f172a] text-xs font-bold">{t('groups.topGroupsDesc')}</span>
                       </div>
 
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 rounded-2xl p-3 sm:p-4" style={{ background: 'linear-gradient(180deg, #0d1117 0%, #0a0e16 100%)' }}>
                       {(() => {
-                        const boostedArr = topGroups.filter((g: any) => g.boosted);
+                        // PRIORITY (ad-network wins): for each of the 4 spots,
+                        //   assigned ad campaign  >  manual pin  >  boosted group  >  organic
+                        // An ASSIGNED ad ALWAYS takes its spot — nothing overrides a paid ad placement.
                         const nonBoosted = topGroups.filter((g: any) => !g.boosted);
-                        const manualSlot1 = nonBoosted.find((g: any) => g.topGroupSlot === 1);
-                        const manualSlot2 = nonBoosted.find((g: any) => g.topGroupSlot === 2);
-                        const manualIds = new Set([manualSlot1?._id, manualSlot2?._id].filter(Boolean));
-                        const allOrganic = nonBoosted.filter(g => !manualIds.has(g._id)).slice(0, 4);
-                        let organicIdx = 0;
-
-                        const spots: React.ReactNode[] = [];
+                        const boostedArr = topGroups.filter((g: any) => g.boosted);
+                        const manualBySpot: Record<number, Group | undefined> = {
+                          0: nonBoosted.find((g: any) => g.topGroupSlot === 1),
+                          1: nonBoosted.find((g: any) => g.topGroupSlot === 2),
+                        };
+                        // Rotating ad per spot (Spot1=tier6, Spot2=tier1, Spot3=tier11, Spot4=tier5).
+                        // Any spot with no assigned ad falls back to manual pin → organic below.
+                        const campBySpot: Record<number, FeedCampaign | null> = {
+                          0: !isTelegram ? topSpotCampaigns[0] : null,
+                          1: !isTelegram ? topSpotCampaigns[1] : null,
+                          2: !isTelegram ? topSpotCampaigns[2] : null,
+                          3: !isTelegram ? topSpotCampaigns[3] : null,
+                        };
 
                         const renderGroupCard = (g: Group, idx: number) => {
                           const tgLink = g.isAdvertisement && g.advertisementUrl
@@ -732,55 +776,44 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                               isBookmarked={!!bookmarkedMap[g._id]}
                               bookmarkId={bookmarkedMap[g._id] || null}
                               directLink={tgLink}
+                              growthPercent={TOP_SLOT_GROWTH[idx]}
                             />
                           );
                         };
 
-                        // Boosted groups (paid) always fill first
-                        for (const g of boostedArr) {
-                          if (spots.length >= 4) break;
-                          spots.push(renderGroupCard(g, spots.length));
-                        }
+                        // Organic fillers (boosted first, then the rest), used only for spots NO ad claims
+                        // and that have no manual pin. Pinned groups are excluded so they don't double-show.
+                        const pinIds = new Set([manualBySpot[0]?._id, manualBySpot[1]?._id].filter(Boolean));
+                        const fillerQueue: Group[] = [
+                          ...boostedArr.filter((g: any) => !pinIds.has(g._id)),
+                          ...nonBoosted.filter((g: any) => !pinIds.has(g._id) && g.topGroupSlot !== 1 && g.topGroupSlot !== 2),
+                        ];
+                        let fillerIdx = 0;
 
-                        // Spot 1 — manual slot 1 > tier 6 campaign > organic
-                        if (spots.length < 1) {
-                          if (manualSlot1) {
-                            spots.push(renderGroupCard(manualSlot1, 0));
-                          } else if (tier6Campaign && !isTelegram) {
+                        const spots: React.ReactNode[] = [];
+                        for (let spot = 0; spot < 4; spot++) {
+                          const camp = campBySpot[spot];
+                          if (camp) {
+                            // Assigned ad ALWAYS wins this spot.
                             spots.push(
-                              <AdvertCard key={`tier6-${tier6Campaign._id}`} campaign={tier6Campaign} isIndex={0} shouldPreload={true} onVisible={undefined} />
+                              <AdvertCard
+                                key={`spot-${spot}-${camp._id}`}
+                                campaign={camp}
+                                isIndex={spot}
+                                shouldPreload={true}
+                                onVisible={undefined}
+                                growthPercent={TOP_SLOT_GROWTH[spot]}
+                              />
                             );
-                          } else if (allOrganic[organicIdx]) {
-                            spots.push(renderGroupCard(allOrganic[organicIdx++], 0));
+                            continue;
                           }
-                        }
-
-                        // Spot 2 — manual slot 2 > tier 1 campaign > organic
-                        if (spots.length < 2) {
-                          if (manualSlot2) {
-                            spots.push(renderGroupCard(manualSlot2, 1));
-                          } else if (tier1Campaign && !isTelegram) {
-                            spots.push(
-                              <AdvertCard key={`tier1-${tier1Campaign._id}`} campaign={tier1Campaign} isIndex={1} shouldPreload={true} onVisible={undefined} />
-                            );
-                          } else if (allOrganic[organicIdx]) {
-                            spots.push(renderGroupCard(allOrganic[organicIdx++], 1));
-                          }
-                        }
-
-                        // Spot 3 — organic
-                        if (spots.length < 3 && allOrganic[organicIdx]) {
-                          spots.push(renderGroupCard(allOrganic[organicIdx++], 2));
-                        }
-
-                        // Spot 4 — tier 5 campaign or organic
-                        if (spots.length < 4) {
-                          if (tier5Campaign && !isTelegram) {
-                            spots.push(
-                              <AdvertCard key={`tier5-${tier5Campaign._id}`} campaign={tier5Campaign} isIndex={3} shouldPreload={true} onVisible={undefined} />
-                            );
-                          } else if (allOrganic[organicIdx]) {
-                            spots.push(renderGroupCard(allOrganic[organicIdx++], 3));
+                          // No ad → manual pin for this spot, else next organic/boosted filler.
+                          const pin = manualBySpot[spot];
+                          if (pin) {
+                            spots.push(renderGroupCard(pin, spot));
+                          } else {
+                            const g = fillerQueue[fillerIdx++];
+                            if (g) spots.push(renderGroupCard(g, spot));
                           }
                         }
 
@@ -789,39 +822,9 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                     </div>
                   </div>
                 </div>
-                </div>
               )}
 
-              {/* Featured Groups — below Top Groups (hidden during search or when a filter is active) */}
-              {!debouncedSearchQuery && selectedCategory === (initialCountry || 'All') && featuredGroups.length > 0 && (
-                <div className="mb-10 relative rounded-3xl p-[2px]" style={{ background: 'linear-gradient(135deg, #a855f7, #7c3aed, #6d28d9, #7c3aed, #a855f7)' }}>
-                  <div className="rounded-[22px] bg-[#111111] relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-violet-900/10 to-purple-900/10" />
-                    <div className="relative p-4 sm:p-6">
-                      <div className="text-center mb-4 sm:mb-6">
-                        <h2 className="text-2xl sm:text-3xl font-black text-[#f5f5f5] drop-shadow-2xl">
-                          ⭐ Featured Groups
-                        </h2>
-                        <p className="text-purple-300/60 text-sm mt-1 font-medium">Hand-picked for you</p>
-                      </div>
-                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-                        {featuredGroups.map((g, i) => (
-                          <GroupCard
-                            key={`feat-${g._id}`}
-                            group={g}
-                            isIndex={i}
-                            isFeatured
-                            onOpenReviewModal={openReviewModal}
-                            onOpenReportModal={openReportModal}
-                            isBookmarked={!!bookmarkedMap[g._id]}
-                            bookmarkId={bookmarkedMap[g._id] || null}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* Featured Groups section removed (brain: versatile-slots). Paid featured now lives in Top Groups Spot 1. */}
 
               <div className="text-center mb-6">
                 <h1 className="text-2xl md:text-3xl font-black text-[#f5f5f5]">
@@ -852,8 +855,8 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
               </div>
 
               {loading && (
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mt-6">
-                  {Array.from({ length: 6 }, (_, i) => (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mt-6">
+                  {Array.from({ length: 8 }, (_, i) => (
                     <GroupCardSkeleton key={`skeleton-${i}`} />
                   ))}
                 </div>
@@ -915,6 +918,32 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
       )}
 
     </div>
+  );
+}
+
+// Live "visiting now" count — text only (the pulsing dot lives in the filter bar).
+function VisitingCount() {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    const fetchCount = () => {
+      fetch('/api/advertise-stats', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((d) => { if (typeof d.activeVisitors === 'number') setCount(d.activeVisitors); })
+        .catch(() => {});
+    };
+    fetchCount();
+    const id = setInterval(fetchCount, 300_000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <span className="flex items-baseline gap-1 whitespace-nowrap">
+      <span className="font-black text-white/90 tabular-nums leading-none text-[13px]">
+        {count > 0 ? count.toLocaleString('en-US') : '—'}
+      </span>
+      <span className="font-medium text-white/40 text-[10px]">visiting now</span>
+    </span>
   );
 }
 

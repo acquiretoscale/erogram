@@ -5,7 +5,7 @@ import AINsfwClient from './AINsfwClient';
 import { getLocale } from '@/lib/i18n/server';
 import { getDictionary } from '@/lib/i18n';
 import { getAllToolStats, getFeaturedTools, getApprovedSubmissions } from '@/lib/actions/ainsfw';
-import { getActiveCampaigns } from '@/lib/actions/campaigns';
+import { getActiveCampaigns, getPlacementFeedCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 
 const BASE_URL = 'https://erogram.pro';
@@ -56,10 +56,12 @@ export default async function AINsfwPage() {
   const dict = await getDictionary(locale);
   const a = dict.ainsfw ?? {};
   const staticSlugs = new Set(AI_NSFW_TOOLS.map(t => t.slug));
-  const [featuredInfos, topBannerCampaigns, paidSubmissions] = await Promise.all([
+  const [featuredInfos, topBannerCampaigns, paidSubmissions, topAdCampaigns, feedCampaigns] = await Promise.all([
     getFeaturedTools(),
     getActiveCampaigns('top-banner', { page: 'ainsfw', device: isMobile ? 'mobile' : 'desktop' }).catch(() => []),
     getApprovedSubmissions(staticSlugs),
+    getPlacementFeedCampaigns('ainsfw-featured', 4).catch(() => []),
+    getActiveFeedCampaigns('ainsfw').catch(() => []),
   ]);
   const allTools = [...AI_NSFW_TOOLS, ...paidSubmissions];
   const allStats = await getAllToolStats(allTools.map(t => t.slug));
@@ -134,7 +136,7 @@ export default async function AINsfwPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
-      <AINsfwClient tools={allTools} allStats={allStats} featuredSlugs={featuredSlugs} featuredCampaignMap={featuredCampaignMap} topBannerCampaigns={topBannerCampaigns} />
+      <AINsfwClient tools={allTools} allStats={allStats} featuredSlugs={featuredSlugs} featuredCampaignMap={featuredCampaignMap} topBannerCampaigns={topBannerCampaigns} topAdCampaigns={topAdCampaigns} feedCampaigns={feedCampaigns} />
     </>
   );
 }

@@ -11,6 +11,8 @@ import { getTrendingCreators } from '@/lib/actions/publicData';
 import { browseCreators, deleteCreatorBySlug } from '@/lib/actions/ofCreatorsBrowse';
 import { getOFMTrending, createOFMTrendingSlot } from '@/lib/actions/ofm';
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
+import type { FeedCampaign } from '@/app/groups/types';
+import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
 
 function formatCount(n: number) {
   if (!n) return '';
@@ -60,12 +62,8 @@ function CategoryCreatorCard({ creator, onTrack, onSave, onDelete, onSendToTrend
   const handleViewProfile = (e: React.MouseEvent) => {
     e.preventDefault();
     onTrack(creator.slug);
-    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) {
-      window.location.href = `/join-erogram?redirect=/onlyfans/${creator.username}`;
-      return;
-    }
-    window.open(`/onlyfans/${creator.username}`, '_blank', 'noopener,noreferrer');
+    // Direct to OnlyFans — no Erogram page, no redirect, no footprint.
+    if (creator.url) window.open(creator.url, '_blank', 'noopener');
   };
 
   return (
@@ -79,6 +77,7 @@ function CategoryCreatorCard({ creator, onTrack, onSave, onDelete, onSendToTrend
               className="absolute inset-0 w-full h-full object-cover transition-opacity duration-300"
               loading="lazy"
               referrerPolicy="no-referrer"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-gray-300 bg-gradient-to-br from-gray-100 to-gray-200">
@@ -166,9 +165,11 @@ interface Props {
   category: string;
   label: string;
   canonicalUrl?: string;
+  paidFeatured?: any[];
+  agnosticAds?: FeedCampaign[];
 }
 
-export default function CategoryClient({ creators: initialCreators, category, label }: Props) {
+export default function CategoryClient({ creators: initialCreators, category, label, paidFeatured = [] }: Props) {
   const { t } = useTranslation();
   const lp = useLocalePath();
   const router = useRouter();
@@ -205,9 +206,17 @@ export default function CategoryClient({ creators: initialCreators, category, la
         .catch(() => {});
     }
 
-    getTrendingCreators()
-      .then(data => { if (Array.isArray(data)) setAllTrending(data); })
-      .catch(() => {});
+    // Category-targeted rail: niche creators for this page. Paid of-cat creators (server)
+    // are prepended so they always lead the featured slots.
+    getTrendingCreators(category)
+      .then(data => {
+        const rail = Array.isArray(data) ? data : [];
+        // De-dupe paid creators out of the rail by username, paid wins the lead.
+        const paidNames = new Set((paidFeatured || []).map((p) => (p.username || '').toLowerCase()));
+        const railClean = rail.filter((r: any) => !paidNames.has((r.username || '').toLowerCase()));
+        setAllTrending([...(paidFeatured || []), ...railClean]);
+      })
+      .catch(() => { if ((paidFeatured || []).length) setAllTrending([...paidFeatured]); });
   }, [category]);
 
   useEffect(() => {
@@ -563,74 +572,155 @@ export default function CategoryClient({ creators: initialCreators, category, la
           ) : (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
               {(() => {
-                // Ad slots are pinned to every 9 CREATOR positions (index-based),
-                // so they stay fixed regardless of sort order or shuffle.
-                const AD_EVERY = 9;
+                // Real-estate rules (owner spec):
+                //  • FIRST slot is ALWAYS a featured OF creator (paid of-cat campaign first, then niche rail).
+                //  • A featured OF creator every 8 results, so featured stay visible while scrolling.
+                //  • A "FEATURED ONLYFANS CREATORS" block of 4 (OF creators ONLY — never agnostic),
+                //    first early (after ~16) then every 80 results.
+                const FEATURED_EVERY = 8;
+                const BLOCK_FIRST_AT = 18;
+                const AD_BLOCK_EVERY = 83;
                 const items: React.ReactNode[] = [];
-                let adIdx = 0;
+                let featIdx = 0;
+
+                // One featured OF creator card. Paid campaigns track via of-cat; rail via trending.
+                // Routing: paid/featured ALWAYS go straight to OnlyFans (advertisers want the traffic).
+                const renderFeatured = (slotKey: string) => {
+                  if (allTrending.length === 0) return null;
+                  const tc = allTrending[featIdx % allTrending.length];
+                  featIdx++;
+                  return (
+                    <motion.div
+                      key={slotKey}
+                      initial={{ opacity: 0, y: 14 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="relative"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (tc.isPaidCampaign && tc.campaignId) trackCampaignClick(tc.campaignId, 'of-cat');
+                          else if (tc._id) trackTrendingClick(tc._id);
+                          window.open(tc.url, '_blank', 'noopener,noreferrer');
+                        }}
+                        className="group w-full text-left rounded-2xl overflow-hidden bg-gradient-to-br from-[#0B1D3A] via-[#122B53] to-[#1A3F73] shadow-[0_14px_36px_-12px_rgba(6,16,36,0.9)] hover:shadow-[0_18px_44px_-10px_rgba(10,27,58,0.95)] ring-[3px] ring-[#FF6A00] hover:ring-[#FF8C3A] transition-all duration-300 cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-[#C7DAFF]/50"
+                      >
+                        <div className="relative aspect-[3/4] bg-[#0F274C] ring-1 ring-inset ring-[#9FC3FF]/30">
+                          {tc.avatar ? (
+                            <img
+                              src={tc.avatar}
+                              alt={`${tc.name} OnlyFans`}
+                              className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
+                              loading="lazy"
+                              referrerPolicy="no-referrer"
+                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-[#C7DAFF] bg-[#0F274C]">
+                              {tc.name.charAt(0)}
+                            </div>
+                          )}
+                          <div className="absolute top-2 left-2 z-10">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#EAF1FF] text-[#1F4076] text-[9px] font-black uppercase tracking-widest shadow-md ring-1 ring-white/70">
+                              <Crown size={8} fill="currentColor" className="text-[#1F4076]" />
+                              {t('ofSearch.featured')}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="px-2.5 pt-2 sm:px-4 sm:pt-3">
+                          <h3 className="font-bold text-[13px] sm:text-[15px] text-white truncate leading-tight drop-shadow-sm">
+                            {tc.name}
+                          </h3>
+                          <p className="text-[11px] sm:text-[13px] text-[#BFD7FF] font-semibold mt-0.5">@{tc.username}</p>
+                        </div>
+                        <div className="px-2.5 pb-2.5 pt-2 sm:px-4 sm:pb-4 sm:pt-3">
+                          <div className="w-full py-2 sm:py-2.5 rounded-xl bg-[#FF6A00] text-white text-[13px] sm:text-sm font-black text-center border border-[#FFC08A] shadow-[0_8px_18px_-8px_rgba(255,106,0,0.95)] hover:bg-[#FF7A1A] hover:border-[#FFD0A8] transition-all">
+                            {t('ofSearch.viewProfile')}
+                          </div>
+                        </div>
+                      </button>
+                    </motion.div>
+                  );
+                };
+
+                // "FEATURED ONLYFANS CREATORS" block (full grid width) — OF creators ONLY, never agnostic.
+                // Same white/ONLYFANS-blue design as the top browse block (no "Submit Your Creator").
+                // Shows only the distinct creators available (never repeats one X4): up to 4 unique, no padding.
+                const renderAdBlock = (blockNum: number) => {
+                  if (allTrending.length === 0) return null;
+                  const take = Math.min(4, allTrending.length);
+                  const four = Array.from({ length: take }, (_, k) => allTrending[(featIdx + k) % allTrending.length]);
+                  featIdx += take;
+                  return (
+                    <div key={`adblock-${blockNum}`} className="col-span-2 lg:col-span-4">
+                      <div className="rounded-2xl border border-[#00AFF0]/20 bg-white p-4 sm:p-6 shadow-[0_24px_60px_-18px_rgba(0,175,240,0.15)]">
+                        <div className="flex items-center gap-2 mb-4">
+                          <Crown size={14} className="text-[#00AFF0]" fill="currentColor" />
+                          <h2 className="text-sm sm:text-base font-black text-gray-900">Featured <span className="text-[#00AFF0]">OnlyFans Creators</span></h2>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5">
+                          {four.map((tc, k) => (
+                            <button
+                              key={`ofcat-${blockNum}-${tc._id || tc.username}-${k}`}
+                              type="button"
+                              onClick={() => {
+                                if (tc.isPaidCampaign && tc.campaignId) trackCampaignClick(tc.campaignId, 'of-cat');
+                                else if (tc._id) trackTrendingClick(tc._id);
+                                window.open(tc.url, '_blank', 'noopener,noreferrer');
+                              }}
+                              className="group w-full text-left rounded-2xl overflow-hidden bg-white ring-[2px] ring-[#00AFF0]/30 hover:ring-[#00AFF0] shadow-[0_8px_28px_-8px_rgba(0,175,240,0.25)] hover:shadow-[0_12px_36px_-6px_rgba(0,175,240,0.35)] hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none"
+                            >
+                              <div className="relative aspect-[3/4] bg-[#f0f8ff]">
+                                {tc.avatar ? (
+                                  <img src={tc.avatar} alt={`${tc.name} OnlyFans`} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" loading="lazy" referrerPolicy="no-referrer" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#00AFF0] bg-[#f0f8ff]">{tc.name.charAt(0)}</div>
+                                )}
+                              </div>
+                              <div className="px-3 pt-2.5 sm:px-4 sm:pt-3">
+                                <h3 className="font-bold text-[13px] sm:text-[15px] text-gray-900 truncate leading-tight">{tc.name}</h3>
+                                <p className="text-[11px] sm:text-[13px] text-[#00AFF0] font-semibold mt-0.5">@{tc.username}</p>
+                                {(tc.likesCount > 0) && (
+                                  <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5">{formatCount(tc.likesCount)} {t('ofSearch.likes')}</p>
+                                )}
+                              </div>
+                              <div className="px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3"><div className="w-full py-2 sm:py-2.5 rounded-xl bg-[#00AFF0] text-white text-[12px] sm:text-sm font-black text-center shadow-lg border border-[#00AFF0] group-hover:bg-[#009AD6] transition-colors">{t('ofSearch.viewProfile')}</div></div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                };
+
+                // Grid is 2-col (mobile) / 4-col (desktop). The full-width block (col-span-4) must ONLY
+                // be inserted on a 4-cell row boundary, or it leaves empty cells (the "black gap").
+                // So we track single-cell items emitted and gate the block on cellCount % 4 === 0.
+                // FEATURED_EVERY / BLOCK targets are approximate — alignment wins over exact spacing.
+                let cellCount = 0;
+                let blocksShown = 0;
+                const pushCell = (node: React.ReactNode) => { items.push(node); cellCount++; };
+
+                // FIRST slot — always a featured OF creator.
+                const first = renderFeatured('featured-first');
+                if (first) pushCell(first);
 
                 sorted.forEach((creator, i) => {
-                  // Insert ad BEFORE the 9th, 18th, 27th… creator
-                  if (allTrending.length > 0 && i > 0 && i % AD_EVERY === 0) {
-                    const tc = allTrending[adIdx % allTrending.length];
-                    // Use a stable key tied to slot number, not creator id, so it
-                    // doesn't unmount/remount when creators shuffle around it.
-                    const slotNum = Math.floor(i / AD_EVERY);
-                    items.push(
-                      <motion.div
-                        key={`ad-slot-${slotNum}`}
-                        initial={{ opacity: 0, y: 14 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="relative"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => {
-                            trackTrendingClick(tc._id);
-                            window.open(tc.url, '_blank', 'noopener,noreferrer');
-                          }}
-                          className="group w-full text-left rounded-2xl overflow-hidden bg-gradient-to-br from-[#0B1D3A] via-[#122B53] to-[#1A3F73] shadow-[0_14px_36px_-12px_rgba(6,16,36,0.9)] hover:shadow-[0_18px_44px_-10px_rgba(10,27,58,0.95)] ring-[3px] ring-[#FF6A00] hover:ring-[#FF8C3A] transition-all duration-300 cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-[#C7DAFF]/50"
-                        >
-                          <div className="relative aspect-[3/4] bg-[#0F274C] ring-1 ring-inset ring-[#9FC3FF]/30">
-                            {tc.avatar ? (
-                              <img
-                                src={tc.avatar}
-                                alt={`${tc.name} OnlyFans`}
-                                className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
-                                loading="lazy"
-                                referrerPolicy="no-referrer"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-[#C7DAFF] bg-[#0F274C]">
-                                {tc.name.charAt(0)}
-                              </div>
-                            )}
-                            <div className="absolute top-2 left-2 z-10">
-                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#EAF1FF] text-[#1F4076] text-[9px] font-black uppercase tracking-widest shadow-md ring-1 ring-white/70">
-                                <Crown size={8} fill="currentColor" className="text-[#1F4076]" />
-                                {t('ofSearch.featured')}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="px-2.5 pt-2 sm:px-4 sm:pt-3">
-                            <h3 className="font-bold text-[13px] sm:text-[15px] text-white truncate leading-tight drop-shadow-sm">
-                              {tc.name}
-                            </h3>
-                            <p className="text-[11px] sm:text-[13px] text-[#BFD7FF] font-semibold mt-0.5">@{tc.username}</p>
-                          </div>
-                          <div className="px-2.5 pb-2.5 pt-2 sm:px-4 sm:pb-4 sm:pt-3">
-                            <div className="w-full py-2 sm:py-2.5 rounded-xl bg-[#FF6A00] text-white text-[13px] sm:text-sm font-black text-center border border-[#FFC08A] shadow-[0_8px_18px_-8px_rgba(255,106,0,0.95)] hover:bg-[#FF7A1A] hover:border-[#FFD0A8] transition-all">
-                              {t('ofSearch.viewProfile')}
-                            </div>
-                          </div>
-                        </button>
-                      </motion.div>
-                    );
-                    adIdx++;
+                  // Single featured creator every ~8 (1 cell).
+                  if (i > 0 && i % FEATURED_EVERY === 0) {
+                    const feat = renderFeatured(`featured-${Math.floor(i / FEATURED_EVERY)}`);
+                    if (feat) pushCell(feat);
                   }
 
-                  items.push(
+                  // Full-width block: once we've passed the threshold AND we're on a clean 4-cell row.
+                  const threshold = BLOCK_FIRST_AT + blocksShown * AD_BLOCK_EVERY;
+                  if (cellCount >= threshold && cellCount % 4 === 0) {
+                    const block = renderAdBlock(blocksShown);
+                    if (block) { items.push(block); blocksShown++; }
+                  }
+
+                  pushCell(
                     <motion.div
                       key={creator._id}
                       initial={{ opacity: 0, y: 14 }}

@@ -4,6 +4,7 @@
     "groupsAndBots": "Groups & Bots",
     "bots": "Bots",
     "articles": "Articles",
+    "blog": "Blog",
     "add": "Add",
     "addGroupOrBot": "Add Group or Bot",
     "login": "Login",
@@ -15,8 +16,8 @@
     "unlockPremium": "Unlock Erogram Premium"
   },
   "footer": {
-    "tagline": "The #1 Porn & NSFW Telegram Directory.",
-    "taglineSub": "Connect, explore, and indulge — safely and anonymously.",
+    "tagline": "Your #1 hub for Porn Telegram groups & NSFW tools, bots, AI companions, OnlyFans creators.",
+    "taglineSub": "Explore and save your favorites all in one place.",
     "discover": "Discover",
     "telegramGroups": "Telegram Groups",
     "aiBots": "AI Bots",
@@ -29,10 +30,10 @@
     "contact": "Contact"
   },
   "home": {
-    "badge": "The #1 NSFW & Porn Telegram and AI Directory",
-    "heroTitle1": "Discover NSFW & Porn Telegram groups,",
-    "heroTitle2": "bots & AI",
-    "heroDesc1": "Your #1 hub for NSFW Telegram groups & bots, AI companions & tools, and 1.8M+ OnlyFans creators.",
+    "badge": "#1 Porn Telegram & AI NSFW Hub",
+    "heroTitle1": "Your #1 hub for Adult Entertainment.",
+    "heroTitle2": "",
+    "heroDesc1": "Porn Telegram groups & NSFW bots, AI companions & tools, OnlyFans creators.",
     "heroDesc2": "Explore and save your favorites all in one place.",
     "exploreGroups": "Explore Groups",
     "exploreBots": "Explore Bots",
@@ -42,13 +43,13 @@
     "statsGroups": "Groups",
     "statsMembers": "Members",
     "statsViews": "Views",
-    "freshTitle1": "Fresh",
+    "freshTitle1": "Fresh Telegram Groups",
     "freshTitle2": "New Additions",
     "freshSubtitle": "The latest groups added to Erogram — updated daily",
     "new": "New",
     "browseAllGroups": "Browse All Groups",
-    "curatedTitle1": "Curated",
-    "curatedTitle2": "Top Lists",
+    "curatedTitle1": "Curated Top NSFW & PORN",
+    "curatedTitle2": "Telegram Groups Lists",
     "bestGroups": "Best {category} Groups",
     "topCollections": "Top 10 Collections",
     "viewAllCategories": "View all categories",
@@ -137,7 +138,8 @@
     "uses": "Uses"
   },
   "groups": {
-    "title": "Discover NSFW Telegram Groups",
+    "title": "Explore Adult & Porn Telegram Groups",
+    "heroSubtitle": "Browse and join the best Adult and Porn Telegram groups, curated, verified and updated daily.",
     "topGroups": "Top Groups",
     "topGroupsDesc": "Most popular this week",
     "hideFilters": "Hide Filters",
@@ -163,6 +165,7 @@
   "bots": {
     "title": "Discover NSFW Telegram Bots",
     "subtitle": "Discover amazing bots",
+    "heroSubtitle": "Discover the best NSFW Telegram bots — curated, verified and updated daily.",
     "topBots": "Top Bots",
     "topBotsDesc": "Most popular Bots",
     "hideFilters": "Hide Filters",

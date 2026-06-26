@@ -3,7 +3,7 @@ import { Resend } from 'resend';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 // Recipient: use your Resend-validated email (testing only sends to your own address until domain is verified)
-const TO_EMAIL = process.env.CONTACT_EMAIL || 'eliteaccelerator@gmail.com';
+const TO_EMAIL = process.env.CONTACT_EMAIL || 'isabella@erogram.biz';
 const FROM_EMAIL = 'Erogram Advertise <onboarding@resend.dev>';
 
 export async function POST(req: NextRequest) {

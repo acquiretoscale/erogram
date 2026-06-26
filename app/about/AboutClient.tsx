@@ -179,8 +179,8 @@ export default function AboutClient() {
             </p>
             <div className="flex items-center gap-3 text-[#999]">
               <span className="text-2xl">📧</span>
-              <a href="mailto:erogrampro@gmail.com" className="text-[#b31b1b] hover:underline text-lg">
-                erogrampro@gmail.com
+              <a href="mailto:support@erogram.biz" className="text-[#b31b1b] hover:underline text-lg">
+                support@erogram.biz
               </a>
             </div>
           </motion.div>

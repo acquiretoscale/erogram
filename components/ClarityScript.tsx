@@ -1,15 +1,8 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
 import Script from 'next/script';
 
-const EXCLUDED_PATHS = ['/enzogonzo', '/vickykovaks'];
-
 export default function ClarityScript() {
-  const pathname = usePathname();
-
-  if (EXCLUDED_PATHS.some(p => pathname.startsWith(p))) return null;
-
   return (
     <Script id="microsoft-clarity" strategy="afterInteractive">
       {`

@@ -5,6 +5,9 @@ import mongoose from 'mongoose';
 
 export const dynamic = 'force-dynamic';
 
+// Display base added to the live "visiting now" counter shown on public pages.
+const VISITING_NOW_BASE = 600;
+
 export async function GET() {
   try {
     await connectDB();
@@ -56,7 +59,7 @@ export async function GET() {
       totalGroups: approvedGroupCount,
       last24hClicks: last24hDisplay,
       clickBreakdown,
-      activeVisitors: (activeVisitors as number) + 14 + Math.floor(Math.sin(Date.now() / 120_000) * 4 + 4),
+      activeVisitors: VISITING_NOW_BASE + (activeVisitors as number) + 14 + Math.floor(Math.sin(Date.now() / 120_000) * 4 + 4),
       last7dClicks: last7dCount + 4800,
     });
   } catch (error: any) {

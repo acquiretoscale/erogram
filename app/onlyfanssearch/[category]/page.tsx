@@ -6,8 +6,11 @@ import CategoryClient from './CategoryClient';
 import { OF_CATEGORY_SLUGS, OF_CATEGORY_MAP, ofCategoryUrl } from '../constants';
 import { getLocale } from '@/lib/i18n/server';
 import { categoryOfMeta } from '../ofMeta';
+import { getKeywordPlacementCampaigns } from '@/lib/actions/campaigns';
 
-export const dynamic = 'force-dynamic';
+// SEO: no more force-dynamic + $sample. The page now serves a STABLE curated
+// ranking so Google sees the same content on every crawl (brain GAP 5 → was
+// buried at position 30+ because the random set changed every crawl).
 
 interface PageProps {
   params: Promise<{ category: string }>;
@@ -61,11 +64,15 @@ export default async function OnlyFansSlugPage({ params }: PageProps) {
 
   const baseMatch = { categories: rawSlug, gender: 'female', avatar: { $ne: '' }, deleted: { $ne: true } };
 
-  const creators = await OnlyFansCreator.aggregate([
-    { $match: baseMatch },
-    { $sample: { size: 200 } },
-    { $project: { name: 1, username: 1, slug: 1, avatar: 1, header: 1, bio: 1, subscriberCount: 1, likesCount: 1, photosCount: 1, videosCount: 1, price: 1, isFree: 1, isVerified: 1, url: 1, clicks: 1 } },
-  ]);
+  // Stable ranked list — same top creators on every crawl (clicks → likes → _id
+  // as a deterministic tiebreak). Mirrors the curated-list approach that keeps
+  // /best-telegram-groups ranking. Client default sort is also clicks-desc, so
+  // server HTML and first client render agree (no reshuffle on hydration).
+  const creators = await OnlyFansCreator.find(baseMatch)
+    .sort({ clicks: -1, likesCount: -1, _id: 1 })
+    .limit(200)
+    .select('name username slug avatar header bio subscriberCount likesCount photosCount videosCount price isFree isVerified url clicks')
+    .lean();
 
   const seen = new Set<string>();
   const serialized = (creators as any[])
@@ -77,6 +84,24 @@ export default async function OnlyFansSlugPage({ params }: PageProps) {
       return true;
     });
 
+  // Unified Ad Network: keyword-targeted of-cat campaigns for this category.
+  // onlyfans-creator ads → the paid featured strip (route straight to OnlyFans);
+  // any adType → the agnostic 4-ad block injected every 80 results.
+  const ofCatAds = await getKeywordPlacementCampaigns('of-cat', rawSlug, 8).catch(() => []);
+  const paidFeatured = (ofCatAds as any[])
+    .filter((c) => c.adType === 'onlyfans-creator' && (c.creative || c.ofUsername))
+    .map((c) => ({
+      _id: c._id,
+      campaignId: c._id,
+      name: c.name || c.ofUsername || '',
+      username: c.ofUsername || '',
+      avatar: c.creative || '',
+      url: c.destinationUrl || '',
+      bio: c.description || '',
+      likesCount: c.ofLikesCount || 0,
+      isPaidCampaign: true,
+    }));
+
   const cat = OF_CATEGORY_MAP.get(rawSlug)!;
   return (
     <CategoryClient
@@ -84,6 +109,8 @@ export default async function OnlyFansSlugPage({ params }: PageProps) {
       category={rawSlug}
       label={cat.name}
       canonicalUrl={`https://erogram.pro${ofCategoryUrl(rawSlug)}`}
+      paidFeatured={paidFeatured}
+      agnosticAds={ofCatAds as any}
     />
   );
 }

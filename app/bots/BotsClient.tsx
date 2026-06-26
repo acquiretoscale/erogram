@@ -76,7 +76,6 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
   const [selectedSubcategory, setSelectedSubcategory] = useState('All');
   const [selectedSort, setSelectedSort] = useState('random');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
   const [showAddBotModal, setShowAddBotModal] = useState(false);
   const [bots, setBots] = useState(initialBots.filter(b => !b.pinned));
   const [pinnedBots, setPinnedBots] = useState<Bot[]>(initialBots.filter(b => b.pinned));
@@ -321,6 +320,25 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
     return new Set(advertPlacementsMap.keys());
   }, [advertPlacementsMap]);
 
+  // Top Bots ad spots 1-4 (tierSlot 7-10 = named placements top-bots-1..4). Spot 1 keyed at index 0, etc.
+  const topBotsAds = useMemo(() => {
+    const map = new Map<number, FeedCampaign>();
+    if (feedCampaigns?.length) {
+      // An ad assigned to several Top Bots spots must show in only ONE at a time — never the
+      // same ad duplicated across spots. Place each ad id once, into its lowest assigned spot.
+      const usedIds = new Set<string>();
+      for (let slot = 0; slot < 4; slot++) {
+        const tierSlot = slot + 7;
+        const pick = feedCampaigns.find((c) => c.tierSlot === tierSlot && !usedIds.has(c._id));
+        if (pick) {
+          map.set(slot, pick);
+          usedIds.add(pick._id);
+        }
+      }
+    }
+    return map;
+  }, [feedCampaigns]);
+
   // Feed ads from Admin → Feed Ads (placement = Bots or Both). One ad every 5 entries at 5, 10, 15, ...
   const feedPlacementsMap = useMemo(() => {
     const map = new Map<number, FeedCampaign>();
@@ -381,108 +399,86 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
       />
 
       {/* Main Content */}
-      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-8 min-h-screen">
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-24 pb-8 min-h-screen">
+        {/* Hero — same framework as AI NSFW (badge + title + subtitle) */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-6 sm:mb-8"
+        >
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#ff5e2a]/10 border border-[#ff5e2a]/30 text-[#ff7a3d] text-xs font-bold uppercase tracking-[2px] mb-4">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#ff7a3d] animate-pulse" />
+            Curated &amp; Verified
+          </div>
+          <h1 className="text-[32px] sm:text-[50px] md:text-[58px] font-black leading-[1.05] tracking-tight text-white mb-3">
+            {t('bots.title')}
+          </h1>
+          <p className="text-white/50 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
+            {t('bots.heroSubtitle', 'Discover the best NSFW Telegram bots — curated, verified and updated daily.')}
+          </p>
+        </motion.div>
+
         {/* Global top banner (single campaign) */}
         <div className="w-full mb-4">
           <HeaderBanner campaigns={topBannerCampaigns} />
         </div>
-        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
-          {/* Mobile: Filter toggle */}
-          <div className="lg:hidden">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="w-full px-4 py-3 bg-[#b31b1b] hover:bg-[#c42b2b] text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
+
+        {/* Filter bar — same framework as AI NSFW: compact, centered, inline */}
+        <div className="mb-6 sm:mb-8 flex flex-wrap items-center justify-center gap-2">
+          {/* Category */}
+          <div className="relative">
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              aria-label={t('common.category')}
+              className="pl-3 pr-7 py-1.5 rounded-full bg-[#131a24] border border-[#ff5e2a]/20 text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#ff5e2a]/50 focus:border-[#ff5e2a]/40 transition-all appearance-none cursor-pointer"
             >
-              <span className="text-xl">🔍</span>
-              {showFilters ? t('bots.hideFilters') : t('bots.showFilters')}
-            </button>
+              {categories.map((cat) => (
+                <option key={cat} value={cat} className="bg-[#131a24]">{cat === 'All' ? 'All Categories' : cat}</option>
+              ))}
+            </select>
+            <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-white/40 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
           </div>
 
-          {/* Sidebar Filters */}
-          <aside className={`${showFilters ? 'block' : 'hidden'} lg:block lg:w-1/4`} suppressHydrationWarning>
-            <div className="glass rounded-2xl p-6 backdrop-blur-lg border border-white/10">
-              {/* Header */}
-              <div className="text-center mb-8">
-                <h2 className="text-2xl font-black text-[#f5f5f5] mb-2">🔍 {t('bots.filters')}</h2>
-                <p className="text-[#999] text-sm">{t('bots.findPerfect')}</p>
-              </div>
+          {/* Sort */}
+          <div className="relative">
+            <select
+              value={selectedSort}
+              onChange={(e) => setSelectedSort(e.target.value)}
+              aria-label={t('bots.sortBy')}
+              className="pl-3 pr-7 py-1.5 rounded-full bg-[#131a24] border border-[#ff5e2a]/20 text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#ff5e2a]/50 focus:border-[#ff5e2a]/40 transition-all appearance-none cursor-pointer"
+            >
+              <option value="newest" className="bg-[#131a24]">{t('bots.newestFirst')}</option>
+              <option value="random" className="bg-[#131a24]">{t('bots.randomDiscovery')}</option>
+              <option value="popular" className="bg-[#131a24]">{t('bots.mostPopular')}</option>
+              <option value="oldest" className="bg-[#131a24]">{t('bots.oldestFirst')}</option>
+            </select>
+            <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-white/40 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
 
-              {/* Category Filter */}
-              <div className="mb-6">
-                <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
-                  <span className="mr-2">📂</span>
-                  {t('common.category')}
-                </label>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none transition-all"
-                >
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat} className="bg-[#222]">
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
+          {/* Search — white background, compact */}
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t('bots.searchByName')}
+              aria-label={t('bots.searchBots')}
+              className="w-44 pl-8 pr-7 py-1.5 rounded-full bg-white border border-[#ff5e2a]/20 text-black text-xs placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ff5e2a]/50 focus:border-[#ff5e2a]/40 transition-all"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} aria-label="Clear search" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black transition-colors">
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            )}
+          </div>
+        </div>
 
-              {/* Subcategory Filter */}
-              <div className="mb-6">
-                <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
-                  <span className="mr-2">🏷️</span>
-                  {t('common.subcategory')}
-                </label>
-                <select
-                  value={selectedSubcategory}
-                  onChange={(e) => setSelectedSubcategory(e.target.value)}
-                  className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none transition-all"
-                >
-                  {categories.map((cat) => (
-                    <option key={`sub-${cat}`} value={cat} className="bg-[#222]">
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Sort By */}
-              <div className="mb-6">
-                <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
-                  <span className="mr-2">📊</span>
-                  {t('bots.sortBy')}
-                </label>
-                <select
-                  value={selectedSort}
-                  onChange={(e) => setSelectedSort(e.target.value)}
-                  className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none transition-all"
-                >
-                  <option value="newest" className="bg-[#222]">🆕 {t('bots.newestFirst')}</option>
-                  <option value="random" className="bg-[#222]">🎲 {t('bots.randomDiscovery')}</option>
-                  <option value="popular" className="bg-[#222]">🔥 {t('bots.mostPopular')}</option>
-                  <option value="oldest" className="bg-[#222]">📅 {t('bots.oldestFirst')}</option>
-                </select>
-              </div>
-
-              {/* Search */}
-              <div className="mb-6">
-                <label className="block text-sm font-bold text-[#f5f5f5] mb-3 flex items-center">
-                  <span className="mr-2">🔍</span>
-                  {t('bots.searchBots')}
-                </label>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={t('bots.searchByName')}
-                  className="w-full p-4 border border-white/20 rounded-xl bg-white/5 text-[#f5f5f5] placeholder:text-gray-500 focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none transition-all"
-                />
-              </div>
-
-            </div>
-          </aside>
-
-          {/* Bots Grid */}
-          <div className="lg:w-3/4">
+        <div>
+          {/* Bots Grid — full width */}
+          <div>
             {/* Top Bots Section — hidden when a search or filter is active */}
             {!debouncedSearchQuery && selectedCategory === 'All' && selectedSubcategory === 'All' && (topBots.length > 0 || topBotsLoading) && (
               <div className="mb-5 relative rounded-2xl p-[2px]" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706, #92400e, #d97706, #f59e0b, #fcd34d, #f59e0b)' }}>
@@ -506,18 +502,28 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
                       <BotCardSkeleton key={`top-skeleton-${i}`} />
                     ))
                   ) : (
-                    <>
-                      {[...topBots].sort((a, b) => (botScores[b.slug] ?? 0) - (botScores[a.slug] ?? 0)).slice(0, feedCampaigns.length > 0 ? 3 : 4).map((bot, idx) => (
-                        <div key={`top-${bot._id}`} className="h-full">
-                          <BotCard bot={bot} isIndex={idx} directLink={bot.isAdvertisement && bot.advertisementUrl ? bot.advertisementUrl : bot.telegramLink || undefined} initialStats={allBotStats?.[bot.slug]} onVoteChange={handleBotVoteChange} />
-                        </div>
-                      ))}
-                      {feedCampaigns.length > 0 && (
-                        <div className="h-full">
-                          <AdvertCard campaign={feedCampaigns[0]} isIndex={3} />
-                        </div>
-                      )}
-                    </>
+                    (() => {
+                      // 4 spots. Each spot shows its assigned Top Bots ad (top-bots-1..4) if any,
+                      // otherwise the next-highest-scored bot. Legacy fallback: spot 4 = first feed ad.
+                      const sortedBots = [...topBots].sort((a, b) => (botScores[b.slug] ?? 0) - (botScores[a.slug] ?? 0));
+                      const hasNamedAds = topBotsAds.size > 0;
+                      const cells: React.ReactNode[] = [];
+                      let botIdx = 0;
+                      for (let spot = 0; spot < 4; spot++) {
+                        const ad = topBotsAds.get(spot) ?? (!hasNamedAds && spot === 3 && feedCampaigns.length > 0 ? feedCampaigns[0] : null);
+                        if (ad) {
+                          cells.push(<div key={`top-ad-${spot}`} className="h-full"><AdvertCard campaign={ad} isIndex={spot} /></div>);
+                        } else {
+                          const bot = sortedBots[botIdx++];
+                          if (bot) cells.push(
+                            <div key={`top-${bot._id}`} className="h-full">
+                              <BotCard bot={bot} isIndex={spot} directLink={bot.isAdvertisement && bot.advertisementUrl ? bot.advertisementUrl : bot.telegramLink || undefined} initialStats={allBotStats?.[bot.slug]} onVoteChange={handleBotVoteChange} />
+                            </div>
+                          );
+                        }
+                      }
+                      return <>{cells}</>;
+                    })()
                   )}
                 </div>
               </div>
@@ -527,15 +533,6 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
 
             {/* All Bots */}
             <div className="relative">
-              <div className="text-center mb-12">
-                <h1 className="text-3xl md:text-4xl font-black text-[#f5f5f5] mb-4">
-                  {t('bots.title')}
-                </h1>
-                <p className="text-[#999] text-lg">
-                  {t('bots.subtitle')}
-                </p>
-              </div>
-
               {displayBots.length === 0 ? (
                 <div className="text-center py-20">
                   <div className="text-6xl mb-4">😔</div>
@@ -685,7 +682,7 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
         : 'border-white/5 hover:border-white/20 hover:shadow-2xl hover:shadow-black/50'
         }`}>
         {/* Bot Image */}
-        <div ref={imgRef} className="relative w-full h-32 sm:h-52 overflow-hidden bg-[#1a1a1a]">
+        <div ref={imgRef} className="relative w-full aspect-square overflow-hidden bg-[#1a1a1a]">
           <img
             src={imageSrc}
             alt={bot.name}
@@ -1003,7 +1000,7 @@ function AddBotModal({ categories, onClose, onSuccess }: { categories: string[];
   const { t } = useTranslation();
   const [botData, setBotData] = useState({
     name: '',
-    categories: ['Amateur'] as string[],
+    categories: ['NSFW Bot'] as string[],
     telegramLink: '',
     description: '',
     imageFile: null as File | null

@@ -222,7 +222,7 @@ function LoginGate({ onLogin }: { onLogin: (token: string, advertiser: Advertise
 
         <p className="text-center text-gray-600 text-xs mt-6">
           Need an advertiser account? Contact{' '}
-          <a href="mailto:erogrampro@gmail.com" className="text-amber-500/80 hover:text-amber-400 transition-colors">
+          <a href="mailto:isabella@erogram.biz" className="text-amber-500/80 hover:text-amber-400 transition-colors">
             our team
           </a>
         </p>
@@ -555,7 +555,7 @@ function Dashboard({ token, advertiser, onLogout }: { token: string; advertiser:
                     {articles.map((a) => (
                       <tr key={a._id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
                         <td className="px-5 py-3">
-                          <a href={`/articles/${a.slug}`} target="_blank" rel="noopener noreferrer" className="text-white hover:text-amber-400 transition-colors font-medium">
+                          <a href={`/blog/${a.slug}`} target="_blank" rel="noopener noreferrer" className="text-white hover:text-amber-400 transition-colors font-medium">
                             {a.title}
                           </a>
                         </td>
