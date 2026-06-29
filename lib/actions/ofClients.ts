@@ -2,7 +2,7 @@
 
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
-import { User, OFClient, TrendingOFCreator, CampaignClick, TrendingClickDaily, CampaignImpressionDaily } from '@/lib/models';
+import { User, OFClient, TrendingOFCreator, CampaignClick, CampaignImpressionDaily } from '@/lib/models';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -50,9 +50,8 @@ export async function getOFClientDashboard(token: string, clientId?: string) {
   if (!client) return null;
   const c = client as any;
 
-  const creators = await TrendingOFCreator.find({ ofClientId: c._id }, 'name username avatar url linkedCampaignId clicks').lean();
+  const creators = await TrendingOFCreator.find({ ofClientId: c._id }, 'name username avatar url linkedCampaignId').lean();
   const campaignIds = (creators as any[]).map((cr) => cr.linkedCampaignId).filter(Boolean);
-  const creatorIds = (creators as any[]).map((cr) => cr._id);
 
   const start = new Date(c.startDate);
   const end = new Date(c.endDate);
@@ -60,35 +59,17 @@ export async function getOFClientDashboard(token: string, clientId?: string) {
   const startDay = ymd(start);
   const endDay = ymd(end);
 
-  // OFsearch clicks live in a SEPARATE store (TrendingClickDaily, day-level, keyed by creatorId).
-  // We read-merge it so OFM shows the TRUE total across both ad-network + onlyfanssearch surfaces.
-  const ofSearchRows = creatorIds.length
-    ? await TrendingClickDaily.find(
-        { creatorId: { $in: creatorIds }, date: { $gte: startDay, $lte: endDay } },
-        'creatorId date clicks',
-      ).lean()
-    : [];
-  const ofSearchByCreator = new Map<string, number>();
-  const ofSearchByDay = new Map<string, number>();
-  let ofSearchTotal = 0;
-  for (const r of ofSearchRows as any[]) {
-    const cid = String(r.creatorId);
-    ofSearchByCreator.set(cid, (ofSearchByCreator.get(cid) || 0) + (r.clicks || 0));
-    ofSearchByDay.set(r.date, (ofSearchByDay.get(r.date) || 0) + (r.clicks || 0));
-    ofSearchTotal += r.clicks || 0;
-  }
-
-  // Per-creator totals = unified CampaignClick (within window) + OFsearch store.
+  // ONE unified store: every OF click is a CampaignClick on the creator's linked campaign.
+  // Per-model total is LIFETIME (all-time), matching the model detail page header. The day/hour
+  // charts below stay windowed (that's correct for a time series).
   const perCreator = await Promise.all(
     (creators as any[]).map(async (cr) => {
       let clicks = 0;
       if (cr.linkedCampaignId) {
         clicks = await CampaignClick.countDocuments({
           campaignId: cr.linkedCampaignId,
-          clickedAt: { $gte: start, $lte: end },
         });
       }
-      clicks += ofSearchByCreator.get(String(cr._id)) || 0;
       return {
         name: cr.name || cr.username,
         username: cr.username,
@@ -141,7 +122,7 @@ export async function getOFClientDashboard(token: string, clientId?: string) {
   const spanEnd = end < now ? end : now;
   for (let d = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate())); d <= spanEnd; d.setUTCDate(d.getUTCDate() + 1)) {
     const key = ymd(d);
-    daily.push({ label: key.slice(5), clicks: (dayMap.get(key) || 0) + (ofSearchByDay.get(key) || 0) });
+    daily.push({ label: key.slice(5), clicks: dayMap.get(key) || 0 });
   }
 
   // Section breakdown — which surface delivers the clicks. Maps the per-click `placement`
@@ -170,7 +151,6 @@ export async function getOFClientDashboard(token: string, clientId?: string) {
     return 'Other';
   };
   for (const r of sectionRows as any[]) SECTION_TOTALS[sectionOf(r._id)] += r.n;
-  SECTION_TOTALS['OnlyFans Search'] += ofSearchTotal;
   const sections = Object.entries(SECTION_TOTALS)
     .filter(([, n]) => n > 0)
     .map(([label, clicks]) => ({ label, clicks }))

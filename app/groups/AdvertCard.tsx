@@ -79,21 +79,34 @@ function OnlyFansCreatorAdCard({ campaign, handleClick, growthPercent }: { campa
     //  We random-pick ONE album entry per render, CLIENT-SIDE, so the pick varies per visitor and
     //  is never frozen by the page's ISR cache. Album index i is tagged ":v{i}" for per-picture CTR.
     const album = campaign.ofAlbum ?? [];
+    // Stable full-album index for each shown image — what the dashboard reads for per-picture CTR.
+    // Falls back to array position if not provided (older data), but the server now always sends it.
+    const albumIdx = campaign.ofAlbumIdx ?? [];
     // Roll the rotation AFTER mount (client-only). If we picked during the SSR initializer, the
     // server HTML would freeze one image under the page cache and every visitor would see it.
     // Starting at 0 then re-rolling on mount makes the shown image vary per page view.
-    const [variantIdx, setVariantIdx] = useState<number>(0);
+    const [pos, setPos] = useState<number>(0);
     useEffect(() => {
-        if (album.length > 1) setVariantIdx(Math.floor(Math.random() * album.length));
+        if (album.length > 1) setPos(Math.floor(Math.random() * album.length));
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
-    const displayImage = (variantIdx >= 0 && album[variantIdx])
-        ? album[variantIdx]
-        : (album[0] || campaign.creative || '');
+    const displayImage = album[pos] || album[0] || campaign.creative || '';
+    // Tag the click with the STABLE full-album index of the shown image (not its position in the
+    // paused-filtered array) so per-picture clicks line up with the dashboard.
+    const shownVariantIdx = albumIdx[pos] ?? albumIdx[0] ?? -1;
 
+    // ONE tagged click per OF card (no double-count). Real campaigns track via handleClick →
+    // trackCampaignClick(campaignId, 'feed-X:v{idx}'). Synthetic featured items (fake _id like
+    // 'of-featured-…') have no real campaign id, so they track via trackTrendingClick(trendingId,
+    // idx) which resolves the linked campaign server-side; handleClick then only navigates.
+    const isRealCampaign = /^[0-9a-fA-F]{24}$/.test(String(campaign._id || ''));
     const onCardClick = () => {
-        if (trendingId) trackTrendingClick(trendingId);
-        handleClick(variantIdx);
+        if (isRealCampaign) {
+            handleClick(shownVariantIdx);
+        } else {
+            if (trendingId) trackTrendingClick(trendingId, shownVariantIdx);
+            handleClick(shownVariantIdx);
+        }
     };
 
     useEffect(() => {

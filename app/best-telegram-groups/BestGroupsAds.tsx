@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import AdvertCard from '@/app/groups/AdvertCard';
 import FallbackImage from '@/components/FallbackImage';
 import type { FeedCampaign } from '@/app/groups/types';
@@ -25,6 +26,82 @@ function adTypeMeta(adType?: string) {
 }
 
 /**
+ * Top-slot image for onlyfans-creator ads: picks from ofAlbum client-side (after mount) so the
+ * paused avatar never shows and the shown image matches what AdvertCard would rotate.
+ * Also tags the click with the stable full-album index (ofAlbumIdx) so /ofm/manage tracks it.
+ */
+function TopSlotOFCreatorCard({ ad }: { ad: FeedCampaign }) {
+  const album = ad.ofAlbum ?? [];
+  const albumIdx = ad.ofAlbumIdx ?? [];
+  const [pos, setPos] = useState(0);
+  useEffect(() => {
+    if (album.length > 1) setPos(Math.floor(Math.random() * album.length));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const displayImage = album[pos] || album[0] || ad.creative || '';
+  const stableIdx = albumIdx[pos] ?? albumIdx[0] ?? -1;
+
+  const meta = adTypeMeta(ad.adType);
+  const go = () => {
+    const placement = stableIdx >= 0 ? `best-groups:v${stableIdx}` : 'best-groups';
+    trackClick(ad._id, placement).catch(() => {});
+    const url = (ad.destinationUrl || '').trim();
+    if (url.startsWith('/')) window.location.href = url;
+    else if (/^https?:\/\//.test(url)) window.open(url, '_blank', 'noopener');
+  };
+  return (
+    <div
+      onClick={go}
+      role="link"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === 'Enter' && go()}
+      className="rounded-3xl p-6 md:p-8 border border-[#00AFF0]/30 bg-gradient-to-br from-[#00AFF0]/[0.10] to-[#7c3aed]/[0.08] relative overflow-hidden mb-12 cursor-pointer group"
+    >
+      <div className="absolute top-0 left-0 bg-[#00AFF0] text-white px-5 py-2 rounded-br-3xl font-black text-sm z-10 uppercase tracking-[0.08em]">
+        Featured
+      </div>
+      <div className="flex flex-col md:flex-row gap-8 mt-4">
+        <div className="w-full md:w-1/3 flex-shrink-0">
+          <div className="relative aspect-square rounded-2xl overflow-hidden bg-gray-800 shadow-2xl">
+            {displayImage ? (
+              <img src={displayImage} alt={ad.name || 'Featured'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" loading="lazy" referrerPolicy="no-referrer" />
+            ) : (
+              <FallbackImage src={ad.creative} alt={ad.name || 'Featured'} className="object-cover group-hover:scale-110 transition-transform duration-500" />
+            )}
+          </div>
+        </div>
+        <div className="flex-grow flex flex-col justify-center">
+          <span className="inline-flex w-fit items-center gap-1.5 px-2.5 py-1 mb-2 rounded-full bg-[#00AFF0]/10 border border-[#00AFF0]/25 text-[#00AFF0] text-[10px] font-bold uppercase tracking-[0.08em]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#00AFF0]" />
+            {meta.label}
+          </span>
+          <h2 className="text-3xl font-bold mb-3 group-hover:text-[#00AFF0] transition-colors">{ad.name}</h2>
+          <div className="flex flex-wrap gap-3 mb-4">
+            {ad.category && ad.category !== 'All' && (
+              <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-gray-300">📂 {ad.category}</span>
+            )}
+            {ad.country && ad.country !== 'All' && (
+              <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-gray-300">🌍 {ad.country}</span>
+            )}
+          </div>
+          <p className="text-gray-400 text-lg mb-8 leading-relaxed line-clamp-3">
+            {(ad.description || '').trim() || meta.blurb}
+          </p>
+          <div className="mt-auto">
+            <span
+              className="inline-block w-full md:w-auto text-center text-white font-black py-3 px-8 rounded-xl transition-all group-hover:brightness-110 group-hover:scale-[1.02]"
+              style={{ background: 'linear-gradient(135deg, #ff5e2a, #ff9432)', color: '#ffffff', boxShadow: '0 4px 14px -5px rgba(255,94,42,0.5)' }}
+            >
+              {ad.buttonText || 'Visit site'}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Agnostic ad surfaces for the Best Telegram Groups Top-10 pages.
  * - variant="top": a single ad rendered in the EXACT same big card layout as a group entry,
  *   so it blends in. Carries a FEATURED badge (not a rank number). JS-click only → SEO-safe.
@@ -37,6 +114,10 @@ export default function BestGroupsAds({ ads, variant }: BestGroupsAdsProps) {
 
   if (variant === 'top') {
     const ad = ads[0];
+    // onlyfans-creator needs album-aware rotation + stable click index.
+    if (ad.adType === 'onlyfans-creator') {
+      return <TopSlotOFCreatorCard ad={ad} />;
+    }
     const meta = adTypeMeta(ad.adType);
     const go = () => {
       trackClick(ad._id, 'best-groups').catch(() => {});
@@ -52,11 +133,9 @@ export default function BestGroupsAds({ ads, variant }: BestGroupsAdsProps) {
         onKeyDown={(e) => e.key === 'Enter' && go()}
         className="rounded-3xl p-6 md:p-8 border border-[#00AFF0]/30 bg-gradient-to-br from-[#00AFF0]/[0.10] to-[#7c3aed]/[0.08] relative overflow-hidden mb-12 cursor-pointer group"
       >
-        {/* FEATURED badge — blends with the rank-badge spot, but never claims a rank. */}
         <div className="absolute top-0 left-0 bg-[#00AFF0] text-white px-5 py-2 rounded-br-3xl font-black text-sm z-10 uppercase tracking-[0.08em]">
           Featured
         </div>
-
         <div className="flex flex-col md:flex-row gap-8 mt-4">
           <div className="w-full md:w-1/3 flex-shrink-0">
             <div className="relative aspect-square rounded-2xl overflow-hidden bg-gray-800 shadow-2xl">
@@ -67,33 +146,23 @@ export default function BestGroupsAds({ ads, variant }: BestGroupsAdsProps) {
               />
             </div>
           </div>
-
           <div className="flex-grow flex flex-col justify-center">
-            {/* Ad type tag — clean dot marker, no emoji. */}
             <span className="inline-flex w-fit items-center gap-1.5 px-2.5 py-1 mb-2 rounded-full bg-[#00AFF0]/10 border border-[#00AFF0]/25 text-[#00AFF0] text-[10px] font-bold uppercase tracking-[0.08em]">
               <span className="w-1.5 h-1.5 rounded-full bg-[#00AFF0]" />
               {meta.label}
             </span>
-
             <h2 className="text-3xl font-bold mb-3 group-hover:text-[#00AFF0] transition-colors">{ad.name}</h2>
-
             <div className="flex flex-wrap gap-3 mb-4">
               {ad.category && ad.category !== 'All' && (
-                <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-gray-300">
-                  📂 {ad.category}
-                </span>
+                <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-gray-300">📂 {ad.category}</span>
               )}
               {ad.country && ad.country !== 'All' && (
-                <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-gray-300">
-                  🌍 {ad.country}
-                </span>
+                <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-gray-300">🌍 {ad.country}</span>
               )}
             </div>
-
             <p className="text-gray-400 text-lg mb-8 leading-relaxed line-clamp-3">
               {(ad.description || '').trim() || meta.blurb}
             </p>
-
             <div className="mt-auto">
               <span
                 className="inline-block w-full md:w-auto text-center text-white font-black py-3 px-8 rounded-xl transition-all group-hover:brightness-110 group-hover:scale-[1.02]"

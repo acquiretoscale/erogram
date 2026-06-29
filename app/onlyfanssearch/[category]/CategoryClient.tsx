@@ -15,12 +15,15 @@ import type { FeedCampaign } from '@/app/groups/types';
 import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
 
 /** Featured-creator image that rotates the split-test album client-side (per view, ISR-safe). */
-function RotatingImg({ album, fallback, alt, className }: { album?: string[]; fallback: string; alt: string; className: string }) {
+function RotatingImg({ album, albumIdx, fallback, alt, className, onPick }: { album?: string[]; albumIdx?: number[]; fallback: string; alt: string; className: string; onPick?: (stableIdx: number) => void }) {
   const pool = (album && album.length > 0) ? album : (fallback ? [fallback] : []);
   const [idx, setIdx] = useState(0);
   const [err, setErr] = useState(false);
   useEffect(() => {
-    if (pool.length > 1) setIdx(Math.floor(Math.random() * pool.length));
+    const p = pool.length > 1 ? Math.floor(Math.random() * pool.length) : 0;
+    setIdx(p);
+    // Report the STABLE album index of the shown image so the click can attribute it (split test).
+    if (onPick) onPick(albumIdx?.[p] ?? p);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const src = pool[idx] || fallback;
@@ -193,6 +196,10 @@ export default function CategoryClient({ creators: initialCreators, category, la
   const [shuffleKey, setShuffleKey] = useState(0);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [allTrending, setAllTrending] = useState<any[]>([]);
+  // Which stable album image each featured card is showing → for split-test click attribution.
+  const shownVariantRef = useRef<Record<string, number>>({});
+  // Build the of-cat placement tag with the shown image's stable index.
+  const ofCatPlacement = (idx: number) => (idx >= 0 ? `of-cat:v${idx}` : 'of-cat');
   const [isAdmin, setIsAdmin] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const searchBoxRef = useRef<HTMLDivElement>(null);
@@ -614,8 +621,9 @@ export default function CategoryClient({ creators: initialCreators, category, la
                       <button
                         type="button"
                         onClick={() => {
-                          if (tc.isPaidCampaign && tc.campaignId) trackCampaignClick(tc.campaignId, 'of-cat');
-                          else if (tc._id) trackTrendingClick(tc._id);
+                          const vIdx = shownVariantRef.current[tc._id] ?? -1;
+                          if (tc.isPaidCampaign && tc.campaignId) trackCampaignClick(tc.campaignId, ofCatPlacement(vIdx));
+                          else if (tc._id) trackTrendingClick(tc._id, vIdx);
                           window.open(tc.url, '_blank', 'noopener,noreferrer');
                         }}
                         className="group w-full text-left rounded-2xl overflow-hidden bg-gradient-to-br from-[#0B1D3A] via-[#122B53] to-[#1A3F73] shadow-[0_14px_36px_-12px_rgba(6,16,36,0.9)] hover:shadow-[0_18px_44px_-10px_rgba(10,27,58,0.95)] ring-[3px] ring-[#FF6A00] hover:ring-[#FF8C3A] transition-all duration-300 cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-[#C7DAFF]/50"
@@ -624,6 +632,8 @@ export default function CategoryClient({ creators: initialCreators, category, la
                           {tc.avatar ? (
                             <RotatingImg
                               album={tc.album}
+                              albumIdx={tc.albumIdx}
+                              onPick={(v) => { shownVariantRef.current[tc._id] = v; }}
                               fallback={tc.avatar}
                               alt={`${tc.name} OnlyFans`}
                               className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
@@ -677,15 +687,16 @@ export default function CategoryClient({ creators: initialCreators, category, la
                               key={`ofcat-${blockNum}-${tc._id || tc.username}-${k}`}
                               type="button"
                               onClick={() => {
-                                if (tc.isPaidCampaign && tc.campaignId) trackCampaignClick(tc.campaignId, 'of-cat');
-                                else if (tc._id) trackTrendingClick(tc._id);
+                                const vIdx = shownVariantRef.current[tc._id] ?? -1;
+                                if (tc.isPaidCampaign && tc.campaignId) trackCampaignClick(tc.campaignId, ofCatPlacement(vIdx));
+                                else if (tc._id) trackTrendingClick(tc._id, vIdx);
                                 window.open(tc.url, '_blank', 'noopener,noreferrer');
                               }}
                               className="group w-full text-left rounded-2xl overflow-hidden bg-white ring-[2px] ring-[#00AFF0]/30 hover:ring-[#00AFF0] shadow-[0_8px_28px_-8px_rgba(0,175,240,0.25)] hover:shadow-[0_12px_36px_-6px_rgba(0,175,240,0.35)] hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none"
                             >
                               <div className="relative aspect-[3/4] bg-[#f0f8ff]">
                                 {tc.avatar ? (
-                                  <RotatingImg album={tc.album} fallback={tc.avatar} alt={`${tc.name} OnlyFans`} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" />
+                                  <RotatingImg album={tc.album} albumIdx={tc.albumIdx} onPick={(v) => { shownVariantRef.current[tc._id] = v; }} fallback={tc.avatar} alt={`${tc.name} OnlyFans`} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#00AFF0] bg-[#f0f8ff]">{tc.name.charAt(0)}</div>
                                 )}

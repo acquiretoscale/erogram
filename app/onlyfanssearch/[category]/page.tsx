@@ -97,6 +97,7 @@ export default async function OnlyFansSlugPage({ params }: PageProps) {
       username: c.ofUsername || '',
       avatar: (c.ofAlbum && c.ofAlbum[0]) || c.creative || '',
       album: c.ofAlbum || [],
+      albumIdx: c.ofAlbumIdx || [],
       url: c.destinationUrl || '',
       bio: c.description || '',
       likesCount: c.ofLikesCount || 0,

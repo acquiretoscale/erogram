@@ -70,63 +70,50 @@ async function totalImpressions(campaignIds: any[]) {
   return r[0]?.total ?? 0;
 }
 
-/**
- * Clicks per split-test variant, parsed from the EXISTING CampaignClick.placement tag.
- * Clicks on a test image are stamped "<placement>:v{idx}" at write time; default (avatar)
- * clicks have no ":v" suffix → bucket -1. No new field/collection (BASIC).
- */
-async function variantClickMap(campaignIds: any[]): Promise<Map<number, number>> {
-  const map = new Map<number, number>();
-  if (!campaignIds.length) return map;
-  const rows = await CampaignClick.aggregate([
-    { $match: { campaignId: { $in: campaignIds } } },
-    {
-      $project: {
-        v: {
-          $let: {
-            vars: { idx: { $indexOfBytes: ['$placement', ':v'] } },
-            in: {
-              $cond: [
-                { $gte: ['$$idx', 0] },
-                { $toInt: { $substrBytes: ['$placement', { $add: ['$$idx', 2] }, 2] } },
-                -1,
-              ],
-            },
-          },
-        },
-      },
-    },
-    { $group: { _id: '$v', clicks: { $sum: 1 } } },
-  ]);
-  for (const r of rows as any[]) map.set(r._id ?? -1, r.clicks);
-  return map;
-}
+type PeriodStat = { total: number; last24h: number; last48h: number; last7d: number; last30d: number };
+const EMPTY_STAT = (): PeriodStat => ({ total: 0, last24h: 0, last48h: 0, last7d: 0, last30d: 0 });
 
-/** Period clicks broken down by split-test variant index (-1 default, 0..3). */
-async function periodClicksByVariant(campaignIds: any[]) {
-  if (!campaignIds.length) return new Map<number, { total: number; last24h: number; last48h: number; last7d: number; last30d: number }>();
+/**
+ * A/B SPLIT-TEST PER-IMAGE STATS — the ONE source of truth.
+ *
+ * Every click on a creator's ad lives in CampaignClick with a `placement` string. When the surface
+ * knows which album image was shown it stamps a ":v{idx}" suffix (idx = position in the full album
+ * [avatar, ...extraPhotos], 0 = Default). Clicks WITHOUT a ":v" tag (old history, or any surface that
+ * didn't pass an index) were shown the Default image → they are credited to image index 0.
+ *
+ * Result: every click maps to exactly one album image, so the per-image rows ALWAYS sum to the
+ * creator's overall total. No second store, no read-time merge, no contradictions.
+ */
+async function imageClicks(campaignIds: any[], albumSize: number): Promise<Map<number, PeriodStat>> {
+  const out = new Map<number, PeriodStat>();
+  if (!campaignIds.length || albumSize <= 0) return out;
   const now = Date.now();
   const d24 = new Date(now - 24 * 3600e3);
   const d48 = new Date(now - 48 * 3600e3);
   const d7 = new Date(now - 7 * 86400e3);
   const d30 = new Date(now - 30 * 86400e3);
+  const maxIdx = albumSize - 1;
 
   const rows = await CampaignClick.aggregate([
     { $match: { campaignId: { $in: campaignIds } } },
     {
       $project: {
         clickedAt: 1,
-        // Album index from the ":v{idx}" placement tag. Clicks logged BEFORE split-test images
-        // existed have no ":v" suffix — back then everyone saw the Default photo, so those count
-        // toward Default = album index 0. Hence untagged → 0 (not -1).
         v: {
           $let: {
-            vars: { idx: { $indexOfBytes: ['$placement', ':v'] } },
+            // Read everything AFTER ":v" and coerce to an int. Untagged → idx < 0 below.
+            vars: { p: { $indexOfBytes: ['$placement', ':v'] } },
             in: {
               $cond: [
-                { $gte: ['$$idx', 0] },
-                { $toInt: { $substrBytes: ['$placement', { $add: ['$$idx', 2] }, 2] } },
-                0,
+                { $gte: ['$$p', 0] },
+                {
+                  // substr to end (length = remaining bytes), then toInt; "" → 0 handled by guard below.
+                  $convert: {
+                    input: { $substrBytes: ['$placement', { $add: ['$$p', 2] }, 8] },
+                    to: 'int', onError: -1, onNull: -1,
+                  },
+                },
+                -1,
               ],
             },
           },
@@ -145,15 +132,18 @@ async function periodClicksByVariant(campaignIds: any[]) {
     },
   ]);
 
-  const out = new Map<number, { total: number; last24h: number; last48h: number; last7d: number; last30d: number }>();
+  for (let i = 0; i < albumSize; i++) out.set(i, EMPTY_STAT());
   for (const r of rows as any[]) {
-    out.set(r._id ?? 0, {
-      total: r.total || 0,
-      last24h: r.last24h || 0,
-      last48h: r.last48h || 0,
-      last7d: r.last7d || 0,
-      last30d: r.last30d || 0,
-    });
+    // Untagged (-1) OR out-of-range index → fold into Default (0). Everything lands on a real image.
+    const raw = typeof r._id === 'number' ? r._id : -1;
+    const idx = raw >= 0 && raw <= maxIdx ? raw : 0;
+    const cur = out.get(idx) || EMPTY_STAT();
+    cur.total += r.total || 0;
+    cur.last24h += r.last24h || 0;
+    cur.last48h += r.last48h || 0;
+    cur.last7d += r.last7d || 0;
+    cur.last30d += r.last30d || 0;
+    out.set(idx, cur);
   }
   return out;
 }
@@ -182,15 +172,12 @@ export async function getOFMCreators(token: string, clientId: string) {
 
     // ONE album: [avatar, ...extraPhotos]. Index = album position = the ":v{i}" click tag.
     const pausedUrls: string[] = cr.pausedImageUrls ?? [];
-    let pictures: { index: number; label: string; url: string; paused: boolean; total: number; last24h: number; last48h: number; last7d: number; last30d: number }[] = [];
-    // Only show the per-picture breakdown when there's a real test (more than just the avatar).
-    if (album.length > 1) {
-      const byVar = ids.length ? await periodClicksByVariant(ids) : new Map();
-      pictures = album.map((url, i) => {
-        const s = byVar.get(i) || { total: 0, last24h: 0, last48h: 0, last7d: 0, last30d: 0 };
-        return { index: i, label: i === 0 ? 'Default' : `#${i}`, url, paused: pausedUrls.includes(url), ...s };
-      });
-    }
+    // Per-image A/B stats from the ONE store. Every click maps to an image, so rows sum to the total.
+    const byImg = ids.length ? await imageClicks(ids, album.length) : new Map<number, PeriodStat>();
+    const pictures = album.map((url, i) => {
+      const s = byImg.get(i) || EMPTY_STAT();
+      return { index: i, label: i === 0 ? 'Default' : `#${i}`, url, paused: pausedUrls.includes(url), ...s };
+    });
     // Leader = most clicks among ACTIVE (not paused) pictures.
     const ranked = [...pictures].filter((p) => !p.paused && p.total > 0).sort((a, b) => b.total - a.total);
     const winnerIndex = ranked.length ? ranked[0].index : null;
@@ -253,12 +240,12 @@ export async function getOFMModelDetail(token: string, agencySlug: string, model
 
   const pausedUrls: string[] = cr.pausedImageUrls ?? [];
 
-  // Per-variant period stats from the EXISTING CampaignClick.placement breakdown (":v{idx}" tag).
-  const byVar = ids.length ? await periodClicksByVariant(ids) : new Map();
+  // Per-image A/B stats from the ONE store. Every click maps to an image → rows sum to the total.
+  const byImg = ids.length ? await imageClicks(ids, album.length) : new Map<number, PeriodStat>();
 
   // The ONE creator album: index 0 = scraped avatar, 1..n = uploaded photos. Each has paused + stats.
   const pictures = album.map((url, i) => {
-    const s = byVar.get(i) || { total: 0, last24h: 0, last48h: 0, last7d: 0, last30d: 0 };
+    const s = byImg.get(i) || EMPTY_STAT();
     return { index: i, label: i === 0 ? 'Default' : `#${i}`, url, paused: pausedUrls.includes(url), ...s };
   });
 

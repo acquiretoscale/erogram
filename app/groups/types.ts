@@ -96,6 +96,12 @@ export interface FeedCampaign {
      * Rotation happens client-side (random pick per render), so it never freezes under ISR cache.
      */
     ofAlbum?: string[];
+    /**
+     * For each ofAlbum entry, its STABLE index in the full album [avatar, ...extraPhotos] (paused
+     * included). This index — not the position in the paused-filtered ofAlbum — is what gets stamped
+     * in the ":v{idx}" click tag, so per-picture clicks match the dashboard's full-album view.
+     */
+    ofAlbumIdx?: number[];
     /** For premium ads: which category the groups are from */
     premiumCategory?: string;
     /** For premium ads: top featured groups to show in the mosaic */

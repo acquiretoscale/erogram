@@ -2,7 +2,7 @@
 
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
-import { User, CampaignClick, Group, Bot, AINsfwSubmission, TrendingClickDaily } from '@/lib/models';
+import { User, CampaignClick, Group, Bot, AINsfwSubmission } from '@/lib/models';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -67,6 +67,7 @@ export async function getNetworkClicks(token: string, days = 30): Promise<Networ
   };
 
   // 1) Sponsor clicks — aggregate CampaignClick by day.
+  //    OF-creator clicks now live HERE too (unified store) — counted as sponsors.
   const sponsorAgg = await CampaignClick.aggregate([
     { $match: { clickedAt: { $gte: start } } },
     { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$clickedAt' } }, n: { $sum: 1 } } },
@@ -103,11 +104,7 @@ export async function getNetworkClicks(token: string, days = 30): Promise<Networ
   const ainsfwTotal = (ainsfwAgg[0]?.n as number) || 0;
   if (ainsfwTotal > 0) add(dayKey(now), 'boosts', ainsfwTotal);
 
-  // 3) OF creator clicks — TrendingClickDaily.
-  const ofRows = await TrendingClickDaily.find({ date: { $gte: startKey } }).select('date clicks').lean();
-  for (const r of ofRows as unknown as Array<{ date: string; clicks: number }>) {
-    add(r.date, 'ofCreators', r.clicks || 0);
-  }
+  // OF creator clicks are part of CampaignClick now (step 1). ofCreators stays 0 (legacy field).
 
   const series = Array.from(buckets.entries())
     .sort((a, b) => (a[0] < b[0] ? -1 : 1))

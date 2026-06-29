@@ -32,14 +32,19 @@ export async function getTrendingCreators(category?: string) {
   const mapped = (creators as any[]).map((c) => {
     // ONE rotating album = scraped avatar + uploaded photos, minus any paused image. Same set the
     // ad feed rotates. Client picks one per view so the featured strip isn't frozen by ISR cache.
+    // albumIdx = each shown image's STABLE full-album index (the ":v{idx}" split-test tag).
     const paused = new Set<string>(c.pausedImageUrls || []);
-    const album = (albumMap.get(c.username) || [c.avatar].filter(Boolean)).filter((u: string) => !paused.has(u));
+    const full = (albumMap.get(c.username) || [c.avatar].filter(Boolean)) as string[];
+    const album: string[] = [];
+    const albumIdx: number[] = [];
+    full.forEach((u, i) => { if (!paused.has(u)) { album.push(u); albumIdx.push(i); } });
     return {
       _id: c._id.toString(),
       name: c.name,
       username: c.username,
       avatar: album[0] || c.avatar || '',
       album,
+      albumIdx,
       url: c.url,
       bio: c.bio || '',
       categories: c.categories || [],
@@ -64,12 +69,14 @@ export async function getTrendingCreators(category?: string) {
  * so they can be injected into the /groups feed alongside regular ads.
  * Clicks tracked via trackTrendingClick (not Campaign model).
  */
-export async function getFeaturedCreatorFeedItems() {
+export async function getFeaturedCreatorFeedItems(category?: string) {
   const { unstable_noStore } = await import('next/cache');
   unstable_noStore();
 
   await connectDB();
-  const creators = await TrendingOFCreator.find({ active: true })
+  const filter: Record<string, any> = { active: true };
+  if (category) filter.categories = category;
+  const creators = await TrendingOFCreator.find(filter)
     .select('_id name username avatar url liveHourStart liveHourEnd pausedImageUrls')
     .lean();
 
@@ -112,10 +119,15 @@ export async function getFeaturedCreatorFeedItems() {
       ofSubscriberCount: stats?.subs || 0,
       ofLiveHourStart: c.liveHourStart ?? -1,
       ofLiveHourEnd: c.liveHourEnd ?? -1,
-      ofAlbum: (() => {
+      // Rotating album + each image's STABLE full-album index (the ":v{idx}" split-test tag),
+      // paused images excluded. Parallel arrays so the card can attribute the shown image.
+      ...(() => {
         const paused = new Set<string>(c.pausedImageUrls ?? []);
-        const base = stats ? [stats.avatar, ...stats.extraPhotos] : [c.avatar];
-        return base.filter(Boolean).filter((u) => !paused.has(u));
+        const full = (stats ? [stats.avatar, ...stats.extraPhotos] : [c.avatar]).filter(Boolean);
+        const ofAlbum: string[] = [];
+        const ofAlbumIdx: number[] = [];
+        full.forEach((u: string, idx: number) => { if (!paused.has(u)) { ofAlbum.push(u); ofAlbumIdx.push(idx); } });
+        return { ofAlbum, ofAlbumIdx };
       })(),
     };
   });

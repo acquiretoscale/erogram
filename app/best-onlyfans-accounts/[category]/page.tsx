@@ -10,6 +10,7 @@ import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
 import type { Locale } from '@/lib/i18n';
 import { getKeywordPlacementCampaigns } from '@/lib/actions/campaigns';
+import { getFeaturedCreatorFeedItems } from '@/lib/actions/publicData';
 import BestPageAdBlock from '@/app/best-onlyfans-accounts/BestPageAdBlock';
 
 interface PageProps {
@@ -81,7 +82,7 @@ export default async function BestOnlyfansPage({ params }: PageProps) {
 
     const baseMatch = { categories: slug, gender: 'female', avatar: { $ne: '' }, deleted: { $ne: true } };
 
-    const [topByClicks, bestOfAds] = await Promise.all([
+    const [topByClicks, bestOfAds, trendingFeatured] = await Promise.all([
         OnlyFansCreator.find({ ...baseMatch, clicks: { $gt: 0 } })
             .sort({ clicks: -1 })
             .limit(10)
@@ -89,6 +90,8 @@ export default async function BestOnlyfansPage({ params }: PageProps) {
             .lean(),
         // Keyword-targeted "best-of" ads for this category (unified tag system). Rotating, SEO-safe.
         getKeywordPlacementCampaigns('best-of', slug, 6).catch(() => []),
+        // Same featured creators as /OFsearch (this category), for the "TRENDING ON EROGRAM" block.
+        getFeaturedCreatorFeedItems(slug).catch(() => []),
     ]);
 
     const usedUsernames = new Set<string>();
@@ -319,8 +322,8 @@ export default async function BestOnlyfansPage({ params }: PageProps) {
                     </div>
                 )}
 
-                {/* Overflow featured creators — any keyword-targeted creators beyond the top-3 ranking. Bottom only. */}
-                <BestPageAdBlock ads={(bestOfAds as any[]).slice(3) as any} placement="best-of" />
+                {/* TRENDING ON EROGRAM — same featured creators shown on /OFsearch for this category. */}
+                <BestPageAdBlock ads={trendingFeatured as any} placement="best-of" />
 
                 {/* FAQ */}
                 <div className="mb-10">

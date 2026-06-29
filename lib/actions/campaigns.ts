@@ -3,7 +3,7 @@
 import jwt from 'jsonwebtoken';
 import mongoose, { type PipelineStage } from 'mongoose';
 import connectDB from '@/lib/db/mongodb';
-import { User, Campaign, CampaignClick, CampaignImpressionDaily, Advertiser, Article, Group, Bot, OnlyFansCreator, TrendingOFCreator, TrendingClickDaily } from '@/lib/models';
+import { User, Campaign, CampaignClick, CampaignImpressionDaily, Advertiser, Article, Group, Bot, OnlyFansCreator, TrendingOFCreator } from '@/lib/models';
 import { BOOST_WEIGHT } from '@/lib/adPlacements';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
@@ -22,8 +22,15 @@ type OFEnrich = {
   liveHourStart: number;
   liveHourEnd: number;
   liveOnly: boolean;
-  /** Rotatable creator album = [avatar, ...extraPhotos] minus paused. Ordered for ":v{i}" click tags. */
+  /** Rotatable creator images = [avatar, ...extraPhotos] minus paused. For DISPLAY (front-end rotation). */
   album: string[];
+  /**
+   * For each `album` entry, its index in the FULL album [avatar, ...extraPhotos] (paused INCLUDED).
+   * This is the STABLE id used in the ":v{idx}" click tag, so per-picture clicks line up with the
+   * dashboard (which reads the full album). Without this, dropping the paused avatar shifts every
+   * index by 1 and clicks land on the wrong picture.
+   */
+  albumIdx: number[];
 };
 
 /**
@@ -47,13 +54,20 @@ async function buildOFEnrichMap(ofUsernames: string[]): Promise<Map<string, OFEn
   for (const t of trendingDocs as any[]) {
     const uname = String(t.username).toLowerCase();
     const paused = new Set<string>((t.pausedImageUrls as string[]) || []);
-    const album = (albumByUser.get(uname) || []).filter((u) => !paused.has(u));
+    const full = albumByUser.get(uname) || [];
+    // Keep each surviving image's ORIGINAL full-album index → that's the stable ":v{idx}" tag.
+    const album: string[] = [];
+    const albumIdx: number[] = [];
+    full.forEach((u, i) => {
+      if (!paused.has(u)) { album.push(u); albumIdx.push(i); }
+    });
     map.set(uname, {
       _id: String(t._id),
       liveHourStart: t.liveHourStart ?? -1,
       liveHourEnd: t.liveHourEnd ?? -1,
       liveOnly: t.liveOnly ?? false,
       album,
+      albumIdx,
     });
   }
   return map;
@@ -598,6 +612,7 @@ export async function getPlacementFeedCampaigns(placement: string, max = 4) {
       ofLiveHourEnd: tr?.liveHourEnd ?? -1,
       ofLiveOnly: tr?.liveOnly ?? false,
       ofAlbum: tr?.album ?? [],
+      ofAlbumIdx: tr?.albumIdx ?? [],
     };
   });
 }
@@ -695,6 +710,7 @@ export async function getTrendingErogramCampaigns(max = 4) {
       ofLiveHourEnd: tr?.liveHourEnd ?? -1,
       ofLiveOnly: tr?.liveOnly ?? false,
       ofAlbum: tr?.album ?? [],
+      ofAlbumIdx: tr?.albumIdx ?? [],
     };
   });
 }
@@ -811,6 +827,7 @@ export async function getKeywordPlacementCampaigns(placement: string, categorySl
       ofLiveHourEnd: tr?.liveHourEnd ?? -1,
       ofLiveOnly: tr?.liveOnly ?? false,
       ofAlbum: tr?.album ?? [],
+      ofAlbumIdx: tr?.albumIdx ?? [],
     };
   });
 }
@@ -1232,7 +1249,7 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ain
   const ofUsernames = campaigns
     .filter((c: any) => c.adType === 'onlyfans-creator' && c.ofUsername)
     .map((c: any) => (c.ofUsername as string).toLowerCase());
-  const ofCreatorMap = new Map<string, { likesCount: number; subscriberCount: number; lastSeen: string; liveHourStart: number; liveHourEnd: number; liveOnly: boolean; album: string[] }>();
+  const ofCreatorMap = new Map<string, { likesCount: number; subscriberCount: number; lastSeen: string; liveHourStart: number; liveHourEnd: number; liveOnly: boolean; album: string[]; albumIdx: number[] }>();
   if (ofUsernames.length > 0) {
     const [ofDocs, trendingDocs] = await Promise.all([
       OnlyFansCreator.find({ username: { $in: ofUsernames } }, 'username lastSeen likesCount subscriberCount avatar extraPhotos').lean(),
@@ -1245,7 +1262,11 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ain
     for (const d of ofDocs as any[]) {
       const live = liveMap.get(d.username.toLowerCase());
       const paused = new Set<string>(live?.pausedImageUrls ?? []);
-      const album = [d.avatar, ...((d.extraPhotos as string[]) || [])].filter(Boolean).filter((u) => !paused.has(u));
+      const full = [d.avatar, ...((d.extraPhotos as string[]) || [])].filter(Boolean);
+      // Preserve each surviving image's ORIGINAL full-album index → stable ":v{idx}" click tag.
+      const album: string[] = [];
+      const albumIdx: number[] = [];
+      full.forEach((u, i) => { if (!paused.has(u)) { album.push(u); albumIdx.push(i); } });
       ofCreatorMap.set(d.username.toLowerCase(), {
         likesCount: d.likesCount || 0,
         subscriberCount: d.subscriberCount || 0,
@@ -1254,6 +1275,7 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ain
         liveHourEnd: live?.liveHourEnd ?? -1,
         liveOnly: live?.liveOnly ?? false,
         album,
+        albumIdx,
       });
     }
   }
@@ -1317,6 +1339,7 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ain
           ofLiveHourEnd: ofData.liveHourEnd,
           ofLiveOnly: ofData.liveOnly,
           ofAlbum: ofData.album,
+          ofAlbumIdx: ofData.albumIdx,
         } : {}),
       });
     }
@@ -1783,9 +1806,8 @@ export interface DashboardStatsResult {
   featuredGroups?: { groupId: string; name: string; advertiserId: string; advertiserName: string; clickCount: number; lastClickedAt?: string }[];
   /** Whole-network click totals for the selected period, split by store (read-only).
    *  adSpace = sponsor CampaignClicks (this dashboard's existing scope, excl. OF creators);
-   *  boost = paid group/bot boosts (entity clickCount); of = OnlyFans creators total.
-   *  ofFeatured = paying/featured creators (TrendingClickDaily); ofOrganic = organic profile
-   *  clicks (OnlyFansCreator.clicks, lifetime — no per-day breakdown). */
+   *  boost = paid group/bot boosts (entity clickCount); of = OnlyFans creators total
+   *  (unified store: CampaignClick on OF campaigns). ofFeatured = of; ofOrganic = 0 (legacy). */
   networkTotals?: { adSpace: number; boost: number; of: number; ofFeatured: number; ofOrganic: number; grandTotal: number };
   /** Per-creator OnlyFans detail (top creators by clicks in the selected period). Only on the
    *  unfiltered network view. ofDetail = featured/trending creators; lifetime view also shows organic. */
@@ -2133,10 +2155,8 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
   // Stores, never mixed:
   //   adSpace    = sponsor CampaignClicks in range, EXCLUDING onlyfans-creator campaigns
   //   boost      = paid group/bot boost clicks in range (entity clickCountByDay)
-  //   ofFeatured = PAYING/featured creators (TrendingClickDaily, date-rangeable)
-  //   ofOrganic  = organic creator profile clicks (OnlyFansCreator.clicks; lifetime only — no
-  //                per-day data, so only counted on the Lifetime range to avoid faking dates)
-  //   of         = ofFeatured + ofOrganic + OF-creator CampaignClicks
+  //   of         = ALL OF-creator clicks, from the ONE unified store (CampaignClick on OF campaigns)
+  //                ofFeatured = of; ofOrganic = 0 (legacy fields kept for response shape)
   // Only computed for the unfiltered "all advertisers" view so the headline reflects the network.
   let networkTotals: { adSpace: number; boost: number; of: number; ofFeatured: number; ofOrganic: number; grandTotal: number } | undefined;
   let ofDetail: { name: string; username: string; clicks: number; kind: 'featured' | 'organic' }[] | undefined;
@@ -2150,21 +2170,12 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
       .map((c) => c._id);
     const ofCampaignIdSet = new Set(ofCampaignIds.map((id) => id.toString()));
 
-    const [ofCampaignClicks, ofTrendingRows, ofOrganicRows, boostGroups, boostBots] = await Promise.all([
-      // OF-creator clicks that came through the Campaign/AdvertCard path
+    const [ofCampaignClicks, boostGroups, boostBots] = await Promise.all([
+      // ALL OF-creator clicks now live in the ONE unified store (CampaignClick on OF campaigns).
       CampaignClick.countDocuments({
         campaignId: { $in: ofCampaignIds },
         ...(isLifetime ? {} : { clickedAt: { $gte: rangeStart, $lte: rangeEnd } }),
       }),
-      // Featured/paying OF creator clicks via the trending path (read-only — never modify OF)
-      TrendingClickDaily.aggregate([
-        ...(isLifetime ? [] : [{ $match: { date: { $gte: rangeStartDay, $lte: rangeEndDay } } }]),
-        { $group: { _id: null, clicks: { $sum: '$clicks' } } },
-      ]),
-      // Organic profile clicks — OnlyFansCreator.clicks has NO date breakdown, so only on Lifetime.
-      isLifetime
-        ? OnlyFansCreator.aggregate([{ $group: { _id: null, clicks: { $sum: '$clicks' } } }])
-        : Promise.resolve([] as any[]),
       // Boosted groups — period clicks from clickCountByDay (fallback to lifetime clickCount)
       Group.find({ boosted: true }).select('name clickCount clickCountByDay').lean(),
       Bot.find({ boosted: true }).select('name clickCount clickCountByDay').lean(),
@@ -2188,8 +2199,9 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
     };
 
     const boostTotal = sumDayMap(boostGroups as any[]) + sumDayMap(boostBots as any[]);
-    const ofFeatured = ((ofTrendingRows as any[])[0]?.clicks || 0) + ofCampaignClicks;
-    const ofOrganic = (ofOrganicRows as any[])[0]?.clicks || 0;
+    // Unified: all OF clicks come from CampaignClick now. No separate trending/organic stores.
+    const ofFeatured = ofCampaignClicks;
+    const ofOrganic = 0;
     const ofTotal = ofFeatured + ofOrganic;
 
     // Sponsor ad-space total = clicks in range on non-OF campaigns
@@ -2207,33 +2219,23 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
       grandTotal: adSpaceTotal + boostTotal + ofTotal,
     };
 
-    // ── Per-creator OF detail (top by clicks) ──
-    // Featured/trending creators are date-rangeable via TrendingClickDaily; on Lifetime we rank
-    // by all-time creator clicks. Each creator tracked INDIVIDUALLY, as requested.
+    // ── Per-creator OF detail (top by clicks) — from the ONE unified store ──
+    // Group CampaignClick by OF campaign, then map campaign → ofUsername. Each creator individually.
     try {
-      if (isLifetime) {
-        const topCreators = await OnlyFansCreator.find({ clicks: { $gt: 0 } })
-          .select('name username clicks featured').sort({ clicks: -1 }).limit(50).lean() as any[];
-        ofDetail = topCreators.map((c) => ({
-          name: c.name || c.username, username: c.username || '',
-          clicks: c.clicks || 0, kind: c.featured ? 'featured' : 'organic',
-        }));
-      } else {
-        const rows = await TrendingClickDaily.aggregate([
-          { $match: { date: { $gte: rangeStartDay, $lte: rangeEndDay } } },
-          { $group: { _id: '$trendingId', clicks: { $sum: '$clicks' } } },
-          { $sort: { clicks: -1 } }, { $limit: 50 },
-        ]);
-        const ids = (rows as any[]).map((r) => r._id).filter(Boolean);
-        const creators = ids.length
-          ? await TrendingOFCreator.find({ _id: { $in: ids } }).select('name username').lean() as any[]
-          : [];
-        const cmap = new Map(creators.map((c: any) => [c._id.toString(), c]));
-        ofDetail = (rows as any[]).map((r) => {
-          const c = cmap.get(String(r._id));
-          return { name: c?.name || c?.username || 'Creator', username: c?.username || '', clicks: r.clicks, kind: 'featured' as const };
-        }).filter((r) => r.clicks > 0);
-      }
+      const rows = await CampaignClick.aggregate([
+        { $match: { campaignId: { $in: ofCampaignIds }, ...(isLifetime ? {} : { clickedAt: { $gte: rangeStart, $lte: rangeEnd } }) } },
+        { $group: { _id: '$campaignId', clicks: { $sum: 1 } } },
+        { $sort: { clicks: -1 } }, { $limit: 50 },
+      ]);
+      const ids = (rows as any[]).map((r) => r._id).filter(Boolean);
+      const camps = ids.length
+        ? await Campaign.find({ _id: { $in: ids } }).select('name ofUsername').lean() as any[]
+        : [];
+      const cmap = new Map(camps.map((c: any) => [c._id.toString(), c]));
+      ofDetail = (rows as any[]).map((r) => {
+        const c = cmap.get(String(r._id));
+        return { name: c?.name || c?.ofUsername || 'Creator', username: c?.ofUsername || '', clicks: r.clicks, kind: 'featured' as const };
+      }).filter((r) => r.clicks > 0);
     } catch { ofDetail = undefined; }
 
     // ── Per-boost-item detail (each boosted group/bot individually) ──
