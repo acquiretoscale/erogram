@@ -6,7 +6,7 @@ import { Group, Bot, StorySlideContent, SiteConfig } from '@/lib/models';
 import GroupsClient from './GroupsClient';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { getActiveCampaigns, getActiveFeedCampaigns, isPremiumHouseAdLive } from '@/lib/actions/campaigns';
+import { getActiveCampaigns, getActiveFeedCampaigns, isPremiumHouseAdLive, getTrendingErogramCampaigns } from '@/lib/actions/campaigns';
 import { getFeaturedCreatorFeedItems } from '@/lib/actions/publicData';
 import { getStoryCategories, DEFAULT_STORY_CATEGORIES, type StoryCategoryConfig } from '@/lib/actions/siteConfig';
 import { listR2Files } from '@/lib/r2';
@@ -499,7 +499,7 @@ export default async function GroupsPage() {
   if (storyConfig.length === 0) storyConfig = DEFAULT_STORY_CATEGORIES;
 
   // In-feed ads + story data + vault teaser + featured creators + trending + filter options — all in parallel
-  const [topBannerCampaigns, feedCampaignsRaw, storyData, vaultTeaserGroupsRaw, featuredCreatorItems, premiumLive, filterOpts] = await Promise.all([
+  const [topBannerCampaigns, feedCampaignsRaw, storyData, vaultTeaserGroupsRaw, featuredCreatorItems, premiumLive, filterOpts, trendingErogramCampaigns] = await Promise.all([
     getActiveCampaigns('top-banner', { page: 'groups', device: isMobile ? 'mobile' : 'desktop' }),
     getActiveFeedCampaigns('groups'),
     storiesEnabled ? getStoryData(storyConfig, locale) : Promise.resolve([] as StoryCategory[]),
@@ -507,6 +507,7 @@ export default async function GroupsPage() {
     getFeaturedCreatorFeedItems().catch(() => []),
     isPremiumHouseAdLive().catch(() => false),
     getFilterOptions(),
+    getTrendingErogramCampaigns(8).catch(() => []),
   ]);
 
   // Two trending rows derived from the already-sorted filter options (top 6 each).
@@ -567,6 +568,7 @@ export default async function GroupsPage() {
           trendingCountries={trendingCountries}
           categoryOptions={filterOpts.categories}
           countryOptions={filterOpts.countries}
+          trendingErogramCampaigns={trendingErogramCampaigns}
         />
       </ErrorBoundary>
     </>

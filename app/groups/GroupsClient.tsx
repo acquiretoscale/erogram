@@ -14,6 +14,7 @@ import VirtualizedGroupGrid from './VirtualizedGroupGrid';
 import { checkBookmarks } from '@/lib/actions/publicData';
 import GroupCardSkeleton from './GroupCardSkeleton';
 import { filterCategories } from './constants';
+import { BOOST_WEIGHT } from '@/lib/adPlacements';
 import type { VaultTeaserItem } from './VaultTeaserFeed';
 import { useTranslation, useLocalePath, useLocale } from '@/lib/i18n';
 // Lazy load modals to reduce initial bundle size
@@ -44,9 +45,10 @@ interface GroupsClientProps {
   trendingCountries?: Array<{ label: string; href: string }>;
   categoryOptions?: string[];
   countryOptions?: string[];
+  trendingErogramCampaigns?: FeedCampaign[];
 }
 
-export default function GroupsClient({ initialGroups, feedCampaigns = [], initialCountry, initialIsMobile = false, initialIsTelegram = false, topBannerCampaigns = [], storyData = [], vaultTeaserGroups = [], trendingCategories = [], trendingCountries = [], categoryOptions = [], countryOptions = [] }: GroupsClientProps) {
+export default function GroupsClient({ initialGroups, feedCampaigns = [], initialCountry, initialIsMobile = false, initialIsTelegram = false, topBannerCampaigns = [], storyData = [], vaultTeaserGroups = [], trendingCategories = [], trendingCountries = [], categoryOptions = [], countryOptions = [], trendingErogramCampaigns = [] }: GroupsClientProps) {
   const TOP_SLOT_GROWTH: number[] = [14.2, 11.8, 9.6, 12.9];
   const STORY_SEEN_KEY = 'erogram:stories:seen:v1';
   const [username, setUsername] = useState<string | null>(null);
@@ -480,7 +482,11 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   // BRAIN LAW (versatile-slots / ad-vision): whatever I assign to a Top Groups spot SHOWS in
   // that spot and ROTATES with every other ad assigned to the same spot. Boosted ads get MORE
   // visibility (weighted), not exclusivity. Same rule for spots 1/2/3/4. The named placements
-  // top-groups-1..4 map to tierSlots 6/1/11/5 server-side — that's just internal plumbing.
+  // Each Top Groups spot is claimed ONLY by ads whose named placement is the matching top-groups-N.
+  // We match on the stamped `placement` (authoritative) — NOT the raw tierSlot, because legacy
+  // tierSlots 6/11 are shared with Top Bots, which would otherwise leak top-bots-* ads into Top Groups.
+  const SPOT_PLACEMENT: Record<number, string> = { 0: 'top-groups-1', 1: 'top-groups-2', 2: 'top-groups-3', 3: 'top-groups-4' };
+  // tierSlot of each spot's row (so we exclude the right feed row from the grid below).
   const SPOT_TIERSLOT: Record<number, number> = { 0: 6, 1: 1, 2: 11, 3: 5 };
 
   const topSpotCampaigns = useMemo(() => {
@@ -491,19 +497,21 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
     // Weighted rotation: a boosted ad gets several entries in the draw so it appears more often,
     // but non-boosted ads assigned to the same spot still rotate in. Per page load.
-    const pickForSlot = (tierSlot: number): FeedCampaign | null => {
-      const pool = feedCampaigns.filter((c) => c.tierSlot === tierSlot && !usedIds.has(c._id));
+    const pickForSlot = (spotPlacement: string, tierSlot: number): FeedCampaign | null => {
+      const pool = feedCampaigns.filter(
+        (c) => c.tierSlot === tierSlot && c.placement === spotPlacement && !usedIds.has(c._id),
+      );
       if (pool.length === 0) return null;
       const draw: FeedCampaign[] = [];
       for (const c of pool) {
-        const weight = c.priority === 'boost' ? 3 : 1;
+        const weight = c.priority === 'boost' ? BOOST_WEIGHT : 1;
         for (let i = 0; i < weight; i++) draw.push(c);
       }
       return draw[Math.floor(Math.random() * draw.length)];
     };
 
     for (let spot = 0; spot < 4; spot++) {
-      const pick = pickForSlot(SPOT_TIERSLOT[spot]);
+      const pick = pickForSlot(SPOT_PLACEMENT[spot], SPOT_TIERSLOT[spot]);
       if (pick) {
         picks[spot] = pick;
         usedIds.add(pick._id);
@@ -825,6 +833,38 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
               )}
 
               {/* Featured Groups section removed (brain: versatile-slots). Paid featured now lives in Top Groups Spot 1. */}
+
+              {/* Trending on Erogram — new unified ad space (heterogeneous 4-up, modeled on Top Groups).
+                  Assign via /admin/ad-network "Trending on Erogram" pill. Deduped vs native Top spots. */}
+              {(() => {
+                if (debouncedSearchQuery || selectedCategory !== (initialCountry || 'All') || selectedCountry !== 'All') return null;
+                const usedAdIds = new Set(
+                  Object.values(topSpotCampaigns).filter(Boolean).map((c: any) => c?._id)
+                );
+                const trendingAds = (trendingErogramCampaigns || []).filter((c: any) => !usedAdIds.has(c._id)).slice(0, 4);
+                if (trendingAds.length === 0) return null;
+
+                return (
+                  <div className="mb-5 relative rounded-2xl overflow-hidden bg-white">
+                    <div className="relative p-3 sm:p-4">
+                      <div className="flex items-baseline gap-2.5 mb-3">
+                        <h2 className="text-base font-black text-[#0f172a] leading-none tracking-tight">Trending on Erogram</h2>
+                        <span className="text-[#0f172a] text-xs font-bold">What&apos;s hot right now</span>
+                      </div>
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 rounded-2xl p-3 sm:p-4" style={{ background: 'linear-gradient(180deg, #0d1117 0%, #0a0e16 100%)' }}>
+                        {trendingAds.map((camp, i) => (
+                          <AdvertCard
+                            key={`trending-${camp._id}`}
+                            campaign={camp}
+                            isIndex={i}
+                            shouldPreload={false}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="text-center mb-6">
                 <h1 className="text-2xl md:text-3xl font-black text-[#f5f5f5]">

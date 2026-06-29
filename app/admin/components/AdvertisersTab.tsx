@@ -42,8 +42,8 @@ const LAUNCH_TIERS: { tier: string; hint: string; sections: { label: string; pla
     ],
   },
   {
-    tier: 'SPOTLIGHT (MAIN)',
-    hint: 'Versatile blocks on /main (SPOTLIGHT) — each rotates a wide banner (image/video) OR a 4-up card grid',
+    tier: 'TRENDING (MAIN)',
+    hint: 'Versatile blocks on /trending (TRENDING) — each rotates a wide banner (image/video) OR a 4-up card grid',
     sections: [
       { label: 'SPOTLIGHT — Adspace 1 / Adspace 2', placements: ['home-block-1', 'home-block-2'] },
     ],
@@ -2386,24 +2386,6 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
               )}
 
               {campForm.slot === 'feed' && (
-                <div>
-                  <label className="block text-sm font-semibold text-[#999] mb-1">
-                    🏷️ Badge Label <span className="text-[#666] font-normal">(optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={(campForm as any).badgeText || ''}
-                    onChange={(e) => setCampForm({ ...campForm, badgeText: e.target.value } as any)}
-                    className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-[#b31b1b] outline-none"
-                    placeholder="e.g. Trending, Hot, New, Premium, Verified..."
-                  />
-                  <p className="text-xs text-[#666] mt-1">
-                    Replaces "Sponsored" with a custom badge. Presets: Trending, Hot, New, Premium, Verified, Best Value, Editor&apos;s Pick, Featured, Popular, Exclusive, Limited. Leave empty for default "Sponsored" label.
-                  </p>
-                </div>
-              )}
-
-              {campForm.slot === 'feed' && (
                 <div className="flex items-center gap-3">
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
@@ -3761,7 +3743,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
               { tier: 'IN-PAGE', sections: [
                 { label: 'In-Page block', placements: ['group-sidebar'] },
               ]},
-              { tier: 'SPOTLIGHT (MAIN)', sections: [
+              { tier: 'TRENDING (MAIN)', sections: [
                 { label: 'Home blocks', placements: ['home-block-1','home-block-2'] },
               ]},
             ];

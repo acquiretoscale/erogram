@@ -30,28 +30,6 @@ interface AdvertCardProps {
  *  - muted + playsInline + loop → browser-safe autoplay, no sound
  *  - pause on leave  → saves CPU/bandwidth when scrolled away
  */
-const BADGE_PRESETS: Record<string, { icon: string; color: string }> = {
-    'trending':      { icon: '🔥', color: 'bg-red-500' },
-    'hot':           { icon: '🌶️', color: 'bg-orange-500' },
-    'new':           { icon: '✨', color: 'bg-green-500' },
-    'premium':       { icon: '👑', color: 'bg-purple-500' },
-    'verified':      { icon: '✅', color: 'bg-blue-500' },
-    'best value':    { icon: '💎', color: 'bg-pink-500' },
-    "editor's pick": { icon: '🎯', color: 'bg-indigo-500' },
-    'featured':      { icon: '⭐', color: 'bg-yellow-500' },
-    'popular':       { icon: '📈', color: 'bg-cyan-500' },
-    'exclusive':     { icon: '🔒', color: 'bg-violet-500' },
-    'limited':       { icon: '⏳', color: 'bg-amber-500' },
-    'featured bot':  { icon: '🤖', color: 'bg-gradient-to-r from-cyan-500 to-blue-600' },
-};
-
-function videoBadge(text: string): { label: string; icon: string; color: string } {
-    const key = text.toLowerCase().trim();
-    const preset = BADGE_PRESETS[key];
-    if (preset) return { label: text.trim(), ...preset };
-    return { label: text.trim(), icon: '⭐', color: 'bg-gradient-to-r from-yellow-400 to-orange-500' };
-}
-
 function seededRandomVideo(seed: string) {
     let hash = 0;
     for (let i = 0; i < seed.length; i++) {
@@ -68,6 +46,15 @@ function formatCount(n: number): string {
     return String(n);
 }
 
+// LIVE schedule check (GMT). -1 = never live; 0/0 = always live; otherwise within [start,end) GMT,
+// wrapping past midnight when start > end. Matches the OF Featured admin convention.
+function isCreatorLiveNow(start?: number, end?: number): boolean {
+    if (start == null || end == null || start < 0 || end < 0) return false;
+    if (start === 0 && end === 0) return true;
+    const h = new Date().getUTCHours();
+    return start <= end ? h >= start && h < end : h >= start || h < end;
+}
+
 function GrowthTrendBadge({ growthPercent }: { growthPercent?: number }) {
     if (typeof growthPercent !== 'number') return null;
     return (
@@ -81,15 +68,32 @@ function GrowthTrendBadge({ growthPercent }: { growthPercent?: number }) {
     );
 }
 
-function OnlyFansCreatorAdCard({ campaign, handleClick, growthPercent }: { campaign: FeedCampaign; handleClick: () => void; growthPercent?: number }) {
+function OnlyFansCreatorAdCard({ campaign, handleClick, growthPercent }: { campaign: FeedCampaign; handleClick: (shownVariantIdx?: number) => void; growthPercent?: number }) {
     const cardRef = useRef<HTMLDivElement>(null);
     const impressionFiredRef = useRef(false);
     const [imgError, setImgError] = useState(false);
     const trendingId = campaign.ofTrendingId || '';
 
+    // Split-test rotation (one unified creator album):
+    //  ofAlbum = [avatar, ...extraPhotos] MINUS any paused image, already prepared server-side.
+    //  We random-pick ONE album entry per render, CLIENT-SIDE, so the pick varies per visitor and
+    //  is never frozen by the page's ISR cache. Album index i is tagged ":v{i}" for per-picture CTR.
+    const album = campaign.ofAlbum ?? [];
+    // Roll the rotation AFTER mount (client-only). If we picked during the SSR initializer, the
+    // server HTML would freeze one image under the page cache and every visitor would see it.
+    // Starting at 0 then re-rolling on mount makes the shown image vary per page view.
+    const [variantIdx, setVariantIdx] = useState<number>(0);
+    useEffect(() => {
+        if (album.length > 1) setVariantIdx(Math.floor(Math.random() * album.length));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    const displayImage = (variantIdx >= 0 && album[variantIdx])
+        ? album[variantIdx]
+        : (album[0] || campaign.creative || '');
+
     const onCardClick = () => {
         if (trendingId) trackTrendingClick(trendingId);
-        handleClick();
+        handleClick(variantIdx);
     };
 
     useEffect(() => {
@@ -124,9 +128,9 @@ function OnlyFansCreatorAdCard({ campaign, handleClick, growthPercent }: { campa
                 onKeyDown={(e) => e.key === 'Enter' && onCardClick()}
             >
                 {/* Image fills the entire card */}
-                {campaign.creative && !imgError ? (
+                {displayImage && !imgError ? (
                     <img
-                        src={campaign.creative}
+                        src={displayImage}
                         alt={`${displayName} OnlyFans`}
                         className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-700 ease-out"
                         loading="lazy"
@@ -141,6 +145,17 @@ function OnlyFansCreatorAdCard({ campaign, handleClick, growthPercent }: { campa
 
                 {/* Gradient ONLY at the bottom — keeps the photo bright and popping */}
                 <div className="absolute inset-x-0 bottom-0 h-[55%] bg-gradient-to-t from-black via-black/65 to-transparent pointer-events-none" />
+
+                {/* LIVE badge — reflects the schedule set in OF Featured (green blinking dot) */}
+                {isCreatorLiveNow(campaign.ofLiveHourStart, campaign.ofLiveHourEnd) && (
+                    <div className="absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/55 backdrop-blur-sm">
+                        <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                        </span>
+                        <span className="text-[10px] font-black text-white uppercase tracking-wider">Live</span>
+                    </div>
+                )}
 
                 {/* Bottom content overlay */}
                 <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-5 z-10 flex flex-col gap-2 sm:gap-2.5">
@@ -227,8 +242,6 @@ function VideoAdCard({ campaign, handleClick, hidePromoted = false, growthPercen
 
     const buttonText = (campaign.buttonText && campaign.buttonText.trim()) ? campaign.buttonText.trim() : 'Visit Now';
 
-    const badge = campaign.badgeText ? videoBadge(campaign.badgeText) : null;
-
     const rating = (seededRandomVideo(seed + 'rating') * 0.7 + 4.2).toFixed(1);
     const reviewCount = Math.floor(seededRandomVideo(seed + 'reviews') * 38 + 5);
 
@@ -246,7 +259,7 @@ function VideoAdCard({ campaign, handleClick, hidePromoted = false, growthPercen
                 role="link"
                 tabIndex={0}
                 onKeyDown={(e) => e.key === 'Enter' && handleClick()}
-                aria-label={badge ? `${badge.label}: ${campaign.name}` : campaign.name}
+                aria-label={campaign.name}
             >
                 {/* Video fills the entire card */}
                 <video
@@ -263,14 +276,6 @@ function VideoAdCard({ campaign, handleClick, hidePromoted = false, growthPercen
 
                 {/* Gradient for text readability */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/10 pointer-events-none" />
-
-                {badge && (
-                    <div className="absolute top-3 left-3 z-10">
-                        <span className={`${badge.color} text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg uppercase tracking-wider flex items-center gap-1`}>
-                            <span>{badge.icon}</span> {badge.label}
-                        </span>
-                    </div>
-                )}
 
                 {/* Bottom content */}
                 <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-5 z-10 flex flex-col gap-1.5 sm:gap-2.5">
@@ -599,16 +604,20 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
         }
     }, [isInView, imageSrc, ad._id, ad.isCampaign]);
 
-    const handleClick = () => {
+    const handleClick = (shownVariantIdx?: number) => {
         if (ad.isCampaign) {
             // Per-placement tracking: tag the REAL ad space so the dashboard can break clicks out
             // by placement instead of dumping everything into "feed". Same CampaignClick collection — additive.
             // Priority: explicit placementOverride (sidebar / Top-10 / AI NSFW contexts)
             //   → the canonical `placement` the FEED already stamped (top-groups-*/top-bots-*/feed-*)
             //   → 'feed' fallback. We no longer re-guess from tierSlot; the feed is the source of truth.
-            const placementName = placementOverride
+            let placementName = placementOverride
                 || (campaign?.placement as string | undefined)
                 || 'feed';
+            // Variant tier (least critical): tag the ACTUALLY-SHOWN split-test image so per-picture
+            // CTR reads from the SAME CampaignClick placement breakdown. No new field/collection.
+            const vIdx = typeof shownVariantIdx === 'number' ? shownVariantIdx : -1;
+            if (vIdx >= 0) placementName = `${placementName}:v${vIdx}`;
             trackCampaignClick(ad._id, placementName);
         } else {
             fetch('/api/adverts/track', {
@@ -624,27 +633,6 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
             window.open(url, '_blank', 'noopener,noreferrer');
         }
     };
-
-    // Badge Logic
-    const badgeRand = seededRandom(seed + 'badge');
-    let badge = { text: 'Featured', icon: '⭐', color: 'bg-gradient-to-r from-yellow-400 to-orange-500' }; // Default fallback
-
-    // Make badges rarer (20% chance, was 80%)
-    const showBadge = badgeRand > 0.8;
-
-    if (showBadge) {
-        const badges = [
-            { text: 'Trending', icon: '🔥', color: 'bg-red-500' },
-            { text: 'Hot', icon: '🌶️', color: 'bg-orange-500' },
-            { text: 'New', icon: '✨', color: 'bg-green-500' },
-            { text: 'Premium', icon: '👑', color: 'bg-purple-500' },
-            { text: 'Verified', icon: '✅', color: 'bg-blue-500' },
-            { text: 'Best Value', icon: '💎', color: 'bg-pink-500' },
-            { text: 'Editor\'s Pick', icon: '🎯', color: 'bg-indigo-500' }
-        ];
-        badge = badges[Math.floor(seededRandom(seed + 'badgeType') * badges.length)];
-    }
-
 
     // Social Proof — controlled via campaign.socialProof
     const proofSetting = campaign?.socialProof || 'random';
@@ -745,7 +733,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                             <p className="text-gray-400 text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed">{ad.description}</p>
                         </div>
                         <button
-                            onClick={handleClick}
+                            onClick={() => handleClick()}
                             className="w-full py-2.5 sm:py-3 px-3 rounded-xl font-black text-white text-sm transition-all duration-300 hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
                             style={{ background: 'linear-gradient(135deg, #ff5e2a, #ff9432)', color: '#ffffff', boxShadow: '0 4px 14px -5px rgba(255,94,42,0.5)' }}
                         >
@@ -828,7 +816,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
                             {/* Main Button */}
                             <button
-                                onClick={handleClick}
+                                onClick={() => handleClick()}
                                 className="w-full py-2.5 sm:py-3 px-3 rounded-xl font-black text-white text-sm transition-all duration-300 hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
                                 style={{ background: 'linear-gradient(135deg, #ff5e2a, #ff9432)', color: '#ffffff', boxShadow: '0 4px 14px -5px rgba(255,94,42,0.5)' }}
                             >
@@ -851,15 +839,6 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
             onHoverEnd={() => setIsHovered(false)}
         >
             <div className={`glass rounded-2xl overflow-hidden h-full flex flex-col backdrop-blur-xl border transition-all duration-300 ${isHovered ? 'scale-[1.02] shadow-2xl shadow-black/50 border-white/20' : 'border-white/5'} relative`}>
-                {/* Random Badge */}
-                {showBadge && (
-                    <div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10">
-                        <span className={`px-2 sm:px-3 py-0.5 sm:py-1 rounded-full ${badge.color} text-white text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-lg flex items-center gap-1 animate-pulse`}>
-                            <span>{badge.icon}</span> <span className="hidden sm:inline">{badge.text}</span>
-                        </span>
-                    </div>
-                )}
-
                 {/* Advert Image */}
                 <div ref={imgRef} className="relative w-full h-32 sm:h-48 overflow-hidden bg-[#1a1a1a]">
                     <Image
@@ -908,7 +887,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
                     {/* Action Button */}
                     <button
-                        onClick={handleClick}
+                        onClick={() => handleClick()}
                         className="w-full py-2.5 sm:py-3 px-3 rounded-xl font-black text-white text-sm transition-all duration-300 hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
                         style={{ background: 'linear-gradient(135deg, #ff5e2a, #ff9432)', color: '#ffffff', boxShadow: '0 4px 14px -5px rgba(255,94,42,0.5)' }}
                     >

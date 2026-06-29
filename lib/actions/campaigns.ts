@@ -4,8 +4,60 @@ import jwt from 'jsonwebtoken';
 import mongoose, { type PipelineStage } from 'mongoose';
 import connectDB from '@/lib/db/mongodb';
 import { User, Campaign, CampaignClick, CampaignImpressionDaily, Advertiser, Article, Group, Bot, OnlyFansCreator, TrendingOFCreator, TrendingClickDaily } from '@/lib/models';
+import { BOOST_WEIGHT } from '@/lib/adPlacements';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
+
+// LIVE schedule check (GMT). -1 = never live; 0/0 = always live; otherwise within [start,end),
+// wrapping past midnight when start > end. Mirrors AdvertCard.isCreatorLiveNow.
+function isOfCreatorLiveNow(start: number, end: number): boolean {
+  if (start < 0 || end < 0) return false;
+  if (start === 0 && end === 0) return true;
+  const h = new Date().getUTCHours();
+  return start <= end ? h >= start && h < end : h >= start || h < end;
+}
+
+type OFEnrich = {
+  _id: string;
+  liveHourStart: number;
+  liveHourEnd: number;
+  liveOnly: boolean;
+  /** Rotatable creator album = [avatar, ...extraPhotos] minus paused. Ordered for ":v{i}" click tags. */
+  album: string[];
+};
+
+/**
+ * Build username → OF ad-enrichment (live window + rotatable album). The album is the ONE creator
+ * album (scraped avatar + extraPhotos) minus any image the owner paused, so ads and the public
+ * profile share the same image set. Reused by every feed/trending push block.
+ */
+async function buildOFEnrichMap(ofUsernames: string[]): Promise<Map<string, OFEnrich>> {
+  const map = new Map<string, OFEnrich>();
+  if (!ofUsernames.length) return map;
+  const [creatorDocs, trendingDocs] = await Promise.all([
+    OnlyFansCreator.find({ username: { $in: ofUsernames } }).select('username avatar extraPhotos').lean(),
+    TrendingOFCreator.find({ username: { $in: ofUsernames } })
+      .select('username liveHourStart liveHourEnd liveOnly pausedImageUrls').lean(),
+  ]);
+  const albumByUser = new Map<string, string[]>();
+  for (const c of creatorDocs as any[]) {
+    const all = [c.avatar, ...((c.extraPhotos as string[]) || [])].filter(Boolean);
+    albumByUser.set(String(c.username).toLowerCase(), all);
+  }
+  for (const t of trendingDocs as any[]) {
+    const uname = String(t.username).toLowerCase();
+    const paused = new Set<string>((t.pausedImageUrls as string[]) || []);
+    const album = (albumByUser.get(uname) || []).filter((u) => !paused.has(u));
+    map.set(uname, {
+      _id: String(t._id),
+      liveHourStart: t.liveHourStart ?? -1,
+      liveHourEnd: t.liveHourEnd ?? -1,
+      liveOnly: t.liveOnly ?? false,
+      album,
+    });
+  }
+  return map;
+}
 
 const SLOT_LIMITS: Record<string, number> = {
   // Global banner shown across the site (Bots/Groups/Articles/Join pages)
@@ -504,17 +556,21 @@ export async function getPlacementFeedCampaigns(placement: string, max = 4) {
     .filter((c) => c.adType === 'onlyfans-creator' && c.ofUsername)
     .map((c) => String(c.ofUsername).toLowerCase());
   const ofStats = new Map<string, { likesCount: number; subscriberCount: number }>();
-  const ofTrending = new Map<string, { _id: string; liveHourStart: number; liveHourEnd: number }>();
+  const ofTrending = await buildOFEnrichMap(ofUsernames);
   if (ofUsernames.length) {
-    const [docsStats, trendingDocs] = await Promise.all([
-      OnlyFansCreator.find({ username: { $in: ofUsernames } }).select('username likesCount subscriberCount').lean(),
-      TrendingOFCreator.find({ username: { $in: ofUsernames } }).select('username liveHourStart liveHourEnd').lean(),
-    ]);
+    const docsStats = await OnlyFansCreator.find({ username: { $in: ofUsernames } }).select('username likesCount subscriberCount').lean();
     for (const d of docsStats as any[]) ofStats.set(String(d.username).toLowerCase(), { likesCount: d.likesCount || 0, subscriberCount: d.subscriberCount || 0 });
-    for (const t of trendingDocs as any[]) ofTrending.set(String(t.username).toLowerCase(), { _id: String(t._id), liveHourStart: t.liveHourStart ?? -1, liveHourEnd: t.liveHourEnd ?? -1 });
   }
 
-  return eligible.map((c: any, i: number) => {
+  // Drop OF creators flagged liveOnly that are currently offline — frees their slot.
+  const liveEligible = (eligible as any[]).filter((c) => {
+    if (c.adType !== 'onlyfans-creator') return true;
+    const tr = ofTrending.get(String(c.ofUsername || '').toLowerCase());
+    if (!tr || !tr.liveOnly) return true;
+    return isOfCreatorLiveNow(tr.liveHourStart, tr.liveHourEnd);
+  });
+
+  return liveEligible.map((c: any, i: number) => {
     const uname = String(c.ofUsername || '').toLowerCase();
     const stats = ofStats.get(uname);
     const tr = ofTrending.get(uname);
@@ -540,6 +596,105 @@ export async function getPlacementFeedCampaigns(placement: string, max = 4) {
       ofTrendingId: tr?._id ?? '',
       ofLiveHourStart: tr?.liveHourStart ?? -1,
       ofLiveHourEnd: tr?.liveHourEnd ?? -1,
+      ofLiveOnly: tr?.liveOnly ?? false,
+      ofAlbum: tr?.album ?? [],
+    };
+  });
+}
+
+/**
+ * Fetch up to N active campaigns assigned to the new "Trending on Erogram" ad space.
+ * ONE query for any campaign on a trending-* placement, deduped, caps respected.
+ * Interleaves OF creators with other ad types so a single adType (e.g. AI advertisers)
+ * never crowds out the promoted OF creators in the mixed block.
+ */
+export async function getTrendingErogramCampaigns(max = 4) {
+  const { unstable_noStore } = await import('next/cache');
+  unstable_noStore();
+
+  await connectDB();
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const [cappedAdvertisers, cappedCampaigns] = await Promise.all([
+    getCappedAdvertiserIds(),
+    getCappedCampaignIds(),
+  ]);
+
+  const docs = await Campaign.find({
+    status: 'active',
+    isVisible: true,
+    startDate: { $lte: now },
+    endDate: { $gte: startOfToday },
+    placements: { $in: ['trending-1', 'trending-2', 'trending-3', 'trending-4'] },
+  })
+    .select('_id creative destinationUrl slot description category country buttonText name videoUrl badgeText verified adType ofUsername advertiserId priority blockFormat')
+    .sort({ priority: -1, createdAt: -1 })
+    .lean();
+
+  const eligible = (docs as any[]).filter((c) =>
+    !cappedCampaigns.has(c._id.toString()) &&
+    (!c.advertiserId || !cappedAdvertisers.has(c.advertiserId.toString())),
+  );
+
+  // Interleave OF creators with everything else so the mixed block stays varied.
+  const ofCreators = eligible.filter((c) => c.adType === 'onlyfans-creator');
+  const others = eligible.filter((c) => c.adType !== 'onlyfans-creator');
+  const interleaved: any[] = [];
+  let oi = 0, ji = 0;
+  while (interleaved.length < eligible.length) {
+    if (oi < ofCreators.length) interleaved.push(ofCreators[oi++]);
+    if (ji < others.length) interleaved.push(others[ji++]);
+    if (oi >= ofCreators.length && ji >= others.length) break;
+  }
+  const picks = interleaved.slice(0, max);
+
+  // Enrich OF-creator campaigns with stats + trending link so AdvertCard renders them fully.
+  const ofUsernames = picks
+    .filter((c) => c.adType === 'onlyfans-creator' && c.ofUsername)
+    .map((c) => String(c.ofUsername).toLowerCase());
+  const ofStats = new Map<string, { likesCount: number; subscriberCount: number }>();
+  const ofTrending = await buildOFEnrichMap(ofUsernames);
+  if (ofUsernames.length) {
+    const docsStats = await OnlyFansCreator.find({ username: { $in: ofUsernames } }).select('username likesCount subscriberCount').lean();
+    for (const d of docsStats as any[]) ofStats.set(String(d.username).toLowerCase(), { likesCount: d.likesCount || 0, subscriberCount: d.subscriberCount || 0 });
+  }
+
+  // Drop OF creators flagged liveOnly that are currently offline — frees their slot.
+  const livePicks = (picks as any[]).filter((c) => {
+    if (c.adType !== 'onlyfans-creator') return true;
+    const tr = ofTrending.get(String(c.ofUsername || '').toLowerCase());
+    if (!tr || !tr.liveOnly) return true;
+    return isOfCreatorLiveNow(tr.liveHourStart, tr.liveHourEnd);
+  });
+
+  return livePicks.map((c: any, i: number) => {
+    const uname = String(c.ofUsername || '').toLowerCase();
+    const stats = ofStats.get(uname);
+    const tr = ofTrending.get(uname);
+    return {
+      _id: c._id.toString(),
+      name: c.name || '',
+      creative: c.creative || '',
+      destinationUrl: c.destinationUrl || '',
+      slot: c.slot || 'feed',
+      position: i,
+      description: c.description || '',
+      category: c.category || 'All',
+      country: c.country || 'All',
+      buttonText: c.buttonText || 'Visit Site',
+      videoUrl: c.videoUrl || '',
+      badgeText: c.badgeText || '',
+      verified: Boolean(c.verified),
+      adType: c.adType || 'advertiser',
+      blockFormat: c.blockFormat || 'card',
+      ofUsername: c.ofUsername || '',
+      ofLikesCount: stats?.likesCount ?? 0,
+      ofSubscriberCount: stats?.subscriberCount ?? 0,
+      ofTrendingId: tr?._id ?? '',
+      ofLiveHourStart: tr?.liveHourStart ?? -1,
+      ofLiveHourEnd: tr?.liveHourEnd ?? -1,
+      ofLiveOnly: tr?.liveOnly ?? false,
+      ofAlbum: tr?.album ?? [],
     };
   });
 }
@@ -580,29 +735,54 @@ export async function getKeywordPlacementCampaigns(placement: string, categorySl
     .sort({ priority: -1, createdAt: -1 })
     .lean();
 
-  const eligible = (docs as any[])
+  const filtered = (docs as any[])
     .filter((c) =>
       !cappedCampaigns.has(c._id.toString()) &&
       (!c.advertiserId || !cappedAdvertisers.has(c.advertiserId.toString())),
-    )
-    .slice(0, max);
+    );
+
+  // ROTATION (brain: inc-top-groups-rotation): every assigned ad must rotate, not just the
+  // top-priority one. Boost-weighted shuffle — boosted ads get BOOST_WEIGHT draws (more visibility)
+  // but non-boosted ads still rotate in. Same law as Top Groups. Without this, .slice() froze on [0].
+  const weightedPool: any[] = [];
+  for (const c of filtered) {
+    const draws = c.priority === 'boost' ? BOOST_WEIGHT : 1;
+    for (let k = 0; k < draws; k++) weightedPool.push(c);
+  }
+  for (let i = weightedPool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [weightedPool[i], weightedPool[j]] = [weightedPool[j], weightedPool[i]];
+  }
+  const eligible: any[] = [];
+  const seen = new Set<string>();
+  for (const c of weightedPool) {
+    const id = c._id.toString();
+    if (seen.has(id)) continue;
+    seen.add(id);
+    eligible.push(c);
+    if (eligible.length >= max) break;
+  }
 
   // Enrich OF-creator campaigns with stats + trending link so AdvertCard renders them fully.
   const ofUsernames = eligible
     .filter((c) => c.adType === 'onlyfans-creator' && c.ofUsername)
     .map((c) => String(c.ofUsername).toLowerCase());
   const ofStats = new Map<string, { likesCount: number; subscriberCount: number; bio: string }>();
-  const ofTrending = new Map<string, { _id: string; liveHourStart: number; liveHourEnd: number }>();
+  const ofTrending = await buildOFEnrichMap(ofUsernames);
   if (ofUsernames.length) {
-    const [docsStats, trendingDocs] = await Promise.all([
-      OnlyFansCreator.find({ username: { $in: ofUsernames } }).select('username likesCount subscriberCount bio').lean(),
-      TrendingOFCreator.find({ username: { $in: ofUsernames } }).select('username liveHourStart liveHourEnd').lean(),
-    ]);
+    const docsStats = await OnlyFansCreator.find({ username: { $in: ofUsernames } }).select('username likesCount subscriberCount bio').lean();
     for (const d of docsStats as any[]) ofStats.set(String(d.username).toLowerCase(), { likesCount: d.likesCount || 0, subscriberCount: d.subscriberCount || 0, bio: d.bio || '' });
-    for (const t of trendingDocs as any[]) ofTrending.set(String(t.username).toLowerCase(), { _id: String(t._id), liveHourStart: t.liveHourStart ?? -1, liveHourEnd: t.liveHourEnd ?? -1 });
   }
 
-  return eligible.map((c: any, i: number) => {
+  // Drop OF creators flagged liveOnly that are currently offline — frees their slot.
+  const liveEligible = (eligible as any[]).filter((c) => {
+    if (c.adType !== 'onlyfans-creator') return true;
+    const tr = ofTrending.get(String(c.ofUsername || '').toLowerCase());
+    if (!tr || !tr.liveOnly) return true;
+    return isOfCreatorLiveNow(tr.liveHourStart, tr.liveHourEnd);
+  });
+
+  return liveEligible.map((c: any, i: number) => {
     const uname = String(c.ofUsername || '').toLowerCase();
     const stats = ofStats.get(uname);
     const tr = ofTrending.get(uname);
@@ -629,6 +809,8 @@ export async function getKeywordPlacementCampaigns(placement: string, categorySl
       ofTrendingId: tr?._id ?? '',
       ofLiveHourStart: tr?.liveHourStart ?? -1,
       ofLiveHourEnd: tr?.liveHourEnd ?? -1,
+      ofLiveOnly: tr?.liveOnly ?? false,
+      ofAlbum: tr?.album ?? [],
     };
   });
 }
@@ -1045,21 +1227,33 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ain
     }
   }
 
-  // For onlyfans-creator campaigns: one query to get stats + lastSeen
+  // For onlyfans-creator campaigns: one query to get stats + lastSeen, plus the live schedule
+  // from the TrendingOFCreator rail so the LIVE green dot reflects what the admin set.
   const ofUsernames = campaigns
     .filter((c: any) => c.adType === 'onlyfans-creator' && c.ofUsername)
     .map((c: any) => (c.ofUsername as string).toLowerCase());
-  const ofCreatorMap = new Map<string, { likesCount: number; subscriberCount: number; lastSeen: string }>();
+  const ofCreatorMap = new Map<string, { likesCount: number; subscriberCount: number; lastSeen: string; liveHourStart: number; liveHourEnd: number; liveOnly: boolean; album: string[] }>();
   if (ofUsernames.length > 0) {
-    const ofDocs = await OnlyFansCreator.find(
-      { username: { $in: ofUsernames } },
-      'username lastSeen likesCount subscriberCount',
-    ).lean();
+    const [ofDocs, trendingDocs] = await Promise.all([
+      OnlyFansCreator.find({ username: { $in: ofUsernames } }, 'username lastSeen likesCount subscriberCount avatar extraPhotos').lean(),
+      TrendingOFCreator.find({ username: { $in: ofUsernames } }, 'username liveHourStart liveHourEnd liveOnly pausedImageUrls').lean(),
+    ]);
+    const liveMap = new Map<string, { liveHourStart: number; liveHourEnd: number; liveOnly: boolean; pausedImageUrls: string[] }>();
+    for (const t of trendingDocs as any[]) {
+      liveMap.set(String(t.username).toLowerCase(), { liveHourStart: t.liveHourStart ?? -1, liveHourEnd: t.liveHourEnd ?? -1, liveOnly: t.liveOnly ?? false, pausedImageUrls: t.pausedImageUrls ?? [] });
+    }
     for (const d of ofDocs as any[]) {
+      const live = liveMap.get(d.username.toLowerCase());
+      const paused = new Set<string>(live?.pausedImageUrls ?? []);
+      const album = [d.avatar, ...((d.extraPhotos as string[]) || [])].filter(Boolean).filter((u) => !paused.has(u));
       ofCreatorMap.set(d.username.toLowerCase(), {
         likesCount: d.likesCount || 0,
         subscriberCount: d.subscriberCount || 0,
         lastSeen: d.lastSeen || '',
+        liveHourStart: live?.liveHourStart ?? -1,
+        liveHourEnd: live?.liveHourEnd ?? -1,
+        liveOnly: live?.liveOnly ?? false,
+        album,
       });
     }
   }
@@ -1087,6 +1281,8 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ain
       const ofData = (pick as any).adType === 'onlyfans-creator'
         ? ofCreatorMap.get(((pick as any).ofUsername || '').toLowerCase())
         : undefined;
+      // liveOnly creators that are currently offline free their slot — skip them entirely.
+      if (ofData && ofData.liveOnly && !isOfCreatorLiveNow(ofData.liveHourStart, ofData.liveHourEnd)) continue;
       results.push({
         _id: pick._id.toString(),
         creative: pick.creative,
@@ -1117,6 +1313,10 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ain
           ofLikesCount: ofData.likesCount,
           ofSubscriberCount: ofData.subscriberCount,
           ofIsLive: ofData.lastSeen ? (Date.now() - new Date(ofData.lastSeen).getTime() < 3600000) : false,
+          ofLiveHourStart: ofData.liveHourStart,
+          ofLiveHourEnd: ofData.liveHourEnd,
+          ofLiveOnly: ofData.liveOnly,
+          ofAlbum: ofData.album,
         } : {}),
       });
     }

@@ -3,6 +3,7 @@ import { Group, FeedCampaign } from './types';
 import GroupCard from './GroupCard';
 import AdvertCard from './AdvertCard';
 import { type VaultTeaserItem } from './VaultTeaserFeed';
+import { BOOST_WEIGHT } from '@/lib/adPlacements';
 
 interface VirtualizedGroupGridProps {
     groups: Group[];
@@ -35,12 +36,17 @@ function buildFeedItems(groups: Group[], campaigns: FeedCampaign[], vaultGroups:
         return groups.map((g, i) => ({ type: 'group' as const, data: g, index: i }));
     }
 
-    // Each in-feed slot rotates: boosted ads win, otherwise a random eligible variant per page load.
+    // Each in-feed slot rotates with WEIGHTED priority: a boosted (highest-paying) ad gets
+    // BOOST_WEIGHT entries in the draw so it shows ~10× more, but non-boosted ads still rotate
+    // in (never starved). One tunable multiplier dials how strongly money buys visibility.
     const rotate = (list: FeedCampaign[]): FeedCampaign | undefined => {
         if (list.length === 0) return undefined;
-        const boosted = list.filter(c => c.priority === 'boost');
-        const pool = boosted.length > 0 ? boosted : list;
-        return pool[Math.floor(Math.random() * pool.length)];
+        const draw: FeedCampaign[] = [];
+        for (const c of list) {
+            const weight = c.priority === 'boost' ? BOOST_WEIGHT : 1;
+            for (let i = 0; i < weight; i++) draw.push(c);
+        }
+        return draw[Math.floor(Math.random() * draw.length)];
     };
     const slot2all = campaigns.filter(c => c.tierSlot === 2);
     const slot3all = campaigns.filter(c => c.tierSlot === 3);

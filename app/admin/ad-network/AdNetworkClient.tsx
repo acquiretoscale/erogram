@@ -89,6 +89,7 @@ const PLACEMENT_GROUPS = [
   'Best Groups',
   'OnlyFans',
   'Banners',
+  'Trending on Erogram',
 ] as const;
 
 // Top-level buckets shown as filter pills. Each maps to one PlacementDef.group.
@@ -98,11 +99,12 @@ const CATEGORY_PILLS: { id: string; label: string; group: PlacementDef['group'] 
   { id: 'AI NSFW', label: 'Top AI NSFW', group: 'AI NSFW' },
   { id: 'Top Bots', label: 'Top Bots', group: 'Top Bots' },
   { id: 'In-Feed', label: 'In feed', group: 'In-Feed' },
-  { id: 'Home', label: 'SPOTLIGHT (Main)', group: 'Home' },
+  { id: 'Home', label: 'TRENDING (Main)', group: 'Home' },
   { id: 'Best Groups', label: 'Top 10s', group: 'Best Groups' },
   { id: 'OnlyFans', label: 'OF Search', group: 'OnlyFans' },
   { id: 'Join Pages', label: 'CTA / In-page', group: 'Join Pages' },
   { id: 'Banners', label: 'Banners', group: 'Banners' },
+  { id: 'Trending on Erogram', label: 'Trending on Erogram', group: 'Trending on Erogram' },
   // House ad: Erogram Premium self-promo (adType 'premium'). 'House' matches no placement,
   // so the bucket is driven purely by adType in campaignGroups() below.
   { id: 'Erogram Premium', label: 'Erogram Premium', group: 'House' },
@@ -113,7 +115,7 @@ const CATEGORY_PILLS: { id: string; label: string; group: PlacementDef['group'] 
 // (Top-10 integrated surfaces) live in Mid tier.
 const TIERS: { id: string; label: string; hint: string; pills: string[] }[] = [
   { id: 'top', label: 'Top Tier', hint: 'Highest-value spots', pills: ['Top Groups', 'Top Bots', 'AI NSFW'] },
-  { id: 'mid', label: 'Mid Tier', hint: 'In-feed, blocks & Top-10s', pills: ['In-Feed', 'Home', 'Best Groups', 'OnlyFans'] },
+  { id: 'mid', label: 'Mid Tier', hint: 'In-feed, blocks & Top-10s', pills: ['In-Feed', 'Home', 'Best Groups', 'OnlyFans', 'Trending on Erogram'] },
   { id: 'other', label: 'Other', hint: 'CTA, banners & house', pills: ['Join Pages', 'Banners', 'Erogram Premium'] },
 ];
 
@@ -684,7 +686,7 @@ export default function AdNetworkClient() {
                         {/* Home (SPOTLIGHT) block format — only when a SPOTLIGHT adspace is selected */}
                         {(draftPlacements.includes('home-block-1') || draftPlacements.includes('home-block-2')) && (
                           <div className="mt-4 rounded-lg border border-red-500/20 bg-red-500/[0.04] p-3">
-                            <div className="text-xs font-bold uppercase tracking-wider text-red-300/80 mb-2">SPOTLIGHT block format</div>
+                            <div className="text-xs font-bold uppercase tracking-wider text-red-300/80 mb-2">TRENDING block format</div>
                             <div className="flex gap-2">
                               {([['card', 'Card (part of 4-up grid)'], ['banner', 'Banner (1 wide image/video)']] as const).map(([val, lbl]) => (
                                 <button

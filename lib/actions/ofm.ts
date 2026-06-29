@@ -2,7 +2,7 @@
 
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
-import { User, OnlyFansCreator, TrendingOFCreator, TrendingClickDaily, TrendingErogram } from '@/lib/models';
+import { User, OnlyFansCreator, TrendingOFCreator, TrendingClickDaily, TrendingErogram, Campaign } from '@/lib/models';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -195,9 +195,37 @@ export async function updateOFMCreator(token: string, id: string, data: Record<s
     id,
     { $set: update },
     { new: true, runValidators: true },
-  ).lean();
+  ).lean() as any;
 
   if (!creator) throw new Error('Not found');
+
+  // MASTER EDIT — EROGRAM-WIDE (owner directive): a creator edited in /OF is the single source
+  // of truth. Mirror display changes (name / avatar / url) into any featured rail slot AND its
+  // linked Ad Network campaign for this creator, matched by username, so one edit reflects
+  // everywhere (OF Search, featured rail, every ad surface) with no second manual step.
+  const dispChanged = ['name', 'avatar', 'url', 'username'].some((k) => k in update);
+  if (dispChanged && creator.username) {
+    try {
+      const rx = new RegExp(`^${String(creator.username).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+      const railSet: Record<string, any> = {};
+      if ('name' in update) railSet.name = creator.name;
+      if ('avatar' in update) railSet.avatar = creator.avatar || '';
+      if ('url' in update) railSet.url = creator.url || '';
+      if (Object.keys(railSet).length > 0) {
+        await TrendingOFCreator.updateMany({ username: rx }, { $set: railSet });
+      }
+      const campSet: Record<string, any> = {};
+      if ('name' in update) campSet.name = creator.name;
+      if ('avatar' in update) campSet.creative = creator.avatar || '';
+      if ('url' in update) campSet.destinationUrl = creator.url || '';
+      if (Object.keys(campSet).length > 0) {
+        await Campaign.updateMany({ adType: 'onlyfans-creator', ofUsername: rx }, { $set: campSet });
+      }
+    } catch (err) {
+      console.error('[updateOFMCreator] master-edit propagation failed:', err);
+    }
+  }
+
   return JSON.parse(JSON.stringify({ creator }));
 }
 
@@ -447,8 +475,8 @@ export async function createOFMTrendingSlot(
   if (!name || !username || !url || !position) {
     throw new Error('name, username, url, and position are required');
   }
-  if (position < 1 || position > 12) {
-    throw new Error('position must be 1–12');
+  if (position < 1) {
+    throw new Error('position must be ≥ 1');
   }
 
   await TrendingOFCreator.findOneAndDelete({ position });
@@ -473,16 +501,22 @@ export async function createOFMTrendingSlot(
     source: 'ofadmin',
   });
 
-  // Unified OF sync: mirror this OFadmin launch into the Ad Network (best-effort).
+  // Unified OF sync: mirror this OFadmin launch into the Ad Network so "add to OF featured"
+  // == "live across the network". This is REQUIRED for the unified flow — if it fails we
+  // surface a warning (the slot still exists) instead of silently leaving an orphan rail entry.
+  let syncWarning: string | null = null;
   try {
     const { syncTrendingToCampaign } = await import('@/lib/actions/ofSync');
-    await syncTrendingToCampaign(creator._id.toString());
+    const res = await syncTrendingToCampaign(creator._id.toString());
+    if (!res.ok) syncWarning = res.note || 'Ad Network sync did not complete — assign placements in /admin/ad-network.';
   } catch (err) {
     console.error('[createOFMTrendingSlot] sync failed:', err);
+    syncWarning = 'Ad Network sync failed — this creator is in the featured rail but not yet in the Ad Network. Re-save or check /admin/ad-network.';
   }
 
   return JSON.parse(JSON.stringify({
     creator: { ...creator.toObject(), _id: creator._id.toString() },
+    syncWarning,
   }));
 }
 

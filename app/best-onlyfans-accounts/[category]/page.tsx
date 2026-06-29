@@ -3,12 +3,14 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import connectDB from '@/lib/db/mongodb';
-import { OnlyFansCreator, TrendingOFCreator } from '@/lib/models';
+import { OnlyFansCreator } from '@/lib/models';
 import Navbar from '@/components/Navbar';
 import { OF_CATEGORIES, OF_CATEGORY_MAP, ofCategoryUrl } from '@/app/onlyfanssearch/constants';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
 import type { Locale } from '@/lib/i18n';
+import { getKeywordPlacementCampaigns } from '@/lib/actions/campaigns';
+import BestPageAdBlock from '@/app/best-onlyfans-accounts/BestPageAdBlock';
 
 interface PageProps {
     params: Promise<{ category: string }>;
@@ -79,38 +81,41 @@ export default async function BestOnlyfansPage({ params }: PageProps) {
 
     const baseMatch = { categories: slug, gender: 'female', avatar: { $ne: '' }, deleted: { $ne: true } };
 
-    const [topByClicks, trendingRaw] = await Promise.all([
+    const [topByClicks, bestOfAds] = await Promise.all([
         OnlyFansCreator.find({ ...baseMatch, clicks: { $gt: 0 } })
             .sort({ clicks: -1 })
             .limit(10)
             .select('_id name username slug avatar likesCount mediaCount photosCount videosCount price isFree url clicks')
             .lean(),
-        TrendingOFCreator.find({ active: true, categories: slug })
-            .sort({ position: 1 })
-            .limit(3)
-            .lean(),
+        // Keyword-targeted "best-of" ads for this category (unified tag system). Rotating, SEO-safe.
+        getKeywordPlacementCampaigns('best-of', slug, 6).catch(() => []),
     ]);
 
     const usedUsernames = new Set<string>();
     const creators: any[] = [];
 
-    for (const tc of trendingRaw) {
+    // Ranking spots 1/2/3 = keyword-targeted best-of campaigns (creators tagged for THIS category in
+    // /admin/ad-network). Already boost-weighted + shuffled by getKeywordPlacementCampaigns, so multiple
+    // assigned creators ALTERNATE per render (like normal ads). Up to 3 take the top ranking spots.
+    for (const ad of (bestOfAds as any[]).slice(0, 3)) {
         if (creators.length >= 10) break;
-        usedUsernames.add(tc.username);
+        const uname = (ad.ofUsername || '').toLowerCase();
+        if (uname) usedUsernames.add(uname);
         creators.push({
-            _id: String(tc._id),
-            name: tc.name || '',
-            username: tc.username || '',
-            avatar: tc.avatar || '',
-            likesCount: 0,
+            _id: String(ad._id),
+            name: ad.name || ad.ofUsername || '',
+            username: ad.ofUsername || '',
+            avatar: (ad.ofAlbum && ad.ofAlbum[0]) || ad.creative || '',
+            likesCount: ad.ofLikesCount || 0,
             mediaCount: 0,
             photosCount: 0,
             videosCount: 0,
             price: 0,
             isFree: false,
-            slug: tc.username?.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || '',
-            url: tc.url || '',
+            slug: (ad.ofUsername || '').toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, ''),
+            url: ad.destinationUrl || '',
             isTrending: true,
+            campaignId: String(ad._id),
         });
     }
 
@@ -214,9 +219,10 @@ export default async function BestOnlyfansPage({ params }: PageProps) {
                                             ? 'border-gray-200 shadow-sm'
                                             : 'border-gray-200'
                                     }`}>
-                                        <button
-                                            type="button"
-                                            onClick={() => { if (creator.url) window.open(creator.url, '_blank', 'noopener'); }}
+                                        <a
+                                            href={creator.url || '#'}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
                                             className="w-full text-left flex items-start gap-3 p-3 sm:p-3.5 cursor-pointer"
                                         >
                                             {/* Rank badge */}
@@ -301,7 +307,7 @@ export default async function BestOnlyfansPage({ params }: PageProps) {
                                             <span className="flex-shrink-0 px-5 py-3 rounded-xl bg-[#00AFF0] group-hover:bg-[#009ADB] text-white text-sm font-black transition-colors whitespace-nowrap shadow-md shadow-[#00AFF0]/30">
                                                 {dict.bestOnlyfans.view} →
                                             </span>
-                                        </button>
+                                        </a>
                                     </article>
                                 </li>
                             );
@@ -312,6 +318,9 @@ export default async function BestOnlyfansPage({ params }: PageProps) {
                         <p className="text-white/30 text-sm">{dict.bestOnlyfans.curatingMsg}</p>
                     </div>
                 )}
+
+                {/* Overflow featured creators — any keyword-targeted creators beyond the top-3 ranking. Bottom only. */}
+                <BestPageAdBlock ads={(bestOfAds as any[]).slice(3) as any} placement="best-of" />
 
                 {/* FAQ */}
                 <div className="mb-10">

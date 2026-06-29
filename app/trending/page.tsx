@@ -11,26 +11,26 @@ export const revalidate = 60;
 const BASE_URL = 'https://erogram.pro';
 
 export const metadata: Metadata = {
-  title: 'EROGRAM SPOTLIGHT — The OnlyFans, AI NSFW & Telegram Hub',
+  title: 'TRENDING ON EROGRAM — The OnlyFans, AI NSFW & Telegram Hub',
   description:
-    'EROGRAM SPOTLIGHT: the Creator of the Month cover, must-read features, and the most-upvoted AI NSFW tools and Telegram bots — everything happening across Erogram.',
-  alternates: { canonical: `${BASE_URL}/main` },
+    'TRENDING ON EROGRAM: the Creator of the Month cover, must-read features, and the most-upvoted AI NSFW tools and Telegram bots — everything happening across Erogram.',
+  alternates: { canonical: `${BASE_URL}/trending` },
   openGraph: {
-    title: 'EROGRAM SPOTLIGHT',
+    title: 'TRENDING ON EROGRAM',
     description:
       'The Creator of the Month cover, must-read features, and the most-upvoted AI NSFW tools and Telegram bots.',
     type: 'website',
     siteName: 'Erogram',
-    url: `${BASE_URL}/main`,
+    url: `${BASE_URL}/trending`,
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'EROGRAM SPOTLIGHT',
+    title: 'TRENDING ON EROGRAM',
     description: 'OnlyFans cover, must-read features, top AI NSFW tools and Telegram bots.',
   },
 };
 
-export default async function SpotlightPage() {
+export default async function TrendingPage() {
   const [articles, featuredCreator, topAINsfw, topBots, homeBlock1Ads, homeBlock2Ads] = await Promise.all([
     getPublishedBlogArticles(12),
     getBlogFeaturedCreator(),

@@ -36,7 +36,7 @@ export type PlacementSurface =
   // AI NSFW featured row
   | 'ainsfw-featured'
   | 'ainsfw-feed'
-  // Spotlight (/main) versatile blocks — rotate wide banner (image/video) OR a 4-up card grid
+  // Trending (/trending) versatile blocks — rotate wide banner (image/video) OR a 4-up card grid
   | 'home-block-1'
   | 'home-block-2'
   // Global banners / CTA
@@ -47,7 +47,7 @@ export type PlacementSurface =
 export interface PlacementDef {
   id: PlacementSurface | string;
   label: string;
-  group: 'Top Groups' | 'In-Feed' | 'Top Bots' | 'Join Pages' | 'AI NSFW' | 'Banners' | 'Best Groups' | 'OnlyFans' | 'Home';
+  group: 'Top Groups' | 'In-Feed' | 'Top Bots' | 'Join Pages' | 'AI NSFW' | 'Banners' | 'Best Groups' | 'OnlyFans' | 'Home' | 'Trending on Erogram';
   /** Maps a named placement to the legacy tierSlot so existing render code keeps working. */
   legacyTierSlot?: number;
   /** Reserved = defined for the roadmap but NOT wired to any surface yet. */
@@ -84,8 +84,8 @@ export const PLACEMENTS: PlacementDef[] = [
   { id: 'group-sidebar', label: 'Group/Bot Page — Sidebar Promo (up to 4 OF creators / ads)', group: 'Join Pages' },
   { id: 'ainsfw-featured', label: 'AI NSFW Featured', group: 'AI NSFW' },
   { id: 'ainsfw-feed', label: 'In-Feed — AI NSFW grid', group: 'In-Feed' },
-  { id: 'home-block-1', label: 'SPOTLIGHT — Adspace 1 (mid-page)', group: 'Home' },
-  { id: 'home-block-2', label: 'SPOTLIGHT — Adspace 2 (below newsletter)', group: 'Home' },
+  { id: 'home-block-1', label: 'TRENDING — Adspace 1 (mid-page)', group: 'Home' },
+  { id: 'home-block-2', label: 'TRENDING — Adspace 2 (below newsletter)', group: 'Home' },
   { id: 'top-banner', label: 'Top Banner', group: 'Banners' },
   { id: 'navbar-cta', label: 'Navbar CTA', group: 'Banners' },
 
@@ -97,6 +97,40 @@ export const PLACEMENTS: PlacementDef[] = [
   // OnlyFans Search category pages (/{slug}onlyfans) + keyword search results.
   // Featured strip (paid OF creators) + agnostic 4-ad block every 80 results. Keyword = category slug.
   { id: 'of-cat', label: 'OnlyFans Search — category & keyword pages (keyword-targeted)', group: 'OnlyFans', keywordTargetable: true },
+
+  // New unified mixed promotional surface: Trending on Erogram.
+  // Used on /groups, /bots, /ainsfw (below native Top).
+  // Supports heterogeneous content via ad campaigns (OF creators, boosted via assignment, advertisers, etc.).
+  // Rendered as a 4-up block styled identically to Top Groups.
+  { id: 'trending-1', label: 'Trending on Erogram — Spot 1', group: 'Trending on Erogram' },
+  { id: 'trending-2', label: 'Trending on Erogram — Spot 2', group: 'Trending on Erogram' },
+  { id: 'trending-3', label: 'Trending on Erogram — Spot 3', group: 'Trending on Erogram' },
+  { id: 'trending-4', label: 'Trending on Erogram — Spot 4', group: 'Trending on Erogram' },
+];
+
+/**
+ * BOOST visibility multiplier — a boosted (highest-paying) ad gets this many entries in each
+ * slot's rotation draw, so it appears ~10× more often than a normal ad sharing the same slot.
+ * Non-boosted ads still rotate in (never starved). Tune this one number to dial priority strength.
+ */
+export const BOOST_WEIGHT = 10;
+
+/**
+ * DEFAULT max-exposure placement set for a featured OnlyFans creator.
+ * When a featured OF creator is mirrored into an Ad Network campaign (lib/actions/ofSync),
+ * we assign these so "add to OF featured" == "live across the whole network" automatically —
+ * no second manual step in /admin/ad-network. The owner can still trim placements later.
+ * Covers: Top Groups, In-Feed, Top Bots, AI NSFW, Spotlight, Top-10 + OF category surfaces.
+ */
+export const DEFAULT_OF_CREATOR_PLACEMENTS: string[] = [
+  // OF creators are unrelated to groups → only Top Groups cards 2 & 4 (never card 1 or 3).
+  'top-groups-2', 'top-groups-4',
+  'feed-2', 'feed-3', 'feed-4', 'feed-5',
+  // OF creators are unrelated to bots → only Top Bots cards 2 & 4 (never card 1 or 3).
+  'top-bots-2', 'top-bots-4',
+  'ainsfw-featured', 'ainsfw-feed',
+  'home-block-1', 'home-block-2',
+  'best-of', 'of-cat',
 ];
 
 /**

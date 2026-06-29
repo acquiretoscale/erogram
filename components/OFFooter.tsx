@@ -86,7 +86,7 @@ export default function OFFooter() {
             <h3 className="text-white text-sm font-bold uppercase tracking-wider mb-5">{t('ofSearch.advertise')}</h3>
             <ul className="space-y-3">
               <li>
-                <Link href="/OFM" className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
+                <Link href="/ofmediakit" className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
                   OFM Boost
                 </Link>
               </li>

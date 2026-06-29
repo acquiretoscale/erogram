@@ -17,31 +17,39 @@ export async function getTrendingCreators(category?: string) {
 
   const creators = await TrendingOFCreator.find(filter)
     .limit(12)
-    .select('_id name username avatar url bio categories position dealPrice liveHourStart liveHourEnd')
+    .select('_id name username avatar url bio categories position dealPrice liveHourStart liveHourEnd pausedImageUrls')
     .lean();
 
   const usernames = (creators as any[]).map((c) => c.username).filter(Boolean);
   const ofDocs = usernames.length
     ? await OnlyFansCreator.find({ username: { $in: usernames } })
-        .select('username likesCount')
+        .select('username likesCount avatar extraPhotos')
         .lean()
     : [];
   const likesMap = new Map((ofDocs as any[]).map((d) => [d.username, d.likesCount ?? 0]));
+  const albumMap = new Map((ofDocs as any[]).map((d) => [d.username, [d.avatar, ...((d.extraPhotos as string[]) || [])].filter(Boolean)]));
 
-  const mapped = (creators as any[]).map((c) => ({
-    _id: c._id.toString(),
-    name: c.name,
-    username: c.username,
-    avatar: c.avatar || '',
-    url: c.url,
-    bio: c.bio || '',
-    categories: c.categories || [],
-    position: c.position,
-    dealPrice: c.dealPrice || 0,
-    likesCount: likesMap.get(c.username) ?? 0,
-    liveHourStart: c.liveHourStart ?? -1,
-    liveHourEnd: c.liveHourEnd ?? -1,
-  }));
+  const mapped = (creators as any[]).map((c) => {
+    // ONE rotating album = scraped avatar + uploaded photos, minus any paused image. Same set the
+    // ad feed rotates. Client picks one per view so the featured strip isn't frozen by ISR cache.
+    const paused = new Set<string>(c.pausedImageUrls || []);
+    const album = (albumMap.get(c.username) || [c.avatar].filter(Boolean)).filter((u: string) => !paused.has(u));
+    return {
+      _id: c._id.toString(),
+      name: c.name,
+      username: c.username,
+      avatar: album[0] || c.avatar || '',
+      album,
+      url: c.url,
+      bio: c.bio || '',
+      categories: c.categories || [],
+      position: c.position,
+      dealPrice: c.dealPrice || 0,
+      likesCount: likesMap.get(c.username) ?? 0,
+      liveHourStart: c.liveHourStart ?? -1,
+      liveHourEnd: c.liveHourEnd ?? -1,
+    };
+  });
 
   for (let i = mapped.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -62,14 +70,14 @@ export async function getFeaturedCreatorFeedItems() {
 
   await connectDB();
   const creators = await TrendingOFCreator.find({ active: true })
-    .select('_id name username avatar url liveHourStart liveHourEnd')
+    .select('_id name username avatar url liveHourStart liveHourEnd pausedImageUrls')
     .lean();
 
   const usernames = (creators as any[]).map(c => c.username).filter(Boolean);
   const ofDocs = usernames.length
-    ? await OnlyFansCreator.find({ username: { $in: usernames } }).select('username likesCount subscriberCount').lean()
+    ? await OnlyFansCreator.find({ username: { $in: usernames } }).select('username likesCount subscriberCount avatar extraPhotos').lean()
     : [];
-  const statsMap = new Map((ofDocs as any[]).map(d => [d.username, { likes: d.likesCount || 0, subs: d.subscriberCount || 0 }]));
+  const statsMap = new Map((ofDocs as any[]).map(d => [d.username, { likes: d.likesCount || 0, subs: d.subscriberCount || 0, avatar: d.avatar || '', extraPhotos: (d.extraPhotos as string[]) || [] }]));
 
   const shuffled = [...(creators as any[])];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -104,6 +112,11 @@ export async function getFeaturedCreatorFeedItems() {
       ofSubscriberCount: stats?.subs || 0,
       ofLiveHourStart: c.liveHourStart ?? -1,
       ofLiveHourEnd: c.liveHourEnd ?? -1,
+      ofAlbum: (() => {
+        const paused = new Set<string>(c.pausedImageUrls ?? []);
+        const base = stats ? [stats.avatar, ...stats.extraPhotos] : [c.avatar];
+        return base.filter(Boolean).filter((u) => !paused.has(u));
+      })(),
     };
   });
 }

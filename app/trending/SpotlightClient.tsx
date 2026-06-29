@@ -51,7 +51,7 @@ export default function SpotlightClient({
         {/* Hero */}
         <section className="pt-12 pb-8">
           <h1 className="font-[family-name:var(--font-baloo)] font-extrabold text-[3rem] sm:text-[4rem] leading-[0.95] tracking-tight flex flex-wrap items-baseline gap-x-4 gap-y-2" style={{ color: PLUM }}>
-            <span>EROGRAM <span style={{ color: PLUM }}>SPOTLIGHT</span>.</span>
+            <span>TRENDING ON <span style={{ color: PLUM }}>EROGRAM</span>.</span>
             <span className="text-[12px] sm:text-[13px] font-semibold tracking-[0.28em] uppercase whitespace-nowrap" style={{ color: MUTED }}>{currentMonthYear}</span>
           </h1>
         </section>
@@ -93,7 +93,7 @@ export default function SpotlightClient({
           </section>
         )}
 
-        {/* SPOTLIGHT Adspace 1 — between the cover/Creator-of-the-Month and Reader Favourites */}
+        {/* TRENDING Adspace 1 — between the cover/Creator-of-the-Month and Reader Favourites */}
         <HomeAdBlock ads={homeBlock1Ads} placement="home-block-1" />
 
         {/* Reader favourites — Top 5 AI NSFW + Top 5 Telegram Bots */}
@@ -121,7 +121,7 @@ export default function SpotlightClient({
 
       <NewsletterSignup source="spotlight" />
 
-      {/* SPOTLIGHT Adspace 2 — below the newsletter */}
+      {/* TRENDING Adspace 2 — below the newsletter */}
       <div className="max-w-[1180px] mx-auto px-6 sm:px-8">
         <HomeAdBlock ads={homeBlock2Ads} placement="home-block-2" />
       </div>

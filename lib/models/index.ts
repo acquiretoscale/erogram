@@ -1054,7 +1054,7 @@ const trendingOFCreatorSchema = new Schema(
     url:           { type: String, required: true },
     bio:           { type: String, default: '' },
     categories:    { type: [String], default: [] },
-    position:      { type: Number, min: 1, max: 12, required: true },
+    position:      { type: Number, min: 1, required: true },
     active:        { type: Boolean, default: true },
     clicks:        { type: Number, default: 0 },
     note:          { type: String, default: '' },
@@ -1064,13 +1064,28 @@ const trendingOFCreatorSchema = new Schema(
     isStarPick:    { type: Boolean, default: false }, // true = added by star button (NOT a paid client)
     liveHourStart: { type: Number, default: -1, min: -1, max: 23 }, // -1 = never live; 0–23 = GMT hour start
     liveHourEnd:   { type: Number, default: -1, min: -1, max: 23 }, // -1 = never live; 0–23 = GMT hour end
+    // When true: ad ONLY renders during the live window (liveHourStart–liveHourEnd). Outside that window = hidden entirely.
+    liveOnly:      { type: Boolean, default: false },
+    // DEPRECATED (migrated into the creator album = OnlyFansCreator.avatar + extraPhotos).
+    // Kept only so old docs don't error; no longer read for rendering.
+    adImages:           { type: [String], default: [] },
+    activeImageIndex:   { type: Number, default: -1 },
+    // PAUSED album images — the source of truth for ad rotation, keyed by IMAGE URL (not index,
+    // so deleting/reordering the album never mis-targets). A URL here does NOT rotate in ads.
+    // Empty = the whole creator album rotates.
+    pausedImageUrls:    { type: [String], default: [] },
+    // When split test was started (to compute 48h auto-winner window).
+    splitTestStartedAt: { type: Date, default: null },
     // UNIFIED OF SYNC (brain: ad-engine-unify): which Ad Network campaign owns/mirrors this slot, and where it came from.
     linkedCampaignId: { type: Schema.Types.ObjectId, ref: 'Campaign', default: null },
     source:           { type: String, enum: ['ofadmin', 'ad-network', 'self-serve'], default: 'ofadmin' },
+    // OF agency client this creator belongs to (for /ofm combined tracking). null = no agency.
+    ofClientId:       { type: Schema.Types.ObjectId, ref: 'OFClient', default: null },
   },
   { timestamps: true },
 );
 trendingOFCreatorSchema.index({ position: 1 }, { unique: true });
+trendingOFCreatorSchema.index({ ofClientId: 1 });
 
 export const TrendingOFCreator = models.TrendingOFCreator || model('TrendingOFCreator', trendingOFCreatorSchema);
 
@@ -1087,6 +1102,23 @@ trendingClickDailySchema.index({ creatorId: 1, date: 1 }, { unique: true });
 trendingClickDailySchema.index({ date: 1 });
 
 export const TrendingClickDaily = models.TrendingClickDaily || model('TrendingClickDaily', trendingClickDailySchema);
+
+// OF Agency Client — groups several creators under ONE paying agency with a combined click goal + deadline.
+// Powers the /ofm tracking dashboard. Creators are linked via TrendingOFCreator.ofClientId.
+const ofClientSchema = new Schema(
+  {
+    name:        { type: String, required: true },     // e.g. "OF Colombia"
+    goalClicks:  { type: Number, default: 0 },         // combined target (e.g. 3000)
+    startDate:   { type: Date, default: Date.now },
+    endDate:     { type: Date, required: true },        // deadline (e.g. +1 week)
+    dealPrice:   { type: Number, default: 0 },
+    active:      { type: Boolean, default: true },
+    note:        { type: String, default: '' },
+  },
+  { timestamps: true },
+);
+
+export const OFClient = models.OFClient || model('OFClient', ofClientSchema);
 
 // OFM Settings — stores Apify API keys for rotation (when one is burned, next is used)
 export const ofmSettingsSchema = new Schema(

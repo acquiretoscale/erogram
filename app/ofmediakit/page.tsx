@@ -8,13 +8,13 @@ export const metadata: Metadata = {
   title: 'OFM Boost — OnlyFans Ads on Erogram',
   description:
     'OFM Boost: promote your OnlyFans on Erogram. Reach high-intent fans searching for creators. Keyword targeting, video & photo ads, Tier-1 & Tier-2 traffic.',
-  alternates: { canonical: `${canonicalBase}/OFM` },
+  alternates: { canonical: `${canonicalBase}/ofmediakit` },
   openGraph: {
     title: 'OFM Boost — OnlyFans Ads on Erogram',
     description:
       'Promote your OnlyFans on Erogram. Reach high-intent fans actively searching for creators.',
     type: 'website',
-    url: `${canonicalBase}/OFM`,
+    url: `${canonicalBase}/ofmediakit`,
     siteName: 'Erogram',
   },
   twitter: {

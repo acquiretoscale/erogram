@@ -88,6 +88,14 @@ export interface FeedCampaign {
     ofTrendingId?: string;
     ofLiveHourStart?: number;
     ofLiveHourEnd?: number;
+    /** When true: ad only shows during the live window. Outside = hidden entirely. */
+    ofLiveOnly?: boolean;
+    /**
+     * The creator ALBUM that rotates in the ad: [avatar, ...extraPhotos], minus any paused image.
+     * Ordered — index i is the album position used for per-picture click tagging (":v{i}").
+     * Rotation happens client-side (random pick per render), so it never freezes under ISR cache.
+     */
+    ofAlbum?: string[];
     /** For premium ads: which category the groups are from */
     premiumCategory?: string;
     /** For premium ads: top featured groups to show in the mosaic */

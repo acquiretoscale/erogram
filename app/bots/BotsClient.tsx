@@ -68,9 +68,10 @@ interface BotsClientProps {
   initialCountry?: string;
   topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string }>;
   allBotStats?: Record<string, BotStatsData>;
+  trendingErogramCampaigns?: FeedCampaign[];
 }
 
-export default function BotsClient({ initialBots, initialAdverts, feedCampaigns = [], initialIsMobile, initialIsTelegram, initialCountry, topBannerCampaigns = [], allBotStats }: BotsClientProps) {
+export default function BotsClient({ initialBots, initialAdverts, feedCampaigns = [], initialIsMobile, initialIsTelegram, initialCountry, topBannerCampaigns = [], allBotStats, trendingErogramCampaigns = [] }: BotsClientProps) {
   const [username, setUsername] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedSubcategory, setSelectedSubcategory] = useState('All');
@@ -329,7 +330,12 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
       const usedIds = new Set<string>();
       for (let slot = 0; slot < 4; slot++) {
         const tierSlot = slot + 7;
-        const pick = feedCampaigns.find((c) => c.tierSlot === tierSlot && !usedIds.has(c._id));
+        const placement = `top-bots-${slot + 1}`;
+        // Match on the stamped named placement (authoritative) so an ad only claims the
+        // exact Top Bots spot it was assigned to — never a neighbouring card.
+        const pick = feedCampaigns.find(
+          (c) => c.tierSlot === tierSlot && c.placement === placement && !usedIds.has(c._id),
+        );
         if (pick) {
           map.set(slot, pick);
           usedIds.add(pick._id);
@@ -530,6 +536,26 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
               </div>
               </div>
             )}
+
+            {/* Trending on Erogram — unified mixed block below Top Bots (same 4-up style). */}
+            {!debouncedSearchQuery && selectedCategory === 'All' && selectedSubcategory === 'All' && (() => {
+              const usedIds = new Set(Array.from(topBotsAds.values()).map((c: any) => c._id));
+              const trendingAds = (trendingErogramCampaigns || []).filter((c: any) => !usedIds.has(c._id)).slice(0, 4);
+              if (trendingAds.length === 0) return null;
+              return (
+                <div className="mb-5">
+                  <div className="flex items-baseline gap-2.5 mb-3 px-1">
+                    <h2 className="text-base font-black text-white leading-none tracking-tight">Trending on Erogram</h2>
+                    <span className="text-white/60 text-xs font-bold">What&apos;s hot right now</span>
+                  </div>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 rounded-2xl p-3 sm:p-4" style={{ background: 'linear-gradient(180deg, #0d1117 0%, #0a0e16 100%)' }}>
+                    {trendingAds.map((camp, i) => (
+                      <AdvertCard key={`bot-trending-${camp._id}`} campaign={camp} isIndex={i} shouldPreload={false} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* All Bots */}
             <div className="relative">

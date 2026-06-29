@@ -6,7 +6,7 @@ import { Bot, Advert } from '@/lib/models';
 import BotsClient from './BotsClient';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { getActiveCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
+import { getActiveCampaigns, getActiveFeedCampaigns, getTrendingErogramCampaigns } from '@/lib/actions/campaigns';
 import { getAllBotStats } from '@/lib/actions/botVotes';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
@@ -135,11 +135,12 @@ export default async function BotsPage() {
   const ua = (await headers()).get('user-agent');
   const { isMobile, isTelegram } = detectDeviceFromUserAgent(ua);
 
-  const [bots, adverts, topBannerCampaigns, feedCampaigns] = await Promise.all([
+  const [bots, adverts, topBannerCampaigns, feedCampaigns, trendingErogramCampaigns] = await Promise.all([
     getBots(),
     getAdverts(),
     getActiveCampaigns('top-banner', { page: 'bots', device: isMobile ? 'mobile' : 'desktop' }),
     getActiveFeedCampaigns('bots'),
+    getTrendingErogramCampaigns(8).catch(() => []),
   ]);
 
   const allBotStats = await getAllBotStats(bots.map(b => b.slug));
@@ -168,6 +169,7 @@ export default async function BotsPage() {
           initialCountry="All"
           topBannerCampaigns={topBannerForPage}
           allBotStats={allBotStats}
+          trendingErogramCampaigns={trendingErogramCampaigns}
         />
       </ErrorBoundary>
     </>

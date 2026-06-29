@@ -18,14 +18,18 @@ import connectDB from '@/lib/db/mongodb';
 import { Campaign, TrendingOFCreator, Advertiser, OnlyFansCreator } from '@/lib/models';
 import { campaignOFStatus, trendingOFStatus, OF_NO_END_DATE, type OFStatus } from '@/lib/ofStatus';
 
-const NEXT_SLOT_RANGE = Array.from({ length: 12 }, (_, i) => i + 1); // positions 1..12
-
-/** Lowest free featured position (1–12), or null when all 12 are occupied. */
-async function firstFreePosition(): Promise<number | null> {
+/**
+ * Next free featured position — UNLIMITED. Agencies bring 10/20/30+ creators, so there is NO
+ * cap on featured slots (a hard limit would kill the business model). We fill the lowest gap if
+ * one exists, otherwise append after the highest position. Never returns null.
+ */
+async function firstFreePosition(): Promise<number> {
   const rows = await TrendingOFCreator.find().select('position').lean() as unknown as Array<{ position: number }>;
+  if (rows.length === 0) return 1;
   const taken = new Set(rows.map((s) => s.position));
-  for (const p of NEXT_SLOT_RANGE) if (!taken.has(p)) return p;
-  return null;
+  const max = Math.max(...rows.map((s) => s.position));
+  for (let p = 1; p <= max; p++) if (!taken.has(p)) return p; // reuse a gap
+  return max + 1; // otherwise append — no cap
 }
 
 /** Get (or lazily create) the system advertiser that owns OFadmin-originated OF campaigns. */
@@ -97,9 +101,6 @@ export async function syncCampaignToTrending(campaignId: string): Promise<OFSync
       return { ok: true, status, trendingId: null, filledSlot: null, note: 'not running — no slot created' };
     }
     const pos = await firstFreePosition();
-    if (pos == null) {
-      return { ok: true, status, trendingId: null, filledSlot: null, note: 'all 12 featured slots full — assign manually' };
-    }
     const created = await TrendingOFCreator.create({
       name,
       username,
@@ -152,6 +153,10 @@ export async function syncTrendingToCampaign(trendingId: string): Promise<OFSync
     }
 
     // Create a mirror campaign so the Ad Network sees this OFadmin launch.
+    // Assign the DEFAULT max-exposure placement set so a newly featured OF creator goes
+    // live across the whole network immediately (Top Groups / In-Feed / Top Bots / AI NSFW /
+    // Spotlight / Top-10 / OF category) — unifying "add to OF featured" with the Ad Network.
+    const { DEFAULT_OF_CREATOR_PLACEMENTS } = await import('@/lib/adPlacements');
     const advertiserId = await getOFSystemAdvertiserId();
     const created = await Campaign.create({
       advertiserId,
@@ -168,6 +173,7 @@ export async function syncTrendingToCampaign(trendingId: string): Promise<OFSync
       feedTier: 1,
       tierSlot: 2,
       position: 2,
+      placements: DEFAULT_OF_CREATOR_PLACEMENTS,
       buttonText: 'View Profile',
       ofTrendingId: slot._id,
     });

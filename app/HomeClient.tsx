@@ -294,9 +294,9 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
       icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="#00AFF0"><path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z"/></svg>,
     },
     {
-      title: 'EROGRAM SPOTLIGHT',
+      title: 'TRENDING ON EROGRAM',
       sub: 'The best of adult entertainment, all in one place',
-      href: lp('/main'),
+      href: lp('/trending'),
       iconColor: '#fff',
       bgColor: '#b91c1c',
       bareIcon: true,
@@ -337,7 +337,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
       </div>
       {/* Row 2: EROGRAM SPOTLIGHT — featured banner */}
       <button
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(lp('/main')), 0); }}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(lp('/trending')), 0); }}
         className="erogram-uncut-cta"
       >
         {/* Left: mascot */}
@@ -348,7 +348,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
         />
         {/* Center: text */}
         <span className="erogram-uncut-cta__text">
-          <span className="erogram-uncut-cta__label">EROGRAM SPOTLIGHT</span>
+          <span className="erogram-uncut-cta__label">TRENDING ON EROGRAM</span>
           <span className="erogram-uncut-cta__sub">The best of adult entertainment — all in one place</span>
         </span>
         {/* Right: arrow */}

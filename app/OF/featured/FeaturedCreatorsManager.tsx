@@ -281,7 +281,7 @@ export default function FeaturedCreatorsManager() {
   };
 
   const handleRemoveSpotlight = async () => {
-    if (!confirm('Remove the SPOTLIGHT Creator of the Month? The cover will be hidden on /main.')) return;
+    if (!confirm('Remove the TRENDING Creator of the Month? The cover will be hidden on /trending.')) return;
     try {
       await clearBlogFeaturedCreator(token());
       setSpotlight(null);
@@ -325,10 +325,14 @@ export default function FeaturedCreatorsManager() {
     }, 300);
   }, [searchQuery]);
 
+  // UNLIMITED featured slots — agencies bring 10/20/30+ creators, so there is NO cap.
+  // Fill the lowest gap if one exists, otherwise append after the highest position.
   const nextPosition = useMemo(() => {
+    if (creators.length === 0) return 1;
     const used = new Set(creators.map((c) => c.position));
-    for (let i = 1; i <= 12; i++) if (!used.has(i)) return i;
-    return null;
+    const max = Math.max(...creators.map((c) => c.position));
+    for (let i = 1; i <= max; i++) if (!used.has(i)) return i;
+    return max + 1;
   }, [creators]);
 
   // --- Add ---
@@ -354,7 +358,7 @@ export default function FeaturedCreatorsManager() {
     if (!selectedCreator || nextPosition === null) return;
     setSaving(true);
     try {
-      await createOFMTrendingSlot(token(), {
+      const result = await createOFMTrendingSlot(token(), {
         name: selectedCreator.name,
         username: selectedCreator.username,
         avatar: customAvatar || selectedCreator.avatar,
@@ -370,7 +374,10 @@ export default function FeaturedCreatorsManager() {
         liveHourStart: live24h ? 0 : parseInt(liveHourStart),
         liveHourEnd: live24h ? 0 : parseInt(liveHourEnd),
       });
-      showToast(`${selectedCreator.name} added to Slot #${nextPosition}`);
+      const warn = (result as { syncWarning?: string | null })?.syncWarning;
+      showToast(warn
+        ? `${selectedCreator.name} added to Slot #${nextPosition} — ⚠ ${warn}`
+        : `${selectedCreator.name} added to Slot #${nextPosition} — live across the network`);
       setAddOpen(false);
       load();
     } catch (err) {
@@ -721,8 +728,9 @@ export default function FeaturedCreatorsManager() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => setAddOpen(false)}>
           <div className="bg-[#0e1419] border border-white/10 rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-white font-bold text-lg mb-1">
-              Add Creator &rarr; Slot #{nextPosition}
+              Add Creator
             </h3>
+            <p className="text-white/30 text-xs mb-3">Added live across the network. Manage slots &amp; budgets in Launch.</p>
 
             {!selectedCreator ? (
               <>
@@ -879,33 +887,6 @@ export default function FeaturedCreatorsManager() {
                 </div>
 
                 <div className="space-y-4">
-                  {/* Campaign fields */}
-                  <div className="p-4 bg-[#00AFF0]/[0.04] border border-[#00AFF0]/10 rounded-xl space-y-3">
-                    <p className="text-[11px] font-bold text-[#00AFF0]/60 uppercase tracking-wider">CPC Campaign</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-white/40 mb-1">Click Budget</label>
-                        <input
-                          type="number" min="0" step="100"
-                          value={clickBudget}
-                          onChange={(e) => setClickBudget(e.target.value)}
-                          placeholder="e.g. 1000 (0 = unlimited)"
-                          className="w-full px-3 py-2 bg-white/[0.05] border border-white/10 rounded-lg text-white text-sm placeholder:text-white/20 outline-none focus:border-[#00AFF0]/40 transition"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-white/40 mb-1">Daily Cap</label>
-                        <input
-                          type="number" min="0" step="10"
-                          value={dailyClickCap}
-                          onChange={(e) => setDailyClickCap(e.target.value)}
-                          placeholder="e.g. 100 (0 = unlimited)"
-                          className="w-full px-3 py-2 bg-white/[0.05] border border-white/10 rounded-lg text-white text-sm placeholder:text-white/20 outline-none focus:border-[#00AFF0]/40 transition"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
                   <div className="space-y-3">
                     <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/15 hover:bg-emerald-500/10 transition">
                       <input
@@ -936,49 +917,6 @@ export default function FeaturedCreatorsManager() {
                     <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="accent-[#00AFF0] w-4 h-4" />
                     <span className="text-sm text-white/60">Active (visible)</span>
                   </label>
-
-                  <div>
-                    <label className="block text-xs font-bold text-white/40 mb-1">Internal Note</label>
-                    <input
-                      type="text"
-                      value={note}
-                      onChange={(e) => setNote(e.target.value)}
-                      placeholder="e.g. paid $50 for 1000 clicks, agency: XYZ"
-                      className="w-full px-3 py-2 bg-white/[0.05] border border-white/10 rounded-lg text-white text-sm placeholder:text-white/20 outline-none focus:border-[#00AFF0]/40 transition"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-xs font-bold text-white/40">Categories</label>
-                      <span className={`text-[10px] font-bold ${addCategories.length >= 6 ? 'text-amber-400' : 'text-white/25'}`}>
-                        {addCategories.length}/6
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
-                      {OF_CATEGORIES.map((cat) => {
-                        const selected = addCategories.includes(cat.slug);
-                        const atLimit = addCategories.length >= 6 && !selected;
-                        return (
-                          <button
-                            key={cat.slug}
-                            type="button"
-                            disabled={atLimit}
-                            onClick={() => setAddCategories((prev) => selected ? prev.filter((c) => c !== cat.slug) : prev.length >= 6 ? prev : [...prev, cat.slug])}
-                            className={`px-2 py-1 rounded-lg text-[11px] font-semibold border transition ${
-                              selected
-                                ? 'bg-[#00AFF0]/15 border-[#00AFF0]/40 text-[#00AFF0]'
-                                : atLimit
-                                  ? 'bg-white/[0.01] border-white/[0.04] text-white/15 cursor-not-allowed'
-                                  : 'bg-white/[0.03] border-white/[0.08] text-white/40 hover:text-white/60'
-                            }`}
-                          >
-                            {cat.emoji} {cat.name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
                 </div>
 
                 <div className="flex gap-3 mt-6">
@@ -986,7 +924,7 @@ export default function FeaturedCreatorsManager() {
                     Cancel
                   </button>
                   <button onClick={handleAdd} disabled={saving} className="flex-1 py-2.5 bg-[#00AFF0] hover:bg-[#009dd9] rounded-xl text-white text-sm font-bold transition disabled:opacity-40">
-                    {saving ? 'Adding...' : `Add to Slot #${nextPosition}`}
+                    {saving ? 'Adding...' : 'Add Creator'}
                   </button>
                 </div>
               </>

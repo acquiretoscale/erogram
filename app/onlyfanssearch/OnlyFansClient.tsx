@@ -14,7 +14,23 @@ import { getOFMTrending, createOFMTrendingSlot } from '@/lib/actions/ofm';
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
 import Footer from '@/components/Footer';
 
-
+/**
+ * Featured-creator image that rotates the creator's split-test ALBUM (avatar + uploads, minus
+ * paused) CLIENT-SIDE — picks one after mount so it varies per view and isn't frozen by ISR cache.
+ * Falls back to the single avatar when there's no album.
+ */
+function RotatingImg({ album, fallback, alt, className }: { album?: string[]; fallback: string; alt: string; className: string }) {
+  const pool = (album && album.length > 0) ? album : (fallback ? [fallback] : []);
+  const [idx, setIdx] = useState(0);
+  const [err, setErr] = useState(false);
+  useEffect(() => {
+    if (pool.length > 1) setIdx(Math.floor(Math.random() * pool.length));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const src = pool[idx] || fallback;
+  if (!src || err) return null;
+  return <img src={src} alt={alt} className={className} loading="lazy" referrerPolicy="no-referrer" onError={() => setErr(true)} />;
+}
 
 interface Creator {
   _id: string;
@@ -917,12 +933,11 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                           >
                             <div className="relative aspect-[3/4] bg-[#0F274C] ring-1 ring-inset ring-[#9FC3FF]/30">
                               {tc.avatar ? (
-                                <img
-                                  src={tc.avatar}
+                                <RotatingImg
+                                  album={tc.album}
+                                  fallback={tc.avatar}
                                   alt={`${tc.name} OnlyFans`}
                                   className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
-                                  loading="lazy"
-                                  referrerPolicy="no-referrer"
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-[#C7DAFF] bg-[#0F274C]">
@@ -984,7 +999,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                                 className="group w-full text-left rounded-2xl overflow-hidden bg-white ring-[2px] ring-[#00AFF0]/30 hover:ring-[#00AFF0] shadow-[0_8px_28px_-8px_rgba(0,175,240,0.25)] hover:shadow-[0_12px_36px_-6px_rgba(0,175,240,0.35)] hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none"
                               >
                                 <div className="relative aspect-[3/4] bg-[#f0f8ff]">
-                                  {tc.avatar ? <img src={tc.avatar} alt={`${tc.name} OnlyFans`} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" loading="lazy" referrerPolicy="no-referrer" /> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#00AFF0] bg-[#f0f8ff]">{tc.name.charAt(0)}</div>}
+                                  {tc.avatar ? <RotatingImg album={tc.album} fallback={tc.avatar} alt={`${tc.name} OnlyFans`} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" /> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#00AFF0] bg-[#f0f8ff]">{tc.name.charAt(0)}</div>}
                                 </div>
                                 <div className="px-3 pt-2.5 sm:px-4 sm:pt-3">
                                   <div className="flex items-center gap-1.5">
@@ -1098,7 +1113,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                     {blockFeatured.map((tc) => (
                       <button key={`feat-${tc._id}`} type="button" onClick={() => { trackTrendingClick(tc._id); window.open(tc.url, '_blank', 'noopener'); }} className="group w-full text-left rounded-2xl overflow-hidden bg-white ring-[2px] ring-[#00AFF0]/30 hover:ring-[#00AFF0] shadow-[0_8px_28px_-8px_rgba(0,175,240,0.25)] hover:shadow-[0_12px_36px_-6px_rgba(0,175,240,0.35)] hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none">
                         <div className="relative aspect-[3/4] bg-[#f0f8ff]">
-                          {tc.avatar ? <img src={tc.avatar} alt={`${tc.name} OnlyFans`} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" loading="lazy" referrerPolicy="no-referrer" /> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#00AFF0] bg-[#f0f8ff]">{tc.name.charAt(0)}</div>}
+                          {tc.avatar ? <RotatingImg album={tc.album} fallback={tc.avatar} alt={`${tc.name} OnlyFans`} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" /> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#00AFF0] bg-[#f0f8ff]">{tc.name.charAt(0)}</div>}
                         </div>
                         <div className="px-3 pt-2.5 sm:px-4 sm:pt-3">
                           <div className="flex items-center gap-1.5">

@@ -102,7 +102,7 @@ export default function CreatorOfMonthManager() {
           <p className="text-[#999] text-sm">
             {current?.name
               ? <span>Currently: <span className="text-white font-semibold">{current.name}</span>{current.username ? ` @${current.username}` : ''} · {(current.clicks || 0).toLocaleString()} clicks</span>
-              : <span className="text-[#666]">No creator assigned — cover is hidden on /main</span>
+              : <span className="text-[#666]">No creator assigned — cover is hidden on /trending</span>
             }
           </p>
         </div>
@@ -195,7 +195,7 @@ export default function CreatorOfMonthManager() {
 
           <label className="flex items-center gap-3 text-sm text-white cursor-pointer">
             <input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} className="w-4 h-4 accent-[#e8c873]" />
-            Active (show on /main)
+            Active (show on /trending)
           </label>
 
           {error && <p className="text-sm text-red-400">{error}</p>}

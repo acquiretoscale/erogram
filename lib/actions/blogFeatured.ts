@@ -100,7 +100,7 @@ export async function upsertBlogFeaturedCreator(
     await BlogFeaturedCreator.create(fields);
   }
   revalidatePath('/blog');
-  revalidatePath('/main');
+  revalidatePath('/trending');
   return { success: true };
 }
 
@@ -164,13 +164,13 @@ export async function assignCreatorToUncut(
   });
 }
 
-/** Admin: remove the SPOTLIGHT cover entirely (nothing shows on /main). */
+/** Admin: remove the TRENDING cover entirely (nothing shows on /trending). */
 export async function clearBlogFeaturedCreator(token: string): Promise<{ success: true }> {
   const admin = await authenticateAdmin(token);
   if (!admin) throw new Error('Unauthorized');
   await connectDB();
   await BlogFeaturedCreator.deleteMany({});
-  revalidatePath('/main');
+  revalidatePath('/trending');
   revalidatePath('/blog');
   return { success: true };
 }

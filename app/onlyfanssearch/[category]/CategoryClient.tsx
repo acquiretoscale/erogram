@@ -14,6 +14,20 @@ import { useTranslation, useLocalePath } from '@/lib/i18n/client';
 import type { FeedCampaign } from '@/app/groups/types';
 import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
 
+/** Featured-creator image that rotates the split-test album client-side (per view, ISR-safe). */
+function RotatingImg({ album, fallback, alt, className }: { album?: string[]; fallback: string; alt: string; className: string }) {
+  const pool = (album && album.length > 0) ? album : (fallback ? [fallback] : []);
+  const [idx, setIdx] = useState(0);
+  const [err, setErr] = useState(false);
+  useEffect(() => {
+    if (pool.length > 1) setIdx(Math.floor(Math.random() * pool.length));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const src = pool[idx] || fallback;
+  if (!src || err) return null;
+  return <img src={src} alt={alt} className={className} loading="lazy" referrerPolicy="no-referrer" onError={() => setErr(true)} />;
+}
+
 function formatCount(n: number) {
   if (!n) return '';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -608,13 +622,11 @@ export default function CategoryClient({ creators: initialCreators, category, la
                       >
                         <div className="relative aspect-[3/4] bg-[#0F274C] ring-1 ring-inset ring-[#9FC3FF]/30">
                           {tc.avatar ? (
-                            <img
-                              src={tc.avatar}
+                            <RotatingImg
+                              album={tc.album}
+                              fallback={tc.avatar}
                               alt={`${tc.name} OnlyFans`}
                               className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
-                              loading="lazy"
-                              referrerPolicy="no-referrer"
-                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-[#C7DAFF] bg-[#0F274C]">
@@ -673,7 +685,7 @@ export default function CategoryClient({ creators: initialCreators, category, la
                             >
                               <div className="relative aspect-[3/4] bg-[#f0f8ff]">
                                 {tc.avatar ? (
-                                  <img src={tc.avatar} alt={`${tc.name} OnlyFans`} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" loading="lazy" referrerPolicy="no-referrer" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                                  <RotatingImg album={tc.album} fallback={tc.avatar} alt={`${tc.name} OnlyFans`} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#00AFF0] bg-[#f0f8ff]">{tc.name.charAt(0)}</div>
                                 )}

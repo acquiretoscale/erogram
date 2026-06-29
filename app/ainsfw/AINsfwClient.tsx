@@ -26,6 +26,8 @@ interface AINsfwClientProps {
   topAdCampaigns?: FeedCampaign[];
   /** In-feed ads (feedPlacement 'ainsfw' or 'both') — interleaved into the main tool grid like Groups/Bots. */
   feedCampaigns?: FeedCampaign[];
+  /** Campaigns assigned to the Trending on Erogram ad space — rendered below the native Top. */
+  trendingErogramCampaigns?: FeedCampaign[];
 }
 
 const CATEGORY_ACTIVE: Record<AINsfwCategory, string> = {
@@ -118,7 +120,7 @@ function TopAINsfwBlock({ tools, allStats, scores, featuredSlugs, featuredCampai
   );
 }
 
-export default function AINsfwClient({ tools, allStats, featuredSlugs = [], featuredCampaignMap = {}, topBannerCampaigns = [], topAdCampaigns = [], feedCampaigns = [] }: AINsfwClientProps) {
+export default function AINsfwClient({ tools, allStats, featuredSlugs = [], featuredCampaignMap = {}, topBannerCampaigns = [], topAdCampaigns = [], feedCampaigns = [], trendingErogramCampaigns = [] }: AINsfwClientProps) {
   const [activeCategory, setActiveCategory] = useState<AINsfwCategory>('All');
   const [activePayment, setActivePayment] = useState<PaymentOption | 'All'>('All');
   const [search, setSearch] = useState('');
@@ -275,6 +277,30 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], feat
             {activeCategory === 'All' && activePayment === 'All' && !search.trim() && (
               <TopAINsfwBlock tools={tools} allStats={allStats} scores={scores} featuredSlugs={featuredSlugs} featuredCampaignMap={featuredCampaignMap} topAdCampaigns={topAdCampaigns} onVoteChange={handleVoteChange} />
             )}
+
+            {/* Trending on Erogram below native TOP for AI NSFW (as requested: call native "TOP", trending below). */}
+            {(() => {
+              const seen = new Set((topAdCampaigns || []).map((c: any) => c._id));
+              const trendingAds = (trendingErogramCampaigns || []).filter((c: any) => !seen.has(c._id)).slice(0, 4);
+              if (trendingAds.length === 0) return null;
+              return (
+                <section className="mb-10 sm:mb-14">
+                  <div className="bg-white rounded-2xl border border-black/10 p-4 sm:p-5">
+                    <div className="flex items-center justify-between mb-4 sm:mb-5">
+                      <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-black">Trending on Erogram</h2>
+                      <span className="text-[10px] sm:text-xs font-black bg-[#22c55e] text-black rounded px-2 py-0.5">Hot now</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {trendingAds.map((c, i) => (
+                        <div key={`ainsfw-trending-${c._id}`} className="h-full rounded-xl overflow-hidden bg-[#0a0a0a] border border-white/10 [&>*]:h-full">
+                          <AdvertCard campaign={c} isIndex={i} placementOverride="ainsfw-featured" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+              );
+            })()}
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {(() => {

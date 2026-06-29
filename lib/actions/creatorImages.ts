@@ -159,6 +159,44 @@ export async function replaceCreatorPhoto(formData: FormData): Promise<{ url: st
 }
 
 /**
+ * Admin: add a new photo to a creator's ALBUM (extraPhotos) — same R2 + EXIF branding
+ * pipeline as scraped images, so the album stays one consistent set. Returns the new URL.
+ * Used by the OFM split-test uploader: uploads become real album photos (public + ad rotation).
+ */
+export async function addCreatorAlbumPhoto(slug: string, file: File): Promise<{ url: string } | { error: string }> {
+  if (!slug || !file) return { error: 'Missing slug or file' };
+  if (file.size === 0) return { error: 'Empty file' };
+  if (!isR2Configured()) return { error: 'R2 not configured' };
+
+  const buf = Buffer.from(await file.arrayBuffer());
+  if (buf.length === 0) return { error: 'File buffer empty' };
+  const optimized = await optimizeAndBrand(buf);
+
+  await connectDB();
+  const creator = await OnlyFansCreator.findOne({ slug }, 'extraPhotos').lean() as any;
+  if (!creator) return { error: 'Creator not found' };
+
+  const existing: string[] = creator.extraPhotos || [];
+  const cacheBust = Date.now().toString(36);
+  // Continue the scraped naming scheme: {slug}-onlyfans-{n}.jpg
+  const key = `onlyfanssearch/${slug}-onlyfans-${existing.length + 1}-${cacheBust}.jpg`;
+  const url = await uploadToR2(optimized, key, 'image/jpeg');
+
+  await OnlyFansCreator.updateOne({ slug }, { $push: { extraPhotos: url } });
+  return { url };
+}
+
+/**
+ * Admin: remove ONE photo from a creator's album (extraPhotos) by URL.
+ */
+export async function removeCreatorAlbumPhoto(slug: string, url: string): Promise<{ ok: boolean } | { error: string }> {
+  if (!slug || !url) return { error: 'Missing slug or url' };
+  await connectDB();
+  await OnlyFansCreator.updateOne({ slug }, { $pull: { extraPhotos: url } });
+  return { ok: true };
+}
+
+/**
  * Ensure a creator's avatar is on R2. Returns the R2 URL, or the original if R2 isn't configured.
  * Calls processCreatorImages under the hood — reuses the full pipeline.
  */
