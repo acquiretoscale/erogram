@@ -15,6 +15,9 @@ export const categories = [
 ];
 
 // Legacy backward-compat alias
+/** Bots feed: unified batch size on /bots and each /bots/page/N. */
+export const BOTS_FEED_PAGE_SIZE = 16;
+
 export const countries = [
     'All', 'USA', 'UK', 'Germany', 'France', 'Brazil', 'Russia', 'Japan',
     'South Korea', 'Philippines', 'Thailand', 'Spain', 'Mexico', 'Canada',

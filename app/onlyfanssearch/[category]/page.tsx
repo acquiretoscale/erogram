@@ -7,6 +7,8 @@ import { OF_CATEGORY_SLUGS, OF_CATEGORY_MAP, ofCategoryUrl } from '../constants'
 import { getLocale } from '@/lib/i18n/server';
 import { categoryOfMeta } from '../ofMeta';
 import { getKeywordPlacementCampaigns } from '@/lib/actions/campaigns';
+import { bestOfSlugFromPublicPath } from '@/lib/bestOfPageContent/hottestUrls';
+import BestOfPageView, { buildBestOfMetadata } from '@/app/best-onlyfans-accounts/BestOfPageView';
 
 // SEO: no more force-dynamic + $sample. The page now serves a STABLE curated
 // ranking so Google sees the same content on every crawl (brain GAP 5 → was
@@ -19,6 +21,10 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { category: rawSlug } = await params;
   const locale = await getLocale();
+
+  // Top-10 OnlyFans category pages live at /onlyfanssearch/top-10-{cat}-onlyfans-models.
+  const bestOf = bestOfSlugFromPublicPath(rawSlug);
+  if (bestOf) return buildBestOfMetadata(bestOf);
 
   if (rawSlug.endsWith('2026')) return {};
 
@@ -54,8 +60,12 @@ function serializeCreator(c: any) {
 export default async function OnlyFansSlugPage({ params }: PageProps) {
   const { category: rawSlug } = await params;
 
+  // Top-10 OnlyFans category ranking pages live here at /onlyfanssearch/top-10-{cat}-onlyfans-models.
+  const bestOf = bestOfSlugFromPublicPath(rawSlug);
+  if (bestOf) return <BestOfPageView slug={bestOf} />;
+
   if (rawSlug.endsWith('2026')) {
-    redirect(`/best-onlyfans-accounts/${rawSlug.slice(0, -4)}`);
+    redirect(`/onlyfanssearch/top-10-${rawSlug.slice(0, -4)}-onlyfans-models`);
   }
 
   if (!OF_CATEGORY_SLUGS.has(rawSlug)) notFound();

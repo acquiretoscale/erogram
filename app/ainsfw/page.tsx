@@ -7,8 +7,9 @@ import { getDictionary } from '@/lib/i18n';
 import { getAllToolStats, getFeaturedTools, getApprovedSubmissions } from '@/lib/actions/ainsfw';
 import { getActiveCampaigns, getPlacementFeedCampaigns, getActiveFeedCampaigns, getTrendingErogramCampaigns } from '@/lib/actions/campaigns';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
+import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-const BASE_URL = 'https://erogram.pro';
+const BASE_URL = CANONICAL_BASE;
 
 export const dynamic = 'force-dynamic';
 
@@ -25,27 +26,13 @@ export async function generateMetadata(): Promise<Metadata> {
     alternates: {
       canonical: `${BASE_URL}/ainsfw`,
     },
-    openGraph: {
+    ...buildSocialMeta({
       title: dict.meta.ainsfwTitle,
       description: dict.meta.ainsfwDesc,
-      type: 'website',
       url: `${BASE_URL}/ainsfw`,
-      siteName: 'Erogram',
-      images: [
-        {
-          url: `${BASE_URL}/assets/og-default.png`,
-          width: 512,
-          height: 512,
-          alt: 'Erogram — AI NSFW Tools',
-        },
-      ],
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: dict.meta.ainsfwTitle,
-      description: dict.meta.ainsfwDesc,
-      images: [`${BASE_URL}/assets/og-default.png`],
-    },
+      type: 'website',
+      imageAlt: 'Erogram — AI NSFW Tools',
+    }),
   };
 }
 
@@ -83,7 +70,7 @@ export default async function AINsfwPage() {
       '@type': 'ListItem',
       position: i + 1,
       name: tool.name,
-      url: `${BASE_URL}/${tool.slug}`,
+      url: `${BASE_URL}/ainsfw/${tool.slug}`,
     })),
   };
 

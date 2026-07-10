@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import BookmarkButton from '@/components/BookmarkButton';
 import { compressImage } from '@/lib/utils/compressImage';
 import { Group } from './types';
+import { useTranslation } from '@/lib/i18n/client';
 
 interface GroupCardProps {
     group: Group;
@@ -22,6 +23,7 @@ interface GroupCardProps {
 }
 
 export default function GroupCard({ group, isFeatured = false, isIndex = 0, shouldPreload = false, onVisible, onOpenReviewModal, onOpenReportModal, isBookmarked = false, bookmarkId = null, itemType = 'group', lockedPremium = false, directLink, growthPercent }: GroupCardProps) {
+    const { t } = useTranslation();
     const [isHovered, setIsHovered] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
     const [deleted, setDeleted] = useState(false);
@@ -370,7 +372,7 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                             }
                         >
                             <span className="text-xs sm:text-sm font-bold">
-                                {lockedPremium ? '🔒 Unlock Premium' : group.isAdvertisement ? 'Visit' : itemType === 'bot' ? 'Open Bot' : 'Join channel'}
+                                {lockedPremium ? t('groups.unlockPremium') : group.isAdvertisement ? t('groups.visit') : itemType === 'bot' ? t('groups.openBot') : t('groups.joinChannel')}
                             </span>
                         </a>
 
@@ -382,11 +384,11 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                                     e.stopPropagation();
                                     onOpenReviewModal?.(group);
                                 }}
-                                title="Leave a review"
+                                title={t('groups.review')}
                                 className="shrink-0 flex items-center justify-center gap-1 px-2.5 rounded-xl bg-white/[0.03] border border-white/[0.07] text-gray-400 hover:text-white hover:bg-white/[0.06] transition-colors text-[11px] font-semibold"
                             >
                                 <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                                Review
+                                {t('groups.review')}
                             </button>
                         )}
                     </div>
@@ -455,13 +457,13 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                                 </div>
                             </div>
                             <div className="p-5 border-t border-white/10 flex justify-end gap-3">
-                                <button onClick={() => setShowEdit(false)} className="px-4 py-2 text-sm text-[#999] hover:text-white transition-colors">Cancel</button>
+                                <button onClick={() => setShowEdit(false)} className="px-4 py-2 text-sm text-[#999] hover:text-white transition-colors">{t('groups.cancel', 'Cancel')}</button>
                                 <button
                                     onClick={handleEditSave}
                                     disabled={editSaving}
                                     className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold disabled:opacity-50 transition-colors"
                                 >
-                                    {editSaving ? 'Saving...' : 'Save'}
+                                    {editSaving ? (t('common.saving') || 'Saving...') : t('groups.save')}
                                 </button>
                             </div>
                         </motion.div>

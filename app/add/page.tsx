@@ -4,20 +4,27 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
+import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-const canonicalBase = 'https://erogram.pro';
+const canonicalBase = CANONICAL_BASE;
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const pathname = await getPathname();
   const dict = await getDictionary(locale);
+  const canonical = `${canonicalBase}${pathname}`;
   return {
     title: dict.meta.addTitle,
     description: dict.meta.addDesc,
     alternates: {
-      canonical: `${canonicalBase}${pathname}`,
-      languages: Object.fromEntries(LOCALES.map(l => [l, `${canonicalBase}${localePath('/add', l)}`])),
+      canonical,
     },
+    ...buildSocialMeta({
+      title: dict.meta.addTitle,
+      description: dict.meta.addDesc,
+      url: canonical,
+      type: 'website',
+    }),
   };
 }
 

@@ -4,10 +4,11 @@ import BlogArticleClient from './BlogArticleClient';
 import { getBlogArticleBySlug, getRelatedBlogArticles } from '@/lib/actions/blog';
 import { getArticleComments } from '@/lib/actions/articleComments';
 import { BLOG_CATEGORY_MAP } from '@/lib/blog/categories';
+import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 export const revalidate = 60;
 
-const BASE_URL = 'https://erogram.pro';
+const BASE_URL = CANONICAL_BASE;
 
 function toAbsoluteUrl(url?: string | null): string | undefined {
   if (!url) return undefined;
@@ -29,28 +30,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const metaTitle = article.metaTitle || article.title;
   const metaDescription = article.metaDescription || article.excerpt || article.title;
   const ogImage = toAbsoluteUrl(article.ogImage || article.featuredImage);
-  const twitterImage = toAbsoluteUrl(article.twitterImage || article.ogImage || article.featuredImage);
 
   return {
     title: metaTitle,
     description: metaDescription,
     keywords: article.metaKeywords || undefined,
     alternates: { canonical: url },
-    openGraph: {
+    ...buildSocialMeta({
       title: article.ogTitle || metaTitle,
       description: article.ogDescription || metaDescription,
+      url,
       type: 'article',
+      image: ogImage,
+      imageAlt: metaTitle,
       publishedTime: article.publishedAt || undefined,
       authors: article.authorName ? [article.authorName] : undefined,
-      images: ogImage ? [ogImage] : undefined,
-      url,
-    },
-    twitter: {
-      card: (article.twitterCard as any) || 'summary_large_image',
-      title: article.twitterTitle || article.ogTitle || metaTitle,
-      description: article.twitterDescription || article.ogDescription || metaDescription,
-      images: twitterImage ? [twitterImage] : undefined,
-    },
+    }),
   };
 }
 

@@ -1,30 +1,36 @@
 'use client';
 
-import { createContext, useContext, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useCallback, useState, useEffect, ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import type { Locale } from './config';
 import { DEFAULT_LOCALE } from './config';
 
 interface LocaleContextValue {
   locale: Locale;
   dict: Record<string, any>;
+  /** Public URL path from middleware (x-pathname) — use for locale switching. */
+  publicPathname: string;
 }
 
 const LocaleContext = createContext<LocaleContextValue>({
   locale: 'en',
   dict: {},
+  publicPathname: '/',
 });
 
 export function LocaleProvider({
   locale,
   dict,
+  publicPathname = '/',
   children,
 }: {
   locale: Locale;
   dict: Record<string, any>;
+  publicPathname?: string;
   children: ReactNode;
 }) {
   return (
-    <LocaleContext.Provider value={{ locale, dict }}>
+    <LocaleContext.Provider value={{ locale, dict, publicPathname }}>
       {children}
     </LocaleContext.Provider>
   );
@@ -74,4 +80,15 @@ export function useLocalePath() {
     },
     [locale],
   );
+}
+
+/** Real public URL — prefer server x-pathname, then window.location. */
+export function usePublicPathname(): string {
+  const { publicPathname } = useContext(LocaleContext);
+  const rawPathname = usePathname();
+  const [clientPath, setClientPath] = useState<string | null>(null);
+  useEffect(() => {
+    setClientPath(typeof window !== 'undefined' ? window.location.pathname : null);
+  }, [rawPathname]);
+  return clientPath ?? publicPathname ?? rawPathname ?? '/';
 }

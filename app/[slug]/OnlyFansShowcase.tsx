@@ -22,7 +22,7 @@ interface ShowcaseCreator {
 function FeedCard({ creator }: { creator: ShowcaseCreator }) {
   const handleClick = () => {
     trackTrendingClick(creator.id);
-    window.open(creator.url, '_blank', 'noopener,noreferrer');
+    window.open(`/go/${creator.username}`, '_blank', 'noopener');
   };
 
   return (

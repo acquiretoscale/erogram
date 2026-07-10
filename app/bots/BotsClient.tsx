@@ -69,20 +69,25 @@ interface BotsClientProps {
   topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string }>;
   allBotStats?: Record<string, BotStatsData>;
   trendingErogramCampaigns?: FeedCampaign[];
+  paginationCurrentPage?: number;
+  paginationTotalPages?: number;
+  botsPageSize?: number;
 }
 
-export default function BotsClient({ initialBots, initialAdverts, feedCampaigns = [], initialIsMobile, initialIsTelegram, initialCountry, topBannerCampaigns = [], allBotStats, trendingErogramCampaigns = [] }: BotsClientProps) {
+function botsPageHref(page: number): string {
+  return page <= 1 ? '/bots' : `/bots/page/${page}`;
+}
+
+export default function BotsClient({ initialBots, initialAdverts, feedCampaigns = [], initialIsMobile, initialIsTelegram, initialCountry, topBannerCampaigns = [], allBotStats, trendingErogramCampaigns = [], paginationCurrentPage = 1, paginationTotalPages = 1, botsPageSize = 16 }: BotsClientProps) {
   const [username, setUsername] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedSubcategory, setSelectedSubcategory] = useState('All');
-  const [selectedSort, setSelectedSort] = useState('random');
+  const [selectedSort, setSelectedSort] = useState('upvotes');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddBotModal, setShowAddBotModal] = useState(false);
-  const [bots, setBots] = useState(initialBots.filter(b => !b.pinned));
-  const [pinnedBots, setPinnedBots] = useState<Bot[]>(initialBots.filter(b => b.pinned));
-  const [skip, setSkip] = useState(initialBots.filter(b => !b.pinned).length);
+  const [bots, setBots] = useState(initialBots);
+  const [pinnedBots, setPinnedBots] = useState<Bot[]>([]);
   const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
   const isFirstLoad = useRef(true);
   const { t } = useTranslation();
   const lp = useLocalePath();
@@ -162,7 +167,7 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
       // Skip initial fetch if filters match defaults (SSR data is already present)
       if (
         isFirstLoad.current &&
-        selectedSort === 'random' &&
+        selectedSort === 'upvotes' &&
         !debouncedSearchQuery &&
         selectedCategory === 'All' &&
         selectedSubcategory === 'All' &&
@@ -178,13 +183,11 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
         const searchParam = debouncedSearchQuery ? `&search=${encodeURIComponent(debouncedSearchQuery)}` : '';
         const categoryParam = selectedCategory !== 'All' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
         const subcategoryParam = selectedSubcategory !== 'All' ? `&subcategory=${encodeURIComponent(selectedSubcategory)}` : '';
-        const response = await fetch(`/api/bots?skip=0&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${subcategoryParam}`, { cache: 'no-store' });
+        const response = await fetch(`/api/bots?skip=0&limit=${botsPageSize}&sortBy=${selectedSort}${searchParam}${categoryParam}${subcategoryParam}`, { cache: 'no-store' });
         const data = await response.json();
-        const regular = data.bots.filter((b: Bot) => !b.pinned);
-        if (regular && regular.length > 0) {
+        const regular = (data.bots || []).filter((b: Bot) => !b.pinned);
+        if (regular.length > 0) {
           setBots(regular);
-          setSkip(regular.length);
-          setHasMore(data.hasMore);
           const newSlugs = regular.map((b: Bot) => b.slug).filter((s: string) => !(s in botScores));
           if (newSlugs.length > 0) {
             getAllBotStats(newSlugs).then(stats => {
@@ -197,8 +200,6 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
           }
         } else {
           setBots([]);
-          setSkip(0);
-          setHasMore(false);
         }
       } catch (error) {
         console.error('Error fetching bots:', error);
@@ -208,53 +209,13 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
     };
 
     fetchBots();
-  }, [selectedSort, debouncedSearchQuery, selectedCategory, selectedSubcategory]);
+  }, [selectedSort, debouncedSearchQuery, selectedCategory, selectedSubcategory, botsPageSize]);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (
-        window.innerHeight + window.scrollY >= document.body.offsetHeight - 500 &&
-        !loading &&
-        hasMore
-      ) {
-        setLoading(true);
-        const searchParam = debouncedSearchQuery ? `&search=${encodeURIComponent(debouncedSearchQuery)}` : '';
-        const categoryParam = selectedCategory !== 'All' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
-        const subcategoryParam = selectedSubcategory !== 'All' ? `&subcategory=${encodeURIComponent(selectedSubcategory)}` : '';
-        fetch(`/api/bots?skip=${skip}&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${subcategoryParam}`)
-          .then(res => res.json())
-          .then(data => {
-            if (data.bots && data.bots.length > 0) {
-              const incoming = data.bots.filter((b: Bot) => !b.pinned);
-              setBots(prev => {
-                const existingIds = new Set(prev.map(b => b._id));
-                const newBots = incoming.filter((b: Bot) => !existingIds.has(b._id));
-                return [...prev, ...newBots];
-              });
-              setSkip(prev => prev + incoming.length);
-              setHasMore(data.hasMore);
-              const newSlugs = incoming.map((b: Bot) => b.slug).filter((s: string) => !(s in botScores));
-              if (newSlugs.length > 0) {
-                getAllBotStats(newSlugs).then(stats => {
-                  setBotScores(prev => {
-                    const next = { ...prev };
-                    for (const [slug, s] of Object.entries(stats)) next[slug] = (s.upvotes ?? 0) - (s.downvotes ?? 0);
-                    return next;
-                  });
-                }).catch(() => {});
-              }
-            } else {
-              setHasMore(false);
-            }
-          })
-          .catch(console.error)
-          .finally(() => setLoading(false));
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [skip, loading, hasMore, selectedSort, debouncedSearchQuery, selectedCategory, selectedSubcategory]);
+  const isDefaultBrowse =
+    selectedSort === 'upvotes' &&
+    !debouncedSearchQuery &&
+    selectedCategory === 'All' &&
+    selectedSubcategory === 'All';
 
   const filteredBots = useMemo(() => {
     return regularBots.filter((bot) => {
@@ -273,9 +234,8 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
   }, [pinnedBots, selectedCategory]);
 
   const displayBots = useMemo(() => {
-    const sorted = [...filteredBots].sort((a, b) => (botScores[b.slug] ?? 0) - (botScores[a.slug] ?? 0));
-    return [...filteredPinnedBots, ...sorted];
-  }, [filteredPinnedBots, filteredBots, botScores]);
+    return [...filteredPinnedBots, ...filteredBots];
+  }, [filteredPinnedBots, filteredBots]);
 
   // Custom hook for debouncing
   function useDebounce(value: string, delay: number) {
@@ -455,6 +415,7 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
               aria-label={t('bots.sortBy')}
               className="pl-3 pr-7 py-1.5 rounded-full bg-[#131a24] border border-[#ff5e2a]/20 text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#ff5e2a]/50 focus:border-[#ff5e2a]/40 transition-all appearance-none cursor-pointer"
             >
+              <option value="upvotes" className="bg-[#131a24]">{t('bots.topUpvoted')}</option>
               <option value="newest" className="bg-[#131a24]">{t('bots.newestFirst')}</option>
               <option value="random" className="bg-[#131a24]">{t('bots.randomDiscovery')}</option>
               <option value="popular" className="bg-[#131a24]">{t('bots.mostPopular')}</option>
@@ -578,9 +539,54 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
                 </div>
               )}
 
+              {isDefaultBrowse && paginationTotalPages > 1 && (
+                <nav
+                  aria-label="Bots pagination"
+                  className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mt-8 sm:mt-10"
+                >
+                  {paginationCurrentPage > 1 && (
+                    <Link
+                      href={botsPageHref(paginationCurrentPage - 1)}
+                      className="px-4 py-2 rounded-xl border border-white/10 bg-white/[0.04] text-sm font-bold text-white/80 hover:border-[#ff5e2a]/40 hover:text-white transition-colors"
+                      rel="prev"
+                    >
+                      ← Previous
+                    </Link>
+                  )}
+                  {Array.from({ length: paginationTotalPages }, (_, i) => i + 1).map((p) => {
+                    const isActive = p === paginationCurrentPage;
+                    return (
+                      <Link
+                        key={p}
+                        href={botsPageHref(p)}
+                        aria-current={isActive ? 'page' : undefined}
+                        className={`min-w-[2.5rem] px-3 py-2 rounded-xl text-sm font-bold text-center transition-colors ${
+                          isActive
+                            ? 'bg-[#ff5e2a] text-white border border-[#ff5e2a]'
+                            : 'border border-white/10 bg-white/[0.04] text-white/70 hover:border-[#ff5e2a]/40 hover:text-white'
+                        }`}
+                      >
+                        {p}
+                      </Link>
+                    );
+                  })}
+                  {paginationCurrentPage < paginationTotalPages && (
+                    <Link
+                      href={botsPageHref(paginationCurrentPage + 1)}
+                      className="px-4 py-2 rounded-xl border border-white/10 bg-white/[0.04] text-sm font-bold text-white/80 hover:border-[#ff5e2a]/40 hover:text-white transition-colors"
+                      rel="next"
+                    >
+                      Next →
+                    </Link>
+                  )}
+                </nav>
+              )}
+
               {loading && (
-                <div className="text-center py-6 text-gray-400">
-                  {t('bots.loadingMore')}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mt-6">
+                  {Array.from({ length: 4 }, (_, i) => (
+                    <BotCardSkeleton key={`skeleton-${i}`} />
+                  ))}
                 </div>
               )}
             </div>

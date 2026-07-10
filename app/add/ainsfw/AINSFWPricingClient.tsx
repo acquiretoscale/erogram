@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { createAINSFWSubmission, type AINSFWPlan, type AINSFWFormData } from '@/lib/actions/ainsfwPayment';
 import { validateCoupon } from '@/lib/actions/coupons';
+import TrustedByLeaders from '@/app/advertise/TrustedByLeaders';
 
 const ACCENT      = '#0ea5e9';
 const ACCENT_DARK = '#0369a1';
@@ -37,6 +38,49 @@ function Check() {
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5">
       <path d="M2.5 8l3.5 3.5L13.5 4" />
     </svg>
+  );
+}
+
+function CompactHeroStats() {
+  const [views, setViews] = useState<number | null>(null);
+  const [live, setLive] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fetchStats = () => {
+      fetch('/api/advertise-stats', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((d) => {
+          if (typeof d.totalViews === 'number') setViews(d.totalViews);
+          if (typeof d.activeVisitors === 'number') setLive(d.activeVisitors);
+        })
+        .catch(() => {});
+    };
+    fetchStats();
+    const id = setInterval(fetchStats, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div className="shrink-0 text-right">
+      <p className="inline-flex px-2.5 py-0.5 mb-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-[0.16em] text-white bg-black rounded">
+        Get seen on Erogram
+      </p>
+      <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-5 py-4 space-y-2 shrink-0">
+        <div className="flex items-baseline justify-end gap-3 whitespace-nowrap">
+          <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-white/30">Page views</span>
+          <span className="text-lg sm:text-xl font-bold tabular-nums text-white/65">
+            {views != null ? views.toLocaleString() : '—'}
+          </span>
+        </div>
+        <div className="flex items-baseline justify-end gap-3 whitespace-nowrap">
+          <span className="flex h-2 w-2 rounded-full bg-emerald-400/70 animate-pulse shrink-0 self-center" />
+          <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-white/30">Live now</span>
+          <span className="text-lg sm:text-xl font-bold tabular-nums text-white/65">
+            {live != null ? live.toLocaleString() : '—'}
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -121,10 +165,13 @@ export default function AINSFWPricingClient() {
     setError('');
   };
 
-  const uploadImage = async (): Promise<string> => {
+  const uploadImage = async (category: string): Promise<string> => {
     if (!imageFile) return '';
     const fd = new FormData();
     fd.append('file', imageFile);
+    fd.append('folder', 'ainsfw');
+    fd.append('name', form.toolName.trim());
+    fd.append('category', category);
     const res = await fetch('/api/upload', { method: 'POST', body: fd });
     const data = await res.json();
     if (!res.ok || !data.url) throw new Error(data.message || 'Upload failed');
@@ -152,15 +199,16 @@ export default function AINSFWPricingClient() {
     setLoading(true);
     setError('');
     try {
+      const mainCatsSelected = selectedItems.filter((i) => (MAIN_CATEGORIES as readonly string[]).includes(i));
+      const category = mainCatsSelected[0] ?? 'AI Girlfriend';
       setUploading(true);
-      const logoUrl = await uploadImage();
+      const logoUrl = await uploadImage(category);
       setUploading(false);
 
-      const mainCatsSelected = selectedItems.filter((i) => (MAIN_CATEGORIES as readonly string[]).includes(i));
       const result = await createAINSFWSubmission(selectedPlan, {
         ...form,
         logoUrl,
-        category: mainCatsSelected[0] ?? 'AI Girlfriend',
+        category,
         tags: selectedItems.join(', '),
         extraCategories: mainCatsSelected,
       }, couponCode.trim() || undefined, token);
@@ -196,24 +244,29 @@ export default function AINSFWPricingClient() {
         </div>
 
         {/* HERO */}
-        <div className="mb-10">
-          <span
-            className="inline-block px-3 py-1 mb-4 text-[10px] font-black uppercase tracking-widest"
-            style={{ background: ACCENT, color: '#fff', border: BORDER }}
-          >
-            🔞 AI NSFW Directory
-          </span>
-          <h1 className="text-4xl sm:text-5xl font-black leading-[1.05] tracking-tighter mb-3">
-            <span className="text-white">List Your</span><br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-sky-400 to-emerald-400">AI NSFW Tool.</span>
-          </h1>
-          <p className="text-sm text-white/50 max-w-sm leading-relaxed">
-            Get featured on the largest adult NSFW hub  reach <strong className="text-white/80">140K+ monthly visitors</strong> hunting for AI tools.
-          </p>
+        <div className="mb-10 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <span
+              className="inline-block px-3 py-1 mb-4 text-[10px] font-black uppercase tracking-widest"
+              style={{ background: ACCENT, color: '#fff', border: BORDER }}
+            >
+              🔞 AI NSFW Directory
+            </span>
+            <h1 className="text-4xl sm:text-5xl font-black leading-[1.05] tracking-tighter mb-3">
+              <span className="text-white">List Your</span><br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-sky-400 to-emerald-400">AI NSFW Tool.</span>
+            </h1>
+            <p className="text-sm text-white/50 max-w-sm leading-relaxed">
+              Get featured on the largest adult NSFW hub  reach <strong className="text-white/80">140K+ monthly visitors</strong> hunting for AI tools.
+            </p>
+          </div>
+          <div className="self-end sm:self-start sm:pt-1">
+            <CompactHeroStats />
+          </div>
         </div>
 
         {/* PRICING GRID */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-5">
 
           {/* BASIC */}
           <div
@@ -347,13 +400,13 @@ export default function AINSFWPricingClient() {
               ))}
             </ul>
 
-            <a
-              href="mailto:isabella@erogram.biz"
+            <Link
+              href="/advertise"
               className="block w-full py-4 text-sm font-black uppercase tracking-widest text-center text-white transition-all hover:opacity-95 active:translate-x-[2px] active:translate-y-[2px]"
               style={{ background: ACCENT, border: BORDER, boxShadow: SHADOW }}
             >
-              Get a Quote →
-            </a>
+              ADVERTISE
+            </Link>
             <p className="text-[10px] text-sky-400/50 text-center mt-2.5 font-semibold uppercase tracking-widest">
               Custom pricing · Contact our team
             </p>
@@ -365,7 +418,7 @@ export default function AINSFWPricingClient() {
         {selectedPlan && (
           <div
             id="submit-form"
-            className="max-w-2xl mx-auto p-8 mb-16"
+            className="max-w-2xl mx-auto p-8 mb-5"
             style={{
               background: 'linear-gradient(180deg, #0c2d48 0%, #0a1929 100%)',
               border: `3px solid ${ACCENT}`,
@@ -670,35 +723,41 @@ export default function AINSFWPricingClient() {
         )}
 
         {/* Contact block */}
-        <div
-          className="flex flex-col items-center gap-4 px-8 py-6 mb-16"
-          style={{ background: 'linear-gradient(135deg, #0c1e35 0%, #0c2d48 100%)', border: `3px solid ${ACCENT}`, boxShadow: `4px 4px 0px ${ACCENT}` }}
-        >
-          <p className="text-sm font-black text-white">Need help?</p>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <a
-              href="mailto:isabella@erogram.biz"
-              className="flex items-center gap-2 px-5 py-3 text-sm font-black text-white transition-all hover:opacity-90"
-              style={{ background: 'rgba(255,255,255,0.08)', border: '2px solid rgba(255,255,255,0.15)' }}
-            >
-              ✉️ isabella@erogram.biz
-            </a>
-            <a
-              href="https://t.me/erogramDOTpro"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 px-5 py-3 text-sm font-black text-white transition-all hover:opacity-90"
-              style={{ background: ACCENT, border: `2px solid ${ACCENT}` }}
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.820 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-              @erogramDOTpro on Telegram
-            </a>
+        <section className="mb-3">
+          <div className="rounded-xl bg-white px-3 py-2.5 sm:px-4 sm:py-3 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)] max-w-2xl mx-auto">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
+              <span className="inline-flex shrink-0 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-white bg-black rounded">
+                Need help?
+              </span>
+              <div className="flex flex-wrap items-center justify-center gap-1.5">
+                <a
+                  href="mailto:isabella@erogram.biz"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold text-neutral-800 bg-neutral-50 border border-neutral-200 rounded-lg hover:border-neutral-400 transition-colors"
+                >
+                  ✉️ isabella@erogram.biz
+                </a>
+                <a
+                  href="https://t.me/erogramDOTpro"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold text-white rounded-lg hover:brightness-105 transition-all"
+                  style={{ background: ACCENT }}
+                >
+                  <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.820 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                  @erogramDOTpro on Telegram
+                </a>
+              </div>
+            </div>
           </div>
+        </section>
+
+        <div className="[&>section]:mb-4 [&>section>div]:py-5 [&>section>div]:sm:py-6 [&>section_p]:mb-4 [&>section_p]:sm:mb-5">
+          <TrustedByLeaders />
         </div>
 
         {/* SCALE BANNER */}
         <div
-          className="flex flex-col sm:flex-row items-center justify-between gap-6 px-8 py-7"
+          className="flex flex-col sm:flex-row items-center justify-between gap-6 px-8 py-7 mt-4"
           style={{
             background: 'linear-gradient(135deg, #0c1a2e 0%, #0c4a6e 50%, #064e3b 100%)',
             border: `3px solid ${ACCENT}`,
@@ -714,13 +773,13 @@ export default function AINSFWPricingClient() {
               <span className="text-white/80 text-xl">40× more exposure.</span>
             </h3>
           </div>
-          <a
-            href="mailto:isabella@erogram.biz"
+          <Link
+            href="/advertise"
             className="shrink-0 px-8 py-4 text-sm font-black uppercase tracking-widest text-white text-center transition-all hover:opacity-90 active:translate-x-[2px] active:translate-y-[2px] whitespace-nowrap"
             style={{ background: ACCENT, border: BORDER, boxShadow: SHADOW }}
           >
-            Get a Quote →
-          </a>
+            ADVERTISE
+          </Link>
         </div>
 
       </main>

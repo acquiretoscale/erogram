@@ -4,6 +4,7 @@ const LOCALE_MAP: Record<Locale, string> = {
   en: 'en-US',
   de: 'de-DE',
   es: 'es-ES',
+  pt: 'pt-BR',
 };
 
 /**

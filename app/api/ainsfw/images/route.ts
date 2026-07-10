@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import sharp from 'sharp';
 import fs from 'fs';
 import path from 'path';
+import { AINSFW_GALLERY } from '@/app/ainsfw/galleryMap';
 
 const TAVILY_KEY = process.env.TAVILY_API_KEY || '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';
 
@@ -16,6 +17,8 @@ function slugDir(slug: string) {
 }
 
 function getExistingImages(slug: string): string[] {
+  const r2 = AINSFW_GALLERY[slug];
+  if (r2?.length) return r2;
   const dir = slugDir(slug);
   if (!fs.existsSync(dir)) return [];
   const files = fs.readdirSync(dir).filter(f => f.endsWith('.jpg')).sort();

@@ -12,10 +12,14 @@ import type { ToolStatsData } from '@/lib/actions/ainsfw';
 import AdvertCard from '@/app/groups/AdvertCard';
 import type { FeedCampaign } from '@/app/groups/types';
 import { useIsTelegramBrowser } from '@/app/hooks/useIsTelegramBrowser';
+import type { BlogCard } from '@/lib/actions/blog';
+import { categoryToSlug } from '../data';
 
 interface ToolDetailClientProps {
   tool: AINsfwTool;
-  similar: AINsfwTool[];
+  alternatives?: AINsfwTool[];
+  mostVoted?: AINsfwTool[];
+  aiArticles?: BlogCard[];
   initialStats?: ToolStatsData;
   sidebarAds?: FeedCampaign[];
 }
@@ -44,7 +48,7 @@ const PAYMENT_ICON: Record<string, string> = {
 
 function getBookmarkKey(slug: string) { return `ainsfw_bookmark_${slug}`; }
 
-export default function ToolDetailClient({ tool, similar, initialStats, sidebarAds = [] }: ToolDetailClientProps) {
+export default function ToolDetailClient({ tool, alternatives = [], mostVoted = [], aiArticles = [], initialStats, sidebarAds = [] }: ToolDetailClientProps) {
   const isTelegram = useIsTelegramBrowser();
   const placeholder = '/assets/image.jpg';
   const [imageSrc, setImageSrc] = useState(
@@ -148,6 +152,8 @@ export default function ToolDetailClient({ tool, similar, initialStats, sidebarA
             <span>/</span>
             <Link href="/ainsfw" className="hover:text-white transition-colors">AI NSFW Tools</Link>
             <span>/</span>
+            <Link href={`/ainsfw/${tool.category.toLowerCase().replace(/\s+/g, '-')}`} className="text-gray-400 hover:text-white transition-colors truncate max-w-[120px]">{tool.category}</Link>
+            <span>/</span>
             <span className="text-white font-semibold truncate max-w-[180px]">{tool.name}</span>
           </nav>
         </div>
@@ -168,7 +174,7 @@ export default function ToolDetailClient({ tool, similar, initialStats, sidebarA
                 <div className="relative w-full aspect-square bg-gray-100">
                   <Image
                     src={imageSrc}
-                    alt={tool.name}
+                    alt={`${tool.name} NSFW AI ${tool.category} tool`}
                     fill
                     className="object-cover"
                     priority
@@ -279,7 +285,7 @@ export default function ToolDetailClient({ tool, similar, initialStats, sidebarA
                         >
                           <img
                             src={src}
-                            alt={`${tool.name} screenshot ${i + 1}`}
+                            alt={`${tool.name} NSFW AI ${tool.category} screenshot ${i + 1}`}
                             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                             loading="lazy"
                             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -311,7 +317,7 @@ export default function ToolDetailClient({ tool, similar, initialStats, sidebarA
                   >›</button>
                   <img
                     src={gallery[lightboxIdx]}
-                    alt={`${tool.name} screenshot ${lightboxIdx + 1}`}
+                    alt={`${tool.name} NSFW AI ${tool.category} screenshot ${lightboxIdx + 1}`}
                     className="max-w-full max-h-[85vh] rounded-2xl object-contain"
                     onClick={(e) => e.stopPropagation()}
                   />
@@ -376,21 +382,6 @@ export default function ToolDetailClient({ tool, similar, initialStats, sidebarA
                   Opens {tool.vendor} in a new tab.
                 </p>
               </div>
-
-              {/* FEATURED ON EROGRAM — same agnostic ads as group/bot pages */}
-              {sidebarAds.length > 0 && !isTelegram && (
-                <div className="rounded-2xl border border-[#00AFF0]/30 bg-white p-4 shadow-[0_18px_40px_-20px_rgba(0,175,240,0.45)] mb-8">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-[#00AFF0]" style={{ fontSize: 14 }}>★</span>
-                    <h3 className="text-sm font-black text-[#0f172a]">FEATURED ON <span className="text-[#00AFF0]">EROGRAM</span></h3>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {sidebarAds.map((c, i) => (
-                      <AdvertCard key={c._id} campaign={c} isIndex={i} forceVisible hidePromoted placementOverride="group-sidebar-ainsfw" />
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* Reviews section */}
               <div className="bg-[#0a1f12]/85 rounded-2xl border border-[#22c55e]/15 shadow-2xl p-6 mb-8">
@@ -460,6 +451,39 @@ export default function ToolDetailClient({ tool, similar, initialStats, sidebarA
                 )}
               </div>
 
+              {/* Most voted alternatives on Erogram */}
+              {alternatives.length > 0 && (
+                <div className="bg-[#0a1f12]/85 rounded-2xl border border-[#22c55e]/15 shadow-2xl p-6 mb-8">
+                  <h2 className="text-lg font-black text-white mb-4">MOST VOTED ALTERNATIVES ON EROGRAM</h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {alternatives.slice(0, 6).map((alt, i) => (
+                      <Link key={alt.slug} href={`/ainsfw/${alt.slug}`} className="block group">
+                        <div className="bg-[#111] rounded-xl overflow-hidden border border-white/10 group-hover:border-[#22c55e]/50 transition-all">
+                          <div className="relative w-full aspect-video bg-gray-100">
+                            <Image
+                              src={alt.image.startsWith('/') || alt.image.startsWith('https://') ? alt.image : placeholder}
+                              alt={`${alt.name} NSFW AI ${alt.category} tool`}
+                              fill
+                              className="object-cover"
+                              onError={(e) => { (e.target as HTMLImageElement).src = placeholder; }}
+                            />
+                            <div className="absolute top-1 left-1">
+                              <span className={`${CATEGORY_BADGE[alt.category] || 'bg-gray-700 text-white'} text-[8px] font-black px-1 py-0.5 rounded uppercase border border-black/20`}>
+                                {alt.category}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="p-2">
+                            <div className="text-xs font-black text-white group-hover:text-[#22c55e] truncate">{alt.name}</div>
+                            <div className="text-[9px] text-gray-400 truncate">{alt.vendor}</div>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Explore more */}
               <div className="mb-8">
                 <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-3">Explore Categories</h3>
@@ -467,7 +491,7 @@ export default function ToolDetailClient({ tool, similar, initialStats, sidebarA
                   {['AI Girlfriend', 'Undress AI', 'AI Chat', 'AI Image', 'AI Roleplay'].map((cat) => (
                     <Link
                       key={cat}
-                      href="/ainsfw"
+                      href={`/ainsfw/${categoryToSlug(cat)}`}
                       className="px-3 py-1.5 rounded-lg bg-white/10 text-white border border-white/15 text-xs font-black hover:bg-white/15 transition-all"
                     >
                       {cat}
@@ -475,17 +499,67 @@ export default function ToolDetailClient({ tool, similar, initialStats, sidebarA
                   ))}
                 </div>
               </div>
+              {/* FEATURED ON EROGRAM — same agnostic ads as group/bot pages */}
+              {sidebarAds.length > 0 && !isTelegram && (
+                <div className="rounded-2xl border border-[#00AFF0]/30 bg-white p-4 shadow-[0_18px_40px_-20px_rgba(0,175,240,0.45)] mb-8">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-[#00AFF0]" style={{ fontSize: 14 }}>★</span>
+                    <h3 className="text-sm font-black text-[#0f172a]">FEATURED ON <span className="text-[#00AFF0]">EROGRAM</span></h3>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {sidebarAds.map((c, i) => (
+                      <AdvertCard key={c._id} campaign={c} isIndex={i} forceVisible hidePromoted placementOverride="group-sidebar-ainsfw" />
+                    ))}
+                  </div>
+                </div>
+              )}
             </motion.div>
           </div>
         </div>
 
-        {/* Similar tools */}
-        {similar.length > 0 && (
+        {/* AI NSFW Articles — internal link building + richer content */}
+        {aiArticles.length > 0 && (
           <section className="mt-12 border-t border-white/5 pt-10">
-            <h2 className="text-xl sm:text-2xl font-black text-white mb-6">More {tool.category} Tools</h2>
+            <div className="flex items-end justify-between mb-4">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black text-white">AI NSFW Articles &amp; Guides</h2>
+                <p className="text-gray-400 text-sm">In-depth reviews, comparisons and how-tos</p>
+              </div>
+              <Link href="/blog/category/ai-nsfw" className="text-xs font-bold text-[#22c55e] hover:underline">All AI articles →</Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {aiArticles.map((article, i) => (
+                <Link key={i} href={`/blog/${article.slug}`} className="group block bg-[#111] rounded-xl border border-white/10 overflow-hidden hover:border-[#22c55e]/50 transition-all">
+                  {article.featuredImage ? (
+                    <img
+                      src={article.featuredImage}
+                      alt={article.title}
+                      className="w-full h-28 object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  ) : (
+                    <div className="w-full h-28 bg-gradient-to-br from-[#1a2a1f] to-black" />
+                  )}
+                  <div className="p-3">
+                    <div className="text-[10px] font-black tracking-[1px] uppercase text-[#22c55e] mb-1">AI NSFW</div>
+                    <h4 className="font-bold text-sm leading-tight group-hover:text-[#22c55e] line-clamp-2">{article.title}</h4>
+                    {article.excerpt && (
+                      <p className="text-xs text-gray-400 mt-1.5 line-clamp-2">{article.excerpt}</p>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Most voted on Erogram (global) */}
+        {mostVoted.length > 0 && (
+          <section className="mt-12 border-t border-white/5 pt-10">
+            <h2 className="text-xl sm:text-2xl font-black text-white mb-6">Most Voted AI NSFW Tools on Erogram</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {similar.map((s, i) => (
-                <Link key={s.slug} href={`/${s.slug}`} className="block group">
+              {mostVoted.map((s, i) => (
+                <Link key={s.slug} href={`/ainsfw/${s.slug}`} className="block group">
                   <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -495,7 +569,7 @@ export default function ToolDetailClient({ tool, similar, initialStats, sidebarA
                     <div className="relative w-full h-24 sm:h-32 bg-gray-100">
                       <Image
                         src={s.image.startsWith('/') || s.image.startsWith('https://') ? s.image : placeholder}
-                        alt={`${s.name} — ${s.category}`}
+                        alt={`${s.name} NSFW AI ${s.category} tool`}
                         fill
                         className="object-cover transition-transform duration-500 group-hover:scale-105"
                         onError={(e) => { (e.target as HTMLImageElement).src = placeholder; }}

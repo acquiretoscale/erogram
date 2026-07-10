@@ -5,6 +5,7 @@ import { Bot, Advert } from '@/lib/models';
 import BotsClient from '../../BotsClient';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import { getActiveCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
+import { buildSocialMeta } from '@/lib/seo/socialMeta';
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
 
@@ -144,47 +145,42 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // Special case: "/bots/country/All" is a real page for UX/shareability,
   // but canonical should be /bots to avoid duplicate-content indexing.
   if (country === 'All') {
+    const allTitle = 'Discover NSFW Telegram Bots - Browse AI Chatbots & Roleplay Bots';
+    const allDescription = 'Browse and discover NSFW Telegram bots. Find AI chatbots, roleplay bots, and adult conversation bots.';
     return {
-      title: 'Discover NSFW Telegram Bots - Browse AI Chatbots & Roleplay Bots',
+      title: allTitle,
       description: 'Browse and discover NSFW Telegram bots. Find AI chatbots, roleplay bots, and adult conversation bots by category and country.',
       keywords: 'NSFW telegram bots, AI chatbots, adult telegram bots, roleplay bots, NSFW AI bots',
       alternates: {
         canonical: `${baseUrl}/bots`,
       },
-      openGraph: {
-        title: 'Discover NSFW Telegram Bots - Browse AI Chatbots & Roleplay Bots',
-        description: 'Browse and discover NSFW Telegram bots. Find AI chatbots, roleplay bots, and adult conversation bots.',
-        type: 'website',
-        siteName: 'Erogram',
+      ...buildSocialMeta({
+        title: allTitle,
+        description: allDescription,
         url: `${baseUrl}/bots`,
-        images: [
-          {
-            url: (process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${baseUrl}/assets/placeholder-no-image.png`),
-            width: 1200,
-            height: 630,
-            alt: 'Erogram Bots',
-          },
-        ],
-      },
-      twitter: {
-        card: 'summary_large_image',
-        title: 'Discover NSFW Telegram Bots - Browse AI Chatbots & Roleplay Bots',
-        description: 'Browse and discover NSFW Telegram bots. Find AI chatbots, roleplay bots, and adult conversation bots.',
-        images: [(process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${baseUrl}/assets/placeholder-no-image.png`)],
-      },
+        type: 'website',
+      }),
     };
   }
 
   const countryInfo = countryData[country];
 
   if (!countryInfo) {
+    const fallbackTitle = `NSFW Telegram Bots in ${country}`;
+    const fallbackDescription = `Discover the best NSFW Telegram bots in ${country}. Browse AI chatbots, roleplay companions, and adult entertainment bots. Find verified ${country} bots on Erogram.pro — updated daily.`;
+    const fallbackUrl = countryUrl(country);
     return {
-      // Root layout already appends "| Erogram" via `metadata.title.template`.
-      title: `NSFW Telegram Bots in ${country}`,
-      description: `Discover the best NSFW Telegram bots in ${country}. Browse AI chatbots, roleplay companions, and adult entertainment bots. Find verified ${country} bots on Erogram.pro — updated daily.`,
+      title: fallbackTitle,
+      description: fallbackDescription,
       alternates: {
-        canonical: countryUrl(country),
+        canonical: fallbackUrl,
       },
+      ...buildSocialMeta({
+        title: fallbackTitle,
+        description: fallbackDescription,
+        url: fallbackUrl,
+        type: 'website',
+      }),
     };
   }
 
@@ -197,27 +193,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     alternates: {
       canonical: url,
     },
-    openGraph: {
+    ...buildSocialMeta({
       title: countryInfo.seoTitle,
       description: countryInfo.seoDescription,
-      type: 'website',
-      siteName: 'Erogram',
       url,
-      images: [
-        {
-          url: (process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${baseUrl}/assets/placeholder-no-image.png`),
-          width: 1200,
-          height: 630,
-          alt: `${countryInfo.seoTitle}`,
-        },
-      ],
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: countryInfo.seoTitle,
-      description: countryInfo.seoDescription,
-      images: [(process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${baseUrl}/assets/placeholder-no-image.png`)],
-    },
+      type: 'website',
+      imageAlt: countryInfo.seoTitle,
+    }),
   };
 }
 

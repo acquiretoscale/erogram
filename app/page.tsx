@@ -8,8 +8,15 @@ import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary } from '@/lib/i18n';
 import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
 import { AI_NSFW_TOOLS } from '@/app/ainsfw/data';
+import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { filterCategories, categorySlug } from '@/app/groups/constants';
 
 export const revalidate = 300;
+
+const COUNTRY_FILTERS = new Set([
+  'Argentina', 'Brazil', 'China', 'Colombia', 'France', 'Germany', 'Italy', 'Japan',
+  'Mexico', 'Philippines', 'Russian', 'Spain', 'UK', 'Ukraine', 'USA', 'Vietnam',
+]);
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
 
@@ -69,30 +76,44 @@ export async function generateMetadata(): Promise<Metadata> {
 
   const title = m.homeTitle || 'Erogram | Best NSFW Telegram Groups, Bots & AI Tools Directory (2026)';
   const description = m.homeDesc || 'The best NSFW & Porn Telegram groups directory. Browse thousands of verified adult Telegram communities and AI bots by category — amateur, anal, lesbian, MILF, onlyfans & more. Updated daily.';
-  const imgUrl = process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${siteUrl}/assets/placeholder-no-image.png`;
-  const canonicalBase = 'https://erogram.pro';
-  const canonical = `${canonicalBase}${pathname === '/' ? '' : pathname}`;
+  const canonical = `${CANONICAL_BASE}${pathname === '/' ? '' : pathname}`;
 
   return {
     title,
     description,
     keywords: 'porn telegram, telegram porn, best porn telegram groups, nsfw telegram groups, adult telegram directory, porn telegram channels, nsfw telegram, telegram porn groups, amateur porn telegram, anal telegram',
     alternates: { canonical },
-    openGraph: {
+    ...buildSocialMeta({
       title,
       description,
-      type: 'website',
-      siteName: 'Erogram',
       url: canonical,
-      images: [{ url: imgUrl, width: 1200, height: 630, alt: title }],
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title,
-      description,
-      images: [imgUrl],
-    },
+      type: 'website',
+    }),
   };
+}
+
+async function getTopGroupCategories(limit: number = 16) {
+  try {
+    await connectDB();
+    const base = { status: 'approved', isAdvertisement: { $ne: true }, category: { $ne: 'Hentai' } };
+    const counts = await Promise.all(
+      filterCategories.map(async (c) => ({
+        name: c,
+        count: await Group.countDocuments({
+          ...base,
+          $or: [{ categories: c }, { category: c }, { country: c }, { vaultCategories: c }],
+        }),
+      })),
+    );
+    return counts
+      .filter((c) => c.count > 0 && !COUNTRY_FILTERS.has(c.name))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit)
+      .map((c) => ({ name: c.name, count: c.count, slug: categorySlug(c.name) }));
+  } catch (error) {
+    console.error('Error fetching top group categories:', error);
+    return [];
+  }
 }
 
 async function getNewGroups(limit: number = 8) {
@@ -220,13 +241,14 @@ export default async function Home() {
   const faq: { q: string; a: string }[] = dict.home?.faq || [];
   const metaDict = dict.meta || {};
 
-  const [featuredArticles, heroCampaigns, newGroups, stats, ofCategories, newestBots] = await Promise.all([
+  const [featuredArticles, heroCampaigns, newGroups, stats, ofCategories, newestBots, topGroupCategories] = await Promise.all([
     getFeaturedArticles(6),
     getActiveCampaigns('homepage-hero'),
     getNewGroups(8),
     getStats(),
     getOFCategoryPreviews(),
     getNewestBots(8),
+    getTopGroupCategories(16),
   ]);
   const newestAINsfw = getNewestAINsfw(8);
 
@@ -285,6 +307,7 @@ export default async function Home() {
           ofCategories={ofCategories}
           newestBots={newestBots}
           newestAINsfw={newestAINsfw}
+          topGroupCategories={topGroupCategories}
           locale={locale}
         />
       </ErrorBoundary>

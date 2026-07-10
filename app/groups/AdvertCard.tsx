@@ -5,6 +5,7 @@ import { Advert, FeedCampaign } from './types';
 import { useIsTelegramBrowser } from '../hooks/useIsTelegramBrowser';
 import { trackClick as trackCampaignClick, trackImpression } from '@/lib/actions/campaigns';
 import { trackTrendingClick } from '@/lib/actions/onlyfansTracking';
+import { useTranslation } from '@/lib/i18n/client';
 
 interface AdvertCardProps {
     advert?: Advert;
@@ -69,6 +70,7 @@ function GrowthTrendBadge({ growthPercent }: { growthPercent?: number }) {
 }
 
 function OnlyFansCreatorAdCard({ campaign, handleClick, growthPercent }: { campaign: FeedCampaign; handleClick: (shownVariantIdx?: number) => void; growthPercent?: number }) {
+    const { t } = useTranslation();
     const cardRef = useRef<HTMLDivElement>(null);
     const impressionFiredRef = useRef(false);
     const [imgError, setImgError] = useState(false);
@@ -82,12 +84,18 @@ function OnlyFansCreatorAdCard({ campaign, handleClick, growthPercent }: { campa
     // Stable full-album index for each shown image — what the dashboard reads for per-picture CTR.
     // Falls back to array position if not provided (older data), but the server now always sends it.
     const albumIdx = campaign.ofAlbumIdx ?? [];
-    // Roll the rotation AFTER mount (client-only). If we picked during the SSR initializer, the
-    // server HTML would freeze one image under the page cache and every visitor would see it.
-    // Starting at 0 then re-rolling on mount makes the shown image vary per page view.
+    // Per-visitor A/B rotation without a visible image swap or hydration mismatch.
+    // The page is ISR-cached, so we must NOT pick the random image on the server (it would freeze
+    // one image for every visitor). Instead:
+    //   - Server + first client render: `mounted` is false → we render a neutral blur placeholder
+    //     (identical HTML on both sides → hydration matches, no error).
+    //   - After mount: `mounted` flips true and we pick the random album index once, then paint the
+    //     chosen image. The user never sees image[0] first, so there is no flicker/flip.
+    const [mounted, setMounted] = useState(false);
     const [pos, setPos] = useState<number>(0);
     useEffect(() => {
-        if (album.length > 1) setPos(Math.floor(Math.random() * album.length));
+        setPos(album.length > 1 ? Math.floor(Math.random() * album.length) : 0);
+        setMounted(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
     const displayImage = album[pos] || album[0] || campaign.creative || '';
@@ -140,8 +148,10 @@ function OnlyFansCreatorAdCard({ campaign, handleClick, growthPercent }: { campa
                 tabIndex={0}
                 onKeyDown={(e) => e.key === 'Enter' && onCardClick()}
             >
-                {/* Image fills the entire card */}
-                {displayImage && !imgError ? (
+                {/* Image fills the entire card. Until mount we render a stable placeholder so the
+                    server HTML and first client render match (the per-visitor random pick is applied
+                    only after mount, avoiding any image swap / hydration mismatch). */}
+                {mounted && displayImage && !imgError ? (
                     <img
                         src={displayImage}
                         alt={`${displayName} OnlyFans`}
@@ -196,7 +206,7 @@ function OnlyFansCreatorAdCard({ campaign, handleClick, growthPercent }: { campa
                         onClick={(e) => { e.stopPropagation(); onCardClick(); }}
                         className="w-full py-2.5 sm:py-3 rounded-full bg-white hover:bg-white/90 text-[#0a0a0a] text-sm sm:text-base font-black text-center shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
                     >
-                        {campaign.buttonText || 'View Profile'}
+                        {campaign.buttonText || t('groups.viewProfile')}
                     </button>
                 </div>
             </div>
@@ -205,6 +215,7 @@ function OnlyFansCreatorAdCard({ campaign, handleClick, growthPercent }: { campa
 }
 
 function VideoAdCard({ campaign, handleClick, hidePromoted = false, growthPercent }: { campaign: FeedCampaign; handleClick: () => void; hidePromoted?: boolean; growthPercent?: number }) {
+    const { t } = useTranslation();
     const videoRef = useRef<HTMLVideoElement>(null);
     const cardRef = useRef<HTMLDivElement>(null);
     const videoImpressionFiredRef = useRef(false);
@@ -253,7 +264,7 @@ function VideoAdCard({ campaign, handleClick, hidePromoted = false, growthPercen
         return () => clearInterval(interval);
     }, []);
 
-    const buttonText = (campaign.buttonText && campaign.buttonText.trim()) ? campaign.buttonText.trim() : 'Visit Now';
+    const buttonText = (campaign.buttonText && campaign.buttonText.trim()) ? campaign.buttonText.trim() : t('groups.visitNow');
 
     const rating = (seededRandomVideo(seed + 'rating') * 0.7 + 4.2).toFixed(1);
     const reviewCount = Math.floor(seededRandomVideo(seed + 'reviews') * 38 + 5);
@@ -337,6 +348,7 @@ function VideoAdCard({ campaign, handleClick, hidePromoted = false, growthPercen
 }
 
 function PremiumMosaicCard({ campaign, handleClick, growthPercent }: { campaign: FeedCampaign; handleClick: () => void; growthPercent?: number }) {
+    const { t } = useTranslation();
     const [imgIdx, setImgIdx] = useState(0);
     const [liveCount, setLiveCount] = useState(0);
     const cardRef = useRef<HTMLDivElement>(null);
@@ -466,7 +478,7 @@ function PremiumMosaicCard({ campaign, handleClick, growthPercent }: { campaign:
                                 className="w-full py-2.5 sm:py-3 px-3 rounded-xl font-black text-sm transition-all duration-300 hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
                                 style={{ background: 'linear-gradient(135deg, #fb5607, #ffbe0b)', color: '#1a0800', boxShadow: '0 4px 14px -6px rgba(251,86,7,0.6)' }}
                             >
-                                🔓 {campaign.buttonText || 'Unlock the vault'}
+                                🔓 {campaign.buttonText || t('groups.unlockTheVault')}
                             </button>
                         </div>
                     </div>
@@ -478,6 +490,7 @@ function PremiumMosaicCard({ campaign, handleClick, growthPercent }: { campaign:
 
 export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreload = false, onVisible, forceVisible = false, hidePromoted = false, placementOverride, growthPercent }: AdvertCardProps) {
     const isTelegram = useIsTelegramBrowser();
+    const { t } = useTranslation();
 
     // Normalize: support both legacy Advert and new FeedCampaign
     const ad = campaign
@@ -489,7 +502,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
           description: campaign.description,
           category: campaign.category,
           country: campaign.country,
-          buttonText: campaign.buttonText || 'Visit Site',
+          buttonText: campaign.buttonText || t('groups.visitSite'),
           isCampaign: true,
         }
       : {
@@ -500,7 +513,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
             description: advert?.description || '',
             category: advert?.category || '',
             country: advert?.country || '',
-            buttonText: advert?.buttonText || 'Visit Site',
+            buttonText: advert?.buttonText || t('groups.visitSite'),
             isCampaign: false,
           };
 
@@ -516,11 +529,11 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
     // Curated fallback labels — sentence-case, clean, no gimmicks.
     // Only used when admin hasn't set buttonText. Seeded so the same ad always shows the same label.
     const buttonTexts = [
-        'Visit site',
-        'Get started',
-        'View content',
-        'Try free',
-        'Learn more',
+        t('groups.visitSite'),
+        t('groups.visitNow'),
+        t('groups.tryThisBot'),
+        t('groups.visitSite'),
+        t('groups.unlockTheVault'),
     ];
 
 
@@ -750,7 +763,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                             className="w-full py-2.5 sm:py-3 px-3 rounded-xl font-black text-white text-sm transition-all duration-300 hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
                             style={{ background: 'linear-gradient(135deg, #ff5e2a, #ff9432)', color: '#ffffff', boxShadow: '0 4px 14px -5px rgba(255,94,42,0.5)' }}
                         >
-                            {ad.buttonText || 'Try this bot'}
+                            {ad.buttonText || t('groups.tryThisBot')}
                         </button>
                     </div>
                 </div>

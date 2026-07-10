@@ -53,6 +53,11 @@ export default function robots(): MetadataRoute.Robots {
         disallow: commonDisallow,
       },
     ],
-    sitemap: `${baseUrl}/sitemap.xml`,
+    sitemap: [
+      `${baseUrl}/sitemap.xml`,
+      `${baseUrl}/sitemap-de.xml`,
+      `${baseUrl}/sitemap-es.xml`,
+      `${baseUrl}/sitemap-pt.xml`,
+    ],
   };
 }

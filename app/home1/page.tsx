@@ -7,6 +7,7 @@ import { Article, User, Group, Bot, OnlyFansCreator } from '@/lib/models';
 import { getLocale } from '@/lib/i18n/server';
 import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
 import { AI_NSFW_TOOLS } from '@/app/ainsfw/data';
+import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 export const revalidate = 300;
 
@@ -14,10 +15,20 @@ export const revalidate = 300;
 const AI_BOTS_BASE = 400;
 const OF_CREATORS_BASE = 1_813_055;
 
+const home1Title = 'Erogram — Design Preview';
+const home1Description = 'Internal design preview of the Erogram homepage.';
+
 // Staging twin of the homepage — never index it (avoids duplicate-content with /).
 export const metadata: Metadata = {
-  title: 'Erogram — Design Preview',
+  title: home1Title,
+  description: home1Description,
   robots: { index: false, follow: false },
+  ...buildSocialMeta({
+    title: home1Title,
+    description: home1Description,
+    url: `${CANONICAL_BASE}/home1`,
+    type: 'website',
+  }),
 };
 
 async function getFeaturedArticles(limit = 6) {

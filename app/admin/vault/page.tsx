@@ -191,6 +191,21 @@ export default function AdminVaultPage() {
     await fetch('/api/admin/vault', { method: 'DELETE', headers, body: JSON.stringify({ groupId: g._id }) });
   };
 
+  const makePublic = async (g: VaultGroup) => {
+    if (!confirm(`Make "${g.name}" public?\n\nIt will appear on /groups for all visitors (free, like any other public group).`)) return;
+    try {
+      const res = await fetch(`/api/admin/groups/${g._id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ premiumOnly: false, showOnVaultTeaser: false, status: 'approved' }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      setGroups(prev => prev.filter(x => x._id !== g._id));
+    } catch {
+      alert('Failed to make group public. Try again.');
+    }
+  };
+
   const approveGroup = async (g: VaultGroup) => {
     try {
       await fetch(`/api/admin/groups/${g._id}`, {
@@ -715,6 +730,13 @@ export default function AdminVaultPage() {
                         className="px-2 py-1.5 rounded-lg text-[10px] font-bold bg-white/5 text-white/60 hover:bg-white/10 transition-all"
                         title="Edit"
                       >✎</button>
+                      <button
+                        onClick={() => makePublic(g)}
+                        className="px-2 py-1.5 rounded-lg text-[10px] font-bold bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all"
+                        title="Move to public feed — visible to everyone on /groups"
+                      >
+                        Public
+                      </button>
                       <button
                         onClick={() => deleteFromVault(g)}
                         className="px-2 py-1.5 rounded-lg text-[10px] font-bold bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all"

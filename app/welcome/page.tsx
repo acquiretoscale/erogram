@@ -4,10 +4,21 @@ import Footer from '@/components/Footer';
 import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
 import { AI_NSFW_TOOLS } from '@/app/ainsfw/data';
 import { getFeaturedSlugs } from '@/lib/actions/ainsfw';
+import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+
+const title = 'Welcome to Erogram — Set Up Your Feed';
+const description = 'Personalize your Erogram feed with your favorite categories and creators.';
 
 export const metadata = {
-  title: 'Welcome to Erogram — Set Up Your Feed',
+  title,
+  description,
   robots: { index: false, follow: false },
+  ...buildSocialMeta({
+    title,
+    description,
+    url: `${CANONICAL_BASE}/welcome`,
+    type: 'website',
+  }),
 };
 
 export default async function WelcomePage({ searchParams }: { searchParams: Promise<{ from?: string }> }) {

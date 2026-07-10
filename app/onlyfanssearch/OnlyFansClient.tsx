@@ -3,10 +3,11 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Search, Bookmark, Crown, Trash2, X, Heart, Shuffle, Clock, Plus, TrendingUp } from 'lucide-react';
+import { Search, Bookmark, Crown, Trash2, X, Heart, Shuffle, Clock, Plus, TrendingUp, User } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import HeaderBanner from '@/components/HeaderBanner';
 import { OF_CATEGORIES, ofCategoryUrl } from './constants';
+import { bestOfBlogSlug, getTopBestOfByType, BEST_OF_PAGE_MAP, type BestOfPage } from '@/app/best-onlyfans-accounts/bestOfPages';
 import { trackCreatorClick, trackTrendingClick } from '@/lib/actions/onlyfansTracking';
 import { getTrendingCreators } from '@/lib/actions/publicData';
 import { browseCreators, searchCreators, deleteCreatorBySlug } from '@/lib/actions/ofCreatorsBrowse';
@@ -82,6 +83,8 @@ interface Props {
   recentlyAdded?: Creator[];
   topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string; bannerDevice?: 'all' | 'mobile' | 'desktop' }>;
   trendingOnErogram?: TrendingCreatorItem[];
+  top10PreviewAvatars?: Record<string, string[]>;
+  bestAccountsPreviewAvatars?: Record<string, string[]>;
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -129,11 +132,20 @@ function CreatorCard({
   const [showHeader, setShowHeader] = useState(false);
   const hasHeader = !!creator.header;
 
-  const handleViewProfile = (e: React.MouseEvent) => {
-    e.preventDefault();
+  const handleViewProfileClick = () => {
     onClickTrack(creator.slug);
-    // Natural click → straight to the creator's OnlyFans page.
-    if (creator.url) window.open(creator.url, '_blank', 'noopener');
+  };
+
+  const handleErogramProfile = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const path = `/${creator.username}-onlyfans`;
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      window.open(`/join-erogram?redirect=${encodeURIComponent(path)}`, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    window.open(path, '_blank', 'noopener,noreferrer');
   };
 
   if (deleted) return null;
@@ -236,12 +248,24 @@ function CreatorCard({
           </div>
         </div>
         <div className="px-2.5 pb-2.5 pt-2 sm:px-4 sm:pb-4 sm:pt-3">
-          <button
-            onClick={handleViewProfile}
-            className="flex items-center justify-center gap-2 w-full py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-[13px] sm:text-sm font-bold text-center shadow-sm group-hover:shadow-md group-hover:from-[#009ADB] group-hover:to-[#00BFE8] transition-all"
-          >
-            {t('ofSearch.viewProfile')}
-          </button>
+          <div className="flex gap-1.5 sm:gap-2">
+            <a
+              href={`/go/${creator.username}`}
+              target="_blank"
+              rel="noopener"
+              onClick={handleViewProfileClick}
+              className="flex-1 flex items-center justify-center gap-2 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-[13px] sm:text-sm font-bold text-center shadow-sm group-hover:shadow-md group-hover:from-[#009ADB] group-hover:to-[#00BFE8] transition-all no-underline"
+            >
+              {t('ofSearch.viewProfile')}
+            </a>
+            <button
+              onClick={handleErogramProfile}
+              className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white shadow-sm group-hover:shadow-md group-hover:from-[#009ADB] group-hover:to-[#00BFE8] transition-all"
+              title="View on Erogram"
+            >
+              <User size={16} />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -271,10 +295,10 @@ function CreatorPostModal({ creator, onClose }: { creator: Creator; onClose: () 
 
   useEffect(() => {
     if (redirecting && countdown === 0) {
-      window.open(creator.url, '_blank', 'noopener');
+      window.open(`/go/${creator.username}`, '_blank', 'noopener');
       setRedirecting(false);
     }
-  }, [redirecting, countdown, creator.url]);
+  }, [redirecting, countdown, creator.username]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -331,13 +355,139 @@ function CreatorPostModal({ creator, onClose }: { creator: Creator; onClose: () 
   );
 }
 
+function PreviewMosaic({ avatars }: { avatars: string[] }) {
+  const pics = avatars.slice(0, 4);
+  return (
+    <div className="grid grid-cols-2 gap-px w-14 h-14 shrink-0 rounded-lg overflow-hidden border border-[rgba(43,27,40,0.1)]" aria-hidden="true">
+      {Array.from({ length: 4 }).map((_, idx) => {
+        const src = pics[idx];
+        return (
+          <div key={idx} className="relative aspect-square bg-[rgba(43,27,40,0.05)]">
+            {src ? (
+              <img
+                src={src}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover"
+                loading="lazy"
+                referrerPolicy="no-referrer"
+              />
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function BestAccountsLinksSection({ previewAvatars }: { previewAvatars: Record<string, string[]> }) {
+  const lp = useLocalePath();
+
+  const categories = useMemo(
+    () => OF_CATEGORIES.filter((c) => BEST_OF_PAGE_MAP.has(c.slug)),
+    [],
+  );
+
+  const columns = useMemo(() => {
+    const perCol = Math.ceil(categories.length / 3);
+    return [
+      { key: 'look', title: '10 Best OnlyFans · Look & body', items: categories.slice(0, perCol) },
+      { key: 'style', title: '10 Best OnlyFans · Style & vibe', items: categories.slice(perCol, perCol * 2) },
+      { key: 'niche', title: '10 Best OnlyFans · Niches & kinks', items: categories.slice(perCol * 2) },
+    ];
+  }, [categories]);
+
+  return (
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-2" aria-label="Best OnlyFans accounts by category">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-3 px-0.5">
+        <h2 className="text-base sm:text-lg font-black text-[#2B1B28]">Best OnlyFans Accounts by Category</h2>
+        <Link
+          href={lp('/best-onlyfans-accounts')}
+          className="text-[11px] sm:text-xs font-bold text-[#00AFF0] hover:text-[#009AD6] transition-colors"
+        >
+          View all categories →
+        </Link>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-5">
+        {columns.map((col) => (
+          <nav
+            key={col.key}
+            aria-label={col.title}
+            className="rounded-xl border border-[rgba(43,27,40,0.1)] bg-[#F7F4EC] px-3 py-4 sm:px-4"
+          >
+            <h3 className="text-sm sm:text-[15px] font-bold text-[#2B1B28] mb-2.5 leading-snug">{col.title}</h3>
+            <ul className="list-none m-0 p-0">
+              {col.items.map((cat) => {
+                const href = lp(`/best-onlyfans-accounts/${cat.slug}`);
+                const linkText = `10 Best ${cat.name} OnlyFans Accounts`;
+                return (
+                  <li key={cat.slug} className="border-b border-[rgba(43,27,40,0.08)] last:border-b-0">
+                    <Link
+                      href={href}
+                      className="flex items-start gap-2.5 py-2 text-[#2B1B28] no-underline hover:opacity-80 transition-opacity"
+                    >
+                      <PreviewMosaic avatars={previewAvatars[cat.slug] || []} />
+                      <span className="text-[11px] sm:text-[12px] font-semibold leading-snug pt-0.5">{linkText}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Top10RankingsSection({ previewAvatars }: { previewAvatars: Record<string, string[]> }) {
+  const lp = useLocalePath();
+  const niches = useMemo(() => getTopBestOfByType('niche'), []);
+  const regions = useMemo(() => getTopBestOfByType('country'), []);
+  const states = useMemo(() => getTopBestOfByType('state'), []);
+
+  const groups: { key: string; title: string; items: BestOfPage[] }[] = [
+    { key: 'niche', title: 'TOP 10 ranking by niches', items: niches },
+    { key: 'region', title: 'Top 10 ranking by Region', items: regions },
+    { key: 'state', title: 'Top 10 ranking by States in the United States', items: states },
+  ];
+
+  return (
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-2" aria-label="Top 10 OnlyFans model rankings">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-5">
+        {groups.map((group) => (
+          <nav
+            key={group.key}
+            aria-label={group.title}
+            className="rounded-xl border border-[rgba(43,27,40,0.1)] bg-[#F7F4EC] px-3 py-4 sm:px-4"
+          >
+            <h2 className="text-sm sm:text-[15px] font-bold text-[#2B1B28] mb-2.5 leading-snug">{group.title}</h2>
+            <ul className="list-none m-0 p-0">
+              {group.items.map((page) => {
+                const href = lp(`/onlyfanssearch/${bestOfBlogSlug(page.slug)}`);
+                const linkText = `Top 10 ${page.label} OnlyFans Models`;
+                return (
+                  <li key={page.slug} className="border-b border-[rgba(43,27,40,0.08)] last:border-b-0">
+                    <Link
+                      href={href}
+                      className="flex items-start gap-2.5 py-2 text-[#2B1B28] no-underline"
+                    >
+                      <PreviewMosaic avatars={previewAvatars[page.slug] || []} />
+                      <span className="text-[11px] sm:text-[12px] font-semibold leading-snug pt-0.5">{linkText}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function Top10CategoryCard({ list }: { list: Top10List }) {
   const lp = useLocalePath();
   const top10 = list.creators.slice(0, 10);
-
-  const handleCreatorClick = (c: Creator) => {
-    if (c.url) window.open(c.url, '_blank', 'noopener');
-  };
 
   return (
     <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden shadow-[0_8px_30px_-14px_rgba(0,0,0,0.25)] flex flex-col">
@@ -349,10 +499,12 @@ function Top10CategoryCard({ list }: { list: Top10List }) {
       <div className="flex-1 px-2 py-1">
         <div className="space-y-0.5">
           {top10.map((c, i) => (
-            <button
+            <a
               key={c._id}
-              onClick={() => handleCreatorClick(c)}
-              className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-gray-50 transition-colors group text-left"
+              href={`/go/${c.username}`}
+              target="_blank"
+              rel="noopener"
+              className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-gray-50 transition-colors group text-left no-underline"
             >
               <span className="w-6 h-6 rounded-full bg-gray-900 text-white text-[10px] font-black flex items-center justify-center shrink-0 tabular-nums">
                 {i + 1}
@@ -370,7 +522,7 @@ function Top10CategoryCard({ list }: { list: Top10List }) {
                 </p>
                 <p className="text-[11px] text-gray-500 truncate">@{c.username}</p>
               </div>
-            </button>
+            </a>
           ))}
         </div>
       </div>
@@ -406,7 +558,7 @@ function CreatorCardSkeleton() {
   );
 }
 
-export default function OnlyFansClient({ initialCreators, totalCreators, initialQuery = '', top10Lists = [], recentlyAdded = [], topBannerCampaigns = [], trendingOnErogram = [] }: Props) {
+export default function OnlyFansClient({ initialCreators, totalCreators, initialQuery = '', top10Lists = [], recentlyAdded = [], topBannerCampaigns = [], trendingOnErogram = [], top10PreviewAvatars = {}, bestAccountsPreviewAvatars = {} }: Props) {
   const { t } = useTranslation();
   const lp = useLocalePath();
   const [query, setQuery] = useState(initialQuery);
@@ -830,13 +982,14 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                     {t('ofSearch.all')}
                   </Link>
                   {OF_CATEGORIES.slice(0, 12).map((cat) => (
-                    <Link
+                    <button
                       key={cat.slug}
-                      href={lp(ofCategoryUrl(cat.slug))}
+                      type="button"
+                      onClick={() => { setQuery(cat.name); setSearchFocused(false); submitSearch(cat.name); }}
                       className="px-2.5 py-1 sm:px-2 sm:py-0.5 rounded-full bg-white/[0.06] border border-white/[0.10] text-white/50 text-[11px] sm:text-[10px] font-semibold hover:bg-[#00AFF0]/10 hover:border-[#00AFF0]/30 hover:text-[#00AFF0] transition-all"
                     >
                       {cat.name}
-                    </Link>
+                    </button>
                   ))}
                 </div>
               </motion.div>
@@ -932,7 +1085,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                             type="button"
                             onClick={() => {
                               trackTrendingClick(tc._id, shownVariantRef.current[tc._id] ?? -1);
-                              window.open(tc.url, '_blank', 'noopener');
+                              window.open(`/go/${tc.username}`, '_blank', 'noopener');
                             }}
                             className="group w-full text-left rounded-2xl overflow-hidden bg-gradient-to-br from-[#0B1D3A] via-[#122B53] to-[#1A3F73] shadow-[0_14px_36px_-12px_rgba(6,16,36,0.9)] hover:shadow-[0_18px_44px_-10px_rgba(10,27,58,0.95)] ring-[3px] ring-[#FF6A00] hover:ring-[#FF8C3A] transition-all duration-300 cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-[#C7DAFF]/50"
                           >
@@ -1002,11 +1155,11 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                               <button
                                 key={`ofcat-search-${blockNum}-${tc._id || tc.username}-${k}`}
                                 type="button"
-                                onClick={() => { trackTrendingClick(tc._id, shownVariantRef.current[tc._id] ?? -1); window.open(tc.url, '_blank', 'noopener'); }}
-                                className="group w-full text-left rounded-2xl overflow-hidden bg-white ring-[2px] ring-[#00AFF0]/30 hover:ring-[#00AFF0] shadow-[0_8px_28px_-8px_rgba(0,175,240,0.25)] hover:shadow-[0_12px_36px_-6px_rgba(0,175,240,0.35)] hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none"
-                              >
-                                <div className="relative aspect-[3/4] bg-[#f0f8ff]">
-                                  {tc.avatar ? <RotatingImg album={tc.album} albumIdx={tc.albumIdx} onPick={(v) => { shownVariantRef.current[tc._id] = v; }} fallback={tc.avatar} alt={`${tc.name} OnlyFans`} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" /> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#00AFF0] bg-[#f0f8ff]">{tc.name.charAt(0)}</div>}
+                onClick={() => { trackTrendingClick(tc._id, shownVariantRef.current[tc._id] ?? -1); window.open(`/go/${tc.username}`, '_blank', 'noopener'); }}
+                className="group w-full text-left rounded-2xl overflow-hidden bg-white ring-[2px] ring-[#00AFF0]/30 hover:ring-[#00AFF0] shadow-[0_8px_28px_-8px_rgba(0,175,240,0.25)] hover:shadow-[0_12px_36px_-6px_rgba(0,175,240,0.35)] hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none"
+              >
+                <div className="relative aspect-[3/4] bg-[#f0f8ff]">
+                  {tc.avatar ? <RotatingImg album={tc.album} albumIdx={tc.albumIdx} onPick={(v) => { shownVariantRef.current[tc._id] = v; }} fallback={tc.avatar} alt={`${tc.name} OnlyFans`} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" /> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#00AFF0] bg-[#f0f8ff]">{tc.name.charAt(0)}</div>}
                                 </div>
                                 <div className="px-3 pt-2.5 sm:px-4 sm:pt-3">
                                   <div className="flex items-center gap-1.5">
@@ -1118,7 +1271,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5">
                     {blockFeatured.map((tc) => (
-                      <button key={`feat-${tc._id}`} type="button" onClick={() => { trackTrendingClick(tc._id, shownVariantRef.current[tc._id] ?? -1); window.open(tc.url, '_blank', 'noopener'); }} className="group w-full text-left rounded-2xl overflow-hidden bg-white ring-[2px] ring-[#00AFF0]/30 hover:ring-[#00AFF0] shadow-[0_8px_28px_-8px_rgba(0,175,240,0.25)] hover:shadow-[0_12px_36px_-6px_rgba(0,175,240,0.35)] hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none">
+                      <button key={`feat-${tc._id}`} type="button" onClick={() => { trackTrendingClick(tc._id, shownVariantRef.current[tc._id] ?? -1); window.open(`/go/${tc.username}`, '_blank', 'noopener'); }} className="group w-full text-left rounded-2xl overflow-hidden bg-white ring-[2px] ring-[#00AFF0]/30 hover:ring-[#00AFF0] shadow-[0_8px_28px_-8px_rgba(0,175,240,0.25)] hover:shadow-[0_12px_36px_-6px_rgba(0,175,240,0.35)] hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none">
                         <div className="relative aspect-[3/4] bg-[#f0f8ff]">
                           {tc.avatar ? <RotatingImg album={tc.album} albumIdx={tc.albumIdx} onPick={(v) => { shownVariantRef.current[tc._id] = v; }} fallback={tc.avatar} alt={`${tc.name} OnlyFans`} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" /> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#00AFF0] bg-[#f0f8ff]">{tc.name.charAt(0)}</div>}
                         </div>
@@ -1206,30 +1359,9 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
               </section>
             )}
 
-          {/* Browse by Category — quick access to each dedicated category page (/{slug}onlyfans) */}
-            <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-[#00AFF0] to-[#00D4FF] flex items-center justify-center flex-shrink-0">
-                  <Crown size={18} className="text-white" />
-                </div>
-                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">Browse OnlyFans Creators by Category</h2>
-                <div className="flex-1 h-px bg-white/[0.06]" />
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-                {OF_CATEGORIES.slice(0, 12).map((cat) => (
-                  <Link
-                    key={`browse-${cat.slug}`}
-                    href={lp(ofCategoryUrl(cat.slug))}
-                    className="group flex items-center justify-between gap-2 rounded-xl border border-white/[0.10] bg-white/[0.04] px-4 py-3.5 hover:bg-[#00AFF0]/10 hover:border-[#00AFF0]/40 transition-all"
-                  >
-                    <span className="text-sm sm:text-base font-bold text-white/80 group-hover:text-[#00AFF0] transition-colors truncate">
-                      {cat.name} <span className="text-white/30 font-medium">OnlyFans</span>
-                    </span>
-                    <span className="text-white/30 group-hover:text-[#00AFF0] transition-colors shrink-0">→</span>
-                  </Link>
-                ))}
-              </div>
-            </section>
+            <BestAccountsLinksSection previewAvatars={bestAccountsPreviewAvatars} />
+
+            <Top10RankingsSection previewAvatars={top10PreviewAvatars} />
 
           </>
         )}

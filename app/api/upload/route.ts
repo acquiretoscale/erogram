@@ -13,14 +13,23 @@ export async function POST(req: NextRequest) {
         const file = formData.get('file') as File;
         // Optional keyword-rich basename (e.g. article slug) for SEO-friendly R2 keys.
         const nameHint = formData.get('name') as string | null;
+        // Optional folder target. 'ainsfw' → SEO name {name}-{category}.webp, capped 100KB.
+        const folder = formData.get('folder') as string | null;
+        const categoryHint = formData.get('category') as string | null;
 
-        // Slugify a hint into a safe, keyword-rich filename; '' if none usable.
-        const keywordBase = (nameHint || '')
+        const slug = (s: string | null) => (s || '')
             .toLowerCase()
             .normalize('NFKD')
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/^-+|-+$/g, '')
             .slice(0, 90);
+
+        // Slugify a hint into a safe, keyword-rich filename; '' if none usable.
+        const keywordBase = slug(nameHint);
+        const isAinsfw = folder === 'ainsfw' && keywordBase;
+        const ainsfwKey = isAinsfw
+            ? `ainsfw/${keywordBase}${categoryHint ? `-${slug(categoryHint)}` : ''}.webp`
+            : '';
 
         if (!file) {
             return NextResponse.json(
@@ -52,10 +61,30 @@ export async function POST(req: NextRequest) {
                 ? `articles/${keywordBase}-${shortId}.${ext}`
                 : `uploads/${randomUUID()}.${ext}`;
 
-        if (isGif) {
+        if (isGif && !isAinsfw) {
             finalBuffer = buffer;
             key = basename('gif');
             mime = 'image/gif';
+        } else if (isAinsfw) {
+            // AI NSFW tool images: WebP, capped at 100KB, SEO-named in ainsfw/.
+            const MAX = 100 * 1024;
+            const attempts = [
+                { w: 800, q: 82 }, { w: 800, q: 70 }, { w: 700, q: 62 },
+                { w: 640, q: 55 }, { w: 600, q: 48 }, { w: 520, q: 42 },
+                { w: 460, q: 38 }, { w: 400, q: 34 },
+            ];
+            let compressed: Buffer = buffer;
+            for (const a of attempts) {
+                compressed = await sharp(buffer)
+                    .rotate()
+                    .resize(a.w, a.w, { fit: 'inside', withoutEnlargement: true })
+                    .webp({ quality: a.q })
+                    .toBuffer();
+                if (compressed.length <= MAX) break;
+            }
+            key = ainsfwKey;
+            mime = 'image/webp';
+            finalBuffer = compressed;
         } else {
             let compressed = await sharp(buffer)
                 .rotate()

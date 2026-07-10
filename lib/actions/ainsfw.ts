@@ -3,19 +3,14 @@
 import connectDB from '@/lib/db/mongodb';
 import { AINsfwToolStats, Campaign, Advertiser, AINsfwSubmission } from '@/lib/models';
 import type { AINsfwTool } from '@/app/ainsfw/types';
+import { invertToolSlug, toolSlug } from '@/app/ainsfw/data';
 
-export interface ToolStatsData {
-  upvotes: number;
-  downvotes: number;
-  featured: boolean;
-  campaignId?: string;
-  reviews: { text: string; rating: number; createdAt: string }[];
+function slugQuery(slug: string): string | { $in: string[] } {
+  const alt = invertToolSlug(slug);
+  return alt && alt !== slug ? { $in: [slug, alt] } : slug;
 }
 
-export async function getToolStats(slug: string): Promise<ToolStatsData> {
-  await connectDB();
-  const doc = await AINsfwToolStats.findOne({ slug }).lean() as any;
-  if (!doc) return { upvotes: 0, downvotes: 0, featured: false, reviews: [] };
+function docToStats(doc: any): ToolStatsData {
   return {
     upvotes: doc.upvotes || 0,
     downvotes: doc.downvotes || 0,
@@ -29,22 +24,33 @@ export async function getToolStats(slug: string): Promise<ToolStatsData> {
   };
 }
 
+export interface ToolStatsData {
+  upvotes: number;
+  downvotes: number;
+  featured: boolean;
+  campaignId?: string;
+  reviews: { text: string; rating: number; createdAt: string }[];
+}
+
+export async function getToolStats(slug: string): Promise<ToolStatsData> {
+  await connectDB();
+  const doc = await AINsfwToolStats.findOne({ slug: slugQuery(slug) }).lean() as any;
+  if (!doc) return { upvotes: 0, downvotes: 0, featured: false, reviews: [] };
+  return docToStats(doc);
+}
+
 export async function getAllToolStats(slugs: string[]): Promise<Record<string, ToolStatsData>> {
   await connectDB();
-  const docs = await AINsfwToolStats.find({ slug: { $in: slugs } }).lean() as any[];
+  const querySlugs = [...new Set(slugs.flatMap((s) => {
+    const alt = invertToolSlug(s);
+    return alt && alt !== s ? [s, alt] : [s];
+  }))];
+  const docs = await AINsfwToolStats.find({ slug: { $in: querySlugs } }).lean() as any[];
+  const bySlug = new Map(docs.map((d) => [d.slug, d]));
   const map: Record<string, ToolStatsData> = {};
-  for (const doc of docs) {
-    map[doc.slug] = {
-      upvotes: doc.upvotes || 0,
-      downvotes: doc.downvotes || 0,
-      featured: !!doc.featured,
-      campaignId: doc.campaignId?.toString() || undefined,
-      reviews: (doc.reviews || []).map((r: any) => ({
-        text: r.text,
-        rating: r.rating,
-        createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '',
-      })),
-    };
+  for (const slug of slugs) {
+    const doc = bySlug.get(slug) || bySlug.get(invertToolSlug(slug) || '');
+    if (doc) map[slug] = docToStats(doc);
   }
   return map;
 }
@@ -52,8 +58,10 @@ export async function getAllToolStats(slugs: string[]): Promise<Record<string, T
 export async function voteOnTool(slug: string, direction: 'up' | 'down'): Promise<{ upvotes: number; downvotes: number }> {
   await connectDB();
   const field = direction === 'up' ? 'upvotes' : 'downvotes';
+  const existing = await AINsfwToolStats.findOne({ slug: slugQuery(slug) }).lean() as any;
+  const key = existing?.slug || slug;
   const doc = await AINsfwToolStats.findOneAndUpdate(
-    { slug },
+    { slug: key },
     { $inc: { [field]: 1 } },
     { upsert: true, new: true },
   ).lean() as any;
@@ -63,8 +71,10 @@ export async function voteOnTool(slug: string, direction: 'up' | 'down'): Promis
 export async function unvoteOnTool(slug: string, direction: 'up' | 'down'): Promise<{ upvotes: number; downvotes: number }> {
   await connectDB();
   const field = direction === 'up' ? 'upvotes' : 'downvotes';
+  const existing = await AINsfwToolStats.findOne({ slug: slugQuery(slug) }).lean() as any;
+  const key = existing?.slug || slug;
   const doc = await AINsfwToolStats.findOneAndUpdate(
-    { slug },
+    { slug: key },
     { $inc: { [field]: -1 } },
     { upsert: true, new: true },
   ).lean() as any;
@@ -111,8 +121,10 @@ export async function adminDeleteReview(slug: string, reviewIdx: number): Promis
 export async function submitReview(slug: string, text: string, rating: number): Promise<ToolStatsData> {
   if (!text.trim() || rating < 1 || rating > 5) throw new Error('Invalid review');
   await connectDB();
+  const existing = await AINsfwToolStats.findOne({ slug: slugQuery(slug) }).lean() as any;
+  const key = existing?.slug || slug;
   const doc = await AINsfwToolStats.findOneAndUpdate(
-    { slug },
+    { slug: key },
     {
       $push: {
         reviews: {
@@ -334,9 +346,9 @@ export async function getApprovedSubmissions(existingSlugs: Set<string>): Promis
   ).lean() as any[];
 
   return docs
-    .filter((d: any) => !existingSlugs.has(d.slug))
+    .filter((d: any) => !existingSlugs.has(toolSlug(d.category, d.name)))
     .map((d: any) => ({
-      slug: d.slug,
+      slug: toolSlug(d.category, d.name),
       name: d.name,
       category: d.category,
       vendor: d.vendor || d.name,

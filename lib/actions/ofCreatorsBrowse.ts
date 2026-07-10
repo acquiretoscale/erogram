@@ -166,11 +166,19 @@ export async function searchCreators(q: string, limit = 1000, skip = 0) {
     : [];
   const noSpacesRegex = words.length > 1 ? new RegExp(noSpaces, 'i') : null;
 
+  // Scraper-spam guard: the Apify scraper keyword-stuffed ~340 creators with
+  // 8+ (up to 183) categories, so they wrongly match almost every category
+  // search (e.g. a redhead tagged "brunette"). A real tag set is small, so a
+  // category-only match must also pass the size cap. Name/username/bio matches
+  // are unaffected — searching a creator by name still finds them.
+  const MAX_CATEGORIES = 4;
+  const notSpamTagged = { $expr: { $lte: [{ $size: { $ifNull: ['$categories', []] } }, MAX_CATEGORIES] } };
+
   const nameOr: Record<string, any>[] = [
     { name: regex },
     { username: regex },
     { bio: regex },
-    { categories: { $in: categoryRegexes } },
+    { $and: [{ categories: { $in: categoryRegexes } }, notSpamTagged] },
   ];
   if (noSpacesRegex) {
     nameOr.push({ username: noSpacesRegex });

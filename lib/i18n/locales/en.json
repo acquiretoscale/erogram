@@ -160,7 +160,31 @@
     "vaultTitle2": "Secret Vault",
     "vaultDesc": "Exclusive groups only visible to Premium members",
     "vaultCta": "Unlock the Full Vault",
-    "vaultFooter": "100+ exclusive groups · Updated regularly"
+    "vaultFooter": "100+ exclusive groups · Updated regularly",
+    "allCategories": "All Categories",
+    "allCountries": "All Countries",
+    "trendingGroupCategories": "Popular Group Categories",
+    "trendingOnErogram": "Trending on Erogram",
+    "whatsHot": "What's hot right now",
+    "discoverNsfw": "Discover NSFW Telegram Groups",
+    "nextPage": "Next →",
+    "visit": "Visit",
+    "joinChannel": "Join channel",
+    "openBot": "Open Bot",
+    "review": "Review",
+    "save": "Save",
+    "unlockPremium": "🔒 Unlock Premium",
+    "goPremium": "GO PREMIUM",
+    "unlockPremiumGroups": "4K+ premium groups",
+    "curatedVerified": "Curated & Verified",
+    "featuredOnlyfansCreator": "Featured OnlyFans Creator",
+    "visitSite": "Visit Site",
+    "visitNow": "Visit Now",
+    "tryThisBot": "Try this bot",
+    "unlockTheVault": "Unlock the vault",
+    "viewProfile": "View Profile",
+    "resetFilters": "Reset Filters",
+    "cancel": "Cancel"
   },
   "bots": {
     "title": "Discover NSFW Telegram Bots",
@@ -173,6 +197,7 @@
     "filters": "Filters",
     "findPerfect": "Find your perfect bot",
     "sortBy": "Sort By",
+    "topUpvoted": "Top Upvoted",
     "newestFirst": "Newest First",
     "randomDiscovery": "Random Discovery",
     "mostPopular": "Most Popular",
@@ -256,7 +281,45 @@
         "q": "How often is this list updated?",
         "a": "Our best {category} OnlyFans ranking is updated daily. New creators are added and positions are recalculated based on the latest engagement data."
       }
-    ]
+    ],
+    "rankingFaq": [
+      {
+        "q": "How do you rank the best {label} OnlyFans creators?",
+        "a": "We score {label} profiles daily using real engagement data: clicks, profile visits, follows, and comments on Erogram. This allows our audience to discover new trending profiles and explore fresh models worth knowing."
+      },
+      {
+        "q": "When are the {label} OnlyFans rankings refreshed?",
+        "a": "The {label} ranking updates continuously. The rankings are based on real activity on Erogram with the listed models."
+      },
+      {
+        "q": "Is the {label} OnlyFans ranking for sale?",
+        "a": "No. A {label} creator's organic position is never for sale. We prefer showing our audience genuine rankings and delivering the best experience for exploring and finding new creators to follow."
+      }
+    ],
+    "visitProfile": "Visit Profile →",
+    "topTrending": "★ Top Trending Creator on Erogram",
+    "last30Days": "Last 30 days on Erogram",
+    "statsLikes": "Likes",
+    "statsContent": "Content",
+    "statsPhotos": "Photos",
+    "statsVideos": "Videos",
+    "statsPosts": "Posts",
+    "exploreMoreNiche": "Explore more {label} creators on OFSearch →",
+    "keepExploring": "Keep Exploring",
+    "moreTopRankings": "More Top OnlyFans Rankings",
+    "handpickedDesc": "Hand-picked Top 10 OnlyFans creator rankings by niche, verified and updated daily by Erogram.",
+    "relatedSubhead": "The most popular {label} OnlyFans creators, ranked & verified.",
+    "seeRanking": "See the ranking",
+    "exploreMoreHottest": "Explore More Top 10 OnlyFans Model Rankings",
+    "exploreMoreDesc": "Browse our full library of verified OnlyFans rankings, updated daily by the Erogram editorial team. Whether you are searching by niche, country, or U.S. state, each list spotlights the most popular creators in that category.",
+    "browseByCategory": "Browse Top 10 OnlyFans Models by Category",
+    "browseByCountry": "Browse Top 10 OnlyFans Models by Country",
+    "browseByState": "Browse Top 10 OnlyFans Models by State",
+    "browseAll": "Browse all →",
+    "breadcrumbHome": "Home",
+    "breadcrumbOfSearch": "OnlyFans Search",
+    "rankLabel": "Rank",
+    "liveLabel": "Live"
   },
   "submitCreator": {
     "badge": "Get Featured on Erogram",

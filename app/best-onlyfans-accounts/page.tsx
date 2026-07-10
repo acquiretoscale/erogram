@@ -8,10 +8,11 @@ import { OnlyFansCreator } from '@/lib/models';
 import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
+import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 export const revalidate = 300;
 
-const canonicalBase = 'https://erogram.pro';
+const canonicalBase = CANONICAL_BASE;
 
 async function getCategoryThumbnails(): Promise<Map<string, string>> {
     try {
@@ -34,13 +35,19 @@ export async function generateMetadata(): Promise<Metadata> {
     const locale = await getLocale();
     const pathname = await getPathname();
     const dict = await getDictionary(locale);
+    const canonical = `${canonicalBase}${pathname}`;
     return {
         title: dict.meta.bestOnlyfansIndexTitle,
         description: dict.meta.bestOnlyfansIndexDesc,
         alternates: {
-            canonical: `${canonicalBase}${pathname}`,
-            languages: Object.fromEntries(LOCALES.map(l => [l, `${canonicalBase}${localePath('/best-onlyfans-accounts', l)}`])),
+            canonical,
         },
+        ...buildSocialMeta({
+            title: dict.meta.bestOnlyfansIndexTitle,
+            description: dict.meta.bestOnlyfansIndexDesc,
+            url: canonical,
+            type: 'website',
+        }),
     };
 }
 

@@ -97,7 +97,7 @@ export default function AINSFWListingsClient() {
                 {/* Logo */}
                 <div className="w-12 h-12 shrink-0 overflow-hidden bg-white/[0.06]" style={{ border: '2px solid #000' }}>
                   {l.image && l.image !== '/assets/image.jpg' && l.image !== '/assets/placeholder-no-image.png' ? (
-                    <img src={l.image} alt={l.name} className="w-full h-full object-cover" />
+                    <img src={l.image} alt={`${l.name} — AI NSFW tool listing`} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-sm font-black" style={{ color: ACCENT }}>
                       {l.name.charAt(0).toUpperCase()}
@@ -110,7 +110,7 @@ export default function AINSFWListingsClient() {
                   <div className="font-black text-white text-sm truncate">{l.name}</div>
                   <div className="text-[11px] font-bold text-white/40 uppercase tracking-wide">{l.category}</div>
                   {l.status === 'approved' && l.slug && (
-                    <a href={`/${l.slug}`} target="_blank" rel="noopener noreferrer" className="text-[11px] font-black no-underline inline-flex items-center gap-0.5 mt-0.5" style={{ color: ACCENT }}>
+                    <a href={`/ainsfw/${l.slug}`} target="_blank" rel="noopener noreferrer" className="text-[11px] font-black no-underline inline-flex items-center gap-0.5 mt-0.5" style={{ color: ACCENT }}>
                       View live listing ↗
                     </a>
                   )}

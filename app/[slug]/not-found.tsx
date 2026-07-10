@@ -2,9 +2,20 @@ import Link from 'next/link';
 import { Metadata } from 'next';
 import connectDB from '@/lib/db/mongodb';
 import { Group, OnlyFansCreator } from '@/lib/models';
+import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+
+const title = 'Not Found | Erogram';
+const description = 'The page you requested could not be found on Erogram.';
 
 export const metadata: Metadata = {
-  title: 'Not Found | Erogram',
+  title,
+  description,
+  ...buildSocialMeta({
+    title,
+    description,
+    url: CANONICAL_BASE,
+    type: 'website',
+  }),
 };
 
 async function getTopGroups() {

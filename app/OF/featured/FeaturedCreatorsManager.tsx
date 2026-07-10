@@ -33,6 +33,7 @@ interface TrendingSlot {
   dailyClickCap: number;
   liveHourStart: number;
   liveHourEnd: number;
+  trendPercent: number;
   createdAt: string;
   likesCount: number | null;
 }
@@ -269,6 +270,7 @@ export default function FeaturedCreatorsManager() {
   const [editDailyClickCap, setEditDailyClickCap] = useState('');
   const [editLiveHourStart, setEditLiveHourStart] = useState('-1');
   const [editLiveHourEnd, setEditLiveHourEnd] = useState('-1');
+  const [editTrendPercent, setEditTrendPercent] = useState('');
 
   const token = () => localStorage.getItem('token') || '';
   const showToast = (msg: string) => {
@@ -396,6 +398,7 @@ export default function FeaturedCreatorsManager() {
     setEditDailyClickCap(String(slot.dailyClickCap || ''));
     setEditLiveHourStart(String(slot.liveHourStart ?? -1));
     setEditLiveHourEnd(String(slot.liveHourEnd ?? -1));
+    setEditTrendPercent(slot.trendPercent ? String(slot.trendPercent) : '');
     setAddOpen(false);
   };
 
@@ -412,6 +415,7 @@ export default function FeaturedCreatorsManager() {
         dailyClickCap: parseInt(editDailyClickCap) || 0,
         liveHourStart: parseInt(editLiveHourStart),
         liveHourEnd: parseInt(editLiveHourEnd),
+        trendPercent: Math.max(0, Math.min(999, parseInt(editTrendPercent) || 0)),
       });
       showToast('Saved');
       setEditSlot(null);
@@ -990,6 +994,18 @@ export default function FeaturedCreatorsManager() {
                 onStartChange={setEditLiveHourStart}
                 onEndChange={setEditLiveHourEnd}
               />
+
+              <div>
+                <label className="block text-xs font-bold text-white/40 mb-1">Trend % on Erogram (Top-10 cards)</label>
+                <input
+                  type="number" min="0" max="999" step="1"
+                  value={editTrendPercent}
+                  onChange={(e) => setEditTrendPercent(e.target.value)}
+                  placeholder="0 = hidden · set 100–400"
+                  className="w-full px-3 py-2 bg-white/[0.05] border border-white/10 rounded-lg text-white text-sm placeholder:text-white/20 outline-none focus:border-[#00AFF0]/40 transition"
+                />
+                <p className="text-[10px] text-white/30 mt-1">Shown as “+XX% · last 30 days” on the promoted Top-10 card. Not click-based.</p>
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>

@@ -1,8 +1,18 @@
 import { Metadata } from 'next';
+import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+
+const title = 'Terms of Service – erogram.pro';
+const description = 'Read the terms of service for erogram.pro. Understand user responsibilities, content guidelines, and service limitations.';
 
 export const metadata: Metadata = {
-  title: 'Terms of Service – erogram.pro',
-  description: 'Read the terms of service for erogram.pro. Understand user responsibilities, content guidelines, and service limitations.',
+  title,
+  description,
+  ...buildSocialMeta({
+    title,
+    description,
+    url: `${CANONICAL_BASE}/terms`,
+    type: 'website',
+  }),
 };
 
 export default function TermsPage() {

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import type { StoryCategory } from './types';
+import { useTranslation, useLocale } from '@/lib/i18n';
 
 interface StoryBarProps {
   storyData?: StoryCategory[];
@@ -49,14 +50,14 @@ function TrendingRow({ heading, items }: { heading: string; items: Array<{ label
       >
         TOP {heading}
       </span>
-      {items.map(({ label, href }) => (
+        {items.map(({ label, href }) => (
         <Link
           key={href}
           href={href}
           className="px-2.5 py-1 text-[12px] font-semibold rounded-full transition-all duration-200 whitespace-nowrap hover:scale-105 text-gray-200 hover:text-white"
           style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)' }}
         >
-          {label}
+          {getCatDisplay(label)}
         </Link>
       ))}
     </div>
@@ -64,8 +65,22 @@ function TrendingRow({ heading, items }: { heading: string; items: Array<{ label
 }
 
 export default function StoryBar({ trendingCategories = [], trendingCountries = [], onToggleFilter, filterOpen = false, activeFilterCount = 0 }: StoryBarProps) {
+  const { t } = useTranslation();
+  const { locale } = useLocale();
   const cats = trendingCategories.length > 0 ? trendingCategories.slice(0, 6) : FALLBACK_CATEGORIES;
   const countries = (trendingCountries.length > 0 ? trendingCountries : FALLBACK_COUNTRIES).slice(0, 4);
+
+  const getCatDisplay = (label: string) => {
+    if (locale !== 'de') return label;
+    const m: Record<string, string> = {
+      'Onlyfans': 'OnlyFans', 'Instagram Models': 'Instagram-Models', 'Feet': 'Füße', 'MILF': 'MILF',
+      'BDSM': 'BDSM', 'Fetish': 'Fetisch', 'Latina': 'Latinas', 'Cosplay': 'Cosplay',
+      'Onlyfans Leaks': 'OnlyFans Leaks', 'TikTok': 'TikTok', 'Asian': 'Asiatisch',
+      'Blowjob': 'Blowjob', 'Amateur': 'Amateur', 'Lesbian': 'Lesbisch', 'Uncensored AV': 'Unzensiertes AV',
+      'Telegram Porn': 'Telegram Porn',
+    };
+    return m[label] || label;
+  };
 
   return (
     <section className="mt-4 mb-3">

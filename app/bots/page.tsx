@@ -10,51 +10,94 @@ import { getActiveCampaigns, getActiveFeedCampaigns, getTrendingErogramCampaigns
 import { getAllBotStats } from '@/lib/actions/botVotes';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
+import { BOTS_FEED_PAGE_SIZE } from './constants';
+import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-const canonicalBase = 'https://erogram.pro';
+const canonicalBase = CANONICAL_BASE;
+const PLACEHOLDER = process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300;
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const pathname = await getPathname();
   const dict = await getDictionary(locale);
 
+  const canonical = `${canonicalBase}${pathname === '/' ? '' : pathname}`;
+
   return {
     title: dict.meta.botsTitle,
     description: dict.meta.botsDesc,
     keywords: 'NSFW telegram bots, adult telegram bots, telegram bot directory, NSFW AI bots, adult chat bots, erotic bots, telegram companions',
     alternates: {
-      canonical: `${canonicalBase}${pathname === '/' ? '' : pathname}`,
-      languages: Object.fromEntries(
-        LOCALES.map(l => [l, `${canonicalBase}${localePath('/bots', l)}`])
-      ),
+      canonical,
     },
-    openGraph: {
+    ...buildSocialMeta({
       title: dict.meta.botsTitle,
       description: dict.meta.botsDesc,
-      type: 'website',
-      siteName: 'Erogram',
       url: `${canonicalBase}${pathname}`,
-      images: [{ url: `${canonicalBase}/assets/og-default.png`, width: 512, height: 512, alt: 'Erogram - Telegram Bots' }],
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: dict.meta.botsTitle,
-      description: dict.meta.botsDesc,
-      images: [`${canonicalBase}/assets/og-default.png`],
-    },
+      type: 'website',
+      imageAlt: 'Erogram - Telegram Bots',
+    }),
   };
 }
 
-async function getBots() {
+function mapBotDoc(bot: any) {
+  return {
+    _id: bot._id.toString(),
+    name: bot.name,
+    slug: bot.slug,
+    category: bot.category,
+    country: bot.country,
+    description: bot.description,
+    image: (bot.image && typeof bot.image === 'string' && bot.image.startsWith('https://')) ? bot.image : PLACEHOLDER,
+    telegramLink: bot.telegramLink,
+    isAdvertisement: bot.isAdvertisement || false,
+    advertisementUrl: bot.advertisementUrl || null,
+    pinned: bot.pinned || false,
+    clickCount: bot.clickCount || 0,
+    views: bot.views || 0,
+    memberCount: bot.memberCount || 0,
+    createdBy: bot.createdBy ? {
+      username: bot.createdBy.username,
+      showNicknameUnderGroups: bot.createdBy.showNicknameUnderGroups,
+    } : null,
+  };
+}
+
+async function getApprovedBotsCount() {
+  await connectDB();
+  return Bot.countDocuments({ status: 'approved', pinned: { $ne: true } });
+}
+
+/** Stable upvote-ranked feed (pinned bots excluded — shown in their own row). */
+async function getBots(limit: number, skip: number = 0) {
   try {
     await connectDB();
-    const PLACEHOLDER = process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png';
 
     const bots = await Bot.aggregate([
-      { $match: { status: 'approved' } },
-      { $sample: { size: 12 } },
+      { $match: { status: 'approved', pinned: { $ne: true } } },
+      {
+        $lookup: {
+          from: 'botstats',
+          localField: 'slug',
+          foreignField: 'slug',
+          as: 'stats',
+        },
+      },
+      {
+        $addFields: {
+          voteScore: {
+            $subtract: [
+              { $ifNull: [{ $arrayElemAt: ['$stats.upvotes', 0] }, 0] },
+              { $ifNull: [{ $arrayElemAt: ['$stats.downvotes', 0] }, 0] },
+            ],
+          },
+        },
+      },
+      { $sort: { voteScore: -1, createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
       {
         $lookup: {
           from: 'users',
@@ -75,26 +118,7 @@ async function getBots() {
       },
     ]);
 
-    return bots.map((bot: any) => ({
-      _id: bot._id.toString(),
-      name: bot.name,
-      slug: bot.slug,
-      category: bot.category,
-      country: bot.country,
-      description: bot.description,
-      image: (bot.image && typeof bot.image === 'string' && bot.image.startsWith('https://')) ? bot.image : PLACEHOLDER,
-      telegramLink: bot.telegramLink,
-      isAdvertisement: bot.isAdvertisement || false,
-      advertisementUrl: bot.advertisementUrl || null,
-      pinned: bot.pinned || false,
-      clickCount: bot.clickCount || 0,
-      views: bot.views || 0,
-      memberCount: bot.memberCount || 0,
-      createdBy: bot.createdBy ? {
-        username: bot.createdBy.username,
-        showNicknameUnderGroups: bot.createdBy.showNicknameUnderGroups,
-      } : null,
-    }));
+    return bots.map(mapBotDoc);
   } catch (error) {
     console.error('Error fetching bots:', error);
     return [];
@@ -105,12 +129,10 @@ async function getAdverts() {
   try {
     await connectDB();
 
-    // Get only regular adverts (exclude popup adverts)
     const adverts = await Advert.find({
       status: 'active',
-      isPopupAdvert: { $ne: true } // Exclude popup adverts
-    })
-      .lean();
+      isPopupAdvert: { $ne: true },
+    }).lean();
 
     return adverts.map((advert: any) => ({
       _id: advert._id.toString(),
@@ -120,7 +142,7 @@ async function getAdverts() {
       country: advert.country,
       url: advert.url,
       description: advert.description,
-      image: advert.image || (process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png'),
+      image: advert.image || PLACEHOLDER,
       status: advert.status,
       pinned: advert.pinned || false,
       clickCount: advert.clickCount || 0,
@@ -131,18 +153,23 @@ async function getAdverts() {
   }
 }
 
-export default async function BotsPage() {
+export async function BotsPageView({ page = 1 }: { page?: number }) {
+  const currentPage = Math.max(1, page);
+  const skip = (currentPage - 1) * BOTS_FEED_PAGE_SIZE;
+
   const ua = (await headers()).get('user-agent');
   const { isMobile, isTelegram } = detectDeviceFromUserAgent(ua);
 
-  const [bots, adverts, topBannerCampaigns, feedCampaigns, trendingErogramCampaigns] = await Promise.all([
-    getBots(),
+  const [bots, totalBots, adverts, topBannerCampaigns, feedCampaigns, trendingErogramCampaigns] = await Promise.all([
+    getBots(BOTS_FEED_PAGE_SIZE, skip),
+    getApprovedBotsCount(),
     getAdverts(),
     getActiveCampaigns('top-banner', { page: 'bots', device: isMobile ? 'mobile' : 'desktop' }),
     getActiveFeedCampaigns('bots'),
     getTrendingErogramCampaigns(8).catch(() => []),
   ]);
 
+  const paginationTotalPages = Math.max(1, Math.ceil(totalBots / BOTS_FEED_PAGE_SIZE));
   const allBotStats = await getAllBotStats(bots.map(b => b.slug));
 
   const topBannerForPage =
@@ -150,13 +177,11 @@ export default async function BotsPage() {
 
   return (
     <>
-      {/* Crawlable pagination links for bots/crawlers (kept visually hidden to avoid UI duplication) */}
       <nav aria-label="Bots pagination" className="sr-only">
         <Link href="/bots">Bots page 1</Link>
-        <Link href="/bots/page/2">Bots page 2</Link>
-        <Link href="/bots/page/3">Bots page 3</Link>
-        <Link href="/bots/page/4">Bots page 4</Link>
-        <Link href="/bots/page/5">Bots page 5</Link>
+        {Array.from({ length: paginationTotalPages - 1 }, (_, i) => i + 2).map((p) => (
+          <Link key={p} href={`/bots/page/${p}`}>{`Bots page ${p}`}</Link>
+        ))}
       </nav>
 
       <ErrorBoundary>
@@ -170,8 +195,15 @@ export default async function BotsPage() {
           topBannerCampaigns={topBannerForPage}
           allBotStats={allBotStats}
           trendingErogramCampaigns={trendingErogramCampaigns}
+          paginationCurrentPage={currentPage}
+          paginationTotalPages={paginationTotalPages}
+          botsPageSize={BOTS_FEED_PAGE_SIZE}
         />
       </ErrorBoundary>
     </>
   );
+}
+
+export default async function BotsPage() {
+  return BotsPageView({ page: 1 });
 }

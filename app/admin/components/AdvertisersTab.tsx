@@ -688,8 +688,13 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
     networkTotals?: { adSpace: number; boost: number; of: number; ofFeatured: number; ofOrganic: number; grandTotal: number };
     ofDetail?: { name: string; username: string; clicks: number; kind: 'featured' | 'organic' }[];
     boostDetail?: { name: string; entityType: 'group' | 'bot'; clicks: number }[];
+    boostByDay?: {
+      totalsByDay: { date: string; clicks: number }[];
+      entities: { id: string; name: string; entityType: 'group' | 'bot'; total: number; byDay: { date: string; clicks: number }[] }[];
+    };
   } | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [boostChartEntity, setBoostChartEntity] = useState<string>('__all__');
   const [overviewAdvSortBy, setOverviewAdvSortBy] = useState<'period' | '7d' | '30d' | 'share'>('period');
   const [overviewAdvSortOrder, setOverviewAdvSortOrder] = useState<'asc' | 'desc'>('desc');
   const [feedAdsFilterAdvertiser, setFeedAdsFilterAdvertiser] = useState<string>('all');
@@ -3205,6 +3210,51 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                     </div>
                   </details>
                 )}
+
+                {/* ── Boosts OVER TIME — pick "All boosts" or one specific boosted bot/group ── */}
+                {dashboardStats.boostByDay && dashboardStats.boostByDay.entities.length > 0 && (() => {
+                  const bd = dashboardStats.boostByDay!;
+                  const sel = boostChartEntity === '__all__'
+                    ? bd.totalsByDay
+                    : (bd.entities.find((e) => e.id === boostChartEntity)?.byDay ?? bd.totalsByDay);
+                  const max = Math.max(1, ...sel.map((d) => d.clicks));
+                  const total = sel.reduce((s, d) => s + d.clicks, 0);
+                  return (
+                    <div className="rounded-xl border border-amber-100 bg-amber-50/20 p-4">
+                      <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                        <div className="text-sm font-semibold text-amber-800">
+                          Boosts over time — <span className="tabular-nums">{total.toLocaleString()}</span> clicks
+                        </div>
+                        <select
+                          value={boostChartEntity}
+                          onChange={(e) => setBoostChartEntity(e.target.value)}
+                          className="text-xs border border-amber-200 rounded-lg px-2 py-1.5 bg-white text-gray-800 font-medium max-w-[16rem]"
+                        >
+                          <option value="__all__">All boosts (groups & bots)</option>
+                          {bd.entities.map((e) => (
+                            <option key={e.id} value={e.id}>
+                              {e.entityType === 'bot' ? '🤖 ' : '👥 '}{e.name} ({e.total.toLocaleString()})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex items-end gap-[2px] h-32">
+                        {sel.map((d) => (
+                          <div key={d.date} className="flex-1 flex flex-col items-center justify-end group relative" title={`${d.date}: ${d.clicks}`}>
+                            <div
+                              className="w-full bg-amber-400 rounded-t group-hover:bg-amber-500 transition-colors"
+                              style={{ height: `${Math.max(2, (d.clicks / max) * 100)}%` }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex justify-between text-[10px] text-gray-400 mt-1.5">
+                        <span>{sel[0]?.date}</span>
+                        <span>{sel[sel.length - 1]?.date}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </>
             );
           })()}

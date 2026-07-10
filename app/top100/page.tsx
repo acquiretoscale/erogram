@@ -1,11 +1,23 @@
 import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator } from '@/lib/models';
 import Link from 'next/link';
+import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 export const dynamic = 'force-dynamic';
 
+const title = 'Top 100 Female OnlyFans Creators';
+const description = 'Top 100 female OnlyFans creators on Erogram — sorted by recently added.';
+
 export const metadata = {
+  title,
+  description,
   robots: { index: false, follow: false },
+  ...buildSocialMeta({
+    title,
+    description,
+    url: `${CANONICAL_BASE}/top100`,
+    type: 'website',
+  }),
 };
 
 export default async function Top100Page() {

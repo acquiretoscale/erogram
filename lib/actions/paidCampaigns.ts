@@ -332,3 +332,59 @@ export async function setBoostLifecycle(
   await Model.findByIdAndUpdate(listingId, { $set: update });
   return { ok: true };
 }
+
+/**
+ * Convert a boosted listing into a REAL, placeable ad-network Campaign so the owner can assign it
+ * to ad slots (placements) like any other ad. The organic boost is left intact (max visibility:
+ * it keeps ranking AND can run in placed slots). Idempotent — re-converting returns the existing
+ * campaign. The campaign is self-contained (creative + destinationUrl); placements are assigned
+ * afterwards via the normal ad-network placement editor.
+ *
+ * adType: bot → 'featured-bot', ainsfw → 'featured-nsfw', group → 'advertiser'.
+ * Owned by the "EROGRAM" ad-network advertiser (all in-house ads roll up there).
+ */
+export async function convertBoostToPlacedCampaign(
+  token: string,
+  entityType: string,
+  listingId: string,
+): Promise<{ ok?: boolean; campaignId?: string; existed?: boolean; error?: string }> {
+  if (!verifyAdmin(token)) return { error: 'Unauthorized' };
+  await connectDB();
+  const { Campaign, Advertiser } = await import('@/lib/models');
+
+  const Model = modelFor(entityType);
+  const listing: any = await Model.findById(listingId).lean();
+  if (!listing) return { error: 'Listing not found' };
+
+  // Idempotent: one placed campaign per listing, tagged via internalName so we never duplicate.
+  const marker = `boost-converted:${entityType}:${listingId}`;
+  const existing: any = await Campaign.findOne({ internalName: marker }).select('_id').lean();
+  if (existing) return { ok: true, campaignId: String(existing._id), existed: true };
+
+  const adType = entityType === 'bot' ? 'featured-bot' : entityType === 'ainsfw' ? 'featured-nsfw' : 'advertiser';
+  const basePath = entityType === 'bot' ? 'bots' : entityType === 'ainsfw' ? 'ai-nsfw' : 'groups';
+  const destinationUrl = listing.telegramLink || (listing.slug ? `https://erogram.pro/${basePath}/${listing.slug}` : 'https://erogram.pro');
+
+  const adnet: any = await Advertiser.findOne({ name: 'EROGRAM' }).select('_id').lean();
+  if (!adnet) return { error: 'Ad-network advertiser "EROGRAM" not found' };
+
+  const now = new Date();
+  const created: any = await Campaign.create({
+    advertiserId: adnet._id,
+    name: listing.name || listing.slug || 'Boosted listing',
+    internalName: marker,
+    slot: 'feed',
+    creative: resolveImage(listing.image),
+    destinationUrl,
+    startDate: now,
+    endDate: new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000),
+    status: 'active',
+    isVisible: true,
+    adType,
+    feedPlacement: entityType === 'ainsfw' ? 'ainsfw' : 'bots',
+    placements: [],
+    priority: 'normal',
+  });
+
+  return { ok: true, campaignId: String(created._id), existed: false };
+}

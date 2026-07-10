@@ -1,29 +1,27 @@
 import { Metadata } from 'next';
 import BlogHubClient from './BlogHubClient';
 import { getPublishedBlogArticles, getTopBlogArticles } from '@/lib/actions/blog';
+import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 export const revalidate = 60;
 
-const BASE_URL = 'https://erogram.pro';
+const BASE_URL = CANONICAL_BASE;
+
+const blogOgTitle = 'The Erogram Blog';
+const blogOgDescription =
+  'Guides, lists, and investigations: AI NSFW, NSFW Telegram groups & bots, OnlyFans creators, and adult entertainment.';
 
 export const metadata: Metadata = {
   title: 'The Erogram Blog — AI NSFW, Telegram, OnlyFans & Adult Culture',
   description:
     'Guides, lists, and investigations from the Erogram desk: AI NSFW tools, NSFW Telegram groups & bots, OnlyFans creators, and adult entertainment culture.',
   alternates: { canonical: `${BASE_URL}/blog` },
-  openGraph: {
-    title: 'The Erogram Blog',
-    description:
-      'Guides, lists, and investigations: AI NSFW, NSFW Telegram groups & bots, OnlyFans creators, and adult entertainment.',
-    type: 'website',
-    siteName: 'Erogram',
+  ...buildSocialMeta({
+    title: blogOgTitle,
+    description: blogOgDescription,
     url: `${BASE_URL}/blog`,
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'The Erogram Blog',
-    description: 'Guides, lists, and investigations across AI NSFW, Telegram, OnlyFans, and adult culture.',
-  },
+    type: 'website',
+  }),
 };
 
 export default async function BlogHubPage() {

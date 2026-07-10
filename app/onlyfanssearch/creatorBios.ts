@@ -71,12 +71,6 @@ export const creatorBios: CreatorBio[] = [
     bio: "Shayerivers has managed something very difficult: building a huge audience of 2.7 million likes while offering completely free subscription. The striking redhead is often mentioned in online communities as one of the best free creators who still delivers high quality content regularly. She grew extremely quickly and has maintained that momentum through consistent uploads. Her success with a free page shows how strong her content and personality are on a platform where most top creators charge premium prices.",
   },
   {
-    username: "francety",
-    name: "Francety",
-    bio: "Francety has 2.4 million likes on her OnlyFans profile and offers free subscription. She has built one of the largest free creator audiences on the platform. She is known for her very consistent posting schedule and high engagement with fans. Community discussions often mention her as a reliable creator who delivers regularly.",
-    telegram: "https://t.me/francety_oficial"
-  },
-  {
     username: "ambsofficialxo",
     name: "Ambs",
     bio: "Ambs (ambsofficialxo), also known as Amber Ajami, charges $30 per month and has still built an audience of 2 million likes. This price point makes her success even more impressive. Fans frequently praise her for having a genuine personality and actually interacting with her subscribers rather than just posting and disappearing. She creates real connections with her fans, which is rare at this scale. She is active on Twitter as @ambs_a and @syrian_queen_ and maintains presence on Instagram. Her ability to maintain such a large following at that price shows she delivers something most creators simply do not.",
@@ -92,12 +86,6 @@ export const creatorBios: CreatorBio[] = [
     name: "Belle Delphine",
     bio: "Belle Delphine is one of the most recognizable internet personalities to have successfully crossed into adult content. With 1.5 million likes on OnlyFans at $35 per month, she has maintained a dedicated fanbase years after her initial viral fame. She first became known for her cosplay and ahegao facial expressions, and famously sold her bath water online which sparked massive media attention worldwide. Her journey from internet meme to successful OnlyFans creator is genuinely unique. She maintains a very specific aesthetic and a deeply loyal community that has followed her entire evolution.",
     telegram: "https://t.me/belledelphine"
-  },
-  {
-    username: "ashleyyyreyyy",
-    name: "Ashleyyyreyyy",
-    bio: "Ashleyyyreyyy (Ashley Reynolds) has grown to 1.4 million likes while offering completely free subscription. This business model is extremely difficult to make work at that scale, which shows just how strong her content and engagement must be. She has built a very large audience through consistent uploads and by creating a personal connection with her fans. Her Telegram has over 15,000 subscribers. Her success with a free page puts her in a very small group of creators who can maintain such high numbers without charging subscribers directly.",
-    telegram: "https://t.me/Ashley_Reynolds_Ashleyyyreyyy"
   },
   {
     username: "sophieraiin",
@@ -116,17 +104,6 @@ export const creatorBios: CreatorBio[] = [
     name: "Sofia Gomez",
     bio: "Sofia Gomez has 986K likes on her OnlyFans profile and charges $20 per month. She has built a substantial following and is known for her engaging content and personality. She maintains a strong presence across multiple platforms including X where she has a significant following.",
     telegram: "https://t.me/sofiiagomez_of"
-  },
-  {
-    username: "stellabrooks",
-    name: "Stella Brooks",
-    bio: "Stella Brooks, known by her fans as Cream Kween Stella, has built an audience of nearly 950K likes on OnlyFans with a completely free subscription. Her distinctive personal branding has helped her stand out in a crowded space. She has cultivated a dedicated community that appreciates her unique style and regular uploads. Maintaining close to a million likes without charging subscribers is a genuine achievement, showing that her content and personality drive real organic engagement without relying on a paywall to filter her audience.",
-  },
-  {
-    username: "babydollll",
-    name: "Ms. Sethi",
-    bio: "Babydollll, known as Ms. Sethi, has 903K likes on her OnlyFans profile and charges $10 per month. She brands herself as The Baddest Indian and has built a large following across multiple platforms. She has a strong presence on X and maintains an official Telegram channel for fan updates. She is known for her curvy figure and engaging content style.",
-    telegram: "https://t.me/babymssethii"
   },
   {
     username: "veradijkmansofficial",
@@ -213,11 +190,6 @@ export const creatorBios: CreatorBio[] = [
     bio: "Ashtonfieldss has 269K likes on her OnlyFans profile and offers free subscription. Having such a large following with a free account shows how strong her content and personality are. She is one of the bigger names in the current top rankings and continues to attract new fans with her consistent output.",
   },
   {
-    username: "bellebrooksxo",
-    name: "Belle Brooks",
-    bio: "Belle Brooks has 261K likes on her OnlyFans profile and charges $15 per month. She has built a substantial following and is known for her content quality. She maintains a strong presence across multiple platforms.",
-  },
-  {
     username: "milamondell",
     name: "Milamondell",
     bio: "Milamondell is one of the biggest creators on OnlyFans with 3.1 million likes on her profile. She offers free subscription which has helped her grow an enormous audience. Her nickname PRETTIEST PUSSY ONLINE shows her bold branding approach. Having over 3 million likes with a free account demonstrates the strength of her content.",
@@ -228,12 +200,6 @@ export const creatorBios: CreatorBio[] = [
     name: "Bhad Bhabie",
     bio: "Bhad Bhabie (Danielle Bregoli) became famous from her Cash me outside viral moment on Dr. Phil and has successfully turned that internet fame into a massive OnlyFans career with 1.9 million likes. She charges $24 per month. She broke records on the platform when she first launched and has remained one of the top earners. She is known for her no-nonsense attitude and her music career which runs alongside her content creation.",
     telegram: "https://t.me/bhabiegang"
-  },
-  {
-    username: "gem101",
-    name: "Gem101",
-    bio: "Gem101 has 1.2 million likes on her OnlyFans profile and charges $30 per month. She is known as The one and has positioned herself as a premium experience for her subscribers. She has built a massive audience despite the higher price point and maintains strong engagement with her fanbase.",
-    telegram: "https://t.me/GemmaMcCourt01"
   },
   {
     username: "jocibaker",
@@ -254,12 +220,6 @@ export const creatorBios: CreatorBio[] = [
     username: "bryceadamsfree",
     name: "Bryce Adams Free",
     bio: "Bryce Adams Free has 1 million likes on her OnlyFans profile and offers free subscription. She has built an enormous audience with her free account and is known for her athletic look and high quality content. She is frequently discussed on Reddit where fans praise her consistency and content quality.",
-  },
-  {
-    username: "babydollll",
-    name: "Ms. Sethi",
-    bio: "Babydollll, known as Ms. Sethi, has 903K likes on her OnlyFans profile and charges $10 per month. She brands herself as The Baddest Indian and has built a large following across multiple platforms. She has a strong presence on X and maintains an official Telegram channel for fan updates.",
-    telegram: "https://t.me/babymssethii"
   },
   {
     username: "missdanniiharwood",
@@ -315,11 +275,6 @@ export const creatorBios: CreatorBio[] = [
     username: "vikingdoll.vip",
     name: "Vikingdoll.vip",
     bio: "Vikingdoll.vip has around 226K likes on OnlyFans. She operates under several aliases including Balkan Doll, balkan_doll, and iambalkandoll across different platforms, showing she has been building her brand across multiple accounts and websites for some time. She maintains an Instagram presence as @iambalkandoll and has content distributed across various adult platforms. Her multiple usernames and cross-platform presence have helped her build a recognizable brand in communities that actively follow her work.",
-  },
-  {
-    username: "lu2hot",
-    name: "Lu2hot",
-    bio: "Lu2hot has built a strong following with 207K likes on her OnlyFans. Known also as Heather Summers in some circles, she takes a multi-platform approach to building her brand, active on Twitter (@lu2hot), Instagram, Snapchat (23K followers), and TikTok. She posts daily content and has a Linktree aggregating all her social links. Her approachable personality and consistent daily updates across platforms have been the main drivers of her growth. She is the type of creator who treats every platform seriously rather than using them as afterthoughts.",
   },
   {
     username: "naughtyyun",

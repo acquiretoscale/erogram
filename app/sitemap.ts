@@ -1,10 +1,12 @@
 import { MetadataRoute } from 'next';
 import connectDB from '@/lib/db/mongodb';
-import { Group, Article, Bot } from '@/lib/models';
+import { Group, Article, Bot, AINsfwSubmission } from '@/lib/models';
 import { categories } from '@/app/groups/constants';
 import { LOCALES, LOCALE_HREFLANG, localePath } from '@/lib/i18n/config';
 import { BLOG_CATEGORY_SLUGS } from '@/lib/blog/categories';
 import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
+import { BEST_OF_PAGES, bestOfBlogSlug } from '@/app/best-onlyfans-accounts/bestOfPages';
+import { AI_NSFW_TOOLS, CATEGORY_SLUGS, toolSlug } from '@/app/ainsfw/data';
 
 /** Build alternates object for a given path — tells Google about all language versions. */
 function buildAlternates(basePath: string, canonicalBase: string) {
@@ -24,10 +26,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     await connectDB();
 
-    const [groups, bots, articles, totalGroups, totalBots, dbCountries, categoryCounts, countryCounts] = await Promise.all([
+    const [groups, bots, articles, ainsfwSubmissions, totalGroups, totalBots, dbCountries, categoryCounts, countryCounts] = await Promise.all([
       Group.find({ status: 'approved', premiumOnly: { $ne: true }, category: { $ne: 'Hentai' } }).select('slug updatedAt description_de description_es').lean(),
       Bot.find({ status: 'approved' }).select('slug updatedAt description_de description_es').lean(),
       Article.find({ status: 'published' }).select('slug updatedAt publishedAt').lean(),
+      AINsfwSubmission.find({ status: 'approved', paymentStatus: 'paid' }).select('name category updatedAt').lean(),
       Group.countDocuments({ status: 'approved', premiumOnly: { $ne: true } }),
       Bot.countDocuments({ status: 'approved' }),
       Group.distinct('country', { status: 'approved', premiumOnly: { $ne: true } }),
@@ -57,25 +60,38 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: 'weekly' as const,
         priority: 0.8,
       })),
-      // OnlyFans section — main search page + "by category" hub. The per-category
-      // top-10 ranking pages are added below (ofBestCategoryRoutes). The /{cat}onlyfans
-      // browse pages are intentionally NOT listed: they conflict with the top-10s.
-      { url: `${baseUrl}/onlyfanssearch`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
-      { url: `${baseUrl}/best-onlyfans-creators`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8 },
-      // AI NSFW section hub only (individual tool pages are intentionally excluded).
-      { url: `${baseUrl}/ainsfw`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+      { url: `${baseUrl}/onlyfanssearch`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9, alternates: buildAlternates('/onlyfanssearch', canonicalBase) },
+      { url: `${baseUrl}/best-onlyfans-creators`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8, alternates: buildAlternates('/best-onlyfans-creators', canonicalBase) },
+      { url: `${baseUrl}/ainsfw`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9, alternates: buildAlternates('/ainsfw', canonicalBase) },
       { url: `${baseUrl}/best-telegram-groups`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8, alternates: buildAlternates('/best-telegram-groups', canonicalBase) },
       { url: `${baseUrl}/add`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6, alternates: buildAlternates('/add', canonicalBase) },
       { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5, alternates: buildAlternates('/about', canonicalBase) },
-      { url: `${baseUrl}/terms`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3 },
-      { url: `${baseUrl}/privacy`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3 },
+      { url: `${baseUrl}/terms`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3, alternates: buildAlternates('/terms', canonicalBase) },
+      { url: `${baseUrl}/privacy`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3, alternates: buildAlternates('/privacy', canonicalBase) },
     ];
 
-    // OnlyFans "10 Best {Category}" top-10 ranking pages — curated, indexable,
-    // locale-aware (EN/DE/ES). These are the OF top-10s the sitemap should carry.
-    // NOTE: individual AI NSFW tool pages are intentionally NOT listed in any
-    // sitemap (per owner). The main sitemap only carries the /ainsfw section hub
-    // (added in staticRoutes above); tool pages stay discoverable via internal links.
+    const ofTop10Routes: MetadataRoute.Sitemap = BEST_OF_PAGES.map((page) => {
+      const path = `/onlyfanssearch/${bestOfBlogSlug(page.slug)}`;
+      return {
+        url: `${baseUrl}${path}`,
+        lastModified: new Date(),
+        changeFrequency: 'weekly' as const,
+        priority: 0.8,
+        alternates: buildAlternates(path, canonicalBase),
+      };
+    });
+
+    const ofBrowseRoutes: MetadataRoute.Sitemap = OF_CATEGORIES.map((cat) => {
+      const path = `/onlyfanssearch/${cat.slug}`;
+      return {
+        url: `${baseUrl}${path}`,
+        lastModified: new Date(),
+        changeFrequency: 'weekly' as const,
+        priority: 0.8,
+        alternates: buildAlternates(path, canonicalBase),
+      };
+    });
+
     const ofBestCategoryRoutes: MetadataRoute.Sitemap = OF_CATEGORIES.map((cat) => {
       const path = `/best-onlyfans-accounts/${cat.slug}`;
       return {
@@ -168,7 +184,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       return {
         url: `${baseUrl}${path}`,
         lastModified: group.updatedAt || new Date(),
-        changeFrequency: 'weekly' as const,
+        changeFrequency: 'monthly' as const,
         priority: 0.7,
         alternates: buildAlternates(path, canonicalBase),
       };
@@ -192,9 +208,51 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     }));
 
+    const builtInAinsfwSlugs = new Set(AI_NSFW_TOOLS.map((tool) => tool.slug));
+    const ainsfwToolRoutes: MetadataRoute.Sitemap = [
+      ...AI_NSFW_TOOLS.map((tool) => {
+        const path = `/ainsfw/${tool.slug}`;
+        return {
+          url: `${baseUrl}${path}`,
+          lastModified: new Date(),
+          changeFrequency: 'monthly' as const,
+          priority: 0.7,
+          alternates: buildAlternates(path, canonicalBase),
+        };
+      }),
+      ...(ainsfwSubmissions as any[])
+        .map((sub) => toolSlug(sub.category, sub.name))
+        .filter((slug) => !builtInAinsfwSlugs.has(slug))
+        .map((slug) => {
+          const path = `/ainsfw/${slug}`;
+          return {
+            url: `${baseUrl}${path}`,
+            lastModified: new Date(),
+            changeFrequency: 'monthly' as const,
+            priority: 0.7,
+            alternates: buildAlternates(path, canonicalBase),
+          };
+        }),
+    ];
+
+    const ainsfwCategoryRoutes: MetadataRoute.Sitemap = Object.keys(CATEGORY_SLUGS).map((slug) => {
+      const path = `/ainsfw/${slug}`;
+      return {
+        url: `${baseUrl}${path}`,
+        lastModified: new Date(),
+        changeFrequency: 'weekly' as const,
+        priority: 0.7,
+        alternates: buildAlternates(path, canonicalBase),
+      };
+    });
+
     return [
       ...staticRoutes,
+      ...ofTop10Routes,
+      ...ofBrowseRoutes,
       ...ofBestCategoryRoutes,
+      ...ainsfwToolRoutes,
+      ...ainsfwCategoryRoutes,
       ...bestGroupsCategoryRoutes,
       ...bestGroupsCountryRoutes,
       ...groupPaginationRoutes,

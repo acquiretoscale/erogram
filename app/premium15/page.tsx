@@ -2,11 +2,21 @@ import type { Metadata } from 'next';
 import connectDB from '@/lib/db/mongodb';
 import { Group, SiteConfig } from '@/lib/models';
 import Premium15Client from './Premium15Client';
+import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+
+const title = 'Upgrade to Premium | Erogram.pro';
+const description = 'Unlock the Erogram Private Vault — hundreds of hand-picked Telegram groups, unlimited bookmarks, custom folders, and early access to new features.';
 
 export const metadata: Metadata = {
-  title: 'Upgrade to Premium | Erogram.pro',
-  description: 'Unlock the Erogram Private Vault — hundreds of hand-picked Telegram groups, unlimited bookmarks, custom folders, and early access to new features.',
+  title,
+  description,
   robots: { index: false, follow: false },
+  ...buildSocialMeta({
+    title,
+    description,
+    url: `${CANONICAL_BASE}/premium15`,
+    type: 'website',
+  }),
 };
 
 async function getVaultTeaser() {

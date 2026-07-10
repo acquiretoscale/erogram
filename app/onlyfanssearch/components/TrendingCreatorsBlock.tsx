@@ -25,7 +25,7 @@ function formatLikes(n: number) {
 function TrendingCard({ creator, index }: { creator: TrendingCreator; index: number }) {
   const handleClick = () => {
     trackTrendingClick(creator._id);
-    window.open(creator.url, '_blank', 'noopener');
+    window.open(`/go/${creator.username}`, '_blank', 'noopener');
   };
 
   return (

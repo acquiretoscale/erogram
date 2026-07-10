@@ -6,8 +6,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import axios from 'axios';
 import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 import HeaderBanner from '@/components/HeaderBanner';
 import BookmarkButton from '@/components/BookmarkButton';
+import ShareDropdown from '@/components/ShareDropdown';
+import { categorySlug } from '@/app/groups/constants';
 import { getButtonConfig } from '@/lib/actions/publicData';
 import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
 import { trackTrendingClick } from '@/lib/actions/onlyfansTracking';
@@ -554,8 +557,37 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
     <div className="min-h-screen bg-[#0d1117] text-[#f5f5f5] font-sans selection:bg-[#ff5e2a] selection:text-white overflow-x-hidden">
       {/* Navigation */}
       <Navbar />
+
+      {/* Breadcrumb — below fixed nav, above banner & hero image */}
+      <div className="relative z-20 bg-[#0d1117] border-b border-white/10 pt-[58px]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
+          <nav aria-label="Breadcrumb">
+            <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 list-none p-0 m-0 text-xs sm:text-sm text-gray-400">
+              <li>
+                <Link href={lp('/')} className="hover:text-white transition-colors">
+                  {t('slug.home')}
+                </Link>
+              </li>
+              <li aria-hidden="true" className="text-gray-600 select-none">/</li>
+              <li>
+                <Link
+                  href={lp(type === 'group' ? '/groups' : '/bots')}
+                  className="hover:text-white transition-colors"
+                >
+                  {type === 'group' ? t('nav.groups') : t('nav.bots')}
+                </Link>
+              </li>
+              <li aria-hidden="true" className="text-gray-600 select-none">/</li>
+              <li className="text-white font-medium truncate max-w-[50vw] sm:max-w-md" aria-current="page">
+                {entity.name}
+              </li>
+            </ol>
+          </nav>
+        </div>
+      </div>
+
       {/* Top banner: same size as Groups/Bots, minimal spacing */}
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-2">
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-2">
         <HeaderBanner campaigns={topBannerCampaigns} />
       </div>
 
@@ -654,23 +686,6 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-[#0d1117]/80 via-[#0d1117]/90 to-[#0d1117]"></div>
-      </div>
-
-      {/* Breadcrumb Navigation */}
-      <div className="relative z-10 px-4 sm:px-6 py-4 border-b border-white/5 bg-[#0d1117]/50 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto">
-          <nav className="flex items-center text-sm text-gray-400">
-            <Link href={lp('/')} className="hover:text-white transition-colors flex items-center gap-1">
-              <span>🏠</span> <span className="hidden sm:inline">{t('slug.home')}</span>
-            </Link>
-            <span className="mx-2 text-gray-600">/</span>
-            <Link href={lp(type === 'group' ? '/groups' : '/bots')} className="hover:text-white transition-colors flex items-center gap-1">
-              <span>{type === 'group' ? '👥' : '🤖'}</span> <span className="hidden sm:inline">{type === 'group' ? t('nav.groups') : t('nav.bots')}</span>
-            </Link>
-            <span className="mx-2 text-gray-600">/</span>
-            <span className="text-white font-medium truncate max-w-[150px] sm:max-w-xs">{entity.name}</span>
-          </nav>
-        </div>
       </div>
 
       {/* Premium Gate — loading state */}
@@ -852,13 +867,14 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                       ✏️
                     </button>
                   )}
+                  <ShareDropdown title={entity.name} slug={entity.slug} itemType={type} />
                   <BookmarkButton itemId={entity._id} itemType={type} size="md" className="w-11 h-11 rounded-xl bg-orange-500/15 border border-orange-500/30 hover:bg-orange-500/25 hover:border-orange-500/50 hover:shadow-lg hover:shadow-orange-500/10" />
                 </div>
               </div>
 
               {/* Tags Row */}
               <div className="flex flex-wrap gap-3 mb-8">
-                <Link href={lp(`/best-telegram-groups/${entity.category.toLowerCase()}`)} className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors">
+                <Link href={lp(`/best-telegram-groups/${categorySlug(entity.category)}`)} className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors">
                   #{entity.category}
                 </Link>
                 <Link href={lp(`/best-telegram-groups/country/${entity.country.toLowerCase()}`)} className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors">
@@ -1549,6 +1565,8 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
           </motion.div>
         )}
       </AnimatePresence>
+
+      <Footer />
     </div >
   );
 }

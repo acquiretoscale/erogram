@@ -57,12 +57,12 @@ export default function OFFooter() {
                 </Link>
               </li>
               <li>
-                <Link href={lp('/best-onlyfans-creators')} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
+                <Link href={lp('/onlyfanssearch')} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
                   {t('ofSearch.bestOnlyfansCreators')}
                 </Link>
               </li>
               <li>
-                <Link href={lp('/best-onlyfans-accounts')} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
+                <Link href={lp('/onlyfanssearch')} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
                   {t('ofSearch.bestOnlyfansAccounts')}
                 </Link>
               </li>
@@ -73,7 +73,7 @@ export default function OFFooter() {
               </li>
               {OF_CATEGORIES.slice(0, 6).map((cat) => (
                 <li key={cat.slug}>
-                  <Link href={lp(`/best-onlyfans-accounts/${cat.slug}`)} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
+                  <Link href={lp(`/onlyfanssearch/top-10-${cat.slug}-onlyfans-models`)} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
                     {t('ofSearch.catOnlyfans').replace('{cat}', cat.name)}
                   </Link>
                 </li>
@@ -115,6 +115,11 @@ export default function OFFooter() {
               <li>
                 <Link href={lp('/terms')} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
                   {t('ofSearch.termsOfService')}
+                </Link>
+              </li>
+              <li>
+                <Link href={lp('/dmca')} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
+                  DMCA
                 </Link>
               </li>
               <li>

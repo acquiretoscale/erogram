@@ -2,26 +2,33 @@ import React from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
-import { visibleCategories } from '@/app/groups/constants';
+import { visibleCategories, categorySlug } from '@/app/groups/constants';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
 
 import connectDB from '@/lib/db/mongodb';
 import { Group } from '@/lib/models';
+import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-const canonicalBase = 'https://erogram.pro';
+const canonicalBase = CANONICAL_BASE;
 
 export async function generateMetadata(): Promise<Metadata> {
     const locale = await getLocale();
     const pathname = await getPathname();
     const dict = await getDictionary(locale);
+    const canonical = `${canonicalBase}${pathname}`;
     return {
         title: dict.meta.bestGroupsIndexTitle,
         description: dict.meta.bestGroupsIndexDesc,
         alternates: {
-            canonical: `${canonicalBase}${pathname}`,
-            languages: Object.fromEntries(LOCALES.map(l => [l, `${canonicalBase}${localePath('/best-telegram-groups', l)}`])),
+            canonical,
         },
+        ...buildSocialMeta({
+            title: dict.meta.bestGroupsIndexTitle,
+            description: dict.meta.bestGroupsIndexDesc,
+            url: canonical,
+            type: 'website',
+        }),
     };
 }
 
@@ -60,7 +67,7 @@ export default async function BestGroupsIndexPage() {
                     {sortedCategories.map((category) => (
                         <Link
                             key={category}
-                            href={localePath(`/best-telegram-groups/${category.toLowerCase()}`, locale)}
+                            href={localePath(`/best-telegram-groups/${categorySlug(category)}`, locale)}
                             className="glass p-6 rounded-2xl hover-glow transition-all duration-300 group border border-white/5 hover:border-white/20"
                         >
                             <h2 className="text-xl font-bold mb-2 group-hover:text-[#b31b1b] transition-colors">

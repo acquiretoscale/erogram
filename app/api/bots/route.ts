@@ -104,6 +104,8 @@ export async function GET(req: NextRequest) {
       sortCriteria = { pinned: -1, createdAt: 1 };
     } else if (sortBy === 'popular') {
       sortCriteria = { pinned: -1, clickCount: -1, createdAt: -1 };
+    } else if (sortBy === 'upvotes') {
+      // Handled via aggregation below (BotStats lives in a separate collection)
     } else if (sortBy === 'random') {
       // For random discovery, we'll handle this with aggregation below
       // Keep existing query (already has status: 'approved' and search/filters if provided)
@@ -111,7 +113,63 @@ export async function GET(req: NextRequest) {
 
     let bots: any[];
 
-    if (sortBy === 'random') {
+    if (sortBy === 'upvotes') {
+      const upvoteQuery = { ...query, pinned: { $ne: true } };
+      bots = await Bot.aggregate([
+        { $match: upvoteQuery },
+        {
+          $lookup: {
+            from: 'botstats',
+            localField: 'slug',
+            foreignField: 'slug',
+            as: 'stats',
+          },
+        },
+        {
+          $addFields: {
+            voteScore: {
+              $subtract: [
+                { $ifNull: [{ $arrayElemAt: ['$stats.upvotes', 0] }, 0] },
+                { $ifNull: [{ $arrayElemAt: ['$stats.downvotes', 0] }, 0] },
+              ],
+            },
+          },
+        },
+        { $sort: { voteScore: -1, createdAt: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'createdBy',
+            foreignField: '_id',
+            as: 'createdBy',
+          },
+        },
+        { $addFields: { createdBy: { $arrayElemAt: ['$createdBy', 0] } } },
+        {
+          $project: {
+            _id: 1,
+            name: 1,
+            slug: 1,
+            category: 1,
+            country: 1,
+            categories: 1,
+            description: 1,
+            image: 1,
+            telegramLink: 1,
+            isAdvertisement: 1,
+            advertisementUrl: 1,
+            pinned: 1,
+            topBot: 1,
+            clickCount: 1,
+            views: 1,
+            memberCount: 1,
+            createdBy: { username: 1, showNicknameUnderGroups: 1 },
+          },
+        },
+      ]);
+    } else if (sortBy === 'random') {
       // Use aggregation pipeline for random sampling
       // First get a larger sample, then sort pinned to top, then slice
       const pipeline = [

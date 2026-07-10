@@ -22,6 +22,8 @@ type OFEnrich = {
   liveHourStart: number;
   liveHourEnd: number;
   liveOnly: boolean;
+  /** Public "trend % on Erogram" (0 = unset/hidden). Owner-set in /OF. */
+  trendPercent: number;
   /** Rotatable creator images = [avatar, ...extraPhotos] minus paused. For DISPLAY (front-end rotation). */
   album: string[];
   /**
@@ -44,7 +46,7 @@ async function buildOFEnrichMap(ofUsernames: string[]): Promise<Map<string, OFEn
   const [creatorDocs, trendingDocs] = await Promise.all([
     OnlyFansCreator.find({ username: { $in: ofUsernames } }).select('username avatar extraPhotos').lean(),
     TrendingOFCreator.find({ username: { $in: ofUsernames } })
-      .select('username liveHourStart liveHourEnd liveOnly pausedImageUrls').lean(),
+      .select('username liveHourStart liveHourEnd liveOnly trendPercent pausedImageUrls').lean(),
   ]);
   const albumByUser = new Map<string, string[]>();
   for (const c of creatorDocs as any[]) {
@@ -66,6 +68,7 @@ async function buildOFEnrichMap(ofUsernames: string[]): Promise<Map<string, OFEn
       liveHourStart: t.liveHourStart ?? -1,
       liveHourEnd: t.liveHourEnd ?? -1,
       liveOnly: t.liveOnly ?? false,
+      trendPercent: t.trendPercent ?? 0,
       album,
       albumIdx,
     });
@@ -826,6 +829,7 @@ export async function getKeywordPlacementCampaigns(placement: string, categorySl
       ofLiveHourStart: tr?.liveHourStart ?? -1,
       ofLiveHourEnd: tr?.liveHourEnd ?? -1,
       ofLiveOnly: tr?.liveOnly ?? false,
+      ofTrendPercent: tr?.trendPercent ?? 0,
       ofAlbum: tr?.album ?? [],
       ofAlbumIdx: tr?.albumIdx ?? [],
     };
@@ -1814,6 +1818,13 @@ export interface DashboardStatsResult {
   ofDetail?: { name: string; username: string; clicks: number; kind: 'featured' | 'organic' }[];
   /** Per-boost-item detail (each boosted group/bot, individually). Only on the unfiltered network view. */
   boostDetail?: { name: string; entityType: 'group' | 'bot'; clicks: number }[];
+  /** Per-boost-entity DAILY click series (groups & bots only — AI NSFW has no daily tracking yet).
+   *  Powers the "Boosts over time" line + the picker to chart a specific boosted bot/group.
+   *  totalsByDay = all boosts combined per day; entities[] = each boosted group/bot with its own series. */
+  boostByDay?: {
+    totalsByDay: { date: string; clicks: number }[];
+    entities: { id: string; name: string; entityType: 'group' | 'bot'; total: number; byDay: { date: string; clicks: number }[] }[];
+  };
 }
 
 /** Admin: full dashboard stats with filters (advertiser, slot, date range). For Overview charts and KPIs. */
@@ -2161,6 +2172,7 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
   let networkTotals: { adSpace: number; boost: number; of: number; ofFeatured: number; ofOrganic: number; grandTotal: number } | undefined;
   let ofDetail: { name: string; username: string; clicks: number; kind: 'featured' | 'organic' }[] | undefined;
   let boostDetail: { name: string; entityType: 'group' | 'bot'; clicks: number }[] | undefined;
+  let boostByDay: DashboardStatsResult['boostByDay'];
   if (!advertiserIds?.length && !slots?.length) {
     const rangeStartDay = rangeStart.toISOString().slice(0, 10);
     const rangeEndDay = rangeEnd.toISOString().slice(0, 10);
@@ -2255,18 +2267,56 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
       boostDetail = [...gRows, ...bRows].filter((r) => r.clicks > 0).sort((a, b) => b.clicks - a.clicks).slice(0, 50);
     } catch { boostDetail = undefined; }
 
-    // Fold OnlyFans and Boosts into the advertiser breakdown as synthetic rows so the
-    // Advertisers view reflects the WHOLE Erogram ecosystem, not just CampaignClick sponsors.
-    // OWNER RULING: featured/promoted creators = paid clients; ALL their clicks count.
-    if (ofTotal > 0) {
-      byAdvertiser.unshift({
-        advertiserId: '__onlyfans__',
-        advertiserName: 'OnlyFans (all creators)',
-        totalClicks: ofTotal,
-        last7d: 0,
-        last30d: 0,
-      });
-    }
+    // ── Boost clicks OVER TIME (groups & bots) ──
+    // Build a per-day series for every boosted entity (so the UI can chart one specific bot/group),
+    // plus a combined totalsByDay. Then fold a real "__boosts__" line into clicksByDayByAdvertiser so
+    // the Boosts line on the chart moves over time instead of sitting flat.
+    try {
+      const dayList = clicksByDay.map((d) => d.date);
+      const dayOf = (e: any, date: string): number => {
+        const m = e.clickCountByDay;
+        if (!m) return 0;
+        const v = m instanceof Map ? m.get(date) : m[date];
+        return Number(v) || 0;
+      };
+      const buildEntity = (e: any, entityType: 'group' | 'bot') => {
+        const byDay = dayList.map((date) => ({ date, clicks: dayOf(e, date) }));
+        return {
+          id: String(e._id),
+          name: e.name || (entityType === 'group' ? 'Group' : 'Bot'),
+          entityType,
+          total: byDay.reduce((s, d) => s + d.clicks, 0),
+          byDay,
+        };
+      };
+      const entities = [
+        ...(boostGroups as any[]).map((g) => buildEntity(g, 'group')),
+        ...(boostBots as any[]).map((b) => buildEntity(b, 'bot')),
+      ].filter((e) => e.total > 0).sort((a, b) => b.total - a.total);
+
+      const totalsByDay = dayList.map((date, i) => ({
+        date,
+        clicks: entities.reduce((s, e) => s + e.byDay[i].clicks, 0),
+      }));
+      boostByDay = { totalsByDay, entities };
+
+      // Fold the combined boost series into the per-advertiser time chart as a synthetic line.
+      if (clicksByDayByAdvertiser) {
+        const tMap = new Map(totalsByDay.map((d) => [d.date, d.clicks]));
+        clicksByDayByAdvertiser = clicksByDayByAdvertiser.map((d) => {
+          const c = tMap.get(d.date) || 0;
+          return c > 0
+            ? { ...d, advertisers: [...d.advertisers, { advertiserId: '__boosts__', advertiserName: 'Boosts (groups & bots)', clicks: c }] }
+            : d;
+        });
+      }
+    } catch { boostByDay = undefined; }
+
+    // Fold BOOSTS into the advertiser breakdown as a synthetic row. Boost clicks live on the entity
+    // doc (clickCount), NOT in CampaignClick, so this row is the ONLY place they surface in the
+    // advertiser view. OnlyFans is NOT folded here: every OF campaign already belongs to the
+    // "OnlyFans Creators" advertiser and its clicks are real CampaignClick rows, so it appears in
+    // byAdvertiser naturally — adding a synthetic OF row would DOUBLE-COUNT it (one red line only).
     if (boostTotal > 0) {
       byAdvertiser.unshift({
         advertiserId: '__boosts__',
@@ -2324,6 +2374,7 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
     networkTotals,
     ofDetail,
     boostDetail,
+    boostByDay,
   };
 }
 

@@ -5,19 +5,20 @@ import { notFound } from 'next/navigation';
 import FallbackImage from '@/components/FallbackImage';
 import connectDB from '@/lib/db/mongodb';
 import { Group, BestGroupPick } from '@/lib/models';
-import { categories } from '@/app/groups/constants';
+import { categories, categorySlug, categoryFromSlug } from '@/app/groups/constants';
+import { bestTgCategoryFromPublicSegment } from '@/lib/bestTelegramGroups/btgUrls';
 import Navbar from '@/components/Navbar';
-import { getLocale, getPathname } from '@/lib/i18n/server';
+import { getLocale } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
 import { getKeywordPlacementCampaigns } from '@/lib/actions/campaigns';
 import BestGroupsAds from '@/app/best-telegram-groups/BestGroupsAds';
+import { buildSocialMeta } from '@/lib/seo/socialMeta';
+import { getMetaDescription } from '@/lib/bestTelegramGroups/metaDescriptions';
+import type { Locale } from '@/lib/i18n';
 
 interface PageProps {
     params: Promise<{ category: string }>;
 }
-
-// Helper to normalize category for URL (lowercase)
-const normalizeCategory = (cat: string) => cat.toLowerCase();
 
 export async function generateStaticParams() {
     await connectDB();
@@ -28,19 +29,21 @@ export async function generateStaticParams() {
     const active = new Set(counts.map((c: any) => (c._id as string)?.toLowerCase()));
     return categories
         .filter(cat => cat !== 'All' && active.has(cat.toLowerCase()))
-        .map((category) => ({ category: normalizeCategory(category) }));
+        .map((category) => ({ category: categorySlug(category) }));
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
     const locale = await getLocale();
-    const pathname = await getPathname();
     const { category } = await params;
-    const decodedSlug = decodeURIComponent(category).toLowerCase();
 
-    // Find the real category name (case-insensitive match)
-    const realCategory = categories.find(c => c.toLowerCase() === decodedSlug);
+    // Find the real category name (matches hyphen slug OR legacy space slug)
+    const resolvedSlug = bestTgCategoryFromPublicSegment(category) || category;
+    const realCategory = categoryFromSlug(resolvedSlug);
 
     if (!realCategory) return {};
+
+    // Canonical always uses the hyphenated slug — never %20/spaces.
+    const canonicalSlug = categorySlug(realCategory);
 
     const year = new Date().getFullYear();
 
@@ -52,17 +55,28 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     });
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
+    const canonical = `${siteUrl}${localePath(`/best-telegram-groups/${canonicalSlug}`, locale)}`;
+    const ogTitle = `10 Best ${realCategory} Telegram Groups (${year})`;
+    const l = realCategory.toLowerCase();
+    const descFallback = `Discover the top 10 best ${l} Telegram groups and channels in ${year}. Curated, verified list of the most popular and active adult communities.`;
+    const descMap: Record<Locale, string> = {
+        en: getMetaDescription(canonicalSlug, 'en') || descFallback,
+        de: getMetaDescription(canonicalSlug, 'de') || descFallback,
+        es: getMetaDescription(canonicalSlug, 'es') || descFallback,
+        pt: getMetaDescription(canonicalSlug, 'pt') || descFallback,
+    };
     const meta = {
         title: `10 Best ${realCategory} Telegram Groups & Channels (${year})`,
-        description: `Discover the top 10 best ${realCategory} Telegram groups and channels in ${year}. Curated, verified list of the most popular and active adult communities. Join free on Erogram.pro.`,
-        openGraph: {
-            title: `10 Best ${realCategory} Telegram Groups (${year})`,
-            description: `Discover the top 10 best ${realCategory} Telegram groups and channels in ${year}. Curated, verified list of the most popular and active adult communities.`,
-        },
+        description: descMap[locale] || descMap.en,
         alternates: {
-            canonical: `${siteUrl}${pathname}`,
-            languages: Object.fromEntries(LOCALES.map(l => [l, `${siteUrl}${localePath(`/best-telegram-groups/${decodedSlug}`, l)}`])),
+            canonical,
         },
+        ...buildSocialMeta({
+            title: ogTitle,
+            description: descMap[locale] || descMap.en,
+            url: canonical,
+            type: 'website',
+        }),
     };
 
     if (count === 0) {
@@ -83,18 +97,20 @@ export default async function BestGroupsPage({ params }: PageProps) {
     const dict = await getDictionary(locale);
 
     const { category } = await params;
-    const decodedSlug = decodeURIComponent(category).toLowerCase();
     const year = new Date().getFullYear();
     const localeMap: Record<string, string> = { en: 'en-US', de: 'de-DE', es: 'es-ES' };
     const month = new Date().toLocaleString(localeMap[locale] || 'en-US', { month: 'long' });
 
-    // Find the real category name (case-insensitive match)
-    const realCategory = categories.find(c => c.toLowerCase() === decodedSlug);
+    // Find the real category name (matches hyphen slug OR legacy space slug)
+    const resolvedSlug = bestTgCategoryFromPublicSegment(category) || category;
+    const realCategory = categoryFromSlug(resolvedSlug);
 
     // Validate category
     if (!realCategory) {
         notFound();
     }
+
+    const decodedSlug = realCategory.toLowerCase();
 
     await connectDB();
 
@@ -177,8 +193,10 @@ export default async function BestGroupsPage({ params }: PageProps) {
                     </div>
                     <h1 className="text-4xl md:text-5xl lg:text-6xl font-black mb-6 leading-tight">
                         {groups.length > 0
-                            ? `${dict.bestGroups.theBest.split('{category}')[0].replace('{count}', String(groups.length))}`
-                            : `${dict.bestGroups.theBestFallback.split('{category}')[0]}`}<span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">{realCategory}</span>{dict.bestGroups.theBest.split('{category}')[1] || ''}
+                            ? dict.bestGroups.theBest.split('{category}')[0].replace('{count}', String(groups.length))
+                            : dict.bestGroups.theBestFallback.split('{category}')[0]}
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">{realCategory}</span>
+                        {dict.bestGroups.theBest.split('{category}')[1] || ''}
                     </h1>
                     <p className="text-xl text-gray-400 max-w-2xl mx-auto">
                         {dict.bestGroups.lookingFor.replace('{category}', realCategory).replace('{year}', String(year))}

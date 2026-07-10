@@ -3,10 +3,12 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import dynamic from 'next/dynamic';
 import Navbar from '@/components/Navbar';
 import HeaderBanner from '@/components/HeaderBanner';
+import Footer from '@/components/Footer';
 import { Group, FeedCampaign, StoryCategory } from './types';
 import GroupCard from './GroupCard';
 import AdvertCard from './AdvertCard';
@@ -41,20 +43,27 @@ interface GroupsClientProps {
   topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string }>;
   storyData?: StoryCategory[];
   vaultTeaserGroups?: VaultTeaserItem[];
-  trendingCategories?: Array<{ label: string; href: string }>;
+  trendingCategories?: Array<{ label: string; href: string; title?: string }>;
   trendingCountries?: Array<{ label: string; href: string }>;
   categoryOptions?: string[];
   countryOptions?: string[];
   trendingErogramCampaigns?: FeedCampaign[];
+  paginationCurrentPage?: number;
+  paginationTotalPages?: number;
+  groupsPageSize?: number;
 }
 
-export default function GroupsClient({ initialGroups, feedCampaigns = [], initialCountry, initialIsMobile = false, initialIsTelegram = false, topBannerCampaigns = [], storyData = [], vaultTeaserGroups = [], trendingCategories = [], trendingCountries = [], categoryOptions = [], countryOptions = [], trendingErogramCampaigns = [] }: GroupsClientProps) {
+function groupsPageHref(page: number): string {
+  return page <= 1 ? '/groups' : `/groups/page/${page}`;
+}
+
+export default function GroupsClient({ initialGroups, feedCampaigns = [], initialCountry, initialIsMobile = false, initialIsTelegram = false, topBannerCampaigns = [], storyData = [], vaultTeaserGroups = [], trendingCategories = [], trendingCountries = [], categoryOptions = [], countryOptions = [], trendingErogramCampaigns = [], paginationCurrentPage = 1, paginationTotalPages = 1, groupsPageSize = 32 }: GroupsClientProps) {
   const TOP_SLOT_GROWTH: number[] = [14.2, 11.8, 9.6, 12.9];
   const STORY_SEEN_KEY = 'erogram:stories:seen:v1';
   const [username, setUsername] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState(initialCountry || 'All');
   const [selectedCountry, setSelectedCountry] = useState('All');
-  const [selectedSort, setSelectedSort] = useState('random');
+  const [selectedSort, setSelectedSort] = useState('newest');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchExpanded, setSearchExpanded] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -65,6 +74,28 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   const { t } = useTranslation();
   const lp = useLocalePath();
   const { locale } = useLocale();
+
+  const getCategoryDisplay = (cat: string): string => {
+    if (locale !== 'de') return cat;
+    const deMap: Record<string, string> = {
+      'Onlyfans': 'OnlyFans',
+      'Instagram Models': 'Instagram-Models',
+      'Feet': 'Füße',
+      'MILF': 'MILF',
+      'BDSM': 'BDSM',
+      'Fetish': 'Fetisch',
+      'Latina': 'Latinas',
+      'Cosplay': 'Cosplay',
+      'Onlyfans Leaks': 'OnlyFans Leaks',
+      'TikTok': 'TikTok',
+      'Asian': 'Asiatisch',
+      'Blowjob': 'Blowjob',
+      'Amateur': 'Amateur',
+      'Lesbian': 'Lesbisch',
+      'Uncensored AV': 'Unzensiertes AV',
+    };
+    return deMap[cat] || cat;
+  };
 
   const markStoryCategorySeen = (slug?: string) => {
     if (!slug || typeof window === 'undefined') return;
@@ -96,9 +127,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   };
 
   const [regularGroups, setRegularGroups] = useState<Group[]>(initialRealGroups);
-  const [skip, setSkip] = useState(initialRealGroups.length);
   const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
   const [groupsLoadError, setGroupsLoadError] = useState(false);
 
   const [topGroups, setTopGroups] = useState<Group[]>([]);
@@ -303,10 +332,8 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
         // Only restore if filters match
         if (JSON.stringify(currentFilters) === JSON.stringify(filters)) {
           setRegularGroups(groups);
-          setSkip(savedSkip);
-          setHasMore(savedHasMore);
           isRestoredRef.current = true;
-          isFirstLoad.current = false; // Mark as loaded if restored
+          isFirstLoad.current = false;
 
           // Restore scroll position after a brief delay to allow rendering
           setTimeout(() => {
@@ -319,13 +346,22 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
     }
   }, []);
 
+  // Deep link: /groups?category=X selects that category so the feed shows its
+  // newest-first search results (used by the Trending Group Categories links).
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const cat = searchParams.get('category');
+    if (cat && cat !== 'All' && categoryOptions.includes(cat)) {
+      setSelectedCategory(cat);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Save state to sessionStorage
   useEffect(() => {
     const saveState = () => {
       const state = {
         groups: regularGroups,
-        skip,
-        hasMore,
         scrollY: window.scrollY,
         filters: {
           category: selectedCategory,
@@ -339,7 +375,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
     // Save on unmount
     return () => saveState();
-  }, [regularGroups, skip, hasMore, selectedCategory, selectedSort, searchQuery]);
+  }, [regularGroups, selectedCategory, selectedSort, searchQuery]);
 
   // Save scroll position periodically while scrolling
   useEffect(() => {
@@ -378,7 +414,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
       // Skip initial fetch if filters match defaults (SSR data is already present)
       if (
         isFirstLoad.current &&
-        selectedSort === 'random' &&
+        selectedSort === 'newest' &&
         !debouncedSearchQuery &&
         selectedCategory === (initialCountry || 'All') &&
         selectedCountry === 'All' &&
@@ -395,30 +431,22 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
         const searchParam = debouncedSearchQuery ? `&search=${encodeURIComponent(debouncedSearchQuery)}` : '';
         const categoryParam = selectedCategory !== 'All' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
         const countryParam = selectedCountry !== 'All' ? `&country=${encodeURIComponent(selectedCountry)}` : '';
-        const response = await fetch(`/api/groups?skip=0&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${countryParam}&locale=${locale}`, { cache: 'no-store' });
+        const response = await fetch(`/api/groups?skip=0&limit=${groupsPageSize}&sortBy=${selectedSort}${searchParam}${categoryParam}${countryParam}&locale=${locale}`, { cache: 'no-store' });
         const data = await response.json();
         if (!response.ok || !Array.isArray(data.groups)) {
           setGroupsLoadError(true);
           setRegularGroups([]);
-          setSkip(0);
-          setHasMore(false);
           return;
         }
         if (data.groups && data.groups.length > 0) {
           setRegularGroups(data.groups);
-          setSkip(data.groups.length);
-          setHasMore(data.hasMore ?? false);
         } else {
           setRegularGroups([]);
-          setSkip(0);
-          setHasMore(false);
         }
       } catch (error) {
         console.error('Error fetching groups:', error);
         setGroupsLoadError(true);
         setRegularGroups([]);
-        setSkip(0);
-        setHasMore(false);
       } finally {
         setLoading(false);
       }
@@ -426,46 +454,13 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
     fetchGroups();
     lastVisibleIndexRef.current = -1;
-  }, [selectedSort, debouncedSearchQuery, selectedCategory, selectedCountry]);
+  }, [selectedSort, debouncedSearchQuery, selectedCategory, selectedCountry, groupsPageSize, locale, initialCountry]);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (
-        window.innerHeight + window.scrollY >= document.body.offsetHeight - 500 &&
-        !loading &&
-        hasMore
-      ) {
-        setLoading(true);
-        const searchParam = debouncedSearchQuery ? `&search=${encodeURIComponent(debouncedSearchQuery)}` : '';
-        const categoryParam = selectedCategory !== 'All' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
-        const countryParam = selectedCountry !== 'All' ? `&country=${encodeURIComponent(selectedCountry)}` : '';
-        const excludeParam = selectedSort === 'random' && regularGroups.length > 0
-          ? `&exclude=${encodeURIComponent(regularGroups.map(g => g._id).join(','))}`
-          : '';
-        const skipParam = selectedSort === 'random' ? 0 : skip;
-        fetch(`/api/groups?skip=${skipParam}&limit=12&sortBy=${selectedSort}${searchParam}${categoryParam}${countryParam}${excludeParam}&locale=${locale}`)
-          .then(res => res.json())
-          .then(data => {
-            if (data.groups && data.groups.length > 0) {
-              setRegularGroups(prev => {
-                const existingIds = new Set(prev.map(g => g._id));
-                const newGroups = data.groups.filter((g: Group) => !existingIds.has(g._id));
-                return [...prev, ...newGroups];
-              });
-              setSkip(prev => prev + data.groups.length);
-              setHasMore(data.hasMore);
-            } else {
-              setHasMore(false);
-            }
-          })
-          .catch(console.error)
-          .finally(() => setLoading(false));
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [skip, loading, hasMore, selectedSort, debouncedSearchQuery, selectedCategory, selectedCountry, regularGroups]);
+  const isDefaultBrowse =
+    selectedSort === 'newest' &&
+    !debouncedSearchQuery &&
+    selectedCategory === (initialCountry || 'All') &&
+    selectedCountry === 'All';
 
   const displayGroups = useMemo(() => {
     return regularGroups;
@@ -588,20 +583,20 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
           transition={{ duration: 0.5 }}
           className="text-center mb-6 sm:mb-8"
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#ff5e2a]/10 border border-[#ff5e2a]/30 text-[#ff7a3d] text-xs font-bold uppercase tracking-[2px] mb-4">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#ff7a3d] animate-pulse" />
+          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#ff5e2a]/10 border border-[#ff5e2a]/30 text-[#ff7a3d] text-[9px] sm:text-[10px] font-bold uppercase tracking-[1.5px] mb-2">
+            <span className="w-1 h-1 rounded-full bg-[#ff7a3d] animate-pulse" />
             Curated &amp; Verified
           </div>
           <h1 className="text-[32px] sm:text-[50px] md:text-[58px] font-black leading-[1.05] tracking-tight text-white mb-3">
             {t('groups.title')}
           </h1>
           <p className="text-white/50 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
-            {t('groups.heroSubtitle', 'Browse and join the best Adult and Porn Telegram groups, curated, verified and updated daily.')}
+            {t('groups.heroSubtitle')}
           </p>
         </motion.div>
 
         {/* Filter bar — one sleek unified pill: search + filters + live stat, single line */}
-        <div className="mb-6 sm:mb-8 flex justify-center">
+        <div className="mb-6 sm:mb-8 flex justify-center items-center gap-3">
           <div className="flex items-center gap-1.5 sm:gap-2 w-full max-w-3xl rounded-full border border-white/10 bg-white/[0.03] backdrop-blur-sm p-1.5 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.6)]">
             {/* Category */}
             <div className="relative shrink-0">
@@ -611,9 +606,9 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                 aria-label={t('common.category')}
                 className="pl-2.5 pr-6 py-2 rounded-full bg-transparent hover:bg-white/[0.06] text-white text-[11px] font-bold focus:outline-none transition-colors appearance-none cursor-pointer"
               >
-                <option value="All" className="bg-[#131a24]">All Categories</option>
+                <option value="All" className="bg-[#131a24]">{t('groups.allCategories')}</option>
                 {categoryOptions.map((c) => (
-                  <option key={c} value={c} className="bg-[#131a24]">{c}</option>
+                  <option key={c} value={c} className="bg-[#131a24]">{getCategoryDisplay(c)}</option>
                 ))}
               </select>
               <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-white/40 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
@@ -629,7 +624,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                 aria-label={t('common.country')}
                 className="pl-2.5 pr-6 py-2 rounded-full bg-transparent hover:bg-white/[0.06] text-white text-[11px] font-bold focus:outline-none transition-colors appearance-none cursor-pointer"
               >
-                <option value="All" className="bg-[#131a24]">All Countries</option>
+                <option value="All" className="bg-[#131a24]">{t('groups.allCountries')}</option>
                 {countryOptions.map((c) => (
                   <option key={c} value={c} className="bg-[#131a24]">{c}</option>
                 ))}
@@ -682,25 +677,84 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
               <VisitingCount />
             </div>
           </div>
+
+          {/* GO PREMIUM — desktop: right of the filter pill (outside it) */}
+          <Link
+            href={lp('/premium')}
+            className="hidden lg:flex items-center gap-2 shrink-0 px-4 py-2.5 rounded-full transition-all hover:brightness-105 hover:scale-[1.02] active:scale-[0.98]"
+            style={{
+              background: 'linear-gradient(135deg, #b8860b 0%, #ffd700 40%, #fff8b0 55%, #ffd700 70%, #b8860b 100%)',
+              boxShadow: '0 4px 24px -4px rgba(255,215,0,0.5), inset 0 1px 0 rgba(255,255,255,0.4)',
+            }}
+          >
+            <div className="leading-none">
+              <div className="text-[12px] font-black text-[#1a0f00] tracking-tight">{t('groups.goPremium')}</div>
+              <div className="text-[8px] font-semibold text-[#3d2800]/80 mt-0.5">{t('groups.unlockPremiumGroups')}</div>
+            </div>
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="#1a0f00" className="shrink-0" aria-hidden>
+              <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
+            </svg>
+          </Link>
         </div>
 
-        {/* Trending on Erogram — top 6 categories, homogeneous with the filter bar */}
-        {trendingCategories.length > 0 && (
-          <div className="mb-6 sm:mb-8 flex flex-wrap items-center justify-center gap-2">
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-white/70 mr-0.5">
-              <svg className="w-3.5 h-3.5 text-[#ff7a3d]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-              Trending on Erogram
-            </span>
-            {trendingCategories.slice(0, 8).map(({ label, href }) => (
-              <Link
-                key={href}
-                href={href}
-                className="px-3 py-1.5 rounded-full border border-white/10 bg-white/[0.03] text-white/70 text-xs font-bold hover:text-white hover:border-[#ff5e2a]/40 hover:bg-[#ff5e2a]/[0.06] transition-all whitespace-nowrap"
-              >
-                {label}
-              </Link>
-            ))}
+        {/* GO PREMIUM — mobile: 50% size, above trending categories */}
+        <Link
+          href={lp('/premium')}
+          className="lg:hidden flex items-center justify-between gap-1.5 mb-3 mx-auto w-[52%] px-2.5 py-1.5 rounded-xl transition-all hover:brightness-105 active:scale-[0.99]"
+          style={{
+            background: 'linear-gradient(135deg, #b8860b 0%, #ffd700 40%, #fff8b0 55%, #ffd700 70%, #b8860b 100%)',
+            boxShadow: '0 4px 24px -4px rgba(255,215,0,0.5), inset 0 1px 0 rgba(255,255,255,0.4)',
+          }}
+        >
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] font-black text-[#1a0f00] tracking-tight leading-tight">{t('groups.goPremium')}</div>
+            <div className="text-[7px] font-semibold text-[#3d2800]/80 mt-0.5">{t('groups.unlockPremiumGroups')}</div>
           </div>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#1a0f00" className="shrink-0" aria-hidden>
+            <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
+          </svg>
+        </Link>
+
+        {/* Trending Group Categories — every content category with 20+ listings.
+            Real crawlable links to the newest-first filtered feed so Google reads
+            each as a high-content category view. */}
+        {trendingCategories.length > 0 && (
+          <nav aria-label="Trending group categories" className="mb-4 sm:mb-6 flex flex-wrap items-center justify-center gap-1.5">
+            <h2 className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-white/70 mr-0.5">
+              <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#ff7a3d]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+              {t('groups.trendingGroupCategories')}
+            </h2>
+            {trendingCategories.map(({ label, href, title }) => {
+              const isActive = selectedCategory === label;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  title={title || `${label} Telegram groups`}
+                  aria-label={title || `${label} Telegram groups`}
+                  aria-current={isActive ? 'true' : undefined}
+                  className={`px-2.5 py-1 rounded-full border text-[11px] font-bold transition-all whitespace-nowrap ${
+                    isActive
+                      ? 'border-[#ff5e2a] bg-[#ff5e2a]/15 text-white'
+                      : 'border-white/10 bg-white/[0.03] text-white/70 hover:text-white hover:border-[#ff5e2a]/40 hover:bg-[#ff5e2a]/[0.06]'
+                  }`}
+                >
+                  {getCategoryDisplay(label)}
+                </Link>
+              );
+            })}
+            {!isDefaultBrowse && (
+              <button
+                type="button"
+                onClick={() => { setSelectedCategory(initialCountry || 'All'); setSelectedCountry('All'); setSearchQuery(''); setSelectedSort('newest'); }}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-white/15 bg-white/[0.06] text-[11px] font-bold text-white/80 hover:text-white hover:border-white/30 transition-all whitespace-nowrap"
+                aria-label={t('groups.resetFilters')}
+              >
+                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                {t('groups.resetFilters')}
+              </button>
+            )}
+          </nav>
         )}
 
         {/* Global top banner (below stories) */}
@@ -848,8 +902,8 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                   <div className="mb-5 relative rounded-2xl overflow-hidden bg-white">
                     <div className="relative p-3 sm:p-4">
                       <div className="flex items-baseline gap-2.5 mb-3">
-                        <h2 className="text-base font-black text-[#0f172a] leading-none tracking-tight">Trending on Erogram</h2>
-                        <span className="text-[#0f172a] text-xs font-bold">What&apos;s hot right now</span>
+                        <h2 className="text-base font-black text-[#0f172a] leading-none tracking-tight">{t('groups.trendingOnErogram')}</h2>
+                        <span className="text-[#0f172a] text-xs font-bold">{t('groups.whatsHot')}</span>
                       </div>
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 rounded-2xl p-3 sm:p-4" style={{ background: 'linear-gradient(180deg, #0d1117 0%, #0a0e16 100%)' }}>
                         {trendingAds.map((camp, i) => (
@@ -868,7 +922,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
               <div className="text-center mb-6">
                 <h1 className="text-2xl md:text-3xl font-black text-[#f5f5f5]">
-                  Discover NSFW Telegram Groups
+                  {t('groups.discoverNsfw')}
                 </h1>
               </div>
 
@@ -892,6 +946,49 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                   bookmarkedMap={bookmarkedMap}
                   vaultTeaserGroups={vaultTeaserGroups}
                 />
+
+                {isDefaultBrowse && paginationTotalPages > 1 && (
+                  <nav
+                    aria-label="Groups pagination"
+                    className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mt-8 sm:mt-10"
+                  >
+                    {paginationCurrentPage > 1 && (
+                      <Link
+                        href={groupsPageHref(paginationCurrentPage - 1)}
+                        className="px-4 py-2 rounded-xl border border-white/10 bg-white/[0.04] text-sm font-bold text-white/80 hover:border-[#ff5e2a]/40 hover:text-white transition-colors"
+                        rel="prev"
+                      >
+                        ← Previous
+                      </Link>
+                    )}
+                    {Array.from({ length: paginationTotalPages }, (_, i) => i + 1).map((p) => {
+                      const isActive = p === paginationCurrentPage;
+                      return (
+                        <Link
+                          key={p}
+                          href={groupsPageHref(p)}
+                          aria-current={isActive ? 'page' : undefined}
+                          className={`min-w-[2.5rem] px-3 py-2 rounded-xl text-sm font-bold text-center transition-colors ${
+                            isActive
+                              ? 'bg-[#ff5e2a] text-white border border-[#ff5e2a]'
+                              : 'border border-white/10 bg-white/[0.04] text-white/70 hover:border-[#ff5e2a]/40 hover:text-white'
+                          }`}
+                        >
+                          {p}
+                        </Link>
+                      );
+                    })}
+                    {paginationCurrentPage < paginationTotalPages && (
+                      <Link
+                        href={groupsPageHref(paginationCurrentPage + 1)}
+                        className="px-4 py-2 rounded-xl border border-white/10 bg-white/[0.04] text-sm font-bold text-white/80 hover:border-[#ff5e2a]/40 hover:text-white transition-colors"
+                        rel="next"
+                      >
+                        {t('groups.nextPage')}
+                      </Link>
+                    )}
+                  </nav>
+                )}
               </div>
 
               {loading && (
@@ -907,6 +1004,8 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
           </div>
         </div>
       </main>
+
+      <Footer />
 
 
       {/* Review Modal */}
@@ -978,11 +1077,11 @@ function VisitingCount() {
   }, []);
 
   return (
-    <span className="flex items-baseline gap-1 whitespace-nowrap">
-      <span className="font-black text-white/90 tabular-nums leading-none text-[13px]">
+    <span className="flex flex-col items-center leading-none whitespace-nowrap">
+      <span className="font-medium text-white/40 text-[8px]">visiting now</span>
+      <span className="font-black text-white/90 tabular-nums text-[13px] mt-0.5">
         {count > 0 ? count.toLocaleString('en-US') : '—'}
       </span>
-      <span className="font-medium text-white/40 text-[10px]">visiting now</span>
     </span>
   );
 }

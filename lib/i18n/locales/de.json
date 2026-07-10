@@ -162,7 +162,32 @@
     "vaultTitle2": "Geheimer Tresor",
     "vaultDesc": "Exklusive Gruppen, die nur für Premium-Mitglieder sichtbar sind",
     "vaultCta": "Den vollen Tresor freischalten",
-    "vaultFooter": "100+ exklusive Gruppen · Regelmäßig aktualisiert"
+    "vaultFooter": "100+ exklusive Gruppen · Regelmäßig aktualisiert",
+    "allCategories": "Alle Kategorien",
+    "allCountries": "Alle Länder",
+    "trendingGroupCategories": "Beliebte Gruppen-Kategorien",
+    "trendingOnErogram": "Trending auf Erogram",
+    "whatsHot": "Was gerade heiß ist",
+    "discoverNsfw": "NSFW Telegram-Gruppen entdecken",
+    "nextPage": "Weiter →",
+    "visit": "Besuchen",
+    "joinChannel": "Kanal beitreten",
+    "openBot": "Bot öffnen",
+    "review": "Bewerten",
+    "save": "Speichern",
+    "unlockPremium": "🔒 Premium freischalten",
+    "heroSubtitle": "Durchsuche und trete den besten Adult- und Porn-Telegram-Gruppen bei, kuratiert, verifiziert und täglich aktualisiert.",
+    "goPremium": "GO PREMIUM",
+    "unlockPremiumGroups": "4K+ Premium-Gruppen freischalten",
+    "curatedVerified": "Kuratiert & Verifiziert",
+    "featuredOnlyfansCreator": "Featured OnlyFans Creator",
+    "visitSite": "Seite besuchen",
+    "visitNow": "Jetzt besuchen",
+    "tryThisBot": "Diesen Bot testen",
+    "unlockTheVault": "Tresor freischalten",
+    "viewProfile": "Profil ansehen",
+    "resetFilters": "Filter zurücksetzen",
+    "cancel": "Abbrechen"
   },
   "bots": {
     "title": "NSFW Telegram Bots entdecken",
@@ -174,6 +199,7 @@
     "filters": "Filter",
     "findPerfect": "Deinen perfekten Bot finden",
     "sortBy": "Sortieren nach",
+    "topUpvoted": "Top Upvotes",
     "newestFirst": "Neueste zuerst",
     "randomDiscovery": "Zufällige Entdeckung",
     "mostPopular": "Am beliebtesten",
@@ -257,7 +283,45 @@
         "q": "Wie oft wird diese Liste aktualisiert?",
         "a": "Unser bestes {category} OnlyFans-Ranking wird täglich aktualisiert. Neue Creator werden hinzugefügt und Positionen neu berechnet."
       }
-    ]
+    ],
+    "rankingFaq": [
+      {
+        "q": "Wie ranken wir die besten {label} OnlyFans-Creator?",
+        "a": "Wir bewerten {label}-Profile täglich anhand realer Engagement-Daten: Klicks, Profilbesuche, Follows und Kommentare auf Erogram. So entdeckt unser Publikum neue Trending-Profile und frische Modelle."
+      },
+      {
+        "q": "Wann werden die {label} OnlyFans-Rankings aktualisiert?",
+        "a": "Das {label}-Ranking wird kontinuierlich aktualisiert. Die Rankings basieren auf echter Aktivität auf Erogram mit den gelisteten Modellen."
+      },
+      {
+        "q": "Ist das {label} OnlyFans-Ranking käuflich?",
+        "a": "Nein. Eine organische Position eines {label}-Creators ist nie käuflich. Wir zeigen unserem Publikum echte Rankings und das beste Erlebnis beim Entdecken neuer Creator."
+      }
+    ],
+    "visitProfile": "Profil besuchen →",
+    "topTrending": "★ Top Trending Creator auf Erogram",
+    "last30Days": "Letzte 30 Tage auf Erogram",
+    "statsLikes": "Likes",
+    "statsContent": "Inhalt",
+    "statsPhotos": "Fotos",
+    "statsVideos": "Videos",
+    "statsPosts": "Posts",
+    "exploreMoreNiche": "Mehr {label}-Creator auf OFSearch entdecken →",
+    "keepExploring": "Weiter entdecken",
+    "moreTopRankings": "Weitere Top OnlyFans-Rankings",
+    "handpickedDesc": "Handverlesene Top-10-OnlyFans-Creator-Rankings nach Nische, täglich verifiziert und aktualisiert von Erogram.",
+    "relatedSubhead": "Die beliebtesten {label} OnlyFans-Creator, gerankt & verifiziert.",
+    "seeRanking": "Ranking ansehen",
+    "exploreMoreHottest": "Weitere Top 10 OnlyFans-Model-Rankings entdecken",
+    "exploreMoreDesc": "Durchsuche unsere vollständige Bibliothek verifizierter OnlyFans-Rankings, täglich aktualisiert vom Erogram-Redaktionsteam. Ob du nach Nische, Land oder US-Bundesstaat suchst – jede Liste zeigt die beliebtesten Creator.",
+    "browseByCategory": "Top 10 OnlyFans-Models nach Kategorie durchsuchen",
+    "browseByCountry": "Top 10 OnlyFans-Models nach Land durchsuchen",
+    "browseByState": "Top 10 OnlyFans-Models nach Bundesstaat durchsuchen",
+    "browseAll": "Alle durchsuchen →",
+    "breadcrumbHome": "Startseite",
+    "breadcrumbOfSearch": "OnlyFans Suche",
+    "rankLabel": "Rang",
+    "liveLabel": "Live"
   },
   "submitCreator": {
     "badge": "Werde auf Erogram vorgestellt",

@@ -4,14 +4,30 @@
 // ---------------------------------------------------------------------------
 
 export const filterCategories = [
+    // --- Core niches ---
     'AI NSFW', 'Amateur', 'Anal', 'Anime',
-    'Asian', 'BDSM', 'Big Ass', 'Big Tits', 'Black', 'Blonde', 'Blowjob',
-    'Brazil', 'China', 'Colombia', 'Cosplay', 'Creampie',
-    'Cuckold', 'Ebony', 'Fantasy', 'Feet', 'Fetish', 'France', 'Free-use',
-    'Germany', 'Hardcore',
-    'Japan', 'Latina', 'Lesbian', 'Masturbation', 'MILF',
-    'NSFW-Telegram', 'Onlyfans', 'Onlyfans Leaks', 'Petite', 'Privacy', 'Public', 'Russian',
-    'Spain', 'Telegram-Porn', 'Threesome', 'UK', 'Ukraine', 'USA',
+    'ASMR Erotic', 'Asian',
+    'BDSM', 'BBW', 'Big Ass', 'Big Tits', 'Black', 'Blonde', 'Blowjob', 'Bukkake',
+    'Brazil', 'China', 'Chinese AV', 'Colombia', 'Cosplay', 'Creampie', 'Cuckold',
+    'Dating & Hookup', 'Deepthroat', 'Discord', 'Doujin & Manga',
+    'Ebony',
+    'Fantasy', 'Fansly', 'Feet', 'Femdom', 'Fetish', 'France', 'Free-use', 'Furry',
+    'Gangbang', 'Germany', 'GIFs & Clips', 'Glory Hole', 'Goth & Alt',
+    'Hardcore', 'Hentai', '3D Hentai',
+    'India', 'Instagram Models', 'Interracial', 'Italy',
+    'Japan', 'JAV',
+    'Latina', 'Lesbian', 'Live Cam',
+    'Masturbation', 'MILF',
+    'NSFW-Telegram', 'Nylon & Pantyhose',
+    'Onlyfans', 'Onlyfans Leaks',
+    'Patreon', 'Petite', 'Pornhub', 'POV', 'Privacy', 'Public',
+    'Reddit', 'Roleplay', 'Russian',
+    'Snapchat', 'Spain',
+    'Taboo', 'Teen 18+', 'Telegram-Porn', 'Threesome', 'TikTok',
+    'UK', 'Ukraine', 'Uncensored AV', 'USA',
+    '4K & HD',
+    'Adult Games',
+    'Celebrity',
 ];
 
 export const filterOptions: Array<{ label: string; value: string }> =
@@ -24,22 +40,29 @@ export const filterOptions: Array<{ label: string; value: string }> =
 // ---------------------------------------------------------------------------
 
 export const allCategories = [
-    'All', 'Adult', 'Adult Chat', 'AI NSFW', 'Amateur', 'Anal', 'Anime', 'Argentina',
-    'Asia', 'Asian', 'BDSM', 'BDSM Lite', 'Big Ass', 'Big Tits', 'Black', 'Blonde', 'Blowjob',
-    'Brazil', 'Brunette', 'Celebrity Lookalike', 'China', 'Colombia',
-    'Cosplay', 'Costume', 'Creampie', 'Cuckold',
-    'Domination', 'Double Penetration', 'Ebony', 'Erotic Horror',
-    'Fantasy', 'Feet', 'Fetish', 'France', 'Free-use', 'Furry', 'Gangbang', 'Gay',
-    'Germany', 'Glasses', 'Group',
-    'Hair Play', 'Hardcore', 'Interracial', 'Italy',
-    'Japan', 'Latex', 'Latina', 'Leaked', 'Lesbian', 'Lesbian Tribbing', 'LGBTQ+',
+    'All', 'Adult', 'Adult Chat', 'Adult Games', 'AI NSFW', 'Amateur', 'Anal', 'Anime', 'Argentina',
+    'ASMR Erotic', 'Asia', 'Asian',
+    'BDSM', 'BDSM Lite', 'BBW', 'Big Ass', 'Big Tits', 'Black', 'Blonde', 'Blowjob', 'Brazil',
+    'Brunette', 'Bukkake',
+    'Celebrity', 'Celebrity Lookalike', 'China', 'Chinese AV', 'Colombia', 'Cosplay', 'Costume',
+    'Creampie', 'Cuckold',
+    'Dating & Hookup', 'Deepthroat', 'Discord', 'Domination', 'Doujin & Manga', 'Double Penetration',
+    'Ebony', 'Erotic Horror',
+    'Fansly', 'Fantasy', 'Feet', 'Femdom', 'Fetish', 'France', 'Free-use', 'Furry',
+    'Gangbang', 'Gay', 'Germany', 'GIFs & Clips', 'Glasses', 'Glory Hole', 'Goth & Alt', 'Group',
+    'Hair Play', 'Hardcore', 'Hentai', '3D Hentai', 'India', 'Instagram Models', 'Interracial', 'Italy',
+    'Japan', 'JAV',
+    'Latex', 'Latina', 'Leaked', 'Lesbian', 'Lesbian Tribbing', 'LGBTQ+', 'Live Cam',
     'Masturbation', 'Mature', 'Medical', 'Mexico', 'MILF', 'Mind Control',
-    'NSFW-Telegram', 'Office', 'Onlyfans', 'Onlyfans Leaks', 'Oral', 'Outdoor',
-    'Pet Play', 'Petite', 'Philippines', 'Porn-Telegram', 'POV', 'Privacy', 'Public',
-    'Red Hair', 'Roleplay', 'Romantic', 'Russian',
-    'SFW', 'Spain', 'Spanking', 'Squirting', 'Steampunk', 'Submission',
-    'Taboo', 'Tease & Denial', 'Telegram-Porn', 'Threesome', 'Tickling', 'Trans',
-    'UK', 'Ukraine', 'Uniforms', 'USA', 'Vietnam', 'Vintage', 'Voyeur',
+    'NSFW-Telegram', 'Nylon & Pantyhose',
+    'Office', 'Onlyfans', 'Onlyfans Leaks', 'Oral', 'Outdoor',
+    'Patreon', 'Pet Play', 'Petite', 'Philippines', 'Porn-Telegram', 'Pornhub', 'POV', 'Privacy', 'Public',
+    'Red Hair', 'Reddit', 'Roleplay', 'Romantic', 'Russian',
+    'SFW', 'Snapchat', 'Spain', 'Spanking', 'Squirting', 'Steampunk', 'Submission',
+    'Taboo', 'Tease & Denial', 'Teen 18+', 'Telegram-Porn', 'Threesome', 'Tickling', 'TikTok', 'Trans',
+    'UK', 'Ukraine', 'Uncensored AV', 'Uniforms', 'USA',
+    'Vietnam', 'Vintage', 'Voyeur',
+    '4K & HD',
 ];
 
 // Legacy country list — kept ONLY for SEO backward-compat of /country/[slug] routes.
@@ -71,3 +94,30 @@ export const visibleCategories = allCategories.filter(c => !HIDDEN_CATEGORIES.ha
 export const categories = allCategories;
 export const countries = allCountries;
 export const filterCountries = allCountries;
+
+/**
+ * Canonical URL slug for a category on /best-telegram-groups/[category].
+ * Spaces + "&" → hyphens (e.g. "AI NSFW" → "ai-nsfw", "Goth & Alt" → "goth-alt").
+ * This is the ONE source of truth — all links + sitemap MUST use this so Google
+ * only ever sees the hyphenated form. Old %20/space URLs 301 to this in middleware.
+ */
+export function categorySlug(category: string): string {
+  return category
+    .toLowerCase()
+    .replace(/&/g, ' ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+/** Resolve a URL slug (hyphenated OR legacy space form) back to the real category name. */
+export function categoryFromSlug(slug: string): string | undefined {
+  const decoded = decodeURIComponent(slug).toLowerCase();
+  return categories.find(
+    (c) => c.toLowerCase() === decoded || categorySlug(c) === decoded,
+  );
+}
+
+/** Groups feed: unified batch size on /groups and each /groups/page/N (mobile + desktop). */
+export const GROUPS_FEED_PAGE_SIZE = 32;
+/** Minimum listings a category needs to appear in the "Trending Group Categories" row. */
+export const TRENDING_CATEGORY_MIN_COUNT = 20;

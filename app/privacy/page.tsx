@@ -1,8 +1,18 @@
 import { Metadata } from 'next';
+import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+
+const title = 'Privacy Policy – erogram.pro';
+const description = 'Learn how erogram.pro collects, uses, and protects your personal information. Our privacy policy covers data handling, cookies, and your rights.';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy – erogram.pro',
-  description: 'Learn how erogram.pro collects, uses, and protects your personal information. Our privacy policy covers data handling, cookies, and your rights.',
+  title,
+  description,
+  ...buildSocialMeta({
+    title,
+    description,
+    url: `${CANONICAL_BASE}/privacy`,
+    type: 'website',
+  }),
 };
 
 export default function PrivacyPage() {

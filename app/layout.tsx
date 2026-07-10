@@ -7,6 +7,8 @@ import ClarityScript from "@/components/ClarityScript";
 import { getLocale, getPathname } from "@/lib/i18n/server";
 import { getDictionary, LocaleProvider } from "@/lib/i18n";
 import { LOCALES, localePath, LOCALE_HREFLANG, DEFAULT_LOCALE } from "@/lib/i18n/config";
+import { switchLocalePath } from "@/lib/i18n/switchLocalePath";
+import { buildSocialMeta } from "@/lib/seo/socialMeta";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -60,6 +62,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
   // Self-referencing canonical — each locale owns its own URL
   const canonical = `${canonicalBase}${pathname === '/' ? '' : pathname}` || canonicalBase;
+  const isBlog = pathname === '/blog' || pathname.startsWith('/blog/');
 
   return {
     title: { default: title, template: "%s | Erogram" },
@@ -69,28 +72,26 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(siteUrl),
     alternates: {
       canonical,
-      languages: Object.fromEntries(
-        LOCALES.map(loc => [
-          LOCALE_HREFLANG[loc],
-          `${canonicalBase}${localePath(
-            locale !== DEFAULT_LOCALE ? pathname.replace(new RegExp(`^/${locale}`), '') || '/' : pathname,
-            loc
-          )}`,
-        ])
-      ),
+      ...(isBlog
+        ? {}
+        : {
+            languages: {
+              ...Object.fromEntries(
+                LOCALES.map(loc => [
+                  LOCALE_HREFLANG[loc],
+                  `${canonicalBase}${switchLocalePath(pathname, locale, loc)}`,
+                ])
+              ),
+              'x-default': `${canonicalBase}${switchLocalePath(pathname, locale, 'en')}`,
+            },
+          }),
     },
-    openGraph: {
+    ...buildSocialMeta({
       title,
       description,
-      type: "website",
-      siteName: "Erogram",
       url: canonical,
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-    },
+      type: 'website',
+    }),
     robots: {
       index: true,
       follow: true,
@@ -115,6 +116,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const locale = await getLocale();
+  const pathname = await getPathname();
   const dict = await getDictionary(locale);
 
   return (
@@ -154,7 +156,7 @@ export default async function RootLayout({
 
         <ClarityScript />
 
-        <LocaleProvider locale={locale} dict={dict}>
+        <LocaleProvider locale={locale} dict={dict} publicPathname={pathname}>
           <LayoutWrapper>
             {children}
           </LayoutWrapper>

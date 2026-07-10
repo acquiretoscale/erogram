@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
-import { useLocale, useLocalePath } from '@/lib/i18n/client';
-import { LOCALES, type Locale, localePath as buildLocalePath } from '@/lib/i18n/config';
+import { useLocale, useLocalePath, usePublicPathname } from '@/lib/i18n/client';
+import { LOCALES, LOCALE_FLAGS, LOCALE_NAMES, switchLocalePath, type Locale } from '@/lib/i18n';
 import { getMyListingsSummary } from '@/lib/actions/myListings';
 import { getMyAINSFWSummary } from '@/lib/actions/myAINSFWListings';
 import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
@@ -34,13 +34,11 @@ function MastheadAdSlot() {
   );
 }
 
-const LOCALE_FLAGS: Record<Locale, string> = { en: '🇺🇸', de: '🇩🇪', es: '🇪🇸' };
-const LOCALE_NAMES: Record<Locale, string> = { en: 'English', de: 'Deutsch', es: 'Español' };
+const LOCALE_SHORT: Record<Locale, string> = { en: 'En', de: 'De', es: 'Es', pt: 'Pt' };
 
 function MastheadLangSwitcher() {
   const { locale } = useLocale();
-  const rawPathname = usePathname();
-  const currentPath = (rawPathname || '/').replace(/^\/(de|es)/, '') || '/';
+  const pathForSwitch = usePublicPathname();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -58,9 +56,10 @@ function MastheadLangSwitcher() {
       <button
         onClick={() => setOpen(!open)}
         aria-label="Change language"
-        className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-white/10 transition-colors"
+        className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-white/10 transition-colors"
       >
         <span className="text-base leading-none" suppressHydrationWarning>{LOCALE_FLAGS[locale]}</span>
+        <span className="text-[13px] font-semibold text-white/90" suppressHydrationWarning>{LOCALE_SHORT[locale]}</span>
         <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`text-white/50 transition-transform ${open ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6" /></svg>
       </button>
       <AnimatePresence>
@@ -75,7 +74,7 @@ function MastheadLangSwitcher() {
             {LOCALES.map((l) => (
               <a
                 key={l}
-                href={buildLocalePath(currentPath, l)}
+                href={switchLocalePath(pathForSwitch, locale, l)}
                 onClick={() => setOpen(false)}
                 className={`flex items-center gap-2.5 px-3.5 py-2 text-[13px] transition-colors ${locale === l ? 'text-white bg-white/5 font-medium' : 'text-[#cfc9c2] hover:text-white hover:bg-white/5'}`}
               >
@@ -91,13 +90,13 @@ function MastheadLangSwitcher() {
 }
 
 // Real Erogram menu elements (OFsearch is rendered separately as a dropdown)
-const NAV_PRE = [
+const NAV_PRE: Array<{ label: string; href: string; badge?: string }> = [
   { label: 'Groups', href: '/groups' },
   { label: 'Bots', href: '/bots' },
   { label: 'AI NSFW', href: '/ainsfw' },
 ];
 
-const NAV_POST = [
+const NAV_POST: Array<{ label: string; href: string; badge?: string }> = [
   { label: 'Blog', href: '/blog' },
 ];
 
@@ -191,13 +190,13 @@ function OFsearchNav() {
 
             <div className="px-3.5 pt-3 pb-1.5 flex items-center justify-between">
               <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#9a928a]">Best OnlyFans Accounts</span>
-              <Link href="/best-onlyfans-accounts" className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#00AFF0] hover:text-[#0089c7] transition-colors">All →</Link>
+              <Link href="/onlyfanssearch" className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#00AFF0] hover:text-[#0089c7] transition-colors">All →</Link>
             </div>
             <div className="grid grid-cols-3 gap-px px-2 pb-3">
               {OF_CATEGORIES.map((cat) => (
                 <Link
                   key={cat.slug}
-                  href={`/best-onlyfans-accounts/${cat.slug}`}
+                  href={`/onlyfanssearch/top-10-${cat.slug}-onlyfans-models`}
                   className="px-2 py-1.5 rounded-lg text-[11px] font-semibold text-[#4a443d] hover:text-[#00AFF0] hover:bg-[#00AFF0]/[0.06] transition-colors truncate"
                 >
                   {cat.name}
@@ -367,6 +366,8 @@ function MastheadUserMenu({ accent, auth, lp }: { accent: string; auth: Masthead
             {isPremium && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${accent}26`, color: accent }}>VIP</span>}
           </div>
 
+          {!isPremium && <UpgradePremiumButton href={lp('/premium')} onClick={() => setOpen(false)} />}
+
           {listings?.hasListings && (
             <Link href={lp('/my-listings')} onClick={() => setOpen(false)} className={item}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 11 18-5v12L3 14v-3z" /><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" /></svg>
@@ -427,19 +428,38 @@ function MastheadUserMenu({ accent, auth, lp }: { accent: string; auth: Masthead
 const NB = 'w-full flex items-center justify-start gap-3 rounded-full bg-[#2B1B28] text-[#FDFDFD] pl-4 pr-5 py-3.5 text-[13px] font-bold tracking-[0.02em] border border-white/10 hover:opacity-90 active:opacity-100 transition-all duration-150';
 const MENU_LABEL = 'text-center text-[11px] font-extrabold tracking-[0.28em] uppercase font-[family-name:var(--font-inter-tight)]';
 
+// Golden UPGRADE PREMIUM styling — shared across desktop dropdown + mobile menu.
+const GOLD_BG = 'linear-gradient(135deg, #b8860b 0%, #ffd700 40%, #fff8b0 55%, #ffd700 70%, #b8860b 100%)';
+const GOLD_SHADOW = '0 4px 18px -6px rgba(255,215,0,0.55), inset 0 1px 0 rgba(255,255,255,0.4)';
+
+function UpgradePremiumButton({ href, onClick }: { href: string; onClick?: () => void }) {
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      className="mx-2 my-1.5 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-black text-[#1a0f00] tracking-tight transition-all hover:brightness-105 active:scale-[0.98]"
+      style={{ background: GOLD_BG, boxShadow: GOLD_SHADOW }}
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="#1a0f00" className="shrink-0" aria-hidden><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z" /></svg>
+      UPGRADE PREMIUM
+    </Link>
+  );
+}
+
 function MobileNavMenu({ open, lp, onClose }: { open: boolean; lp: (p: string) => string; onClose: () => void }) {
   const [ofOpen, setOfOpen] = useState(false);
   const { locale } = useLocale();
-  const rawPathname = usePathname();
-  const currentPath = (rawPathname || '/').replace(/^\/(de|es)/, '') || '/';
+  const pathForSwitch = usePublicPathname();
   const currentMonthYear = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const item = 'flex items-center gap-3 px-4 py-2.5 text-[14px] text-[#cfc9c2] hover:text-white hover:bg-white/[0.05] active:bg-white/[0.08] transition-colors';
 
   // Scannable icons for top-tier mobile menu affordance (left icon + label).
   const navIcon = (label: string) => {
-    if (label === 'Groups') return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
-    if (label === 'Bots') return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/><circle cx="8" cy="16" r="1"/><circle cx="16" cy="16" r="1"/></svg>;
+    if (label === 'Groups') return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+    if (label === 'Bots') return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/><circle cx="8" cy="16" r="1"/><circle cx="16" cy="16" r="1"/></svg>;
     if (label === 'AI NSFW') return <span className="text-[15px] leading-none">🔞</span>;
-    return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>;
+    return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>;
   };
 
   return (
@@ -450,58 +470,69 @@ function MobileNavMenu({ open, lp, onClose }: { open: boolean; lp: (p: string) =
       transition={{ duration: 0.3 }}
     >
       <div className="px-4 pb-5 pt-3 space-y-3 bg-black">
-        <div className="space-y-2">
-          <p className={`${MENU_LABEL} text-[#c0392f]/70`}>Explore</p>
-          <Link href="/trending" onClick={onClose} className={`${NB} !justify-center`}>TRENDING</Link>
+        <div className="bg-[#161412] border border-white/10 rounded-xl overflow-hidden py-1">
+          <div className="px-4 py-2.5 text-[13px] font-semibold text-white/50 border-b border-white/[0.06]">Explore</div>
+
           {NAV_PRE.map((n) => (
-            <Link key={n.label} href={lp(n.href)} onClick={onClose} className={NB}>
+            <Link key={n.label} href={lp(n.href)} onClick={onClose} className={item}>
               {navIcon(n.label)}
-              <span>{n.label}</span>
+              <span className="flex-1">{n.label}</span>
+              {n.badge && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#c0392f] text-white">{n.badge}</span>}
             </Link>
           ))}
 
-          {/* OFsearch — money row, emphasized brand button */}
-          <Link href="/onlyfanssearch" onClick={onClose} className={`${NB} gap-2 !bg-[#00AFF0] !text-white !border-transparent !justify-center`}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="white" aria-hidden className="shrink-0"><path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z"/></svg>
-            <span>OFsearch</span>
+          {/* OFsearch — money row, brand accent */}
+          <Link href="/onlyfanssearch" onClick={onClose} className={item}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="#00AFF0" aria-hidden className="shrink-0"><path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z"/></svg>
+            <span className="flex-1 font-semibold text-[#38c0f5]">OFsearch</span>
           </Link>
-          <button onClick={() => setOfOpen(!ofOpen)} className="group w-full flex items-center justify-center gap-2 rounded-full border-2 border-[#00AFF0] bg-white px-5 py-3 text-[10px] font-extrabold tracking-[0.12em] uppercase text-[#00AFF0] font-[family-name:var(--font-baloo)] hover:bg-[#00AFF0] hover:text-white hover:-translate-y-0.5 active:translate-y-[1px] transition-all duration-150">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden className="shrink-0"><path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z"/></svg>
-            <span className="text-center leading-tight">Top 10 OnlyFans Creators by Category for {currentMonthYear}</span>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`shrink-0 transition-transform ${ofOpen ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6" /></svg>
+
+          {/* Top 10 OnlyFans — collapsible */}
+          <button onClick={() => setOfOpen(!ofOpen)} className={`${item} w-full text-left`}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="#00AFF0" aria-hidden className="shrink-0"><path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z"/></svg>
+            <span className="flex-1">Top 10 OnlyFans · {currentMonthYear}</span>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`shrink-0 text-white/50 transition-transform ${ofOpen ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6" /></svg>
           </button>
           {ofOpen && (
-            <div>
-              <p className="text-center text-[9px] font-black tracking-[0.22em] uppercase text-[#00AFF0]/60 pb-1.5 pt-0.5">Best OnlyFans Accounts</p>
+            <div className="px-3 pb-2 pt-0.5">
               <div className="grid grid-cols-3 gap-1.5">
                 {OF_CATEGORIES.map((cat) => (
-                  <Link key={cat.slug} href={`/best-onlyfans-accounts/${cat.slug}`} className="text-center px-1.5 py-2 rounded-xl border-2 border-[#00AFF0]/40 bg-white text-[11px] font-bold text-[#2B1B28] hover:bg-[#00AFF0] hover:text-white hover:border-[#00AFF0] hover:-translate-y-0.5 active:translate-y-[1px] shadow-[0_1px_2px_0_rgba(0,0,0,0.06)] transition-all truncate">{cat.name}</Link>
+                  <Link key={cat.slug} href={`/onlyfanssearch/top-10-${cat.slug}-onlyfans-models`} onClick={onClose} className="text-center px-1.5 py-1.5 rounded-lg border border-[#00AFF0]/25 bg-[#00AFF0]/[0.06] text-[11px] font-semibold text-[#38c0f5] hover:bg-[#00AFF0] hover:text-white transition-colors truncate">{cat.name}</Link>
                 ))}
               </div>
             </div>
           )}
 
+          <Link href={lp('/tags')} onClick={onClose} className={item}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+            <span className="flex-1">Tags</span>
+          </Link>
+          <Link href="/trending" onClick={onClose} className={item}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            <span className="flex-1 font-semibold text-red-500">TRENDING</span>
+          </Link>
           {NAV_POST.map((n) => (
-            <Link key={n.label} href={n.href} onClick={onClose} className={NB}>
+            <Link key={n.label} href={n.href} onClick={onClose} className={item}>
               {navIcon(n.label)}
-              <span>{n.label}</span>
+              <span className="flex-1">{n.label}</span>
+              {n.badge && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#c0392f] text-white">{n.badge}</span>}
             </Link>
           ))}
         </div>
 
         {/* Language */}
-        <div className="space-y-2 pt-1">
-          <p className={`${MENU_LABEL} text-white/40`}>Language</p>
-          <div className="grid grid-cols-3 gap-2">
+        <div className="bg-[#161412] border border-white/10 rounded-xl overflow-hidden py-1">
+          <div className="px-4 py-2.5 text-[13px] font-semibold text-white/50 border-b border-white/[0.06]">Language</div>
+          <div className="grid grid-cols-3 gap-1.5 p-2">
             {LOCALES.map((l) => (
               <a
                 key={l}
-                href={buildLocalePath(currentPath, l)}
+                href={switchLocalePath(pathForSwitch, locale, l)}
                 onClick={onClose}
-                className={`${NB} !py-2.5 gap-1.5 !justify-center ${locale === l ? '!bg-[#1a1014] !text-white !border-transparent' : ''}`}
+                className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-[12px] font-semibold transition-colors ${locale === l ? 'bg-white/10 text-white' : 'text-[#cfc9c2] hover:bg-white/[0.05]'}`}
               >
                 <span className="text-base leading-none">{LOCALE_FLAGS[l]}</span>
-                <span className="text-[12px]">{LOCALE_NAMES[l]}</span>
+                <span>{LOCALE_NAMES[l]}</span>
               </a>
             ))}
           </div>
@@ -512,18 +543,9 @@ function MobileNavMenu({ open, lp, onClose }: { open: boolean; lp: (p: string) =
 }
 
 function MobileUserMenu({ open, auth, lp, onClose }: { open: boolean; auth: MastheadAuth; lp: (p: string) => string; onClose: () => void }) {
-  const { mounted, username, isAdmin, listings, ainsfw, logout } = auth;
+  const { mounted, username, isPremium, isAdmin, listings, ainsfw, logout } = auth;
   const campaignsLabel = listings?.hasPaidCampaign ? 'My Campaigns' : 'My Listings';
-
-  const accIcon = (label: string) => {
-    if (label.includes('Campaign') || label.includes('Listing')) return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>;
-    if (label === 'My AI NSFW') return <span className="text-[14px]">🔞</span>;
-    if (label === 'Admin Panel' || label === 'OF Admin') return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>;
-    if (label === 'Profile') return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
-    if (label === 'Saved') return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>;
-    if (label === 'Support') return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>;
-    return null;
-  };
+  const item = 'flex items-center gap-3 px-4 py-2.5 text-[14px] text-[#cfc9c2] hover:text-white hover:bg-white/[0.05] active:bg-white/[0.08] transition-colors';
 
   return (
     <motion.div
@@ -532,25 +554,69 @@ function MobileUserMenu({ open, auth, lp, onClose }: { open: boolean; auth: Mast
       animate={{ height: open ? 'auto' : 0, opacity: open ? 1 : 0 }}
       transition={{ duration: 0.3 }}
     >
-      <div className="px-4 pb-5 pt-3 space-y-2 bg-black" suppressHydrationWarning>
-        <p className={`${MENU_LABEL} text-white/55`}>Account</p>
+      <div className="px-4 pb-5 pt-3 bg-black" suppressHydrationWarning>
         {mounted && username ? (
-          <>
+          <div className="bg-[#161412] border border-white/10 rounded-xl overflow-hidden py-1">
+            <div className="px-4 py-2.5 text-[13px] font-semibold text-white/50 border-b border-white/[0.06] flex items-center gap-2">
+              {username}
+              {isPremium && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20">VIP</span>}
+            </div>
+
+            {!isPremium && <UpgradePremiumButton href={lp('/premium')} onClick={onClose} />}
+
             {listings?.hasListings && (
-              <Link href={lp('/my-listings')} onClick={onClose} className={`${NB} !bg-[#00AFF0] !text-white !border-transparent !justify-center`}>{accIcon(campaignsLabel)}{campaignsLabel}{!!listings.inReviewCount && <span className="ml-2 normal-case tracking-normal text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/25">{listings.inReviewCount} in review</span>}</Link>
+              <Link href={lp('/my-listings')} onClick={onClose} className={item}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+                <span className="flex-1">{campaignsLabel}</span>
+                {!!listings.inReviewCount && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20">{listings.inReviewCount} in review</span>}
+              </Link>
             )}
             {ainsfw?.hasListings && (
-              <Link href="/ai-nsfw-listings" onClick={onClose} className={`${NB} !bg-[#e8b923] !border-transparent !justify-center`}>{accIcon('My AI NSFW')}My AI NSFW{!!ainsfw.inReviewCount && <span className="ml-2 normal-case tracking-normal text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-black/15">{ainsfw.inReviewCount} in review</span>}</Link>
+              <Link href="/ai-nsfw-listings" onClick={onClose} className={item}>
+                <span className="text-[14px] leading-none">🔞</span>
+                <span className="flex-1">My AI NSFW</span>
+                {!!ainsfw.inReviewCount && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20">{ainsfw.inReviewCount} in review</span>}
+              </Link>
             )}
-            {isAdmin && <Link href="/admin" onClick={onClose} className={`${NB} !bg-[#e8b923] !border-transparent !justify-center`}>{accIcon('Admin Panel')}Admin Panel</Link>}
-            {isAdmin && <Link href="/OF" onClick={onClose} className={NB}>{accIcon('OF Admin')}OF Admin</Link>}
-            <Link href={lp('/profile')} onClick={onClose} className={NB}>{accIcon('Profile')}Profile</Link>
-            <Link href={`${lp('/profile')}?tab=saved`} onClick={onClose} className={NB}>{accIcon('Saved')}Saved</Link>
-            <Link href={`${lp('/profile')}?tab=settings`} onClick={onClose} className={NB}>{accIcon('Support')}Support</Link>
-            <button onClick={() => { logout(); onClose(); }} className={`${NB} !bg-[#1a1014] !text-white !border-transparent !justify-center`}>Logout</button>
-          </>
+            {isAdmin && (
+              <Link href="/admin" onClick={onClose} className={item}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                Admin Panel
+              </Link>
+            )}
+            {isAdmin && (
+              <Link href="/OF" onClick={onClose} className={item}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M8 12h8M12 8v8"/></svg>
+                OF Admin
+              </Link>
+            )}
+            <Link href={lp('/profile')} onClick={onClose} className={item}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>
+              Profile
+            </Link>
+            <Link href={`${lp('/profile')}?tab=saved`} onClick={onClose} className={item}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
+              Saved
+            </Link>
+            <Link href="/blog" onClick={onClose} className={item}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              Blog
+            </Link>
+            <Link href={`${lp('/profile')}?tab=settings`} onClick={onClose} className={item}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Support
+            </Link>
+            <div className="border-t border-white/[0.06] mt-1 pt-1">
+              <button onClick={() => { logout(); onClose(); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-[14px] text-white/40 hover:text-red-400 hover:bg-red-500/5 transition-colors text-left">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                Logout
+              </button>
+            </div>
+          </div>
         ) : (
-          <Link href={lp('/login')} onClick={onClose} className={`${NB} !bg-[#1a1014] !text-white !border-transparent !justify-center`}>Login</Link>
+          <Link href={lp('/login')} onClick={onClose} className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#161412] border border-white/10 text-[14px] font-bold text-white hover:bg-white/[0.06] transition-colors">
+            Login
+          </Link>
         )}
       </div>
     </motion.div>
@@ -559,13 +625,10 @@ function MobileUserMenu({ open, auth, lp, onClose }: { open: boolean; auth: Mast
 
 // OnlyFans-blue routes get the blue accent; everything else uses Erogram dark red.
 function accentForPath(pathname: string): string {
-  const p = (pathname || '/').replace(/^\/(de|es)/, '') || '/';
+  const p = (pathname || '/').replace(/^\/(de|es|pt)/, '') || '/';
   if (
     p === '/onlyfanssearch' ||
     p.startsWith('/onlyfanssearch/') ||
-    p.startsWith('/best-onlyfans-accounts') ||
-    p.startsWith('/best-onlyfans-creators') ||
-    p.startsWith('/Toponlyfanscreators') ||
     p.endsWith('-onlyfans')
   ) {
     return '#00AFF0';
@@ -602,34 +665,49 @@ export function EditorialMasthead({ accent, fixed = false }: { accent?: string; 
         {/* Desktop nav — uppercase, letter-spaced, muted. Only at lg+ where it fits;
             tablet falls back to the burger menu so no items get cut off. */}
         <nav className="hidden lg:flex flex-1 items-center gap-6 lg:gap-8">
-          <Link href="/trending" className="shrink-0 text-[13px] font-black uppercase tracking-[0.1em] text-red-500 hover:text-red-400 transition-colors">TRENDING</Link>
           {NAV_PRE.map((n) => (
             <Link
               key={n.label}
               href={lp(n.href)}
-              className="shrink-0 text-[11px] font-bold tracking-[0.18em] uppercase text-white hover:text-white/80 transition-colors"
+              className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-[0.18em] uppercase text-white hover:text-white/80 transition-colors"
             >
               {n.label}
+              {n.badge && (
+                <span className="text-[8px] font-bold tracking-[0.08em] leading-none px-1 py-0.5 rounded-[3px] bg-[#c0392f] text-white">
+                  {n.badge}
+                </span>
+              )}
             </Link>
           ))}
           <OFsearchNav />
+          <Link href={lp('/tags')} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-[0.18em] uppercase text-white hover:text-white/80 transition-colors">
+            Tags
+          </Link>
+          <Link href="/trending" className="shrink-0 inline-flex items-center gap-1 text-[13px] font-black uppercase tracking-[0.1em] text-red-500 hover:text-red-400 transition-colors">
+            TRENDING
+          </Link>
           {NAV_POST.map((n) => (
             <Link
               key={n.label}
               href={n.href}
-              className="shrink-0 text-[11px] font-bold tracking-[0.18em] uppercase text-white hover:text-white/80 transition-colors"
+              className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-[0.18em] uppercase text-white hover:text-white/80 transition-colors"
             >
               {n.label}
+              {n.badge && (
+                <span className="text-[8px] font-bold tracking-[0.08em] leading-none px-1 py-0.5 rounded-[3px] bg-[#c0392f] text-white">
+                  {n.badge}
+                </span>
+              )}
             </Link>
           ))}
-          <MastheadLangSwitcher />
         </nav>
 
-        {/* Desktop right — ad slot + Add Tool + user menu */}
-        <div className="hidden lg:flex items-center gap-2.5 shrink-0">
+        {/* Desktop right — ad slot + Add Tool + user menu + language (far right) */}
+        <div className="hidden lg:flex items-center gap-2.5 shrink-0 ml-auto">
           <MastheadAdSlot />
           <AddToolNav />
           <MastheadUserMenu accent={resolvedAccent} auth={auth} lp={lp} />
+          <MastheadLangSwitcher />
         </div>
 
         {/* Mobile + tablet — Submit + burger (nav) + avatar (account) on the far right */}
@@ -663,6 +741,7 @@ export function EditorialMasthead({ accent, fixed = false }: { accent?: string; 
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" /></svg>
             )}
           </button>
+          <MastheadLangSwitcher />
         </div>
       </div>
 
@@ -717,8 +796,9 @@ export function EditorialFooter() {
             <FooterLink href={lp('/best-telegram-groups')}>Telegram Groups</FooterLink>
             <FooterLink href={lp('/bots')}>Telegram Bots</FooterLink>
             <FooterLink href={lp('/ainsfw')}>AI NSFW Tools</FooterLink>
+            <FooterLink href="/tags">Tags</FooterLink>
             <FooterLink href="/blog">Blog &amp; Guides</FooterLink>
-            <FooterLink href={lp('/best-onlyfans-accounts')}>OnlyFans Creators</FooterLink>
+            <FooterLink href={lp('/onlyfanssearch')}>OnlyFans Creators</FooterLink>
             <FooterLink href="/trending"><span className="text-[#c0392f] font-semibold">Trending</span></FooterLink>
           </FooterCol>
 
@@ -746,6 +826,7 @@ export function EditorialFooter() {
             <FooterLink href={lp('/contact')}>Contact</FooterLink>
             <FooterLink href={lp('/terms')}>Terms</FooterLink>
             <FooterLink href={lp('/privacy')}>Privacy</FooterLink>
+            <FooterLink href={lp('/dmca')}>DMCA</FooterLink>
             <FooterLink href={lp('/onlyfanssearch')}>OFsearch</FooterLink>
           </div>
           <RtaBadge size="lg" />

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { getCreatorByUsername, getRelatedCreators, getCreatorReviews } from '@/lib/actions/ofCreatorProfile';
 import { getTrendingOnErogram } from '@/lib/actions/publicData';
 import CreatorProfileClient from '@/app/onlyfanssearch/CreatorProfileClient';
+import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 export const revalidate = 300;
 
@@ -15,10 +16,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const creator = await getCreatorByUsername(username);
   if (!creator) return { title: 'Not Found' };
 
+  const title = `${creator.name} OnlyFans — @${creator.username}`;
+  const description = `${creator.name} OnlyFans profile on Erogram.`;
+  const url = `${CANONICAL_BASE}/onlyfans/${creator.username}`;
+
   return {
-    title: `${creator.name} OnlyFans — @${creator.username}`,
-    description: `${creator.name} OnlyFans profile on Erogram.`,
-    robots: { index: false, follow: false },
+    title,
+    description,
+    ...buildSocialMeta({
+      title,
+      description,
+      url,
+      type: 'profile',
+      image: creator.avatar || creator.header,
+      imageAlt: `${creator.name} OnlyFans`,
+    }),
   };
 }
 

@@ -224,29 +224,6 @@ export default function AddClient({ categories, countries, defaultTab }: AddClie
     }, 3000);
   };
 
-  const convertToWebP = async (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-      img.onload = () => {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx?.drawImage(img, 0, 0);
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          } else reject(new Error('Failed to convert'));
-        }, 'image/webp', 0.8);
-      };
-      img.onerror = reject;
-      img.src = URL.createObjectURL(file);
-    });
-  };
-
   const handleGroupImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -325,16 +302,15 @@ export default function AddClient({ categories, countries, defaultTab }: AddClie
 
   const getImageUrl = async (imageFile: File | null): Promise<string> => {
     if (!imageFile) return PLACEHOLDER_IMAGE_URL;
-    try {
-      return await convertToWebP(imageFile);
-    } catch {
-      return await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target?.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(imageFile);
-      });
-    }
+    // Upload the file to R2 (compressed server-side) and send back only the URL.
+    // Never embed base64 in the JSON body — a phone photo blows past Vercel's
+    // 4.5MB request-body limit and the submit fails with no error message.
+    const fd = new FormData();
+    fd.append('file', imageFile);
+    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+    if (!res.ok) throw new Error('Image upload failed. Please try a smaller image.');
+    const data = await res.json();
+    return data.url as string;
   };
 
   const submitGroup = async () => {

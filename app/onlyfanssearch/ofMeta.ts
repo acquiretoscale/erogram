@@ -7,48 +7,31 @@
  * - EN uses SEO vanity URLs (/blondeonlyfans).
  * - DE uses /de/onlyfans-suche/... (localized URL segment).
  * - ES uses /es/onlyfans-busca/... (localized URL segment).
+ * - PT uses /pt/onlyfans-pesquisa/... (localized URL segment).
  */
 import type { Metadata } from 'next';
-import type { Locale } from '@/lib/i18n/config';
+import { LOCALES, LOCALE_HREFLANG, OF_SEARCH_HUB, type Locale } from '@/lib/i18n/config';
 import { ofCategoryUrl } from './constants';
+import { buildSocialMeta } from '@/lib/seo/socialMeta';
 
 const BASE = 'https://erogram.pro';
 const robots = { index: true, follow: true } as const;
 
-// ── Localized URL segment for "onlyfans-search" per locale ───────────────────
-function ofSeg(locale: Locale): string {
-  if (locale === 'de') return 'onlyfans-suche';
-  if (locale === 'es') return 'onlyfans-busca';
-  return 'onlyfanssearch';
-}
-
-// ── Canonical URL per locale for each page type ─────────────────────────────
-
 function mainPath(locale: Locale) {
-  return locale === 'en' ? '/onlyfanssearch' : `/${locale}/${ofSeg(locale)}`;
+  return locale === 'en' ? '/onlyfanssearch' : `/${locale}/${OF_SEARCH_HUB[locale]}`;
 }
 function catPath(catSlug: string, locale: Locale) {
-  return locale === 'en' ? ofCategoryUrl(catSlug) : `/${locale}/${ofSeg(locale)}/${catSlug}`;
+  return locale === 'en' ? ofCategoryUrl(catSlug) : `/${locale}/${OF_SEARCH_HUB[locale]}/${catSlug}`;
 }
 function topPath(_locale: Locale) {
   return '/Toponlyfanscreators';
 }
 
-// ── Alternates: all 3 locales + x-default pointing at EN ────────────────────
-
-function alt(enPath: string, dePath: string, esPath: string, currentPath: string) {
+function alt(paths: Record<Locale, string>, currentPath: string) {
   return {
     canonical: `${BASE}${currentPath}`,
-    languages: {
-      en: `${BASE}${enPath}`,
-      de: `${BASE}${dePath}`,
-      es: `${BASE}${esPath}`,
-      'x-default': `${BASE}${enPath}`,
-    },
   };
 }
-
-// ── Main search page (/onlyfans-search) ─────────────────────────────────────
 
 export function mainOfMeta(locale: Locale): Metadata {
   const current = mainPath(locale);
@@ -57,51 +40,42 @@ export function mainOfMeta(locale: Locale): Metadata {
     en: 'OnlyFans Search Tool - Explore the Best OnlyFans Creators',
     de: 'OnlyFans Suchtool — Die besten OnlyFans Creator nach Kategorie & Land finden',
     es: 'Buscador de OnlyFans — Encuentra las Mejores Creadoras por Categoría y País',
+    pt: 'Busca OnlyFans — Encontre as Melhores Criadoras por Categoria e País',
   };
   const desc: Record<Locale, string> = {
     en: 'The best OnlyFans search tool. Find top OnlyFans creators by category, country, or name. Browse verified profiles and discover trending accounts — updated daily.',
     de: 'Das beste OnlyFans Suchtool. Finde top OnlyFans Creator nach Kategorie, Land oder Name. Verifizierte Profile entdecken und Trends folgen — täglich aktualisiert.',
     es: 'El mejor buscador de OnlyFans. Encuentra las mejores creadoras por categoría, país o nombre. Explora perfiles verificados y descubre tendencias — actualizado diariamente.',
+    pt: 'A melhor ferramenta de busca OnlyFans. Encontre as top criadoras por categoria, país ou nome. Perfis verificados e tendências — atualizado diariamente.',
   };
   const ogTitle: Record<Locale, string> = {
     en: 'OnlyFans Search Tool — Find the Best OnlyFans Creators',
     de: 'OnlyFans Suchtool — Die besten OnlyFans Creator finden',
     es: 'Buscador de OnlyFans — Las Mejores Creadoras',
-  };
-  const twTitle: Record<Locale, string> = {
-    en: 'OnlyFans Search Tool — Find the Best Creators | Erogram',
-    de: 'OnlyFans Suchtool — Die besten Creator finden | Erogram',
-    es: 'Buscador de OnlyFans — Las Mejores Creadoras | Erogram',
-  };
-  const twDesc: Record<Locale, string> = {
-    en: 'The best OnlyFans search tool. Find top creators by category, country, or name — updated daily.',
-    de: 'Das beste OnlyFans Suchtool. Creator nach Kategorie, Land oder Name finden — täglich aktualisiert.',
-    es: 'El mejor buscador de OnlyFans. Encuentra creadoras por categoría, país o nombre — actualizado diariamente.',
+    pt: 'Busca OnlyFans — As Melhores Criadoras',
   };
 
   return {
     title: title[locale],
     description: desc[locale],
-    alternates: alt('/onlyfanssearch', '/de/onlyfans-suche', '/es/onlyfans-busca', current),
+    alternates: alt(
+      {
+        en: '/onlyfanssearch',
+        de: `/de/${OF_SEARCH_HUB.de}`,
+        es: `/es/${OF_SEARCH_HUB.es}`,
+        pt: `/pt/${OF_SEARCH_HUB.pt}`,
+      },
+      current,
+    ),
     robots,
-    openGraph: {
+    ...buildSocialMeta({
       title: ogTitle[locale],
       description: desc[locale],
-      type: 'website',
       url: `${BASE}${current}`,
-      siteName: 'Erogram',
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: twTitle[locale],
-      description: twDesc[locale],
-    },
+      type: 'website',
+    }),
   };
 }
-
-// ── Category page (/blondeonlyfans, /de/onlyfans-search/blonde) ──────────────
-// `label` = English display name from constants (e.g. "Blonde") — never translated,
-// only the surrounding sentence structure changes per locale.
 
 export function categoryOfMeta(locale: Locale, catSlug: string, label: string): Metadata {
   const current = catPath(catSlug, locale);
@@ -112,6 +86,8 @@ export function categoryOfMeta(locale: Locale, catSlug: string, label: string): 
       ? `Beste ${label} OnlyFans Creator (2026) — Top ${label} Accounts & Profile`
       : locale === 'es'
       ? `Mejores Creadoras ${label} de OnlyFans (2026) — Top Cuentas ${label}`
+      : locale === 'pt'
+      ? `Melhores Criadoras ${label} de OnlyFans (2026) — Top Contas ${label}`
       : `Best ${label} OnlyFans Creators (2026) — Top ${label} Accounts & Profiles`;
 
   const desc =
@@ -119,6 +95,8 @@ export function categoryOfMeta(locale: Locale, catSlug: string, label: string): 
       ? `Nutze unser OnlyFans Suchtool für die besten ${label} Creator. Verifizierte ${l} OnlyFans Profile durchsuchen, Preise vergleichen — täglich aktualisiert.`
       : locale === 'es'
       ? `Usa nuestro buscador de OnlyFans para las mejores creadoras ${label}. Explora perfiles verificados, compara precios — actualizado diariamente.`
+      : locale === 'pt'
+      ? `Use nossa busca OnlyFans para as melhores criadoras ${label}. Perfis verificados, compare preços — atualizado diariamente.`
       : `Use our OnlyFans search tool to find the best ${l} creators. Browse verified ${l} OnlyFans profiles, compare prices, and discover top accounts — updated daily.`;
 
   const ogTitle =
@@ -126,48 +104,31 @@ export function categoryOfMeta(locale: Locale, catSlug: string, label: string): 
       ? `Beste ${label} OnlyFans Creator (2026) | Erogram`
       : locale === 'es'
       ? `Mejores Creadoras ${label} de OnlyFans (2026) | Erogram`
+      : locale === 'pt'
+      ? `Melhores Criadoras ${label} de OnlyFans (2026) | Erogram`
       : `Best ${label} OnlyFans Creators (2026) | Erogram`;
-
-  const twTitle =
-    locale === 'de'
-      ? `Beste ${label} OnlyFans Creator (2026)`
-      : locale === 'es'
-      ? `Mejores Creadoras ${label} de OnlyFans (2026)`
-      : `Best ${label} OnlyFans Creators (2026)`;
-
-  const twDesc =
-    locale === 'de'
-      ? `Top ${l} OnlyFans Accounts — verifizierte Profile vergleichen auf Erogram.`
-      : locale === 'es'
-      ? `Top cuentas ${l} de OnlyFans — explora perfiles verificados en Erogram.`
-      : `Top ${l} OnlyFans accounts — browse verified profiles and compare prices on Erogram.`;
 
   return {
     title,
     description: desc,
     alternates: alt(
-      ofCategoryUrl(catSlug),
-      `/de/onlyfans-suche/${catSlug}`,
-      `/es/onlyfans-busca/${catSlug}`,
+      {
+        en: ofCategoryUrl(catSlug),
+        de: `/de/${OF_SEARCH_HUB.de}/${catSlug}`,
+        es: `/es/${OF_SEARCH_HUB.es}/${catSlug}`,
+        pt: `/pt/${OF_SEARCH_HUB.pt}/${catSlug}`,
+      },
       current,
     ),
     robots,
-    openGraph: {
+    ...buildSocialMeta({
       title: ogTitle,
       description: desc,
-      type: 'website',
       url: `${BASE}${current}`,
-      siteName: 'Erogram',
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: twTitle,
-      description: twDesc,
-    },
+      type: 'website',
+    }),
   };
 }
-
-// ── Top creators page (/Toponlyfanscreators) ────────────────────────────────
 
 export function topCreatorsOfMeta(locale: Locale): Metadata {
   const current = topPath(locale);
@@ -176,44 +137,39 @@ export function topCreatorsOfMeta(locale: Locale): Metadata {
     en: 'Top OnlyFans Creators in 2026 — Most Popular Accounts Ranked | Erogram',
     de: 'Top OnlyFans Creator 2026 — Beliebteste Accounts im Ranking | Erogram',
     es: 'Top Creadoras de OnlyFans 2026 — Las Más Populares en el Ranking | Erogram',
+    pt: 'Top Criadoras de OnlyFans 2026 — As Mais Populares no Ranking | Erogram',
   };
   const desc: Record<Locale, string> = {
     en: 'Discover the most popular OnlyFans creators in 2026. Ranked by likes and subscriber count on the best OnlyFans search tool — updated daily.',
     de: 'Entdecke die beliebtesten OnlyFans Creator 2026. Gerankt nach Likes und Abonnenten mit dem besten OnlyFans Suchtool — täglich aktualisiert.',
     es: 'Descubre las creadoras de OnlyFans más populares en 2026. Clasificadas por likes y suscriptores en el mejor buscador de OnlyFans — actualizado diariamente.',
+    pt: 'Descubra as criadoras de OnlyFans mais populares em 2026. Classificadas por likes e assinantes na melhor busca OnlyFans — atualizado diariamente.',
   };
   const ogTitle: Record<Locale, string> = {
     en: 'Top OnlyFans Creators in 2026 | Erogram',
     de: 'Top OnlyFans Creator 2026 | Erogram',
     es: 'Top Creadoras de OnlyFans 2026 | Erogram',
-  };
-  const twDesc: Record<Locale, string> = {
-    en: 'Most popular OnlyFans accounts in 2026, ranked by likes and subscribers — updated daily.',
-    de: 'Beliebteste OnlyFans Accounts 2026, gerankt nach Likes und Abonnenten — täglich aktualisiert.',
-    es: 'Las cuentas OnlyFans más populares en 2026, clasificadas por likes y suscriptores — actualizado diariamente.',
+    pt: 'Top Criadoras de OnlyFans 2026 | Erogram',
   };
 
   return {
     title: title[locale],
     description: desc[locale],
     alternates: alt(
-      '/Toponlyfanscreators',
-      '/Toponlyfanscreators',
-      '/Toponlyfanscreators',
+      {
+        en: '/Toponlyfanscreators',
+        de: '/Toponlyfanscreators',
+        es: '/Toponlyfanscreators',
+        pt: '/Toponlyfanscreators',
+      },
       current,
     ),
     robots,
-    openGraph: {
+    ...buildSocialMeta({
       title: ogTitle[locale],
       description: desc[locale],
-      type: 'website',
       url: `${BASE}${current}`,
-      siteName: 'Erogram',
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: title[locale],
-      description: twDesc[locale],
-    },
+      type: 'website',
+    }),
   };
 }

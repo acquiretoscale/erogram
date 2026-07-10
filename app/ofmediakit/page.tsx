@@ -1,28 +1,24 @@
 import { Metadata } from 'next';
 import OFMAdsClient from './OFMAdsClient';
+import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-const canonicalBase = 'https://erogram.pro';
+const canonicalBase = CANONICAL_BASE;
+const ofmTitle = 'OFM Boost — OnlyFans Ads on Erogram';
+const ofmDescription =
+  'Promote your OnlyFans on Erogram. Reach high-intent fans actively searching for creators.';
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
-  title: 'OFM Boost — OnlyFans Ads on Erogram',
+  title: ofmTitle,
   description:
     'OFM Boost: promote your OnlyFans on Erogram. Reach high-intent fans searching for creators. Keyword targeting, video & photo ads, Tier-1 & Tier-2 traffic.',
   alternates: { canonical: `${canonicalBase}/ofmediakit` },
-  openGraph: {
-    title: 'OFM Boost — OnlyFans Ads on Erogram',
-    description:
-      'Promote your OnlyFans on Erogram. Reach high-intent fans actively searching for creators.',
-    type: 'website',
+  ...buildSocialMeta({
+    title: ofmTitle,
+    description: ofmDescription,
     url: `${canonicalBase}/ofmediakit`,
-    siteName: 'Erogram',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'OFM Boost — OnlyFans Ads on Erogram',
-    description:
-      'Promote your OnlyFans on Erogram. Reach high-intent fans actively searching for creators.',
-  },
+    type: 'website',
+  }),
 };
 
 export default function OFMAdsPage() {

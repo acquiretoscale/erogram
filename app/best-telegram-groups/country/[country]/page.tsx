@@ -7,6 +7,7 @@ import connectDB from '@/lib/db/mongodb';
 import { Group, BestGroupPick } from '@/lib/models';
 import { countries } from '@/app/groups/constants';
 import Navbar from '@/components/Navbar';
+import { buildSocialMeta } from '@/lib/seo/socialMeta';
 
 interface PageProps {
     params: Promise<{ country: string }>;
@@ -46,17 +47,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     });
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
+    const canonical = `${siteUrl}/best-telegram-groups/country/${decodedSlug}`;
+    const ogTitle = `10 Best ${realCountry} Telegram Groups (${year})`;
+    const ogDescription = `Discover the top 10 best ${realCountry} Telegram groups and channels in ${year}. Curated, verified list of the most popular and active adult communities in ${realCountry}.`;
     const meta = {
         title: `10 Best ${realCountry} Telegram Groups & Channels (${year})`,
         description: `Discover the top 10 best ${realCountry} Telegram groups and channels in ${year}. Curated, verified list of the most popular and active adult communities in ${realCountry}. Join free on Erogram.pro.`,
-        openGraph: {
-            title: `10 Best ${realCountry} Telegram Groups (${year})`,
-            description: `Discover the top 10 best ${realCountry} Telegram groups and channels in ${year}. Curated, verified list of the most popular and active adult communities in ${realCountry}.`,
-        },
         keywords: `${realCountry} telegram groups, ${realCountry} telegram channels, best ${realCountry} groups, telegram links ${realCountry}`,
         alternates: {
-            canonical: `${siteUrl}/best-telegram-groups/country/${decodedSlug}`,
+            canonical,
         },
+        ...buildSocialMeta({
+            title: ogTitle,
+            description: ogDescription,
+            url: canonical,
+            type: 'website',
+        }),
     };
 
     if (count === 0) {

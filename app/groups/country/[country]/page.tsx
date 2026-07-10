@@ -5,11 +5,13 @@ import { Group } from '@/lib/models';
 import GroupsClient from '../../GroupsClient';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import { getActiveCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
+import { buildSocialMeta } from '@/lib/seo/socialMeta';
+import { getGroupMetaDescription } from '@/lib/groups/metaDescriptions';
+import { getLocale } from '@/lib/i18n/server';
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
 
-// ISR: allow caching for crawl speed (randomized content may be cached within the window)
-export const revalidate = 300;
+export const dynamic = 'force-dynamic';
 
 // Country display names and SEO data
 const countryData: Record<string, { name: string; seoTitle: string; seoDescription: string; keywords: string[] }> = {
@@ -138,86 +140,49 @@ function countryUrl(country: string): string {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const locale = await getLocale();
   const { country: rawCountry } = await params;
   const country = normalizeCountryParam(rawCountry);
 
   // Special case: "/groups/country/All" is a real page for UX/shareability,
   // but canonical should be /groups to avoid duplicate-content indexing.
   if (country === 'All') {
+    const allTitle = 'Discover NSFW Telegram Groups - Browse Thousands of Communities';
+    const allDescription = 'Browse and discover thousands of NSFW Telegram groups. Find communities by category, country, and interests.';
     return {
-      title: 'Discover NSFW Telegram Groups - Browse Thousands of Communities',
+      title: allTitle,
       description: 'Browse and discover thousands of NSFW Telegram groups. Find communities by category, country, and interests. Join the best adult Telegram groups today.',
       keywords: 'NSFW telegram groups, adult telegram groups, telegram communities, adult chat groups, NSFW communities',
       alternates: {
         canonical: `${baseUrl}/groups`,
       },
-      openGraph: {
-        title: 'Discover NSFW Telegram Groups - Browse Thousands of Communities',
-        description: 'Browse and discover thousands of NSFW Telegram groups. Find communities by category, country, and interests.',
-        type: 'website',
-        siteName: 'Erogram',
+      ...buildSocialMeta({
+        title: allTitle,
+        description: allDescription,
         url: `${baseUrl}/groups`,
-        images: [
-          {
-            url: (process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${baseUrl}/assets/placeholder-no-image.png`),
-            width: 1200,
-            height: 630,
-            alt: 'Erogram Groups',
-          },
-        ],
-      },
-      twitter: {
-        card: 'summary_large_image',
-        title: 'Discover NSFW Telegram Groups - Browse Thousands of Communities',
-        description: 'Browse and discover thousands of NSFW Telegram groups. Find communities by category, country, and interests.',
-        images: [(process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${baseUrl}/assets/placeholder-no-image.png`)],
-      },
-    };
-  }
-
-  const countryInfo = countryData[country];
-
-  if (!countryInfo) {
-    return {
-      // Root layout already appends "| Erogram" via `metadata.title.template`.
-      title: `NSFW Telegram Groups in ${country}`,
-      description: `Discover the best NSFW Telegram groups in ${country}. Browse verified adult communities, dating groups, and chat rooms. Join active ${country} Telegram channels on Erogram.pro — updated daily.`,
-      alternates: {
-        canonical: countryUrl(country),
-      },
+        type: 'website',
+      }),
     };
   }
 
   const url = countryUrl(country);
+  const masterDesc = getGroupMetaDescription(country.toLowerCase(), locale) || getGroupMetaDescription(country, locale);
+
+  const title = `NSFW Telegram Groups in ${country} - ${country} Adult Communities`;
+  const description = masterDesc || `Discover the best NSFW Telegram groups in ${country}. Browse verified adult communities, dating groups, and chat rooms. Join active ${country} Telegram channels on Erogram.pro — updated daily.`;
 
   return {
-    title: countryInfo.seoTitle,
-    description: countryInfo.seoDescription,
-    keywords: countryInfo.keywords.join(', '),
+    title,
+    description,
     alternates: {
       canonical: url,
     },
-    openGraph: {
-      title: countryInfo.seoTitle,
-      description: countryInfo.seoDescription,
-      type: 'website',
-      siteName: 'Erogram',
+    ...buildSocialMeta({
+      title,
+      description,
       url,
-      images: [
-        {
-          url: (process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${baseUrl}/assets/placeholder-no-image.png`),
-          width: 1200,
-          height: 630,
-          alt: `${countryInfo.seoTitle}`,
-        },
-      ],
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: countryInfo.seoTitle,
-      description: countryInfo.seoDescription,
-      images: [(process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || `${baseUrl}/assets/placeholder-no-image.png`)],
-    },
+      type: 'website',
+    }),
   };
 }
 
@@ -233,10 +198,11 @@ async function getGroupsByCountry(country: string) {
       match.$or = [{ categories: normalizedCountry }, { country: normalizedCountry }];
     }
 
-    // Use random sampling for better discovery experience
+    // Stable sort — same groups on every crawl (newest first).
     const groups = await Group.aggregate([
       { $match: match },
-      { $sample: { size: 12 } }, // Randomly sample 12 groups
+      { $sort: { pinned: -1, createdAt: -1 } },
+      { $limit: 12 },
       {
         $lookup: {
           from: 'users',

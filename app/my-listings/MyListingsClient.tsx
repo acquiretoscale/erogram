@@ -219,7 +219,7 @@ function ListingRow({ listing, isSelected, onSelect, onUpdate }: { listing: List
         <div className="flex-1 min-w-0">
           <span className="font-bold text-gray-900 text-sm truncate block">{listing.name}</span>
           {listing.status === 'approved' && listing.slug && (
-            <a href={`/${listing.slug}`} target="_blank" rel="noopener noreferrer" className="text-[11px] font-bold text-purple-500 hover:text-purple-600 no-underline inline-flex items-center gap-0.5">View live listing ↗</a>
+            <a href={`/ainsfw/${listing.slug}`} target="_blank" rel="noopener noreferrer" className="text-[11px] font-bold text-purple-500 hover:text-purple-600 no-underline inline-flex items-center gap-0.5">View live listing ↗</a>
           )}
         </div>
         <span className="text-[9px] font-bold text-purple-500 uppercase px-1.5 py-0.5 rounded bg-purple-500/10">AI NSFW</span>

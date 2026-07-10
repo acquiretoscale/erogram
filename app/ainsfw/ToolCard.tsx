@@ -187,7 +187,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
           transition={{ duration: 0.4, delay: index * 0.04 }}
           className="h-full"
         >
-          <Link href={`/${tool.slug}`} className="block h-full" onClick={handleFeaturedClick}>
+          <Link href={`/ainsfw/${tool.slug}`} className="block h-full" onClick={handleFeaturedClick}>
             <div
               ref={cardRef}
               className="group h-full rounded-xl overflow-hidden bg-[#0a0a0a] border border-white/10 hover:border-[#22c55e]/40 transition-all flex flex-col"
@@ -202,7 +202,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                   <img
                     key={currentSrc}
                     src={currentSrc}
-                    alt={`${tool.name} — ${tool.category}`}
+                    alt={slideIdx === 0 ? `${tool.name} NSFW AI ${tool.category} tool` : `${tool.name} NSFW AI ${tool.category} screenshot ${slideIdx}`}
                     className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
                     loading={index < 8 ? 'eager' : 'lazy'}
                     onError={(e) => { (e.target as HTMLImageElement).src = placeholder; }}
@@ -347,7 +347,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
         transition={{ duration: 0.4, delay: index * 0.04 }}
         className="h-full"
       >
-        <Link href={`/${tool.slug}`} className="block h-full">
+        <Link href={`/ainsfw/${tool.slug}`} className="block h-full">
           <div
             ref={cardRef}
             className="bg-[#111] rounded-xl overflow-hidden h-full flex flex-col border border-white/10 hover:border-[#22c55e]/50 transition-all duration-150 group"
@@ -362,7 +362,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                 <img
                   key={currentSrc}
                   src={currentSrc}
-                  alt={`${tool.name} — ${tool.category}`}
+                  alt={slideIdx === 0 ? `${tool.name} NSFW AI ${tool.category} tool` : `${tool.name} NSFW AI ${tool.category} screenshot ${slideIdx}`}
                   className="w-full h-full object-cover transition-opacity duration-300"
                   loading={index < 8 ? 'eager' : 'lazy'}
                   onError={(e) => { (e.target as HTMLImageElement).src = placeholder; }}

@@ -114,9 +114,9 @@ export default function SavedModelsTab() {
             className="relative rounded-2xl overflow-hidden bg-white shadow-md"
           >
             <a
-              href={creator.url}
+              href={`/go/${creator.username}`}
               target="_blank"
-              rel="noopener noreferrer"
+              rel="noopener"
               className="group block"
             >
               <div className="relative aspect-[3/4] bg-gray-100">
@@ -167,9 +167,9 @@ export default function SavedModelsTab() {
             </button>
 
             <a
-              href={creator.url}
+              href={`/go/${creator.username}`}
               target="_blank"
-              rel="noopener noreferrer"
+              rel="noopener"
               className="flex items-center justify-center gap-1.5 py-2.5 text-sm font-bold text-[#00AFF0] hover:bg-[#00AFF0]/5 transition-colors"
             >
               Visit OnlyFans

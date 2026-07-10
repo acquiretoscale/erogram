@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { getCampaigns, updateCampaign, deleteCampaign, getCampaignPeriodClicks } from '@/lib/actions/campaigns';
-import { getBoostCampaigns, setBoostLifecycle, type BoostCampaign } from '@/lib/actions/paidCampaigns';
+import { getBoostCampaigns, setBoostLifecycle, convertBoostToPlacedCampaign, type BoostCampaign } from '@/lib/actions/paidCampaigns';
 import { getAdvertisers, updateAdvertiser } from '@/lib/actions/advertisers';
 import { PLACEMENTS, RESERVED_PLACEMENTS, AD_KEYWORDS, canonicalKeyword, type PlacementDef } from '@/lib/adPlacements';
 
@@ -224,6 +224,8 @@ export default function AdNetworkClient() {
   const [advCapMap, setAdvCapMap] = useState<Record<string, number>>({});
   const [draftAdvCap, setDraftAdvCap] = useState('');
   const [saving, setSaving] = useState(false);
+  // After converting a boost, open the resulting campaign once it appears in the reloaded list.
+  const [pendingEditId, setPendingEditId] = useState<string | null>(null);
 
   const flash = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3000); };
 
@@ -254,6 +256,13 @@ export default function AdNetworkClient() {
   }, [token]);
 
   useEffect(() => { if (token) loadCampaigns(); }, [token, loadCampaigns]);
+
+  // Once a just-converted campaign lands in the list, open it in the placement editor.
+  useEffect(() => {
+    if (!pendingEditId) return;
+    const c = campaigns.find((x) => x._id === pendingEditId);
+    if (c) { startEdit(c); setPendingEditId(null); }
+  }, [pendingEditId, campaigns]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startEdit = (c: Campaign) => {
     setEditing(c._id);
@@ -372,6 +381,22 @@ export default function AdNetworkClient() {
       flash(action === 'extend' ? `Boosted for ${days} days` : action === 'pause' ? 'Boost paused' : action === 'resume' ? 'Boost resumed' : 'Boost ended');
       await loadCampaigns();
     } catch { flash('Action failed'); }
+    setActingId(null);
+  };
+
+  // Convert a boost into a real, placeable Campaign (organic ranking stays). After it's created we
+  // reload and open the new campaign so the placement editor is ready to assign slots.
+  const convertBoost = async (c: Campaign) => {
+    if (!c.listingId || !c.entityType) return;
+    setActingId(c._id);
+    try {
+      const res = await convertBoostToPlacedCampaign(token, c.entityType, c.listingId);
+      if (res.error || !res.campaignId) { flash(res.error || 'Convert failed'); setActingId(null); return; }
+      flash(res.existed ? 'Already a placed ad — opening it' : 'Converted — now assign slots');
+      setEditing(null);
+      await loadCampaigns();
+      setPendingEditId(res.campaignId);
+    } catch { flash('Convert failed'); }
     setActingId(null);
   };
 
@@ -627,6 +652,20 @@ export default function AdNetworkClient() {
                           <div className="text-[11px] text-white/30 mt-2">
                             Boosted {c.entityType} listing — ranks organically, not a placed ad. Manage it here or on /admin/paid-campaigns; changes reflect on both.
                           </div>
+                        </div>
+                        {/* Give the boost real ad-slot visibility: create a placeable campaign (boost ranking stays). */}
+                        <div className="mt-3 rounded-lg bg-red-500/[0.06] border border-red-500/20 p-3 flex flex-wrap items-center gap-2">
+                          <div className="flex-1 min-w-[12rem]">
+                            <div className="text-sm font-semibold text-white/90">Place in ad slots</div>
+                            <div className="text-[11px] text-white/40 mt-0.5">Convert into a placeable ad to assign Top Bots / In-Feed / niche slots. Organic boost stays live.</div>
+                          </div>
+                          <button
+                            onClick={() => convertBoost(c)}
+                            disabled={actingId === c._id}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600/80 hover:bg-red-500 text-white disabled:opacity-50"
+                          >
+                            {actingId === c._id ? 'Working…' : 'Convert to placed ad'}
+                          </button>
                         </div>
                       </div>
                     )}

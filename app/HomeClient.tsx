@@ -85,6 +85,12 @@ interface NewAINsfw {
   category: string;
 }
 
+interface TopGroupCategory {
+  name: string;
+  slug: string;
+  count: number;
+}
+
 interface HomeClientProps {
   featuredArticles: Article[];
   heroCampaigns?: CampaignData[];
@@ -93,6 +99,7 @@ interface HomeClientProps {
   ofCategories?: OFCategoryPreview[];
   newestBots?: NewBot[];
   newestAINsfw?: NewAINsfw[];
+  topGroupCategories?: TopGroupCategory[];
   locale?: Locale;
 }
 
@@ -101,7 +108,48 @@ const ACTIVE_USERS_POLL = 300_000;
 // ── Shared design tokens for the fresh "Erogram 2.0" skin ─────────────
 // Glassy card surface used across every section (replaces old flat cards).
 const CARD = 'rounded-2xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-xl shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)] hover:border-[#c0392f]/60 transition-all duration-300';
-const GRADIENT_TEXT = 'text-[#c0392f]';
+
+const HERO_TITLE_GRADIENT = {
+  fontFamily: 'var(--font-bebas), sans-serif',
+  backgroundImage: 'linear-gradient(180deg, #ffffff 0%, #b0b0b0 100%)',
+} as const;
+
+const HERO_ACCENT_GRADIENT = {
+  fontFamily: 'var(--font-bebas), sans-serif',
+  backgroundImage: 'linear-gradient(180deg, #ff8a00 0%, #c0392f 100%)',
+} as const;
+
+function SectionTitle({
+  children,
+  accent,
+  suffix,
+  className = 'mb-12 sm:mb-16',
+}: {
+  children: React.ReactNode;
+  accent?: React.ReactNode;
+  suffix?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <h2
+      className={`text-4xl sm:text-5xl md:text-6xl tracking-tight leading-[0.95] uppercase text-center ${className}`}
+    >
+      <span className="bg-clip-text text-transparent" style={HERO_TITLE_GRADIENT}>{children}</span>
+      {accent != null && (
+        <>
+          {' '}
+          <span className="bg-clip-text text-transparent" style={HERO_ACCENT_GRADIENT}>{accent}</span>
+        </>
+      )}
+      {suffix != null && (
+        <>
+          {' '}
+          <span className="bg-clip-text text-transparent" style={HERO_TITLE_GRADIENT}>{suffix}</span>
+        </>
+      )}
+    </h2>
+  );
+}
 
 function useCountUp(target: number, duration = 1800) {
   const [value, setValue] = useState(0);
@@ -237,7 +285,7 @@ function useActiveUsers() {
   return count;
 }
 
-export default function HomeClient({ featuredArticles, heroCampaigns = [], newGroups = [], stats, ofCategories = [], newestBots = [], newestAINsfw = [], locale = 'en' }: HomeClientProps) {
+export default function HomeClient({ featuredArticles, heroCampaigns = [], newGroups = [], stats, ofCategories = [], newestBots = [], newestAINsfw = [], topGroupCategories = [], locale = 'en' }: HomeClientProps) {
   const { t, dict } = useTranslation();
   const lp = useLocalePath();
   const router = useRouter();
@@ -398,7 +446,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
             transition={{ duration: 0.8, ease: [0.2, 0.8, 0.2, 1], delay: 0.1 }}
             style={{
               fontFamily: 'var(--font-bebas), sans-serif',
-              backgroundImage: 'linear-gradient(180deg, #ffffff 0%, #b0b0b0 100%)',
+              backgroundImage: HERO_TITLE_GRADIENT.backgroundImage,
             }}
           >
             {t('home.heroTitle1', 'Your #1 hub for Adult Entertainment.')}
@@ -449,9 +497,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
             className="mt-20 sm:mt-32 max-w-7xl mx-auto px-4"
             style={{ willChange: 'transform, opacity' }}
           >
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-center mb-12 sm:mb-16 text-white">
-              Newest <span className={GRADIENT_TEXT}>AI NSFW Tools</span> Additions
-            </h2>
+            <SectionTitle accent="AI NSFW Tools" suffix="Additions">Newest</SectionTitle>
             <NewestRow
               items={newestAINsfw.map((tool) => ({
                 key: tool.slug,
@@ -483,9 +529,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
             className="mt-20 sm:mt-32 max-w-7xl mx-auto px-4"
             style={{ willChange: 'transform, opacity' }}
           >
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-center mb-12 sm:mb-16 text-white">
-              Newest <span className={GRADIENT_TEXT}>Telegram AI NSFW Bots</span> Additions
-            </h2>
+            <SectionTitle accent="Telegram AI NSFW Bots" suffix="Additions">Newest</SectionTitle>
             <NewestRow
               items={newestBots.map((bot) => ({
                 key: bot._id,
@@ -517,9 +561,9 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
             className="mt-20 sm:mt-40 max-w-7xl mx-auto px-4"
             style={{ willChange: 'transform, opacity' }}
           >
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-center mb-4 text-white">
-              {t('home.freshTitle1', 'Fresh')} <span className={GRADIENT_TEXT}>{t('home.freshTitle2', 'New Additions')}</span>
-            </h2>
+            <SectionTitle accent={t('home.freshTitle2', 'New Additions')} className="mb-4">
+              {t('home.freshTitle1', 'Fresh')}
+            </SectionTitle>
             <p className="text-center text-white/55 text-sm mb-12 sm:mb-16 max-w-xl mx-auto">
               {t('home.freshSubtitle', 'The latest groups added to Erogram — updated daily')}
             </p>
@@ -583,43 +627,45 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
           </motion.div>
         )}
 
-        {/* Top Lists Section */}
-        <motion.div
-          initial="initial"
-          whileInView="animate"
-          viewport={{ once: true, margin: '-100px' }}
-          variants={fadeInUp}
-          className="mt-20 sm:mt-40 max-w-7xl mx-auto px-4"
-          style={{ willChange: 'transform, opacity' }}
-        >
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-center mb-12 sm:mb-16 text-white">
-            {t('home.curatedTitle1', 'Curated')} <span className={GRADIENT_TEXT}>{t('home.curatedTitle2', 'Top Lists')}</span>
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {['Amateur', 'Anime', 'Onlyfans', 'Asian', 'Anal', 'Roleplay', 'Fetish', 'Lesbian', 'MILF', 'BDSM', 'Cosplay'].map((cat) => (
+        {/* Top Lists Section — top 16 categories by group count (same logic as /groups trending) */}
+        {topGroupCategories.length > 0 && (
+          <motion.div
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true, margin: '-100px' }}
+            variants={fadeInUp}
+            className="mt-20 sm:mt-40 max-w-7xl mx-auto px-4"
+            style={{ willChange: 'transform, opacity' }}
+          >
+            <SectionTitle accent={t('home.curatedTitle2', 'Top Lists')}>
+              {t('home.curatedTitle1', 'Curated')}
+            </SectionTitle>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {topGroupCategories.map((cat) => (
+                <Link
+                  key={cat.slug}
+                  href={lp(`/best-telegram-groups/${cat.slug}`)}
+                  className="p-4 rounded-2xl bg-white hover:bg-white/95 shadow-[0_6px_20px_-6px_rgba(0,0,0,0.4)] transition-all hover:scale-105 text-center group"
+                >
+                  <div className="text-lg font-bold text-[#0a0a0b] group-hover:text-[#c0392f] transition-colors">
+                    {t('home.bestGroups', 'Best {category} Groups').replace('{category}', cat.name)}
+                  </div>
+                  <div className="text-xs text-[#6b7280] mt-1">
+                    {t('home.topCollections', 'Top 10 Collections')}
+                  </div>
+                </Link>
+              ))}
+            </div>
+            <div className="text-center mt-8">
               <Link
-                key={cat}
-                href={lp(`/best-telegram-groups/${cat.toLowerCase()}`)}
-                className="p-4 rounded-2xl bg-white hover:bg-white/95 shadow-[0_6px_20px_-6px_rgba(0,0,0,0.4)] transition-all hover:scale-105 text-center group"
+                href={lp('/best-telegram-groups')}
+                className="text-white/55 hover:text-[#c0392f] text-sm underline underline-offset-4 transition-colors"
               >
-                <div className="text-lg font-bold text-[#0a0a0b] group-hover:text-[#c0392f] transition-colors">
-                  {t('home.bestGroups', 'Best {category} Groups').replace('{category}', cat)}
-                </div>
-                <div className="text-xs text-[#6b7280] mt-1">
-                  {t('home.topCollections', 'Top 10 Collections')}
-                </div>
+                {t('home.viewAllCategories', 'View all categories')}
               </Link>
-            ))}
-          </div>
-          <div className="text-center mt-8">
-            <Link
-              href={lp('/best-telegram-groups')}
-              className="text-white/55 hover:text-[#c0392f] text-sm underline underline-offset-4 transition-colors"
-            >
-              {t('home.viewAllCategories', 'View all categories')}
-            </Link>
-          </div>
-        </motion.div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Articles Section — English only */}
         {locale === 'en' && featuredArticles.length > 0 && (
@@ -631,9 +677,9 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
             className="mt-20 sm:mt-40 max-w-7xl mx-auto px-4"
             style={{ willChange: 'transform, opacity' }}
           >
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-center mb-12 sm:mb-16 text-white">
-              {t('home.latestTitle1', 'Latest')} <span className={GRADIENT_TEXT}>{t('home.latestTitle2', 'Articles')}</span>
-            </h2>
+            <SectionTitle accent={t('home.latestTitle2', 'Articles')}>
+              {t('home.latestTitle1', 'Latest')}
+            </SectionTitle>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {featuredArticles.map((article, idx) => (
                 <motion.div
@@ -701,9 +747,9 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
           className="mt-20 sm:mt-40 max-w-4xl mx-auto px-4"
           style={{ willChange: 'transform, opacity' }}
         >
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-center mb-12 sm:mb-16 text-white">
-            {t('home.faqTitle1', 'Frequently Asked')} <span className={GRADIENT_TEXT}>{t('home.faqTitle2', 'Questions')}</span>
-          </h2>
+          <SectionTitle accent={t('home.faqTitle2', 'Questions')}>
+            {t('home.faqTitle1', 'Frequently Asked')}
+          </SectionTitle>
           <div className="space-y-6">
             {((dict.home?.faq as { q: string; a: string }[]) || []).map((faq: { q: string; a: string }, idx: number) => (
               <motion.div
@@ -731,9 +777,9 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
           className="mt-20 sm:mt-40 max-w-5xl mx-auto px-4"
           style={{ willChange: 'transform, opacity' }}
         >
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-center mb-3 text-white">
-            {t('home.bestOfTitle1', 'Best OnlyFans Creators')} <span className={GRADIENT_TEXT}>{t('home.bestOfTitle2', 'by Category')}</span>
-          </h2>
+          <SectionTitle accent={t('home.bestOfTitle2', 'by Category')} className="mb-3">
+            {t('home.bestOfTitle1', 'Best OnlyFans Creators')}
+          </SectionTitle>
           <p className="text-center text-white/55 text-sm sm:text-base mb-10 max-w-2xl mx-auto">
             {t('home.bestOfDesc', 'Explore our curated top-10 rankings of the best OnlyFans creators in every category — updated daily.')}
           </p>

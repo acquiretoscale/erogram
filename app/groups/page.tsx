@@ -1,10 +1,8 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { headers } from 'next/headers';
 import connectDB from '@/lib/db/mongodb';
 import { Group, Bot, StorySlideContent, SiteConfig } from '@/lib/models';
 import GroupsClient from './GroupsClient';
-import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { getActiveCampaigns, getActiveFeedCampaigns, isPremiumHouseAdLive, getTrendingErogramCampaigns } from '@/lib/actions/campaigns';
 import { getFeaturedCreatorFeedItems } from '@/lib/actions/publicData';
@@ -13,9 +11,10 @@ import { listR2Files } from '@/lib/r2';
 import type { StoryCategory, StoryMediaSlide } from './types';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
-import { filterCategories } from './constants';
+import { filterCategories, GROUPS_FEED_PAGE_SIZE, TRENDING_CATEGORY_MIN_COUNT, categorySlug } from './constants';
+import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-const canonicalBase = 'https://erogram.pro';
+const canonicalBase = CANONICAL_BASE;
 
 // Which filter entries are countries vs content categories (countries live in the same list).
 const COUNTRY_FILTERS = new Set([
@@ -24,32 +23,50 @@ const COUNTRY_FILTERS = new Set([
 ]);
 
 // Build the category + country filter options, keeping only entries that have ≥1 listing.
-async function getFilterOptions(): Promise<{ categories: string[]; countries: string[] }> {
+async function getFilterOptions(): Promise<{ categories: string[]; countries: string[]; categoryCounts: Array<{ name: string; count: number }> }> {
   try {
     await connectDB();
-    const base = { status: 'approved', isAdvertisement: { $ne: true }, premiumOnly: { $ne: true }, category: { $ne: 'Hentai' } };
+    // Count across public + vault listings (category, categories, country, vaultCategories),
+    // including premium/vault groups, so high-content categories surface even when most of
+    // their depth lives in the vault. Only 'All'/'Hentai' are excluded.
+    const base = { status: 'approved', isAdvertisement: { $ne: true }, category: { $ne: 'Hentai' } };
     const counts = await Promise.all(
       filterCategories.map(async (c) => ({
         name: c,
-        count: await Group.countDocuments({ ...base, $or: [{ categories: c }, { category: c }, { country: c }] }),
+        count: await Group.countDocuments({ ...base, $or: [{ categories: c }, { category: c }, { country: c }, { vaultCategories: c }] }),
       }))
     );
     const live = counts.filter((c) => c.count > 0);
+    const categoryCounts = live.filter((c) => !COUNTRY_FILTERS.has(c.name)).sort((a, b) => b.count - a.count);
     return {
-      categories: live.filter((c) => !COUNTRY_FILTERS.has(c.name)).sort((a, b) => b.count - a.count).map((c) => c.name),
+      categories: categoryCounts.map((c) => c.name),
       countries: live.filter((c) => COUNTRY_FILTERS.has(c.name)).sort((a, b) => b.count - a.count).map((c) => c.name),
+      categoryCounts,
     };
   } catch {
-    return { categories: [], countries: [] };
+    return { categories: [], countries: [], categoryCounts: [] };
   }
 }
 
-// 🔥 Trending — top entries by listing count, reusing the already-sorted filter options.
-// Categories and countries are split (COUNTRY_FILTERS) and each capped at 6, highest count first.
+// Trending group categories: EVERY content category with 20+ listings (public + vault),
+// highest count first. Each links to the /groups feed filtered to that category
+// (newest-first) as a crawlable, descriptive category view so Google understands
+// the topic + depth. Fully dynamic — grows as categories cross the threshold.
+function toTrendingCategoryLinks(categoryCounts: Array<{ name: string; count: number }>): Array<{ label: string; title: string; href: string }> {
+  return categoryCounts
+    .filter((c) => c.count >= TRENDING_CATEGORY_MIN_COUNT)
+    .map((c) => ({
+      label: c.name,
+      title: `${c.name} Telegram groups`,
+      href: `/groups?category=${encodeURIComponent(c.name)}`,
+    }));
+}
+
+// Countries keep their existing trending treatment (top entries by count).
 function toTrendingLinks(names: string[]): Array<{ label: string; href: string }> {
   return names.slice(0, 8).map((name) => ({
     label: name,
-    href: `/best-telegram-groups/${encodeURIComponent(name.toLowerCase())}`,
+    href: `/best-telegram-groups/${categorySlug(name)}`,
   }));
 }
 
@@ -58,42 +75,36 @@ export async function generateMetadata(): Promise<Metadata> {
   const pathname = await getPathname();
   const dict = await getDictionary(locale);
 
+  const canonical = `${canonicalBase}${pathname === '/' ? '' : pathname}`;
+
   return {
     title: dict.meta.groupsTitle,
     description: dict.meta.groupsDesc,
     alternates: {
-      canonical: `${canonicalBase}${pathname === '/' ? '' : pathname}`,
-      languages: Object.fromEntries(
-        LOCALES.map(l => [l, `${canonicalBase}${localePath('/groups', l)}`])
-      ),
+      canonical,
     },
-    openGraph: {
+    ...buildSocialMeta({
       title: dict.meta.groupsTitle,
       description: dict.meta.groupsDesc,
-      type: 'website',
       url: `${canonicalBase}${pathname}`,
-      images: [{ url: `${canonicalBase}/assets/og-default.png`, width: 512, height: 512, alt: 'Erogram - Telegram Groups' }],
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: dict.meta.groupsTitle,
-      description: dict.meta.groupsDesc,
-      images: [`${canonicalBase}/assets/og-default.png`],
-    },
+      type: 'website',
+      imageAlt: 'Erogram - Telegram Groups',
+    }),
   };
 }
 
-export const revalidate = 300;
+export const dynamic = 'force-dynamic';
 
-async function getGroups(limit: number, isMobile: boolean = false, locale: string = 'en') {
+async function getGroups(limit: number, isMobile: boolean = false, locale: string = 'en', skip: number = 0) {
   try {
     await connectDB();
 
-    // Use random sampling for better discovery experience. Exclude Group-based "advert" rows
-    // so in-feed ads come only from Campaigns (Advertisers → By slot → In-Feed).
+    // Stable newest-first feed (pinned → createdAt).
     const groups = await Group.aggregate([
       { $match: { status: 'approved', isAdvertisement: { $ne: true }, premiumOnly: { $ne: true }, category: { $ne: 'Hentai' } } },
-      { $sample: { size: limit } }, // Limit initial payload for mobile
+      { $sort: { pinned: -1, createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
       {
         $lookup: {
           from: 'users',
@@ -191,6 +202,22 @@ async function getGroups(limit: number, isMobile: boolean = false, locale: strin
   } catch (error) {
     console.error('Error fetching groups:', error);
     return [];
+  }
+}
+
+const approvedGroupsFilter = {
+  status: 'approved' as const,
+  isAdvertisement: { $ne: true },
+  premiumOnly: { $ne: true },
+  category: { $ne: 'Hentai' },
+};
+
+async function getApprovedGroupsCount(): Promise<number> {
+  try {
+    await connectDB();
+    return Group.countDocuments(approvedGroupsFilter);
+  } catch {
+    return 0;
   }
 }
 
@@ -481,13 +508,15 @@ async function getVaultTeaser() {
   }
 }
 
-export default async function GroupsPage() {
-  const ua = (await headers()).get('user-agent');
-  const { isMobile, isTelegram } = detectDeviceFromUserAgent(ua);
+export async function GroupsPageView({ page = 1 }: { page?: number }) {
+  const currentPage = Math.max(1, page);
   const locale = await getLocale();
 
-  // Render a small, SEO-safe first page
-  const groups = await getGroups(12, isMobile, locale);
+  const [groups, totalGroups] = await Promise.all([
+    getGroups(GROUPS_FEED_PAGE_SIZE, false, locale, (currentPage - 1) * GROUPS_FEED_PAGE_SIZE),
+    getApprovedGroupsCount(),
+  ]);
+  const paginationTotalPages = Math.max(1, Math.ceil(totalGroups / GROUPS_FEED_PAGE_SIZE));
 
   // Check if stories are enabled
   await connectDB();
@@ -500,7 +529,7 @@ export default async function GroupsPage() {
 
   // In-feed ads + story data + vault teaser + featured creators + trending + filter options — all in parallel
   const [topBannerCampaigns, feedCampaignsRaw, storyData, vaultTeaserGroupsRaw, featuredCreatorItems, premiumLive, filterOpts, trendingErogramCampaigns] = await Promise.all([
-    getActiveCampaigns('top-banner', { page: 'groups', device: isMobile ? 'mobile' : 'desktop' }),
+    getActiveCampaigns('top-banner', { page: 'groups' }),
     getActiveFeedCampaigns('groups'),
     storiesEnabled ? getStoryData(storyConfig, locale) : Promise.resolve([] as StoryCategory[]),
     getVaultTeaser(),
@@ -511,7 +540,7 @@ export default async function GroupsPage() {
   ]);
 
   // Two trending rows derived from the already-sorted filter options (top 6 each).
-  const trendingCategories = toTrendingLinks(filterOpts.categories);
+  const trendingCategories = toTrendingCategoryLinks(filterOpts.categoryCounts);
   const trendingCountries = toTrendingLinks(filterOpts.countries);
 
   // Centralized control: the Vault Teaser house promo only shows when an Erogram
@@ -546,21 +575,19 @@ export default async function GroupsPage() {
 
   return (
     <>
-      {/* Crawlable pagination links for bots/crawlers (kept visually hidden to avoid UI duplication) */}
       <nav aria-label="Groups pagination" className="sr-only">
         <Link href="/groups">Groups page 1</Link>
-        <Link href="/groups/page/2">Groups page 2</Link>
-        <Link href="/groups/page/3">Groups page 3</Link>
-        <Link href="/groups/page/4">Groups page 4</Link>
-        <Link href="/groups/page/5">Groups page 5</Link>
+        {Array.from({ length: paginationTotalPages - 1 }, (_, i) => i + 2).map((p) => (
+          <Link key={p} href={`/groups/page/${p}`}>{`Groups page ${p}`}</Link>
+        ))}
       </nav>
 
       <ErrorBoundary>
         <GroupsClient
           initialGroups={groups}
           feedCampaigns={feedCampaigns}
-          initialIsMobile={isMobile}
-          initialIsTelegram={isTelegram}
+          initialIsMobile={false}
+          initialIsTelegram={false}
           topBannerCampaigns={topBannerForPage}
           storyData={storyData}
           vaultTeaserGroups={vaultTeaserGroups}
@@ -569,8 +596,16 @@ export default async function GroupsPage() {
           categoryOptions={filterOpts.categories}
           countryOptions={filterOpts.countries}
           trendingErogramCampaigns={trendingErogramCampaigns}
+          paginationCurrentPage={currentPage}
+          paginationTotalPages={paginationTotalPages}
+          groupsPageSize={GROUPS_FEED_PAGE_SIZE}
         />
       </ErrorBoundary>
     </>
   );
 }
+
+export default async function GroupsPage() {
+  return GroupsPageView({ page: 1 });
+}
+

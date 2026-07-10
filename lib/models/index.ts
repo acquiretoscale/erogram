@@ -1062,6 +1062,8 @@ const trendingOFCreatorSchema = new Schema(
     clickBudget:   { type: Number, default: 0 },   // 0 = unlimited; > 0 = auto-pause when clicks >= budget
     dailyClickCap: { type: Number, default: 0 },   // 0 = unlimited; > 0 = stop counting after N clicks/day
     isStarPick:    { type: Boolean, default: false }, // true = added by star button (NOT a paid client)
+    // Public "trend % on Erogram" shown on Top-10 promoted cards. 0 = unset (hidden). Set 100–400 in /OF.
+    trendPercent:  { type: Number, default: 0, min: 0, max: 999 },
     liveHourStart: { type: Number, default: -1, min: -1, max: 23 }, // -1 = never live; 0–23 = GMT hour start
     liveHourEnd:   { type: Number, default: -1, min: -1, max: 23 }, // -1 = never live; 0–23 = GMT hour end
     // When true: ad ONLY renders during the live window (liveHourStart–liveHourEnd). Outside that window = hidden entirely.

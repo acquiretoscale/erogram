@@ -19,6 +19,7 @@ import { updateCreatorFields, deleteCreatorPhoto, deleteCreator, getCreatorRevie
 import type { CreatorReviewData } from '@/lib/actions/ofCreatorProfile';
 import { ofCategoryUrl, OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
+import { hottestRankingPublicPath } from '@/lib/bestOfPageContent/hottestUrls';
 import { getCreatorBio } from '@/app/onlyfanssearch/creatorBios';
 
 function formatCount(n: number) {
@@ -235,7 +236,7 @@ function ShareDropdown({ name, username, slug }: { name: string; username: strin
 }
 
 function RelatedCard({ creator, publicOnlyfansPath = false }: { creator: CreatorProfile; publicOnlyfansPath?: boolean }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const lp = useLocalePath();
   const profileHref = publicOnlyfansPath ? lp(`/${creator.slug}`) : lp(`/onlyfans/${creator.username}`);
   return (
@@ -315,7 +316,7 @@ export default function CreatorProfileClient({
   publicAccess?: boolean;
 }) {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const lp = useLocalePath();
   const [headerError, setHeaderError] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
@@ -327,7 +328,7 @@ export default function CreatorProfileClient({
     const isDev = typeof window !== 'undefined' && window.location.hostname === 'localhost';
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token && !isDev) {
-      window.location.href = creator.url;
+      window.location.href = `/go/${creator.username}`;
       return;
     }
     setAuthChecked(true);
@@ -504,9 +505,8 @@ export default function CreatorProfileClient({
     setReviewSubmitting(false);
   };
 
-  const handleViewProfile = () => {
+  const handleViewProfileClick = () => {
     trackCreatorClick(creator._id).catch(() => {});
-    window.open(creator.url, '_blank', 'noopener');
   };
 
   const displayPrice = creator.isFree
@@ -987,24 +987,6 @@ export default function CreatorProfileClient({
               </div>
             );
           }
-          if (username === 'gem101') {
-            return (
-              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
-                <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-[#00AFF0]" />
-                  About Gem101
-                </h2>
-                <div className="text-sm text-gray-300 leading-relaxed space-y-4">
-                  <p>
-                    Gem101 has 1.2 million likes on her OnlyFans profile and charges $30 per month. She is one of the higher priced creators with a very large following.
-                  </p>
-                  <p>
-                    Her nickname "The one ❤️" suggests she positions herself as a premium experience. She has built a massive audience despite the higher price point.
-                  </p>
-                </div>
-              </div>
-            );
-          }
           if (username === 'jocibaker') {
             return (
               <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
@@ -1093,24 +1075,6 @@ export default function CreatorProfileClient({
                   </p>
                   <p>
                     Her nickname "PRETTIEST PUSSY ONLINE" shows her branding approach. Having over 3 million likes with a free account demonstrates how popular her content is.
-                  </p>
-                </div>
-              </div>
-            );
-          }
-          if (username === 'gem101') {
-            return (
-              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
-                <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-[#00AFF0]" />
-                  About Gem101
-                </h2>
-                <div className="text-sm text-gray-300 leading-relaxed space-y-4">
-                  <p>
-                    Gem101 has 1.2 million likes on her OnlyFans profile and charges $30 per month. She is one of the higher priced creators with a very large following.
-                  </p>
-                  <p>
-                    Her nickname "The one ❤️" suggests she positions herself as a premium experience. She has built a massive audience despite the higher price point.
                   </p>
                 </div>
               </div>
@@ -1276,13 +1240,16 @@ export default function CreatorProfileClient({
                 );
               })()}
               <div className="flex justify-center mt-auto pt-2">
-                  <button
-                    onClick={handleViewProfile}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white font-black text-sm shadow-md shadow-[#00AFF0]/25 hover:shadow-lg hover:shadow-[#00AFF0]/40 hover:-translate-y-0.5 transition-all"
+                  <a
+                    href={`/go/${creator.username}`}
+                    target="_blank"
+                    rel="noopener"
+                    onClick={handleViewProfileClick}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white font-black text-sm shadow-md shadow-[#00AFF0]/25 hover:shadow-lg hover:shadow-[#00AFF0]/40 hover:-translate-y-0.5 transition-all no-underline"
                   >
                     {t('ofSearch.visitCreatorOf').replace('{name}', creator.name.split(' ')[0])}
                     <ExternalLink className="w-4 h-4" />
-                  </button>
+                  </a>
               </div>
 
               {/* ── Compact inline flame rating — below OnlyFans CTA ── */}
@@ -1591,7 +1558,7 @@ export default function CreatorProfileClient({
               </h2>
               <div className="flex-1 h-px bg-gradient-to-r from-[#00AFF0]/20 to-transparent" />
               <Link
-                href={lp('/Toponlyfanscreators')}
+                href={lp('/onlyfanssearch')}
                 className="text-[#00AFF0] text-xs font-bold hover:underline flex items-center gap-1"
               >
                 {t('ofSearch.seeAll')} <ChevronRight className="w-3.5 h-3.5" />
@@ -1622,7 +1589,7 @@ export default function CreatorProfileClient({
                     </h2>
                     <p className="text-[11px] text-white/50 font-semibold">Top {trendingOnErogram.length} · Last 7 days</p>
                   </div>
-                  <Link href={lp('/Toponlyfanscreators')} className="text-[#00AFF0] text-xs font-bold hover:underline flex items-center gap-1 shrink-0">
+                  <Link href={lp('/onlyfanssearch')} className="text-[#00AFF0] text-xs font-bold hover:underline flex items-center gap-1 shrink-0">
                     {t('ofSearch.seeAll')} <ChevronRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
@@ -1674,7 +1641,7 @@ export default function CreatorProfileClient({
             {OF_CATEGORIES.filter((cat) => ['asian', 'blonde', 'teen', 'milf', 'amateur', 'redhead', 'petite', 'big-ass', 'big-boobs'].includes(cat.slug)).map((cat) => (
               <Link
                 key={cat.slug}
-                href={lp(`/best-onlyfans-accounts/${cat.slug}`)}
+                href={hottestRankingPublicPath(cat.slug, locale)}
                 className="px-4 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-white text-sm font-bold hover:bg-[#00AFF0]/15 hover:border-[#00AFF0]/40 hover:text-[#00AFF0] transition-all"
               >
                 {cat.name} OnlyFans

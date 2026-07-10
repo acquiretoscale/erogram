@@ -38,11 +38,7 @@ const API_KEY = process.env.NOWPAYMENTS_API_KEY || '';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
 const NP_BASE = 'https://api.nowpayments.io/v1';
 
-function slugify(category: string, name: string): string {
-  const prefix = category.toLowerCase().replace(/\s+/g, '-');
-  const n = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-  return `${prefix}-${n}`;
-}
+import { toolSlug } from '@/app/ainsfw/data';
 
 export async function createAINSFWSubmission(
   plan: AINSFWPlan,
@@ -71,7 +67,7 @@ export async function createAINSFWSubmission(
     return { success: false, error: 'Please provide an email or Telegram contact.' };
   }
 
-  const slug = slugify(formData.category, formData.toolName);
+  const slug = toolSlug(formData.category, formData.toolName);
   const tags = formData.tags
     .split(',')
     .map((t) => t.trim().toLowerCase())

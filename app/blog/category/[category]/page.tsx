@@ -3,10 +3,11 @@ import { notFound } from 'next/navigation';
 import BlogHubClient from '../../BlogHubClient';
 import { getBlogArticlesByCategory } from '@/lib/actions/blog';
 import { getBlogCategory, BLOG_CATEGORY_SLUGS } from '@/lib/blog/categories';
+import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 export const revalidate = 60;
 
-const BASE_URL = 'https://erogram.pro';
+const BASE_URL = CANONICAL_BASE;
 
 interface PageProps {
   params: Promise<{ category: string }>;
@@ -24,14 +25,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: cat.metaTitle,
     description: cat.metaDescription,
     alternates: { canonical: `${BASE_URL}/blog/category/${cat.slug}` },
-    openGraph: {
+    ...buildSocialMeta({
       title: cat.metaTitle,
       description: cat.metaDescription,
-      type: 'website',
-      siteName: 'Erogram',
       url: `${BASE_URL}/blog/category/${cat.slug}`,
-    },
-    twitter: { card: 'summary_large_image', title: cat.metaTitle, description: cat.metaDescription },
+      type: 'website',
+    }),
   };
 }
 

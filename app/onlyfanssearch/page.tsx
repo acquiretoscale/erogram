@@ -6,6 +6,9 @@ import OnlyFansClient from './OnlyFansClient';
 import { getLocale } from '@/lib/i18n/server';
 import { mainOfMeta } from './ofMeta';
 import { getActiveCampaigns } from '@/lib/actions/campaigns';
+import { getBestOfPreviewAvatars } from '@/lib/actions/bestOfCreators';
+import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
+import { getTopBestOfByType, BEST_OF_PAGE_MAP } from '@/app/best-onlyfans-accounts/bestOfPages';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -52,6 +55,24 @@ export default async function OnlyFansPage({ searchParams }: PageProps) {
 
   const topBannerCampaigns = await getActiveCampaigns('top-banner', { page: 'onlyfanssearch', device: isMobile ? 'mobile' : 'desktop' }).catch(() => []);
 
+  const top10Pages = [
+    ...getTopBestOfByType('niche'),
+    ...getTopBestOfByType('country'),
+    ...getTopBestOfByType('state'),
+  ];
+  const bestAccountPages = OF_CATEGORIES.filter((c) => BEST_OF_PAGE_MAP.has(c.slug)).map((c) => ({
+    slug: c.slug,
+    label: c.name,
+    type: 'niche' as const,
+    match: 'category' as const,
+    categorySlug: c.slug,
+    count: 0,
+  }));
+  const [top10PreviewAvatars, bestAccountsPreviewAvatars] = await Promise.all([
+    getBestOfPreviewAvatars(top10Pages, 4).catch(() => ({} as Record<string, string[]>)),
+    getBestOfPreviewAvatars(bestAccountPages, 4).catch(() => ({} as Record<string, string[]>)),
+  ]);
+
   return (
     <OnlyFansClient
       initialCreators={initialCreators}
@@ -61,6 +82,8 @@ export default async function OnlyFansPage({ searchParams }: PageProps) {
       recentlyAdded={recentlyAdded}
       topBannerCampaigns={topBannerCampaigns}
       trendingOnErogram={[]}
+      top10PreviewAvatars={top10PreviewAvatars}
+      bestAccountsPreviewAvatars={bestAccountsPreviewAvatars}
     />
   );
 }

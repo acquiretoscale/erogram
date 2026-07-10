@@ -528,7 +528,7 @@ export async function updateOFMTrending(token: string, id: string, data: Record<
   if (!(await authenticateAdmin(token))) throw new Error('Unauthorized');
   await connectDB();
 
-  const allowed = ['name', 'username', 'avatar', 'url', 'bio', 'categories', 'active', 'note', 'dealPrice', 'clickBudget', 'dailyClickCap', 'isStarPick', 'liveHourStart', 'liveHourEnd'];
+  const allowed = ['name', 'username', 'avatar', 'url', 'bio', 'categories', 'active', 'note', 'dealPrice', 'clickBudget', 'dailyClickCap', 'isStarPick', 'liveHourStart', 'liveHourEnd', 'trendPercent'];
   const update: Record<string, any> = {};
   for (const key of allowed) {
     if (key in data) update[key] = data[key];
@@ -547,6 +547,19 @@ export async function updateOFMTrending(token: string, id: string, data: Record<
       { username: (creator as any).username, _id: { $ne: (creator as any)._id } },
       { $set: { active: update.active } },
     );
+  }
+
+  // MASTER URL MIRROR: editing a creator's tracking/trial link in the Featured rail must
+  // also update the master OnlyFansCreator.url — that's what OF Search cards and the public
+  // creator profile read. Without this, a trial link saved here showed only on the featured
+  // block while search/profile kept the old link. Only touch url, only when it changed.
+  if ('url' in update && (creator as any).username) {
+    try {
+      const rx = new RegExp(`^${String((creator as any).username).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+      await OnlyFansCreator.updateMany({ username: rx }, { $set: { url: update.url || '' } });
+    } catch (err) {
+      console.error('[updateOFMTrending] master url mirror failed:', err);
+    }
   }
 
   // Unified OF sync: mirror state/display changes into the linked Ad Network campaign (best-effort).
