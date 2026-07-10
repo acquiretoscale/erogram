@@ -57,3 +57,13 @@ downloads/
 brain/
 erogram-brain/
 .cursor/rules/
+
+# Local-only backups + dev artifacts — never push (break prod TS build / clutter repo)
+*.bak
+*.bak.ts
+.devserver.log
+count.js
+fix-languages.js
+fix-middleware.js
+canonical-translation-spec.md
+categories-by-section.txt

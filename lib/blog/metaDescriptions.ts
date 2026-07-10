@@ -1,8 +1,8 @@
 export interface BlogMetaSet {
   en: string;
-  de: string;
-  es: string;
-  pt: string;
+  de?: string;
+  es?: string;
+  pt?: string;
 }
 
 /**

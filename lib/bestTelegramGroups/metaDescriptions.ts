@@ -1,4 +1,4 @@
-export interface BestTgMetaSet { en: string; de: string; es: string; pt: string; }
+export interface BestTgMetaSet { en: string; de?: string; es?: string; pt?: string; }
 
 export const META_DESCRIPTIONS: Record<string, BestTgMetaSet> = {
   "adult": {

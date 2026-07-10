@@ -57,7 +57,7 @@ function TrendingRow({ heading, items }: { heading: string; items: Array<{ label
           className="px-2.5 py-1 text-[12px] font-semibold rounded-full transition-all duration-200 whitespace-nowrap hover:scale-105 text-gray-200 hover:text-white"
           style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)' }}
         >
-          {getCatDisplay(label)}
+          {label}
         </Link>
       ))}
     </div>

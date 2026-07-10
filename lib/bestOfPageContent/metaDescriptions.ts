@@ -1,4 +1,4 @@
-export interface MetaDescriptionSet { en: string; de: string; es: string; pt?: string; }
+export interface MetaDescriptionSet { en: string; de?: string; es?: string; pt?: string; }
 export const META_DESCRIPTIONS: Record<string, MetaDescriptionSet> = {
   "ahegao": {
     en: "Want faces that scream pure pleasure? Dive into our top 10 ahegao OnlyFans models. These girls take ecstasy to a whole new level. Don't blink.",

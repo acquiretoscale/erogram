@@ -1,4 +1,4 @@
-export interface OfCategoryMetaSet { en: string; de: string; es: string; pt?: string; }
+export interface OfCategoryMetaSet { en: string; de?: string; es?: string; pt?: string; }
 
 export const META_DESCRIPTIONS: Record<string, OfCategoryMetaSet> = {
   "asian": {
