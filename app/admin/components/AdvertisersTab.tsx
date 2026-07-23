@@ -154,7 +154,8 @@ function formatDate(iso: string | null | undefined) {
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-function toInputDate(iso: string) {
+function toInputDate(iso: string | null | undefined) {
+  if (!iso) return '';
   if (!iso) return '';
   return new Date(iso).toISOString().slice(0, 10);
 }

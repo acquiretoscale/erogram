@@ -1,11 +1,11 @@
 import mongoose, { Schema, models, model, type Model } from 'mongoose';
 
 /** Dev HMR keeps stale Mongoose compilations — enum/schema edits need a fresh model. */
-function freshModel<T = Model<any>>(name: string, schema: Schema) {
+function freshModel(name: string, schema: Schema): Model<any> {
   if (process.env.NODE_ENV !== 'production' && mongoose.models[name]) {
     delete mongoose.models[name];
   }
-  return (models[name] as T) || model(name, schema);
+  return (models[name] || model(name, schema)) as Model<any>;
 }
 
 // User Schema

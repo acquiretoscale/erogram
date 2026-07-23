@@ -1434,101 +1434,6 @@ function Step5Celebration({
         </div>
       )}
 
-      {/* ── Vicky AI section ── */}
-      {isPaid ? (
-        <div className="mb-5 rounded-xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <button
-            onClick={() => { setVickyOpen(o => !o); setTimeout(() => vickyInputRef.current?.focus(), 100); }}
-            className="w-full flex items-center gap-3 px-4 py-3 transition-colors hover:bg-white/[0.02]"
-          >
-            <div className="relative shrink-0">
-              <img src="/assets/vicky-ai-avatar.jpg" alt="" className="w-10 h-10 rounded-full object-cover ring-2 ring-[#00aff0]/20" />
-              <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#0d1628]" />
-            </div>
-            <div className="flex-1 min-w-0 text-left">
-              <div className="text-[13px] font-bold text-white leading-tight">Vicky AI</div>
-              <div className="text-[10px] text-white/35 mt-0.5">
-                {vickyOpen ? 'Your personal assistant' : 'Tap to chat — ask about creators, groups, or tools'}
-              </div>
-            </div>
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${vickyOpen ? 'bg-white/10 rotate-180' : 'bg-[#00aff0]'}`}>
-              {vickyOpen ? (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><path d="M18 15l-6-6-6 6"/></svg>
-              ) : (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
-              )}
-            </div>
-          </button>
-
-          {vickyOpen && (
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-              <div ref={vickyScrollRef} className="max-h-[280px] overflow-y-auto px-3 py-3 space-y-3">
-                {vickyMessages.length === 0 && (
-                  <div className="text-center py-2">
-                    <p className="text-[10px] text-white/25 mb-2">Try asking:</p>
-                    <div className="grid grid-cols-2 gap-1">
-                      {['Best MILF creators', 'Top Asian groups', 'Free OnlyFans', 'AI undress tools'].map(s => (
-                        <button key={s} onClick={() => sendVicky(s)}
-                          className="text-left px-2 py-1.5 rounded-lg text-[9px] text-white/40 font-medium hover:text-white/60 hover:bg-white/5 transition-all"
-                          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                          {s}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {vickyMessages.map((msg, i) => (
-                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} gap-1.5`}>
-                    {msg.role === 'assistant' && (
-                      <img src="/assets/vicky-ai-avatar.jpg" alt="" className="w-6 h-6 rounded-full object-cover shrink-0 mt-1" />
-                    )}
-                    <div className={`max-w-[80%] px-3 py-2 rounded-2xl text-[11px] leading-relaxed ${
-                      msg.role === 'user' ? 'text-white font-medium rounded-br-sm' : 'text-white/85 rounded-bl-sm'
-                    }`} style={msg.role === 'user' ? { background: 'rgba(0,175,240,0.2)' } : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                      <VickyMsgInline content={msg.content} isUser={msg.role === 'user'} />
-                    </div>
-                  </div>
-                ))}
-                {vickySending && (
-                  <div className="flex gap-1.5">
-                    <img src="/assets/vicky-ai-avatar.jpg" alt="" className="w-6 h-6 rounded-full object-cover shrink-0 mt-1" />
-                    <div className="px-3 py-2.5 rounded-2xl rounded-bl-sm" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                      <div className="flex gap-1">
-                        <div className="w-1.5 h-1.5 rounded-full bg-white/30 animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <div className="w-1.5 h-1.5 rounded-full bg-white/30 animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <div className="w-1.5 h-1.5 rounded-full bg-white/30 animate-bounce" style={{ animationDelay: '300ms' }} />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="px-3 pb-3 pt-1" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                <form onSubmit={e => { e.preventDefault(); sendVicky(vickyInput); }} className="flex gap-1.5">
-                  <input ref={vickyInputRef} type="text" value={vickyInput} onChange={e => setVickyInput(e.target.value)}
-                    placeholder="Ask Vicky..." disabled={vickySending}
-                    className="flex-1 bg-white/5 text-white text-[11px] px-3 py-2 rounded-lg outline-none placeholder:text-white/20 focus:ring-1 focus:ring-[#00aff0]/30"
-                    style={{ border: '1px solid rgba(255,255,255,0.08)' }} />
-                  <button type="submit" disabled={!vickyInput.trim() || vickySending}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 disabled:opacity-30" style={{ background: '#00aff0' }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
-                    </svg>
-                  </button>
-                </form>
-              </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="mb-5 rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: 'rgba(0,175,240,0.06)', border: '1px solid rgba(0,175,240,0.12)' }}>
-          <img src="/assets/vicky-ai-avatar.jpg" alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-bold text-white/70">Unlock Vicky AI + 4,000 Vault groups</p>
-            <p className="text-[9px] text-white/30 mt-0.5">Upgrade to VIP anytime.</p>
-          </div>
-          <span className="px-2.5 py-1 rounded-lg text-[9px] font-bold text-white/50 shrink-0" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>Upgrade</span>
-        </div>
-      )}
 
       {/* ── AI Tools with quick access links ── */}
       {aiTools.length > 0 && (
@@ -1576,25 +1481,6 @@ function Step5Celebration({
         @keyframes bounceIn { 0% { transform: scale(0.3); opacity: 0; } 50% { transform: scale(1.05); } 70% { transform: scale(0.95); } 100% { transform: scale(1); opacity: 1; } }
       `}</style>
     </div>
-  );
-}
-
-function VickyMsgInline({ content, isUser }: { content: string; isUser: boolean }) {
-  if (isUser) return <>{content}</>;
-  const parts = content.split(/(\[.*?\]\(.*?\)|\*\*.*?\*\*)/g);
-  return (
-    <>
-      {parts.map((part, i) => {
-        const linkMatch = part.match(/^\[(.*?)\]\((.*?)\)$/);
-        if (linkMatch) {
-          return <a key={i} href={linkMatch[2]} target="_blank" rel="noopener noreferrer"
-            className="text-[#00aff0] underline underline-offset-2 decoration-[#00aff0]/30 font-medium">{linkMatch[1]}</a>;
-        }
-        const boldMatch = part.match(/^\*\*(.*?)\*\*$/);
-        if (boldMatch) return <strong key={i} className="font-bold text-white">{boldMatch[1]}</strong>;
-        return <span key={i}>{part}</span>;
-      })}
-    </>
   );
 }
 
