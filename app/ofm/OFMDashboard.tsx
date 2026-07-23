@@ -7,11 +7,11 @@ interface CreatorRow { name: string; username: string; avatar: string; url: stri
 interface Series { label: string; clicks: number; }
 interface Dashboard {
   client: { _id: string; name: string; goalClicks: number; dealPrice: number; startDate: string; endDate: string };
+  campaignEnded?: boolean;
   totalClicks: number;
   goalClicks: number;
   goalProgress: number;
   remainingClicks: number;
-  expectedByNow: number;
   onPace: boolean;
   timeProgress: number;
   hoursLeft: number;
@@ -30,26 +30,19 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' GMT';
 }
 
-// Circular goal gauge — pure SVG.
-function Gauge({ progress, total, goal, onPace }: { progress: number; total: number; goal: number; onPace: boolean }) {
+// Circular total-clicks display — no goal reference.
+function TotalRing({ total }: { total: number }) {
   const r = 86;
   const circ = 2 * Math.PI * r;
-  const pct = Math.round(progress * 100);
-  const color = progress >= 1 ? '#22c55e' : onPace ? '#00AFF0' : '#f59e0b';
   return (
     <div className="relative flex items-center justify-center">
       <svg width="200" height="200" className="-rotate-90">
         <circle cx="100" cy="100" r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="14" />
-        <circle
-          cx="100" cy="100" r={r} fill="none" stroke={color} strokeWidth="14" strokeLinecap="round"
-          strokeDasharray={circ} strokeDashoffset={circ * (1 - Math.min(progress, 1))}
-          style={{ transition: 'stroke-dashoffset 0.8s ease' }}
-        />
+        <circle cx="100" cy="100" r={r} fill="none" stroke="#00AFF0" strokeWidth="14" strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={0} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <div className="text-4xl font-black text-white leading-none">{pct}%</div>
-        <div className="text-xs text-white/40 mt-1.5">{fmt(total)} / {fmt(goal)}</div>
-        <div className="text-[10px] mt-0.5" style={{ color }}>to goal</div>
+        <div className="text-4xl font-black text-[#00AFF0] leading-none">{fmt(total)}</div>
+        <div className="text-xs text-white/40 mt-1.5">total clicks</div>
       </div>
     </div>
   );
@@ -136,18 +129,13 @@ export default function OFMDashboard() {
               </select>
             )}
           </div>
-          <span className={`px-3 py-1.5 rounded-full text-xs font-black ${data.onPace ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'}`}>
-            {data.goalProgress >= 1 ? '✓ GOAL HIT' : data.onPace ? 'ON PACE' : 'BEHIND PACE'}
-          </span>
         </div>
 
         {/* Campaign window */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {[
-            { l: 'Starts', v: fmtDate(data.client.startDate) },
-            { l: 'Ends', v: fmtDate(data.client.endDate) },
-            { l: 'Time left', v: data.daysLeft > 0 ? `${data.daysLeft}d ${data.hoursLeft % 24}h` : `${data.hoursLeft}h` },
-            { l: 'Need / day left', v: fmt(data.daysLeft > 0 ? Math.ceil(data.remainingClicks / data.daysLeft) : data.remainingClicks) },
+            { l: 'Launched', v: fmtDate(data.client.startDate) },
+            { l: 'Deal ended', v: fmtDate(data.client.endDate) },
           ].map((s) => (
             <div key={s.l} className="bg-[#0e1018] border border-white/[0.06] rounded-2xl p-4">
               <div className="text-[11px] text-white/35 font-bold uppercase tracking-wider">{s.l}</div>
@@ -170,13 +158,10 @@ export default function OFMDashboard() {
           ))}
         </div>
 
-        {/* Gauge + totals */}
+        {/* Total + per-creator */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="bg-[#0e1018] border border-white/[0.06] rounded-2xl p-6 flex flex-col items-center justify-center">
-            <Gauge progress={data.goalProgress} total={data.totalClicks} goal={data.goalClicks} onPace={data.onPace} />
-            <div className="text-xs text-white/40 mt-4 text-center">
-              {data.remainingClicks > 0 ? <><span className="text-white font-bold">{fmt(data.remainingClicks)}</span> clicks to go</> : 'Goal reached 🎉'}
-            </div>
+            <TotalRing total={data.totalClicks} />
           </div>
 
           {/* Per-creator */}
@@ -212,6 +197,22 @@ export default function OFMDashboard() {
           </div>
         </div>
 
+        {/* Chart */}
+        <div className="bg-[#0e1018] border border-white/[0.06] rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-bold text-white/70">Clicks over time</h2>
+            <div className="flex gap-1 bg-white/[0.04] rounded-lg p-1">
+              {(['hour', 'day'] as const).map((v) => (
+                <button key={v} onClick={() => setView(v)}
+                  className={`px-3 py-1 rounded-md text-xs font-bold transition ${view === v ? 'bg-[#00AFF0] text-white' : 'text-white/40 hover:text-white/70'}`}>
+                  {v === 'hour' ? 'Last 24h' : 'By day'}
+                </button>
+              ))}
+            </div>
+          </div>
+          <BarChart data={chart} accent="#00AFF0" />
+        </div>
+
         {/* Section breakdown — where clicks come from */}
         <div className="bg-[#0e1018] border border-white/[0.06] rounded-2xl p-5">
           <div className="flex items-baseline justify-between mb-4">
@@ -238,22 +239,6 @@ export default function OFMDashboard() {
               })}
             </div>
           )}
-        </div>
-
-        {/* Chart */}
-        <div className="bg-[#0e1018] border border-white/[0.06] rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-white/70">Clicks over time</h2>
-            <div className="flex gap-1 bg-white/[0.04] rounded-lg p-1">
-              {(['hour', 'day'] as const).map((v) => (
-                <button key={v} onClick={() => setView(v)}
-                  className={`px-3 py-1 rounded-md text-xs font-bold transition ${view === v ? 'bg-[#00AFF0] text-white' : 'text-white/40 hover:text-white/70'}`}>
-                  {v === 'hour' ? 'Last 24h' : 'By day'}
-                </button>
-              ))}
-            </div>
-          </div>
-          <BarChart data={chart} accent="#00AFF0" />
         </div>
     </div>
   );

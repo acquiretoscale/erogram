@@ -33,11 +33,11 @@ export async function listOFClients(token: string) {
 
 /**
  * Full tracking dashboard for ONE agency client:
- *  - combined total clicks (within campaign window) + goal + % to goal
- *  - per-creator click totals
- *  - per-hour (last 24h) and per-day (campaign span) click series
- *  - pace vs deadline (on track / behind)
- * All from the SAME CampaignClick store the ad cards already write to. No new infra.
+ *  - combined total clicks since campaign start through TODAY (keeps counting after endDate
+ *    while creators stay live — what clients need for "goal achieved to date" reports)
+ *  - per-creator click totals (same window: launch → today)
+ *  - per-hour (last 24h) and per-day (launch → today) click series
+ * All from CampaignClick on linked campaigns. No new infra.
  */
 export async function getOFClientDashboard(token: string, clientId?: string) {
   if (!(await authenticateAdmin(token))) throw new Error('Unauthorized');
@@ -57,17 +57,20 @@ export async function getOFClientDashboard(token: string, clientId?: string) {
   const end = new Date(c.endDate);
   const now = new Date();
   const startDay = ymd(start);
-  const endDay = ymd(end);
+  const todayDay = ymd(now);
+  const campaignEnded = now.getTime() > end.getTime();
 
-  // ONE unified store: every OF click is a CampaignClick on the creator's linked campaign.
-  // Per-model total is LIFETIME (all-time), matching the model detail page header. The day/hour
-  // charts below stay windowed (that's correct for a time series).
+  // Report window: from campaign launch through today. Never lifetime (pre-launch noise),
+  // never capped at endDate (creators often stay live after the deal ends).
+  const clickSinceLaunch = { $gte: start };
+
   const perCreator = await Promise.all(
     (creators as any[]).map(async (cr) => {
       let clicks = 0;
       if (cr.linkedCampaignId) {
         clicks = await CampaignClick.countDocuments({
           campaignId: cr.linkedCampaignId,
+          clickedAt: clickSinceLaunch,
         });
       }
       return {
@@ -82,10 +85,10 @@ export async function getOFClientDashboard(token: string, clientId?: string) {
   perCreator.sort((a, b) => b.clicks - a.clicks);
   const totalClicks = perCreator.reduce((s, p) => s + p.clicks, 0);
 
-  // Total impressions across the campaign window (from CampaignImpressionDaily).
+  // Impressions from launch through today.
   const impRows = campaignIds.length
     ? await CampaignImpressionDaily.aggregate([
-        { $match: { campaignId: { $in: campaignIds }, date: { $gte: startDay, $lte: endDay } } },
+        { $match: { campaignId: { $in: campaignIds }, date: { $gte: startDay, $lte: todayDay } } },
         { $group: { _id: null, total: { $sum: '$count' } } },
       ])
     : [];
@@ -109,27 +112,25 @@ export async function getOFClientDashboard(token: string, clientId?: string) {
     hourly.push({ label: `${String(d.getUTCHours()).padStart(2, '0')}h`, clicks: hourMap.get(key) || 0 });
   }
 
-  // Per-day series across the campaign span (capped at today).
+  // Per-day series: launch → today (includes every day after endDate while still live).
   const dayRows = campaignIds.length
     ? await CampaignClick.aggregate([
-        { $match: { campaignId: { $in: campaignIds }, clickedAt: { $gte: start, $lte: end } } },
+        { $match: { campaignId: { $in: campaignIds }, clickedAt: clickSinceLaunch } },
         { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$clickedAt' } }, count: { $sum: 1 } } },
       ])
     : [];
   const dayMap = new Map<string, number>();
   for (const r of dayRows as any[]) dayMap.set(r._id, r.count);
   const daily: { label: string; clicks: number }[] = [];
-  const spanEnd = end < now ? end : now;
-  for (let d = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate())); d <= spanEnd; d.setUTCDate(d.getUTCDate() + 1)) {
+  for (let d = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate())); d <= now; d.setUTCDate(d.getUTCDate() + 1)) {
     const key = ymd(d);
     daily.push({ label: key.slice(5), clicks: dayMap.get(key) || 0 });
   }
 
-  // Section breakdown — which surface delivers the clicks. Maps the per-click `placement`
-  // tag (top-groups-*, top-bots-*, feed-*, ainsfw-*, etc.) into the owner's 8 sections.
+  // Section breakdown — launch → today.
   const sectionRows = campaignIds.length
     ? await CampaignClick.aggregate([
-        { $match: { campaignId: { $in: campaignIds }, clickedAt: { $gte: start, $lte: end } } },
+        { $match: { campaignId: { $in: campaignIds }, clickedAt: clickSinceLaunch } },
         { $group: { _id: '$placement', n: { $sum: 1 } } },
       ])
     : [];
@@ -156,13 +157,9 @@ export async function getOFClientDashboard(token: string, clientId?: string) {
     .map(([label, clicks]) => ({ label, clicks }))
     .sort((a, b) => b.clicks - a.clicks);
 
-  // Pace: how far through the window vs how far to goal.
-  const totalMs = Math.max(end.getTime() - start.getTime(), 1);
-  const elapsedMs = Math.min(Math.max(now.getTime() - start.getTime(), 0), totalMs);
-  const timeProgress = elapsedMs / totalMs;
-  const goalProgress = c.goalClicks > 0 ? Math.min(totalClicks / c.goalClicks, 1) : 0;
-  const expectedByNow = Math.round(c.goalClicks * timeProgress);
-  const onPace = totalClicks >= expectedByNow;
+  // Goal progress: clicks since launch vs deal goal (can exceed 100% after goal hit).
+  const goalProgress = c.goalClicks > 0 ? totalClicks / c.goalClicks : 0;
+  const onPace = goalProgress >= 1 || (campaignEnded ? totalClicks >= c.goalClicks : totalClicks >= Math.round(c.goalClicks * Math.min(Math.max((now.getTime() - start.getTime()) / Math.max(end.getTime() - start.getTime(), 1), 0), 1)));
   const msLeft = Math.max(end.getTime() - now.getTime(), 0);
 
   return JSON.parse(JSON.stringify({
@@ -174,13 +171,13 @@ export async function getOFClientDashboard(token: string, clientId?: string) {
       startDate: start.toISOString(),
       endDate: end.toISOString(),
     },
+    campaignEnded,
     totalClicks,
     goalClicks: c.goalClicks,
     goalProgress,
     remainingClicks: Math.max(c.goalClicks - totalClicks, 0),
-    expectedByNow,
     onPace,
-    timeProgress,
+    timeProgress: campaignEnded ? 1 : Math.min(Math.max((now.getTime() - start.getTime()) / Math.max(end.getTime() - start.getTime(), 1), 0), 1),
     hoursLeft: Math.floor(msLeft / 3600000),
     daysLeft: Math.floor(msLeft / 86400000),
     totalImpressions,

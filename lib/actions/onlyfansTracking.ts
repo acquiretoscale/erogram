@@ -1,7 +1,7 @@
 'use server';
 
 import connectDB from '@/lib/db/mongodb';
-import { TrendingOFCreator, OnlyFansCreator, Campaign, CampaignClick } from '@/lib/models';
+import { TrendingOFCreator, OnlyFansCreator, Campaign, CampaignClick, OFClient } from '@/lib/models';
 
 /**
  * UNIFIED CLICK TRACKING — OnlyFans creators are just ONE ad category in the Erogram
@@ -14,6 +14,26 @@ import { TrendingOFCreator, OnlyFansCreator, Campaign, CampaignClick } from '@/l
  * shared tracker. The old TrendingClickDaily / TrendingOFCreator.clicks /
  * OnlyFansCreator.clicks stores are FROZEN (never written again).
  */
+
+import type { ExpiredOFAgencyTargets } from '@/lib/ofExpiry';
+
+/** OF agency deals (OFClient) past endDate — their creators must stop serving site-wide. */
+export async function getExpiredOFAgencyTargets(): Promise<ExpiredOFAgencyTargets> {
+  await connectDB();
+  const now = new Date();
+  const expiredClients = await OFClient.find({ endDate: { $lt: now } }).select('_id').lean() as any[];
+  if (!expiredClients.length) return { usernames: new Set(), campaignIds: new Set() };
+  const slots = await TrendingOFCreator.find({
+    ofClientId: { $in: expiredClients.map((c) => c._id) },
+  }).select('username linkedCampaignId').lean() as any[];
+  const usernames = new Set<string>();
+  const campaignIds = new Set<string>();
+  for (const s of slots) {
+    if (s.username) usernames.add(String(s.username).toLowerCase());
+    if (s.linkedCampaignId) campaignIds.add(String(s.linkedCampaignId));
+  }
+  return { usernames, campaignIds };
+}
 
 /** Shared write: one click → Campaign.clicks + CampaignClick. */
 async function logCampaignClick(campaignId: any, placement: string) {

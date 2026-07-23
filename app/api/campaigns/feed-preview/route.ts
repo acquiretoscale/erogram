@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
 import { Campaign } from '@/lib/models';
+import { campaignNotExpired } from '@/lib/campaignDates';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +16,7 @@ export async function GET() {
       status: 'active',
       isVisible: true,
       startDate: { $lte: now },
-      endDate: { $gte: startOfToday },
+      ...campaignNotExpired(startOfToday),
     })
       .select('_id name creative videoUrl destinationUrl description buttonText badgeText verified')
       .lean() as any[];

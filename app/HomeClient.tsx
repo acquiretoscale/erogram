@@ -103,8 +103,6 @@ interface HomeClientProps {
   locale?: Locale;
 }
 
-const ACTIVE_USERS_POLL = 300_000;
-
 // ── Shared design tokens for the fresh "Erogram 2.0" skin ─────────────
 // Glassy card surface used across every section (replaces old flat cards).
 const CARD = 'rounded-2xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-xl shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)] hover:border-[#c0392f]/60 transition-all duration-300';
@@ -189,36 +187,6 @@ function abbreviate(n: number): string {
   return n.toLocaleString('en-US');
 }
 
-function LiveStatCell({ target, label }: { target: number; label: string }) {
-  const { value, ref } = useCountUp(target);
-  const [display, setDisplay] = useState(target);
-
-  useEffect(() => {
-    if (value < target) { setDisplay(value); return; }
-    setDisplay(target);
-    const interval = setInterval(() => {
-      setDisplay((prev) => {
-        const drift = Math.random() < 0.5 ? 1 : -1;
-        return Math.max(target - 2, prev + drift);
-      });
-    }, 3000 + Math.random() * 4000);
-    return () => clearInterval(interval);
-  }, [value, target]);
-
-  return (
-    <div ref={ref} className="flex-1 flex flex-col items-center justify-center py-3 px-1">
-      <span className="text-base sm:text-lg font-bold text-white tabular-nums leading-none">{abbreviate(display)}</span>
-      <div className="flex items-center gap-1 mt-0.5">
-        <span className="relative flex h-1.5 w-1.5">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-400" />
-        </span>
-        <div className="text-[7px] sm:text-[8px] font-semibold uppercase tracking-[0.18em] text-white/30">{label}</div>
-      </div>
-    </div>
-  );
-}
-
 function CountStatCell({ target, label, raw }: { target: number; label: string; raw?: boolean }) {
   const { value, ref } = useCountUp(target);
   return (
@@ -269,29 +237,12 @@ function NewestRow({ items }: { items: { key: string; href: string; image: strin
   );
 }
 
-function useActiveUsers() {
-  const [count, setCount] = useState<number>(0);
-  useEffect(() => {
-    const fetchActive = () => {
-      fetch('/api/advertise-stats', { cache: 'no-store' })
-        .then((r) => r.json())
-        .then((d) => { if (typeof d.activeVisitors === 'number') setCount(d.activeVisitors); })
-        .catch(() => {});
-    };
-    fetchActive();
-    const id = setInterval(fetchActive, ACTIVE_USERS_POLL);
-    return () => clearInterval(id);
-  }, []);
-  return count;
-}
-
 export default function HomeClient({ featuredArticles, heroCampaigns = [], newGroups = [], stats, ofCategories = [], newestBots = [], newestAINsfw = [], topGroupCategories = [], locale = 'en' }: HomeClientProps) {
   const { t, dict } = useTranslation();
   const lp = useLocalePath();
   const router = useRouter();
   const [username, setUsername] = useState<string | null>(null);
   const [useLightAnimations, setUseLightAnimations] = useState(false);
-  const activeUsers = useActiveUsers();
 
   useEffect(() => {
     try {
@@ -481,7 +432,6 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
             transition={{ duration: 0.5, delay: 0.45 }}
           >
             <CountStatCell target={stats?.aiAndBotsCount ?? 0} label="Tools" />
-            <LiveStatCell target={activeUsers} label="Live" />
             <CountStatCell target={stats?.totalViews ?? 0} label="Views" raw />
             <CountStatCell target={stats?.ofCreatorsCount ?? 0} label="Creators" />
           </motion.div>

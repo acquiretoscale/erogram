@@ -8,7 +8,6 @@ import {
   saveOnboardingPreferences,
   completeOnboarding,
 } from '@/lib/actions/onboarding';
-import { chatWithVicky } from '@/lib/actions/vickyAI';
 
 /* ─── Types ─── */
 interface Category {
@@ -1050,27 +1049,6 @@ function Step4({
               title="Vote on new features"
               desc="Have your say — help shape what Erogram builds next."
             />
-            {/* ── Vicky AI showcase ── */}
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 overflow-hidden">
-                <img src="/assets/vicky-ai-avatar.jpg" alt="" className="w-full h-full object-cover" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[12px] font-bold text-gray-800 leading-tight">Unlock Vicky AI</div>
-                <div className="text-[10px] text-gray-500 leading-relaxed mt-0.5">Your personal Erogram assistant — find the best creators, groups & tools instantly.</div>
-                <div className="mt-2 rounded-xl overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.08)' }}>
-                  <video
-                    src="https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/tgempire/booty-bazaar/wmremove-transformed.mp4"
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    className="w-full rounded-xl"
-                    style={{ maxHeight: '180px', objectFit: 'contain', background: '#000' }}
-                  />
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* ── Payment method picker (step 1) ── */}
@@ -1317,36 +1295,6 @@ function Step5Celebration({
     ...groups.map(g => g.image),
   ].filter(Boolean);
   const totalSaved = creators.length + groups.length;
-
-  const [vickyOpen, setVickyOpen] = useState(false);
-  const [vickyMessages, setVickyMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
-  const [vickyInput, setVickyInput] = useState('');
-  const [vickySending, setVickySending] = useState(false);
-  const vickyScrollRef = useRef<HTMLDivElement>(null);
-  const vickyInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (vickyScrollRef.current) vickyScrollRef.current.scrollTop = vickyScrollRef.current.scrollHeight;
-  }, [vickyMessages, vickyOpen]);
-
-  const sendVicky = useCallback(async (text: string) => {
-    if (!text.trim() || vickySending) return;
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) return;
-    const userMsg = { role: 'user' as const, content: text.trim() };
-    const updated = [...vickyMessages, userMsg];
-    setVickyMessages(updated);
-    setVickyInput('');
-    setVickySending(true);
-    try {
-      const res = await chatWithVicky(token, updated);
-      setVickyMessages(prev => [...prev, { role: 'assistant', content: res.reply }]);
-    } catch {
-      setVickyMessages(prev => [...prev, { role: 'assistant', content: 'Something went wrong. Try again.' }]);
-    }
-    setVickySending(false);
-    vickyInputRef.current?.focus();
-  }, [vickyMessages, vickySending]);
 
   return (
     <div className="animate-[fadeInUp_0.5s_ease-out] pb-8">

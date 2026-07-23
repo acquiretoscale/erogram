@@ -52,6 +52,43 @@ function safeImageUrl(img: unknown, fallback: string): string {
   return (typeof img === 'string' && img.startsWith('https://')) ? img : fallback;
 }
 
+const RANKING_COVER_QUERIES: Array<{ href: string; category?: string; country?: string }> = [
+  { href: '/best-telegram-groups/blowjob', category: 'Blowjob' },
+  { href: '/best-telegram-groups/onlyfans', category: 'Onlyfans' },
+  { href: '/best-telegram-groups/milf', category: 'MILF' },
+  { href: '/best-telegram-groups/big-ass', category: 'Big Ass' },
+  { href: '/best-telegram-groups/feet', category: 'Feet' },
+  { href: '/best-telegram-groups/fetish', category: 'Fetish' },
+  { href: '/best-telegram-groups/asian', category: 'Asian' },
+  { href: '/best-telegram-groups/country/china', country: 'China' },
+  { href: '/best-telegram-groups/anal', category: 'Anal' },
+  { href: '/groups' },
+  { href: '/best-telegram-groups/country/uk', country: 'UK' },
+  { href: '/es/best-telegram-groups/milf', category: 'MILF' },
+];
+
+async function getRankingCoverImages(): Promise<Record<string, string>> {
+  try {
+    await connectDB();
+    const out: Record<string, string> = {};
+    await Promise.all(RANKING_COVER_QUERIES.map(async ({ href, ...filter }) => {
+      const doc = await Group.findOne({
+        status: 'approved',
+        premiumOnly: { $ne: true },
+        ...(Object.keys(filter).length > 0 ? filter : {}),
+        image: { $regex: /^https/i },
+      })
+        .sort({ views: -1 })
+        .select('image')
+        .lean() as { image?: string } | null;
+      if (doc?.image) out[href] = doc.image;
+    }));
+    return out;
+  } catch {
+    return {};
+  }
+}
+
 async function getVaultTeaser() {
   try {
     await connectDB();
@@ -716,13 +753,14 @@ export default async function JoinPage({ params }: PageProps) {
       };
     }
 
-    const [joinCtaCampaigns, topBannerCampaigns, vaultTeaser, featuredCreators, sidebarAdsAgnostic] = await Promise.all([
+    const [joinCtaCampaigns, topBannerCampaigns, vaultTeaser, featuredCreators, sidebarAdsAgnostic, rankingCoverImages] = await Promise.all([
       getActiveCampaigns('join-cta'),
       getActiveCampaigns('top-banner', { page: 'join', device: isMobile ? 'mobile' : 'desktop' }),
       getVaultTeaser(),
       getTrendingCreators().catch(() => []),
       // Agnostic group-sidebar ads (any adType: OF creator, advertiser, …) — up to 4, like Top Groups.
       getPlacementFeedCampaigns('group-sidebar', 4).catch(() => []),
+      getRankingCoverImages(),
     ]);
     const joinCtaCampaign = joinCtaCampaigns[0] ?? null;
     const topBannerForPage =
@@ -749,7 +787,7 @@ export default async function JoinPage({ params }: PageProps) {
             />
           </>
         )}
-        <JoinClient entity={group} type="group" similarGroups={similarGroups} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} isDeleted={group.status === 'deleted'} vaultTeaser={vaultTeaser} featuredCreators={sidebarCreators} sidebarAds={sidebarAdsAgnostic} />
+        <JoinClient entity={group} type="group" similarGroups={similarGroups} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} isDeleted={group.status === 'deleted'} vaultTeaser={vaultTeaser} featuredCreators={sidebarCreators} sidebarAds={sidebarAdsAgnostic} rankingCoverImages={rankingCoverImages} />
       </>
     );
   }

@@ -12,8 +12,15 @@ import { getLocale } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
 import { getKeywordPlacementCampaigns } from '@/lib/actions/campaigns';
 import BestGroupsAds from '@/app/best-telegram-groups/BestGroupsAds';
+import BestGroupRankCard from '@/app/best-telegram-groups/BestGroupRankCard';
 import { buildSocialMeta } from '@/lib/seo/socialMeta';
 import { getMetaDescription } from '@/lib/bestTelegramGroups/metaDescriptions';
+import {
+  buildTop10Ranking,
+  categoryPremiumFilter,
+  fetchNichePremiumGroups,
+  type Top10GroupDoc,
+} from '@/lib/bestTelegramGroups/top10List';
 import type { Locale } from '@/lib/i18n';
 
 interface PageProps {
@@ -122,20 +129,20 @@ export default async function BestGroupsPage({ params }: PageProps) {
         .sort({ position: 1 })
         .populate({
             path: 'group',
-            match: { status: 'approved' },
+            match: { status: 'approved', premiumOnly: { $ne: true } },
         })
         .lean();
 
     const curatedGroups = curatedPicks
-        .filter((p: any) => p.group)
+        .filter((p: any) => p.group && p.group.premiumOnly !== true)
         .map((p: any) => ({
             ...p.group,
             _id: p.group._id.toString(),
-        }));
+        })) as Top10GroupDoc[];
 
-    const curatedIds = new Set(curatedGroups.map((g: any) => g._id));
+    const curatedIds = new Set(curatedGroups.map((g) => g._id));
 
-    // 2. Auto-fill with top-viewed groups (5 slots, excluding curated picks)
+    // 2. Auto-fill with top-viewed free groups (up to 10 total)
     const rawAutoGroups = await Group.find({
         category: realCategory,
         status: 'approved',
@@ -144,19 +151,21 @@ export default async function BestGroupsPage({ params }: PageProps) {
         _id: { $nin: Array.from(curatedIds) },
     })
         .sort({ views: -1 })
-        .limit(5)
+        .limit(Math.max(0, 10 - curatedGroups.length))
         .lean();
 
     const autoGroups = rawAutoGroups.map((group: any) => ({
         ...group,
         _id: group._id.toString(),
-    }));
+    })) as Top10GroupDoc[];
 
-    const groups = [...curatedGroups, ...autoGroups];
+    const freeGroups = [...curatedGroups, ...autoGroups];
+    const premiumGroups = await fetchNichePremiumGroups(categoryPremiumFilter(realCategory), 5);
+    const ranking = buildTop10Ranking(freeGroups, premiumGroups);
 
     // If very few groups overall, show some from other categories
     let otherGroups: any[] = [];
-    if (groups.length < 5) {
+    if (freeGroups.length < 5) {
         const rawOtherGroups = await Group.aggregate([
             {
                 $match: {
@@ -192,88 +201,50 @@ export default async function BestGroupsPage({ params }: PageProps) {
                         {dict.bestGroups.updated.replace('{month}', month).replace('{year}', String(year))}
                     </div>
                     <h1 className="text-4xl md:text-5xl lg:text-6xl font-black mb-6 leading-tight">
-                        {groups.length > 0
-                            ? dict.bestGroups.theBest.split('{category}')[0].replace('{count}', String(groups.length))
+                        {freeGroups.length > 0
+                            ? dict.bestGroups.theBest.split('{category}')[0].replace('{count}', String(Math.min(freeGroups.length, 10)))
                             : dict.bestGroups.theBestFallback.split('{category}')[0]}
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">{realCategory}</span>
                         {dict.bestGroups.theBest.split('{category}')[1] || ''}
                     </h1>
                     <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-                        {dict.bestGroups.lookingFor.replace('{category}', realCategory).replace('{year}', String(year))}
+                        {(() => {
+                            const stripped = realCategory.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                            const heroText = Object.entries(dict.bestGroups as any).find(([k]) => k.toLowerCase() === `hero${stripped}`)?.[1] as string | undefined;
+                            const text = heroText || dict.bestGroups.lookingFor.replace('{category}', realCategory).replace('{year}', String(year));
+                            return text.split(/\*\*(.*?)\*\*/).map((part: string, i: number) =>
+                                i % 2 === 1 ? <strong key={i} className="text-white font-semibold">{part}</strong> : part
+                            );
+                        })()}
                     </p>
                 </header>
 
-                {/* Top agnostic ad slot — blends in above the #1 ranking (any ad type). */}
-                {topGroupAd && (
-                    <BestGroupsAds variant="top" ads={[topGroupAd as any]} />
-                )}
-
-                {/* Main List */}
-                {groups.length > 0 ? (
+                {/* Main List — order: Premium → Featured ad → #1 free → rest (mid ads before rank 6) */}
+                {ranking.length > 0 ? (
                     <div className="space-y-12 mb-20">
-                        {groups.map((group: any, index: number) => (
-                            <React.Fragment key={group._id}>
-                            {/* Mid 4-up agnostic ad block — sits just before the 6th group. */}
+                        {ranking.map((entry, index) => {
+                            const headIsPremium = ranking[0]?.isPremium;
+                            return (
+                            <React.Fragment key={`${entry.group._id}-${entry.rank}`}>
+                            {index === 0 && !headIsPremium && topGroupAd && (
+                                <BestGroupsAds variant="top" ads={[topGroupAd as any]} />
+                            )}
+                            <BestGroupRankCard
+                                entry={entry}
+                                joinLabel={`${dict.bestGroups.joinGroup} 🚀`}
+                                viewsLabel={dict.common.views}
+                                localePath={(path) => localePath(path, locale)}
+                                pageCategory={realCategory}
+                            />
+                            {index === 0 && headIsPremium && topGroupAd && (
+                                <BestGroupsAds variant="top" ads={[topGroupAd as any]} />
+                            )}
                             {index === 5 && midGroupAds.length > 0 && (
                                 <BestGroupsAds variant="grid" ads={midGroupAds as any} />
                             )}
-                            <div
-                                className="glass rounded-3xl p-6 md:p-8 border border-white/10 relative overflow-hidden"
-                            >
-                                {/* Rank Badge */}
-                                <div className="absolute top-0 left-0 bg-[#b31b1b] text-white px-6 py-2 rounded-br-3xl font-black text-xl z-10">
-                                    #{index + 1}
-                                </div>
-
-                                <div className="flex flex-col md:flex-row gap-8 mt-4">
-                                    {/* Image */}
-                                    <div className="w-full md:w-1/3 flex-shrink-0">
-                                        <div className="relative aspect-square rounded-2xl overflow-hidden bg-gray-800 shadow-2xl">
-                                            <FallbackImage
-                                                src={(group.image && typeof group.image === 'string' && group.image.startsWith('https://')) ? group.image : (process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png')}
-                                                alt={group.name}
-                                                className="object-cover hover:scale-110 transition-transform duration-500"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Content */}
-                                    <div className="flex-grow flex flex-col justify-center">
-                                        <h2 className="text-3xl font-bold mb-4 hover:text-[#b31b1b] transition-colors">
-                                            <Link href={localePath(`/${group.slug}`, locale)}>{group.name}</Link>
-                                        </h2>
-
-                                        <div className="flex flex-wrap gap-3 mb-6">
-                                            <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-gray-300">
-                                                👁️ {group.views.toLocaleString()} {dict.common.views}
-                                            </span>
-                                            <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-gray-300">
-                                                🌍 {group.country}
-                                            </span>
-                                            <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-gray-300">
-                                                📂 {group.category}
-                                            </span>
-                                        </div>
-
-                                        <p className="text-gray-400 text-lg mb-8 leading-relaxed">
-                                            {group.description}
-                                        </p>
-
-                                        <div className="mt-auto">
-                                            <a
-                                                href={localePath(`/${group.slug}`, locale)}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="block w-full md:w-auto text-center bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-4 px-8 rounded-xl transition-all hover:scale-105 shadow-lg shadow-blue-900/20"
-                                            >
-                                                {dict.bestGroups.joinGroup} 🚀
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                             </React.Fragment>
-                        ))}
+                            );
+                        })}
                     </div>
                 ) : (
                     <div className="text-center py-10 mb-20">
@@ -350,6 +321,32 @@ export default async function BestGroupsPage({ params }: PageProps) {
                     >
                         {dict.bestGroups.browseAll}
                     </Link>
+                </div>
+
+                {/* Premium CTA */}
+                <div className="mt-12 max-w-2xl mx-auto">
+                    <p className="text-lg text-gray-400 leading-relaxed">
+                        This is not even 10% of what&rsquo;s in{' '}
+                        <a
+                            href={localePath('/premium', locale)}
+                            target="_blank"
+                            rel="noopener"
+                            className="font-semibold underline decoration-[#ffd700]/40 underline-offset-2"
+                            style={{ background: 'linear-gradient(135deg, #b8860b 0%, #ffd700 45%, #fff8b0 60%, #ffd700 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
+                        >
+                            EROgram Premium
+                        </a>. Over 4,800 groups sorted by niche, unlisted anywhere else, updated weekly. Consider this list the appetizer.{' '}
+                        <a
+                            href={localePath('/premium', locale)}
+                            target="_blank"
+                            rel="noopener"
+                            className="font-semibold underline decoration-[#ffd700]/40 underline-offset-2"
+                            style={{ background: 'linear-gradient(135deg, #b8860b 0%, #ffd700 45%, #fff8b0 60%, #ffd700 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
+                        >
+                            Upgrade to Premium
+                        </a>{' '}
+                        if you want the full menu.
+                    </p>
                 </div>
             </main>
         </div>

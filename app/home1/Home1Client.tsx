@@ -78,8 +78,6 @@ interface HomeClientProps {
   locale?: Locale;
 }
 
-const ACTIVE_USERS_POLL = 300_000;
-
 // ── Shared design tokens for the fresh "Erogram 2.0" skin ─────────────
 // Glassy card surface used across every section (replaces old flat cards).
 const CARD = 'rounded-2xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-xl shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)] hover:border-[#00AFF0]/50 transition-all duration-300';
@@ -171,29 +169,12 @@ function CountStatCard({ target, label, suffix = '' }: { target: number; label: 
   );
 }
 
-function useActiveUsers() {
-  const [count, setCount] = useState<number>(0);
-  useEffect(() => {
-    const fetchActive = () => {
-      fetch('/api/advertise-stats', { cache: 'no-store' })
-        .then((r) => r.json())
-        .then((d) => { if (typeof d.activeVisitors === 'number') setCount(d.activeVisitors); })
-        .catch(() => {});
-    };
-    fetchActive();
-    const id = setInterval(fetchActive, ACTIVE_USERS_POLL);
-    return () => clearInterval(id);
-  }, []);
-  return count;
-}
-
 export default function Home1Client({ featuredArticles, heroCampaigns = [], newGroups = [], stats, ofCategories = [], locale = 'en' }: HomeClientProps) {
   const { t, dict } = useTranslation();
   const lp = useLocalePath();
   const router = useRouter();
   const [username, setUsername] = useState<string | null>(null);
   const [useLightAnimations, setUseLightAnimations] = useState(false);
-  const activeUsers = useActiveUsers();
 
   useEffect(() => {
     try {
@@ -258,7 +239,6 @@ export default function Home1Client({ featuredArticles, heroCampaigns = [], newG
   const StatsGrid = (
     <>
       <CountStatCard target={stats?.aiAndBotsCount ?? 0} label="AI NSFW Tools & Bots" />
-      <LiveStatCard target={activeUsers} label="Visiting Now" />
       <LiveStatCard target={stats?.totalViews ?? 0} label="Page Views" />
       <CountStatCard target={stats?.ofCreatorsCount ?? 0} label="OnlyFans Creators" />
     </>

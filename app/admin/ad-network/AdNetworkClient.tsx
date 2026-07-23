@@ -23,7 +23,7 @@ type Campaign = {
   dailyClickCap: number | null;
   blockFormat?: 'banner' | 'card';
   startDate: string;
-  endDate: string;
+  endDate: string | null;
   isVisible: boolean;
   // Virtual-boost fields (present only on read-through boost rows, never real Campaigns).
   isVirtualBoost?: boolean;
@@ -158,8 +158,8 @@ function fmt(n: number): string {
   return n.toLocaleString('en-US');
 }
 
-function fmtDate(iso: string): string {
-  if (!iso) return '—';
+function fmtDate(iso: string | null | undefined): string {
+  if (!iso) return 'Evergreen';
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '—';
   if (d.getFullYear() >= 2099) return 'no end';
@@ -328,7 +328,7 @@ export default function AdNetworkClient() {
         const now = Date.now();
         const patch: Record<string, unknown> = { status: 'active', isVisible: true };
         if (c.startDate && new Date(c.startDate).getTime() > now) patch.startDate = new Date().toISOString();
-        if (!c.endDate || new Date(c.endDate).getTime() < now) {
+        if (c.endDate && new Date(c.endDate).getTime() < now) {
           patch.endDate = new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString();
         }
         await updateCampaign(token, c._id, patch);
@@ -336,6 +336,19 @@ export default function AdNetworkClient() {
       }
       await loadCampaigns();
     } catch { flash('Action failed'); }
+    setActingId(null);
+  };
+
+  const launchForLifetime = async (c: Campaign) => {
+    setActingId(c._id);
+    try {
+      await updateCampaign(token, c._id, {
+        status: 'active', isVisible: true,
+        startDate: new Date().toISOString(), endDate: null,
+      });
+      flash('Launched evergreen');
+      await loadCampaigns();
+    } catch { flash('Launch failed'); }
     setActingId(null);
   };
 
@@ -372,13 +385,19 @@ export default function AdNetworkClient() {
   );
 
   // ── Boost lifecycle (virtual rows) — writes straight back to the listing ──
-  const boostAction = async (c: Campaign, action: 'pause' | 'resume' | 'end' | 'extend', days?: number) => {
+  const boostAction = async (c: Campaign, action: 'pause' | 'resume' | 'end' | 'extend' | 'lifetime', days?: number) => {
     if (!c.listingId || !c.entityType) return;
     if (action === 'end' && !confirm(`End the boost for "${c.name}"? It stops ranking as boosted.`)) return;
     setActingId(c._id);
     try {
       await setBoostLifecycle(token, c.entityType, c.listingId, action, days);
-      flash(action === 'extend' ? `Boosted for ${days} days` : action === 'pause' ? 'Boost paused' : action === 'resume' ? 'Boost resumed' : 'Boost ended');
+      flash(
+        action === 'lifetime' ? 'Boost set to lifetime'
+        : action === 'extend' ? `Boosted for ${days} days`
+        : action === 'pause' ? 'Boost paused'
+        : action === 'resume' ? 'Boost resumed'
+        : 'Boost ended'
+      );
       await loadCampaigns();
     } catch { flash('Action failed'); }
     setActingId(null);
@@ -634,7 +653,9 @@ export default function AdNetworkClient() {
                         <div className="rounded-lg bg-white/[0.03] border border-white/10 p-3">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${st.cls}`}>{st.label}</span>
-                            <span className="text-xs text-white/40">boost ends {fmtDate(c.endDate)}</span>
+                            <span className="text-xs text-white/40">
+                              {c.endDate ? `boost ends ${fmtDate(c.endDate)}` : 'boost · Evergreen'}
+                            </span>
                             <div className="flex-1" />
                             <button
                               onClick={() => boostAction(c, st.label === 'Running' ? 'pause' : 'resume')}
@@ -647,6 +668,7 @@ export default function AdNetworkClient() {
                             </button>
                             <button onClick={() => boostAction(c, 'extend', 7)} disabled={actingId === c._id} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/[0.08] hover:bg-white/[0.15] disabled:opacity-50">Boost 1 week</button>
                             <button onClick={() => boostAction(c, 'extend', 30)} disabled={actingId === c._id} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/[0.08] hover:bg-white/[0.15] disabled:opacity-50">Boost 1 month</button>
+                            <button onClick={() => boostAction(c, 'lifetime')} disabled={actingId === c._id} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-600/60 hover:bg-purple-500/80 text-white disabled:opacity-50">Boost lifetime</button>
                             <button onClick={() => boostAction(c, 'end')} disabled={actingId === c._id} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-900/40 hover:bg-red-800/60 text-red-200 border border-red-500/30 disabled:opacity-50">End boost</button>
                           </div>
                           <div className="text-[11px] text-white/30 mt-2">
@@ -689,6 +711,7 @@ export default function AdNetworkClient() {
                             </button>
                             <button onClick={() => launchFor(c, 7)} disabled={actingId === c._id} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/[0.08] hover:bg-white/[0.15] disabled:opacity-50">Launch 1 week</button>
                             <button onClick={() => launchFor(c, 30)} disabled={actingId === c._id} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/[0.08] hover:bg-white/[0.15] disabled:opacity-50">Launch 1 month</button>
+                            <button onClick={() => launchForLifetime(c)} disabled={actingId === c._id} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-600/60 hover:bg-purple-500/80 text-white disabled:opacity-50">Launch lifetime</button>
                             <button onClick={() => removeCampaign(c)} disabled={actingId === c._id} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-900/40 hover:bg-red-800/60 text-red-200 border border-red-500/30 disabled:opacity-50">Delete</button>
                           </div>
                           {c.adType === 'onlyfans-creator' && (

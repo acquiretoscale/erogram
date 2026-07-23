@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import BookmarkButton from '@/components/BookmarkButton';
@@ -22,6 +22,17 @@ interface GroupCardProps {
     growthPercent?: number;
 }
 
+function getPremiumSocialProof(groupId: string) {
+    let seed = 0;
+    for (let i = 0; i < groupId.length; i++) seed = ((seed << 5) - seed + groupId.charCodeAt(i)) | 0;
+    seed = Math.abs(seed);
+    const ratings = [4.8, 4.9, 5.0];
+    return {
+        rating: ratings[seed % ratings.length],
+        reviewCount: 30 + (seed % 41),
+    };
+}
+
 export default function GroupCard({ group, isFeatured = false, isIndex = 0, shouldPreload = false, onVisible, onOpenReviewModal, onOpenReportModal, isBookmarked = false, bookmarkId = null, itemType = 'group', lockedPremium = false, directLink, growthPercent }: GroupCardProps) {
     const { t } = useTranslation();
     const [isHovered, setIsHovered] = useState(false);
@@ -32,6 +43,11 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
     const [editUploading, setEditUploading] = useState(false);
     const [editSaving, setEditSaving] = useState(false);
     const placeholder = '/assets/image.jpg';
+
+    const premiumSocialProof = useMemo(
+        () => (lockedPremium ? getPremiumSocialProof(group._id) : null),
+        [lockedPremium, group._id],
+    );
 
     useEffect(() => {
         setIsAdmin(localStorage.getItem('isAdmin') === 'true');
@@ -249,22 +265,33 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent opacity-80" />
 
-                    {lockedPremium && (
-                        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 backdrop-blur-[2px]">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70">
-                                <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                            </svg>
-                        </div>
-                    )}
-
-                    {/* Badge pill — top-left (Verified / Premium / Bot / Featured / Pinned) */}
-                    <div className="absolute top-3 left-3 z-20 flex">
-                        {lockedPremium ? (
-                            <div className="text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white flex items-center gap-1.5">
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ffbe0b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                                Premium
+                    {/* Stats strip — on image, bottom */}
+                    <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center gap-2 px-2.5 py-1.5 bg-gradient-to-t from-black/70 to-transparent overflow-hidden">
+                        {!lockedPremium && (
+                            <>
+                                <div className="flex items-center gap-0.5 shrink-0">
+                                    <span className="text-yellow-400 text-[9px]">⭐</span>
+                                    <span className="text-white font-bold text-[9px] leading-none">{(group.averageRating || 0).toFixed(1)}</span>
+                                </div>
+                                <span className="text-white/20 text-[8px] shrink-0">·</span>
+                                <div className="flex items-center gap-0.5 shrink-0">
+                                    <span className="text-white font-bold text-[9px] leading-none">{(group.views || 0).toLocaleString()}</span>
+                                    <span className="text-white/40 text-[8px] leading-none">views</span>
+                                </div>
+                                {(group.memberCount || 0) > 0 && (
+                                    <span className="text-white/20 text-[8px] shrink-0">·</span>
+                                )}
+                            </>
+                        )}
+                        {(group.memberCount || 0) > 0 && (
+                            <div className="flex items-center gap-0.5 shrink-0">
+                                <span className="text-white font-bold text-[9px] leading-none">{group.memberCount?.toLocaleString()}</span>
+                                <span className="text-white/40 text-[8px] leading-none">{lockedPremium ? 'subscribers' : 'members'}</span>
                             </div>
-                        ) : group.verified ? (
+                        )}
+                    </div>
+                    <div className="absolute top-3 left-3 z-20 flex">
+                        {!lockedPremium && group.verified ? (
                             <div className="text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white flex items-center gap-1.5">
                                 <svg className="w-3 h-3 text-emerald-400" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
                                 Verified
@@ -283,32 +310,6 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                             </div>
                         ) : null}
                     </div>
-
-                    {/* Stats strip — on image, bottom (rating · views · members) */}
-                    {!lockedPremium && (
-                        <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center gap-2 px-2.5 py-1.5 bg-gradient-to-t from-black/70 to-transparent overflow-hidden">
-                            {/* Rating */}
-                            <div className="flex items-center gap-0.5 shrink-0">
-                                <span className="text-yellow-400 text-[9px]">⭐</span>
-                                <span className="text-white font-bold text-[9px] leading-none">{(group.averageRating || 0).toFixed(1)}</span>
-                            </div>
-                            <span className="text-white/20 text-[8px] shrink-0">·</span>
-                            {/* Views */}
-                            <div className="flex items-center gap-0.5 shrink-0">
-                                <span className="text-white font-bold text-[9px] leading-none">{(group.views || 0).toLocaleString()}</span>
-                                <span className="text-white/40 text-[8px] leading-none">views</span>
-                            </div>
-                            {(group.memberCount || 0) > 0 && (
-                                <>
-                                    <span className="text-white/20 text-[8px] shrink-0">·</span>
-                                    <div className="flex items-center gap-0.5 shrink-0">
-                                        <span className="text-white font-bold text-[9px] leading-none">{group.memberCount?.toLocaleString()}</span>
-                                        <span className="text-white/40 text-[8px] leading-none">members</span>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    )}
                 </div>
 
                 {/* Card Content */}
@@ -323,10 +324,17 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                     {/* Title — orange gradient */}
                     <h3 className={`font-black leading-tight flex items-center justify-between gap-2 min-w-0 mb-1.5 ${typeof growthPercent === 'number' ? 'text-[13px] sm:text-sm' : 'text-sm sm:text-base'}`}>
                         <span className="flex items-center gap-1.5 min-w-0">
+                            {lockedPremium ? (
+                                <span className="truncate min-w-0 select-none pointer-events-none" aria-hidden="true">
+                                    <span className="text-white">{group.name.slice(0, 4)}</span>
+                                    <span style={{ filter: 'blur(4px)', color: '#fff' }}>{group.name.slice(4) || '····'}</span>
+                                </span>
+                            ) : (
                             <span
                                 className="truncate min-w-0 bg-clip-text text-transparent"
                                 style={{ backgroundImage: `linear-gradient(135deg, ${accent.from}, ${accent.to})` }}
                             >{group.name}</span>
+                            )}
                             {group.verified && (
                                 <svg className="w-3.5 h-3.5 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
                             )}
@@ -342,11 +350,30 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                         )}
                     </h3>
 
-                    {/* Description */}
+                    {/* Description — hidden on locked premium cards so real content isn't exposed */}
                     <div className="mb-2 flex-grow">
-                        <p className="text-gray-400 text-xs line-clamp-2 leading-relaxed">
-                            {group.description}
-                        </p>
+                        {lockedPremium && premiumSocialProof ? (
+                            <div className="space-y-1.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    <div className="flex items-center gap-0.5">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                            <svg key={star} width="11" height="11" viewBox="0 0 24 24" fill="#fbbf24" aria-hidden>
+                                                <path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z" />
+                                            </svg>
+                                        ))}
+                                    </div>
+                                    <span className="text-[11px] font-black text-white">{premiumSocialProof.rating.toFixed(1)}</span>
+                                    <span className="text-[10px] text-white/45 font-semibold">({premiumSocialProof.reviewCount} reviews)</span>
+                                </div>
+                                <p className="text-white/55 text-[10px] sm:text-[11px] font-bold uppercase tracking-wide leading-snug">Instant access over 4800 premium groups.</p>
+                            </div>
+                        ) : lockedPremium ? (
+                            <p className="text-white/55 text-[10px] sm:text-[11px] font-bold uppercase tracking-wide leading-snug">Instant access over 4800 premium groups.</p>
+                        ) : (
+                            <p className="text-gray-400 text-xs line-clamp-2 leading-relaxed">
+                                {group.description}
+                            </p>
+                        )}
                     </div>
 
 
@@ -365,14 +392,28 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                                             : `/${group.slug}`}
                             target="_blank"
                             rel={group.isAdvertisement ? "sponsored noopener noreferrer" : "noopener noreferrer"}
-                            className="group/btn relative flex-1 flex items-center justify-center overflow-hidden rounded-xl py-2 sm:py-2.5 px-3 font-black transition-all duration-300 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98]"
+                            className={`group/btn relative flex-1 flex items-center justify-center gap-1.5 overflow-hidden font-black transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${
+                                lockedPremium
+                                    ? 'rounded-xl py-2 sm:py-2.5 px-3 hover:brightness-105'
+                                    : 'rounded-xl py-2 sm:py-2.5 px-3 hover:brightness-110'
+                            }`}
                             style={lockedPremium
-                                ? { background: 'linear-gradient(135deg, #fb5607, #ffbe0b)', color: '#1a0800', border: 'none' }
+                                ? {
+                                    background: 'linear-gradient(135deg, #b8860b 0%, #ffd700 40%, #fff8b0 55%, #ffd700 70%, #b8860b 100%)',
+                                    boxShadow: '0 4px 24px -4px rgba(255,215,0,0.5), inset 0 1px 0 rgba(255,255,255,0.4)',
+                                    color: '#1a0f00',
+                                    border: 'none',
+                                }
                                 : { background: 'linear-gradient(135deg, #ff5e2a, #ff9432)', color: '#fff', border: 'none', boxShadow: '0 4px 14px -6px rgba(255,94,42,0.65)' }
                             }
                         >
-                            <span className="text-xs sm:text-sm font-bold">
-                                {lockedPremium ? t('groups.unlockPremium') : group.isAdvertisement ? t('groups.visit') : itemType === 'bot' ? t('groups.openBot') : t('groups.joinChannel')}
+                            {lockedPremium && (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="#1a0f00" className="shrink-0" aria-hidden>
+                                    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
+                                </svg>
+                            )}
+                            <span className={`font-black tracking-tight ${lockedPremium ? 'text-[11px] sm:text-xs text-[#1a0f00]' : 'text-xs sm:text-sm font-bold'}`}>
+                                {lockedPremium ? 'ACCESS PREMIUM' : group.isAdvertisement ? t('groups.visit') : itemType === 'bot' ? t('groups.openBot') : t('groups.joinChannel')}
                             </span>
                         </a>
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
 import { Campaign } from '@/lib/models';
+import { campaignNotExpired } from '@/lib/campaignDates';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +17,7 @@ export async function GET() {
       status: 'active',
       isVisible: { $ne: false },
       startDate: { $lte: now },
-      endDate: { $gte: startOfToday },
+      ...campaignNotExpired(startOfToday),
     })
       .select('_id creative destinationUrl slot')
       .sort({ createdAt: -1 })

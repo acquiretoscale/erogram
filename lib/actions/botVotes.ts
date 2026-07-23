@@ -25,7 +25,12 @@ export async function getTopBotsForBlog(limit = 5): Promise<BlogTopBot[]> {
       {
         status: 'approved',
         isAdvertisement: { $ne: true },
-        $or: [{ topBot: true }, { boosted: true, boostExpiresAt: { $gt: now } }, { pinned: true }],
+        $or: [
+          { topBot: true },
+          { boosted: true, boostExpiresAt: null },
+          { boosted: true, boostExpiresAt: { $gt: now } },
+          { pinned: true },
+        ],
       },
       { slug: 1, name: 1, image: 1 },
     )

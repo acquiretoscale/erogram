@@ -581,7 +581,6 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
   const [afterSearchHasMore, setAfterSearchHasMore] = useState(true);
 
   const [isAdmin, setIsAdmin] = useState(false);
-  const [liveUsers, setLiveUsers] = useState(0);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [trendingToast, setTrendingToast] = useState('');
   const [allFeatured, setAllFeatured] = useState<any[]>([]);
@@ -591,7 +590,6 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
   const [searchFocused, setSearchFocused] = useState(false);
   const searchAbortRef = useRef<AbortController | null>(null);
   const searchBoxRef = useRef<HTMLDivElement>(null);
-  const isLiveVisitors = liveUsers > 0;
 
   const [recentPool, setRecentPool] = useState<Creator[]>(recentlyAdded);
   const [recentPicks, setRecentPicks] = useState<Creator[]>(() => recentlyAdded.slice(0, 8));
@@ -764,18 +762,6 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
     }
   }, [savedIds]);
 
-  useEffect(() => {
-    const fetchActive = () => {
-      fetch('/api/advertise-stats', { cache: 'no-store' })
-        .then(r => r.json())
-        .then(d => { if (typeof d.activeVisitors === 'number') setLiveUsers(d.activeVisitors); })
-        .catch(() => {});
-    };
-    fetchActive();
-    const id = setInterval(fetchActive, 300_000);
-    return () => clearInterval(id);
-  }, []);
-
   const trackClick = (slug: string) => {
     trackCreatorClick(slug);
   };
@@ -902,14 +888,14 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
               {t('ofSearch.heroDesc')}
             </motion.p>
 
-            {/* Search bar + visiting indicator */}
+            {/* Search bar */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.08 }}
-              className="mt-4 flex items-center gap-3 max-w-xl mx-auto"
+              className="mt-4 max-w-xl mx-auto"
             >
-              <div className="relative flex-1" ref={searchBoxRef}>
+              <div className="relative" ref={searchBoxRef}>
                 <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none">
                   <Search size={16} className="text-white/30" />
                 </div>
@@ -949,20 +935,6 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                     </div>
                   </div>
                 )}
-              </div>
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                <span className="relative flex h-2 w-2">
-                  {isLiveVisitors && (
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  )}
-                  <span
-                    className={`relative inline-flex rounded-full h-2 w-2 ${
-                      isLiveVisitors ? 'bg-emerald-500' : 'bg-white/20'
-                    }`}
-                  />
-                </span>
-                <span className="font-bold text-white text-sm tabular-nums">{liveUsers > 0 ? liveUsers.toLocaleString() : '—'}</span>
-                <span className="text-white/40 text-[11px] sm:text-sm">{t('ofSearch.visitingNow')}</span>
               </div>
             </motion.div>
 

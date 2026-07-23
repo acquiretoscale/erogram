@@ -7,7 +7,14 @@ import connectDB from '@/lib/db/mongodb';
 import { Group, BestGroupPick } from '@/lib/models';
 import { countries } from '@/app/groups/constants';
 import Navbar from '@/components/Navbar';
+import BestGroupRankCard from '@/app/best-telegram-groups/BestGroupRankCard';
 import { buildSocialMeta } from '@/lib/seo/socialMeta';
+import {
+  buildTop10Ranking,
+  countryPremiumFilter,
+  fetchNichePremiumGroups,
+  type Top10GroupDoc,
+} from '@/lib/bestTelegramGroups/top10List';
 
 interface PageProps {
     params: Promise<{ country: string }>;
@@ -102,20 +109,19 @@ export default async function BestCountryGroupsPage({ params }: PageProps) {
         .sort({ position: 1 })
         .populate({
             path: 'group',
-            match: { status: 'approved' },
+            match: { status: 'approved', premiumOnly: { $ne: true } },
         })
         .lean();
 
     const curatedGroups = curatedPicks
-        .filter((p: any) => p.group)
+        .filter((p: any) => p.group && p.group.premiumOnly !== true)
         .map((p: any) => ({
             ...p.group,
             _id: p.group._id.toString(),
-        }));
+        })) as Top10GroupDoc[];
 
-    const curatedIds = new Set(curatedGroups.map((g: any) => g._id));
+    const curatedIds = new Set(curatedGroups.map((g) => g._id));
 
-    // 2. Auto-fill with top-viewed groups (5 slots, excluding curated picks)
     const rawAutoGroups = await Group.find({
         country: realCountry,
         status: 'approved',
@@ -124,19 +130,21 @@ export default async function BestCountryGroupsPage({ params }: PageProps) {
         _id: { $nin: Array.from(curatedIds) },
     })
         .sort({ views: -1 })
-        .limit(5)
+        .limit(Math.max(0, 10 - curatedGroups.length))
         .lean();
 
     const autoGroups = rawAutoGroups.map((group: any) => ({
         ...group,
         _id: group._id.toString(),
-    }));
+    })) as Top10GroupDoc[];
 
-    const groups = [...curatedGroups, ...autoGroups];
+    const freeGroups = [...curatedGroups, ...autoGroups];
+    const premiumGroups = await fetchNichePremiumGroups(countryPremiumFilter(realCountry), 5);
+    const ranking = buildTop10Ranking(freeGroups, premiumGroups);
 
     // If very few groups overall, show some from other countries
     let otherGroups: any[] = [];
-    if (groups.length < 5) {
+    if (freeGroups.length < 5) {
         const rawOtherGroups = await Group.aggregate([
             {
                 $match: {
@@ -166,7 +174,7 @@ export default async function BestCountryGroupsPage({ params }: PageProps) {
                         Updated {month} {year}
                     </div>
                     <h1 className="text-4xl md:text-5xl lg:text-6xl font-black mb-6 leading-tight">
-                        The {groups.length > 0 ? groups.length : 'Best'} Best <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-green-500">{realCountry}</span> Telegram Groups
+                        The {freeGroups.length > 0 ? Math.min(freeGroups.length, 10) : 'Best'} Best <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-green-500">{realCountry}</span> Telegram Groups
                     </h1>
                     <p className="text-xl text-gray-400 max-w-2xl mx-auto">
                         Looking for the best Telegram communities in <strong>{realCountry}</strong>?
@@ -175,65 +183,16 @@ export default async function BestCountryGroupsPage({ params }: PageProps) {
                 </header>
 
                 {/* Main List */}
-                {groups.length > 0 ? (
+                {ranking.length > 0 ? (
                     <div className="space-y-12 mb-20">
-                        {groups.map((group: any, index: number) => (
-                            <div
-                                key={group._id}
-                                className="glass rounded-3xl p-6 md:p-8 border border-white/10 relative overflow-hidden"
-                            >
-                                {/* Rank Badge */}
-                                <div className="absolute top-0 left-0 bg-[#b31b1b] text-white px-6 py-2 rounded-br-3xl font-black text-xl z-10">
-                                    #{index + 1}
-                                </div>
-
-                                <div className="flex flex-col md:flex-row gap-8 mt-4">
-                                    {/* Image */}
-                                    <div className="w-full md:w-1/3 flex-shrink-0">
-                                        <div className="relative aspect-square rounded-2xl overflow-hidden bg-gray-800 shadow-2xl">
-                                            <FallbackImage
-                                                src={(group.image && typeof group.image === 'string' && group.image.startsWith('https://')) ? group.image : (process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png')}
-                                                alt={group.name}
-                                                className="object-cover hover:scale-110 transition-transform duration-500"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Content */}
-                                    <div className="flex-grow flex flex-col justify-center">
-                                        <h2 className="text-3xl font-bold mb-4 hover:text-[#b31b1b] transition-colors">
-                                            <Link href={`/${group.slug}`}>{group.name}</Link>
-                                        </h2>
-
-                                        <div className="flex flex-wrap gap-3 mb-6">
-                                            <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-gray-300">
-                                                👁️ {group.views.toLocaleString()} Views
-                                            </span>
-                                            <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-gray-300">
-                                                🌍 {group.country}
-                                            </span>
-                                            <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-gray-300">
-                                                📂 {group.category}
-                                            </span>
-                                        </div>
-
-                                        <p className="text-gray-400 text-lg mb-8 leading-relaxed">
-                                            {group.description}
-                                        </p>
-
-                                        <div className="mt-auto">
-                                            <a
-                                                href={`/${group.slug}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="block w-full md:w-auto text-center bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-4 px-8 rounded-xl transition-all hover:scale-105 shadow-lg shadow-blue-900/20"
-                                            >
-                                                Join Group 🚀
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        {ranking.map((entry) => (
+                            <BestGroupRankCard
+                                key={`${entry.group._id}-${entry.rank}`}
+                                entry={entry}
+                                joinLabel="Join Group 🚀"
+                                viewsLabel="Views"
+                                localePath={(path) => path}
+                            />
                         ))}
                     </div>
                 ) : (

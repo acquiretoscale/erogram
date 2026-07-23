@@ -108,7 +108,7 @@ interface CampaignRow {
   creative: string;
   destinationUrl: string;
   startDate: string;
-  endDate: string;
+  endDate: string | null;
   status: string;
   isVisible: boolean;
   impressions: number;
@@ -149,8 +149,8 @@ function authHeaders() {
   return { headers: { Authorization: `Bearer ${getToken()}` } };
 }
 
-function formatDate(iso: string) {
-  if (!iso) return '-';
+function formatDate(iso: string | null | undefined) {
+  if (!iso) return 'Evergreen';
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
@@ -749,6 +749,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
     destinationUrl: '',
     startDate: new Date().toISOString().slice(0, 10),
     endDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+    endDateLifetime: false,
     status: 'active',
     isVisible: true,
     position: null as number | null,
@@ -1083,6 +1084,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       destinationUrl: '',
       startDate: start.toISOString().slice(0, 10),
       endDate: end.toISOString().slice(0, 10),
+      endDateLifetime: false,
       status: 'active',
       isVisible: true,
       position: null,
@@ -1127,6 +1129,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       destinationUrl: camp.destinationUrl,
       startDate: toInputDate(camp.startDate),
       endDate: toInputDate(camp.endDate),
+      endDateLifetime: !camp.endDate,
       status: camp.status,
       isVisible: camp.isVisible,
       position: camp.slot === 'feed'
@@ -1189,7 +1192,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       setIsSaving(true);
       try {
         const startDate = campForm.startDate;
-        const endDate = campForm.endDate;
+        const endDate = campForm.endDateLifetime ? null : campForm.endDate;
         let ok = 0;
         const errs: string[] = [];
         for (const c of selectedCreators) {
@@ -1316,7 +1319,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
         creative: isCta ? '' : String(campForm.creative ?? ''),
         destinationUrl: String((campForm.destinationUrl ?? '').trim()),
         startDate: campForm.startDate,
-        endDate: campForm.endDate,
+        endDate: campForm.endDateLifetime ? null : campForm.endDate,
         status: campForm.status ?? 'active',
         isVisible: campForm.isVisible !== false,
         position: isFeed ? feedPos : null,
@@ -1380,6 +1383,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
         destinationUrl: '',
         startDate: new Date().toISOString().slice(0, 10),
         endDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+        endDateLifetime: false,
         status: 'active',
         isVisible: true,
         position: null,
@@ -1440,7 +1444,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
         const now = Date.now();
         patch.isVisible = true;
         if (camp.startDate && new Date(camp.startDate).getTime() > now) patch.startDate = new Date().toISOString();
-        if (!camp.endDate || new Date(camp.endDate).getTime() < now) {
+        if (camp.endDate && new Date(camp.endDate).getTime() < now) {
           patch.endDate = new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString();
         }
       }
@@ -2462,13 +2466,20 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                   <button
                     key={label}
                     type="button"
-                    onClick={() => setCampForm({ ...campForm, startDate: start.toISOString().slice(0, 10), endDate: end.toISOString().slice(0, 10) })}
-                    className="px-3 py-1.5 text-xs font-medium bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                    onClick={() => setCampForm({ ...campForm, endDateLifetime: false, startDate: start.toISOString().slice(0, 10), endDate: end.toISOString().slice(0, 10) })}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${!campForm.endDateLifetime ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
                   >
                     {label}
                   </button>
                 );
               })}
+              <button
+                type="button"
+                onClick={() => setCampForm({ ...campForm, endDateLifetime: true, startDate: new Date().toISOString().slice(0, 10), endDate: '' })}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${campForm.endDateLifetime ? 'bg-purple-500/30 text-purple-200 border border-purple-500/40' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+              >
+                Lifetime
+              </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -2477,7 +2488,11 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
               </div>
               <div>
                 <label className="block text-xs text-[#666] mb-1">End Date</label>
-                <input type="date" value={campForm.endDate} onChange={(e) => setCampForm({ ...campForm, endDate: e.target.value })} className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] outline-none" />
+                {campForm.endDateLifetime ? (
+                  <div className="w-full p-3 bg-purple-500/10 border border-purple-500/30 rounded-xl text-purple-200 text-sm">Evergreen — runs until you pause or end it</div>
+                ) : (
+                  <input type="date" value={campForm.endDate} onChange={(e) => setCampForm({ ...campForm, endDate: e.target.value, endDateLifetime: false })} className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] outline-none" />
+                )}
               </div>
             </div>
           </div>
@@ -3487,6 +3502,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                               buttonText: 'Visit',
                               startDate: toInputDate(new Date().toISOString()),
                               endDate: toInputDate(new Date(Date.now() + 90 * 86400000).toISOString()),
+                              endDateLifetime: false,
                               status: 'active',
                               isVisible: true,
                               position: null,

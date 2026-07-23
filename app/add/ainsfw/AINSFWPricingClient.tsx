@@ -43,7 +43,6 @@ function Check() {
 
 function CompactHeroStats() {
   const [views, setViews] = useState<number | null>(null);
-  const [live, setLive] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchStats = () => {
@@ -51,7 +50,6 @@ function CompactHeroStats() {
         .then((r) => r.json())
         .then((d) => {
           if (typeof d.totalViews === 'number') setViews(d.totalViews);
-          if (typeof d.activeVisitors === 'number') setLive(d.activeVisitors);
         })
         .catch(() => {});
     };
@@ -65,18 +63,11 @@ function CompactHeroStats() {
       <p className="inline-flex px-2.5 py-0.5 mb-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-[0.16em] text-white bg-black rounded">
         Get seen on Erogram
       </p>
-      <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-5 py-4 space-y-2 shrink-0">
+      <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-5 py-4 shrink-0">
         <div className="flex items-baseline justify-end gap-3 whitespace-nowrap">
           <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-white/30">Page views</span>
           <span className="text-lg sm:text-xl font-bold tabular-nums text-white/65">
             {views != null ? views.toLocaleString() : '—'}
-          </span>
-        </div>
-        <div className="flex items-baseline justify-end gap-3 whitespace-nowrap">
-          <span className="flex h-2 w-2 rounded-full bg-emerald-400/70 animate-pulse shrink-0 self-center" />
-          <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-white/30">Live now</span>
-          <span className="text-lg sm:text-xl font-bold tabular-nums text-white/65">
-            {live != null ? live.toLocaleString() : '—'}
           </span>
         </div>
       </div>

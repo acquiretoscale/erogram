@@ -4,7 +4,7 @@ import connectDB from '@/lib/db/mongodb';
 import { Group, Bot, StorySlideContent, SiteConfig } from '@/lib/models';
 import GroupsClient from './GroupsClient';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { getActiveCampaigns, getActiveFeedCampaigns, isPremiumHouseAdLive, getTrendingErogramCampaigns } from '@/lib/actions/campaigns';
+import { getActiveCampaigns, getActiveFeedCampaigns, getTrendingErogramCampaigns } from '@/lib/actions/campaigns';
 import { getFeaturedCreatorFeedItems } from '@/lib/actions/publicData';
 import { getStoryCategories, DEFAULT_STORY_CATEGORIES, type StoryCategoryConfig } from '@/lib/actions/siteConfig';
 import { listR2Files } from '@/lib/r2';
@@ -528,13 +528,12 @@ export async function GroupsPageView({ page = 1 }: { page?: number }) {
   if (storyConfig.length === 0) storyConfig = DEFAULT_STORY_CATEGORIES;
 
   // In-feed ads + story data + vault teaser + featured creators + trending + filter options — all in parallel
-  const [topBannerCampaigns, feedCampaignsRaw, storyData, vaultTeaserGroupsRaw, featuredCreatorItems, premiumLive, filterOpts, trendingErogramCampaigns] = await Promise.all([
+  const [topBannerCampaigns, feedCampaignsRaw, storyData, vaultTeaserGroupsRaw, featuredCreatorItems, filterOpts, trendingErogramCampaigns] = await Promise.all([
     getActiveCampaigns('top-banner', { page: 'groups' }),
     getActiveFeedCampaigns('groups'),
     storiesEnabled ? getStoryData(storyConfig, locale) : Promise.resolve([] as StoryCategory[]),
     getVaultTeaser(),
     getFeaturedCreatorFeedItems().catch(() => []),
-    isPremiumHouseAdLive().catch(() => false),
     getFilterOptions(),
     getTrendingErogramCampaigns(8).catch(() => []),
   ]);
@@ -543,10 +542,9 @@ export async function GroupsPageView({ page = 1 }: { page?: number }) {
   const trendingCategories = toTrendingCategoryLinks(filterOpts.categoryCounts);
   const trendingCountries = toTrendingLinks(filterOpts.countries);
 
-  // Centralized control: the Vault Teaser house promo only shows when an Erogram
-  // Premium campaign is live in the Ad Network. No live premium campaign → hide it,
-  // so the front end never shows ads the admin can't see/control.
-  const vaultTeaserGroups = premiumLive ? vaultTeaserGroupsRaw : [];
+  // The EROGRAM PREMIUM in-feed teaser is a native-looking house post (click → /premium).
+  // It is INDEPENDENT of the Ad Network — always shown, never tied to any campaign/stats.
+  const vaultTeaserGroups = vaultTeaserGroupsRaw;
 
   // AGNOSTIC SLOTS: every ad — including OF creators assigned in /admin/ad-network —
   // keeps its assigned slot and rotates with any other adType in that slot.

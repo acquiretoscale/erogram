@@ -8,6 +8,23 @@ import { pingIndexNow } from '@/lib/utils/indexNow';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
+const BOOST_DURATION_MS: Record<string, number> = {
+  '1d': 1 * 24 * 60 * 60 * 1000,
+  '7d': 7 * 24 * 60 * 60 * 1000,
+  '14d': 14 * 24 * 60 * 60 * 1000,
+  '30d': 30 * 24 * 60 * 60 * 1000,
+};
+
+export type BotBoostDuration = '1d' | '7d' | '14d' | '30d' | 'lifetime';
+
+async function expireStaleBotBoosts() {
+  const now = new Date();
+  await Bot.updateMany(
+    { boosted: true, boostExpiresAt: { $ne: null, $lte: now } },
+    { $set: { boosted: false, boostExpiresAt: null, boostDuration: null, featured: false } }
+  );
+}
+
 async function authenticateAdmin(token: string) {
   if (!token) return null;
   try {
@@ -26,6 +43,7 @@ export async function getBots(token: string, search?: string) {
   if (!admin) throw new Error('Unauthorized');
 
   await connectDB();
+  await expireStaleBotBoosts();
 
   let query: any = {};
   if (search) {
@@ -61,6 +79,56 @@ export async function getBots(token: string, search?: string) {
   });
 
   return JSON.parse(JSON.stringify(enriched));
+}
+
+export async function setBotBoost(
+  token: string,
+  botId: string,
+  boosted: boolean,
+  boostDuration?: BotBoostDuration
+) {
+  const admin = await authenticateAdmin(token);
+  if (!admin) throw new Error('Unauthorized');
+
+  await connectDB();
+  await expireStaleBotBoosts();
+
+  const bot = await Bot.findById(botId);
+  if (!bot) throw new Error('Bot not found');
+  if (bot.status !== 'approved') throw new Error('Bot must be approved before boosting');
+
+  if (boosted) {
+    const duration = boostDuration || '7d';
+    const now = new Date();
+    bot.boosted = true;
+    bot.boostDuration = duration;
+    if (duration === 'lifetime') {
+      bot.boostExpiresAt = null;
+    } else {
+      bot.boostExpiresAt = new Date(now.getTime() + (BOOST_DURATION_MS[duration] || BOOST_DURATION_MS['7d']));
+    }
+    bot.featured = true;
+    bot.featuredAt = bot.featuredAt || now;
+  } else {
+    bot.boosted = false;
+    bot.boostExpiresAt = null;
+    bot.boostDuration = null;
+    if (!bot.paidBoost) bot.featured = false;
+  }
+
+  bot.reviewedBy = admin._id;
+  bot.reviewedAt = new Date();
+  try {
+    await bot.save();
+  } catch (err: any) {
+    if (err?.name === 'ValidationError') {
+      const msg = err.message || 'Validation failed';
+      throw new Error(msg.includes('boostDuration') ? 'Boost save failed — restart dev server if Lifetime was just added.' : msg);
+    }
+    throw err;
+  }
+
+  return JSON.parse(JSON.stringify(bot));
 }
 
 export async function updateBot(token: string, id: string, data: Record<string, any>) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { Upload, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
@@ -39,19 +39,6 @@ export default function SubmitCreatorPage() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ success: boolean; slug?: string; id?: string; error?: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [liveUsers, setLiveUsers] = useState(0);
-
-  useEffect(() => {
-    const fetchActive = () => {
-      fetch('/api/advertise-stats', { cache: 'no-store' })
-        .then(r => r.json())
-        .then(d => { if (typeof d.activeVisitors === 'number') setLiveUsers(d.activeVisitors); })
-        .catch(() => {});
-    };
-    fetchActive();
-    const id = setInterval(fetchActive, 300_000);
-    return () => clearInterval(id);
-  }, []);
 
   const handlePhotos = (files: FileList | null) => {
     if (!files) return;
@@ -153,16 +140,6 @@ export default function SubmitCreatorPage() {
           <p className="text-gray-400 text-sm max-w-lg mx-auto leading-relaxed">
             Dozens of content creators and agencies work with us to grow their OnlyFans traffic. Get access to the best and most qualified leads to make more money with your OnlyFans. Submit your profile for <span className="text-white font-bold">FREE</span>.
           </p>
-          {liveUsers > 0 && (
-            <div className="flex items-center justify-center gap-1.5 mt-4">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-              </span>
-              <span className="font-bold text-white text-sm tabular-nums">{liveUsers.toLocaleString()}</span>
-              <span className="text-white/40 text-[11px] sm:text-sm">visiting Erogram right now</span>
-            </div>
-          )}
         </div>
 
         {result?.success ? (

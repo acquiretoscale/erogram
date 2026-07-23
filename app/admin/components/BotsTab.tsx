@@ -3,13 +3,37 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
-import { getBots, updateBot, deleteBot, moveBotToGroup } from '@/lib/actions/adminBots';
+import { getBots, updateBot, deleteBot, moveBotToGroup, setBotBoost } from '@/lib/actions/adminBots';
 import { compressImage } from '@/lib/utils/compressImage';
 import { categories, countries } from '@/app/bots/constants';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 
 type SortKey = 'name' | 'clicks24h' | 'clicks7d' | 'clicks' | 'created' | 'status' | 'category';
 type StatusFilter = 'all' | 'approved' | 'pending' | 'rejected';
+
+const BOOST_DURATIONS = [
+    { value: '1d', label: '1 Day' },
+    { value: '7d', label: '7 Days' },
+    { value: '14d', label: '14 Days' },
+    { value: '30d', label: '1 Month' },
+    { value: 'lifetime', label: 'Lifetime' },
+] as const;
+
+function formatBoostRemaining(expiresAt: string | null | undefined) {
+    if (!expiresAt) return '';
+    const ms = new Date(expiresAt).getTime() - Date.now();
+    if (ms <= 0) return 'expired';
+    const days = Math.floor(ms / (24 * 60 * 60 * 1000));
+    const hours = Math.floor((ms % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+    if (days > 0) return `${days}d ${hours}h left`;
+    return `${hours}h left`;
+}
+
+function isBoostActive(bot: { boosted?: boolean; boostExpiresAt?: string | null }) {
+    if (!bot.boosted) return false;
+    if (!bot.boostExpiresAt) return true;
+    return new Date(bot.boostExpiresAt).getTime() > Date.now();
+}
 
 export default function BotsTab() {
     const [bots, setBots] = useState<any[]>([]);
@@ -31,6 +55,9 @@ export default function BotsTab() {
         showVerified: false,
     });
     const [isSaving, setIsSaving] = useState(false);
+    const [boostModal, setBoostModal] = useState<any | null>(null);
+    const [boostDuration, setBoostDuration] = useState<'1d' | '7d' | '14d' | '30d' | 'lifetime'>('7d');
+    const [boostSaving, setBoostSaving] = useState(false);
 
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -64,6 +91,8 @@ export default function BotsTab() {
         });
         return counts;
     }, [bots]);
+
+    const boostedCount = useMemo(() => bots.filter((b) => isBoostActive(b)).length, [bots]);
 
     const totalClicks = useMemo(() => bots.reduce((s, b) => s + (b.clickCount || 0), 0), [bots]);
     const totalClicks24h = useMemo(() => bots.reduce((s, b) => s + (b.clicks24h || 0), 0), [bots]);
@@ -169,6 +198,44 @@ export default function BotsTab() {
         }
     };
 
+    const handleToggleBoost = async (bot: any) => {
+        if (bot.status !== 'approved') {
+            alert('Bot must be approved before boosting');
+            return;
+        }
+        if (isBoostActive(bot)) {
+            if (!confirm(`Remove boost from "${bot.name}"?`)) return;
+            setBoostSaving(true);
+            try {
+                const token = localStorage.getItem('token');
+                await setBotBoost(token || '', bot._id, false);
+                await fetchBots();
+            } catch (err: any) {
+                alert(err.message || 'Failed to remove boost');
+            } finally {
+                setBoostSaving(false);
+            }
+        } else {
+            setBoostModal(bot);
+            setBoostDuration('7d');
+        }
+    };
+
+    const handleConfirmBoost = async () => {
+        if (!boostModal) return;
+        setBoostSaving(true);
+        try {
+            const token = localStorage.getItem('token');
+            await setBotBoost(token || '', boostModal._id, true, boostDuration);
+            setBoostModal(null);
+            await fetchBots();
+        } catch (err: any) {
+            alert(err?.message || 'Failed to boost bot');
+        } finally {
+            setBoostSaving(false);
+        }
+    };
+
     const handleMoveToGroup = async (id: string, name: string) => {
         if (!confirm(`Move "${name}" from Bots to Groups?`)) return;
         try {
@@ -217,6 +284,9 @@ export default function BotsTab() {
             <div className="flex items-center justify-between flex-wrap gap-3">
                 <h1 className="text-xl font-black text-white">Bots <span className="text-sm font-normal text-[#666]">({statusCounts.approved} approved{statusCounts.pending > 0 ? `, ${statusCounts.pending} pending` : ''})</span></h1>
                 <div className="flex items-center gap-4 text-xs tabular-nums">
+                    {boostedCount > 0 && (
+                        <span className="text-orange-400 font-bold">{boostedCount} <span className="text-[#666] font-normal">boosted</span></span>
+                    )}
                     <span className="text-green-400 font-bold">{totalClicks24h.toLocaleString()} <span className="text-[#666] font-normal">24h</span></span>
                     <span className="text-white font-bold">{totalClicks7d.toLocaleString()} <span className="text-[#666] font-normal">7d</span></span>
                     <span className="text-[#999] font-bold">{totalClicks.toLocaleString()} <span className="text-[#666] font-normal">lifetime</span></span>
@@ -290,8 +360,14 @@ export default function BotsTab() {
                                                             {bot.name}
                                                             {bot.pinned && <span className="text-[8px] bg-yellow-500/20 text-yellow-500 px-1 rounded">PIN</span>}
                                                             {bot.topBot && <span className="text-[8px] bg-amber-500/20 text-amber-400 px-1 rounded">🏆</span>}
+                                                            {isBoostActive(bot) && <span className="text-[8px] bg-orange-500/20 text-orange-400 px-1 rounded">⚡</span>}
                                                             {bot.showVerified && <span className="text-blue-500">✓</span>}
                                                         </div>
+                                                        {isBoostActive(bot) && (
+                                                            <div className="text-[9px] text-orange-400/70">
+                                                                {bot.boostExpiresAt ? formatBoostRemaining(bot.boostExpiresAt) : 'Lifetime'}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </td>
@@ -309,6 +385,20 @@ export default function BotsTab() {
                                                 <span className={(bot.clickCount || 0) > 0 ? 'text-[#888]' : 'text-[#444]'}>{(bot.clickCount || 0).toLocaleString()}</span>
                                             </td>
                                             <td className="px-3 py-1.5 text-right whitespace-nowrap">
+                                                {bot.status === 'approved' && (
+                                                    <button
+                                                        onClick={() => handleToggleBoost(bot)}
+                                                        disabled={boostSaving}
+                                                        className={`mr-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                                                            isBoostActive(bot)
+                                                                ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30'
+                                                                : 'bg-white/5 text-[#888] hover:bg-orange-500/10 hover:text-orange-400'
+                                                        }`}
+                                                        title={isBoostActive(bot) ? 'Remove boost' : 'Boost to Top Bots'}
+                                                    >
+                                                        {isBoostActive(bot) ? 'Boosted' : 'Boost'}
+                                                    </button>
+                                                )}
                                                 <button onClick={() => handleEdit(bot)} className="text-blue-400 hover:underline mr-1.5">Edit</button>
                                                 <button onClick={() => handleDelete(bot._id)} className="text-red-400 hover:underline">Del</button>
                                             </td>
@@ -423,6 +513,57 @@ export default function BotsTab() {
                                 <button onClick={() => setShowEditor(false)} className="px-6 py-3 rounded-xl text-sm font-bold text-[#999] hover:text-white hover:bg-white/5 transition-colors">Cancel</button>
                                 <button onClick={handleSave} disabled={isSaving || isUploading} className="px-6 py-3 rounded-xl text-sm font-bold bg-[#b31b1b] text-white hover:bg-[#c42b2b] transition-colors shadow-lg shadow-[#b31b1b]/20 disabled:opacity-50">
                                     {isSaving ? 'Saving...' : isUploading ? 'Uploading...' : 'Save Changes'}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Boost duration modal */}
+            <AnimatePresence>
+                {boostModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+                        onClick={() => !boostSaving && setBoostModal(null)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-[#111] border border-orange-500/20 rounded-2xl w-full max-w-md shadow-2xl"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="p-6 border-b border-white/10">
+                                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-orange-400"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
+                                    Boost Bot
+                                </h2>
+                                <p className="text-sm text-[#888] mt-1">{boostModal.name}</p>
+                                <p className="text-xs text-[#666] mt-2">Shows in Top Bots on /bots — ranks above 🏆-only bots for the selected duration.</p>
+                            </div>
+                            <div className="p-6 space-y-3">
+                                {BOOST_DURATIONS.map((d) => (
+                                    <label key={d.value} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer border transition-colors ${boostDuration === d.value ? 'border-orange-500/40 bg-orange-500/10' : 'border-white/10 hover:border-white/20'}`}>
+                                        <input
+                                            type="radio"
+                                            name="boostDuration"
+                                            value={d.value}
+                                            checked={boostDuration === d.value}
+                                            onChange={() => setBoostDuration(d.value)}
+                                            className="text-orange-500"
+                                        />
+                                        <span className="text-white font-medium text-sm">{d.label}</span>
+                                    </label>
+                                ))}
+                            </div>
+                            <div className="p-6 border-t border-white/10 flex gap-3 justify-end">
+                                <button onClick={() => setBoostModal(null)} disabled={boostSaving} className="px-4 py-2 rounded-xl text-sm text-[#999] hover:text-white">Cancel</button>
+                                <button onClick={handleConfirmBoost} disabled={boostSaving} className="px-5 py-2 rounded-xl text-sm font-bold bg-orange-500 text-white hover:bg-orange-400 disabled:opacity-50">
+                                    {boostSaving ? 'Boosting…' : 'Confirm Boost'}
                                 </button>
                             </div>
                         </motion.div>

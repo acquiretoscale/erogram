@@ -29,25 +29,29 @@ if (!g.__mongoose) {
 
 async function connectDB() {
   // Fast path: already connected
-  if (g.__mongoose.conn && mongoose.connection.readyState === 1) {
-    return g.__mongoose.conn;
+  if (mongoose.connection.readyState === 1) {
+    return g.__mongoose.conn ?? mongoose;
   }
 
-  // Connection dropped or never established — reset and reconnect
-  if (mongoose.connection.readyState !== 1) {
+  // Only clear cache when fully disconnected — NOT while connecting (readyState 2)
+  if ((mongoose.connection.readyState === 0 || mongoose.connection.readyState === 3) && !g.__mongoose.promise) {
     g.__mongoose.conn = null;
-    g.__mongoose.promise = null;
   }
 
   if (!g.__mongoose.promise) {
-    g.__mongoose.promise = mongoose.connect(uri, options).then((m) => {
-      g.__mongoose.conn = m;
-      return m;
-    });
+    g.__mongoose.promise = mongoose.connect(uri, options)
+      .then((m) => {
+        g.__mongoose.conn = m;
+        return m;
+      })
+      .catch((err) => {
+        g.__mongoose.promise = null;
+        g.__mongoose.conn = null;
+        throw err;
+      });
   }
 
-  g.__mongoose.conn = await g.__mongoose.promise;
-  return g.__mongoose.conn;
+  return await g.__mongoose.promise;
 }
 
 export default connectDB;

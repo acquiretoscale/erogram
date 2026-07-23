@@ -12,12 +12,10 @@ import BookmarkButton from '@/components/BookmarkButton';
 import ShareDropdown from '@/components/ShareDropdown';
 import { categorySlug } from '@/app/groups/constants';
 import { getButtonConfig } from '@/lib/actions/publicData';
-import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
 import { trackTrendingClick } from '@/lib/actions/onlyfansTracking';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 import { getCreatorReviews, submitCreatorReview, type CreatorReviewData } from '@/lib/actions/ofCreatorProfile';
 import VaultTeaserFeed from '@/app/groups/VaultTeaserFeed';
-import VickyGroupsBubble from '@/app/groups/VickyGroupsBubble';
 import AdvertCard from '@/app/groups/AdvertCard';
 import type { FeedCampaign } from '@/app/groups/types';
 import { useTranslation, useLocalePath } from '@/lib/i18n';
@@ -114,6 +112,7 @@ interface JoinClientProps {
   featuredCreators?: FeaturedCreator[];
   sidebarAds?: FeedCampaign[];
   botStats?: BotStatsData;
+  rankingCoverImages?: Record<string, string>;
 }
 
 interface PopupAdvert {
@@ -130,6 +129,22 @@ interface PopupAdvert {
   button3Text?: string;
   button3Url?: string;
 }
+
+/** GSC top pages — curiosity title + SEO anchor. */
+const TOP_RANKING_GROUP_PAGES = [
+  { curiosity: "Want the wettest content on Telegram?", seo: "10 Best Blowjob Telegram Groups & Channels (2026)", href: "/best-telegram-groups/blowjob" },
+  { curiosity: "Hunting for leaked OnlyFans?", seo: "10 Best Onlyfans Telegram Groups & Channels (2026)", href: "/best-telegram-groups/onlyfans" },
+  { curiosity: "Crave experienced women?", seo: "10 Best MILF Telegram Groups & Channels (2026)", href: "/best-telegram-groups/milf" },
+  { curiosity: "Obsessed with curves that don't quit?", seo: "10 Best Big Ass Telegram Groups & Channels (2026)", href: "/best-telegram-groups/big-ass" },
+  { curiosity: "Have a thing for perfect soles?", seo: "10 Best Feet Telegram Groups & Channels (2026)", href: "/best-telegram-groups/feet" },
+  { curiosity: "Ready to explore your darkest kinks?", seo: "10 Best Fetish Telegram Groups & Channels (2026)", href: "/best-telegram-groups/fetish" },
+  { curiosity: "Want petite, exotic beauties?", seo: "10 Best Asian Telegram Groups & Channels (2026)", href: "/best-telegram-groups/asian" },
+  { curiosity: "Curious about forbidden Chinese content?", seo: "10 Best China Telegram Groups & Channels (2026)", href: "/best-telegram-groups/country/china" },
+  { curiosity: "Ready for the tightest groups on Telegram?", seo: "10 Best Anal Telegram Groups & Channels (2026)", href: "/best-telegram-groups/anal" },
+  { curiosity: "Looking for the wildest NSFW communities?", seo: "Porn & NSFW Telegram Groups – Browse Thousands of Communities", href: "/groups" },
+  { curiosity: "Want that British accent in bed?", seo: "NSFW Telegram Groups in UK - UK Adult Communities", href: "/best-telegram-groups/country/uk" },
+  { curiosity: "¿Te gustan las maduras expertas?", seo: "10 Best MILF Telegram Groups & Channels (2026)", href: "/es/best-telegram-groups/milf" },
+] as const;
 
 
 function VaultTeaserBlock({ items }: { items: VaultTeaserItem[] }) {
@@ -209,7 +224,7 @@ function VaultTeaserBlock({ items }: { items: VaultTeaserItem[] }) {
   );
 }
 
-export default function JoinClient({ entity, type, similarGroups = [], initialIsMobile = false, initialIsTelegram = false, joinCtaCampaign = null, topBannerCampaigns = [], isDeleted = false, vaultTeaser = [], featuredCreators = [], sidebarAds = [] }: JoinClientProps) {
+export default function JoinClient({ entity, type, similarGroups = [], initialIsMobile = false, initialIsTelegram = false, joinCtaCampaign = null, topBannerCampaigns = [], isDeleted = false, vaultTeaser = [], featuredCreators = [], sidebarAds = [], rankingCoverImages = {} }: JoinClientProps) {
   const [countdown, setCountdown] = useState(0);
   const [linkReady, setLinkReady] = useState(false);
   const [buttonConfig, setButtonConfig] = useState<ButtonConfig | null>(null);
@@ -990,38 +1005,8 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                   </div>
                 )}
 
-                {/* Join CTA placement (named placement: join-cta). Client-side, server-action tracked, new tab. */}
-                {joinCtaCampaign && !initialIsTelegram && (
-                  <a
-                    href={joinCtaCampaign.destinationUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => { trackCampaignClick(joinCtaCampaign._id, 'join-cta'); }}
-                    className="mt-3 block w-full rounded-2xl border border-white/10 bg-[#141414] px-6 py-4 text-center transition-all hover:border-white/25 hover:bg-white/[0.03]"
-                  >
-                    {joinCtaCampaign.description && (
-                      <p className="mb-2 text-sm text-gray-300">{joinCtaCampaign.description}</p>
-                    )}
-                    <span className="text-base font-bold text-white">
-                      {joinCtaCampaign.buttonText || 'Learn more'}
-                    </span>
-                  </a>
-                )}
-
+                {/* Premium CTA — always shown, right below the join button */}
                 <div className="mt-6 border-t border-white/5 pt-6">
-                  {showSidebarAds ? (
-                    <div className="rounded-2xl border border-[#00AFF0]/30 bg-white p-4 shadow-[0_18px_40px_-20px_rgba(0,175,240,0.45)]">
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-[#00AFF0]" style={{ fontSize: 14 }}>★</span>
-                        <h3 className="text-sm font-black text-[#0f172a]">FEATURED ON <span className="text-[#00AFF0]">EROGRAM</span></h3>
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        {sidebarAdsShuffled.map((c, i) => (
-                          <AdvertCard key={c._id} campaign={c} isIndex={i} forceVisible hidePromoted placementOverride={type === 'bot' ? 'group-sidebar-bots' : 'group-sidebar-groups'} />
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
                     <div className="rounded-2xl border-2 border-orange-500/70 bg-[#0d0d0d] p-5 text-center space-y-4 shadow-[0_0_18px_rgba(249,115,22,0.2)]">
                       <a
                         href="/premium"
@@ -1030,17 +1015,17 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                         className="block w-full text-center font-black py-5 rounded-2xl text-lg uppercase tracking-widest transition-all duration-150 transform hover:-translate-y-1 hover:brightness-110 active:translate-y-0"
                         style={{ background: 'linear-gradient(180deg,#4ade80 0%,#16a34a 100%)', color: '#fff', border: '2.5px solid #15803d', boxShadow: '0 0 0 1px #bbf7d0, 0 0 24px 6px rgba(74,222,128,0.55), 0 6px 0 #14532d', textShadow: '0 1px 3px rgba(0,0,0,0.5)', letterSpacing: '0.08em' }}
                       >
-                        🔒 UNLOCK 4000 UNLISTED PREMIUM GROUPS
+                        🔒 UNLOCK 4800 UNLISTED PREMIUM GROUPS
                       </a>
 
                       <div className="space-y-1.5 text-left max-w-md mx-auto">
                         <p className="text-base font-bold">
-                          <span style={{ background: '#b91c1c', color: '#fff', padding: '2px 6px', borderRadius: '2px', boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' as any }}>Access Instantly Over 4000 unlisted groups</span>
+                          <span style={{ background: '#b91c1c', color: '#fff', padding: '2px 6px', borderRadius: '2px', boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' as any }}>Access Instantly Over 4800 unlisted groups</span>
                         </p>
                         <ul className="text-sm font-medium space-y-1.5">
                           <li><span style={{ background: '#b91c1c', color: '#fff', padding: '2px 6px', borderRadius: '2px', boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' as any }}>• Organized by categories, total subs, and country.</span></li>
                           <li><span style={{ background: '#b91c1c', color: '#fff', padding: '2px 6px', borderRadius: '2px', boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' as any }}>• Unlimited Bookmarking &amp; folders.</span></li>
-                          <li><span style={{ background: '#b91c1c', color: '#fff', padding: '2px 6px', borderRadius: '2px', boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' as any }}>• Enhanced filtering, Vicky AI to find faster what you&apos;re looking for &amp; Much more.</span></li>
+                          <li><span style={{ background: '#b91c1c', color: '#fff', padding: '2px 6px', borderRadius: '2px', boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' as any }}>• Enhanced filtering, advanced search to find faster what you&apos;re looking for &amp; Much more.</span></li>
                         </ul>
                       </div>
 
@@ -1089,7 +1074,20 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                       </a>
                       <p className="text-xs text-white/50 mt-2">Over 60 categories · Updated regularly</p>
                     </div>
-                  )}
+
+                    {showSidebarAds && (
+                      <div className="mt-6 rounded-2xl border border-[#00AFF0]/30 bg-white p-4 shadow-[0_18px_40px_-20px_rgba(0,175,240,0.45)]">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="text-[#00AFF0]" style={{ fontSize: 14 }}>★</span>
+                          <h3 className="text-sm font-black text-[#0f172a]">FEATURED ON <span className="text-[#00AFF0]">EROGRAM</span></h3>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          {sidebarAdsShuffled.map((c, i) => (
+                            <AdvertCard key={c._id} campaign={c} isIndex={i} forceVisible hidePromoted placementOverride={type === 'bot' ? 'group-sidebar-bots' : 'group-sidebar-groups'} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
                 </div>
 
 
@@ -1403,48 +1401,29 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
               transition={{ duration: 0.6 }}
               className="mt-24"
             >
-              <div className="flex items-center justify-between mb-10">
-                <div>
-                  <h2 className="text-3xl font-black text-white mb-2">{t('slug.similarCommunities')}</h2>
-                  <p className="text-gray-400">{t('slug.similarDesc')}</p>
+              <div className="flex items-start justify-between gap-6 mb-10">
+                <div className="max-w-2xl">
+                  <h2 className="text-3xl font-black text-white mb-3">{t('slug.similarCommunities')}</h2>
+                  <p className="text-gray-400 leading-relaxed">
+                    We&rsquo;ve hand-picked a few communities that share <span className="font-semibold text-white">{editName}</span>&rsquo;s energy. Some you can join for free. The rest live in the vault | our unlisted Premium section where 90% of Erogram actually hides. Consider this the appetizer.{' '}
+                    <a
+                      href="/premium"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold underline decoration-[#ffd700]/40 underline-offset-2"
+                      style={{ background: 'linear-gradient(135deg, #b8860b 0%, #ffd700 45%, #fff8b0 60%, #ffd700 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
+                    >
+                      Upgrade to Premium
+                    </a>{' '}
+                    if you want the full menu.
+                  </p>
                 </div>
-                <Link href={lp('/groups')} className="hidden sm:inline-block px-6 py-2 rounded-full border border-white/10 text-white hover:bg-white/5 transition-colors font-medium">
+                <Link href={lp('/groups')} className="hidden sm:inline-block shrink-0 px-6 py-2 rounded-full border border-white/10 text-white hover:bg-white/5 transition-colors font-medium">
                   {t('slug.viewAll')}
                 </Link>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {similarGroups.slice(0, 6).map((g) => (
-                  <Link
-                    key={g._id}
-                    href={lp(`/${g.slug}`)}
-                    className="group bg-white/[0.04] backdrop-blur-xl rounded-2xl p-5 border border-white/5 hover:border-white/20 transition-all hover:-translate-y-1 hover:shadow-xl"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="w-16 h-16 rounded-xl bg-white/5 overflow-hidden border border-white/5 group-hover:scale-105 transition-transform flex-shrink-0 relative">
-                        <img
-                          src={failedSimilarImages[g._id] ? PLACEHOLDER_IMAGE_URL : (g.image || PLACEHOLDER_IMAGE_URL)}
-                          alt={g.name}
-                          className="w-full h-full object-cover"
-                          referrerPolicy="no-referrer"
-                          onError={() => setFailedSimilarImages((prev) => ({ ...prev, [g._id]: true }))}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-bold text-white truncate group-hover:text-blue-400 transition-colors">{g.name}</h3>
-                        <div className="flex gap-2 mt-2">
-                          <span className="text-xs px-2 py-1 rounded bg-white/5 text-gray-400">{g.category}</span>
-                          <span className="text-xs px-2 py-1 rounded bg-white/5 text-gray-400">{g.country}</span>
-                        </div>
-                      </div>
-                    </div>
-                    {g.description && (
-                      <p className="mt-4 text-sm text-gray-500 line-clamp-2 group-hover:text-gray-400 transition-colors">
-                        {g.description}
-                      </p>
-                    )}
-                  </Link>
-                ))}
                 {vaultTeaser.filter(g => g.image && g.memberCount >= 80000).slice(0, 3).map((g) => {
                   const fmtSubs = (n: number) => n >= 1_000_000 ? (n/1_000_000).toFixed(1)+'M' : n >= 1_000 ? (n/1_000).toFixed(n>=10_000?0:1)+'K' : String(n);
                   return (
@@ -1477,6 +1456,37 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                   </Link>
                   );
                 })}
+                {similarGroups.slice(0, 6).map((g) => (
+                  <Link
+                    key={g._id}
+                    href={lp(`/${g.slug}`)}
+                    className="group bg-white/[0.04] backdrop-blur-xl rounded-2xl p-5 border border-white/5 hover:border-white/20 transition-all hover:-translate-y-1 hover:shadow-xl"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="w-16 h-16 rounded-xl bg-white/5 overflow-hidden border border-white/5 group-hover:scale-105 transition-transform flex-shrink-0 relative">
+                        <img
+                          src={failedSimilarImages[g._id] ? PLACEHOLDER_IMAGE_URL : (g.image || PLACEHOLDER_IMAGE_URL)}
+                          alt={g.name}
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                          onError={() => setFailedSimilarImages((prev) => ({ ...prev, [g._id]: true }))}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-bold text-white truncate group-hover:text-blue-400 transition-colors">{g.name}</h3>
+                        <div className="flex gap-2 mt-2">
+                          <span className="text-xs px-2 py-1 rounded bg-white/5 text-gray-400">{g.category}</span>
+                          <span className="text-xs px-2 py-1 rounded bg-white/5 text-gray-400">{g.country}</span>
+                        </div>
+                      </div>
+                    </div>
+                    {g.description && (
+                      <p className="mt-4 text-sm text-gray-500 line-clamp-2 group-hover:text-gray-400 transition-colors">
+                        {g.description}
+                      </p>
+                    )}
+                  </Link>
+                ))}
               </div>
 
               <div className="mt-8 text-center sm:hidden">
@@ -1487,8 +1497,65 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
             </motion.div>
           )
         }
+
+        {/* Top 10 ranking pages (GSC) — cream/beige trending palette */}
+        {type === 'group' && (
+          <section
+            className="mt-16 rounded-2xl p-4 sm:p-6"
+            style={{ backgroundColor: '#F7F4EC', border: '1px solid rgba(43,27,40,0.12)', boxShadow: '0 30px 80px -30px rgba(43,27,40,0.15)' }}
+          >
+            <div className="mb-5">
+              <div className="flex items-baseline gap-2.5">
+                <span style={{ color: '#c9973a', fontSize: 14 }}>★</span>
+                <h2 className="text-base sm:text-lg font-black leading-none tracking-tight" style={{ color: '#2B1B28' }}>
+                  TOP 10 RANKINGS ON <span style={{ color: '#c9973a' }}>EROGRAM</span>
+                </h2>
+              </div>
+              <p className="text-sm leading-relaxed mt-2.5 max-w-2xl" style={{ color: '#6B6568' }}>
+                Our top 10 rankings pull the best groups from a range of categories, scored on quality, real user reviews, and how hard they&rsquo;re trending on Erogram right now. We refresh it every day, so check back often.
+              </p>
+            </div>
+
+            <nav aria-label="Top 10 ranking category lists">
+              <ol className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 list-none m-0 p-0">
+                {TOP_RANKING_GROUP_PAGES.map((item, index) => (
+                  <li key={item.href}>
+                    <a
+                      href={lp(item.href)}
+                      className="flex items-center gap-3 rounded-xl px-3 py-3"
+                      style={{ backgroundColor: '#FDFDFD', border: '1px solid rgba(43,27,40,0.08)' }}
+                    >
+                      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg" style={{ border: '1px solid rgba(201,151,58,0.25)' }}>
+                        <img
+                          src={rankingCoverImages[item.href] || PLACEHOLDER_IMAGE_URL}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => { (e.target as HTMLImageElement).src = PLACEHOLDER_IMAGE_URL; }}
+                        />
+                        <span
+                          className="absolute bottom-0 left-0 right-0 text-center text-[9px] font-black leading-tight py-0.5"
+                          style={{ background: 'rgba(43,27,40,0.82)', color: '#F7F4EC' }}
+                        >
+                          #{index + 1}
+                        </span>
+                      </div>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-black leading-snug" style={{ color: '#2B1B28' }}>
+                          {item.curiosity}
+                        </span>
+                        <span className="block text-[11px] font-medium mt-0.5 line-clamp-2 leading-snug" style={{ color: '#6B6568' }}>
+                          {item.seo}
+                        </span>
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            </nav>
+          </section>
+        )}
       </main >
-      <VickyGroupsBubble />
 
       {/* Admin Quick Edit Modal */}
       <AnimatePresence>

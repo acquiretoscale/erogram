@@ -2,10 +2,13 @@
 
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
+import { campaignNotExpired } from '@/lib/campaignDates';
 import {
   Campaign, TrendingOFCreator, OnlyFansCreator,
   Bookmark, ButtonConfig, User, TrendingErogram,
 } from '@/lib/models';
+import { getExpiredOFAgencyTargets } from '@/lib/actions/onlyfansTracking';
+import { isOFUsernameOnExpiredAgencyDeal } from '@/lib/ofExpiry';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -20,7 +23,12 @@ export async function getTrendingCreators(category?: string) {
     .select('_id name username avatar url bio categories position dealPrice liveHourStart liveHourEnd pausedImageUrls')
     .lean();
 
-  const usernames = (creators as any[]).map((c) => c.username).filter(Boolean);
+  const expiredOF = await getExpiredOFAgencyTargets();
+  const activeCreators = (creators as any[]).filter(
+    (c) => !isOFUsernameOnExpiredAgencyDeal(c.username, expiredOF),
+  );
+
+  const usernames = activeCreators.map((c) => c.username).filter(Boolean);
   const ofDocs = usernames.length
     ? await OnlyFansCreator.find({ username: { $in: usernames } })
         .select('username likesCount avatar extraPhotos')
@@ -29,7 +37,7 @@ export async function getTrendingCreators(category?: string) {
   const likesMap = new Map((ofDocs as any[]).map((d) => [d.username, d.likesCount ?? 0]));
   const albumMap = new Map((ofDocs as any[]).map((d) => [d.username, [d.avatar, ...((d.extraPhotos as string[]) || [])].filter(Boolean)]));
 
-  const mapped = (creators as any[]).map((c) => {
+  const mapped = activeCreators.map((c) => {
     // ONE rotating album = scraped avatar + uploaded photos, minus any paused image. Same set the
     // ad feed rotates. Client picks one per view so the featured strip isn't frozen by ISR cache.
     // albumIdx = each shown image's STABLE full-album index (the ":v{idx}" split-test tag).
@@ -80,13 +88,18 @@ export async function getFeaturedCreatorFeedItems(category?: string) {
     .select('_id name username avatar url liveHourStart liveHourEnd pausedImageUrls')
     .lean();
 
-  const usernames = (creators as any[]).map(c => c.username).filter(Boolean);
+  const expiredOF = await getExpiredOFAgencyTargets();
+  const activeCreators = (creators as any[]).filter(
+    (c) => !isOFUsernameOnExpiredAgencyDeal(c.username, expiredOF),
+  );
+
+  const usernames = activeCreators.map(c => c.username).filter(Boolean);
   const ofDocs = usernames.length
     ? await OnlyFansCreator.find({ username: { $in: usernames } }).select('username likesCount subscriberCount avatar extraPhotos').lean()
     : [];
   const statsMap = new Map((ofDocs as any[]).map(d => [d.username, { likes: d.likesCount || 0, subs: d.subscriberCount || 0, avatar: d.avatar || '', extraPhotos: (d.extraPhotos as string[]) || [] }]));
 
-  const shuffled = [...(creators as any[])];
+  const shuffled = [...activeCreators];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
@@ -208,7 +221,7 @@ export async function getCampaignPlacement(slot: string) {
       status: 'active',
       isVisible: { $ne: false },
       startDate: { $lte: now },
-      endDate: { $gte: startOfToday },
+      ...campaignNotExpired(startOfToday),
     })
       .select('_id destinationUrl description buttonText')
       .sort({ createdAt: -1 })

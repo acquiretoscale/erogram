@@ -262,7 +262,8 @@ export interface BoostCampaign {
   slot: string;          // human label for the row's second line
   status: 'active' | 'ended';
   startDate: string;
-  endDate: string;
+  endDate: string | null;
+  boostDuration?: string | null;
   clicks: number;
   isVirtualBoost: true;  // tells the Ad Network UI this is read-through, not a real Campaign
 }
@@ -273,7 +274,7 @@ export async function getBoostCampaigns(token: string): Promise<BoostCampaign[]>
   await connectDB();
   const now = new Date();
   const liveFilter = { boosted: true, $or: [{ boostExpiresAt: null }, { boostExpiresAt: { $gt: now } }] };
-  const sel = 'name slug image boosted boostExpiresAt clickCount createdAt';
+  const sel = 'name slug image boosted boostExpiresAt boostDuration clickCount createdAt';
 
   const [groups, bots, ainsfw] = await Promise.all([
     Group.find(liveFilter).select(sel).sort({ createdAt: -1 }).lean(),
@@ -294,7 +295,8 @@ export async function getBoostCampaigns(token: string): Promise<BoostCampaign[]>
         slot: slotLabel,
         status: (!exp || exp > now) ? 'active' : 'ended',
         startDate: r.createdAt ? new Date(r.createdAt).toISOString() : '',
-        endDate: exp ? exp.toISOString() : '',
+        endDate: exp ? exp.toISOString() : null,
+        boostDuration: r.boostDuration || null,
         clicks: r.clickCount || 0,
         isVirtualBoost: true,
       };
@@ -312,12 +314,13 @@ export async function getBoostCampaigns(token: string): Promise<BoostCampaign[]>
  *  - 'pause'  → boosted=false (drops it from boosted ranking; reversible)
  *  - 'end'    → boosted=false + boostExpiresAt=now
  *  - 'extend' → boosted=true + boostExpiresAt=now+days (launch/extend 1 week / 1 month)
+ *  - 'lifetime' → boosted=true + boostExpiresAt=null + boostDuration=lifetime
  */
 export async function setBoostLifecycle(
   token: string,
   entityType: string,
   listingId: string,
-  action: 'pause' | 'resume' | 'end' | 'extend',
+  action: 'pause' | 'resume' | 'end' | 'extend' | 'lifetime',
   days?: number,
 ): Promise<{ ok?: boolean; error?: string }> {
   if (!verifyAdmin(token)) return { error: 'Unauthorized' };
@@ -328,7 +331,10 @@ export async function setBoostLifecycle(
   if (action === 'pause') update = { boosted: false };
   else if (action === 'resume') update = { boosted: true };
   else if (action === 'end') update = { boosted: false, boostExpiresAt: now };
-  else update = { boosted: true, boostExpiresAt: new Date(now.getTime() + (days || 7) * 24 * 60 * 60 * 1000) }; // extend
+  else if (action === 'lifetime') {
+    update = { boosted: true, boostExpiresAt: null };
+    if (entityType === 'bot' || entityType === 'group') update.boostDuration = 'lifetime';
+  } else update = { boosted: true, boostExpiresAt: new Date(now.getTime() + (days || 7) * 24 * 60 * 60 * 1000), boostDuration: days && days >= 28 ? '30d' : '7d' };
   await Model.findByIdAndUpdate(listingId, { $set: update });
   return { ok: true };
 }

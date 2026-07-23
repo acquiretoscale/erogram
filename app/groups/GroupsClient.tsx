@@ -665,17 +665,6 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                 </button>
               )}
             </div>
-
-            <div className="h-5 w-px bg-white/10 shrink-0" />
-
-            {/* Live visiting stat — anchored right */}
-            <div className="flex items-center gap-1.5 pl-1 pr-3 shrink-0">
-              <span className="relative flex h-2 w-2 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
-              </span>
-              <VisitingCount />
-            </div>
           </div>
 
           {/* GO PREMIUM — desktop: right of the filter pill (outside it) */}
@@ -1059,30 +1048,3 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
     </div>
   );
 }
-
-// Live "visiting now" count — text only (the pulsing dot lives in the filter bar).
-function VisitingCount() {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    const fetchCount = () => {
-      fetch('/api/advertise-stats', { cache: 'no-store' })
-        .then((r) => r.json())
-        .then((d) => { if (typeof d.activeVisitors === 'number') setCount(d.activeVisitors); })
-        .catch(() => {});
-    };
-    fetchCount();
-    const id = setInterval(fetchCount, 300_000);
-    return () => clearInterval(id);
-  }, []);
-
-  return (
-    <span className="flex flex-col items-center leading-none whitespace-nowrap">
-      <span className="font-medium text-white/40 text-[8px]">visiting now</span>
-      <span className="font-black text-white/90 tabular-nums text-[13px] mt-0.5">
-        {count > 0 ? count.toLocaleString('en-US') : '—'}
-      </span>
-    </span>
-  );
-}
-

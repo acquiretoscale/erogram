@@ -86,11 +86,17 @@ export async function GET(req: NextRequest) {
       const now = new Date();
       // Auto-expire stale paid boosts so they cleanly fall back to normal listings
       await Bot.updateMany(
-        { boosted: true, boostExpiresAt: { $lte: now } },
+        { boosted: true, boostExpiresAt: { $ne: null, $lte: now } },
         { $set: { boosted: false, boostExpiresAt: null, boostDuration: null, featured: false } }
       );
       // Top Bots = manually curated (topBot) OR an active paid boost (mirrors Top Groups)
-      const topBotOr = { $or: [{ topBot: true }, { boosted: true, boostExpiresAt: { $gt: now } }] };
+      const topBotOr = {
+        $or: [
+          { topBot: true },
+          { boosted: true, boostExpiresAt: null },
+          { boosted: true, boostExpiresAt: { $gt: now } },
+        ],
+      };
       if (query.$and) query.$and.push(topBotOr);
       else query.$and = [topBotOr];
       // Boosted bots first, soonest-expiring next, then newest

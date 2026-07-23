@@ -57,7 +57,7 @@ export async function adminCreateCampaign(token: string, body: Record<string, an
     creative: isCtaSlot ? '' : (body.creative ?? ''),
     destinationUrl: body.destinationUrl != null ? String(body.destinationUrl).trim() : '',
     startDate: body.startDate != null ? String(body.startDate) : '',
-    endDate: body.endDate != null ? String(body.endDate) : '',
+    endDate: body.endDate === null || body.endDate === '' ? null : String(body.endDate),
     status: body.status ?? 'active',
     isVisible: body.isVisible !== false,
     position: body.position ?? null,

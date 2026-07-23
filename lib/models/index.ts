@@ -1,4 +1,12 @@
-import mongoose, { Schema, models, model } from 'mongoose';
+import mongoose, { Schema, models, model, type Model } from 'mongoose';
+
+/** Dev HMR keeps stale Mongoose compilations — enum/schema edits need a fresh model. */
+function freshModel<T = Model<any>>(name: string, schema: Schema) {
+  if (process.env.NODE_ENV !== 'production' && mongoose.models[name]) {
+    delete mongoose.models[name];
+  }
+  return (models[name] as T) || model(name, schema);
+}
 
 // User Schema
 export const userSchema = new Schema(
@@ -94,7 +102,7 @@ export const groupSchema = new Schema(
     featuredAt: { type: Date, default: null },
     boosted: { type: Boolean, default: false },
     boostExpiresAt: { type: Date, default: null },
-    boostDuration: { type: String, enum: ['1d', '7d', '14d', '30d', null], default: null },
+    boostDuration: { type: String, enum: ['1d', '7d', '14d', '30d', 'lifetime', null], default: null },
     paidBoost: { type: Boolean, default: false },
     paidBoostStars: { type: Number, default: null },
     lastPaymentChargeId: { type: String, default: null },
@@ -319,7 +327,7 @@ export const botSchema = new Schema(
     featuredAt: { type: Date, default: null },
     boosted: { type: Boolean, default: false },
     boostExpiresAt: { type: Date, default: null },
-    boostDuration: { type: String, enum: ['1d', '7d', '14d', '30d', null], default: null },
+    boostDuration: { type: String, enum: ['1d', '7d', '14d', '30d', 'lifetime', null], default: null },
     paidBoost: { type: Boolean, default: false },
     paidBoostStars: { type: Number, default: null },
     lastPaymentChargeId: { type: String, default: null },
@@ -531,7 +539,7 @@ export const campaignSchema = new Schema(
       },
     },
     startDate: { type: Date, required: true },
-    endDate: { type: Date, required: true },
+    endDate: { type: Date, default: null },
     status: { type: String, enum: ['active', 'paused', 'ended'], default: 'active' },
     isVisible: { type: Boolean, default: true },
     impressions: { type: Number, default: 0 },
@@ -826,8 +834,8 @@ const newsletterSubscriberSchema = new Schema(
 export const NewsletterSubscriber = models.NewsletterSubscriber || model('NewsletterSubscriber', newsletterSubscriberSchema);
 export const Vote = models.Vote || model('Vote', voteSchema);
 export const User = models.User || model('User', userSchema);
-export const Group = models.Group || model('Group', groupSchema);
-export const Bot = models.Bot || model('Bot', botSchema);
+export const Group = freshModel('Group', groupSchema);
+export const Bot = freshModel('Bot', botSchema);
 export const Post = models.Post || model('Post', postSchema);
 export const Report = models.Report || model('Report', reportSchema);
 export const Article = models.Article || model('Article', articleSchema);
@@ -861,7 +869,7 @@ export const TrackingEvent =
   model<TrackingEvent>('TrackingEvent', trackingEventSchema);
 export const Image = models.Image || model('Image', imageSchema);
 export const Advertiser = models.Advertiser || model('Advertiser', advertiserSchema);
-export const Campaign = models.Campaign || model('Campaign', campaignSchema);
+export const Campaign = freshModel('Campaign', campaignSchema);
 export const CampaignClick = models.CampaignClick || model('CampaignClick', campaignClickSchema);
 export const CampaignImpressionDaily = models.CampaignImpressionDaily || model('CampaignImpressionDaily', campaignImpressionDailySchema);
 export const StorySlideContent = models.StorySlideContent || model('StorySlideContent', storySlideContentSchema);

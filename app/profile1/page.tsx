@@ -9,7 +9,6 @@ import VaultTab from '@/app/profile/VaultTab';
 import SavedGroupsTab1 from './SavedGroupsTab1';
 import SavedCreatorsTab1 from './SavedCreatorsTab1';
 import FeatureSuggestionsTab from './FeatureSuggestionsTab';
-import VickyFloatingChat from './VickyFloatingChat';
 
 type Tab = 'home' | 'saved' | 'models' | 'vault' | 'settings' | 'suggestions';
 type ViewMode = 'admin' | 'premium' | 'free';
@@ -258,9 +257,6 @@ function Profile1Content() {
           ) : null}
         </div>
       </div>
-
-      {/* Vicky AI floating widget */}
-      <VickyFloatingChat isPremium={effectivePremium} />
     </div>
   );
 }

@@ -253,25 +253,6 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
             </div>
           </div>
 
-          {/* Vicky AI showcase */}
-          <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div className="rounded-xl overflow-hidden">
-              <video
-                src="https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/tgempire/booty-bazaar/wmremove-transformed.mp4"
-                autoPlay muted loop playsInline
-                className="w-full"
-                style={{ maxHeight: '200px', objectFit: 'contain', background: '#000' }}
-              />
-            </div>
-            <div className="px-4 py-3 flex items-center gap-3">
-              <img src="/assets/vicky-ai-avatar.jpg" alt="" className="w-10 h-10 rounded-full ring-2 ring-[#00aff0]/20 shrink-0" style={{ objectFit: 'cover', objectPosition: '50% 60%' }} />
-              <div>
-                <div className="text-[13px] font-black text-white">Unlock Vicky AI</div>
-                <div className="text-[11px] text-white/40">Your personal Erogram assistant — find the best creators, groups & tools instantly.</div>
-              </div>
-            </div>
-          </div>
-
           {/* Enhanced Experience */}
           <div>
             <h3 className="text-sm font-black text-white mb-1.5 flex items-center gap-2">

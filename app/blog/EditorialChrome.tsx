@@ -210,6 +210,62 @@ function OFsearchNav() {
   );
 }
 
+function MastheadVisitingNow({ compact = false }: { compact?: boolean }) {
+  const [count, setCount] = useState(0);
+  const [live, setLive] = useState(false);
+
+  useEffect(() => {
+    const fetchCount = () => {
+      fetch('/api/advertise-stats', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((d) => {
+          if (typeof d.activeVisitors === 'number') {
+            setCount(d.activeVisitors);
+            setLive(true);
+          }
+        })
+        .catch(() => {});
+    };
+    fetchCount();
+    const id = setInterval(fetchCount, 300_000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div
+      className="flex flex-col items-center justify-center leading-none shrink-0"
+      aria-label={count > 0 ? `${count.toLocaleString('en-US')} visiting now` : 'Visiting now'}
+    >
+      <span
+        className={`font-semibold text-white/90 whitespace-nowrap tracking-[0.08em] uppercase ${
+          compact ? 'text-[6px]' : 'text-[7px]'
+        }`}
+      >
+        visiting now
+      </span>
+      <div className={`flex items-center ${compact ? 'gap-0.5 mt-0.5' : 'gap-1 mt-0.5'}`}>
+        <span className="relative flex h-1 w-1 sm:h-1.5 sm:w-1.5 shrink-0">
+          {live && count > 0 && (
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+          )}
+          <span
+            className={`relative inline-flex rounded-full h-1 w-1 sm:h-1.5 sm:w-1.5 ${
+              live && count > 0 ? 'bg-emerald-400' : 'bg-white/20'
+            }`}
+          />
+        </span>
+        <span
+          className={`font-black text-white tabular-nums leading-none ${
+            compact ? 'text-[11px]' : 'text-[12px]'
+          }`}
+        >
+          {count > 0 ? count.toLocaleString('en-US') : '—'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function AddToolNav() {
   const [open, setOpen] = useState(false);
   return (
@@ -664,7 +720,7 @@ export function EditorialMasthead({ accent, fixed = false }: { accent?: string; 
 
         {/* Desktop nav — uppercase, letter-spaced, muted. Only at lg+ where it fits;
             tablet falls back to the burger menu so no items get cut off. */}
-        <nav className="hidden lg:flex flex-1 items-center gap-6 lg:gap-8">
+        <nav className="hidden lg:flex items-center gap-6 lg:gap-8 shrink-0">
           {NAV_PRE.map((n) => (
             <Link
               key={n.label}
@@ -702,20 +758,26 @@ export function EditorialMasthead({ accent, fixed = false }: { accent?: string; 
           ))}
         </nav>
 
+        {/* Desktop — visiting now centred between Blog (nav) and Submit (right cluster) */}
+        <div className="hidden lg:flex flex-1 justify-center min-w-0 px-2">
+          <MastheadVisitingNow />
+        </div>
+
         {/* Desktop right — ad slot + Add Tool + user menu + language (far right) */}
-        <div className="hidden lg:flex items-center gap-2.5 shrink-0 ml-auto">
+        <div className="hidden lg:flex items-center gap-2.5 shrink-0">
           <MastheadAdSlot />
           <AddToolNav />
           <MastheadUserMenu accent={resolvedAccent} auth={auth} lp={lp} />
           <MastheadLangSwitcher />
         </div>
 
-        {/* Mobile + tablet — Submit + burger (nav) + avatar (account) on the far right */}
-        <div className="lg:hidden ml-auto flex items-center gap-2 shrink-0">
+        {/* Mobile + tablet — visiting now + Submit + burger (nav) + avatar (account) on the far right */}
+        <div className="lg:hidden ml-auto flex items-center gap-1.5 sm:gap-2 shrink-0 min-w-0">
+          <MastheadVisitingNow compact />
           {!mobileOpen && !userOpen && (
             <Link
               href="/add"
-              className="inline-flex items-center gap-1 text-[10px] font-bold tracking-[0.1em] uppercase text-black bg-white hover:bg-white/90 px-2.5 py-1.5 rounded-[5px] transition-colors"
+              className="inline-flex items-center gap-1 text-[10px] font-bold tracking-[0.1em] uppercase text-black bg-white hover:bg-white/90 px-2.5 py-1.5 rounded-[5px] transition-colors shrink-0"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="shrink-0 -ml-0.5"><path d="M12 5v14M5 12h14" /></svg>
               Submit
