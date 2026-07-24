@@ -17,12 +17,23 @@ import { TrendingOFCreator, OnlyFansCreator, Campaign, CampaignClick, OFClient }
 
 import type { ExpiredOFAgencyTargets } from '@/lib/ofExpiry';
 
+// Short-lived per-instance cache. This lookup runs multiple times per ad-bearing
+// pageview (once per campaign fetch). Expiry is date-based, so a <=60s stale
+// window is harmless and collapses the repeated DB hits to ~1/min per instance.
+let _expiredOFCache: { exp: number; val: ExpiredOFAgencyTargets } | null = null;
+const EXPIRED_OF_TTL_MS = 60_000;
+
 /** OF agency deals (OFClient) past endDate — their creators must stop serving site-wide. */
 export async function getExpiredOFAgencyTargets(): Promise<ExpiredOFAgencyTargets> {
+  if (_expiredOFCache && _expiredOFCache.exp > Date.now()) return _expiredOFCache.val;
   await connectDB();
   const now = new Date();
   const expiredClients = await OFClient.find({ endDate: { $lt: now } }).select('_id').lean() as any[];
-  if (!expiredClients.length) return { usernames: new Set(), campaignIds: new Set() };
+  if (!expiredClients.length) {
+    const empty = { usernames: new Set<string>(), campaignIds: new Set<string>() };
+    _expiredOFCache = { exp: Date.now() + EXPIRED_OF_TTL_MS, val: empty };
+    return empty;
+  }
   const slots = await TrendingOFCreator.find({
     ofClientId: { $in: expiredClients.map((c) => c._id) },
   }).select('username linkedCampaignId').lean() as any[];
@@ -32,7 +43,9 @@ export async function getExpiredOFAgencyTargets(): Promise<ExpiredOFAgencyTarget
     if (s.username) usernames.add(String(s.username).toLowerCase());
     if (s.linkedCampaignId) campaignIds.add(String(s.linkedCampaignId));
   }
-  return { usernames, campaignIds };
+  const result = { usernames, campaignIds };
+  _expiredOFCache = { exp: Date.now() + EXPIRED_OF_TTL_MS, val: result };
+  return result;
 }
 
 /** Shared write: one click → Campaign.clicks + CampaignClick. */

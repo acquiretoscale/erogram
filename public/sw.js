@@ -1,3 +1,7 @@
+/* v=6 — sale push: color wordmark icon + white badge for Android status bar */
+const NOTIFICATION_ICON = '/icons/notification-icon.png?v=6';
+const NOTIFICATION_BADGE = '/icons/notification-badge.png?v=6';
+
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => {
   event.waitUntil(
@@ -13,8 +17,8 @@ self.addEventListener('push', (event) => {
     event.waitUntil(
       self.registration.showNotification(data.title || 'Erogram', {
         body: data.body || '',
-        icon: data.icon || '/icons/icon-192.png',
-        badge: data.badge || '/icons/icon-192.png',
+        icon: data.icon || NOTIFICATION_ICON,
+        badge: data.badge || NOTIFICATION_BADGE,
         tag: data.tag || 'erogram-notification',
         data: data.data || {},
         vibrate: [200, 100, 200],

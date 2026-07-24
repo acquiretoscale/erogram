@@ -22,17 +22,7 @@ const Navbar = dynamic(() => import('@/components/Navbar'), {
   ),
 });
 
-interface Article {
-  _id: string;
-  title: string;
-  slug: string;
-  excerpt: string;
-  featuredImage: string;
-  tags: string[];
-  publishedAt: string | null;
-  views: number;
-  author: { _id: string; username: string };
-}
+import type { BlogCard } from '@/lib/actions/blog';
 
 interface NewGroup {
   _id: string;
@@ -92,7 +82,7 @@ interface TopGroupCategory {
 }
 
 interface HomeClientProps {
-  featuredArticles: Article[];
+  featuredArticles: BlogCard[];
   heroCampaigns?: CampaignData[];
   newGroups?: NewGroup[];
   stats?: SiteStats;
@@ -423,18 +413,6 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
           >
             {HeroCards}
           </motion.div>
-
-          {/* Stats strip — compact, abbreviated, discrete */}
-          <motion.div
-            className="flex items-stretch w-full max-w-lg sm:max-w-2xl mx-auto rounded-2xl overflow-hidden border border-white/8 bg-white/[0.03] backdrop-blur-sm divide-x divide-white/8"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.45 }}
-          >
-            <CountStatCell target={stats?.aiAndBotsCount ?? 0} label="Tools" />
-            <CountStatCell target={stats?.totalViews ?? 0} label="Views" raw />
-            <CountStatCell target={stats?.ofCreatorsCount ?? 0} label="Creators" />
-          </motion.div>
         </div>
 
         {/* Newest AI NSFW Tools additions */}
@@ -444,7 +422,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
             whileInView="animate"
             viewport={{ once: true, margin: '-100px' }}
             variants={fadeInUp}
-            className="mt-20 sm:mt-32 max-w-7xl mx-auto px-4"
+            className="mt-12 sm:mt-16 max-w-7xl mx-auto px-4"
             style={{ willChange: 'transform, opacity' }}
           >
             <SectionTitle accent="AI NSFW Tools" suffix="Additions">Newest</SectionTitle>
@@ -663,7 +641,19 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                         {article.excerpt}
                       </p>
                       <div className="flex items-center justify-between text-xs text-white/50">
-                        <span>{t('home.by', 'By')} {article.author.username}</span>
+                        <span className="flex items-center gap-2 min-w-0">
+                          {article.authorAvatar && (
+                            <img
+                              src={article.authorAvatar}
+                              alt={article.authorName}
+                              width={20}
+                              height={20}
+                              className="w-5 h-5 rounded-full object-cover shrink-0 ring-1 ring-white/20"
+                              referrerPolicy="no-referrer"
+                            />
+                          )}
+                          <span className="truncate">{t('home.by', 'By')} {article.authorName}</span>
+                        </span>
                         {article.publishedAt && (
                           <span>{formatDate(article.publishedAt, locale)}</span>
                         )}

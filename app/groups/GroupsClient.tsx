@@ -13,11 +13,11 @@ import { Group, FeedCampaign, StoryCategory } from './types';
 import GroupCard from './GroupCard';
 import AdvertCard from './AdvertCard';
 import VirtualizedGroupGrid from './VirtualizedGroupGrid';
+import GroupsEditorialSeo from './GroupsEditorialSeo';
 import { checkBookmarks } from '@/lib/actions/publicData';
 import GroupCardSkeleton from './GroupCardSkeleton';
 import { filterCategories } from './constants';
 import { BOOST_WEIGHT } from '@/lib/adPlacements';
-import type { VaultTeaserItem } from './VaultTeaserFeed';
 import { useTranslation, useLocalePath, useLocale } from '@/lib/i18n';
 // Lazy load modals to reduce initial bundle size
 const ReviewModal = dynamic(() => import('./ReviewModal'), {
@@ -42,12 +42,8 @@ interface GroupsClientProps {
   initialIsTelegram?: boolean;
   topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string }>;
   storyData?: StoryCategory[];
-  vaultTeaserGroups?: VaultTeaserItem[];
-  trendingCategories?: Array<{ label: string; href: string; title?: string }>;
-  trendingCountries?: Array<{ label: string; href: string }>;
   categoryOptions?: string[];
   countryOptions?: string[];
-  trendingErogramCampaigns?: FeedCampaign[];
   paginationCurrentPage?: number;
   paginationTotalPages?: number;
   groupsPageSize?: number;
@@ -57,7 +53,7 @@ function groupsPageHref(page: number): string {
   return page <= 1 ? '/groups' : `/groups/page/${page}`;
 }
 
-export default function GroupsClient({ initialGroups, feedCampaigns = [], initialCountry, initialIsMobile = false, initialIsTelegram = false, topBannerCampaigns = [], storyData = [], vaultTeaserGroups = [], trendingCategories = [], trendingCountries = [], categoryOptions = [], countryOptions = [], trendingErogramCampaigns = [], paginationCurrentPage = 1, paginationTotalPages = 1, groupsPageSize = 32 }: GroupsClientProps) {
+export default function GroupsClient({ initialGroups, feedCampaigns = [], initialCountry, initialIsMobile = false, initialIsTelegram = false, topBannerCampaigns = [], storyData = [], categoryOptions = [], countryOptions = [], paginationCurrentPage = 1, paginationTotalPages = 1, groupsPageSize = 32 }: GroupsClientProps) {
   const TOP_SLOT_GROWTH: number[] = [14.2, 11.8, 9.6, 12.9];
   const STORY_SEEN_KEY = 'erogram:stories:seen:v1';
   const [username, setUsername] = useState<string | null>(null);
@@ -686,7 +682,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
           </Link>
         </div>
 
-        {/* GO PREMIUM — mobile: 50% size, above trending categories */}
+        {/* GO PREMIUM — mobile: compact strip */}
         <Link
           href={lp('/premium')}
           className="lg:hidden flex items-center justify-between gap-1.5 mb-3 mx-auto w-[52%] px-2.5 py-1.5 rounded-xl transition-all hover:brightness-105 active:scale-[0.99]"
@@ -703,48 +699,6 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
             <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
           </svg>
         </Link>
-
-        {/* Trending Group Categories — every content category with 20+ listings.
-            Real crawlable links to the newest-first filtered feed so Google reads
-            each as a high-content category view. */}
-        {trendingCategories.length > 0 && (
-          <nav aria-label="Trending group categories" className="mb-4 sm:mb-6 flex flex-wrap items-center justify-center gap-1.5">
-            <h2 className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-white/70 mr-0.5">
-              <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#ff7a3d]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-              {t('groups.trendingGroupCategories')}
-            </h2>
-            {trendingCategories.map(({ label, href, title }) => {
-              const isActive = selectedCategory === label;
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  title={title || `${label} Telegram groups`}
-                  aria-label={title || `${label} Telegram groups`}
-                  aria-current={isActive ? 'true' : undefined}
-                  className={`px-2.5 py-1 rounded-full border text-[11px] font-bold transition-all whitespace-nowrap ${
-                    isActive
-                      ? 'border-[#ff5e2a] bg-[#ff5e2a]/15 text-white'
-                      : 'border-white/10 bg-white/[0.03] text-white/70 hover:text-white hover:border-[#ff5e2a]/40 hover:bg-[#ff5e2a]/[0.06]'
-                  }`}
-                >
-                  {getCategoryDisplay(label)}
-                </Link>
-              );
-            })}
-            {!isDefaultBrowse && (
-              <button
-                type="button"
-                onClick={() => { setSelectedCategory(initialCountry || 'All'); setSelectedCountry('All'); setSearchQuery(''); setSelectedSort('newest'); }}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-white/15 bg-white/[0.06] text-[11px] font-bold text-white/80 hover:text-white hover:border-white/30 transition-all whitespace-nowrap"
-                aria-label={t('groups.resetFilters')}
-              >
-                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                {t('groups.resetFilters')}
-              </button>
-            )}
-          </nav>
-        )}
 
         {/* Global top banner (below stories) */}
         <div className="w-full mb-4">
@@ -877,38 +831,6 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
               {/* Featured Groups section removed (brain: versatile-slots). Paid featured now lives in Top Groups Spot 1. */}
 
-              {/* Trending on Erogram — new unified ad space (heterogeneous 4-up, modeled on Top Groups).
-                  Assign via /admin/ad-network "Trending on Erogram" pill. Deduped vs native Top spots. */}
-              {(() => {
-                if (debouncedSearchQuery || selectedCategory !== (initialCountry || 'All') || selectedCountry !== 'All') return null;
-                const usedAdIds = new Set(
-                  Object.values(topSpotCampaigns).filter(Boolean).map((c: any) => c?._id)
-                );
-                const trendingAds = (trendingErogramCampaigns || []).filter((c: any) => !usedAdIds.has(c._id)).slice(0, 4);
-                if (trendingAds.length === 0) return null;
-
-                return (
-                  <div className="mb-5 relative rounded-2xl overflow-hidden bg-white">
-                    <div className="relative p-3 sm:p-4">
-                      <div className="flex items-baseline gap-2.5 mb-3">
-                        <h2 className="text-base font-black text-[#0f172a] leading-none tracking-tight">{t('groups.trendingOnErogram')}</h2>
-                        <span className="text-[#0f172a] text-xs font-bold">{t('groups.whatsHot')}</span>
-                      </div>
-                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 rounded-2xl p-3 sm:p-4" style={{ background: 'linear-gradient(180deg, #0d1117 0%, #0a0e16 100%)' }}>
-                        {trendingAds.map((camp, i) => (
-                          <AdvertCard
-                            key={`trending-${camp._id}`}
-                            campaign={camp}
-                            isIndex={i}
-                            shouldPreload={false}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-
               <div className="text-center mb-6">
                 <h1 className="text-2xl md:text-3xl font-black text-[#f5f5f5]">
                   {t('groups.discoverNsfw')}
@@ -933,7 +855,6 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                   onOpenReviewModal={openReviewModal}
                   onOpenReportModal={openReportModal}
                   bookmarkedMap={bookmarkedMap}
-                  vaultTeaserGroups={vaultTeaserGroups}
                 />
 
                 {isDefaultBrowse && paginationTotalPages > 1 && (
@@ -977,6 +898,10 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                       </Link>
                     )}
                   </nav>
+                )}
+
+                {isDefaultBrowse && paginationCurrentPage === 1 && (
+                  <GroupsEditorialSeo />
                 )}
               </div>
 

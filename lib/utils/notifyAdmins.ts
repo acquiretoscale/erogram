@@ -90,8 +90,8 @@ export async function notifyAdminsOfSale(payload: SaleNotificationPayload) {
     sendPushToAdmins({
       title: '💰 New Sale!',
       body,
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
+      icon: '/icons/notification-icon.png?v=6',
+      badge: '/icons/notification-badge.png?v=6',
       tag: 'erogram-sale',
       data: { url: '/admin' },
     }),

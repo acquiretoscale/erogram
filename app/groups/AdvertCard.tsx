@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { motion } from 'framer-motion';
 import { Advert, FeedCampaign } from './types';
+import { cardEntryProps } from './cardEntry';
 import { useIsTelegramBrowser } from '../hooks/useIsTelegramBrowser';
 import { trackClick as trackCampaignClick, trackImpression } from '@/lib/actions/campaigns';
 import { trackTrendingClick } from '@/lib/actions/onlyfansTracking';
@@ -69,7 +69,7 @@ function GrowthTrendBadge({ growthPercent }: { growthPercent?: number }) {
     );
 }
 
-function OnlyFansCreatorAdCard({ campaign, handleClick, growthPercent }: { campaign: FeedCampaign; handleClick: (shownVariantIdx?: number) => void; growthPercent?: number }) {
+function OnlyFansCreatorAdCard({ campaign, handleClick, growthPercent, isIndex = 0 }: { campaign: FeedCampaign; handleClick: (shownVariantIdx?: number) => void; growthPercent?: number; isIndex?: number }) {
     const { t } = useTranslation();
     const cardRef = useRef<HTMLDivElement>(null);
     const impressionFiredRef = useRef(false);
@@ -133,12 +133,12 @@ function OnlyFansCreatorAdCard({ campaign, handleClick, growthPercent }: { campa
     const displayName = campaign.name || campaign.ofUsername || 'Creator';
     const likesCount = campaign.ofLikesCount || 0;
 
+    const entry = cardEntryProps(isIndex);
+
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="h-full"
+        <div
+            className={`h-full ${entry.className}`}
+            style={entry.style}
         >
             <div
                 ref={cardRef}
@@ -210,11 +210,11 @@ function OnlyFansCreatorAdCard({ campaign, handleClick, growthPercent }: { campa
                     </button>
                 </div>
             </div>
-        </motion.div>
+        </div>
     );
 }
 
-function VideoAdCard({ campaign, handleClick, hidePromoted = false, growthPercent }: { campaign: FeedCampaign; handleClick: () => void; hidePromoted?: boolean; growthPercent?: number }) {
+function VideoAdCard({ campaign, handleClick, hidePromoted = false, growthPercent, isIndex = 0 }: { campaign: FeedCampaign; handleClick: () => void; hidePromoted?: boolean; growthPercent?: number; isIndex?: number }) {
     const { t } = useTranslation();
     const videoRef = useRef<HTMLVideoElement>(null);
     const cardRef = useRef<HTMLDivElement>(null);
@@ -269,12 +269,12 @@ function VideoAdCard({ campaign, handleClick, hidePromoted = false, growthPercen
     const rating = (seededRandomVideo(seed + 'rating') * 0.7 + 4.2).toFixed(1);
     const reviewCount = Math.floor(seededRandomVideo(seed + 'reviews') * 38 + 5);
 
+    const entry = cardEntryProps(isIndex);
+
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 60 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="h-full"
+        <div
+            className={`h-full ${entry.className}`}
+            style={entry.style}
         >
             <div
                 ref={cardRef}
@@ -343,7 +343,7 @@ function VideoAdCard({ campaign, handleClick, hidePromoted = false, growthPercen
                     </button>
                 </div>
             </div>
-        </motion.div>
+        </div>
     );
 }
 
@@ -517,7 +517,6 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
             isCampaign: false,
           };
 
-    const [isHovered, setIsHovered] = useState(false);
     const [imageSrc, setImageSrc] = useState(ad.image || '/assets/image.jpg');
     const [isInView, setIsInView] = useState(forceVisible);
     const hasFetchedRef = useRef(false);
@@ -705,25 +704,23 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
     // Verified checkmark: controlled from admin panel (campaign.verified field)
     const showVerified = true;
 
+    const entry = cardEntryProps(isIndex);
+
     if (isTelegram) {
         return null;
     }
 
     // ONLYFANS CREATOR CARD — portrait layout matching /onlyfanssearch style
     if (campaign?.adType === 'onlyfans-creator') {
-        return <OnlyFansCreatorAdCard campaign={campaign} handleClick={handleClick} growthPercent={growthPercent} />;
+        return <OnlyFansCreatorAdCard campaign={campaign} handleClick={handleClick} growthPercent={growthPercent} isIndex={isIndex} />;
     }
 
     // FEATURED BOT CARD — slot 5 bot spotlight
     if (campaign?.adType === 'featured-bot') {
         return (
-            <motion.div
-                initial={{ opacity: 0, y: 60 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: isIndex * 0.1 }}
-                onHoverStart={() => setIsHovered(true)}
-                onHoverEnd={() => setIsHovered(false)}
-                className="h-full"
+            <div
+                className={`h-full ${entry.className}`}
+                style={entry.style}
             >
                 <div className={`glass rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col backdrop-blur-xl border transition-all duration-500 group relative border-cyan-500/20 hover:border-cyan-400/50 hover:shadow-2xl hover:shadow-cyan-500/20`}>
                     {/* Image */}
@@ -767,7 +764,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                         </button>
                     </div>
                 </div>
-            </motion.div>
+            </div>
         );
     }
 
@@ -778,19 +775,15 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
     // VIDEO AD CARD — only when campaign has a videoUrl
     if (campaign?.videoUrl) {
-        return <VideoAdCard campaign={campaign} handleClick={handleClick} hidePromoted={hidePromoted} growthPercent={growthPercent} />;
+        return <VideoAdCard campaign={campaign} handleClick={handleClick} hidePromoted={hidePromoted} growthPercent={growthPercent} isIndex={isIndex} />;
     }
 
     // NATIVE AD CARD (Looks like GroupCard)
     if (isNative) {
         return (
-            <motion.div
-                initial={{ opacity: 0, y: 60 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: isIndex * 0.1 }}
-                onHoverStart={() => setIsHovered(true)}
-                onHoverEnd={() => setIsHovered(false)}
-                className="h-full"
+            <div
+                className={`h-full ${entry.className}`}
+                style={entry.style}
             >
                 <div className={`glass rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col backdrop-blur-xl border transition-all duration-500 group relative border-white/5 hover:border-white/20 hover:shadow-2xl hover:shadow-black/50`}>
                     {/* Advert Image */}
@@ -851,20 +844,17 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                         </div>
                     </div>
                 </div>
-            </motion.div>
+            </div>
         );
     }
 
     // STANDARD AD CARD (Flashy)
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 60 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: isIndex * 0.1 }}
-            onHoverStart={() => setIsHovered(true)}
-            onHoverEnd={() => setIsHovered(false)}
+        <div
+            className={`group h-full ${entry.className}`}
+            style={entry.style}
         >
-            <div className={`glass rounded-2xl overflow-hidden h-full flex flex-col backdrop-blur-xl border transition-all duration-300 ${isHovered ? 'scale-[1.02] shadow-2xl shadow-black/50 border-white/20' : 'border-white/5'} relative`}>
+            <div className="glass rounded-2xl overflow-hidden h-full flex flex-col backdrop-blur-xl border border-white/5 transition-all duration-300 relative group-hover:scale-[1.02] group-hover:shadow-2xl group-hover:shadow-black/50 group-hover:border-white/20">
                 {/* Advert Image */}
                 <div ref={imgRef} className="relative w-full h-32 sm:h-48 overflow-hidden bg-[#1a1a1a]">
                     <Image
@@ -872,8 +862,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                         alt={ad.name}
                         fill
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        className="object-cover transition-transform duration-700"
-                        style={{ transform: isHovered ? 'scale(1.1)' : 'scale(1)' }}
+                        className="object-cover transition-transform duration-700 group-hover:scale-110"
                         priority={forceVisible || isIndex < 12}
                         onError={() => setImageSrc('/assets/image.jpg')}
                     />
@@ -921,6 +910,6 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                     </button>
                 </div>
             </div>
-        </motion.div>
+        </div>
     );
 }

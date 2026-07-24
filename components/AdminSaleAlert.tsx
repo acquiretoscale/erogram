@@ -49,7 +49,7 @@ export default function AdminSaleAlert() {
 
     (async () => {
       try {
-        await navigator.serviceWorker.register('/sw.js');
+        await navigator.serviceWorker.register('/sw.js?v=6');
         const reg = await navigator.serviceWorker.ready;
         const existing = await reg.pushManager.getSubscription();
         if (existing) { setPushEnabled(true); return; }

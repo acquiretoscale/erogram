@@ -36,29 +36,24 @@ function formatTime(ms: number) {
 interface VaultTeaserItem { _id: string; name: string; image: string; category: string; country: string; memberCount: number; vaultCategories?: string[]; }
 
 const G = { gold: '#00aff0', goldLight: '#00d4ff', goldDim: 'rgba(255,255,255,0.4)', goldText: 'rgba(255,255,255,0.55)', border: 'rgba(255,255,255,0.08)', borderLight: 'rgba(255,255,255,0.12)', innerBg: 'rgba(255,255,255,0.03)' };
+const PREMIUM_BEIGE = '#fcf9d1';
+const PREMIUM_PINK = '#ff2d8a';
+
+const premiumImageCornerLayer = `
+  radial-gradient(ellipse 85% 70% at 0% 0%, rgba(10, 15, 30, 0.92) 0%, transparent 68%),
+  radial-gradient(ellipse 85% 70% at 100% 0%, rgba(10, 15, 30, 0.92) 0%, transparent 68%),
+  radial-gradient(ellipse 75% 65% at 0% 100%, rgba(10, 18, 32, 0.88) 0%, transparent 62%),
+  radial-gradient(ellipse 75% 65% at 100% 100%, rgba(10, 18, 32, 0.88) 0%, transparent 62%),
+  linear-gradient(to bottom, rgba(10, 15, 30, 0.45) 0%, transparent 22%, transparent 78%, rgba(10, 18, 32, 0.65) 100%)
+`;
 
 /* ─── Vault Preview — identical to /groups VaultTeaserSection ─── */
-function VaultPreview({ items }: { items: VaultTeaserItem[] }) {
+function VaultPreview({ items, whiteCaption = false }: { items: VaultTeaserItem[]; whiteCaption?: boolean }) {
   const fmtNum = (n: number) => n >= 1_000_000 ? (n/1_000_000).toFixed(1)+'M' : n >= 1_000 ? (n/1_000).toFixed(n>=10_000?0:1)+'K' : n > 0 ? String(n) : null;
   if (!items.length) return null;
 
   return (
-    <div className="mb-6">
-      <div className="text-center mb-3">
-        <span
-          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.25em] mb-2"
-          style={{ background: 'rgba(201,151,58,0.08)', border: '1px solid rgba(201,151,58,0.2)', color: '#b8964e' }}
-        >
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-          </svg>
-          Private Vault
-        </span>
-        <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">
-          Premium <span style={{ background: `linear-gradient(135deg, ${G.gold}, ${G.goldLight})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Secret Vault</span>
-        </h2>
-      </div>
-
+    <div>
       <div
         className="relative rounded-2xl overflow-hidden p-3 sm:p-4"
         style={{ background: 'linear-gradient(160deg, #0f0d09 0%, #110e08 60%, #0d0b07 100%)', border: `1px solid ${G.border}` }}
@@ -101,7 +96,7 @@ function VaultPreview({ items }: { items: VaultTeaserItem[] }) {
 
         <div className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none" style={{ background: 'linear-gradient(to bottom, transparent, #0f0d09)' }} />
       </div>
-      <p className="text-center text-[10px] mt-2 font-semibold" style={{ color: '#4a3820' }}>100+ exclusive groups · Updated daily</p>
+      <p className={`text-center text-[10px] mt-2 font-semibold ${whiteCaption ? 'text-white' : ''}`} style={whiteCaption ? undefined : { color: '#4a3820' }}>4800 exclusive groups · Updated daily</p>
     </div>
   );
 }
@@ -131,6 +126,7 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
   const [isIOSDevice, setIsIOSDevice] = useState(false);
   const [appInstalled, setAppInstalled] = useState(false);
   const [payMethod, setPayMethod] = useState<'stars' | 'crypto'>('stars');
+  const [showScrollHint, setShowScrollHint] = useState(true);
 
   const checkPremiumStatus = useCallback(async (fromPoll = false) => {
     const token = localStorage.getItem('token');
@@ -173,6 +169,13 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
     return () => window.removeEventListener('beforeinstallprompt', handler as EventListener);
   }, []);
 
+  useEffect(() => {
+    const onScroll = () => setShowScrollHint(window.scrollY < 48);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   const handlePurchase = async (plan: 'monthly' | 'quarterly' | 'yearly' | 'lifetime') => {
     if (!isLoggedIn) { window.location.href = '/login?redirect=/premium'; return; }
     trackPremiumEvent('plan_click', { plan, method: payMethod }); setLoading(plan); setError('');
@@ -203,6 +206,31 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(160deg, #0a0f1e 0%, #0d1628 50%, #0a1220 100%)' }}>
       <div className="max-w-[520px] mx-auto px-3 sm:px-4 pt-5 pb-16">
+        <div className="mb-5 rounded-xl overflow-hidden relative">
+          <picture className="block w-full">
+            <source media="(max-width: 640px)" srcSet="/assets/premium-landing-mobile.webp" type="image/webp" />
+            <img
+              src="/assets/premium-landing.webp"
+              alt=""
+              className="block w-full h-auto object-contain"
+              fetchPriority="high"
+              decoding="async"
+            />
+          </picture>
+          <div
+            className="pointer-events-none absolute inset-0 rounded-xl"
+            style={{ background: premiumImageCornerLayer }}
+            aria-hidden="true"
+          />
+          {showScrollHint && (
+            <div className="absolute bottom-3 left-0 right-0 z-[2] flex flex-col items-center pointer-events-none animate-bounce">
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/80 mb-0.5">Scroll</span>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 5v14M5 12l7 7 7-7"/>
+              </svg>
+            </div>
+          )}
+        </div>
 
         {/* ━━━ TIMER — at top of page (logged-in only) ━━━ */}
         {!isPremium && !soldOut && timeLeft > 0 && (
@@ -222,125 +250,122 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
           </div>
         )}
 
-        {/* ━━━ VAULT PREVIEW (same as /groups) ━━━ */}
-        {vaultTeaser.length > 0 && <VaultPreview items={vaultTeaser} />}
-
         {/* ━━━ UNLOCK VAULT + Features ━━━ */}
-        <div className="mb-6 space-y-4">
+        <div className="mb-6 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm" style={{ backgroundColor: PREMIUM_BEIGE, border: '1px solid rgba(0,0,0,0.06)' }}>
           <div className="text-center">
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight mb-2">
+            <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight leading-tight mb-2">
               UPGRADE TO PREMIUM
             </h1>
-            <p className="text-xs sm:text-sm max-w-md mx-auto text-white/40">
+            <p className="text-xs sm:text-sm max-w-md mx-auto text-gray-600">
               Exclusive groups, rare niches, and leak communities you won&apos;t find anywhere else.
             </p>
             {!isPremium && (
-              <a href="#pricing" className="inline-flex items-center gap-1.5 mt-3 px-5 py-2.5 rounded-lg text-sm font-black text-white transition-all hover:scale-[1.02] active:scale-95" style={{ background: '#16a34a', boxShadow: '0 4px 12px rgba(22,163,74,0.3)' }}>
-                Buy Now <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              <a href="#pricing" className="inline-flex items-center justify-center mt-3 px-3.5 py-2.5 rounded-lg text-sm font-black text-white uppercase tracking-wide transition-all active:scale-95 hover:opacity-90" style={{ background: PREMIUM_PINK }}>
+                Access Now
               </a>
             )}
           </div>
 
+          {vaultTeaser.length > 0 && <VaultPreview items={vaultTeaser} />}
+
           {/* Quality */}
           <div>
-            <h3 className="text-sm font-black text-white mb-2 flex items-center gap-2">
-              <span>📊</span> Only Active, High-Quality Groups
+            <h3 className="text-sm font-black text-gray-900 mb-2">
+              Only Active, High-Quality Groups
             </h3>
-            <p className="text-xs mb-1.5" style={{ color: G.goldDim }}>We filter everything manually. Premium listings include only groups that are:</p>
+            <p className="text-xs mb-1.5 text-gray-600">We filter everything manually. Premium listings include only groups that are:</p>
             <div className="space-y-1 pl-6">
-              <p className="text-xs" style={{ color: G.goldText }}>• Real leaks & real communities</p>
-              <p className="text-xs" style={{ color: G.goldText }}>• No spam or fake channels</p>
+              <p className="text-xs text-gray-700">• Real leaks & real communities</p>
+              <p className="text-xs text-gray-700">• No spam or fake channels</p>
             </div>
           </div>
 
           {/* Enhanced Experience */}
           <div>
-            <h3 className="text-sm font-black text-white mb-1.5 flex items-center gap-2">
-              <span>🎯</span> Enhanced Experience
+            <h3 className="text-sm font-black text-gray-900 mb-1.5">
+              Enhanced Experience
             </h3>
             <div className="space-y-1 pl-6">
-              <p className="text-xs" style={{ color: G.goldText }}>🎯 Advanced filtering by niche</p>
-              <p className="text-xs" style={{ color: G.goldText }}>⭐ Smart bookmarks & private folders</p>
+              <p className="text-xs text-gray-700">• Advanced filtering by niche</p>
+              <p className="text-xs text-gray-700">• Smart bookmarks & private folders</p>
             </div>
-            <p className="text-xs font-semibold mt-1 pl-6" style={{ color: G.gold }}>Find exactly what you want in seconds.</p>
+            <p className="text-xs font-semibold mt-1 pl-6 text-gray-900">Find exactly what you want in seconds.</p>
           </div>
 
           {/* Daily Drops */}
           <div>
-            <h3 className="text-sm font-black text-white mb-1.5 flex items-center gap-2">
-              <span>🔥</span> Daily Premium Drops
+            <h3 className="text-sm font-black text-gray-900 mb-1.5">
+              Daily Premium Drops
             </h3>
-            <p className="text-xs pl-6" style={{ color: G.goldText }}>Every day we add new hidden Telegram groups discovered by our system.</p>
-            <p className="text-xs pl-6 mt-0.5" style={{ color: G.goldText }}>Premium members get exclusive daily drops <span className="font-bold" style={{ color: G.gold }}>before the public sees them.</span></p>
-            <p className="text-xs font-bold pl-6 mt-0.5" style={{ color: G.goldDim }}>Never miss the next big leak source.</p>
+            <p className="text-xs pl-6 text-gray-700">Every day we add new hidden Telegram groups discovered by our system.</p>
+            <p className="text-xs pl-6 mt-0.5 text-gray-700">Premium members get exclusive daily drops <span className="font-bold text-gray-900">before the public sees them.</span></p>
+            <p className="text-xs font-bold pl-6 mt-0.5 text-gray-600">Never miss the next big leak source.</p>
           </div>
 
           {/* Mega Lists */}
           <div>
-            <h3 className="text-sm font-black text-white mb-1.5 flex items-center gap-2">
-              <span>📚</span> INSTANT Unlock Premium Mega Lists
+            <h3 className="text-sm font-black text-gray-900 mb-1.5">
+              INSTANT Unlock Premium Mega Lists
             </h3>
-            <p className="text-xs pl-6" style={{ color: G.goldText }}>Instant Access to our curated lists with <span className="font-bold" style={{ color: G.gold }}>100+ hand-picked Telegram groups.</span></p>
+            <p className="text-xs pl-6 text-gray-700">Instant Access to our curated lists with <span className="font-bold text-gray-900">4800+ hand-picked Telegram groups.</span></p>
           </div>
 
-          {/* Scam Protection */}
-          <div>
-            <h3 className="text-sm font-black text-white mb-1.5 flex items-center gap-2">
-              <span>🛡</span> Scam & Spam Protection
-            </h3>
-            <p className="text-xs pl-6 mb-1" style={{ color: G.goldDim }}>We actively filter:</p>
-            <div className="space-y-0.5 pl-6">
-              <p className="text-xs" style={{ color: G.goldText }}>❌ Fake groups</p>
-              <p className="text-xs" style={{ color: G.goldText }}>❌ Scam channels</p>
-              <p className="text-xs" style={{ color: G.goldText }}>❌ Dead communities</p>
-              <p className="text-xs" style={{ color: G.goldText }}>❌ Spam networks</p>
+          {/* Join Now CTA */}
+          {!isPremium && (
+            <div className="text-center pt-1">
+              <a
+                href="#pricing"
+                className="inline-flex items-center justify-center px-3.5 py-2.5 rounded-lg text-sm font-black text-white uppercase tracking-wide transition-all active:scale-95 hover:opacity-90"
+                style={{ background: PREMIUM_PINK }}
+              >
+                Join Now
+              </a>
             </div>
-            <p className="text-xs pl-6 mt-1" style={{ color: G.goldDim }}>So you only join real, active Telegram groups.</p>
-          </div>
+          )}
 
           {/* Mobile App */}
           <div>
-            <h3 className="text-sm font-black text-white mb-1.5 flex items-center gap-2">
-              <span>📱</span> Mobile App — Install on Your Phone
+            <h3 className="text-sm font-black text-gray-900 mb-1.5">
+              Mobile App — Install on Your Phone <span className="font-black text-red-600 uppercase tracking-wide">BETA</span>
             </h3>
-            <p className="text-xs pl-6 mb-1" style={{ color: G.goldText }}>Premium members get access to the <span className="font-bold" style={{ color: G.gold }}>Erogram mobile app.</span></p>
+            <p className="text-xs pl-6 mb-1 text-gray-700">Premium members get access to the <span className="font-bold text-gray-900">Erogram mobile app.</span></p>
             <div className="space-y-0.5 pl-6">
-              <p className="text-xs" style={{ color: G.goldText }}>✓ Works on Android & iOS</p>
-              <p className="text-xs" style={{ color: G.goldText }}>✓ Full-screen native experience</p>
-              <p className="text-xs" style={{ color: G.goldText }}>✓ Quick access from your home screen</p>
+              <p className="text-xs text-gray-700">• Works on Android & iOS</p>
+              <p className="text-xs text-gray-700">• Full-screen native experience</p>
+              <p className="text-xs text-gray-700">• Quick access from your home screen</p>
             </div>
           </div>
 
           {/* Inner Circle */}
-          <div className="pt-2 border-t border-white/5">
-            <h3 className="text-sm font-black text-white mb-1.5">Join the Erogram Inner Circle</h3>
-            <p className="text-xs leading-relaxed" style={{ color: G.goldText }}>
+          <div className="pt-2 border-t border-gray-900/10">
+            <h3 className="text-sm font-black text-gray-900 mb-1.5">Join the Erogram Inner Circle</h3>
+            <p className="text-xs leading-relaxed text-gray-700">
               Unlock hidden Telegram networks, discover new groups before everyone else, and explore the best NSFW communities without wasting hours searching.
             </p>
           </div>
 
           {/* Vote on new features */}
           <div>
-            <h3 className="text-sm font-black text-white mb-1.5 flex items-center gap-2">
-              <span>👍</span> Vote on New Features
+            <h3 className="text-sm font-black text-gray-900 mb-1.5">
+              Vote on New Features
             </h3>
-            <p className="text-xs pl-6" style={{ color: G.goldText }}>Have your say — help shape what Erogram builds next.</p>
+            <p className="text-xs pl-6 text-gray-700">Have your say — help shape what Erogram builds next.</p>
           </div>
 
           {/* Save unlimited OF Creators */}
           <div>
-            <h3 className="text-sm font-black text-white mb-1.5 flex items-center gap-2">
-              <span>💾</span> Save Unlimited OF Creators
+            <h3 className="text-sm font-black text-gray-900 mb-1.5">
+              Save Unlimited OF Creators
             </h3>
-            <p className="text-xs pl-6" style={{ color: G.goldText }}>Bookmark as many OnlyFans creators as you want — no limits.</p>
+            <p className="text-xs pl-6 text-gray-700">Bookmark as many OnlyFans creators as you want — no limits.</p>
           </div>
 
           {/* Access beta features */}
           <div>
-            <h3 className="text-sm font-black text-white mb-1.5 flex items-center gap-2">
-              <span>🧪</span> Access Beta Features
+            <h3 className="text-sm font-black text-gray-900 mb-1.5">
+              Access Beta Features
             </h3>
-            <p className="text-xs pl-6" style={{ color: G.goldText }}>Be the first to test new tools and features before they go public.</p>
+            <p className="text-xs pl-6 text-gray-700">Be the first to test new tools and features before they go public.</p>
           </div>
 
         </div>
@@ -363,11 +388,21 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
           </div>
         )}
 
+        <div className="mb-4 rounded-xl overflow-hidden">
+          <img
+            src="/assets/premium-promo.webp"
+            alt=""
+            className="block w-full h-auto"
+            loading="lazy"
+            decoding="async"
+          />
+        </div>
+
         {/* ━━━ UPGRADE CARD — after Inner Circle ━━━ */}
         <div
           id="pricing"
           className="rounded-xl overflow-hidden relative mb-6"
-          style={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}
+          style={{ backgroundColor: PREMIUM_BEIGE, border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 8px 32px rgba(0,0,0,0.08)' }}
         >
 
           <div className="relative px-4 pt-5 pb-5">
@@ -448,12 +483,11 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
 
             {/* Pricing */}
             {!isPremium && !soldOut && !paymentUrl && (
-              <div className="rounded-xl p-3 space-y-2.5" style={{ background: '#ffffff', border: '1px solid #e5e7eb', boxShadow: '0 8px 28px rgba(0,0,0,0.12)' }}>
+              <div className="rounded-xl p-3 space-y-2.5">
 
                 {/* Payment method picker */}
                 <div>
-                  <p className="text-[10px] text-gray-400 text-center mb-1 font-semibold">Choose your payment method</p>
-                  <p className="text-[10px] text-gray-400 text-center mb-2.5 font-semibold">One-time payment · No auto-renewal</p>
+                  <p className="text-[10px] text-gray-900 text-center mb-2.5 font-semibold">One-time payment · No auto-renewal</p>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => setPayMethod('stars')}
@@ -463,8 +497,8 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                         border: payMethod === 'stars' ? '2px solid #111827' : '2px solid #e5e7eb',
                       }}
                     >
-                      <div className={`text-[12px] font-black ${payMethod === 'stars' ? 'text-white' : 'text-gray-700'}`}>⭐ Telegram Stars</div>
-                      <div className={`text-[9px] mt-0.5 ${payMethod === 'stars' ? 'text-white/70' : 'text-gray-400'}`}>Pay via Telegram</div>
+                      <div className={`text-[12px] font-black ${payMethod === 'stars' ? 'text-white' : 'text-gray-900'}`}>⭐ Telegram Stars</div>
+                      <div className={`text-[9px] mt-0.5 ${payMethod === 'stars' ? 'text-white/70' : 'text-gray-900'}`}>Pay via Telegram</div>
                     </button>
                     <button
                       onClick={() => setPayMethod('crypto')}
@@ -474,8 +508,8 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                         border: payMethod === 'crypto' ? '2px solid #e07d0a' : '2px solid #e5e7eb',
                       }}
                     >
-                      <div className={`text-[12px] font-black ${payMethod === 'crypto' ? 'text-white' : 'text-gray-700'}`}>₿ Crypto</div>
-                      <div className={`text-[9px] mt-0.5 ${payMethod === 'crypto' ? 'text-white/70' : 'text-gray-400'}`}>USDT, BTC, ETH & more</div>
+                      <div className={`text-[12px] font-black ${payMethod === 'crypto' ? 'text-white' : 'text-gray-900'}`}>₿ Crypto</div>
+                      <div className={`text-[9px] mt-0.5 ${payMethod === 'crypto' ? 'text-white/70' : 'text-gray-900'}`}>USDT, BTC, ETH & more</div>
                     </button>
                   </div>
                 </div>
@@ -500,13 +534,13 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                           </>
                         )}
                       </div>
-                      <p className="text-[9px] mt-1 text-gray-400 font-semibold">One-time payment · No auto-renewal</p>
+                      <p className="text-[9px] mt-1 text-gray-900 font-semibold">One-time payment · No auto-renewal</p>
                     </div>
                     <button
                       onClick={() => handlePurchase('quarterly')}
                       disabled={!!loading}
                       className="shrink-0 px-3.5 py-2 rounded-lg font-black text-white transition-all active:scale-95 disabled:opacity-50 hover:opacity-90 flex flex-col items-center"
-                      style={{ background: '#16a34a', whiteSpace: 'nowrap' }}
+                      style={{ background: PREMIUM_PINK, whiteSpace: 'nowrap' }}
                     >
                       {loading === 'quarterly' ? (
                         <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
@@ -540,13 +574,13 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                             </>
                           )}
                         </div>
-                        <p className="text-[9px] mt-1 text-gray-400 font-semibold">One-time payment · No auto-renewal</p>
+                        <p className="text-[9px] mt-1 text-gray-900 font-semibold">One-time payment · No auto-renewal</p>
                       </div>
                       <button
                         onClick={() => handlePurchase('yearly')}
                         disabled={!!loading}
                         className="shrink-0 px-3.5 py-2 rounded-lg font-black text-white transition-all active:scale-95 disabled:opacity-50 hover:opacity-90 flex flex-col items-center"
-                        style={{ background: '#16a34a', whiteSpace: 'nowrap' }}
+                        style={{ background: PREMIUM_PINK, whiteSpace: 'nowrap' }}
                       >
                         {loading === 'yearly' ? (
                           <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
@@ -573,22 +607,22 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                             <span className="font-black text-[20px] leading-none text-gray-900">15,000</span>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="#111827"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
                             <span className="font-black text-[14px] leading-none text-gray-900 ml-1">$190</span>
-                            <span className="text-gray-500 text-[10px]">· Access forever</span>
+                            <span className="text-gray-900 text-[10px]">· Access forever</span>
                           </>
                         ) : (
                           <>
                             <span className="font-black text-[20px] leading-none text-gray-900">$190</span>
-                            <span className="text-gray-500 text-[10px]">· Access forever</span>
+                            <span className="text-gray-900 text-[10px]">· Access forever</span>
                           </>
                         )}
                       </div>
-                      <p className="text-[9px] mt-1 text-gray-500">One-time payment · Never expires</p>
+                      <p className="text-[9px] mt-1 text-gray-900">One-time payment · Never expires</p>
                     </div>
                     <button
                       onClick={() => handlePurchase('lifetime')}
                       disabled={!!loading}
                       className="shrink-0 px-3.5 py-2 rounded-lg font-black text-white transition-all active:scale-95 disabled:opacity-50 hover:opacity-90 flex flex-col items-center"
-                      style={{ background: '#16a34a', whiteSpace: 'nowrap' }}
+                      style={{ background: PREMIUM_PINK, whiteSpace: 'nowrap' }}
                     >
                       {loading === 'lifetime' ? (
                         <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
@@ -601,8 +635,8 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                     </button>
                   </div>
                 </div>
-                <p className="text-center text-[11px] text-gray-400 font-semibold mt-2">One-time payment · No auto-renewal · No recurring charges</p>
-                <p className="text-center text-[9px] text-gray-400 mt-1">
+                <p className="text-center text-[11px] text-gray-900 font-semibold mt-2">One-time payment · No auto-renewal · No recurring charges</p>
+                <p className="text-center text-[9px] text-gray-900 mt-1">
                   {payMethod === 'crypto' ? 'Secure checkout via NOWPayments · USDT, BTC, ETH & 100+ coins' : 'Secure checkout via Telegram Stars · Instant access'}
                 </p>
               </div>
@@ -627,15 +661,15 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                   Change Plan
                 </button>
 
-                <div className="rounded-xl p-4 space-y-3" style={{ background: '#ffffff', border: '1px solid #e5e7eb', boxShadow: '0 8px 28px rgba(0,0,0,0.12)' }}>
-                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center">Order Summary</p>
+                <div className="rounded-xl p-4 space-y-3" style={{ backgroundColor: 'rgba(255,255,255,0.45)', border: '1px solid rgba(0,0,0,0.06)' }}>
+                  <p className="text-[11px] font-bold text-gray-900 uppercase tracking-wider text-center">Order Summary</p>
 
                   <div className="rounded-lg px-4 py-3" style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}>
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-black text-gray-900 text-[14px]">Erogram VIP — {p.label}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-500 text-[12px]">{paymentMethodUsed === 'stars' ? p.stars : p.usd}</span>
+                      <span className="text-gray-900 text-[12px]">{paymentMethodUsed === 'stars' ? p.stars : p.usd}</span>
                       <span className="font-bold text-gray-900 text-[13px]">{p.perMo === 'forever' ? 'Pay once, use forever' : p.perMo + ' only'}</span>
                     </div>
                   </div>
@@ -653,10 +687,10 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                     {paymentMethodUsed === 'stars' ? `PAY ${p.stars}` : `PAY ${p.usd}`}
                   </a>
 
-                  <p className="text-[10px] text-gray-500 text-center">
+                  <p className="text-[10px] text-gray-900 text-center">
                     Complete payment in Telegram · This page updates automatically · After payment you will be redirected back to Erogram
                   </p>
-                  <p className="text-[10px] text-gray-400 text-center">
+                  <p className="text-[10px] text-gray-900 text-center">
                     Need help? Telegram: <a href="https://t.me/erogramDOTpro" target="_blank" rel="noopener noreferrer" className="font-bold underline">@erogramDOTpro</a> · <a href="mailto:support@erogram.biz" className="font-bold underline">support@erogram.biz</a>
                   </p>
                 </div>
@@ -665,14 +699,26 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
             })()}
 
             <div className="mt-4 space-y-0.5">
-              <p className="text-center text-[9px] text-gray-400">Pay with Telegram Stars or Crypto</p>
-              <p className="text-center text-[9px] text-gray-300">Erogram is actively developing — more features coming soon</p>
+              <p className="text-center text-[9px] text-gray-900">Pay with Telegram Stars or Crypto</p>
+              <p className="text-center text-[9px] text-gray-900">Erogram is actively developing — more features coming soon</p>
             </div>
           </div>
         </div>
 
         {/* ━━━ SECOND VAULT PREVIEW — below payment ━━━ */}
-        {vaultTeaser.length > 0 && <VaultPreview items={vaultTeaser} />}
+        {vaultTeaser.length > 0 && <VaultPreview items={vaultTeaser} whiteCaption />}
+
+        {!isPremium && !soldOut && (
+          <div className="mb-5 flex justify-center px-4">
+            <a
+              href="#pricing"
+              className="inline-flex items-center justify-center px-3.5 py-2.5 rounded-lg text-xs sm:text-sm font-black text-white uppercase tracking-wide text-center transition-all active:scale-95 hover:opacity-90"
+              style={{ background: PREMIUM_PINK }}
+            >
+              Unlock Erogram Premium
+            </a>
+          </div>
+        )}
 
         <div className="mt-5 flex justify-center">
           <Link href="/" className="px-3.5 py-1.5 rounded-lg text-xs font-medium transition hover:opacity-80" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.4)' }}>&larr; Back to site</Link>

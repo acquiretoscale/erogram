@@ -8,7 +8,9 @@ import axios from 'axios';
 import Navbar from '@/components/Navbar';
 import HeaderBanner from '@/components/HeaderBanner';
 import BotCardSkeleton from './BotCardSkeleton';
+import BotsEditorialSeo from './BotsEditorialSeo';
 import AdvertCard from '../groups/AdvertCard';
+import { cardEntryProps } from '../groups/cardEntry';
 import type { FeedCampaign } from '../groups/types';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 import { useTranslation, useLocalePath } from '@/lib/i18n';
@@ -449,10 +451,6 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
             {/* Top Bots Section — hidden when a search or filter is active */}
             {!debouncedSearchQuery && selectedCategory === 'All' && selectedSubcategory === 'All' && (topBots.length > 0 || topBotsLoading) && (
               <div className="mb-5 relative rounded-2xl p-[2px]" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706, #92400e, #d97706, #f59e0b, #fcd34d, #f59e0b)' }}>
-                <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
-                  <div className="absolute inset-0 opacity-30" style={{ background: 'linear-gradient(105deg, transparent 40%, rgba(252,211,77,0.4) 50%, transparent 60%)', animation: 'shimmer 3s infinite' }} />
-                </div>
-                <style>{`@keyframes shimmer { 0%,100%{transform:translateX(-100%)} 50%{transform:translateX(100%)} }`}</style>
                 <div className="relative rounded-[20px] overflow-hidden" style={{ background: 'linear-gradient(145deg, #0f0f0f 0%, #141008 40%, #0f0f0f 100%)' }}>
                 <div className="relative p-3 sm:p-4">
                   <div className="flex items-center gap-2 mb-3">
@@ -589,6 +587,10 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
                   ))}
                 </div>
               )}
+
+              {isDefaultBrowse && paginationCurrentPage === 1 && (
+                <BotsEditorialSeo />
+              )}
             </div>
           </div>
         </div>
@@ -612,7 +614,6 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
 
 const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex = 0, directLink, initialStats, onVoteChange }: { bot: Bot; isFeatured?: boolean; isIndex: number; directLink?: string; initialStats?: BotStatsData; onVoteChange?: (slug: string, score: number) => void }) {
   const { t } = useTranslation();
-  const [isHovered, setIsHovered] = useState(false);
   const [imageSrc, setImageSrc] = useState(bot.image || 'PLACEHOLDER_IMAGE_URL');
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isInView, setIsInView] = useState(false);
@@ -699,16 +700,10 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
     }
   }, [isInView, imageSrc, bot._id, isIndex]);
 
+  const entry = cardEntryProps(isIndex);
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 60 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: isIndex * 0.1 }}
-      onHoverStart={() => setIsHovered(true)}
-      onHoverEnd={() => setIsHovered(false)}
-      className="h-full"
-      style={{ willChange: 'transform, opacity' }}
-    >
+    <div className={`h-full ${entry.className}`} style={entry.style}>
       <div className={`glass rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col backdrop-blur-xl border transition-all duration-500 group relative ${isFeatured
         ? 'border-yellow-500/30 shadow-[0_0_30px_rgba(234,179,8,0.1)] hover:border-yellow-500/60 hover:shadow-[0_0_50px_rgba(234,179,8,0.2)]'
         : 'border-white/5 hover:border-white/20 hover:shadow-2xl hover:shadow-black/50'
@@ -720,7 +715,6 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
             alt={bot.name}
             loading="lazy"
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-            style={{ transform: isHovered ? 'scale(1.1)' : 'scale(1)' }}
             onLoad={() => setImageLoaded(true)}
             onError={() => setImageSrc('PLACEHOLDER_IMAGE_URL')}
           />
@@ -863,7 +857,7 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 });
 

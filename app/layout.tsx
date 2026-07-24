@@ -68,7 +68,16 @@ export async function generateMetadata(): Promise<Metadata> {
     title: { default: title, template: "%s | Erogram" },
     description,
     keywords: "porn telegram, telegram porn, best porn telegram groups, nsfw telegram, nsfw telegram groups, adult telegram directory, porn telegram channels, telegram porn groups",
-    icons: { icon: '/favicon.ico?v=2', shortcut: '/favicon.ico?v=2' },
+    icons: {
+      icon: [
+        { url: '/favicon-32.png?v=5', type: 'image/png', sizes: '32x32' },
+        { url: '/favicon-48.png?v=5', type: 'image/png', sizes: '48x48' },
+        { url: '/erogram-icon.png?v=5', type: 'image/png', sizes: '192x192' },
+        { url: '/favicon.ico?v=5', sizes: 'any' },
+      ],
+      shortcut: '/favicon-32.png?v=5',
+      apple: '/icons/icon-192.png?v=5',
+    },
     metadataBase: new URL(siteUrl),
     alternates: {
       canonical,
@@ -126,8 +135,8 @@ export default async function RootLayout({
         <meta name="theme-color" content="#111111" />
         <meta name="generator" content="Next.js 16" />
 
-        <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <link rel="manifest" href="/manifest.json?v=5" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png?v=5" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Erogram" />

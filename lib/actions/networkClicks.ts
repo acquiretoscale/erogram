@@ -77,7 +77,10 @@ export async function getNetworkClicks(token: string, days = 30): Promise<Networ
   }
 
   // 2) Boost clicks — Group/Bot have a per-day clickCountByDay Map; AINSFW only has a lifetime clickCount.
-  const boostQuery = { 'clickCountByDay': { $exists: true } } as Record<string, unknown>;
+  //    NOTE: clickCountByDay defaults to an empty Map on every doc, so `$exists` matched the ENTIRE
+  //    collection (full scan → the admin stats page hung). Entities with zero clicks contribute 0 to
+  //    the totals, so filtering to clickCount>0 changes NO numbers and only skips empty docs.
+  const boostQuery = { clickCount: { $gt: 0 } } as Record<string, unknown>;
   const [groups, bots] = await Promise.all([
     Group.find(boostQuery).select('clickCountByDay').lean(),
     Bot.find(boostQuery).select('clickCountByDay').lean(),

@@ -5,7 +5,7 @@
  * Set NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL to your R2 URL (e.g. after running
  * scripts/upload-placeholder-to-r2.mjs) to serve the placeholder from R2.
  */
-const FALLBACK_PATH = '/assets/placeholder-no-image.png';
+const FALLBACK_PATH = '/assets/placeholder-no-image.webp';
 
 export const PLACEHOLDER_IMAGE_URL: string =
   (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL) || FALLBACK_PATH;

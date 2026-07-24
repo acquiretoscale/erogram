@@ -4,14 +4,14 @@ import connectDB from '@/lib/db/mongodb';
 import { Group, Bot, StorySlideContent, SiteConfig } from '@/lib/models';
 import GroupsClient from './GroupsClient';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { getActiveCampaigns, getActiveFeedCampaigns, getTrendingErogramCampaigns } from '@/lib/actions/campaigns';
+import { getActiveCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
 import { getFeaturedCreatorFeedItems } from '@/lib/actions/publicData';
 import { getStoryCategories, DEFAULT_STORY_CATEGORIES, type StoryCategoryConfig } from '@/lib/actions/siteConfig';
 import { listR2Files } from '@/lib/r2';
 import type { StoryCategory, StoryMediaSlide } from './types';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
-import { filterCategories, GROUPS_FEED_PAGE_SIZE, TRENDING_CATEGORY_MIN_COUNT, categorySlug } from './constants';
+import { filterCategories, GROUPS_FEED_PAGE_SIZE } from './constants';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 const canonicalBase = CANONICAL_BASE;
@@ -46,28 +46,6 @@ async function getFilterOptions(): Promise<{ categories: string[]; countries: st
   } catch {
     return { categories: [], countries: [], categoryCounts: [] };
   }
-}
-
-// Trending group categories: EVERY content category with 20+ listings (public + vault),
-// highest count first. Each links to the /groups feed filtered to that category
-// (newest-first) as a crawlable, descriptive category view so Google understands
-// the topic + depth. Fully dynamic — grows as categories cross the threshold.
-function toTrendingCategoryLinks(categoryCounts: Array<{ name: string; count: number }>): Array<{ label: string; title: string; href: string }> {
-  return categoryCounts
-    .filter((c) => c.count >= TRENDING_CATEGORY_MIN_COUNT)
-    .map((c) => ({
-      label: c.name,
-      title: `${c.name} Telegram groups`,
-      href: `/groups?category=${encodeURIComponent(c.name)}`,
-    }));
-}
-
-// Countries keep their existing trending treatment (top entries by count).
-function toTrendingLinks(names: string[]): Array<{ label: string; href: string }> {
-  return names.slice(0, 8).map((name) => ({
-    label: name,
-    href: `/best-telegram-groups/${categorySlug(name)}`,
-  }));
 }
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -472,42 +450,6 @@ async function getStoryData(categories: StoryCategoryConfig[], locale: string = 
   }
 }
 
-async function getVaultTeaser() {
-  try {
-    await connectDB();
-    let groups = await Group.find({ showOnVaultTeaser: true, premiumOnly: true, status: 'approved' })
-      .sort({ vaultTeaserOrder: 1 })
-      .select('name image category categories country memberCount vaultTeaserOrder vaultCategories')
-      .lean();
-
-    if (groups.length > 12) {
-      const shuffled = [...groups].sort(() => Math.random() - 0.5);
-      groups = shuffled.slice(0, 12);
-    }
-
-    if (groups.length === 0) {
-      groups = await Group.find({ premiumOnly: true, status: 'approved' })
-        .sort({ createdAt: -1 })
-        .limit(12)
-        .select('name image category categories country memberCount vaultCategories')
-        .lean();
-    }
-
-    return (groups as any[]).map(g => ({
-      _id: g._id.toString(),
-      name: (g.name || '') as string,
-      image: (g.image || '') as string,
-      category: (g.category || '') as string,
-      categories: (g as any).categories || [],
-      country: (g.country || '') as string,
-      memberCount: (g.memberCount || 0) as number,
-      vaultCategories: (g as any).vaultCategories || [],
-    }));
-  } catch {
-    return [];
-  }
-}
-
 export async function GroupsPageView({ page = 1 }: { page?: number }) {
   const currentPage = Math.max(1, page);
   const locale = await getLocale();
@@ -527,24 +469,14 @@ export async function GroupsPageView({ page = 1 }: { page?: number }) {
   let storyConfig = await getStoryCategories();
   if (storyConfig.length === 0) storyConfig = DEFAULT_STORY_CATEGORIES;
 
-  // In-feed ads + story data + vault teaser + featured creators + trending + filter options — all in parallel
-  const [topBannerCampaigns, feedCampaignsRaw, storyData, vaultTeaserGroupsRaw, featuredCreatorItems, filterOpts, trendingErogramCampaigns] = await Promise.all([
+  // In-feed ads + story data + featured creators + filter options — all in parallel
+  const [topBannerCampaigns, feedCampaignsRaw, storyData, featuredCreatorItems, filterOpts] = await Promise.all([
     getActiveCampaigns('top-banner', { page: 'groups' }),
     getActiveFeedCampaigns('groups'),
     storiesEnabled ? getStoryData(storyConfig, locale) : Promise.resolve([] as StoryCategory[]),
-    getVaultTeaser(),
     getFeaturedCreatorFeedItems().catch(() => []),
     getFilterOptions(),
-    getTrendingErogramCampaigns(8).catch(() => []),
   ]);
-
-  // Two trending rows derived from the already-sorted filter options (top 6 each).
-  const trendingCategories = toTrendingCategoryLinks(filterOpts.categoryCounts);
-  const trendingCountries = toTrendingLinks(filterOpts.countries);
-
-  // The EROGRAM PREMIUM in-feed teaser is a native-looking house post (click → /premium).
-  // It is INDEPENDENT of the Ad Network — always shown, never tied to any campaign/stats.
-  const vaultTeaserGroups = vaultTeaserGroupsRaw;
 
   // AGNOSTIC SLOTS: every ad — including OF creators assigned in /admin/ad-network —
   // keeps its assigned slot and rotates with any other adType in that slot.
@@ -588,12 +520,8 @@ export async function GroupsPageView({ page = 1 }: { page?: number }) {
           initialIsTelegram={false}
           topBannerCampaigns={topBannerForPage}
           storyData={storyData}
-          vaultTeaserGroups={vaultTeaserGroups}
-          trendingCategories={trendingCategories}
-          trendingCountries={trendingCountries}
           categoryOptions={filterOpts.categories}
           countryOptions={filterOpts.countries}
-          trendingErogramCampaigns={trendingErogramCampaigns}
           paginationCurrentPage={currentPage}
           paginationTotalPages={paginationTotalPages}
           groupsPageSize={GROUPS_FEED_PAGE_SIZE}

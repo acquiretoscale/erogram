@@ -31,7 +31,11 @@ function getR2Client() {
 export async function uploadToR2(
   buffer: Buffer,
   key: string,
-  contentType: string
+  contentType: string,
+  opts?: {
+    metadata?: Record<string, string>;
+    contentDisposition?: string;
+  }
 ): Promise<string> {
   const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || '';
   const client = getR2Client();
@@ -41,6 +45,8 @@ export async function uploadToR2(
       Key: key,
       Body: buffer,
       ContentType: contentType,
+      ...(opts?.metadata ? { Metadata: opts.metadata } : {}),
+      ...(opts?.contentDisposition ? { ContentDisposition: opts.contentDisposition } : {}),
     })
   );
 

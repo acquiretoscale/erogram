@@ -1,57 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { randomUUID } from 'crypto';
-import { writeFile, readFile, unlink } from 'fs/promises';
-import path from 'path';
-import { uploadToR2, isR2Configured } from '@/lib/r2';
+import { isR2Configured } from '@/lib/r2';
+import {
+  assertValidAdVideoUrl,
+  optimizeAndUploadAdVideo,
+  resolveAdVideoNiche,
+} from '@/lib/adVideoR2';
 
 const ALLOWED_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
-const TARGET_SIZE = 10 * 1024 * 1024; // 10 MB
-
-let ffmpegLoaded = false;
-let ffmpeg: any = null;
-
-function loadFfmpeg() {
-  if (ffmpegLoaded) return;
-  try {
-    /* eslint-disable @typescript-eslint/no-require-imports */
-    ffmpeg = require('fluent-ffmpeg');
-    const { path: ffmpegPath } = require('@ffmpeg-installer/ffmpeg');
-    ffmpeg.setFfmpegPath(ffmpegPath);
-    ffmpegLoaded = true;
-  } catch {
-    ffmpeg = null;
-  }
-}
-
-function compressVideo(inputPath: string, outputPath: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    ffmpeg(inputPath)
-      .videoCodec('libx264')
-      .audioCodec('aac')
-      .audioBitrate('128k')
-      .outputOptions([
-        '-crf', '22',
-        '-preset', 'fast',
-        '-vf', 'scale=-2:\'min(720,ih)\'',
-        '-movflags', '+faststart',
-        '-pix_fmt', 'yuv420p',
-      ])
-      .format('mp4')
-      .on('end', () => resolve())
-      .on('error', (err: Error) => reject(err))
-      .save(outputPath);
-  });
-}
 
 export async function POST(req: NextRequest) {
-  const id = randomUUID();
-  const tmpDir = '/tmp';
-  const inputPath = path.join(tmpDir, `${id}-input`);
-  const outputPath = path.join(tmpDir, `${id}-output.mp4`);
-
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;
+    const advertiserName = String(formData.get('advertiserName') || 'advertiser').trim();
+    const nicheRaw = String(formData.get('niche') || '').trim();
+    const campaignName = String(formData.get('campaignName') || '').trim();
+    const disambiguator = String(formData.get('disambiguator') || '').trim() || undefined;
 
     if (!file) {
       return NextResponse.json({ message: 'No file uploaded' }, { status: 400 });
@@ -68,33 +32,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'R2 not configured.' }, { status: 503 });
     }
 
+    const niche = nicheRaw || resolveAdVideoNiche('All', campaignName || advertiserName);
     const bytes = await file.arrayBuffer();
     const rawBuffer = Buffer.from(bytes);
 
-    let finalBuffer: Buffer;
-    let key: string;
-    const prefix = 'campaigns/videos';
+    const url = await optimizeAndUploadAdVideo(rawBuffer, {
+      advertiserName,
+      niche,
+      campaignName,
+      disambiguator,
+    });
 
-    if (rawBuffer.length <= TARGET_SIZE) {
-      const ext = file.type === 'video/quicktime' ? 'mov' : file.type.split('/')[1];
-      key = `${prefix}/${id}.${ext}`;
-      finalBuffer = rawBuffer;
-    } else {
-      loadFfmpeg();
-      if (!ffmpeg) {
-        const ext = file.type === 'video/quicktime' ? 'mov' : file.type.split('/')[1];
-        key = `${prefix}/${id}.${ext}`;
-        finalBuffer = rawBuffer;
-      } else {
-        await writeFile(inputPath, rawBuffer);
-        await compressVideo(inputPath, outputPath);
-        finalBuffer = await readFile(outputPath);
-        key = `${prefix}/${id}.mp4`;
-      }
-    }
-
-    const url = await uploadToR2(finalBuffer, key, 'video/mp4');
-
+    assertValidAdVideoUrl(url);
     return NextResponse.json({ url });
   } catch (error: any) {
     console.error('Video upload error:', error);
@@ -102,8 +51,5 @@ export async function POST(req: NextRequest) {
       { message: error.message || 'Upload failed' },
       { status: 500 }
     );
-  } finally {
-    unlink(inputPath).catch(() => {});
-    unlink(outputPath).catch(() => {});
   }
 }

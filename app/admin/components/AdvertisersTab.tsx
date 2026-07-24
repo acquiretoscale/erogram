@@ -1556,6 +1556,13 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
     try {
       const formData = new FormData();
       formData.append('file', file);
+      const adv = advertisers.find((a) => a._id === campForm.advertiserId);
+      formData.append('advertiserName', adv?.name || 'advertiser');
+      formData.append('niche', campForm.category || 'nsfw-feed');
+      formData.append('campaignName', campForm.name || campForm.internalName || '');
+      if (editingCampaign?._id) {
+        formData.append('disambiguator', String(editingCampaign._id).slice(-6));
+      }
       const token = getToken();
       const res = await axios.post('/api/upload/video', formData, {
         headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` },

@@ -8,6 +8,7 @@ import { BOOST_WEIGHT } from '@/lib/adPlacements';
 import { getExpiredOFAgencyTargets } from '@/lib/actions/onlyfansTracking';
 import { dropExpiredOFAgencyAds } from '@/lib/ofExpiry';
 import { campaignNotExpired } from '@/lib/campaignDates';
+import { assertValidAdVideoUrl } from '@/lib/adVideoR2';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -221,6 +222,9 @@ export async function createCampaign(
     throw new Error('Destination URL is required');
   }
   const hasVideo = data.slot === 'feed' && !!(data as any).videoUrl;
+  if (hasVideo) {
+    assertValidAdVideoUrl(String((data as any).videoUrl));
+  }
   if (!isCtaSlot && data.adType !== 'premium' && data.adType !== 'onlyfans-creator' && !data.creative && !hasVideo) {
     throw new Error('Creative image is required for this slot (or provide a video URL for feed ads)');
   }
@@ -390,7 +394,11 @@ export async function updateCampaign(
   if (data.category != null) updateData.category = String(data.category || 'All');
   if (data.country != null) updateData.country = String(data.country || 'All');
   if (data.feedPlacement != null) updateData.feedPlacement = data.feedPlacement;
-  if ('videoUrl' in data) updateData.videoUrl = String(data.videoUrl ?? '').trim();
+  if ('videoUrl' in data) {
+    const nextVideoUrl = String(data.videoUrl ?? '').trim();
+    if (nextVideoUrl) assertValidAdVideoUrl(nextVideoUrl);
+    updateData.videoUrl = nextVideoUrl;
+  }
   if ('badgeText' in data) updateData.badgeText = String(data.badgeText ?? '').trim();
   if ('verified' in data) updateData.verified = Boolean(data.verified);
   if ('adType' in data) updateData.adType = data.adType || 'advertiser';
@@ -1111,7 +1119,27 @@ async function normalizeFeedPositions(): Promise<void> {
  * Their ads are then excluded from serving for the rest of the day → other advertisers / Erogram-own ads fill in.
  * Near-real-time (counts logged CampaignClicks); small overdelivery is acceptable by design.
  */
+// --- Lightweight per-instance TTL cache for hot ad-serving lookups ---
+// getCappedAdvertiserIds / getCappedCampaignIds run on EVERY ad-bearing pageview
+// and were previously recomputed 2-3x per request (each aggregates the whole
+// day's CampaignClick log). Caching the RESULT for a short window collapses that
+// to ~1 compute per key per minute per serverless instance. Cap enforcement is a
+// soft limit by design, so a <=60s delay is acceptable. No stat data is changed.
+const AD_LOOKUP_TTL_MS = 60_000;
+const _adLookupCache = new Map<string, { exp: number; val: Set<string> }>();
+async function ttlCachedSet(key: string, fn: () => Promise<Set<string>>): Promise<Set<string>> {
+  const hit = _adLookupCache.get(key);
+  if (hit && hit.exp > Date.now()) return hit.val;
+  const val = await fn();
+  _adLookupCache.set(key, { exp: Date.now() + AD_LOOKUP_TTL_MS, val });
+  return val;
+}
+
 async function getCappedAdvertiserIds(): Promise<Set<string>> {
+  return ttlCachedSet('cappedAdvertisers', computeCappedAdvertiserIds);
+}
+
+async function computeCappedAdvertiserIds(): Promise<Set<string>> {
   const capped = new Set<string>();
   try {
     const startOfDayUTC = new Date();
@@ -1161,6 +1189,10 @@ async function getCappedAdvertiserIds(): Promise<Set<string>> {
  * Used for OnlyFans creators (and any single ad) where the cap is the campaign's, not the advertiser's.
  */
 async function getCappedCampaignIds(): Promise<Set<string>> {
+  return ttlCachedSet('cappedCampaigns', computeCappedCampaignIds);
+}
+
+async function computeCappedCampaignIds(): Promise<Set<string>> {
   const capped = new Set<string>();
   try {
     const startOfDayUTC = new Date();

@@ -3,7 +3,8 @@ import HomeClient from './HomeClient';
 import connectDB from '@/lib/db/mongodb';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { getActiveCampaigns } from '@/lib/actions/campaigns';
-import { Article, User, Group, Bot, OnlyFansCreator } from '@/lib/models';
+import { getPublishedBlogArticles } from '@/lib/actions/blog';
+import { Group, Bot, OnlyFansCreator, User } from '@/lib/models';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary } from '@/lib/i18n';
 import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
@@ -23,50 +24,6 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
 // Display bases so totals read closer to real-world scale, then grow dynamically.
 const AI_BOTS_BASE = 400;
 const OF_CREATORS_BASE = 1_813_055;
-
-async function getFeaturedArticles(limit: number = 6) {
-  try {
-    await connectDB();
-    // Use same Mongoose Article model as admin and articles listing
-    const articlesRaw = await Article.find({ status: 'published' })
-      .select('title slug excerpt featuredImage tags publishedAt views author createdAt')
-      .sort({ publishedAt: -1, createdAt: -1 })
-      .limit(limit)
-      .lean();
-
-    const authorIds = new Set<string>();
-    (articlesRaw as any[]).forEach((article: any) => {
-      if (article.author) authorIds.add(article.author.toString());
-    });
-
-    const authorsMap = new Map<string, { _id: string; username: string }>();
-    if (authorIds.size > 0) {
-      const authors = await User.find({ _id: { $in: Array.from(authorIds) } })
-        .select('username _id')
-        .lean();
-      (authors as any[]).forEach((a: any) => {
-        authorsMap.set(a._id.toString(), { _id: a._id.toString(), username: a.username || 'erogram' });
-      });
-    }
-
-    const articles = (articlesRaw as any[]).map((article: any) => ({
-      _id: article._id.toString(),
-      title: article.title || '',
-      slug: article.slug || '',
-      excerpt: article.excerpt || '',
-      featuredImage: article.featuredImage || '',
-      tags: article.tags || [],
-      publishedAt: article.publishedAt || null,
-      views: article.views || 0,
-      author: article.author ? (authorsMap.get(article.author.toString()) || { _id: '', username: 'erogram' }) : { _id: '', username: 'erogram' },
-    }));
-
-    return articles;
-  } catch (error) {
-    console.error('Error fetching featured articles:', error);
-    return [];
-  }
-}
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
@@ -242,7 +199,7 @@ export default async function Home() {
   const metaDict = dict.meta || {};
 
   const [featuredArticles, heroCampaigns, newGroups, stats, ofCategories, newestBots, topGroupCategories] = await Promise.all([
-    getFeaturedArticles(6),
+    getPublishedBlogArticles(6),
     getActiveCampaigns('homepage-hero'),
     getNewGroups(8),
     getStats(),

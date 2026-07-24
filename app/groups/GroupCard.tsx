@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import BookmarkButton from '@/components/BookmarkButton';
 import { compressImage } from '@/lib/utils/compressImage';
 import { Group } from './types';
+import { cardEntryProps } from './cardEntry';
 import { useTranslation } from '@/lib/i18n/client';
 
 interface GroupCardProps {
@@ -35,7 +36,6 @@ function getPremiumSocialProof(groupId: string) {
 
 export default function GroupCard({ group, isFeatured = false, isIndex = 0, shouldPreload = false, onVisible, onOpenReviewModal, onOpenReportModal, isBookmarked = false, bookmarkId = null, itemType = 'group', lockedPremium = false, directLink, growthPercent }: GroupCardProps) {
     const { t } = useTranslation();
-    const [isHovered, setIsHovered] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
     const [deleted, setDeleted] = useState(false);
     const [showEdit, setShowEdit] = useState(false);
@@ -193,14 +193,12 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                 ? { from: '#2563eb', to: '#06b6d4', glow: 'rgba(37,99,235,0.45)', text: '#38bdf8' }
                 : { from: '#ff5e2a', to: '#ff9432', glow: 'rgba(255,94,42,0.5)', text: '#ff8c42' };
 
+    const entry = cardEntryProps(isIndex);
+
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 60 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: isIndex * 0.1 }}
-            onHoverStart={() => setIsHovered(true)}
-            onHoverEnd={() => setIsHovered(false)}
-            className="h-full relative group/card"
+        <div
+            className={`h-full relative group/card ${entry.className}`}
+            style={entry.style}
         >
             {/* Accent aura glow behind the card */}
             <div
@@ -511,6 +509,6 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                     </motion.div>
                 )}
             </AnimatePresence>
-        </motion.div>
+        </div>
     );
 }

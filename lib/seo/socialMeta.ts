@@ -6,7 +6,7 @@ export const CANONICAL_BASE = 'https://erogram.pro';
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || CANONICAL_BASE;
 
 /** Default share image — used whenever a page has no bespoke image. */
-export const DEFAULT_OG_IMAGE = `${CANONICAL_BASE}/assets/og-default.png`;
+export const DEFAULT_OG_IMAGE = `${CANONICAL_BASE}/assets/og-default.jpg?v=5`;
 
 /** Brand X/Twitter handle for twitter:site. */
 export const TWITTER_SITE = '@erogram';
