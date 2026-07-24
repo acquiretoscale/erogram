@@ -8,6 +8,9 @@ import { voteOnTool, unvoteOnTool, submitReview } from '@/lib/actions/ainsfw';
 import type { ToolStatsData } from '@/lib/actions/ainsfw';
 import { trackClick, trackImpression } from '@/lib/actions/campaigns';
 
+// PAUSED (2026-07-24, owner order) — see AdvertCard.tsx. Flip to false to resume.
+const IMPRESSION_TRACKING_PAUSED = true;
+
 interface ToolCardProps {
   tool: AINsfwTool;
   index: number;
@@ -89,7 +92,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
   }, []);
 
   useEffect(() => {
-    if (isInView && featured && campaignId && !impressionTracked.current) {
+    if (!IMPRESSION_TRACKING_PAUSED && isInView && featured && campaignId && !impressionTracked.current) {
       impressionTracked.current = true;
       trackImpression(campaignId);
     }

@@ -1520,6 +1520,9 @@ export async function isPremiumHouseAdLive(): Promise<boolean> {
   return count > 0;
 }
 
+/** Kill switch for impression logging. Flip to false to resume. */
+const IMPRESSION_TRACKING_PAUSED = true;
+
 /**
  * Track a click on a campaign. Fire-and-forget from the client.
  * Updates Campaign.clicks and records a CampaignClick for period stats (7d, 30d).
@@ -1544,6 +1547,12 @@ export async function trackClick(campaignId: string, placement?: string) {
  * for period-specific CTR calculations.
  */
 export async function trackImpression(campaignId: string) {
+  // PAUSED (2026-07-24, owner order) — performance experiment. Every call was a
+  // server action POST that forced a full re-render of a force-dynamic page plus
+  // 2 Mongo writes, on every ad view sitewide. Serving and daily caps depend on
+  // CLICKS only, so nothing about ad delivery changes while this is off.
+  // To resume: delete the early return below.
+  if (IMPRESSION_TRACKING_PAUSED) return;
   try {
     await connectDB();
     const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"

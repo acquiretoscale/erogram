@@ -7,6 +7,12 @@ import { trackClick as trackCampaignClick, trackImpression } from '@/lib/actions
 import { trackTrendingClick } from '@/lib/actions/onlyfansTracking';
 import { useTranslation } from '@/lib/i18n/client';
 
+// PAUSED (2026-07-24, owner order) — performance experiment. Impression pings were
+// server-action POSTs that forced a full re-render of force-dynamic pages on every
+// ad view. Ad serving and daily caps use CLICKS only, so delivery is unaffected.
+// To resume impressions: flip this to false (and the same flag in campaigns.ts + ToolCard.tsx).
+const IMPRESSION_TRACKING_PAUSED = true;
+
 interface AdvertCardProps {
     advert?: Advert;
     campaign?: FeedCampaign;
@@ -123,7 +129,7 @@ function OnlyFansCreatorAdCard({ campaign, handleClick, growthPercent, isIndex =
         const observer = new IntersectionObserver(([entry]) => {
             if (entry.isIntersecting && !impressionFiredRef.current) {
                 impressionFiredRef.current = true;
-                if (campaign._id) trackImpression(campaign._id);
+                if (!IMPRESSION_TRACKING_PAUSED && campaign._id) trackImpression(campaign._id);
             }
         }, { threshold: 0.3 });
         observer.observe(el);
@@ -238,7 +244,7 @@ function VideoAdCard({ campaign, handleClick, hidePromoted = false, growthPercen
                             video.load();
                         }
                         video.play().catch(() => {});
-                        if (!videoImpressionFiredRef.current) {
+                        if (!IMPRESSION_TRACKING_PAUSED && !videoImpressionFiredRef.current) {
                             videoImpressionFiredRef.current = true;
                             trackImpression(campaign._id);
                         }
@@ -408,7 +414,7 @@ function PremiumMosaicCard({ campaign, handleClick, growthPercent }: { campaign:
         const observer = new IntersectionObserver(([entry]) => {
             if (entry.isIntersecting && !impressionFiredRef.current) {
                 impressionFiredRef.current = true;
-                trackImpression(campaign._id);
+                if (!IMPRESSION_TRACKING_PAUSED) trackImpression(campaign._id);
             }
         }, { threshold: 0.3 });
         observer.observe(el);
@@ -591,7 +597,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
     // Track impression when a campaign ad enters the viewport (fire once)
     useEffect(() => {
-        if (isInView && ad.isCampaign && ad._id && !impressionFiredRef.current) {
+        if (!IMPRESSION_TRACKING_PAUSED && isInView && ad.isCampaign && ad._id && !impressionFiredRef.current) {
             impressionFiredRef.current = true;
             trackImpression(ad._id);
         }

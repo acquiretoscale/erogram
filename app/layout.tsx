@@ -70,13 +70,13 @@ export async function generateMetadata(): Promise<Metadata> {
     keywords: "porn telegram, telegram porn, best porn telegram groups, nsfw telegram, nsfw telegram groups, adult telegram directory, porn telegram channels, telegram porn groups",
     icons: {
       icon: [
-        { url: '/favicon-32.png?v=5', type: 'image/png', sizes: '32x32' },
-        { url: '/favicon-48.png?v=5', type: 'image/png', sizes: '48x48' },
-        { url: '/erogram-icon.png?v=5', type: 'image/png', sizes: '192x192' },
-        { url: '/favicon.ico?v=5', sizes: 'any' },
+        { url: '/favicon-32.png?v=6', type: 'image/png', sizes: '32x32' },
+        { url: '/favicon-48.png?v=6', type: 'image/png', sizes: '48x48' },
+        { url: '/erogram-icon.png?v=6', type: 'image/png', sizes: '192x192' },
+        { url: '/favicon.ico?v=6', sizes: 'any' },
       ],
-      shortcut: '/favicon-32.png?v=5',
-      apple: '/icons/icon-192.png?v=5',
+      shortcut: '/favicon-32.png?v=6',
+      apple: '/icons/icon-192.png?v=6',
     },
     metadataBase: new URL(siteUrl),
     alternates: {
