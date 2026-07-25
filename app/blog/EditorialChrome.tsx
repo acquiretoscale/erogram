@@ -56,14 +56,17 @@ function MastheadLangSwitcher({ compact = false }: { compact?: boolean }) {
       <button
         onClick={() => setOpen(!open)}
         aria-label="Change language"
-        className={`flex items-center rounded-lg hover:bg-white/10 transition-colors shrink-0 ${
-          compact ? 'gap-0.5 px-1 py-1.5' : 'gap-1.5 px-2 py-1.5'
+        className={`flex items-center justify-center rounded-lg hover:bg-white/[0.08] transition-colors shrink-0 ${
+          compact ? 'w-8 h-8' : 'gap-1.5 px-2 py-1.5'
         }`}
       >
-        <span className="text-base leading-none" suppressHydrationWarning>{LOCALE_FLAGS[locale]}</span>
-        {/* Language code is dropped on small screens so the flag + profile always fit. */}
-        <span className={`text-[13px] font-semibold text-white/90 ${compact ? 'hidden min-[400px]:inline' : ''}`} suppressHydrationWarning>{LOCALE_SHORT[locale]}</span>
-        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`shrink-0 text-white/50 transition-transform ${open ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6" /></svg>
+        <span className={`leading-none ${compact ? 'text-[16px]' : 'text-base'}`} suppressHydrationWarning>{LOCALE_FLAGS[locale]}</span>
+        {!compact && (
+          <>
+            <span className="text-[13px] font-semibold text-white/90" suppressHydrationWarning>{LOCALE_SHORT[locale]}</span>
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`shrink-0 text-white/50 transition-transform ${open ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6" /></svg>
+          </>
+        )}
       </button>
       <AnimatePresence>
         {mounted && open && (
@@ -213,7 +216,11 @@ function OFsearchNav() {
   );
 }
 
-function MastheadVisitingNow({ compact = false }: { compact?: boolean }) {
+// Live visitor count gets its own dedicated strip instead of fighting for space in the
+// icon row (the pattern top-tier sites use for social-proof numbers — Twitch "X watching",
+// Airbnb "X people looking at this", StockX live activity). Full-width means it can be
+// read at a glance and actually sells better to advertisers than a cramped 5px label ever did.
+function LiveVisitorBar() {
   const [count, setCount] = useState(0);
   const [live, setLive] = useState(false);
 
@@ -235,34 +242,20 @@ function MastheadVisitingNow({ compact = false }: { compact?: boolean }) {
   }, []);
 
   return (
-    <div
-      className="flex flex-col items-center justify-center leading-none shrink-0"
-      aria-label={count > 0 ? `${count.toLocaleString('en-US')} visiting now` : 'Visiting now'}
-    >
-      <span
-        className={`font-semibold text-white/90 whitespace-nowrap tracking-[0.08em] uppercase ${
-          compact ? 'text-[6px]' : 'text-[7px]'
-        } ${compact ? 'hidden min-[390px]:inline' : ''}`}
-      >
-        visiting now
-      </span>
-      <div className={`flex items-center ${compact ? 'gap-0.5 mt-0.5' : 'gap-1 mt-0.5'}`}>
-        <span className="relative flex h-1 w-1 sm:h-1.5 sm:w-1.5 shrink-0">
+    <div className="w-full bg-white/[0.03] border-b border-white/[0.06]" aria-label={count > 0 ? `${count.toLocaleString('en-US')} visiting now` : 'Visiting now'}>
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-8 h-[24px] flex items-center justify-center gap-1.5">
+        <span className="relative flex h-1.5 w-1.5 shrink-0">
           {live && count > 0 && (
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
           )}
-          <span
-            className={`relative inline-flex rounded-full h-1 w-1 sm:h-1.5 sm:w-1.5 ${
-              live && count > 0 ? 'bg-emerald-400' : 'bg-white/20'
-            }`}
-          />
+          <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${live && count > 0 ? 'bg-emerald-400' : 'bg-white/20'}`} />
         </span>
-        <span
-          className={`font-black text-white tabular-nums leading-none ${
-            compact ? 'text-[10px] min-[390px]:text-[11px]' : 'text-[12px]'
-          }`}
-        >
+        <span className="text-[11px] font-black text-white tabular-nums leading-none">
           {count > 0 ? count.toLocaleString('en-US') : '—'}
+        </span>
+        <span className="text-[9px] sm:text-[10px] font-semibold text-white/55 uppercase tracking-[0.08em] whitespace-nowrap leading-none">
+          <span className="sm:hidden">browsing now</span>
+          <span className="hidden sm:inline">people browsing Erogram right now</span>
         </span>
       </div>
     </div>
@@ -711,14 +704,14 @@ export function EditorialMasthead({ accent, fixed = false }: { accent?: string; 
 
   return (
     <header className={`${fixed ? 'fixed top-0 left-0 right-0' : 'relative'} z-50 bg-black/95 backdrop-blur-md border-b border-white/[0.08]`}>
-      <div className="max-w-[1280px] mx-auto px-3 sm:px-8 h-[58px] flex items-center gap-2.5 sm:gap-6">
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-8 h-[58px] flex items-center gap-2 sm:gap-6">
         {/* Wordmark — all white, only the dot accent-colored, heavy weight */}
         <Link
           href="/"
-          className="shrink-0 flex items-baseline text-[1.46rem] min-[390px]:text-[1.64rem] sm:text-[1.86rem] font-black uppercase tracking-tighter leading-none select-none mr-1.5 min-[390px]:mr-2.5 lg:mr-8"
+          className="shrink-0 flex items-baseline text-[1.86rem] font-black uppercase tracking-tighter leading-none select-none mr-2 sm:mr-6 lg:mr-8"
           style={{ fontFamily: 'var(--font-inter-tight), sans-serif' }}
         >
-          <span className="text-white">EROGRAM</span><span className="w-[8px] h-[8px] min-[390px]:w-[9px] min-[390px]:h-[9px] sm:w-[10px] sm:h-[10px] ml-1 shrink-0 self-end mb-[2px] sm:mb-[3px]" style={{ backgroundColor: resolvedAccent }} />
+          <span className="text-white">EROGRAM</span><span className="w-[10px] h-[10px] ml-1 shrink-0 self-end mb-[3px]" style={{ backgroundColor: resolvedAccent }} />
         </Link>
 
         {/* Desktop nav — uppercase, letter-spaced, muted. Only at lg+ where it fits;
@@ -761,47 +754,43 @@ export function EditorialMasthead({ accent, fixed = false }: { accent?: string; 
           ))}
         </nav>
 
-        {/* Desktop — visiting now centred between Blog (nav) and Submit (right cluster) */}
-        <div className="hidden lg:flex flex-1 justify-center min-w-0 px-2">
-          <MastheadVisitingNow />
-        </div>
-
         {/* Desktop right — ad slot + Add Tool + user menu + language (far right) */}
-        <div className="hidden lg:flex items-center gap-2.5 shrink-0">
+        <div className="hidden lg:flex items-center gap-2.5 shrink-0 ml-auto">
           <MastheadAdSlot />
           <AddToolNav />
           <MastheadUserMenu accent={resolvedAccent} auth={auth} lp={lp} />
           <MastheadLangSwitcher />
         </div>
 
-        {/* Mobile + tablet — Submit + burger (nav) + avatar (account) + language on the far right.
-            Account and language are the non-negotiable items here: they must NEVER be pushed off
-            screen. "Visiting now" is desktop-only because its width is what overflowed the row on
-            phones and hid the profile + flags entirely. Submit collapses to its icon on small
-            phones. Everything below is sized so the row fits at 320px. */}
-        <div className="lg:hidden ml-auto flex items-center gap-1 min-[390px]:gap-1.5 sm:gap-2 min-w-0">
+        {/* Mobile + tablet — Submit stays a real, legible pill (it's the #1 conversion action);
+            burger / avatar / flag share one ghost 32px tap target so they read as one compact
+            group instead of three mismatched shapes. Live visitor count moved to its own strip
+            below — see LiveVisitorBar — so it never has to fight this row for space. */}
+        <div className="lg:hidden ml-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
           {!mobileOpen && !userOpen && (
             <Link
               href="/add"
-              className="inline-flex items-center gap-1 text-[9px] min-[400px]:text-[10px] font-bold tracking-[0.08em] min-[390px]:tracking-[0.1em] uppercase text-black bg-white hover:bg-white/90 px-2 min-[390px]:px-2.5 py-1.5 rounded-[5px] transition-colors shrink-0"
+              className="inline-flex items-center gap-1 text-[10px] font-bold tracking-[0.1em] uppercase text-black bg-white hover:bg-white/90 px-2.5 py-1.5 rounded-[5px] transition-colors shrink-0"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="shrink-0 -ml-0.5"><path d="M12 5v14M5 12h14" /></svg>
-              <span className="hidden min-[400px]:inline">Submit</span>
+              Submit
             </Link>
           )}
           <button
             onClick={() => { setMobileOpen((v) => !v); setUserOpen(false); }}
             aria-label="Toggle menu"
-            className="shrink-0 flex flex-col gap-1.5 w-8 min-[390px]:w-9 h-9 items-center justify-center"
+            className="shrink-0 flex flex-col gap-[5px] w-8 h-8 items-center justify-center rounded-lg hover:bg-white/[0.08] active:bg-white/[0.12] transition-colors"
           >
-            <motion.span className="w-5 h-0.5 bg-white/70 rounded-full" animate={{ rotate: mobileOpen ? 45 : 0, y: mobileOpen ? 6 : 0 }} transition={{ duration: 0.2 }} />
-            <motion.span className="w-5 h-0.5 bg-white/70 rounded-full" animate={{ opacity: mobileOpen ? 0 : 1 }} transition={{ duration: 0.2 }} />
-            <motion.span className="w-5 h-0.5 bg-white/70 rounded-full" animate={{ rotate: mobileOpen ? -45 : 0, y: mobileOpen ? -6 : 0 }} transition={{ duration: 0.2 }} />
+            <motion.span className="w-[18px] h-[1.5px] bg-white/75 rounded-full" animate={{ rotate: mobileOpen ? 45 : 0, y: mobileOpen ? 6.5 : 0 }} transition={{ duration: 0.2 }} />
+            <motion.span className="w-[18px] h-[1.5px] bg-white/75 rounded-full" animate={{ opacity: mobileOpen ? 0 : 1 }} transition={{ duration: 0.2 }} />
+            <motion.span className="w-[18px] h-[1.5px] bg-white/75 rounded-full" animate={{ rotate: mobileOpen ? -45 : 0, y: mobileOpen ? -6.5 : 0 }} transition={{ duration: 0.2 }} />
           </button>
           <button
             onClick={() => { setUserOpen((v) => !v); setMobileOpen(false); }}
             aria-label="Account menu"
-            className={`w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-bold text-black shrink-0 ring-2 ring-transparent transition-all ${userOpen ? '!ring-white/60' : ''}`}
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-bold text-black shrink-0 transition-all ${
+              userOpen ? 'ring-2 ring-white/50' : 'hover:brightness-110'
+            }`}
             style={{ background: resolvedAccent }}
             suppressHydrationWarning
           >
@@ -812,6 +801,8 @@ export function EditorialMasthead({ accent, fixed = false }: { accent?: string; 
           <MastheadLangSwitcher compact />
         </div>
       </div>
+
+      <LiveVisitorBar />
 
       <MobileNavMenu open={mobileOpen} lp={lp} onClose={() => setMobileOpen(false)} />
       <MobileUserMenu open={userOpen} auth={auth} lp={lp} onClose={() => setUserOpen(false)} />
