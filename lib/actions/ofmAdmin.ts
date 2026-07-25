@@ -66,12 +66,51 @@ function parseIgolaItem(item: any) {
     likesCount: parseAbbreviatedNumber(item.likes),
     photosCount: 0,
     videosCount: 0,
+    subscriberCount: 0,
     price: typeof item.price === 'number' ? item.price : parseFloat(String(item.price || '0')) || 0,
     isFree: item.price === 0 || item.price === 'Free',
+    isVerified: false,
     url: item.link || `https://onlyfans.com/${username}`,
     gender: 'female' as const,
+    header: '',
     categories: Array.isArray(item.category) ? item.category.filter((c: string) => c !== 'male') : [],
   };
+}
+
+/** hello.datawizards/onlyfans-scraper — same mapping as app/api/onlyfans/scrape/route.ts */
+function parseDatawizardsItem(item: any) {
+  const username = item.username || '';
+  if (!username) return null;
+
+  const subPrice = typeof item.subscribePrice === 'number'
+    ? item.subscribePrice
+    : parseFloat(String(item.subscribePrice || '0')) || 0;
+
+  return {
+    name: item.name || username,
+    username,
+    avatar: item.avatar || '',
+    avatarThumbC50: item.avatarThumbs?.c50 || '',
+    avatarThumbC144: item.avatarThumbs?.c144 || '',
+    header: item.header || '',
+    bio: (item.about || '').slice(0, 500),
+    likesCount: item.favoritedCount || 0,
+    photosCount: item.photosCount || 0,
+    videosCount: item.videosCount || 0,
+    subscriberCount: item.subscribersCount || 0,
+    price: subPrice,
+    isFree: subPrice === 0,
+    isVerified: !!item.isVerified,
+    url: `https://onlyfans.com/${username}`,
+    gender: 'female' as const,
+    categories: [] as string[],
+  };
+}
+
+function parseActorItem(item: any, isSentry: boolean, isDatawizards: boolean) {
+  if (isDatawizards) return parseDatawizardsItem(item);
+  if (isSentry) return parseSentryItem(item);
+  return parseIgolaItem(item);
 }
 
 async function addToTrendingSlot(creator: any, position: number) {
@@ -275,20 +314,20 @@ export async function importOFMCreator(
     const targetLower = cleanUsername.toLowerCase();
     let matched = null;
     for (const item of items) {
-      const parsed = isSentry ? parseSentryItem(item) : parseIgolaItem(item);
+      const parsed = parseActorItem(item, isSentry, isDatawizards);
       if (!parsed) continue;
       if (parsed.username.toLowerCase() === targetLower) {
-        matched = { ...parsed, scrapedCategories: isSentry ? [] : (parseIgolaItem(item)?.categories || []) };
+        matched = { ...parsed, scrapedCategories: (parsed as any).categories || [] };
         break;
       }
     }
 
     if (!matched) {
       for (const item of items) {
-        const parsed = isSentry ? parseSentryItem(item) : parseIgolaItem(item);
+        const parsed = parseActorItem(item, isSentry, isDatawizards);
         if (!parsed) continue;
         if (parsed.username.toLowerCase().includes(targetLower) || targetLower.includes(parsed.username.toLowerCase())) {
-          matched = { ...parsed, scrapedCategories: isSentry ? [] : (parseIgolaItem(item)?.categories || []) };
+          matched = { ...parsed, scrapedCategories: (parsed as any).categories || [] };
           break;
         }
       }
@@ -317,7 +356,9 @@ export async function importOFMCreator(
         username: matched.username,
         slug,
         avatar: matched.avatar,
-        header: '',
+        avatarThumbC50: (matched as any).avatarThumbC50 || '',
+        avatarThumbC144: (matched as any).avatarThumbC144 || '',
+        header: (matched as any).header || '',
         bio: matched.bio,
         likesCount: matched.likesCount >= existingLikes ? matched.likesCount : existingLikes,
         subscriberCount: (matched as any).subscriberCount >= existingSubs ? ((matched as any).subscriberCount || 0) : existingSubs,
@@ -326,7 +367,7 @@ export async function importOFMCreator(
         videosCount: matched.videosCount >= existingVideos ? matched.videosCount : existingVideos,
         price: matched.price,
         isFree: matched.isFree,
-        isVerified: false,
+        isVerified: !!(matched as any).isVerified,
         gender: matched.gender,
         url: matched.url,
         scrapedAt: new Date(),

@@ -169,7 +169,7 @@ export async function getTrendingOnErogram() {
     avatar: { $ne: '' },
     deleted: { $ne: true },
     redirectToOF: { $ne: true },
-    likesCount: { $gt: 0 },
+    likesCount: { $gt: 0, $lt: 170_000 },
   })
     .sort({ likesCount: -1 })
     .limit(40)

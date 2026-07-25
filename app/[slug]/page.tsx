@@ -996,7 +996,7 @@ export default async function JoinPage({ params }: PageProps) {
             <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(offerJsonLd) }} />
           </>
         )}
-        <CreatorProfileClient creator={creator} related={related} trendingOnErogram={trendingOnErogram} publicAccess={creator.adminImported} />
+        <CreatorProfileClient creator={creator} related={related} trendingOnErogram={trendingOnErogram} publicAccess={creator.publicPage || creator.adminImported} />
       </>
     );
   }

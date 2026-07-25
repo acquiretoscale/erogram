@@ -354,6 +354,7 @@ export default function CreatorProfileClient({
     tiktokUrl: creator.tiktokUrl || '',
     telegramUrl: creator.telegramUrl || '',
   });
+  const [publicPage, setPublicPage] = useState(creator.publicPage ?? false);
 
   useEffect(() => {
     setIsAdmin(typeof window !== 'undefined' && localStorage.getItem('isAdmin') === 'true');
@@ -364,6 +365,7 @@ export default function CreatorProfileClient({
     await updateCreatorFields(creator.slug, {
       ...editFields,
       price: parseFloat(editFields.price) || 0,
+      publicPage,
     });
     setSaving(false);
     setAdminEdit(false);
@@ -1756,6 +1758,26 @@ export default function CreatorProfileClient({
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Public access toggle */}
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.04] border border-white/10">
+              <button
+                type="button"
+                onClick={() => setPublicPage(v => !v)}
+                className={`relative w-11 h-6 rounded-full shrink-0 transition-all ${publicPage ? 'bg-[#00AFF0]' : 'bg-white/15'}`}
+                aria-pressed={publicPage}
+              >
+                <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${publicPage ? 'left-[22px]' : 'left-0.5'}`} />
+              </button>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-bold text-white mb-0.5">Public page — no login required</div>
+                <div className="text-[10px] text-[#666]">
+                  {publicPage
+                    ? 'Anyone can view this profile without signing in.'
+                    : 'Visitors without an account are redirected to the join page.'}
+                </div>
               </div>
             </div>
 

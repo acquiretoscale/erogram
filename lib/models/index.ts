@@ -968,6 +968,8 @@ export const onlyFansCreatorSchema = new Schema(
     submissionStatus: { type: String, enum: ['approved', 'pending', 'rejected'], default: 'approved' },
     deleted: { type: Boolean, default: false },
     deletedAt: { type: Date, default: null },
+    adminImported: { type: Boolean, default: false },
+    publicPage: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

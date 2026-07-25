@@ -51,6 +51,7 @@ export interface CreatorProfile {
   telegramUrl: string;
   extraPhotos: string[];
   adminImported: boolean;
+  publicPage?: boolean;
 }
 
 export async function getCreatorBySlug(slug: string): Promise<CreatorProfile | null> {
@@ -122,6 +123,7 @@ export async function getCreatorBySlug(slug: string): Promise<CreatorProfile | n
       telegramUrl: c.telegramUrl || '',
       extraPhotos: c.extraPhotos || [],
       adminImported: c.adminImported || false,
+      publicPage: c.publicPage || false,
     };
   } catch {
     return null;
@@ -179,6 +181,7 @@ export async function getCreatorByUsername(username: string): Promise<CreatorPro
       telegramUrl: c.telegramUrl || '',
       extraPhotos: c.extraPhotos || [],
       adminImported: c.adminImported || false,
+      publicPage: c.publicPage || false,
     };
   } catch {
     return null;
