@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import axios from 'axios';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
+import { slugify } from '@/lib/utils/slugify';
 
 interface AddGroupModalProps {
   categories: string[];
@@ -23,31 +24,15 @@ export default function AddGroupModal({ categories, onClose, onSuccess }: AddGro
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const convertToWebP = async (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-
-      img.onload = () => {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx?.drawImage(img, 0, 0);
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          } else {
-            reject(new Error('Failed to convert to WebP'));
-          }
-        }, 'image/webp', 0.8);
-      };
-
-      img.onerror = reject;
-      img.src = URL.createObjectURL(file);
-    });
+  const uploadGroupImage = async (file: File, groupName: string): Promise<string> => {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('folder', 'groups');
+    fd.append('name', slugify(groupName) || 'group');
+    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+    if (!res.ok) throw new Error('Image upload failed. Please try a smaller image.');
+    const data = await res.json();
+    return data.url as string;
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,16 +89,7 @@ export default function AddGroupModal({ categories, onClose, onSuccess }: AddGro
 
       let imageUrl = null;
       if (groupData.imageFile) {
-        try {
-          imageUrl = await convertToWebP(groupData.imageFile);
-        } catch {
-          imageUrl = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target?.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(groupData.imageFile!);
-          });
-        }
+        imageUrl = await uploadGroupImage(groupData.imageFile, groupData.name);
       }
 
       const { imageFile, ...rest } = groupData;

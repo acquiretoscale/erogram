@@ -8,9 +8,10 @@ import type { BlogCard } from '@/lib/actions/blog';
 import { AINsfwSubmission } from '@/lib/models';
 import type { AINsfwTool } from '@/app/ainsfw/types';
 import ToolDetailClient from '@/app/ainsfw/[slug]/ToolDetailClient';
+import { getFullReview } from '@/app/ainsfw/fullReviews';
 import { getToolStats } from '@/lib/actions/ainsfw';
+import { getAuthorBySlug } from '@/lib/actions/authors';
 import { getAinsfwMetaDescription } from '@/lib/ainsfw/metaDescriptions';
-import { getPlacementFeedCampaigns } from '@/lib/actions/campaigns';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 // ISR for public pages
@@ -123,15 +124,15 @@ export default async function AINsfwToolPage({ params }: PageProps) {
   }
 
   const categoryTools = getToolsByCategory(aiTool.category).filter((t) => t.slug !== aiTool.slug);
-  const otherTools = AI_NSFW_TOOLS.filter((t) => t.slug !== aiTool.slug);
 
   const { getAllToolStats } = await import('@/lib/actions/ainsfw');
 
-  const [catStats, globalStats, toolStats, sidebarAdsAgnostic, aiArticles] = await Promise.all([
+  const fullReview = getFullReview(aiTool.slug);
+  const reviewAuthor = fullReview ? await getAuthorBySlug('eros') : undefined;
+
+  const [catStats, toolStats, aiArticles] = await Promise.all([
     getAllToolStats(categoryTools.map(t => t.slug)),
-    getAllToolStats(otherTools.map(t => t.slug)),
     getToolStats(aiTool.slug),
-    getPlacementFeedCampaigns('group-sidebar', 4).catch(() => []),
     getBlogArticlesByCategory('ai-nsfw', 4),
   ]);
 
@@ -139,7 +140,6 @@ export default async function AINsfwToolPage({ params }: PageProps) {
     [...list].sort((a, b) => ((stats[b.slug]?.upvotes || 0) - (stats[a.slug]?.upvotes || 0)));
 
   const alternatives = sortByUpvotes(categoryTools, catStats).slice(0, 6);
-  const mostVoted = sortByUpvotes(otherTools, globalStats).slice(0, 6);
 
   const toolPageUrl = `${BASE_URL}/ainsfw/${aiTool.slug}`;
   const toolImgUrl = aiTool.image.startsWith('http') ? aiTool.image : `${BASE_URL}${aiTool.image}`;
@@ -190,11 +190,11 @@ export default async function AINsfwToolPage({ params }: PageProps) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(toolSoftware) }} />
       <ToolDetailClient
         tool={aiTool}
+        fullReview={fullReview}
+        reviewAuthor={reviewAuthor}
         alternatives={alternatives}
-        mostVoted={mostVoted}
         aiArticles={aiArticles}
         initialStats={toolStats}
-        sidebarAds={sidebarAdsAgnostic}
       />
     </>
   );

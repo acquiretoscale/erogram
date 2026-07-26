@@ -1,11 +1,14 @@
 import { Metadata } from 'next';
+import Link from 'next/link';
 import { headers } from 'next/headers';
+import { notFound } from 'next/navigation';
 import { AI_NSFW_TOOLS } from './data';
 import AINsfwClient from './AINsfwClient';
+import { AINSFW_PAGE_SIZE } from './constants';
 import { getLocale } from '@/lib/i18n/server';
 import { getDictionary } from '@/lib/i18n';
 import { getAllToolStats, getFeaturedTools, getApprovedSubmissions } from '@/lib/actions/ainsfw';
-import { getActiveCampaigns, getPlacementFeedCampaigns, getActiveFeedCampaigns, getTrendingErogramCampaigns } from '@/lib/actions/campaigns';
+import { getActiveCampaigns, getPlacementFeedCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
@@ -36,22 +39,24 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function AINsfwPage() {
+export async function AINsfwPageView({ page = 1 }: { page?: number }) {
+  const currentPage = Math.max(1, page);
   const ua = (await headers()).get('user-agent');
   const { isMobile } = detectDeviceFromUserAgent(ua);
   const locale = await getLocale();
   const dict = await getDictionary(locale);
   const a = dict.ainsfw ?? {};
   const staticSlugs = new Set(AI_NSFW_TOOLS.map(t => t.slug));
-  const [featuredInfos, topBannerCampaigns, paidSubmissions, topAdCampaigns, feedCampaigns, trendingErogramCampaigns] = await Promise.all([
+  const [featuredInfos, topBannerCampaigns, paidSubmissions, topAdCampaigns, feedCampaigns] = await Promise.all([
     getFeaturedTools(),
     getActiveCampaigns('top-banner', { page: 'ainsfw', device: isMobile ? 'mobile' : 'desktop' }).catch(() => []),
     getApprovedSubmissions(staticSlugs),
     getPlacementFeedCampaigns('ainsfw-featured', 4).catch(() => []),
     getActiveFeedCampaigns('ainsfw').catch(() => []),
-    getTrendingErogramCampaigns(8).catch(() => []),
   ]);
   const allTools = [...AI_NSFW_TOOLS, ...paidSubmissions];
+  const paginationTotalPages = Math.max(1, Math.ceil(allTools.length / AINSFW_PAGE_SIZE));
+  if (currentPage > paginationTotalPages) notFound();
   const allStats = await getAllToolStats(allTools.map(t => t.slug));
   const featuredSlugs = featuredInfos.map(f => f.slug);
   const featuredCampaignMap: Record<string, string> = {};
@@ -124,7 +129,17 @@ export default async function AINsfwPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
-      <AINsfwClient tools={allTools} allStats={allStats} featuredSlugs={featuredSlugs} featuredCampaignMap={featuredCampaignMap} topBannerCampaigns={topBannerCampaigns} topAdCampaigns={topAdCampaigns} feedCampaigns={feedCampaigns} trendingErogramCampaigns={trendingErogramCampaigns} />
+      <nav aria-label="AI NSFW pagination" className="sr-only">
+        <Link href="/ainsfw">AI NSFW page 1</Link>
+        {Array.from({ length: paginationTotalPages - 1 }, (_, i) => i + 2).map((p) => (
+          <Link key={p} href={`/ainsfw/page/${p}`}>{`AI NSFW page ${p}`}</Link>
+        ))}
+      </nav>
+      <AINsfwClient tools={allTools} allStats={allStats} featuredSlugs={featuredSlugs} featuredCampaignMap={featuredCampaignMap} topBannerCampaigns={topBannerCampaigns} topAdCampaigns={topAdCampaigns} feedCampaigns={feedCampaigns} paginationCurrentPage={currentPage} paginationTotalPages={paginationTotalPages} pageSize={AINSFW_PAGE_SIZE} />
     </>
   );
+}
+
+export default async function AINsfwPage() {
+  return AINsfwPageView({ page: 1 });
 }

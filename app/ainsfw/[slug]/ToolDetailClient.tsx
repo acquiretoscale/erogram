@@ -7,21 +7,28 @@ import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import type { AINsfwTool } from '../types';
+import type { AINsfwFullReview } from '../reviewTypes';
 import { voteOnTool, unvoteOnTool, submitReview } from '@/lib/actions/ainsfw';
 import type { ToolStatsData } from '@/lib/actions/ainsfw';
-import AdvertCard from '@/app/groups/AdvertCard';
-import type { FeedCampaign } from '@/app/groups/types';
-import { useIsTelegramBrowser } from '@/app/hooks/useIsTelegramBrowser';
+import type { AuthorProfile } from '@/lib/actions/authors';
 import type { BlogCard } from '@/lib/actions/blog';
+import { renderAinsfwLinkedText, getAinsfwTagHref } from '@/lib/ainsfw/internalLinks';
 import { categoryToSlug } from '../data';
+
+const TOOL_GUIDE_ARTICLES: Record<string, { slug: string; title: string }> = {
+  'porncreate-undress-ai': {
+    slug: 'create-your-own-ai-porn-porncreate',
+    title: 'Why AI Nude Generators Are the New Porn',
+  },
+};
 
 interface ToolDetailClientProps {
   tool: AINsfwTool;
+  fullReview?: AINsfwFullReview;
   alternatives?: AINsfwTool[];
-  mostVoted?: AINsfwTool[];
   aiArticles?: BlogCard[];
   initialStats?: ToolStatsData;
-  sidebarAds?: FeedCampaign[];
+  reviewAuthor?: AuthorProfile;
 }
 
 const CATEGORY_COLOR: Record<string, string> = {
@@ -30,6 +37,7 @@ const CATEGORY_COLOR: Record<string, string> = {
   'AI Chat': 'bg-emerald-700',
   'AI Image': 'bg-amber-600',
   'AI Roleplay': 'bg-zinc-800',
+  'Adult Games': 'bg-purple-800',
 };
 
 const CATEGORY_BADGE: Record<string, string> = {
@@ -38,6 +46,7 @@ const CATEGORY_BADGE: Record<string, string> = {
   'AI Chat': 'bg-emerald-700 text-white',
   'AI Image': 'bg-amber-600 text-white',
   'AI Roleplay': 'bg-zinc-800 text-white',
+  'Adult Games': 'bg-purple-800 text-white',
 };
 
 const PAYMENT_ICON: Record<string, string> = {
@@ -48,8 +57,64 @@ const PAYMENT_ICON: Record<string, string> = {
 
 function getBookmarkKey(slug: string) { return `ainsfw_bookmark_${slug}`; }
 
-export default function ToolDetailClient({ tool, alternatives = [], mostVoted = [], aiArticles = [], initialStats, sidebarAds = [] }: ToolDetailClientProps) {
-  const isTelegram = useIsTelegramBrowser();
+function ReviewAuthorBio({ author }: { author: AuthorProfile }) {
+  return (
+    <div className="mt-10 pt-10 border-t border-[#22c55e]/25">
+      <div className="text-[10px] font-bold tracking-[0.32em] uppercase text-[#22c55e] mb-6">About the Author</div>
+      <div className="flex flex-col sm:flex-row gap-6 sm:gap-7 rounded-[10px] bg-[#0a0807] text-white p-7 sm:p-8 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.6)] border border-white/5">
+        {author.avatar && (
+          <img
+            src={author.avatar}
+            alt={author.name}
+            width={96}
+            height={96}
+            className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover shrink-0 ring-2 ring-white/15"
+            referrerPolicy="no-referrer"
+          />
+        )}
+        <div className="flex-1">
+          <div className="font-sans font-black text-[20px] text-white leading-tight">{author.name}</div>
+          {author.role && (
+            <div className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#22c55e] mt-1">{author.role}</div>
+          )}
+          {author.bio && (
+            <p className="text-[15px] leading-[1.7] text-white/65 mt-3">{author.bio}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReviewCta({
+  onClick,
+  disabled,
+  headline,
+  subline,
+  button,
+}: {
+  onClick: () => void;
+  disabled: boolean;
+  headline: string;
+  subline: string;
+  button: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-[#22c55e]/25 bg-[#0a1f12]/90 p-5 sm:p-6">
+      <p className="text-white font-bold text-base sm:text-lg mb-1">{headline}</p>
+      <p className="text-gray-400 text-sm mb-4">{subline}</p>
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 rounded-xl bg-yellow-400 text-black text-sm font-black hover:bg-yellow-300 active:bg-yellow-500 transition-all disabled:opacity-70"
+      >
+        {disabled ? 'Opening...' : button}
+      </button>
+    </div>
+  );
+}
+
+export default function ToolDetailClient({ tool, fullReview, alternatives = [], aiArticles = [], initialStats, reviewAuthor }: ToolDetailClientProps) {
   const placeholder = '/assets/image.jpg';
   const [imageSrc, setImageSrc] = useState(
     tool.image && (tool.image.startsWith('https://') || tool.image.startsWith('/'))
@@ -249,11 +314,20 @@ export default function ToolDetailClient({ tool, alternatives = [], mostVoted = 
 
               {/* Tags */}
               <div className="flex flex-wrap gap-1.5">
-                {tool.tags.slice(0, 6).map((tag) => (
-                  <span key={tag} className="bg-white/10 border border-white/15 rounded px-2 py-0.5 text-[10px] font-black text-gray-200">
-                    #{tag.replace(/\s+/g, '-')}
-                  </span>
-                ))}
+                {tool.tags.slice(0, 6).map((tag) => {
+                  const href = getAinsfwTagHref(tag);
+                  const label = `#${tag.replace(/\s+/g, '-')}`;
+                  const className = 'bg-white/10 border border-white/15 rounded px-2 py-0.5 text-[10px] font-black text-gray-200 hover:bg-white/15 hover:border-[#22c55e]/40 hover:text-[#22c55e] transition-all';
+                  return href ? (
+                    <Link key={tag} href={href} className={className}>
+                      {label}
+                    </Link>
+                  ) : (
+                    <span key={tag} className={className}>
+                      {label}
+                    </span>
+                  );
+                })}
               </div>
             </motion.div>
           </div>
@@ -353,11 +427,89 @@ export default function ToolDetailClient({ tool, alternatives = [], mostVoted = 
                 </div>
               )}
 
-              <p className="text-gray-300 text-base sm:text-lg leading-relaxed mb-8 whitespace-pre-line">
-                {tool.description}
+              <p className="text-gray-300 text-base sm:text-lg leading-relaxed mb-6 whitespace-pre-line">
+                {renderAinsfwLinkedText(tool.description, fullReview?.alternatives)}
               </p>
 
-              {/* CTA card — immediately after description */}
+              {TOOL_GUIDE_ARTICLES[tool.slug] && (
+                <Link
+                  href={`/blog/${TOOL_GUIDE_ARTICLES[tool.slug].slug}`}
+                  className="inline-flex items-center gap-2 mb-8 px-4 py-3 rounded-xl border border-[#22c55e]/30 bg-[#22c55e]/10 text-[#22c55e] text-sm font-bold hover:bg-[#22c55e]/15 transition-colors"
+                >
+                  Read the full guide: {TOOL_GUIDE_ARTICLES[tool.slug].title}
+                  <span aria-hidden>→</span>
+                </Link>
+              )}
+
+              {fullReview && (
+                <div className="mb-8">
+                  <ReviewCta
+                    onClick={handleVisit}
+                    disabled={isRedirecting}
+                    headline={`Try ${tool.name} free`}
+                    subline={tool.slug === 'porncreate-undress-ai'
+                      ? 'Free diamonds on signup. No credit card required.'
+                      : 'Opens the official site in a new tab.'}
+                    button={`Visit ${tool.name}`}
+                  />
+                </div>
+              )}
+
+              {fullReview && (
+                <div className="mb-10 pt-10 mt-2 border-t border-[#22c55e]/25">
+                  <p className="text-[#22c55e] text-xs font-black uppercase tracking-[0.2em] mb-8">Erogram Team&apos;s Review</p>
+
+                  <div className="space-y-8">
+                    {fullReview.sections.length > 0 && (
+                      <section key={fullReview.sections[0].heading}>
+                        <h2 className="text-2xl sm:text-3xl font-black text-white mb-4">{fullReview.sections[0].heading}</h2>
+                        <div className="text-gray-300 text-base leading-relaxed whitespace-pre-line space-y-4">
+                          {fullReview.sections[0].body.split(/\n\n+/).map((para, i) => (
+                            <p key={i}>{renderAinsfwLinkedText(para, fullReview.alternatives)}</p>
+                          ))}
+                        </div>
+                      </section>
+                    )}
+                    {fullReview.featureHighlights.map((item) => (
+                      <section key={item.title}>
+                        <h2 className="text-2xl sm:text-3xl font-black text-white mb-4">{item.title}</h2>
+                        <div className="text-gray-300 text-base leading-relaxed whitespace-pre-line space-y-4">
+                          {item.body.split(/\n\n+/).map((para, i) => (
+                            <p key={i}>{renderAinsfwLinkedText(para, fullReview.alternatives)}</p>
+                          ))}
+                        </div>
+                      </section>
+                    ))}
+                    {fullReview.sections.slice(1).map((section) => (
+                      <div key={section.heading}>
+                        {/how does it work/i.test(section.heading) && (
+                          <div className="flex justify-center my-6">
+                            <button
+                              onClick={handleVisit}
+                              disabled={isRedirecting}
+                              className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-yellow-400 text-black text-sm font-black hover:bg-yellow-300 active:bg-yellow-500 transition-all disabled:opacity-70"
+                            >
+                              {isRedirecting ? 'Opening...' : `Try ${tool.name} Now`}
+                            </button>
+                          </div>
+                        )}
+                        <section>
+                          <h2 className="text-2xl sm:text-3xl font-black text-white mb-4">{section.heading}</h2>
+                          <div className="text-gray-300 text-base leading-relaxed whitespace-pre-line space-y-4">
+                            {section.body.split(/\n\n+/).map((para, i) => (
+                              <p key={i}>{renderAinsfwLinkedText(para, fullReview.alternatives)}</p>
+                            ))}
+                          </div>
+                        </section>
+                      </div>
+                    ))}
+                  </div>
+
+                  {reviewAuthor && <ReviewAuthorBio author={reviewAuthor} />}
+                </div>
+              )}
+
+              {/* CTA card — immediately after description / review */}
               <div className="bg-[#0a1f12] rounded-3xl p-6 sm:p-8 border border-[#22c55e]/20 shadow-xl mb-8 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-[#22c55e]/15 to-emerald-600/10 blur-3xl rounded-full pointer-events-none -translate-y-1/2 translate-x-1/2" />
 
@@ -484,35 +636,6 @@ export default function ToolDetailClient({ tool, alternatives = [], mostVoted = 
                 </div>
               )}
 
-              {/* Explore more */}
-              <div className="mb-8">
-                <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-3">Explore Categories</h3>
-                <div className="flex flex-wrap gap-2">
-                  {['AI Girlfriend', 'Undress AI', 'AI Chat', 'AI Image', 'AI Roleplay'].map((cat) => (
-                    <Link
-                      key={cat}
-                      href={`/ainsfw/${categoryToSlug(cat)}`}
-                      className="px-3 py-1.5 rounded-lg bg-white/10 text-white border border-white/15 text-xs font-black hover:bg-white/15 transition-all"
-                    >
-                      {cat}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-              {/* FEATURED ON EROGRAM — same agnostic ads as group/bot pages */}
-              {sidebarAds.length > 0 && !isTelegram && (
-                <div className="rounded-2xl border border-[#00AFF0]/30 bg-white p-4 shadow-[0_18px_40px_-20px_rgba(0,175,240,0.45)] mb-8">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-[#00AFF0]" style={{ fontSize: 14 }}>★</span>
-                    <h3 className="text-sm font-black text-[#0f172a]">FEATURED ON <span className="text-[#00AFF0]">EROGRAM</span></h3>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {sidebarAds.map((c, i) => (
-                      <AdvertCard key={c._id} campaign={c} isIndex={i} forceVisible hidePromoted placementOverride="group-sidebar-ainsfw" />
-                    ))}
-                  </div>
-                </div>
-              )}
             </motion.div>
           </div>
         </div>
@@ -553,46 +676,21 @@ export default function ToolDetailClient({ tool, alternatives = [], mostVoted = 
           </section>
         )}
 
-        {/* Most voted on Erogram (global) */}
-        {mostVoted.length > 0 && (
-          <section className="mt-12 border-t border-white/5 pt-10">
-            <h2 className="text-xl sm:text-2xl font-black text-white mb-6">Most Voted AI NSFW Tools on Erogram</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {mostVoted.map((s, i) => (
-                <Link key={s.slug} href={`/ainsfw/${s.slug}`} className="block group">
-                  <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, delay: i * 0.05 }}
-                    className="bg-[#0a1f12]/85 rounded-xl border border-[#22c55e]/15 shadow-xl group-hover:-translate-y-0.5 group-hover:border-[#22c55e]/40 transition-all duration-150 overflow-hidden"
-                  >
-                    <div className="relative w-full h-24 sm:h-32 bg-gray-100">
-                      <Image
-                        src={s.image.startsWith('/') || s.image.startsWith('https://') ? s.image : placeholder}
-                        alt={`${s.name} NSFW AI ${s.category} tool`}
-                        fill
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                        onError={(e) => { (e.target as HTMLImageElement).src = placeholder; }}
-                      />
-                      <div className="absolute top-1.5 left-1.5">
-                        <span className={`${CATEGORY_BADGE[s.category] || 'bg-gray-700 text-white'} text-[9px] font-black px-1.5 py-0.5 rounded uppercase border border-black/20`}>
-                          {s.category}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="p-2.5">
-                      <h3 className="text-xs font-black text-white group-hover:text-[#22c55e] transition-colors truncate">{s.name}</h3>
-                      <p className="text-[9px] text-gray-400 mt-0.5 truncate">{s.vendor}</p>
-                      <div className={`mt-2 ${CATEGORY_COLOR[s.category] || 'bg-gray-700'} text-white text-[9px] font-black text-center py-1 rounded border border-white/20`}>
-                        Try Now →
-                      </div>
-                    </div>
-                  </motion.div>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
+        <section className="mt-12 border-t border-white/5 pt-10">
+          <h2 className="text-xl sm:text-2xl font-black text-white mb-2">Browse AI NSFW Categories</h2>
+          <p className="text-gray-400 text-sm mb-5">Explore tools by type on Erogram</p>
+          <div className="flex flex-wrap gap-2">
+            {['AI Girlfriend', 'Undress AI', 'AI Chat', 'AI Image', 'AI Roleplay', 'Adult Games'].map((cat) => (
+              <Link
+                key={cat}
+                href={`/ainsfw/${categoryToSlug(cat)}`}
+                className="px-4 py-2 rounded-lg bg-white/10 text-white border border-white/15 text-sm font-black hover:bg-white/15 hover:border-[#22c55e]/40 transition-all"
+              >
+                {cat}
+              </Link>
+            ))}
+          </div>
+        </section>
       </main>
 
       <Footer />

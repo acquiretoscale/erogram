@@ -29,19 +29,33 @@ export default function AuthCallbackPage() {
     }
     try { sessionStorage.removeItem('joinRedirect'); } catch {}
 
-
+    const newUser = searchParams.get('newUser') === '1';
     const redirectTarget = state?.startsWith('redirect:')
       ? state.slice('redirect:'.length)
       : null;
+
+    const normalizeRedirect = (path: string) => {
+      if (!path.startsWith('/')) return '/profile';
+      try {
+        const url = new URL(path, 'http://local');
+        url.searchParams.delete('onboarding');
+        const qs = url.searchParams.toString();
+        return `${url.pathname}${qs ? `?${qs}` : ''}`;
+      } catch {
+        return '/profile';
+      }
+    };
 
     if (isAdmin === 'true') {
       router.replace('/admin');
     } else if (state === 'premium') {
       router.replace('/premium');
+    } else if (newUser) {
+      router.replace('/profile');
     } else if (redirectTarget) {
-      router.replace(redirectTarget.startsWith('/') ? redirectTarget : '/profile?tab=saved');
+      router.replace(normalizeRedirect(redirectTarget));
     } else {
-      router.replace('/profile?tab=saved');
+      router.replace('/profile');
     }
   }, [router, searchParams]);
 

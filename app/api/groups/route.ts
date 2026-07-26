@@ -4,7 +4,8 @@ import mongoose from 'mongoose';
 import connectDB from '@/lib/db/mongodb';
 import { Group, Bot, User, Post, SystemConfig, Article } from '@/lib/models';
 import { slugify } from '@/lib/utils/slugify';
-import { uploadToR2, getR2PublicUrl, isR2Configured } from '@/lib/r2';
+import { getR2PublicUrl, isR2Configured } from '@/lib/r2';
+import { processAndUploadGroupImage } from '@/lib/images/processGroupImage';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 
@@ -644,23 +645,22 @@ export async function POST(req: NextRequest) {
     if (image?.startsWith('data:image/')) {
       const base64Match = image.match(/^data:image\/(\w+);base64,(.+)$/);
       if (base64Match?.[2]) {
-        const ext = base64Match[1].replace('jpeg', 'jpg');
         const buffer = Buffer.from(base64Match[2], 'base64');
-        const contentType = `image/${base64Match[1]}`;
-        const key = `groups/${slug}.${ext}`;
         if (isR2Configured()) {
           try {
-            finalImage = await uploadToR2(buffer, key, contentType);
+            finalImage = await processAndUploadGroupImage(buffer, slug);
           } catch (err) {
-            console.error('R2 upload failed:', err);
+            console.error('R2 group image processing failed:', err);
           }
         } else {
           try {
+            const { compressGroupImageBuffer } = await import('@/lib/images/processGroupImage');
+            const compressed = await compressGroupImageBuffer(buffer);
             const dir = path.join(process.cwd(), 'public', 'uploads', 'groups');
             await mkdir(dir, { recursive: true });
-            const filePath = path.join(dir, `${slug}.${ext}`);
-            await writeFile(filePath, buffer);
-            finalImage = `/uploads/groups/${slug}.${ext}`;
+            const filePath = path.join(dir, `${slug}-porn-telegram-group.webp`);
+            await writeFile(filePath, compressed);
+            finalImage = `/uploads/groups/${slug}-porn-telegram-group.webp`;
           } catch (err) {
             console.error('Local image save failed:', err);
           }

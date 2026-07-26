@@ -1,0 +1,1329 @@
+{
+  "summary": {
+    "totalTools": 153,
+    "toolsWithFullReview": 2,
+    "fullReviewSlugs": [
+      "girlfriendgpt-ai-girlfriend",
+      "porncreate-undress-ai"
+    ],
+    "totalPatternsScanned": 58,
+    "patternsWithMatches": 30,
+    "toolsByCategory": {
+      "AI Girlfriend": 44,
+      "Undress AI": 35,
+      "AI Chat": 17,
+      "AI Image": 36,
+      "AI Roleplay": 17,
+      "Adult Games": 4
+    },
+    "validAinsfwCategoryUrls": [
+      "/ainsfw/ai-girlfriend",
+      "/ainsfw/undress-ai",
+      "/ainsfw/ai-chat",
+      "/ainsfw/ai-image",
+      "/ainsfw/ai-roleplay",
+      "/ainsfw/adult-games"
+    ],
+    "validBlogCategoryHubs": [
+      "/blog/ai-nsfw",
+      "/blog/onlyfans-creators",
+      "/blog/adult-entertainment",
+      "/blog/telegram-groups-bots"
+    ],
+    "tagPageCount": 234,
+    "missingTargetUrls": [],
+    "toolToToolMentions": 40
+  },
+  "keywordPatterns": [
+    {
+      "pattern": "NSFW / adult / explicit / uncensored",
+      "suggestedUrl": "/ainsfw",
+      "urlExists": true,
+      "matchCount": 102,
+      "exampleTools": [
+        "lovescape-ai-girlfriend",
+        "fantasygf-ai-girlfriend",
+        "crushon-ai-ai-girlfriend"
+      ],
+      "priority": "high"
+    },
+    {
+      "pattern": "AI NSFW hub (general)",
+      "suggestedUrl": "/ainsfw",
+      "urlExists": true,
+      "matchCount": 88,
+      "exampleTools": [
+        "lovescape-ai-girlfriend",
+        "fantasygf-ai-girlfriend",
+        "muah-ai-ai-girlfriend"
+      ],
+      "priority": "high"
+    },
+    {
+      "pattern": "AI NSFW tag (groups+creators)",
+      "suggestedUrl": "/tags/ai-nsfw",
+      "urlExists": true,
+      "matchCount": 80,
+      "exampleTools": [
+        "lovescape-ai-girlfriend",
+        "fantasygf-ai-girlfriend",
+        "muah-ai-ai-girlfriend"
+      ],
+      "priority": "high"
+    },
+    {
+      "pattern": "freemium / subscription pricing",
+      "suggestedUrl": "/ainsfw",
+      "urlExists": true,
+      "matchCount": 76,
+      "exampleTools": [
+        "fantasygf-ai-girlfriend",
+        "crushon-ai-ai-girlfriend",
+        "kupid-ai-ai-girlfriend"
+      ],
+      "priority": "low"
+    },
+    {
+      "pattern": "AI chat / chatbot",
+      "suggestedUrl": "/ainsfw/ai-chat",
+      "urlExists": true,
+      "matchCount": 66,
+      "exampleTools": [
+        "lovescape-ai-girlfriend",
+        "dreamgf-ai-girlfriend",
+        "fantasygf-ai-girlfriend"
+      ],
+      "priority": "high"
+    },
+    {
+      "pattern": "Blog: AI NSFW category hub",
+      "suggestedUrl": "/blog/ai-nsfw",
+      "urlExists": true,
+      "matchCount": 65,
+      "exampleTools": [
+        "lovescape-ai-girlfriend",
+        "dreamgf-ai-girlfriend",
+        "fantasygf-ai-girlfriend"
+      ],
+      "priority": "medium"
+    },
+    {
+      "pattern": "AI image / photo generation",
+      "suggestedUrl": "/ainsfw/ai-image",
+      "urlExists": true,
+      "matchCount": 64,
+      "exampleTools": [
+        "dreamgf-ai-girlfriend",
+        "kupid-ai-ai-girlfriend",
+        "nastia-ai-ai-girlfriend"
+      ],
+      "priority": "high"
+    },
+    {
+      "pattern": "AI girlfriend / companion / virtual girlfriend",
+      "suggestedUrl": "/ainsfw/ai-girlfriend",
+      "urlExists": true,
+      "matchCount": 54,
+      "exampleTools": [
+        "lovescape-ai-girlfriend",
+        "dreamgf-ai-girlfriend",
+        "fantasygf-ai-girlfriend"
+      ],
+      "priority": "high"
+    },
+    {
+      "pattern": "AI roleplay",
+      "suggestedUrl": "/ainsfw/ai-roleplay",
+      "urlExists": true,
+      "matchCount": 40,
+      "exampleTools": [
+        "fantasygf-ai-girlfriend",
+        "crushon-ai-ai-girlfriend",
+        "girlfriendgpt-ai-girlfriend"
+      ],
+      "priority": "high"
+    },
+    {
+      "pattern": "undress / deepfake / nudify",
+      "suggestedUrl": "/ainsfw/undress-ai",
+      "urlExists": true,
+      "matchCount": 36,
+      "exampleTools": [
+        "undress-ai-undress-ai",
+        "clothoff-undress-ai",
+        "nudify-ai-undress-ai"
+      ],
+      "priority": "high"
+    },
+    {
+      "pattern": "Blog: creating AI girlfriends",
+      "suggestedUrl": "/blog/creating-ai-girlfriends-guide-2026",
+      "urlExists": true,
+      "matchCount": 22,
+      "exampleTools": [
+        "lovescape-ai-girlfriend",
+        "dreamgf-ai-girlfriend",
+        "fantasygf-ai-girlfriend"
+      ],
+      "priority": "medium"
+    },
+    {
+      "pattern": "face swap / faceswap",
+      "suggestedUrl": "/ainsfw/ai-image",
+      "urlExists": true,
+      "matchCount": 15,
+      "exampleTools": [
+        "nudify-ai-undress-ai",
+        "nudemaker-undress-ai",
+        "nudefab-ai-image"
+      ],
+      "priority": "medium"
+    },
+    {
+      "pattern": "hentai / anime-style",
+      "suggestedUrl": "/best-telegram-groups/hentai",
+      "urlExists": true,
+      "matchCount": 8,
+      "exampleTools": [
+        "fantasygf-ai-girlfriend",
+        "romantic-ai-ai-girlfriend",
+        "lovemy-ai-ai-girlfriend"
+      ],
+      "priority": "medium"
+    },
+    {
+      "pattern": "memory / remembers conversations",
+      "suggestedUrl": "/ainsfw/ai-girlfriend",
+      "urlExists": true,
+      "matchCount": 7,
+      "exampleTools": [
+        "dreamgf-ai-girlfriend",
+        "fantasygf-ai-girlfriend",
+        "crushon-ai-ai-girlfriend"
+      ],
+      "priority": "medium"
+    },
+    {
+      "pattern": "voice call / voice message",
+      "suggestedUrl": "/ainsfw/ai-girlfriend",
+      "urlExists": true,
+      "matchCount": 5,
+      "exampleTools": [
+        "fantasygf-ai-girlfriend",
+        "crushon-ai-ai-girlfriend",
+        "kupid-ai-ai-girlfriend"
+      ],
+      "priority": "medium"
+    },
+    {
+      "pattern": "adult games / 3D game",
+      "suggestedUrl": "/ainsfw/adult-games",
+      "urlExists": true,
+      "matchCount": 4,
+      "exampleTools": [
+        "virtual-lust-3d-adult-games",
+        "bambie-adult-games",
+        "game-of-lust-2-adult-games"
+      ],
+      "priority": "medium"
+    },
+    {
+      "pattern": "Telegram (general)",
+      "suggestedUrl": "/groups",
+      "urlExists": true,
+      "matchCount": 4,
+      "exampleTools": [
+        "joi-ai-ai-chat",
+        "luvy-ai-ai-roleplay",
+        "blushy-ai-ai-girlfriend"
+      ],
+      "priority": "high"
+    },
+    {
+      "pattern": "furry / yiff",
+      "suggestedUrl": "/best-telegram-groups/furry",
+      "urlExists": true,
+      "matchCount": 4,
+      "exampleTools": [
+        "secrets-ai-ai-roleplay",
+        "fapai-ai-girlfriend",
+        "createaifurry-com-ai-image"
+      ],
+      "priority": "low"
+    },
+    {
+      "pattern": "Discord",
+      "suggestedUrl": "/best-telegram-groups/discord",
+      "urlExists": true,
+      "matchCount": 3,
+      "exampleTools": [
+        "nudify-online-undress-ai",
+        "openroleplay-ai-ai-roleplay",
+        "privee-ai-ai-roleplay"
+      ],
+      "priority": "low"
+    },
+    {
+      "pattern": "BDSM",
+      "suggestedUrl": "/best-telegram-groups/bdsm",
+      "urlExists": true,
+      "matchCount": 2,
+      "exampleTools": [
+        "kink-ai-ai-roleplay",
+        "undress-cc-undress-ai"
+      ],
+      "priority": "low"
+    },
+    {
+      "pattern": "cosplay",
+      "suggestedUrl": "/best-telegram-groups/cosplay",
+      "urlExists": true,
+      "matchCount": 1,
+      "exampleTools": [
+        "pornx-ai-image"
+      ],
+      "priority": "low"
+    },
+    {
+      "pattern": "MILF",
+      "suggestedUrl": "/best-telegram-groups/milf",
+      "urlExists": true,
+      "matchCount": 1,
+      "exampleTools": [
+        "privee-ai-ai-roleplay"
+      ],
+      "priority": "low"
+    },
+    {
+      "pattern": "asian",
+      "suggestedUrl": "/best-telegram-groups/asian",
+      "urlExists": true,
+      "matchCount": 1,
+      "exampleTools": [
+        "createaiasian-com-ai-image"
+      ],
+      "priority": "low"
+    },
+    {
+      "pattern": "TikTok",
+      "suggestedUrl": "/best-telegram-groups/tiktok",
+      "urlExists": true,
+      "matchCount": 1,
+      "exampleTools": [
+        "swapzy-ai-image"
+      ],
+      "priority": "low"
+    },
+    {
+      "pattern": "Spain / Spanish",
+      "suggestedUrl": "/tags/spain",
+      "urlExists": true,
+      "matchCount": 1,
+      "exampleTools": [
+        "porncreate-undress-ai"
+      ],
+      "priority": "low"
+    },
+    {
+      "pattern": "Japan / Japanese / JAV",
+      "suggestedUrl": "/tags/japan",
+      "urlExists": true,
+      "matchCount": 1,
+      "exampleTools": [
+        "porncreate-undress-ai"
+      ],
+      "priority": "low"
+    },
+    {
+      "pattern": "Spain country groups",
+      "suggestedUrl": "/groups/country/spain",
+      "urlExists": true,
+      "matchCount": 1,
+      "exampleTools": [
+        "porncreate-undress-ai"
+      ],
+      "priority": "low"
+    },
+    {
+      "pattern": "Blog: AI girlfriend chat article",
+      "suggestedUrl": "/blog/ai-girlfriend-chat-changing-relationships-2026",
+      "urlExists": true,
+      "matchCount": 1,
+      "exampleTools": [
+        "chatsweetie-ai-girlfriend"
+      ],
+      "priority": "medium"
+    },
+    {
+      "pattern": "OF search: asian",
+      "suggestedUrl": "/onlyfanssearch/asian",
+      "urlExists": true,
+      "matchCount": 1,
+      "exampleTools": [
+        "createaiasian-com-ai-image"
+      ],
+      "priority": "low"
+    },
+    {
+      "pattern": "OF search: milf",
+      "suggestedUrl": "/onlyfanssearch/milf",
+      "urlExists": true,
+      "matchCount": 1,
+      "exampleTools": [
+        "privee-ai-ai-roleplay"
+      ],
+      "priority": "low"
+    },
+    {
+      "pattern": "OnlyFans / Fansly / Patreon",
+      "suggestedUrl": "/onlyfanssearch",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "medium"
+    },
+    {
+      "pattern": "creators / content creators",
+      "suggestedUrl": "/onlyfanssearch",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "low"
+    },
+    {
+      "pattern": "Telegram group / channel / bot",
+      "suggestedUrl": "/best-telegram-groups/ai-nsfw",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "high"
+    },
+    {
+      "pattern": "amateur",
+      "suggestedUrl": "/best-telegram-groups/amateur",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "low"
+    },
+    {
+      "pattern": "latina",
+      "suggestedUrl": "/best-telegram-groups/latina",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "low"
+    },
+    {
+      "pattern": "lesbian",
+      "suggestedUrl": "/best-telegram-groups/lesbian",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "low"
+    },
+    {
+      "pattern": "feet / foot fetish",
+      "suggestedUrl": "/best-telegram-groups/feet",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "low"
+    },
+    {
+      "pattern": "Reddit",
+      "suggestedUrl": "/best-telegram-groups/reddit",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "low"
+    },
+    {
+      "pattern": "Snapchat",
+      "suggestedUrl": "/best-telegram-groups/snapchat",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "low"
+    },
+    {
+      "pattern": "live cam",
+      "suggestedUrl": "/best-telegram-groups/live-cam",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "low"
+    },
+    {
+      "pattern": "roleplay (groups category)",
+      "suggestedUrl": "/best-telegram-groups/roleplay",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "low"
+    },
+    {
+      "pattern": "Germany / German",
+      "suggestedUrl": "/tags/germany",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "low"
+    },
+    {
+      "pattern": "France / French",
+      "suggestedUrl": "/tags/france",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "low"
+    },
+    {
+      "pattern": "Brazil / Brazilian",
+      "suggestedUrl": "/tags/brazil",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "low"
+    },
+    {
+      "pattern": "India / Indian",
+      "suggestedUrl": "/tags/india",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "low"
+    },
+    {
+      "pattern": "UK / British",
+      "suggestedUrl": "/tags/uk",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "low"
+    },
+    {
+      "pattern": "USA / American",
+      "suggestedUrl": "/tags/usa",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "low"
+    },
+    {
+      "pattern": "OnlyFans tag",
+      "suggestedUrl": "/tags/onlyfans",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "medium"
+    },
+    {
+      "pattern": "Germany country groups",
+      "suggestedUrl": "/groups/country/germany",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "low"
+    },
+    {
+      "pattern": "Blog: Telegram bots article",
+      "suggestedUrl": "/blog/top-5-best-nsfw-telegram-bots-in-2025-ai-roleplay-anonymous-chat",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "medium"
+    },
+    {
+      "pattern": "Blog: find Telegram groups",
+      "suggestedUrl": "/blog/telegram-nsfw-groups-how-to-find-active-real-safe-channels-in-2025",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "low"
+    },
+    {
+      "pattern": "Blog: Telegram category hub",
+      "suggestedUrl": "/blog/telegram-groups-bots",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "medium"
+    },
+    {
+      "pattern": "Blog: OnlyFans creators hub",
+      "suggestedUrl": "/blog/onlyfans-creators",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "low"
+    },
+    {
+      "pattern": "OF search: blonde",
+      "suggestedUrl": "/onlyfanssearch/blonde",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "low"
+    },
+    {
+      "pattern": "OF search: teen",
+      "suggestedUrl": "/onlyfanssearch/teen",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "low"
+    },
+    {
+      "pattern": "OF search: goth",
+      "suggestedUrl": "/onlyfanssearch/goth",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "low"
+    },
+    {
+      "pattern": "OF search: big ass/boobs",
+      "suggestedUrl": "/onlyfanssearch/big-ass",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "low"
+    },
+    {
+      "pattern": "OF search: latina",
+      "suggestedUrl": "/onlyfanssearch/latina",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "low"
+    }
+  ],
+  "tagFieldLinkOpportunities": {
+    "ai girlfriend": {
+      "count": 41,
+      "url": "/ainsfw/ai-girlfriend",
+      "examples": [
+        "lovescape-ai-girlfriend",
+        "dreamgf-ai-girlfriend",
+        "fantasygf-ai-girlfriend"
+      ]
+    },
+    "ai chat": {
+      "count": 58,
+      "url": "/ainsfw/ai-chat",
+      "examples": [
+        "lovescape-ai-girlfriend",
+        "dreamgf-ai-girlfriend",
+        "crushon-ai-ai-girlfriend"
+      ]
+    },
+    "ai image": {
+      "count": 33,
+      "url": "/ainsfw/ai-image",
+      "examples": [
+        "kupid-ai-ai-girlfriend",
+        "my-lovely-ai-ai-girlfriend",
+        "fastundress-undress-ai"
+      ]
+    },
+    "ai roleplay": {
+      "count": 7,
+      "url": "/ainsfw/ai-roleplay",
+      "examples": [
+        "girlfriendgpt-ai-girlfriend",
+        "nextpart-ai-ai-chat",
+        "wemate-ai-chat"
+      ]
+    },
+    "undress": {
+      "count": 32,
+      "url": "/ainsfw/undress-ai",
+      "examples": [
+        "undress-ai-undress-ai",
+        "clothoff-undress-ai",
+        "nudify-ai-undress-ai"
+      ]
+    },
+    "ai nsfw": {
+      "count": 80,
+      "url": "/ainsfw",
+      "examples": [
+        "lovescape-ai-girlfriend",
+        "fantasygf-ai-girlfriend",
+        "muah-ai-ai-girlfriend"
+      ]
+    },
+    "ai sexting": {
+      "count": 14,
+      "url": "/ainsfw/ai-girlfriend",
+      "examples": [
+        "lovescape-ai-girlfriend",
+        "fantasygf-ai-girlfriend",
+        "crushon-ai-ai-girlfriend"
+      ]
+    },
+    "ai companion": {
+      "count": 19,
+      "url": "/ainsfw/ai-girlfriend",
+      "examples": [
+        "lovescape-ai-girlfriend",
+        "fantasygf-ai-girlfriend",
+        "crushon-ai-ai-girlfriend"
+      ]
+    },
+    "face swap": {
+      "count": 13,
+      "url": "/ainsfw/ai-image",
+      "examples": [
+        "nudify-ai-undress-ai",
+        "nudemaker-undress-ai",
+        "nudefab-ai-image"
+      ]
+    },
+    "deepfake": {
+      "count": 12,
+      "url": "/ainsfw/undress-ai",
+      "examples": [
+        "deepstrip-undress-ai",
+        "ainudez-undress-ai",
+        "makenude-undress-ai"
+      ]
+    }
+  },
+  "top20ToolsByLinkOpportunity": [
+    {
+      "slug": "porncreate-undress-ai",
+      "name": "PornCreate",
+      "category": "Undress AI",
+      "hasFullReview": true,
+      "textLength": 5838,
+      "patternCount": 13,
+      "highPriorityCount": 6,
+      "patterns": [
+        "AI NSFW hub (general)",
+        "NSFW / adult / explicit / uncensored",
+        "AI girlfriend / companion / virtual girlfriend",
+        "undress / deepfake / nudify",
+        "AI image / photo generation",
+        "face swap / faceswap",
+        "freemium / subscription pricing",
+        "hentai / anime-style",
+        "Spain / Spanish",
+        "Japan / Japanese / JAV",
+        "AI NSFW tag (groups+creators)",
+        "Spain country groups",
+        "Blog: AI NSFW category hub"
+      ]
+    },
+    {
+      "slug": "fantasygf-ai-girlfriend",
+      "name": "FantasyGF",
+      "category": "AI Girlfriend",
+      "hasFullReview": false,
+      "textLength": 779,
+      "patternCount": 12,
+      "highPriorityCount": 6,
+      "patterns": [
+        "AI NSFW hub (general)",
+        "NSFW / adult / explicit / uncensored",
+        "AI girlfriend / companion / virtual girlfriend",
+        "AI chat / chatbot",
+        "AI roleplay",
+        "voice call / voice message",
+        "memory / remembers conversations",
+        "freemium / subscription pricing",
+        "hentai / anime-style",
+        "AI NSFW tag (groups+creators)",
+        "Blog: AI NSFW category hub",
+        "Blog: creating AI girlfriends"
+      ]
+    },
+    {
+      "slug": "joi-ai-ai-chat",
+      "name": "JOI AI",
+      "category": "AI Chat",
+      "hasFullReview": false,
+      "textLength": 763,
+      "patternCount": 10,
+      "highPriorityCount": 7,
+      "patterns": [
+        "AI NSFW hub (general)",
+        "NSFW / adult / explicit / uncensored",
+        "AI girlfriend / companion / virtual girlfriend",
+        "AI chat / chatbot",
+        "AI image / photo generation",
+        "freemium / subscription pricing",
+        "Telegram (general)",
+        "AI NSFW tag (groups+creators)",
+        "Blog: AI NSFW category hub",
+        "Blog: creating AI girlfriends"
+      ]
+    },
+    {
+      "slug": "kupid-ai-ai-girlfriend",
+      "name": "Kupid AI",
+      "category": "AI Girlfriend",
+      "hasFullReview": false,
+      "textLength": 758,
+      "patternCount": 10,
+      "highPriorityCount": 6,
+      "patterns": [
+        "AI NSFW hub (general)",
+        "NSFW / adult / explicit / uncensored",
+        "AI girlfriend / companion / virtual girlfriend",
+        "AI chat / chatbot",
+        "AI image / photo generation",
+        "voice call / voice message",
+        "freemium / subscription pricing",
+        "AI NSFW tag (groups+creators)",
+        "Blog: AI NSFW category hub",
+        "Blog: creating AI girlfriends"
+      ]
+    },
+    {
+      "slug": "girlfriendgpt-ai-girlfriend",
+      "name": "GirlfriendGPT",
+      "category": "AI Girlfriend",
+      "hasFullReview": true,
+      "textLength": 4529,
+      "patternCount": 10,
+      "highPriorityCount": 6,
+      "patterns": [
+        "AI NSFW hub (general)",
+        "NSFW / adult / explicit / uncensored",
+        "AI girlfriend / companion / virtual girlfriend",
+        "AI image / photo generation",
+        "AI roleplay",
+        "voice call / voice message",
+        "freemium / subscription pricing",
+        "AI NSFW tag (groups+creators)",
+        "Blog: AI NSFW category hub",
+        "Blog: creating AI girlfriends"
+      ]
+    },
+    {
+      "slug": "ai-girlfriend-wtf-ai-girlfriend",
+      "name": "AI Girlfriend WTF",
+      "category": "AI Girlfriend",
+      "hasFullReview": false,
+      "textLength": 757,
+      "patternCount": 9,
+      "highPriorityCount": 7,
+      "patterns": [
+        "AI NSFW hub (general)",
+        "NSFW / adult / explicit / uncensored",
+        "AI girlfriend / companion / virtual girlfriend",
+        "AI chat / chatbot",
+        "AI image / photo generation",
+        "AI roleplay",
+        "AI NSFW tag (groups+creators)",
+        "Blog: AI NSFW category hub",
+        "Blog: creating AI girlfriends"
+      ]
+    },
+    {
+      "slug": "juicychat-ai-ai-chat",
+      "name": "JuicyChat.AI",
+      "category": "AI Chat",
+      "hasFullReview": false,
+      "textLength": 690,
+      "patternCount": 9,
+      "highPriorityCount": 7,
+      "patterns": [
+        "AI NSFW hub (general)",
+        "NSFW / adult / explicit / uncensored",
+        "AI girlfriend / companion / virtual girlfriend",
+        "AI chat / chatbot",
+        "AI image / photo generation",
+        "AI roleplay",
+        "AI NSFW tag (groups+creators)",
+        "Blog: AI NSFW category hub",
+        "Blog: creating AI girlfriends"
+      ]
+    },
+    {
+      "slug": "nastia-ai-ai-girlfriend",
+      "name": "Nastia AI",
+      "category": "AI Girlfriend",
+      "hasFullReview": false,
+      "textLength": 812,
+      "patternCount": 9,
+      "highPriorityCount": 6,
+      "patterns": [
+        "AI NSFW hub (general)",
+        "NSFW / adult / explicit / uncensored",
+        "AI girlfriend / companion / virtual girlfriend",
+        "AI chat / chatbot",
+        "AI image / photo generation",
+        "freemium / subscription pricing",
+        "AI NSFW tag (groups+creators)",
+        "Blog: AI NSFW category hub",
+        "Blog: creating AI girlfriends"
+      ]
+    },
+    {
+      "slug": "chatsweetie-ai-girlfriend",
+      "name": "ChatSweetie",
+      "category": "AI Girlfriend",
+      "hasFullReview": false,
+      "textLength": 688,
+      "patternCount": 9,
+      "highPriorityCount": 5,
+      "patterns": [
+        "AI NSFW hub (general)",
+        "NSFW / adult / explicit / uncensored",
+        "AI girlfriend / companion / virtual girlfriend",
+        "AI chat / chatbot",
+        "freemium / subscription pricing",
+        "AI NSFW tag (groups+creators)",
+        "Blog: AI NSFW category hub",
+        "Blog: AI girlfriend chat article",
+        "Blog: creating AI girlfriends"
+      ]
+    },
+    {
+      "slug": "privee-ai-ai-roleplay",
+      "name": "Privee AI",
+      "category": "AI Roleplay",
+      "hasFullReview": false,
+      "textLength": 686,
+      "patternCount": 9,
+      "highPriorityCount": 5,
+      "patterns": [
+        "AI NSFW hub (general)",
+        "NSFW / adult / explicit / uncensored",
+        "AI chat / chatbot",
+        "AI roleplay",
+        "freemium / subscription pricing",
+        "MILF",
+        "Discord",
+        "AI NSFW tag (groups+creators)",
+        "OF search: milf"
+      ]
+    },
+    {
+      "slug": "nextpart-ai-ai-chat",
+      "name": "Nextpart AI",
+      "category": "AI Chat",
+      "hasFullReview": false,
+      "textLength": 696,
+      "patternCount": 8,
+      "highPriorityCount": 7,
+      "patterns": [
+        "AI NSFW hub (general)",
+        "NSFW / adult / explicit / uncensored",
+        "AI girlfriend / companion / virtual girlfriend",
+        "AI chat / chatbot",
+        "AI image / photo generation",
+        "AI roleplay",
+        "AI NSFW tag (groups+creators)",
+        "Blog: AI NSFW category hub"
+      ]
+    },
+    {
+      "slug": "luvy-ai-ai-roleplay",
+      "name": "Luvy AI",
+      "category": "AI Roleplay",
+      "hasFullReview": false,
+      "textLength": 753,
+      "patternCount": 8,
+      "highPriorityCount": 7,
+      "patterns": [
+        "AI NSFW hub (general)",
+        "NSFW / adult / explicit / uncensored",
+        "AI girlfriend / companion / virtual girlfriend",
+        "AI chat / chatbot",
+        "AI roleplay",
+        "Telegram (general)",
+        "AI NSFW tag (groups+creators)",
+        "Blog: AI NSFW category hub"
+      ]
+    },
+    {
+      "slug": "my-lovely-ai-ai-girlfriend",
+      "name": "My Lovely AI",
+      "category": "AI Girlfriend",
+      "hasFullReview": false,
+      "textLength": 574,
+      "patternCount": 8,
+      "highPriorityCount": 6,
+      "patterns": [
+        "AI NSFW hub (general)",
+        "NSFW / adult / explicit / uncensored",
+        "AI girlfriend / companion / virtual girlfriend",
+        "AI chat / chatbot",
+        "AI image / photo generation",
+        "freemium / subscription pricing",
+        "AI NSFW tag (groups+creators)",
+        "Blog: AI NSFW category hub"
+      ]
+    },
+    {
+      "slug": "loveli-ai-ai-girlfriend",
+      "name": "Loveli.AI",
+      "category": "AI Girlfriend",
+      "hasFullReview": false,
+      "textLength": 675,
+      "patternCount": 8,
+      "highPriorityCount": 6,
+      "patterns": [
+        "AI NSFW hub (general)",
+        "NSFW / adult / explicit / uncensored",
+        "AI girlfriend / companion / virtual girlfriend",
+        "AI chat / chatbot",
+        "AI roleplay",
+        "freemium / subscription pricing",
+        "AI NSFW tag (groups+creators)",
+        "Blog: AI NSFW category hub"
+      ]
+    },
+    {
+      "slug": "wemate-ai-chat",
+      "name": "Wemate",
+      "category": "AI Chat",
+      "hasFullReview": false,
+      "textLength": 596,
+      "patternCount": 8,
+      "highPriorityCount": 6,
+      "patterns": [
+        "AI NSFW hub (general)",
+        "NSFW / adult / explicit / uncensored",
+        "AI girlfriend / companion / virtual girlfriend",
+        "AI chat / chatbot",
+        "AI roleplay",
+        "AI NSFW tag (groups+creators)",
+        "Blog: AI NSFW category hub",
+        "Blog: creating AI girlfriends"
+      ]
+    },
+    {
+      "slug": "kink-ai-ai-roleplay",
+      "name": "Kink AI",
+      "category": "AI Roleplay",
+      "hasFullReview": false,
+      "textLength": 764,
+      "patternCount": 8,
+      "highPriorityCount": 6,
+      "patterns": [
+        "AI NSFW hub (general)",
+        "NSFW / adult / explicit / uncensored",
+        "AI chat / chatbot",
+        "AI image / photo generation",
+        "AI roleplay",
+        "freemium / subscription pricing",
+        "BDSM",
+        "AI NSFW tag (groups+creators)"
+      ]
+    },
+    {
+      "slug": "cuties-ai-ai-girlfriend",
+      "name": "Cuties.ai",
+      "category": "AI Girlfriend",
+      "hasFullReview": false,
+      "textLength": 671,
+      "patternCount": 8,
+      "highPriorityCount": 6,
+      "patterns": [
+        "AI NSFW hub (general)",
+        "NSFW / adult / explicit / uncensored",
+        "AI girlfriend / companion / virtual girlfriend",
+        "AI chat / chatbot",
+        "AI image / photo generation",
+        "freemium / subscription pricing",
+        "AI NSFW tag (groups+creators)",
+        "Blog: AI NSFW category hub"
+      ]
+    },
+    {
+      "slug": "dreamswipe-ai-girlfriend",
+      "name": "Dreamswipe",
+      "category": "AI Girlfriend",
+      "hasFullReview": false,
+      "textLength": 660,
+      "patternCount": 8,
+      "highPriorityCount": 6,
+      "patterns": [
+        "AI NSFW hub (general)",
+        "NSFW / adult / explicit / uncensored",
+        "AI girlfriend / companion / virtual girlfriend",
+        "AI chat / chatbot",
+        "AI roleplay",
+        "freemium / subscription pricing",
+        "AI NSFW tag (groups+creators)",
+        "Blog: AI NSFW category hub"
+      ]
+    },
+    {
+      "slug": "fanfinity-ai-ai-girlfriend",
+      "name": "Fanfinity.ai",
+      "category": "AI Girlfriend",
+      "hasFullReview": false,
+      "textLength": 657,
+      "patternCount": 8,
+      "highPriorityCount": 6,
+      "patterns": [
+        "AI NSFW hub (general)",
+        "NSFW / adult / explicit / uncensored",
+        "AI girlfriend / companion / virtual girlfriend",
+        "AI chat / chatbot",
+        "AI image / photo generation",
+        "freemium / subscription pricing",
+        "AI NSFW tag (groups+creators)",
+        "Blog: AI NSFW category hub"
+      ]
+    },
+    {
+      "slug": "ourdream-ai-ai-girlfriend",
+      "name": "Ourdream.ai",
+      "category": "AI Girlfriend",
+      "hasFullReview": false,
+      "textLength": 661,
+      "patternCount": 8,
+      "highPriorityCount": 6,
+      "patterns": [
+        "AI NSFW hub (general)",
+        "NSFW / adult / explicit / uncensored",
+        "AI girlfriend / companion / virtual girlfriend",
+        "AI chat / chatbot",
+        "AI roleplay",
+        "freemium / subscription pricing",
+        "AI NSFW tag (groups+creators)",
+        "Blog: AI NSFW category hub"
+      ]
+    }
+  ],
+  "crossCategoryOpportunities": [
+    [
+      "AI Girlfriend → AI Chat",
+      33
+    ],
+    [
+      "AI Girlfriend → AI Roleplay",
+      15
+    ],
+    [
+      "AI Girlfriend → AI Image",
+      14
+    ],
+    [
+      "AI Roleplay → AI Chat",
+      12
+    ],
+    [
+      "Undress AI → AI Image",
+      11
+    ],
+    [
+      "AI Chat → AI Girlfriend",
+      8
+    ],
+    [
+      "AI Chat → AI Roleplay",
+      6
+    ],
+    [
+      "AI Roleplay → AI Image",
+      6
+    ],
+    [
+      "AI Chat → AI Image",
+      5
+    ],
+    [
+      "AI Roleplay → AI Girlfriend",
+      4
+    ],
+    [
+      "Adult Games → AI Roleplay",
+      4
+    ],
+    [
+      "AI Girlfriend → Undress AI",
+      2
+    ],
+    [
+      "Undress AI → AI Girlfriend",
+      2
+    ],
+    [
+      "AI Image → AI Chat",
+      2
+    ],
+    [
+      "Adult Games → AI Girlfriend",
+      1
+    ],
+    [
+      "Undress AI → AI Chat",
+      1
+    ],
+    [
+      "Adult Games → AI Chat",
+      1
+    ]
+  ],
+  "toolToToolMentions": [
+    {
+      "from": "lovescape-ai-girlfriend",
+      "to": "Sexting AI",
+      "toSlug": "sexting-ai-ai-chat"
+    },
+    {
+      "from": "fantasygf-ai-girlfriend",
+      "to": "Sexting AI",
+      "toSlug": "sexting-ai-ai-chat"
+    },
+    {
+      "from": "nudify-ai-undress-ai",
+      "to": "Undress AI",
+      "toSlug": "undress-ai-undress-ai"
+    },
+    {
+      "from": "deepnudenow-undress-ai",
+      "to": "Undress AI",
+      "toSlug": "undress-ai-undress-ai"
+    },
+    {
+      "from": "deepnudenow-undress-ai",
+      "to": "Undresser",
+      "toSlug": "undresser-undress-ai"
+    },
+    {
+      "from": "undress-app-undress-ai",
+      "to": "Undress AI",
+      "toSlug": "undress-ai-undress-ai"
+    },
+    {
+      "from": "undress-app-undress-ai",
+      "to": "Undresser",
+      "toSlug": "undresser-undress-ai"
+    },
+    {
+      "from": "deepstrip-undress-ai",
+      "to": "Undress AI",
+      "toSlug": "undress-ai-undress-ai"
+    },
+    {
+      "from": "deepstrip-undress-ai",
+      "to": "Undresser",
+      "toSlug": "undresser-undress-ai"
+    },
+    {
+      "from": "ainudez-undress-ai",
+      "to": "Undress AI",
+      "toSlug": "undress-ai-undress-ai"
+    },
+    {
+      "from": "ainudez-undress-ai",
+      "to": "Undresser",
+      "toSlug": "undresser-undress-ai"
+    },
+    {
+      "from": "makenude-undress-ai",
+      "to": "Undress AI",
+      "toSlug": "undress-ai-undress-ai"
+    },
+    {
+      "from": "makenude-undress-ai",
+      "to": "Undresser",
+      "toSlug": "undresser-undress-ai"
+    },
+    {
+      "from": "nextpart-ai-ai-chat",
+      "to": "Nextpart AI",
+      "toSlug": "nextpart-ai-ai-roleplay"
+    },
+    {
+      "from": "nextpart-ai-ai-roleplay",
+      "to": "Nextpart AI",
+      "toSlug": "nextpart-ai-ai-chat"
+    },
+    {
+      "from": "deepnudes-ai-undress-ai",
+      "to": "Undress AI",
+      "toSlug": "undress-ai-undress-ai"
+    },
+    {
+      "from": "deepnudes-ai-undress-ai",
+      "to": "Undresser",
+      "toSlug": "undresser-undress-ai"
+    },
+    {
+      "from": "deepnudes-co-undress-ai",
+      "to": "Undress AI",
+      "toSlug": "undress-ai-undress-ai"
+    },
+    {
+      "from": "deepnudes-co-undress-ai",
+      "to": "Undresser",
+      "toSlug": "undresser-undress-ai"
+    },
+    {
+      "from": "drawnudes-io-undress-ai",
+      "to": "Undress AI",
+      "toSlug": "undress-ai-undress-ai"
+    },
+    {
+      "from": "drawnudes-io-undress-ai",
+      "to": "Undresser",
+      "toSlug": "undresser-undress-ai"
+    },
+    {
+      "from": "n8ked-app-undress-ai",
+      "to": "Undress AI",
+      "toSlug": "undress-ai-undress-ai"
+    },
+    {
+      "from": "n8ked-app-undress-ai",
+      "to": "Undresser",
+      "toSlug": "undresser-undress-ai"
+    },
+    {
+      "from": "nudeitnow-com-undress-ai",
+      "to": "Undress AI",
+      "toSlug": "undress-ai-undress-ai"
+    },
+    {
+      "from": "nudeitnow-com-undress-ai",
+      "to": "Undresser",
+      "toSlug": "undresser-undress-ai"
+    },
+    {
+      "from": "nudify-vip-undress-ai",
+      "to": "Undress AI",
+      "toSlug": "undress-ai-undress-ai"
+    },
+    {
+      "from": "nudify-vip-undress-ai",
+      "to": "Undresser",
+      "toSlug": "undresser-undress-ai"
+    },
+    {
+      "from": "offrobe-undress-ai",
+      "to": "Undresser",
+      "toSlug": "undresser-undress-ai"
+    },
+    {
+      "from": "unclothy-undress-ai",
+      "to": "Undress AI",
+      "toSlug": "undress-ai-undress-ai"
+    },
+    {
+      "from": "unclothy-undress-ai",
+      "to": "Undresser",
+      "toSlug": "undresser-undress-ai"
+    }
+  ],
+  "invalidTargetsDetail": [],
+  "zeroMatchHighPriorityPatterns": [
+    {
+      "pattern": "Telegram group / channel / bot",
+      "suggestedUrl": "/best-telegram-groups/ai-nsfw",
+      "urlExists": true,
+      "matchCount": 0,
+      "exampleTools": [],
+      "priority": "high"
+    }
+  ]
+}

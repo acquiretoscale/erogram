@@ -8,6 +8,7 @@ import { ToastProvider, useToast } from '@/components/Toast';
 import SavedTab from './SavedTab';
 import VaultTab from './VaultTab';
 import SavedModelsTab from './SavedModelsTab';
+import PremiumCompareBlock from './PremiumCompareBlock';
 import FeatureSuggestionsTab from '@/app/profile1/FeatureSuggestionsTab';
 
 type Tab = 'home' | 'saved' | 'models' | 'vault' | 'settings' | 'suggestions';
@@ -44,7 +45,6 @@ function ProfileContent() {
     : tabParam === 'vault' ? 'vault' : tabParam === 'settings' ? 'settings'
     : tabParam === 'suggestions' ? 'suggestions' : 'home';
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
-  const onboardingIntent = searchParams.get('onboarding');
   const router = useRouter();
   const { toast } = useToast();
 
@@ -80,6 +80,18 @@ function ProfileContent() {
         });
       })
       .catch(() => {});
+
+    try {
+      const raw = localStorage.getItem('pendingBookmark');
+      if (raw) {
+        const pending = JSON.parse(raw);
+        fetch('/api/bookmarks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify(pending),
+        }).finally(() => localStorage.removeItem('pendingBookmark'));
+      }
+    } catch {}
   }, [mounted, router]);
 
   const effectivePremium = isAdmin ? viewMode === 'admin' || viewMode === 'premium' : isPremium;
@@ -199,11 +211,10 @@ function ProfileContent() {
               isPremium={effectivePremium}
               userData={userData}
               onNavigate={setActiveTab}
-              isFromOnboarding={onboardingIntent === 'bookmark' || onboardingIntent === 'complete'}
             />
           ) : activeTab === 'saved' ? (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-              <SavedTab isPremium={effectivePremium} showOnboardingHint={onboardingIntent === 'bookmark'} />
+              <SavedTab isPremium={effectivePremium} />
             </motion.div>
           ) : activeTab === 'models' ? (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
@@ -250,14 +261,12 @@ function HomeTab({
   isPremium,
   userData,
   onNavigate,
-  isFromOnboarding,
 }: {
   firstName: string | null;
   photoUrl: string | null;
   isPremium: boolean;
   userData: UserData;
   onNavigate: (tab: Tab) => void;
-  isFromOnboarding: boolean;
 }) {
   const [savedCreators, setSavedCreators] = useState<any[]>([]);
   const [savedBookmarks, setSavedBookmarks] = useState<any[]>([]);
@@ -284,45 +293,17 @@ function HomeTab({
     ...savedBookmarks.map((b: any) => b.item?.image).filter(Boolean),
   ];
   const totalSaved = savedCreators.length + savedBookmarks.length;
-  const greeting = isFromOnboarding
-    ? (isPremium ? 'Welcome to VIP!' : "You're all set!")
-    : firstName ? `Welcome back, ${firstName}` : 'Welcome back';
+  const greeting = firstName ? `Welcome ${firstName} to Erogram` : 'Welcome to Erogram';
   const interests = userData.interests.length > 0 ? userData.interests.map(s => s.replace(/-/g, ' ')) : [];
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-      {/* Celebration shimmer bar */}
-      {isFromOnboarding && (
-        <div className="relative overflow-hidden rounded-2xl mb-4" style={{ height: '6px' }}>
-          <div className="absolute inset-0" style={{
-            background: 'linear-gradient(90deg, transparent, rgba(0,175,240,0.4), rgba(124,58,237,0.4), rgba(16,185,129,0.4), transparent)',
-            backgroundSize: '200% 100%',
-            animation: 'shimmer 2s ease-in-out infinite',
-          }} />
-        </div>
-      )}
-
       {/* Welcome header */}
       <div className="text-center mb-6">
-        {isFromOnboarding && (
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-3" style={{
-            background: isPremium ? 'rgba(0,175,240,0.12)' : 'rgba(16,185,129,0.12)',
-            border: `2px solid ${isPremium ? 'rgba(0,175,240,0.25)' : 'rgba(16,185,129,0.25)'}`,
-          }}>
-            {isPremium ? (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00aff0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z" /></svg>
-            ) : (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
-            )}
-          </div>
-        )}
-        {!isFromOnboarding && photoUrl && (
+        {photoUrl && (
           <img src={photoUrl} alt="" className="w-16 h-16 rounded-full mx-auto mb-3 border-2 border-white/10 object-cover" />
         )}
         <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-1">{greeting}</h1>
-        {isFromOnboarding && (
-          <p className="text-sm text-white/40 mb-1">Here&apos;s what we set up for you.</p>
-        )}
         {interests.length > 0 && (
           <div className="flex items-center justify-center gap-1.5 flex-wrap mt-2">
             {interests.slice(0, 5).map(i => (
@@ -401,70 +382,38 @@ function HomeTab({
         </button>
       </div>
 
-      {/* Vault teaser (free) or quick access (premium) */}
       {!isPremium ? (
-        <a
-          href="/premium"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mb-6 flex items-center justify-between gap-4 w-full rounded-2xl px-5 py-4 transition-all hover:scale-[1.01] active:scale-[0.98]"
-          style={{
-            background: 'linear-gradient(135deg, #d4a94c 0%, #e8c66a 30%, #c9973a 60%, #b8860b 100%)',
-            border: '2px solid rgba(232,198,106,0.5)',
-            boxShadow: '0 0 30px rgba(201,151,58,0.25), 0 6px 16px rgba(0,0,0,0.3)',
-            color: '#1a1000',
-          }}
-        >
-          <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.2em] opacity-70 mb-0.5">Members Only</p>
-            <p className="text-[17px] font-black uppercase tracking-tight leading-none">Unlock the Vault</p>
-            <p className="text-[11px] font-semibold mt-0.5 opacity-75">4,000+ exclusive groups</p>
-          </div>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1a1000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        </a>
+        <PremiumCompareBlock />
       ) : (
-        <button
-          onClick={() => onNavigate('vault')}
-          className="mb-6 w-full flex items-center gap-4 rounded-xl px-4 py-3 transition-all hover:bg-white/[0.06]"
-          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-        >
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(201,151,58,0.1)' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c9973a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          </div>
-          <div className="flex-1 min-w-0 text-left">
-            <div className="text-[13px] font-bold text-white">Browse the Vault</div>
-            <div className="text-[10px] text-white/35">4,000+ exclusive groups at your fingertips</div>
-          </div>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
-        </button>
-      )}
-
-      {/* Vicky AI card for premium / upgrade nudge for free */}
-      {isPremium ? (
-        <div className="mb-6 rounded-xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <div className="flex items-center gap-3 px-4 py-3">
-            <img src="/assets/vicky-ai-avatar.jpg" alt="" className="w-10 h-10 rounded-full object-cover ring-2 ring-[#00aff0]/20 shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-bold text-white">Ask Vicky AI</div>
-              <div className="text-[10px] text-white/35">Tap the chat bubble to find the best content</div>
+        <>
+          <button
+            onClick={() => onNavigate('vault')}
+            className="mb-6 w-full flex items-center gap-4 rounded-xl px-4 py-3 transition-all hover:bg-white/[0.06]"
+            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(201,151,58,0.1)' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c9973a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             </div>
-            <div className="relative w-3 h-3">
-              <div className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-30" />
-              <div className="absolute inset-0 rounded-full bg-emerald-400" />
+            <div className="flex-1 min-w-0 text-left">
+              <div className="text-[13px] font-bold text-white">Browse the Vault</div>
+              <div className="text-[10px] text-white/35">4,000+ exclusive groups at your fingertips</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+          <div className="mb-6 rounded-xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="flex items-center gap-3 px-4 py-3">
+              <img src="/assets/vicky-ai-avatar.jpg" alt="" className="w-10 h-10 rounded-full object-cover ring-2 ring-[#00aff0]/20 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-bold text-white">Ask Vicky AI</div>
+                <div className="text-[10px] text-white/35">Tap the chat bubble to find the best content</div>
+              </div>
+              <div className="relative w-3 h-3">
+                <div className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-30" />
+                <div className="absolute inset-0 rounded-full bg-emerald-400" />
+              </div>
             </div>
           </div>
-        </div>
-      ) : (
-        <div className="mb-6 rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: 'rgba(0,175,240,0.05)', border: '1px solid rgba(0,175,240,0.1)' }}>
-          <img src="/assets/vicky-ai-avatar.jpg" alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-bold text-white/60">Unlock Vicky AI + 4,000 Vault groups</p>
-            <p className="text-[9px] text-white/25 mt-0.5">Upgrade to VIP anytime.</p>
-          </div>
-          <a href="/premium" target="_blank" rel="noopener noreferrer" className="px-3 py-1 rounded-lg text-[10px] font-bold text-white shrink-0" style={{ background: '#00aff0' }}>
-            Upgrade
-          </a>
-        </div>
+        </>
       )}
 
       {/* Support links */}
@@ -473,10 +422,6 @@ function HomeTab({
         <span className="text-white/10">|</span>
         <a href="https://t.me/erogramDOTpro" target="_blank" rel="noopener noreferrer" className="text-[11px] text-white/25 hover:text-white/50 transition-colors font-medium">Telegram</a>
       </div>
-
-      {isFromOnboarding && (
-        <style>{`@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
-      )}
     </motion.div>
   );
 }

@@ -24,6 +24,11 @@ import { getAinsfwMetaDescription } from '@/lib/ainsfw/metaDescriptions';
 import CreatorProfileClient from '@/app/onlyfanssearch/CreatorProfileClient';
 import { getTrendingOnErogram, getTrendingCreators } from '@/lib/actions/publicData';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import {
+  buildBotListingMetaDescription,
+  buildGroupListingMetaDescription,
+  resolveEntityMetaDescription,
+} from '@/lib/seo/entityMetaDescription';
 
 // ISR for public join pages (keeps SSR output crawlable while avoiding per-request rendering)
 export const revalidate = 300;
@@ -508,7 +513,19 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     // Description prefers the master list (generated + injected).
     // Falls back to the entity's own description if no master entry yet.
     const masterDesc = getGroupMetaDescription(group.slug, locale);
-    const description = masterDesc || (group.description ? group.description.slice(0, 157) + (group.description.length > 157 ? '...' : '') : `Join ${group.name} on Telegram.`);
+    const description = resolveEntityMetaDescription(
+      masterDesc,
+      group.description,
+      buildGroupListingMetaDescription({
+        name: group.name,
+        slug: group.slug,
+        memberCount: group.memberCount,
+        categories: group.categories,
+        category: group.category,
+        country: group.country,
+        locale,
+      }),
+    );
 
     return {
       // Root layout already appends "| Erogram" via `metadata.title.template`.
@@ -541,7 +558,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
     // Description from master list (preferred), title from DB
     const masterBotDesc = getBotMetaDescription(bot.slug, locale);
-    const finalDescription = masterBotDesc || (bot.description ? bot.description.slice(0, 157) + (bot.description.length > 157 ? '...' : '') : `Try ${bot.name} on Telegram.`);
+    const finalDescription = resolveEntityMetaDescription(
+      masterBotDesc,
+      bot.description,
+      buildBotListingMetaDescription({
+        name: bot.name,
+        slug: bot.slug,
+        categories: bot.categories,
+        category: bot.category,
+        country: bot.country,
+        locale,
+      }),
+    );
 
     return {
       title: botTitle,

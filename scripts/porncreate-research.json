@@ -1,0 +1,102 @@
+{
+  "slug": "porncreate-undress-ai",
+  "name": "PornCreate",
+  "vendor": "Porncreate.app",
+  "url": "https://porncreate.app",
+  "category": "Undress AI",
+  "scrapedAt": "2026-07-26",
+  "stats": {
+    "rating": "4.8/5",
+    "users": "450K+",
+    "renders": "2M+",
+    "avgSpeed": "under 30 seconds for most image jobs"
+  },
+  "positioning": "Browser-based all-in-one adult AI studio: undress AI, AI clothes remover, face swap (synthetic only), AI porn generator, AI sex video generator. One diamond wallet across all modes. Deepnude alternative. No download required.",
+  "signup": "Free diamonds on signup (5 mentioned on homepage). No credit card required to start.",
+  "safety": {
+    "syntheticOnly": true,
+    "realPersonBlocking": "Identifiable real individuals blocked automatically",
+    "ageGate": "18+ strict",
+    "privacy": "Encrypted sessions, uploads processed then removed on schedule, generation history auto-deleted after 3 days, no selling personal data",
+    "billing": "Discreet billing, neutral descriptor on statements, TLS encrypted checkout"
+  },
+  "modes": [
+    "Undress AI and AI clothes remover (lingerie, bikini, nude-style finishes)",
+    "AI nude and fantasy pose packs for anime, SDXL, AI girlfriend renders",
+    "Face swap AI between two synthetic sources only",
+    "AI sex video generator with motion presets (riding, POV, twerk, etc.)",
+    "Custom AI video prompts when presets are not enough",
+    "Text-to-image custom prompt (beta on editor)",
+    "Explore gallery with Straight, Gay, Trans, Hentai filters"
+  ],
+  "editorPresets": [
+    "Undress",
+    "Bend over",
+    "Close up POV blowjob",
+    "Black Leather BDSM",
+    "Blowjob",
+    "Creampie Aftermath",
+    "Cumshot",
+    "Kneeling"
+  ],
+  "workflow": [
+    "Upload synthetic still (SDXL, anime, or AI girlfriend render)",
+    "Choose undress, video, face swap, or preset mode",
+    "Download HD output; diamonds charge only when GPU job starts"
+  ],
+  "freeCredits": {
+    "dailySpin": "1-100 free diamonds every 24 hours",
+    "shareAndEarn": "20 diamonds per approved share",
+    "referral": "40 diamonds when friend makes first purchase, plus 20% lifetime bonus on their purchases"
+  },
+  "pricing": {
+    "model": "Pay-as-you-go diamond packs OR monthly subscriptions. Diamonds called credits in API.",
+    "creditPacks": [
+      { "label": "Starter", "credits": 30, "priceUSD": 5, "perCredit": "$0.17" },
+      { "label": "Basic", "credits": 70, "priceUSD": 8, "perCredit": "$0.11" },
+      { "label": "Plus", "credits": 150, "priceUSD": 15, "perCredit": "$0.10", "note": "Best value pack" },
+      { "label": "Pro pack", "credits": 300, "priceUSD": 25, "perCredit": "$0.08" },
+      { "label": "Studio", "credits": 500, "priceUSD": 40, "perCredit": "$0.08" },
+      { "label": "Power", "credits": 1000, "priceUSD": 70, "perCredit": "$0.07" },
+      { "label": "Max", "credits": 2000, "priceUSD": 100, "perCredit": "$0.05", "note": "Save 50%" },
+      { "label": "Ultimate", "credits": 6250, "priceUSD": 250, "perCredit": "$0.04", "note": "Lowest per credit" }
+    ],
+    "subscriptions": [
+      {
+        "name": "Pro",
+        "priceUSD": 24.99,
+        "period": "month",
+        "monthlyCredits": 300,
+        "features": ["Priority GPU queue", "HD video exports", "All image and video modes", "Face swap included", "Email support", "Watermark-free exports"]
+      },
+      {
+        "name": "Pro+",
+        "priceUSD": 100,
+        "period": "month",
+        "monthlyCredits": 2000,
+        "features": ["Everything in Pro", "Early access to new features"]
+      },
+      {
+        "name": "Elite",
+        "priceUSD": 250,
+        "period": "month",
+        "monthlyCredits": 6250,
+        "features": ["Everything in Pro+", "Dedicated support lane"]
+      }
+    ]
+  },
+  "payments": ["Credit Cards", "Crypto"],
+  "locales": ["en", "ru", "de", "es", "pt", "fr", "ja", "ko", "zh", "zht", "hi", "tr", "it", "th", "ms", "pl"],
+  "videoAudio": "Editor includes spoken language selection for video audio (audioLanguage field). Portrait and landscape video supported.",
+  "proFeatures": "Pro members get chat with AI companions, voice messages, and in-chat image generation (mentioned in site strings)",
+  "faq": [
+    { "q": "What is PornCreate?", "a": "All-in-one adult AI studio: clothes remover, undress AI, face swap for synthetic scenes, AI sex video generator. One diamond wallet in browser." },
+    { "q": "Free undress AI?", "a": "New accounts get free diamonds. Pay-as-you-go packs, no subscription required unless monthly allowances wanted." },
+    { "q": "vs DeepNude, Nudify, Clothoff?", "a": "Speed, single dashboard for image+video, synthetic-only rules, transparent billing, no desktop install." },
+    { "q": "Real people uploads?", "a": "No. Blocked automatically." },
+    { "q": "Speed?", "a": "Most image jobs under 30s. Video depends on length and queue; Pro gets priority." },
+    { "q": "Diamonds?", "a": "Deduct when job enters GPU queue. Unused pack diamonds mostly do not expire. Subscriptions add monthly diamonds and watermark-free exports." }
+  ],
+  "affiliate": "50% commission affiliate program mentioned in site metadata",
+  "competitorAlternativesOnErogram": ["Deepfake.com", "N8ked.app", "OffRobe", "PPnude", "Clothoff.net"]
+}

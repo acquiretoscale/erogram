@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { uploadToR2, isR2Configured } from '@/lib/r2';
+import { groupImageR2Key, compressGroupImageBuffer } from '@/lib/images/processGroupImage';
 
 const isVercel = process.env.VERCEL === '1';
 
@@ -14,6 +15,7 @@ export async function POST(req: NextRequest) {
         // Optional keyword-rich basename (e.g. article slug) for SEO-friendly R2 keys.
         const nameHint = formData.get('name') as string | null;
         // Optional folder target. 'ainsfw' → SEO name {name}-{category}.webp, capped 100KB.
+        // 'groups' → groups/{slug}-porn-telegram-group.webp
         const folder = formData.get('folder') as string | null;
         const categoryHint = formData.get('category') as string | null;
 
@@ -27,9 +29,11 @@ export async function POST(req: NextRequest) {
         // Slugify a hint into a safe, keyword-rich filename; '' if none usable.
         const keywordBase = slug(nameHint);
         const isAinsfw = folder === 'ainsfw' && keywordBase;
+        const isGroup = folder === 'groups' && keywordBase;
         const ainsfwKey = isAinsfw
             ? `ainsfw/${keywordBase}${categoryHint ? `-${slug(categoryHint)}` : ''}.webp`
             : '';
+        const groupKey = isGroup ? groupImageR2Key(keywordBase) : '';
 
         if (!file) {
             return NextResponse.json(
@@ -61,10 +65,14 @@ export async function POST(req: NextRequest) {
                 ? `articles/${keywordBase}-${shortId}.${ext}`
                 : `uploads/${randomUUID()}.${ext}`;
 
-        if (isGif && !isAinsfw) {
+        if (isGif && !isAinsfw && !isGroup) {
             finalBuffer = buffer;
             key = basename('gif');
             mime = 'image/gif';
+        } else if (isGroup) {
+            finalBuffer = await compressGroupImageBuffer(buffer);
+            key = groupKey;
+            mime = 'image/webp';
         } else if (isAinsfw) {
             // AI NSFW tool images: WebP, capped at 100KB, SEO-named in ainsfw/.
             const MAX = 100 * 1024;

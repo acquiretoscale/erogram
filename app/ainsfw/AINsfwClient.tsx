@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
 import HeaderBanner from '@/components/HeaderBanner';
@@ -12,9 +13,7 @@ import type { AINsfwTool, AINsfwCategory, PaymentOption } from './types';
 import { AINSFW_CATEGORIES, ALL_PAYMENT_OPTIONS } from './types';
 import { useTranslation } from '@/lib/i18n';
 import type { ToolStatsData } from '@/lib/actions/ainsfw';
-
-const INITIAL_LOAD = 12;
-const LOAD_MORE = 8;
+import { AINSFW_PAGE_SIZE } from './constants';
 
 interface AINsfwClientProps {
   tools: AINsfwTool[];
@@ -26,8 +25,13 @@ interface AINsfwClientProps {
   topAdCampaigns?: FeedCampaign[];
   /** In-feed ads (feedPlacement 'ainsfw' or 'both') — interleaved into the main tool grid like Groups/Bots. */
   feedCampaigns?: FeedCampaign[];
-  /** Campaigns assigned to the Trending on Erogram ad space — rendered below the native Top. */
-  trendingErogramCampaigns?: FeedCampaign[];
+  paginationCurrentPage?: number;
+  paginationTotalPages?: number;
+  pageSize?: number;
+}
+
+function ainsfwPageHref(page: number): string {
+  return page <= 1 ? '/ainsfw' : `/ainsfw/page/${page}`;
 }
 
 const CATEGORY_ACTIVE: Record<AINsfwCategory, string> = {
@@ -37,6 +41,7 @@ const CATEGORY_ACTIVE: Record<AINsfwCategory, string> = {
   'AI Chat': 'bg-[#22c55e] text-black',
   'AI Image': 'bg-[#22c55e] text-black',
   'AI Roleplay': 'bg-[#22c55e] text-black',
+  'Adult Games': 'bg-[#22c55e] text-black',
 };
 
 const PAYMENT_ICON: Record<string, string> = {
@@ -44,23 +49,6 @@ const PAYMENT_ICON: Record<string, string> = {
   'Crypto': '₿',
   'PayPal': 'P',
 };
-
-function ToolCardSkeleton() {
-  return (
-    <div className="bg-[#111] rounded-xl overflow-hidden h-full flex flex-col border border-white/10 animate-pulse">
-      <div className="w-full h-32 sm:h-36 bg-[#1a1a1a]" />
-      <div className="p-2.5 sm:p-3 flex-grow flex flex-col">
-        <div className="h-4 bg-white/10 rounded mb-2 w-3/4" />
-        <div className="h-3 bg-white/5 rounded mb-2 w-1/2" />
-        <div className="space-y-1.5 mb-3 flex-grow">
-          <div className="h-3 bg-white/5 rounded" />
-          <div className="h-3 bg-white/5 rounded w-5/6" />
-        </div>
-        <div className="h-7 bg-white/10 rounded" />
-      </div>
-    </div>
-  );
-}
 
 function getScore(slug: string, scores: Record<string, number>): number {
   return scores[slug] ?? 0;
@@ -120,14 +108,11 @@ function TopAINsfwBlock({ tools, allStats, scores, featuredSlugs, featuredCampai
   );
 }
 
-export default function AINsfwClient({ tools, allStats, featuredSlugs = [], featuredCampaignMap = {}, topBannerCampaigns = [], topAdCampaigns = [], feedCampaigns = [], trendingErogramCampaigns = [] }: AINsfwClientProps) {
+export default function AINsfwClient({ tools, allStats, featuredSlugs = [], featuredCampaignMap = {}, topBannerCampaigns = [], topAdCampaigns = [], feedCampaigns = [], paginationCurrentPage = 1, paginationTotalPages = 1, pageSize = AINSFW_PAGE_SIZE }: AINsfwClientProps) {
   const [activeCategory, setActiveCategory] = useState<AINsfwCategory>('All');
   const [activePayment, setActivePayment] = useState<PaymentOption | 'All'>('All');
   const [search, setSearch] = useState('');
   const [scores, setScores] = useState<Record<string, number>>({});
-  const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD);
-  const [loading, setLoading] = useState(false);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -154,32 +139,12 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], feat
     .slice()
     .sort((a, b) => getScore(b.slug, scores) - getScore(a.slug, scores));
 
-  const hasMore = visibleCount < filtered.length;
-  const displayed = filtered.slice(0, visibleCount);
+  const isDefaultBrowse =
+    activeCategory === 'All' && activePayment === 'All' && !search.trim();
 
-  // Reset visible count when filters change
-  useEffect(() => {
-    setVisibleCount(INITIAL_LOAD);
-  }, [activeCategory, activePayment, search]);
-
-  // Infinite scroll — load more when sentinel enters viewport
-  useEffect(() => {
-    if (!loadMoreRef.current || !hasMore) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !loading && hasMore) {
-          setLoading(true);
-          setTimeout(() => {
-            setVisibleCount((prev) => Math.min(prev + LOAD_MORE, filtered.length));
-            setLoading(false);
-          }, 600);
-        }
-      },
-      { rootMargin: '400px', threshold: 0.01 }
-    );
-    observer.observe(loadMoreRef.current);
-    return () => observer.disconnect();
-  }, [hasMore, loading, filtered.length]);
+  const displayed = isDefaultBrowse
+    ? filtered.slice((paginationCurrentPage - 1) * pageSize, paginationCurrentPage * pageSize)
+    : filtered;
 
   return (
     <div className="ainsfw-page ainsfw-bg min-h-screen text-white">
@@ -278,30 +243,6 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], feat
               <TopAINsfwBlock tools={tools} allStats={allStats} scores={scores} featuredSlugs={featuredSlugs} featuredCampaignMap={featuredCampaignMap} topAdCampaigns={topAdCampaigns} onVoteChange={handleVoteChange} />
             )}
 
-            {/* Trending on Erogram below native TOP for AI NSFW (as requested: call native "TOP", trending below). */}
-            {(() => {
-              const seen = new Set((topAdCampaigns || []).map((c: any) => c._id));
-              const trendingAds = (trendingErogramCampaigns || []).filter((c: any) => !seen.has(c._id)).slice(0, 4);
-              if (trendingAds.length === 0) return null;
-              return (
-                <section className="mb-10 sm:mb-14">
-                  <div className="bg-white rounded-2xl border border-black/10 p-4 sm:p-5">
-                    <div className="flex items-center justify-between mb-4 sm:mb-5">
-                      <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-black">Trending on Erogram</h2>
-                      <span className="text-[10px] sm:text-xs font-black bg-[#22c55e] text-black rounded px-2 py-0.5">Hot now</span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                      {trendingAds.map((c, i) => (
-                        <div key={`ainsfw-trending-${c._id}`} className="h-full rounded-xl overflow-hidden bg-[#0a0a0a] border border-white/10 [&>*]:h-full">
-                          <AdvertCard campaign={c} isIndex={i} placementOverride="ainsfw-featured" />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </section>
-              );
-            })()}
-
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {(() => {
                 const featuredTools = tools.filter((t) => featuredSlugs.includes(t.slug));
@@ -337,18 +278,47 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], feat
               })()}
             </div>
 
-            {/* Skeleton loading placeholders */}
-            {(loading || hasMore) && (
-              <>
-                {loading && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mt-3">
-                    {Array.from({ length: LOAD_MORE }, (_, i) => (
-                      <ToolCardSkeleton key={`skeleton-${i}`} />
-                    ))}
-                  </div>
+            {isDefaultBrowse && paginationTotalPages > 1 && (
+              <nav
+                aria-label="AI NSFW pagination"
+                className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mt-8 sm:mt-10"
+              >
+                {paginationCurrentPage > 1 && (
+                  <Link
+                    href={ainsfwPageHref(paginationCurrentPage - 1)}
+                    className="px-4 py-2 rounded-xl border border-white/10 bg-white/[0.04] text-sm font-bold text-white/80 hover:border-[#22c55e]/40 hover:text-white transition-colors"
+                    rel="prev"
+                  >
+                    ← Previous
+                  </Link>
                 )}
-                <div ref={loadMoreRef} className="h-4" />
-              </>
+                {Array.from({ length: paginationTotalPages }, (_, i) => i + 1).map((p) => {
+                  const isActive = p === paginationCurrentPage;
+                  return (
+                    <Link
+                      key={p}
+                      href={ainsfwPageHref(p)}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={`min-w-[2.5rem] px-3 py-2 rounded-xl text-sm font-bold text-center transition-colors ${
+                        isActive
+                          ? 'bg-[#22c55e] text-black border border-[#22c55e]'
+                          : 'border border-white/10 bg-white/[0.04] text-white/70 hover:border-[#22c55e]/40 hover:text-white'
+                      }`}
+                    >
+                      {p}
+                    </Link>
+                  );
+                })}
+                {paginationCurrentPage < paginationTotalPages && (
+                  <Link
+                    href={ainsfwPageHref(paginationCurrentPage + 1)}
+                    className="px-4 py-2 rounded-xl border border-white/10 bg-white/[0.04] text-sm font-bold text-white/80 hover:border-[#22c55e]/40 hover:text-white transition-colors"
+                    rel="next"
+                  >
+                    Next →
+                  </Link>
+                )}
+              </nav>
             )}
 
             {filtered.length === 0 && (

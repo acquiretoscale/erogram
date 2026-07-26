@@ -9,6 +9,8 @@ import { countries } from '@/app/groups/constants';
 import Navbar from '@/components/Navbar';
 import BestGroupRankCard from '@/app/best-telegram-groups/BestGroupRankCard';
 import { buildSocialMeta } from '@/lib/seo/socialMeta';
+import { getLocale } from '@/lib/i18n/server';
+import type { Locale } from '@/lib/i18n';
 import {
   buildTop10Ranking,
   countryPremiumFilter,
@@ -36,6 +38,7 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+    const locale = await getLocale();
     const { country } = await params;
     const decodedSlug = decodeURIComponent(country).toLowerCase();
 
@@ -55,17 +58,25 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
     const canonical = `${siteUrl}/best-telegram-groups/country/${decodedSlug}`;
-    const ogTitle = `10 Best ${realCountry} Telegram Groups (${year})`;
+    // "in {Country}" keeps this distinct from the same-named category page
+    // (e.g. /best-telegram-groups/japan vs /best-telegram-groups/country/japan).
+    const titleMap: Record<Locale, string> = {
+        en: `10 Best Telegram Groups in ${realCountry} — Channels & Links in ${year}`,
+        de: `Die 10 Besten Telegram Gruppen in ${realCountry} — Kanäle & Links im Jahr ${year}`,
+        es: `Los 10 Mejores Grupos de Telegram en ${realCountry} — Canales y Enlaces en ${year}`,
+        pt: `Os 10 Melhores Grupos de Telegram em ${realCountry} — Canais e Links em ${year}`,
+    };
+    const title = titleMap[locale] || titleMap.en;
     const ogDescription = `Discover the top 10 best ${realCountry} Telegram groups and channels in ${year}. Curated, verified list of the most popular and active adult communities in ${realCountry}.`;
     const meta = {
-        title: `10 Best ${realCountry} Telegram Groups & Channels (${year})`,
+        title,
         description: `Discover the top 10 best ${realCountry} Telegram groups and channels in ${year}. Curated, verified list of the most popular and active adult communities in ${realCountry}. Join free on Erogram.pro.`,
         keywords: `${realCountry} telegram groups, ${realCountry} telegram channels, best ${realCountry} groups, telegram links ${realCountry}`,
         alternates: {
             canonical,
         },
         ...buildSocialMeta({
-            title: ogTitle,
+            title,
             description: ogDescription,
             url: canonical,
             type: 'website',

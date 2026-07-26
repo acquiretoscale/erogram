@@ -16,7 +16,7 @@ export default function JoinClient({ avatars }: { avatars: string[] }) {
   useEffect(() => {
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
     const paramRd = searchParams.get('redirect');
-    const rd = paramRd || sessionStorage.getItem('joinRedirect') || '/onlyfanssearch';
+    const rd = paramRd || sessionStorage.getItem('joinRedirect') || '/profile';
     if (paramRd) {
       sessionStorage.setItem('joinRedirect', paramRd);
       window.history.replaceState(null, '', '/join-erogram');

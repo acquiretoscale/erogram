@@ -849,8 +849,8 @@ export function EditorialFooter() {
           </p>
         </div>
 
-        {/* 3 columns */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-10 mb-8 pb-8 border-b border-white/[0.08]">
+        {/* 4 columns */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10 mb-8 pb-8 border-b border-white/[0.08]">
           <FooterCol label="Explore">
             <FooterLink href={lp('/best-telegram-groups')}>Telegram Groups</FooterLink>
             <FooterLink href={lp('/bots')}>Telegram Bots</FooterLink>
@@ -868,30 +868,28 @@ export function EditorialFooter() {
             <FooterLink href={lp('/add/ainsfw')}>Submit AI NSFW</FooterLink>
           </FooterCol>
 
-          <FooterCol label="Advertise With Us">
-            <a href="mailto:Isabella@erogram.biz" className="block text-[13px] text-[#b8b2ab] hover:text-white transition-colors">
-              Isabella@erogram.biz
-            </a>
-            <a href="https://t.me/erogramDOTpro" target="_blank" rel="noopener noreferrer" className="block text-[13px] text-[#b8b2ab] hover:text-white transition-colors">
-              ErogramDOTpro on Telegram
-            </a>
+          <FooterCol label="COMPANY">
+            <FooterLink href={lp('/advertise')}>Advertise with us</FooterLink>
+            <FooterLink href={lp('/about')}>About</FooterLink>
+            <FooterLink href={lp('/contact')}>Contact</FooterLink>
+          </FooterCol>
+
+          <FooterCol label="Trust &amp; Legal">
+            <FooterLink href={lp('/terms')}>Terms</FooterLink>
+            <FooterLink href={lp('/privacy')}>Privacy</FooterLink>
+            <FooterLink href={lp('/dmca')}>DMCA</FooterLink>
+            <FooterLink href={lp('/copyright')}>Copyright &amp; Takedown</FooterLink>
+            <FooterLink href={lp('/compliance')}>Content Compliance</FooterLink>
+            <FooterLink href={lp('/report-abuse')}>Report Abuse</FooterLink>
           </FooterCol>
         </div>
 
         {/* Bottom bar — compact */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] tracking-[0.1em] uppercase">
-            <FooterLink href={lp('/about')}>About</FooterLink>
-            <FooterLink href={lp('/contact')}>Contact</FooterLink>
-            <FooterLink href={lp('/terms')}>Terms</FooterLink>
-            <FooterLink href={lp('/privacy')}>Privacy</FooterLink>
-            <FooterLink href={lp('/dmca')}>DMCA</FooterLink>
-            <FooterLink href={lp('/onlyfanssearch')}>OFsearch</FooterLink>
-          </div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4">
           <RtaBadge size="lg" />
         </div>
         <p className="mt-4 text-[11px] text-[#5a534d] leading-relaxed">
-          © {year} Erogram.pro · By entering this site you swear that you are of legal age in your area to view adult material.
+          © {year} Erogram.pro
         </p>
       </div>
     </footer>

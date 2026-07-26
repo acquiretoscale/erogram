@@ -26,6 +26,7 @@ const CATEGORY_BADGE: Record<string, string> = {
   'AI Chat': 'bg-emerald-700 text-white',
   'AI Image': 'bg-amber-600 text-white',
   'AI Roleplay': 'bg-zinc-800 text-white',
+  'Adult Games': 'bg-purple-800 text-white',
 };
 
 const CATEGORY_BTN: Record<string, string> = {

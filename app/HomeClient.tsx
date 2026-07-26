@@ -250,47 +250,32 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
   };
 
   // ── Navigation cards — white-bg rows with icon ring, title, subtitle, arrow ──
-  const navCards: { title: string; sub: string; href: string; icon: React.ReactNode; iconColor: string; bareIcon?: boolean; bgColor?: string }[] = [
+  const navCards: { title: string; href: string; icon: React.ReactNode; iconColor: string; bareIcon?: boolean; bgColor?: string }[] = [
     {
       title: 'Telegram Groups',
-      sub: 'Explore thousands of adult & porn Telegram groups',
       href: lp('/groups'),
       iconColor: '#fff',
       bgColor: '#1a2740',
       icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/></svg>,
     },
     {
-      title: 'Telegram Uncensored Bots',
-      sub: 'Explore the best uncensored Telegram bots',
+      title: 'Telegram Bots',
       href: lp('/bots'),
       iconColor: '#fff',
       bgColor: '#1a2740',
       icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="9" cy="16" r="1"/><circle cx="15" cy="16" r="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>,
     },
     {
-      title: 'AI Uncensored Tools',
-      sub: 'Explore hundreds of the best uncensored AI tools',
+      title: 'AI NSFW Tools',
       href: lp('/ainsfw'),
       iconColor: '#e0102b',
-      // Lips icon provided by owner — tinted dark red
       icon: <img src="/assets/lips-icon.png" alt="" width="26" height="26" style={{ objectFit: 'contain', filter: 'brightness(0) saturate(100%) invert(13%) sepia(90%) saturate(4000%) hue-rotate(345deg) brightness(80%)' }} />,
     },
     {
       title: 'OnlyFans Search',
-      sub: 'Search 1.8M+ OnlyFans creators on the biggest OF search engine',
       href: '/onlyfanssearch',
       iconColor: '#00AFF0',
       icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="#00AFF0"><path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z"/></svg>,
-    },
-    {
-      title: 'TRENDING ON EROGRAM',
-      sub: 'The best of adult entertainment, all in one place',
-      href: lp('/trending'),
-      iconColor: '#fff',
-      bgColor: '#b91c1c',
-      bareIcon: true,
-      // Erogram devil mascot — full button height, no ring, pops out
-      icon: <img src="/assets/erogram-mascot.webp" alt="" className="erogram-mascot" style={{ objectFit: 'contain', height: '72px', width: 'auto', marginTop: '-12px', marginBottom: '-12px' }} />,
     },
   ];
 
@@ -311,7 +296,6 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
           <span className="hero-nav-card__title" style={c.bgColor ? { color: '#fff' } : undefined}>{c.title}</span>
           <svg className="hero-nav-card__arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={c.bgColor ? { color: 'rgba(255,255,255,0.6)' } : undefined}><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
         </span>
-        <span className="hero-nav-card__sub" style={c.bgColor ? { color: 'rgba(255,255,255,0.65)' } : undefined}>{c.sub}</span>
       </span>
     </button>
   );
@@ -338,7 +322,6 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
         {/* Center: text */}
         <span className="erogram-uncut-cta__text">
           <span className="erogram-uncut-cta__label">TRENDING ON EROGRAM</span>
-          <span className="erogram-uncut-cta__sub">The best of adult entertainment — all in one place</span>
         </span>
         {/* Right: arrow */}
         <span className="erogram-uncut-cta__arrow">

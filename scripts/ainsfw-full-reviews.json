@@ -1,0 +1,67 @@
+{
+  "girlfriendgpt-ai-girlfriend": {
+    "shortDescription": "GirlfriendGPT is an AI companion platform where users create or choose virtual girlfriends with distinct personalities, backstories, and appearances. The service supports immersive, uncensored conversations that remember past interactions for coherent long-term roleplay. Integrated features include real-time image generation and voice messages to deepen engagement. Backed by the NextDay AI group, GirlfriendGPT offers both free and paid access, letting members explore emotional or romantic simulations without real-world constraints. The platform hosts over 25,000 community-built characters alongside custom creation tools.",
+    "featureHighlights": [
+      {
+        "title": "Custom AI Girlfriend Builder",
+        "body": "GirlfriendGPT lets users design their ideal companion from scratch using a detailed 2,500-token character builder. They define personality traits, history, appearance, and relationship dynamics. The AI retains these details across chats, making interactions feel personal and consistent. Members can save and revisit their custom characters anytime."
+      },
+      {
+        "title": "Image and Voice Integration",
+        "body": "During conversations, users can generate images that reflect the current scene, mood, or outfit of their AI girlfriend. Voice messages add another sensory layer, allowing the companion to speak aloud. These features are exclusive to paid plans but greatly enhance realism and emotional immersion."
+      },
+      {
+        "title": "Large Character Library",
+        "body": "GirlfriendGPT offers access to more than 25,000 pre-made characters created by the community and top developers. Users can browse, test, and adopt any of them instantly. Even on the free tier, most characters are available for basic chatting, though advanced functions require a subscription."
+      }
+    ],
+    "sections": [
+      {
+        "heading": "GirlfriendGPT Review",
+        "body": "GirlfriendGPT is a polished AI girlfriend platform with a clean interface that welcomes newcomers. Its strength lies in combining deep customization with accessible pre-built characters. Free users get 50 messages per day and can experience core conversation logic, though image generation and extended memory are locked. Paid members enjoy full NSFW support, unlimited roleplay depth, and persistent character profiles. There is no mobile app yet, so all interaction happens through the browser. Privacy is maintained as chats are not shared externally, and accounts remain anonymous."
+      },
+      {
+        "heading": "How Does It Work",
+        "body": "GirlfriendGPT runs entirely in the browser, requiring no download or installation. Users start by selecting a character from the public library or building one using the intuitive creator tool. The AI processes each message using contextual memory, referencing earlier dialogue to keep stories and relationships coherent. Conversations can shift from casual talk to intimate scenarios depending on user input.\n\nThe integrated image generator activates during chat, producing visuals based on the current narrative or user request. Voice synthesis allows the AI girlfriend to send spoken replies, adding emotional texture. All these features rely on tokens and message limits tied to the user’s plan.\n\nFree accounts face a daily cap of 50 messages and cannot use image or voice tools. Memory retention is also limited, so longer story arcs may lose continuity. Premium subscribers bypass these restrictions and gain access to advanced AI models for more natural responses. The system works best with clear, descriptive prompts to guide the companion’s behavior and appearance."
+      },
+      {
+        "heading": "Plans and Pricing",
+        "body": "GirlfriendGPT uses a freemium model with three main options. The free plan grants 50 messages per day, access to most characters, and basic chat functionality, enough to test the platform. However, it excludes image generation, voice messages, and extended memory.\n\nThe Deluxe plan costs $12 per month and includes 5,000 messages, full image generation (400 images monthly), voice features, and NSFW content. This tier suits regular users who want consistent interaction without hitting hard limits.\n\nFor heavy users, the Elite annual plan offers the best value at $27.50 per month when billed yearly. It provides unlimited messages, priority AI processing, and higher image quotas. All paid plans allow saving custom characters and skipping queue delays.\n\nThere is no standalone mobile app, so usage is web-only. Tokens are not required separately, the subscription covers all included features. Active users may find the monthly message caps restrictive on lower tiers, but upgrading is straightforward through the account dashboard."
+      },
+      {
+        "heading": "Similar Tools",
+        "body": "Several platforms offer AI girlfriend experiences comparable to GirlfriendGPT. Krush and CrushOn.AI focus on uncensored conversations with strong memory systems. iWaifu emphasizes anime-style companions and visual customization. Kupid AI blends dating simulation with chat-based romance, while FunFun AI targets lighthearted, playful interactions. Porn.ai leans more heavily into explicit content without deep character building. Among these, GirlfriendGPT stands out for its large community library and integrated image-voice combo, though it lacks a native app unlike some rivals."
+      },
+      {
+        "heading": "Is It Worth It",
+        "body": "GirlfriendGPT delivers solid value for users seeking a responsive, customizable AI companion. The free tier is generous enough to evaluate core functionality, while the $12/month Deluxe plan unlocks the full fantasy with images, voice, and NSFW freedom. Limitations like message caps on free accounts and the absence of a mobile app are minor trade-offs. For those invested in long-term roleplay or digital intimacy, GirlfriendGPT offers one of the most feature-complete experiences in its category."
+      }
+    ],
+    "alternatives": [
+      {
+        "name": "Krush",
+        "slug": "krush-ai-girlfriend"
+      },
+      {
+        "name": "CrushOn.AI",
+        "slug": "crushon-ai-ai-girlfriend"
+      },
+      {
+        "name": "iWaifu",
+        "slug": "iwaifu-ai-girlfriend"
+      },
+      {
+        "name": "Kupid AI",
+        "slug": "kupid-ai-ai-girlfriend"
+      },
+      {
+        "name": "FunFun AI",
+        "slug": "funfun-ai-ai-girlfriend"
+      },
+      {
+        "name": "Porn.ai",
+        "slug": "porn-ai-ai-girlfriend"
+      }
+    ]
+  }
+}

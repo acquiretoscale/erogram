@@ -27,6 +27,10 @@ interface PageProps {
     params: Promise<{ category: string }>;
 }
 
+/** Bing errors on titles over 70 chars. The root layout appends " | Erogram" (10 chars). */
+const MAX_TITLE_LENGTH = 68;
+const BRAND_SUFFIX_LENGTH = 10;
+
 export async function generateStaticParams() {
     await connectDB();
     const counts = await Group.aggregate([
@@ -63,8 +67,66 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
     const canonical = `${siteUrl}${localePath(`/best-telegram-groups/${canonicalSlug}`, locale)}`;
-    const ogTitle = `10 Best ${realCategory} Telegram Groups (${year})`;
     const l = realCategory.toLowerCase();
+
+    // Bing flags near-identical title templates as duplicates. Each category keeps
+    // one of three sentence shapes for life (derived from its own slug, so it never
+    // changes between crawls) and every locale gets its own wording.
+    const variant = [...canonicalSlug].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % 3;
+    const titleVariants: Record<Locale, { full: [string, string, string]; compact: [string, string, string] }> = {
+        en: {
+            full: [
+                `Join Active ${realCategory} Telegram Groups & Channels in ${year}`,
+                `Top Rated ${realCategory} Telegram Groups to Join in ${year}`,
+                `${realCategory} NSFW Telegram Groups & Channels List in ${year}`,
+            ],
+            compact: [
+                `Join Active ${realCategory} Telegram Groups in ${year}`,
+                `Top ${realCategory} Telegram Groups to Join in ${year}`,
+                `${realCategory} NSFW Telegram Groups in ${year}`,
+            ],
+        },
+        de: {
+            full: [
+                `Aktive ${realCategory} Telegram Gruppen & Kanäle beitreten ${year}`,
+                `Top ${realCategory} Telegram Gruppen zum Beitreten im Jahr ${year}`,
+                `${realCategory} NSFW Telegram Gruppen & Kanäle Liste ${year}`,
+            ],
+            compact: [
+                `Aktive ${realCategory} Telegram Gruppen ${year}`,
+                `Top ${realCategory} Telegram Gruppen ${year}`,
+                `${realCategory} NSFW Telegram Gruppen ${year}`,
+            ],
+        },
+        es: {
+            full: [
+                `Únete a Grupos ${realCategory} de Telegram Activos en ${year}`,
+                `Mejores Grupos ${realCategory} de Telegram para Unirse en ${year}`,
+                `Lista de Grupos y Canales ${realCategory} NSFW de Telegram en ${year}`,
+            ],
+            compact: [
+                `Grupos ${realCategory} de Telegram Activos en ${year}`,
+                `Mejores Grupos ${realCategory} de Telegram en ${year}`,
+                `Grupos y Canales ${realCategory} NSFW en ${year}`,
+            ],
+        },
+        pt: {
+            full: [
+                `Entre em Grupos ${realCategory} de Telegram Ativos em ${year}`,
+                `Melhores Grupos ${realCategory} de Telegram para Entrar em ${year}`,
+                `Lista de Grupos e Canais ${realCategory} NSFW do Telegram em ${year}`,
+            ],
+            compact: [
+                `Grupos ${realCategory} de Telegram Ativos em ${year}`,
+                `Melhores Grupos ${realCategory} de Telegram em ${year}`,
+                `Grupos e Canais ${realCategory} NSFW em ${year}`,
+            ],
+        },
+    };
+    // Bing rejects titles over 70 chars; the root layout appends " | Erogram" (10).
+    const set = titleVariants[locale] || titleVariants.en;
+    const fullTitle = set.full[variant];
+    const title = fullTitle.length + BRAND_SUFFIX_LENGTH > MAX_TITLE_LENGTH ? set.compact[variant] : fullTitle;
     const descFallback = `Discover the top 10 best ${l} Telegram groups and channels in ${year}. Curated, verified list of the most popular and active adult communities.`;
     const descMap: Record<Locale, string> = {
         en: getMetaDescription(canonicalSlug, 'en') || descFallback,
@@ -73,13 +135,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         pt: getMetaDescription(canonicalSlug, 'pt') || descFallback,
     };
     const meta = {
-        title: `10 Best ${realCategory} Telegram Groups & Channels (${year})`,
+        title,
         description: descMap[locale] || descMap.en,
         alternates: {
             canonical,
         },
         ...buildSocialMeta({
-            title: ogTitle,
+            title,
             description: descMap[locale] || descMap.en,
             url: canonical,
             type: 'website',

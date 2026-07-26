@@ -80,6 +80,20 @@ const RELATED_EROGRAM: Record<string, { label: string; href: string; sub: string
   ],
 };
 
+const ARTICLE_TAG_HREFS: Record<string, string> = {
+  'AI Porn Generator': '/ainsfw/ai-image',
+  'PornCreate': '/ainsfw/porncreate-undress-ai',
+  'AI Undress': '/ainsfw/undress-ai',
+  'Create AI Porn': '/ainsfw',
+  'Best Porn AI Tools': '/ainsfw',
+  'AI NSFW': '/ainsfw',
+  'Undress AI': '/ainsfw/undress-ai',
+};
+
+const ARTICLE_COVER_LINKS: Record<string, string> = {
+  'create-your-own-ai-porn-porncreate': '/ainsfw/porncreate-undress-ai',
+};
+
 function VideoBlock({ data, articleSlug }: { data: any; articleSlug: string }) {
   if (!data.url) return null;
   const isDirectVideo = /\.(mp4|webm|ogg)(\?|$)/i.test(data.url);
@@ -328,7 +342,13 @@ export default function BlogArticleClient({
         {/* Featured image */}
         {article.featuredImage && (
           <div className="my-10 rounded-[4px] overflow-hidden">
-            <img src={article.featuredImage} alt={article.title} fetchPriority="high" className="w-full" referrerPolicy="no-referrer" />
+            {ARTICLE_COVER_LINKS[article.slug] ? (
+              <Link href={ARTICLE_COVER_LINKS[article.slug]} className="block">
+                <img src={article.featuredImage} alt={article.title} fetchPriority="high" className="w-full hover:opacity-95 transition-opacity" referrerPolicy="no-referrer" />
+              </Link>
+            ) : (
+              <img src={article.featuredImage} alt={article.title} fetchPriority="high" className="w-full" referrerPolicy="no-referrer" />
+            )}
           </div>
         )}
 
@@ -341,9 +361,15 @@ export default function BlogArticleClient({
         {/* Tags */}
         {article.tags.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-14 pt-8 border-t border-black/[0.08]">
-            {article.tags.map((t) => (
-              <span key={t} className="text-[11px] tracking-[0.14em] uppercase text-[#6a6258] px-3 py-1.5 rounded-full border border-black/[0.1]">{t}</span>
-            ))}
+            {article.tags.map((t) => {
+              const href = ARTICLE_TAG_HREFS[t];
+              const className = 'text-[11px] tracking-[0.14em] uppercase text-[#6a6258] px-3 py-1.5 rounded-full border border-black/[0.1] hover:border-[#c0392f]/40 hover:text-[#c0392f] transition-colors';
+              return href ? (
+                <Link key={t} href={href} className={className}>{t}</Link>
+              ) : (
+                <span key={t} className={className}>{t}</span>
+              );
+            })}
           </div>
         )}
 

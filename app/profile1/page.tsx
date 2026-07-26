@@ -44,7 +44,6 @@ function Profile1Content() {
     : tabParam === 'vault' ? 'vault' : tabParam === 'settings' ? 'settings'
     : tabParam === 'suggestions' ? 'suggestions' : 'home';
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
-  const onboardingIntent = searchParams.get('onboarding');
   const router = useRouter();
   const { toast } = useToast();
 
@@ -219,7 +218,6 @@ function Profile1Content() {
               isPremium={effectivePremium}
               userData={userData}
               onNavigate={setActiveTab}
-              isFromOnboarding={onboardingIntent === 'complete'}
               simData={isSimulation ? simData : null}
             />
           ) : activeTab === 'saved' ? (
@@ -266,10 +264,10 @@ function Profile1Content() {
    ═══════════════════════════════════════════════════════════════════ */
 
 function HomeTab({
-  firstName, photoUrl, isPremium, userData, onNavigate, isFromOnboarding, simData,
+  firstName, photoUrl, isPremium, userData, onNavigate, simData,
 }: {
   firstName: string | null; photoUrl: string | null; isPremium: boolean;
-  userData: UserData; onNavigate: (tab: Tab) => void; isFromOnboarding: boolean;
+  userData: UserData; onNavigate: (tab: Tab) => void;
   simData: { creators: any[]; groups: any[]; aiTools: any[]; interests: string[] } | null;
 }) {
   const [savedCreators, setSavedCreators] = useState<any[]>([]);
@@ -301,31 +299,15 @@ function HomeTab({
   const groupImages = simData
     ? simData.groups.map((g: any) => g.image).filter(Boolean)
     : savedBookmarks.map((b: any) => b.item?.image).filter(Boolean);
-  const greeting = isFromOnboarding
-    ? (isPremium ? 'Welcome to VIP!' : "You're all set!")
-    : firstName ? `Welcome back, ${firstName}` : 'Welcome back';
+  const greeting = firstName ? `Welcome ${firstName} to Erogram` : 'Welcome to Erogram';
   const interests = userData.interests.length > 0 ? userData.interests.map(s => s.replace(/-/g, ' ')) : [];
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-      {isFromOnboarding && (
-        <div className="relative overflow-hidden rounded-2xl mb-4" style={{ height: '6px' }}>
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, transparent, rgba(0,175,240,0.4), rgba(124,58,237,0.4), rgba(16,185,129,0.4), transparent)', backgroundSize: '200% 100%', animation: 'shimmer 2s ease-in-out infinite' }} />
-        </div>
-      )}
-
       <div className="text-center mb-6">
-        {isFromOnboarding ? (
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-3" style={{ background: isPremium ? 'rgba(0,175,240,0.12)' : 'rgba(16,185,129,0.12)', border: `2px solid ${isPremium ? 'rgba(0,175,240,0.25)' : 'rgba(16,185,129,0.25)'}` }}>
-            {isPremium ? (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00aff0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z" /></svg>
-            ) : (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
-            )}
-          </div>
-        ) : photoUrl ? (
+        {photoUrl && (
           <img src={photoUrl} alt="" className="w-16 h-16 rounded-full mx-auto mb-3 border-2 border-white/10 object-cover" />
-        ) : null}
+        )}
         <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-1">{greeting}</h1>
         {interests.length > 0 && (
           <div className="flex items-center justify-center gap-1.5 flex-wrap mt-2">
@@ -477,8 +459,6 @@ function HomeTab({
         <span className="text-white/10">|</span>
         <a href="https://t.me/erogramDOTpro" target="_blank" rel="noopener noreferrer" className="text-[11px] text-white/25 hover:text-white/50 transition-colors font-medium">Telegram</a>
       </div>
-
-      {isFromOnboarding && <style>{`@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>}
     </motion.div>
   );
 }

@@ -19,6 +19,7 @@ const CATEGORY_DESC: Record<string, string> = {
   'AI Chat': 'The best AI NSFW chat platforms for uncensored roleplay and adult conversations.',
   'AI Image': 'Best AI image generators for NSFW and adult content creation.',
   'AI Roleplay': 'Top AI roleplay platforms for immersive adult storytelling and character interaction.',
+  'Adult Games': 'Adult games and interactive 3D experiences, reviewed and listed separately from AI tools.',
 };
 
 export default function CategoryClient({ category, tools, allStats }: Props) {
@@ -29,7 +30,7 @@ export default function CategoryClient({ category, tools, allStats }: Props) {
       <Navbar />
 
       {/* Breadcrumb */}
-      <div className="relative z-10 px-4 sm:px-6 py-3 border-b border-[#22c55e]/15 bg-[#04140c]/80 backdrop-blur-xl mt-14">
+      <div className="relative z-10 px-4 sm:px-6 py-3 border-b border-[#22c55e]/15 bg-[#04140c]/80 backdrop-blur-xl mt-24">
         <div className="max-w-7xl mx-auto">
           <nav className="flex items-center text-xs text-gray-500 gap-1.5">
             <Link href="/" className="hover:text-white transition-colors">Home</Link>

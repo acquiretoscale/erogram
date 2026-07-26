@@ -16,12 +16,19 @@ const Navbar = dynamic(() => import('@/components/Navbar'), {
 
 export default function LoginPage() {
   const [error, setError] = useState('');
-  const [redirectTo, setRedirectTo] = useState('/profile?tab=saved');
+  const [redirectTo, setRedirectTo] = useState('/profile');
   const router = useRouter();
 
   const normalizeRedirect = (value: string | null) => {
-    if (!value || !value.startsWith('/')) return '/profile?tab=saved';
-    return value;
+    if (!value || !value.startsWith('/')) return '/profile';
+    try {
+      const url = new URL(value, 'http://local');
+      url.searchParams.delete('onboarding');
+      const qs = url.searchParams.toString();
+      return `${url.pathname}${qs ? `?${qs}` : ''}`;
+    } catch {
+      return '/profile';
+    }
   };
 
   useEffect(() => {
@@ -53,6 +60,8 @@ export default function LoginPage() {
         const rd = normalizeRedirect(params.get('redirect'));
         if (res.data.isAdmin === 'true' || res.data.isAdmin === true) {
           router.push('/admin');
+        } else if (res.data.isNewUser) {
+          router.push('/profile');
         } else {
           router.push(rd);
         }

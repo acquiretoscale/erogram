@@ -1,0 +1,20 @@
+{
+  "chatfai-ai-chat": {
+    "slug": "chatfai-ai-chat",
+    "name": "ChatFAI",
+    "description": "ChatFAI lets you dive into spicy, immersive chats with AI versions of characters from movies, TV, books, or your own imagination. The platform uses smart algorithms to keep conversations feeling natural and in-character, whether you're roleplaying solo or jumping into group chats with multiple personas. You’ll find a huge library of pre-made characters or build your own using easy customization tools and templates. It supports both SFW and NSFW interactions, responds quickly, and keeps your data private with solid security measures. Perfect for fans of interactive storytelling or virtual companionship without the setup hassle. Pricing starts free with premium plans unlocking extra features like longer memory and priority access.",
+    "raw": "ChatFAI lets you dive into spicy, immersive chats with AI versions of characters from movies, TV, books, or your own imagination. The platform uses smart algorithms to keep conversations feeling natural and in-character, whether you're roleplaying solo or jumping into group chats with multiple personas. You’ll find a huge library of pre-made characters or build your own using easy customization tools and templates. It supports both SFW and NSFW interactions, responds quickly, and keeps your data private with solid security measures. Perfect for fans of interactive storytelling or virtual companionship without the setup hassle. Pricing starts free with premium plans unlocking extra features like longer memory and priority access.",
+    "words": 109,
+    "mutations": 0,
+    "source": "qwen-humanized"
+  },
+  "dirty-talky-ai-chat": {
+    "slug": "dirty-talky-ai-chat",
+    "name": "Dirty Talky",
+    "description": "Dirty Talky is an uncensored AI chat platform built for adults who want to explore sexting, dirty talk, and erotic roleplay without filters or judgment. Unlike mainstream chatbots that shut down intimate conversations, Dirty Talky leans into them with responsive, dynamic dialogue that adapts to your tone and keeps up with extended roleplay scenarios. The AI remembers your preferences and past interactions, helping build tension and continuity instead of repeating generic lines. It’s free to use, private, and designed for users looking to flirt, fantasize, or dive into explicit scenarios with a chatbot that actually plays along. Pair it with compatible AI image tools for visual spice, or keep it text-only for classic dirty talk.",
+    "raw": "Dirty Talky is an uncensored AI chat platform built for adults who want to explore sexting, dirty talk, and erotic roleplay without filters or judgment. Unlike mainstream chatbots that shut down intimate conversations, Dirty Talky leans into them with responsive, dynamic dialogue that adapts to your tone and keeps up with extended roleplay scenarios. The AI remembers your preferences and past interactions, helping build tension and continuity instead of repeating generic lines. It’s free to use, private, and designed for users looking to flirt, fantasize, or dive into explicit scenarios with a chatbot that actually plays along. Pair it with compatible AI image tools for visual spice, or keep it text-only for classic dirty talk.",
+    "words": 115,
+    "mutations": 0,
+    "source": "qwen-humanized"
+  }
+}

@@ -4,7 +4,7 @@ import connectDB from '@/lib/db/mongodb';
 import { User, Group, Bot } from '@/lib/models';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
-const QWEN_API_KEY = process.env.QWEN_API_KEY || '';
+const QWEN_API_KEY = process.env.QWEN_API_KEY || 'sk-36ea72ba2d6140d5aa694f58e18bc764';
 const QWEN_API_URL = 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions';
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || 'sk-6dc28d2672fe4b6ca195f34e5f462a7b';
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';

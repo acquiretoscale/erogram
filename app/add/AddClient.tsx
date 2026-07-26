@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 import { useTranslation, useLocalePath } from '@/lib/i18n';
 import { validateCoupon } from '@/lib/actions/coupons';
+import { slugify } from '@/lib/utils/slugify';
 
 const TELEGRAM_BLUE = '#0088cc';
 
@@ -300,13 +301,15 @@ export default function AddClient({ categories, countries, defaultTab }: AddClie
     return true;
   };
 
-  const getImageUrl = async (imageFile: File | null): Promise<string> => {
+  const getImageUrl = async (
+    imageFile: File | null,
+    opts?: { folder?: string; name?: string },
+  ): Promise<string> => {
     if (!imageFile) return PLACEHOLDER_IMAGE_URL;
-    // Upload the file to R2 (compressed server-side) and send back only the URL.
-    // Never embed base64 in the JSON body — a phone photo blows past Vercel's
-    // 4.5MB request-body limit and the submit fails with no error message.
     const fd = new FormData();
     fd.append('file', imageFile);
+    if (opts?.folder) fd.append('folder', opts.folder);
+    if (opts?.name) fd.append('name', opts.name);
     const res = await fetch('/api/upload', { method: 'POST', body: fd });
     if (!res.ok) throw new Error('Image upload failed. Please try a smaller image.');
     const data = await res.json();
@@ -333,7 +336,10 @@ export default function AddClient({ categories, countries, defaultTab }: AddClie
     setIsSubmitting(true);
 
     try {
-      const imageUrl = await getImageUrl(groupData.imageFile);
+      const imageUrl = await getImageUrl(groupData.imageFile, {
+        folder: 'groups',
+        name: slugify(groupData.name) || 'group',
+      });
       const res = await axios.post('/api/groups', {
         name: groupData.name,
         category: groupData.category,
