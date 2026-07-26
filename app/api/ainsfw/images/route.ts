@@ -69,6 +69,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ images: [] }, { status: 400 });
   }
 
+  // Curated R2 gallery from galleryMap — return as-is (may be fewer than 6)
+  const curated = AINSFW_GALLERY[slug];
+  if (curated?.length) {
+    return NextResponse.json({ images: curated });
+  }
+
   // Return cached images if already processed
   const existing = getExistingImages(slug);
   if (existing.length >= TARGET_COUNT) {

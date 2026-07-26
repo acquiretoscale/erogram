@@ -886,7 +886,6 @@ export const AINSFW_GALLERY: Record<string, string[]> = {
     "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/porncreate-undress-ai-3.webp",
     "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/porncreate-undress-ai-4.webp",
     "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/porncreate-undress-ai-5.webp",
-    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/porncreate-undress-ai-6.webp",
   ],
   "pornify-ai-image": [
     "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/pornify-ai-image-1.webp",
