@@ -53,6 +53,10 @@ erogram-v2/
 # downloaded images (local scraping artifacts)
 downloads/
 
+# AI NSFW staging (migrated to R2; never commit)
+public/assets/ainsfw/gallery/
+public/assets/ainsfw/batch/
+
 # BRAIN — LOCAL ONLY. NEVER PUSH. Contains business logic, client data, revenue info.
 brain/
 erogram-brain/
