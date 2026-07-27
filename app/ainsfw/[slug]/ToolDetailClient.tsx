@@ -21,6 +21,10 @@ const TOOL_GUIDE_ARTICLES: Record<string, { slug: string; title: string }> = {
     slug: 'create-your-own-ai-porn-porncreate',
     title: 'Why AI Nude Generators Are the New Porn',
   },
+  'joi-ai-nude-generator': {
+    slug: 'joi-ai-review-nude-ai-generator-2026',
+    title: 'JOI AI Nude Generator Review 2026',
+  },
 };
 
 interface ToolDetailClientProps {
@@ -463,7 +467,9 @@ export default function ToolDetailClient({ tool, fullReview, alternatives = [], 
                     headline={`Try ${tool.name} free`}
                     subline={tool.slug === 'porncreate-undress-ai'
                       ? 'Free diamonds on signup. No credit card required.'
-                      : 'Opens the official site in a new tab.'}
+                      : tool.slug === 'joi-ai-nude-generator'
+                        ? 'Free plan available. Build a character and test the nude ai generator.'
+                        : 'Opens the official site in a new tab.'}
                     button={`Visit ${tool.name}`}
                   />
                 </div>

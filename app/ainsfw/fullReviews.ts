@@ -77,6 +77,50 @@ export const AINSFW_FULL_REVIEWS: Record<string, AINsfwFullReview> = {
       { name: "Clothoff.net", slug: "clothoff-undress-ai" },
     ],
   },
+  "joi-ai-nude-generator": {
+    shortDescription: "JOI AI is a platform where an AI companion, an image generator, and short video clips live under one roof. The service started life as EVA AI, years before the current wave of companion apps, and rebranded in 2025 around the idea of AI-lationships. Members build a character from zero, chat with her, ask the nude ai generator for pictures, and turn her into short video moments called Dream Clips. The free plan opens the door, and the subscription unlocks the full experience.",
+    featureHighlights: [
+      {
+        title: "Build Her From Zero",
+        body: "The character creator is the deepest part of JOI AI, and the part members spend the most time in. Users shape appearance, conversational tone, emotional behavior, and how the relationship acts, closer to writing a roleplay persona than filling a settings form. The details stay put across long conversations, so she remembers what was said days ago. A shared community library exists for people who would rather pick than build.",
+      },
+      {
+        title: "Pictures From the Chat",
+        body: "JOI AI works as an ai photo generator for nudes in the plain sense. Users describe the scene, choose realistic or anime, set the orientation, and add negative prompts for extra control. Renders arrive in under a minute and stay tied to the character, so the face carries between images. Realistic nude photos come out closer to photography than most first-timers expect, with skin texture that holds up and lighting that behaves.",
+      },
+      {
+        title: "Dream Clips",
+        body: "Dream Clips are short AI-generated video moments built from a character and a prompt, and nobody else in the category offers anything like them. Even a simple prompt turns a still character into a moving scene, which makes JOI AI feel like an entertainment platform instead of a chat window. If one feature justifies the subscription by itself, this is the one.",
+      },
+    ],
+    sections: [
+      {
+        heading: "JOI AI Review",
+        body: "JOI AI is a polished platform, and the polish has a simple explanation: the product has been iterating for years under the EVA AI name while most competitors were built in a weekend. Conversations keep their tone over hours instead of collapsing into generic replies after ten minutes. Characters stay consistent, which sounds basic and is anything but in this category. The free plan is a genuine way to test the chemistry before spending anything. Everything happens in the browser and on mobile, and accounts can stay anonymous.",
+      },
+      {
+        heading: "How Does It Work",
+        body: "A new visitor picks a companion from the community library or builds one in the creator. The AI reads the character sheet and the conversation history before every reply, which keeps long stories from falling apart. The image generator and Dream Clips plug into the same ecosystem, so the character made in chat is the one that appears in the pictures and the videos.\n\nThe nude ai side works from text. Users describe what they want and the engine returns a batch within the minute. Anime and photoreal styles are both tuned hard, so members get strong results whichever lane they prefer.\n\nDescriptive users get the best out of the platform. The more personality cues and context the member provides, the stronger the replies and the renders become. Vague prompts produce vague companions, and that is nobody's fault but the writer's.",
+      },
+      {
+        heading: "How to Subscribe",
+        body: "The free plan covers basic chatting and enough generation to see whether the workflow fits. Premium runs around $10 to $14 per month and brings full chat access, NSFW mode, and Dream Clips. A higher tier near $20 per month adds extended memory and faster generation. Annual deals get discounted heavily during promotions and are clearly where the value sits.\n\nPower users can top up with Neurons, the internal currency, for advanced generations and exclusive unlocks whenever the mood strikes. The subscription covers the core experience, and Neurons are there for members who want more.",
+      },
+      {
+        heading: "JOI AI Compared",
+        body: "GirlfriendGPT offers a bigger community character library, and aiAllure leans into scenario storytelling. JOI AI takes the all-rounder crown: no other platform in the category combines character depth, a capable nude ai generator, and video in one place.",
+      },
+      {
+        heading: "A Companion With a Film Career",
+        body: "JOI AI is a platform where users design a companion, talk with her, see her, and put her in motion. The conversations are better than the category average, the character creator is the best around, and Dream Clips have no real competition. For anyone curious about an AI companion that chats, renders realistic nude photos, and stars in her own short clips, JOI AI is the first door worth knocking on. The free plan makes trying it a no-risk affair, and the first render argues for itself.",
+      },
+    ],
+    alternatives: [
+      { name: "GirlfriendGPT", slug: "girlfriendgpt-ai-girlfriend" },
+      { name: "aiAllure", slug: "aiallure-ai-chat" },
+      { name: "Lovescape", slug: "lovescape-ai-girlfriend" },
+    ],
+  },
 };
 
 export function getFullReview(slug: string): AINsfwFullReview | undefined {

@@ -332,7 +332,7 @@ export async function updateOFMModelCampaign(
 ) {
   await adminAuth(token);
   await connectDB();
-  const cr = await TrendingOFCreator.findById(creatorId).select('linkedCampaignId').lean();
+  const cr = await TrendingOFCreator.findById(creatorId).select('linkedCampaignId').lean() as any;
   if (!cr?.linkedCampaignId) throw new Error('No linked ad campaign for this model');
   const { updateCampaign } = await import('@/lib/actions/campaigns');
   return updateCampaign(token, String(cr.linkedCampaignId), data);

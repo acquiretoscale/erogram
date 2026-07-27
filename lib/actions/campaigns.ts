@@ -1428,7 +1428,7 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ain
   // Placements with no legacy tierSlot (e.g. ainsfw-feed) — flat list for the page grid.
   const seenUntiered = new Set(results.map((r) => `${r._id}:${r.placement}`));
   let untieredPos = 20;
-  for (const c of campaigns) {
+  for (const c of campaigns as any[]) {
     const rawPls: string[] = Array.isArray(c.placements) ? c.placements : [];
     for (const p of rawPls) {
       if (!placementMatchesFeedPage(p, placement)) continue;

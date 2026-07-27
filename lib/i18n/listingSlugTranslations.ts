@@ -26,7 +26,7 @@ export const LISTING_SLUG_TRANSLATIONS: Record<string, { de?: string; es?: strin
   "ainsfw:haremhub-ai-chat-18-ai-girlfriend": { de: "ki-girlfriend-haremhub-ai-chat-18-test", es: "", pt: "" },
   "ainsfw:honeybot-ai-girlfriend": { de: "honeybot-ki-freundin", es: "honeybot-novia-ia", pt: "honeybot-namorada-ia" },
   "ainsfw:hyperdreams-ai-roleplay": { de: "hyperdreams-ki-rollenspiel", es: "hyperdreams-rol-de-ia", pt: "hiper-sonhos-rpg-ia" },
-  "ainsfw:joi-ai-ai-chat": { de: "joi-ki-ki-gespraech", es: "joi-ia-chat-inteligente", pt: "joi-ia-chat" },
+  "ainsfw:joi-ai-nude-generator": { de: "joi-ki-nackt-generator", es: "joi-ia-generador-desnudos", pt: "joi-ia-gerador-nude" },
   "ainsfw:joyland-ai-chat": { de: "joyland-ai-chat", es: "joyland-chat-ia", pt: "bate-papo-ia-joyland" },
   "ainsfw:juicy-ai-ai-roleplay": { de: "juicy-ai-ki-rollenspiel", es: "jugoso-ia-rol-de-ia", pt: "juicy-ai-papos-eroticos" },
   "ainsfw:juicychat-ai-ai-chat": { de: "juicychat-ki-ki-chat", es: "juicychat-ai-chat-ia", pt: "juicychat-ai-bate-papo" },

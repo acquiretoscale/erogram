@@ -544,13 +544,11 @@ export const AINSFW_GALLERY: Record<string, string[]> = {
     "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/iwaifu-ai-girlfriend-5.webp",
     "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/iwaifu-ai-girlfriend-6.webp",
   ],
-  "joi-ai-ai-chat": [
-    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/joi-ai-ai-chat-1.webp",
-    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/joi-ai-ai-chat-2.webp",
-    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/joi-ai-ai-chat-3.webp",
-    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/joi-ai-ai-chat-4.webp",
-    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/joi-ai-ai-chat-5.webp",
-    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/joi-ai-ai-chat-6.webp",
+  "joi-ai-nude-generator": [
+    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/joi-ai-main-hero.webp",
+    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/joi-ai-companion.webp",
+    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/joi-ai-nude-generator-screenshot.webp",
+    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/joi-ai-dashboard-screenshot.webp",
   ],
   "joyland-ai-chat": [
     "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/joyland-ai-chat-1.webp",
