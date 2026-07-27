@@ -27,8 +27,8 @@ const Advertiser = mongoose.models.Advertiser || mongoose.model('Advertiser', ne
 const joi = await Advertiser.findOne({ name: /joi\s*ai/i }).lean();
 console.log('JOI AI advertiserId:', joi?._id?.toString() || 'NOT FOUND');
 
-const TRACKING_URL = 'https://joiai.com';
-const TOOL_URL = '/ainsfw/joi-ai-ai-chat';
+const TRACKING_URL = 'https://erogram.pro/go/joi-ai';
+const TOOL_URL = '/ainsfw/joi-ai-nude-generator';
 const ALLURE_URL = '/ainsfw/aiallure-ai-chat';
 const FEATURED = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/joi-ai-ai-chat-1.webp';
 const VIDEO_URL = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/joi-ai-promo-v111.mp4';

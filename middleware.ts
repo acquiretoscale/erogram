@@ -39,6 +39,11 @@ function isBlockedTraffic(request: NextRequest): boolean {
 
 const LOCALE_PREFIXES = ['de', 'es', 'pt'] as const;
 
+/** Partner /go/{slug} → external site (same hop pattern as OnlyFans /go/{username}). */
+const PARTNER_GO_REDIRECTS: Record<string, string> = {
+  'joi-ai': 'https://www.joi.com/?utm_source=erogram.pro&utm_medium=referral',
+};
+
 export function middleware(request: NextRequest) {
   // ── Block Turkish Yandex referral traffic (Google-safe, Russian Yandex untouched) ──
   if (isBlockedTraffic(request)) {
@@ -46,6 +51,15 @@ export function middleware(request: NextRequest) {
   }
 
   const { pathname } = request.nextUrl;
+
+  // ── Partner affiliate hops: /go/joi-ai → client site (before any rewrite) ──
+  const goMatch = pathname.match(/^\/(?:(de|es|pt)\/)?go\/([^/]+)\/?$/);
+  if (goMatch) {
+    const partnerDest = PARTNER_GO_REDIRECTS[goMatch[2].toLowerCase()];
+    if (partnerDest) {
+      return NextResponse.redirect(partnerDest, 302);
+    }
+  }
 
   // If locale was already resolved by a previous middleware pass (rewrite), keep it
   const existingLocale = request.headers.get('x-locale');

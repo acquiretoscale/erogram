@@ -2,6 +2,11 @@ import type { AINsfwTool } from './types';
 
 const LEGACY_CAT_PREFIXES = ['ai-girlfriend', 'ai-chat', 'ai-image', 'ai-roleplay', 'undress-ai', 'adult-games'] as const;
 
+/** Old slug → canonical slug (301 on tool pages). */
+const LEGACY_TOOL_SLUGS: Record<string, string> = {
+  'joi-ai-ai-chat': 'joi-ai-nude-generator',
+};
+
 export function toolSlug(category: string, name: string): string {
   const cat = category.toLowerCase().replace(/\s+/g, '-');
   const n = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -579,19 +584,19 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
     sourceUrl: 'https://nextpart.ai',
   },
   {
-    slug: slugify('AI Chat', 'JOI AI'),
+    slug: 'joi-ai-nude-generator',
     name: 'JOI AI',
-    category: 'AI Chat',
-    vendor: 'Joiai.com',
-    description: 'Joi AI is an NSFW chatbot accessible directly within Telegram, offering AI companions for intimate conversations. It stands out by integrating seamlessly into the familiar Telegram platform, requiring no separate app download. Users can engage with AI girlfriends or boyfriends, utilizing features like varied chat styles and realistic image generation. A unique offering is its Threesome Mode for more complex interactions. While a free version exists, full access requires a premium subscription, though some advanced features may need additional in-app purchases. Joi AI is designed for Telegram users seeking private, immersive AI companionship without leaving their preferred messaging app.',
-    description_de: 'Joi AI bringt dir die KI-Freundin direkt in deinen Telegram-Chat. Kein App-Download, einfach loslegen. Ich fand den Einstieg überraschend simpel, und die Gespräche fühlten sich deutlich lebendiger an als bei vielen anderen Bots. Besonders der "Threesome Mode" ist ein ungewöhnliches Feature für komplexere Unterhaltungen zu dritt.\n\nDie Gratis-Version gibt dir einen ersten Eindruck, aber für die volle Erfahrung mit allen Chat-Stilen und der Bildgenerierung brauchst du das Premium-Abo. Einige Extras kosten dann nochmal extra. Wenn du schon viel auf Telegram unterwegs bist und neugierig auf diese Art von privatem KI-Smalltalk bist, ist Joi einen Blick wert.',
-    description_es: 'Joi AI mete la experiencia de los chatbots íntimos directamente en tu Telegram. No hay que descargar nada extra, lo abres y ya estás hablando. La verdad es que la integración es lo mejor que tiene; es como tener un contacto más en tu lista, pero uno que siempre responde.\n\nPuedes chatear con compañeros AI, cambiar el estilo de conversación y hasta pedirles imágenes realistas. Tiene un modo para tres personas que es... bueno, bastante específico. Hay una versión gratis para probar, pero si quieres todo sin límites necesitas el plan premium, que cuesta unos dólares al mes. Ojo, algunas funciones avanzadas pueden ser compras aparte.\n\nSi ya usas Telegram y te pica la curiosidad por este tipo de IA, es la opción más directa. Es privado y no tienes que saltar entre aplicaciones.',
-    image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/joi-ai-ai-chat.webp',
-    tags: ['ai chat', 'ai chatbot', 'ai girlfriend', 'ai nsfw chat', 'ai virtual girlfriend'],
+    category: 'Undress AI',
+    vendor: 'Joi.com',
+    description: 'JOI AI is a platform where an AI companion, an image generator, and short video clips live under one roof. The service started life as EVA AI, years before the current wave of companion apps, and rebranded in 2025 around the idea of AI-lationships. Members build a character from zero, chat with her, ask the nude ai generator for pictures, and turn her into short video moments called Dream Clips. The free plan opens the door, while the subscription and the Neurons currency unlock the serious features.',
+    description_de: 'JOI AI vereint KI-Begleiter, Bildgenerator und kurze Video-Clips in einer Plattform. Der Dienst begann als EVA AI und wurde 2025 zu JOI AI weiterentwickelt. Nutzer erstellen Charaktere, chatten mit ihnen, generieren Bilder und verwandeln Szenen in Dream Clips. Der Gratis-Plan ist ein Einstieg, Abo und Neurons schalten die vollen Funktionen frei.',
+    description_es: 'JOI AI reune companera IA, generador de imagenes y clips de video cortos en una sola plataforma. El servicio empezo como EVA AI y se relanzo en 2025. Los usuarios crean personajes, chatean, piden imagenes al generador nude ai y convierten escenas en Dream Clips. El plan gratis abre la puerta; la suscripcion y las Neurons desbloquean lo serio.',
+    image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/joi-ai-main-hero.webp',
+    tags: ['ai undress', 'ai nude generator', 'ai nudifier', 'nude ai', 'photo nude maker', 'ai companion', 'ai girlfriend', 'ai nsfw chat'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards'],
-    tryNowUrl: 'https://joiai.com',
-    sourceUrl: 'https://joiai.com',
+    tryNowUrl: '/go/joi-ai',
+    sourceUrl: 'https://www.joi.com',
   },
   {
     slug: slugify('AI Chat', 'aiAllure'),
@@ -2124,9 +2129,10 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
 ];
 
 export function getToolBySlug(slug: string): AINsfwTool | undefined {
-  const direct = AI_NSFW_TOOLS.find(t => t.slug === slug);
+  const canonical = LEGACY_TOOL_SLUGS[slug] || slug;
+  const direct = AI_NSFW_TOOLS.find(t => t.slug === canonical);
   if (direct) return direct;
-  const alt = invertToolSlug(slug);
+  const alt = invertToolSlug(canonical);
   if (alt) return AI_NSFW_TOOLS.find(t => t.slug === alt);
   return undefined;
 }
