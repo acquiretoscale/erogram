@@ -58,6 +58,8 @@ export async function AINsfwPageView({ page = 1 }: { page?: number }) {
   const paginationTotalPages = Math.max(1, Math.ceil(allTools.length / AINSFW_PAGE_SIZE));
   if (currentPage > paginationTotalPages) notFound();
   const allStats = await getAllToolStats(allTools.map(t => t.slug));
+  const { mergeToolContent } = await import('@/lib/ainsfw/toolContent');
+  const displayTools = allTools.map((t) => mergeToolContent(t, allStats[t.slug]));
   const featuredSlugs = featuredInfos.map(f => f.slug);
   const featuredCampaignMap: Record<string, string> = {};
   for (const f of featuredInfos) {
@@ -135,7 +137,7 @@ export async function AINsfwPageView({ page = 1 }: { page?: number }) {
           <Link key={p} href={`/ainsfw/page/${p}`}>{`AI NSFW page ${p}`}</Link>
         ))}
       </nav>
-      <AINsfwClient tools={allTools} allStats={allStats} featuredSlugs={featuredSlugs} featuredCampaignMap={featuredCampaignMap} topBannerCampaigns={topBannerCampaigns} topAdCampaigns={topAdCampaigns} feedCampaigns={feedCampaigns} paginationCurrentPage={currentPage} paginationTotalPages={paginationTotalPages} pageSize={AINSFW_PAGE_SIZE} />
+      <AINsfwClient tools={displayTools} allStats={allStats} featuredSlugs={featuredSlugs} featuredCampaignMap={featuredCampaignMap} topBannerCampaigns={topBannerCampaigns} topAdCampaigns={topAdCampaigns} feedCampaigns={feedCampaigns} paginationCurrentPage={currentPage} paginationTotalPages={paginationTotalPages} pageSize={AINSFW_PAGE_SIZE} />
     </>
   );
 }

@@ -17,7 +17,7 @@ import GroupsEditorialSeo from './GroupsEditorialSeo';
 import { checkBookmarks } from '@/lib/actions/publicData';
 import GroupCardSkeleton from './GroupCardSkeleton';
 import { filterCategories } from './constants';
-import { BOOST_WEIGHT } from '@/lib/adPlacements';
+import { BOOST_WEIGHT, isGroupsInFeedPlacement } from '@/lib/adPlacements';
 import { useTranslation, useLocalePath, useLocale } from '@/lib/i18n';
 // Lazy load modals to reduce initial bundle size
 const ReviewModal = dynamic(() => import('./ReviewModal'), {
@@ -55,7 +55,6 @@ function groupsPageHref(page: number): string {
 }
 
 export default function GroupsClient({ initialGroups, feedCampaigns = [], initialCountry, initialIsMobile = false, initialIsTelegram = false, topBannerCampaigns = [], storyData = [], trendingCategories = [], categoryOptions = [], countryOptions = [], paginationCurrentPage = 1, paginationTotalPages = 1, groupsPageSize = 32 }: GroupsClientProps) {
-  const TOP_SLOT_GROWTH: number[] = [14.2, 11.8, 9.6, 12.9];
   const STORY_SEEN_KEY = 'erogram:stories:seen:v1';
   const [username, setUsername] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState(initialCountry || 'All');
@@ -147,7 +146,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   useEffect(() => {
     setTopGroupsLoading(true);
 
-    fetch(`/api/groups?topGroup=true&limit=4&locale=${locale}`)
+    fetch(`/api/groups?topGroup=true&limit=20&locale=${locale}`)
       .then(r => r.json())
       .then(data => { if (data.groups) setTopGroups(data.groups); })
       .catch(err => console.error('Failed to fetch top groups:', err))
@@ -522,7 +521,12 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
         .filter(Boolean)
         .map((c) => `${c!._id}-${c!.tierSlot}`),
     );
-    return feedCampaigns.filter(c => !usedKeys.has(`${c._id}-${c.tierSlot}`));
+    return feedCampaigns.filter((c) => {
+      if (usedKeys.has(`${c._id}-${c.tierSlot}`)) return false;
+      // Scroll feed: only explicit feed-* placements. Top Groups spots never leak here.
+      if (c.placement) return isGroupsInFeedPlacement(c.placement);
+      return c.tierSlot != null && c.tierSlot >= 2 && c.tierSlot <= 4;
+    });
   }, [feedCampaigns, topSpotCampaigns]);
 
   return (
@@ -824,7 +828,6 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                               isBookmarked={!!bookmarkedMap[g._id]}
                               bookmarkId={bookmarkedMap[g._id] || null}
                               directLink={tgLink}
-                              growthPercent={TOP_SLOT_GROWTH[idx]}
                             />
                           );
                         };
@@ -836,7 +839,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                           ...boostedArr.filter((g: any) => !pinIds.has(g._id)),
                           ...nonBoosted.filter((g: any) => !pinIds.has(g._id) && g.topGroupSlot !== 1 && g.topGroupSlot !== 2),
                         ];
-                        let fillerIdx = 0;
+                        const usedOrganic = new Set<string>();
 
                         const spots: React.ReactNode[] = [];
                         for (let spot = 0; spot < 4; spot++) {
@@ -850,18 +853,20 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                                 isIndex={spot}
                                 shouldPreload={true}
                                 onVisible={undefined}
-                                growthPercent={TOP_SLOT_GROWTH[spot]}
                               />
                             );
                             continue;
                           }
-                          // No ad → manual pin for this spot, else next organic/boosted filler.
+                          // No ad → manual pin for this spot, else random organic from 14-day top-20 pool.
                           const pin = manualBySpot[spot];
                           if (pin) {
                             spots.push(renderGroupCard(pin, spot));
                           } else {
-                            const g = fillerQueue[fillerIdx++];
-                            if (g) spots.push(renderGroupCard(g, spot));
+                            const available = fillerQueue.filter((g) => !usedOrganic.has(g._id));
+                            if (available.length === 0) continue;
+                            const g = available[Math.floor(Math.random() * available.length)];
+                            usedOrganic.add(g._id);
+                            spots.push(renderGroupCard(g, spot));
                           }
                         }
 
@@ -875,9 +880,9 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
               {/* Featured Groups section removed (brain: versatile-slots). Paid featured now lives in Top Groups Spot 1. */}
 
               <div className="text-center mb-6">
-                <h1 className="text-2xl md:text-3xl font-black text-[#f5f5f5]">
+                <h2 className="text-2xl md:text-3xl font-black text-[#f5f5f5]">
                   {t('groups.discoverNsfw')}
-                </h1>
+                </h2>
               </div>
 
               <div className="relative">

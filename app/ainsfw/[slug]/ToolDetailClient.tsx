@@ -14,6 +14,7 @@ import type { AuthorProfile } from '@/lib/actions/authors';
 import type { BlogCard } from '@/lib/actions/blog';
 import { renderAinsfwLinkedText, getAinsfwTagHref } from '@/lib/ainsfw/internalLinks';
 import { categoryToSlug } from '../data';
+import ToolDetailAdminPanel, { ToolDetailAdminFab } from '../ToolDetailAdminPanel';
 
 const TOOL_GUIDE_ARTICLES: Record<string, { slug: string; title: string }> = {
   'porncreate-undress-ai': {
@@ -120,6 +121,10 @@ export default function ToolDetailClient({ tool, fullReview, alternatives = [], 
     tool.image && (tool.image.startsWith('https://') || tool.image.startsWith('/'))
       ? tool.image : placeholder
   );
+  const [description, setDescription] = useState(tool.description);
+
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminEdit, setAdminEdit] = useState(false);
 
   const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -147,6 +152,7 @@ export default function ToolDetailClient({ tool, fullReview, alternatives = [], 
       const savedVote = localStorage.getItem(`ainsfw_vote_${tool.slug}`) as 'up' | 'down' | null;
       if (savedVote) setUserVote(savedVote);
       setBookmarked(localStorage.getItem(getBookmarkKey(tool.slug)) === '1');
+      setIsAdmin(localStorage.getItem('isAdmin') === 'true');
     } catch {}
 
     // Fetch processed gallery images
@@ -157,6 +163,14 @@ export default function ToolDetailClient({ tool, fullReview, alternatives = [], 
       .catch(() => {})
       .finally(() => setGalleryLoading(false));
   }, [tool.slug, tool.name, tool.vendor]);
+
+  useEffect(() => {
+    setImageSrc(
+      tool.image && (tool.image.startsWith('https://') || tool.image.startsWith('/'))
+        ? tool.image : placeholder
+    );
+    setDescription(tool.description);
+  }, [tool.image, tool.description]);
 
   const handleVisit = () => {
     setIsRedirecting(true);
@@ -428,7 +442,7 @@ export default function ToolDetailClient({ tool, fullReview, alternatives = [], 
               )}
 
               <p className="text-gray-300 text-base sm:text-lg leading-relaxed mb-6 whitespace-pre-line">
-                {renderAinsfwLinkedText(tool.description, fullReview?.alternatives)}
+                {renderAinsfwLinkedText(description, fullReview?.alternatives)}
               </p>
 
               {TOOL_GUIDE_ARTICLES[tool.slug] && (
@@ -694,6 +708,22 @@ export default function ToolDetailClient({ tool, fullReview, alternatives = [], 
       </main>
 
       <Footer />
+
+      {isAdmin && !adminEdit && <ToolDetailAdminFab onEdit={() => setAdminEdit(true)} />}
+
+      {isAdmin && adminEdit && (
+        <ToolDetailAdminPanel
+          tool={tool}
+          initialStats={initialStats}
+          gallery={gallery}
+          featuredImage={imageSrc === placeholder ? '' : imageSrc}
+          onGalleryChange={setGallery}
+          onFeaturedChange={(url) => setImageSrc(url || placeholder)}
+          onDescriptionChange={setDescription}
+          onVotesChange={(up, down) => setVotes({ up, down })}
+          onClose={() => setAdminEdit(false)}
+        />
+      )}
     </div>
   );
 }

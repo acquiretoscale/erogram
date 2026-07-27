@@ -574,7 +574,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
       <Navbar />
 
       {/* Breadcrumb — below fixed nav, above banner & hero image */}
-      <div className="relative z-20 bg-[#0d1117] border-b border-white/10 pt-[58px]">
+      <div className="relative z-20 bg-[#0d1117] border-b border-white/10 pt-[82px]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
           <nav aria-label="Breadcrumb">
             <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 list-none p-0 m-0 text-xs sm:text-sm text-gray-400">

@@ -16,6 +16,7 @@ import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 import { useTranslation, useLocalePath } from '@/lib/i18n';
 import { voteOnBot, unvoteOnBot, getAllBotStats } from '@/lib/actions/botVotes';
 import type { BotStatsData } from '@/lib/actions/botVotes';
+import { BOOST_WEIGHT } from '@/lib/adPlacements';
 // Removed react-window import as virtualization is no longer used
 
 
@@ -38,6 +39,7 @@ interface Bot {
   advertisementUrl?: string;
   pinned?: boolean;
   topBot?: boolean;
+  boosted?: boolean;
   showVerified?: boolean;
   clickCount?: number;
   memberCount?: number;
@@ -63,6 +65,7 @@ interface Advert {
 
 interface BotsClientProps {
   initialBots: Bot[];
+  initialTopBots?: Bot[];
   initialAdverts: Advert[];
   feedCampaigns?: FeedCampaign[];
   initialIsMobile: boolean;
@@ -70,7 +73,6 @@ interface BotsClientProps {
   initialCountry?: string;
   topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string }>;
   allBotStats?: Record<string, BotStatsData>;
-  trendingErogramCampaigns?: FeedCampaign[];
   paginationCurrentPage?: number;
   paginationTotalPages?: number;
   botsPageSize?: number;
@@ -80,7 +82,7 @@ function botsPageHref(page: number): string {
   return page <= 1 ? '/bots' : `/bots/page/${page}`;
 }
 
-export default function BotsClient({ initialBots, initialAdverts, feedCampaigns = [], initialIsMobile, initialIsTelegram, initialCountry, topBannerCampaigns = [], allBotStats, trendingErogramCampaigns = [], paginationCurrentPage = 1, paginationTotalPages = 1, botsPageSize = 16 }: BotsClientProps) {
+export default function BotsClient({ initialBots, initialTopBots = [], initialAdverts, feedCampaigns = [], initialIsMobile, initialIsTelegram, initialCountry, topBannerCampaigns = [], allBotStats, paginationCurrentPage = 1, paginationTotalPages = 1, botsPageSize = 16 }: BotsClientProps) {
   const [username, setUsername] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedSubcategory, setSelectedSubcategory] = useState('All');
@@ -144,10 +146,11 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
   console.log('BotsClient render - pinned bots:', pinnedBots.length, 'regular bots:', regularBots.length);
   console.log('Pinned bot IDs:', pinnedBots.map(b => ({ id: b._id, name: b.name, pinned: b.pinned })));
 
-  const [topBots, setTopBots] = useState<Bot[]>([]);
-  const [topBotsLoading, setTopBotsLoading] = useState(true);
+  const [topBots, setTopBots] = useState<Bot[]>(initialTopBots);
+  const [topBotsLoading, setTopBotsLoading] = useState(initialTopBots.length === 0);
 
   useEffect(() => {
+    if (initialTopBots.length > 0) return;
     setTopBotsLoading(true);
     fetch('/api/bots?topBot=true&limit=10')
       .then(res => res.json())
@@ -158,7 +161,7 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
       })
       .catch(err => console.error('Failed to fetch top bots:', err))
       .finally(() => setTopBotsLoading(false));
-  }, []);
+  }, [initialTopBots.length]);
 
   // Debounce search input
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
@@ -283,29 +286,71 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
     return new Set(advertPlacementsMap.keys());
   }, [advertPlacementsMap]);
 
-  // Top Bots ad spots 1-4 (tierSlot 7-10 = named placements top-bots-1..4). Spot 1 keyed at index 0, etc.
-  const topBotsAds = useMemo(() => {
-    const map = new Map<number, FeedCampaign>();
-    if (feedCampaigns?.length) {
-      // An ad assigned to several Top Bots spots must show in only ONE at a time — never the
-      // same ad duplicated across spots. Place each ad id once, into its lowest assigned spot.
-      const usedIds = new Set<string>();
-      for (let slot = 0; slot < 4; slot++) {
-        const tierSlot = slot + 7;
-        const placement = `top-bots-${slot + 1}`;
-        // Match on the stamped named placement (authoritative) so an ad only claims the
-        // exact Top Bots spot it was assigned to — never a neighbouring card.
-        const pick = feedCampaigns.find(
-          (c) => c.tierSlot === tierSlot && c.placement === placement && !usedIds.has(c._id),
-        );
-        if (pick) {
-          map.set(slot, pick);
-          usedIds.add(pick._id);
+  // Top Bots: paid boosted bots + assigned ads rotate together per spot (same law as Top Groups).
+  type TopBotsSpot = { kind: 'ad'; campaign: FeedCampaign } | { kind: 'bot'; bot: Bot };
+  const topSpotPicks = useMemo(() => {
+    const picks: Record<number, TopBotsSpot | null> = { 0: null, 1: null, 2: null, 3: null };
+    const usedKeys = new Set<string>();
+
+    const pickForSlot = (spot: number): TopBotsSpot | null => {
+      const tierSlot = spot + 7;
+      const placement = `top-bots-${spot + 1}`;
+      const adPool = (feedCampaigns ?? []).filter(
+        (c) => c.tierSlot === tierSlot && c.placement === placement && !usedKeys.has(`ad:${c._id}`),
+      );
+      const botPool = topBots.filter((b) => !usedKeys.has(`bot:${b._id}`));
+
+      type DrawEntry = TopBotsSpot & { weight: number };
+      const draw: DrawEntry[] = [];
+      for (const c of adPool) {
+        draw.push({
+          kind: 'ad',
+          campaign: c,
+          weight: c.priority === 'boost' ? BOOST_WEIGHT : 1,
+        });
+      }
+      for (const b of botPool) {
+        draw.push({
+          kind: 'bot',
+          bot: b,
+          weight: b.boosted ? BOOST_WEIGHT : 1,
+        });
+      }
+      if (draw.length === 0) return null;
+
+      const expanded: TopBotsSpot[] = [];
+      for (const entry of draw) {
+        for (let i = 0; i < entry.weight; i++) {
+          expanded.push(entry.kind === 'ad' ? { kind: 'ad', campaign: entry.campaign } : { kind: 'bot', bot: entry.bot });
         }
       }
+      const pick = expanded[Math.floor(Math.random() * expanded.length)];
+      usedKeys.add(pick.kind === 'ad' ? `ad:${pick.campaign._id}` : `bot:${pick.bot._id}`);
+      return pick;
+    };
+
+    for (let spot = 0; spot < 4; spot++) {
+      picks[spot] = pickForSlot(spot);
     }
-    return map;
-  }, [feedCampaigns]);
+
+    // Paid boosts must always appear when slots allow — swap out ads if the draw missed any.
+    const boostedBots = topBots.filter((b) => b.boosted);
+    const placedBoosted = new Set(
+      Object.values(picks)
+        .filter((p): p is Extract<TopBotsSpot, { kind: 'bot' }> => p?.kind === 'bot' && !!p.bot.boosted)
+        .map((p) => p.bot._id),
+    );
+    for (const bot of boostedBots) {
+      if (placedBoosted.has(bot._id)) continue;
+      const adSpot = [0, 1, 2, 3].find((s) => picks[s]?.kind === 'ad');
+      if (adSpot == null) break;
+      picks[adSpot] = { kind: 'bot', bot };
+      placedBoosted.add(bot._id);
+    }
+
+    return picks;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feedCampaigns, topBots]);
 
   // Feed ads from Admin → Feed Ads (placement = Bots or Both). One ad every 5 entries at 5, 10, 15, ...
   const feedPlacementsMap = useMemo(() => {
@@ -450,40 +495,36 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
           <div>
             {/* Top Bots Section — hidden when a search or filter is active */}
             {!debouncedSearchQuery && selectedCategory === 'All' && selectedSubcategory === 'All' && (topBots.length > 0 || topBotsLoading) && (
-              <div className="mb-5 relative rounded-2xl p-[2px]" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706, #92400e, #d97706, #f59e0b, #fcd34d, #f59e0b)' }}>
-                <div className="relative rounded-[20px] overflow-hidden" style={{ background: 'linear-gradient(145deg, #0f0f0f 0%, #141008 40%, #0f0f0f 100%)' }}>
+              <div className="mb-5 relative rounded-2xl overflow-hidden bg-white">
                 <div className="relative p-3 sm:p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <svg className="w-4 h-4 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm2 3a1 1 0 000 2h10a1 1 0 000-2H7z"/>
-                    </svg>
-                    <h2 className="text-sm font-black text-white leading-none">{t('bots.topBots')}</h2>
-                    <span className="text-amber-400/60 text-xs font-medium">{t('bots.topBotsDesc')}</span>
+                  <div className="flex items-baseline gap-2.5 mb-3">
+                    <h2 className="text-base font-black text-[#0f172a] leading-none tracking-tight">{t('bots.topBots')}</h2>
+                    <span className="text-[#64748b] text-xs font-semibold">{t('bots.topBotsDesc')}</span>
                   </div>
 
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 rounded-2xl p-3 sm:p-4 bg-[#0d1117]">
                   {topBotsLoading ? (
                     Array.from({ length: 4 }, (_, i) => (
                       <BotCardSkeleton key={`top-skeleton-${i}`} />
                     ))
                   ) : (
                     (() => {
-                      // 4 spots. Each spot shows its assigned Top Bots ad (top-bots-1..4) if any,
-                      // otherwise the next-highest-scored bot. Legacy fallback: spot 4 = first feed ad.
-                      const sortedBots = [...topBots].sort((a, b) => (botScores[b.slug] ?? 0) - (botScores[a.slug] ?? 0));
-                      const hasNamedAds = topBotsAds.size > 0;
                       const cells: React.ReactNode[] = [];
-                      let botIdx = 0;
                       for (let spot = 0; spot < 4; spot++) {
-                        const ad = topBotsAds.get(spot) ?? (!hasNamedAds && spot === 3 && feedCampaigns.length > 0 ? feedCampaigns[0] : null);
-                        if (ad) {
-                          cells.push(<div key={`top-ad-${spot}`} className="h-full"><AdvertCard campaign={ad} isIndex={spot} /></div>);
+                        const pick = topSpotPicks[spot];
+                        if (!pick) continue;
+                        if (pick.kind === 'ad') {
+                          cells.push(
+                            <div key={`top-ad-${spot}-${pick.campaign._id}`} className="h-full">
+                              <AdvertCard campaign={pick.campaign} isIndex={spot} />
+                            </div>,
+                          );
                         } else {
-                          const bot = sortedBots[botIdx++];
-                          if (bot) cells.push(
-                            <div key={`top-${bot._id}`} className="h-full">
+                          const bot = pick.bot;
+                          cells.push(
+                            <div key={`top-${bot._id}-${spot}`} className="h-full">
                               <BotCard bot={bot} isIndex={spot} directLink={bot.isAdvertisement && bot.advertisementUrl ? bot.advertisementUrl : bot.telegramLink || undefined} initialStats={allBotStats?.[bot.slug]} onVoteChange={handleBotVoteChange} />
-                            </div>
+                            </div>,
                           );
                         }
                       }
@@ -492,29 +533,8 @@ export default function BotsClient({ initialBots, initialAdverts, feedCampaigns 
                   )}
                 </div>
               </div>
-              </div>
-              </div>
+            </div>
             )}
-
-            {/* Trending on Erogram — unified mixed block below Top Bots (same 4-up style). */}
-            {!debouncedSearchQuery && selectedCategory === 'All' && selectedSubcategory === 'All' && (() => {
-              const usedIds = new Set(Array.from(topBotsAds.values()).map((c: any) => c._id));
-              const trendingAds = (trendingErogramCampaigns || []).filter((c: any) => !usedIds.has(c._id)).slice(0, 4);
-              if (trendingAds.length === 0) return null;
-              return (
-                <div className="mb-5">
-                  <div className="flex items-baseline gap-2.5 mb-3 px-1">
-                    <h2 className="text-base font-black text-white leading-none tracking-tight">Trending on Erogram</h2>
-                    <span className="text-white/60 text-xs font-bold">What&apos;s hot right now</span>
-                  </div>
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 rounded-2xl p-3 sm:p-4" style={{ background: 'linear-gradient(180deg, #0d1117 0%, #0a0e16 100%)' }}>
-                    {trendingAds.map((camp, i) => (
-                      <AdvertCard key={`bot-trending-${camp._id}`} campaign={camp} isIndex={i} shouldPreload={false} />
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
 
             {/* All Bots */}
             <div className="relative">
@@ -704,12 +724,12 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
 
   return (
     <div className={`h-full ${entry.className}`} style={entry.style}>
-      <div className={`glass rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col backdrop-blur-xl border transition-all duration-500 group relative ${isFeatured
-        ? 'border-yellow-500/30 shadow-[0_0_30px_rgba(234,179,8,0.1)] hover:border-yellow-500/60 hover:shadow-[0_0_50px_rgba(234,179,8,0.2)]'
-        : 'border-white/5 hover:border-white/20 hover:shadow-2xl hover:shadow-black/50'
+      <div className={`rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col bg-white border transition-all duration-500 group relative shadow-lg shadow-black/20 ${isFeatured
+        ? 'border-yellow-400/50 hover:border-yellow-400 hover:shadow-yellow-500/15'
+        : 'border-gray-200 hover:border-gray-300 hover:shadow-xl hover:shadow-black/30'
         }`}>
         {/* Bot Image */}
-        <div ref={imgRef} className="relative w-full aspect-square overflow-hidden bg-[#1a1a1a]">
+        <div ref={imgRef} className="relative w-full aspect-square overflow-hidden bg-gray-100">
           <img
             src={imageSrc}
             alt={bot.name}
@@ -786,7 +806,7 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
         {/* Card Content */}
         <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
           {/* Title */}
-          <h3 className="text-sm sm:text-xl font-black text-white mb-2 sm:mb-3 leading-tight group-hover:text-blue-400 transition-colors flex items-center gap-1 sm:gap-2 min-w-0">
+          <h3 className="text-sm sm:text-xl font-black text-gray-900 mb-2 sm:mb-3 leading-tight group-hover:text-blue-600 transition-colors flex items-center gap-1 sm:gap-2 min-w-0">
             <span className="truncate">{bot.name}</span>
             {bot.showVerified && (
               <span className="shrink-0 flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 border border-white/30 shadow" title="Verified">
@@ -800,7 +820,7 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
           {/* Tags */}
           <div className="flex flex-wrap gap-1 sm:gap-2 mb-2 sm:mb-4">
             {[...new Set<string>((bot as any).categories?.length ? (bot as any).categories : [bot.category].filter(Boolean))].map((tag: string) => (
-              <span key={tag} className="px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg bg-white/5 border border-white/5 text-gray-300 text-[10px] sm:text-xs font-medium">
+              <span key={tag} className="px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg bg-gray-100 border border-gray-200 text-gray-600 text-[10px] sm:text-xs font-medium">
                 {tag}
               </span>
             ))}
@@ -808,7 +828,7 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
 
           {/* Description */}
           <div className="mb-3 sm:mb-6 flex-grow">
-            <p className="text-gray-400 text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed">
+            <p className="text-gray-500 text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed">
               {bot.description}
             </p>
           </div>
@@ -849,7 +869,7 @@ const BotCard = React.memo(function BotCard({ bot, isFeatured = false, isIndex =
                   </>
                 ) : (
                   <>
-                    <span className="text-base sm:text-lg">🤖</span> {t('bots.useBot')}
+                    {t('bots.useBot')}
                   </>
                 )}
               </span>

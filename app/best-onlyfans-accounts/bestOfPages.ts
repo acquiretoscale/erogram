@@ -1,4 +1,4 @@
-// Auto-generated best-of page registry — 137 pages (countries, US states, niches).
+// Auto-generated best-of page registry — 136 pages (countries, US states, niches).
 // Regenerate: node scripts/generate-best-of-pages.js
 
 export type BestOfPageType = "niche" | "country" | "state";
@@ -492,18 +492,6 @@ export const BEST_OF_PAGES: BestOfPage[] = [
       "female dom"
     ],
     "count": 143
-  },
-  {
-    "slug": "indian",
-    "label": "Indian",
-    "type": "country",
-    "match": "keyword",
-    "patterns": [
-      "indian",
-      "desi",
-      "india girl"
-    ],
-    "count": 142
   },
   {
     "slug": "asian",

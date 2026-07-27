@@ -6,7 +6,7 @@ import { Bot, Advert } from '@/lib/models';
 import BotsClient from './BotsClient';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { getActiveCampaigns, getActiveFeedCampaigns, getTrendingErogramCampaigns } from '@/lib/actions/campaigns';
+import { getActiveCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
 import { getAllBotStats } from '@/lib/actions/botVotes';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
@@ -55,6 +55,8 @@ function mapBotDoc(bot: any) {
     isAdvertisement: bot.isAdvertisement || false,
     advertisementUrl: bot.advertisementUrl || null,
     pinned: bot.pinned || false,
+    topBot: bot.topBot || false,
+    boosted: bot.boosted || false,
     clickCount: bot.clickCount || 0,
     views: bot.views || 0,
     memberCount: bot.memberCount || 0,
@@ -63,6 +65,33 @@ function mapBotDoc(bot: any) {
       showNicknameUnderGroups: bot.createdBy.showNicknameUnderGroups,
     } : null,
   };
+}
+
+export async function getTopBots(limit = 10) {
+  try {
+    await connectDB();
+    const now = new Date();
+    await Bot.updateMany(
+      { boosted: true, boostExpiresAt: { $ne: null, $lte: now } },
+      { $set: { boosted: false, boostExpiresAt: null, boostDuration: null, featured: false } },
+    );
+    const bots = await Bot.find({
+      status: 'approved',
+      $or: [
+        { topBot: true },
+        { boosted: true, boostExpiresAt: null },
+        { boosted: true, boostExpiresAt: { $gt: now } },
+      ],
+    })
+      .sort({ boosted: -1, boostExpiresAt: 1, createdAt: -1 })
+      .limit(limit)
+      .populate('createdBy', 'username showNicknameUnderGroups')
+      .lean();
+    return bots.map(mapBotDoc);
+  } catch (error) {
+    console.error('Error fetching top bots:', error);
+    return [];
+  }
 }
 
 async function getApprovedBotsCount() {
@@ -160,17 +189,18 @@ export async function BotsPageView({ page = 1 }: { page?: number }) {
   const ua = (await headers()).get('user-agent');
   const { isMobile, isTelegram } = detectDeviceFromUserAgent(ua);
 
-  const [bots, totalBots, adverts, topBannerCampaigns, feedCampaigns, trendingErogramCampaigns] = await Promise.all([
+  const [bots, totalBots, adverts, topBannerCampaigns, feedCampaigns, topBots] = await Promise.all([
     getBots(BOTS_FEED_PAGE_SIZE, skip),
     getApprovedBotsCount(),
     getAdverts(),
     getActiveCampaigns('top-banner', { page: 'bots', device: isMobile ? 'mobile' : 'desktop' }),
     getActiveFeedCampaigns('bots'),
-    getTrendingErogramCampaigns(8).catch(() => []),
+    getTopBots(10),
   ]);
 
   const paginationTotalPages = Math.max(1, Math.ceil(totalBots / BOTS_FEED_PAGE_SIZE));
-  const allBotStats = await getAllBotStats(bots.map(b => b.slug));
+  const statSlugs = [...new Set([...bots.map((b) => b.slug), ...topBots.map((b) => b.slug)])];
+  const allBotStats = await getAllBotStats(statSlugs);
 
   const topBannerForPage =
     topBannerCampaigns.length > 0 && topBannerCampaigns[0].creative ? topBannerCampaigns : [];
@@ -187,6 +217,7 @@ export async function BotsPageView({ page = 1 }: { page?: number }) {
       <ErrorBoundary>
         <BotsClient
           initialBots={bots}
+          initialTopBots={topBots}
           initialAdverts={adverts}
           feedCampaigns={feedCampaigns}
           initialIsMobile={isMobile}
@@ -194,7 +225,6 @@ export async function BotsPageView({ page = 1 }: { page?: number }) {
           initialCountry="All"
           topBannerCampaigns={topBannerForPage}
           allBotStats={allBotStats}
-          trendingErogramCampaigns={trendingErogramCampaigns}
           paginationCurrentPage={currentPage}
           paginationTotalPages={paginationTotalPages}
           botsPageSize={BOTS_FEED_PAGE_SIZE}

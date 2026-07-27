@@ -21,6 +21,7 @@ interface GroupCardProps {
     lockedPremium?: boolean;
     directLink?: string;
     growthPercent?: number;
+    inFeed?: boolean;
 }
 
 function getPremiumSocialProof(groupId: string) {
@@ -34,7 +35,25 @@ function getPremiumSocialProof(groupId: string) {
     };
 }
 
-export default function GroupCard({ group, isFeatured = false, isIndex = 0, shouldPreload = false, onVisible, onOpenReviewModal, onOpenReportModal, isBookmarked = false, bookmarkId = null, itemType = 'group', lockedPremium = false, directLink, growthPercent }: GroupCardProps) {
+/** In-feed group join buttons: orange + dark red only. */
+const IN_FEED_GROUP_BTN_PALETTE = [
+    { from: '#ff5e2a', to: '#ff9432', shadow: 'rgba(255,94,42,0.65)' },
+    { from: '#7f1d1d', to: '#b91c1c', shadow: 'rgba(185,28,28,0.55)' },
+] as const;
+
+function inFeedGroupBtnStyle(groupId: string): React.CSSProperties {
+    let seed = 0;
+    for (let i = 0; i < groupId.length; i++) seed = ((seed << 5) - seed + groupId.charCodeAt(i)) | 0;
+    const p = IN_FEED_GROUP_BTN_PALETTE[Math.abs(seed) % IN_FEED_GROUP_BTN_PALETTE.length];
+    return {
+        background: `linear-gradient(135deg, ${p.from}, ${p.to})`,
+        color: '#fff',
+        border: 'none',
+        boxShadow: `0 4px 14px -6px ${p.shadow}`,
+    };
+}
+
+export default function GroupCard({ group, isFeatured = false, isIndex = 0, shouldPreload = false, onVisible, onOpenReviewModal, onOpenReportModal, isBookmarked = false, bookmarkId = null, itemType = 'group', lockedPremium = false, directLink, growthPercent, inFeed = false }: GroupCardProps) {
     const { t } = useTranslation();
     const [isAdmin, setIsAdmin] = useState(false);
     const [deleted, setDeleted] = useState(false);
@@ -402,7 +421,9 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                                     color: '#1a0f00',
                                     border: 'none',
                                 }
-                                : { background: 'linear-gradient(135deg, #ff5e2a, #ff9432)', color: '#fff', border: 'none', boxShadow: '0 4px 14px -6px rgba(255,94,42,0.65)' }
+                                : inFeed && itemType === 'group'
+                                    ? inFeedGroupBtnStyle(group._id)
+                                    : { background: 'linear-gradient(135deg, #ff5e2a, #ff9432)', color: '#fff', border: 'none', boxShadow: '0 4px 14px -6px rgba(255,94,42,0.65)' }
                             }
                         >
                             {lockedPremium && (

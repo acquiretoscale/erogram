@@ -387,7 +387,6 @@ export async function convertBoostToPlacedCampaign(
     status: 'active',
     isVisible: true,
     adType,
-    feedPlacement: entityType === 'ainsfw' ? 'ainsfw' : 'bots',
     placements: [],
     priority: 'normal',
   });

@@ -18,6 +18,7 @@ interface ToolCardProps {
   onVoteChange?: (slug: string, score: number) => void;
   featured?: boolean;
   campaignId?: string;
+  primaryImageAlt?: string;
 }
 
 const CATEGORY_BADGE: Record<string, string> = {
@@ -47,7 +48,10 @@ function capWords(text: string, max = 18): string {
   return words.slice(0, max).join(' ') + '…';
 }
 
-export default function ToolCard({ tool, index, initialStats, onVoteChange, featured, campaignId }: ToolCardProps) {
+export default function ToolCard({ tool, index, initialStats, onVoteChange, featured, campaignId, primaryImageAlt }: ToolCardProps) {
+  const mainImageAlt = primaryImageAlt ?? `${tool.name} NSFW AI ${tool.category} tool`;
+  const galleryImageAlt = (idx: number) =>
+    idx === 0 ? mainImageAlt : `${tool.name} NSFW AI ${tool.category} screenshot ${idx}`;
   const placeholder = '/assets/image.jpg';
   const mainImg = tool.image && (tool.image.startsWith('https://') || tool.image.startsWith('/'))
     ? tool.image : placeholder;
@@ -206,7 +210,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                   <img
                     key={currentSrc}
                     src={currentSrc}
-                    alt={slideIdx === 0 ? `${tool.name} NSFW AI ${tool.category} tool` : `${tool.name} NSFW AI ${tool.category} screenshot ${slideIdx}`}
+                    alt={galleryImageAlt(slideIdx)}
                     className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
                     loading={index < 8 ? 'eager' : 'lazy'}
                     onError={(e) => { (e.target as HTMLImageElement).src = placeholder; }}
@@ -366,7 +370,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                 <img
                   key={currentSrc}
                   src={currentSrc}
-                  alt={slideIdx === 0 ? `${tool.name} NSFW AI ${tool.category} tool` : `${tool.name} NSFW AI ${tool.category} screenshot ${slideIdx}`}
+                  alt={galleryImageAlt(slideIdx)}
                   className="w-full h-full object-cover transition-opacity duration-300"
                   loading={index < 8 ? 'eager' : 'lazy'}
                   onError={(e) => { (e.target as HTMLImageElement).src = placeholder; }}

@@ -552,8 +552,6 @@ export const campaignSchema = new Schema(
     category: { type: String, default: 'All' },
     country: { type: String, default: 'All' },
     buttonText: { type: String, default: 'Visit Site' },
-    // Where to show this feed ad: groups only, bots only, or both
-    feedPlacement: { type: String, enum: ['groups', 'bots', 'ainsfw', 'both'], default: 'both' },
     // Home In Feed block format: 'banner' = 1 wide image/video, 'card' = part of the 4-up grid.
     blockFormat: { type: String, enum: ['banner', 'card'], default: 'card' },
     // Optional video URL for video ad variant (feed slot only)
@@ -562,6 +560,9 @@ export const campaignSchema = new Schema(
     badgeText: { type: String, default: '' },
     // Show a verified checkmark next to the ad title (like Instagram verified)
     verified: { type: Boolean, default: false },
+    // Optional fixed star rating shown on the card (overrides random seeded rating when set).
+    adRating: { type: Number, default: null },
+    adReviewCount: { type: Number, default: null },
     // Ad type: 'advertiser' (image/video), 'premium' (group mosaic), 'featured-bot' (slot-5 bot spotlight),
     // 'featured-nsfw' (nsfw spotlight), or 'onlyfans-creator' (single OF creator campaign — renders like image ad)
     adType: { type: String, enum: ['advertiser', 'premium', 'featured-bot', 'featured-nsfw', 'onlyfans-creator'], default: 'advertiser' },
@@ -1218,6 +1219,12 @@ const ainsfwToolStatsSchema = new Schema(
         createdAt: { type: Date, default: Date.now },
       },
     ],
+    descriptionOverride: { type: String, default: '' },
+    imageOverride: { type: String, default: '' },
+    customGallery: { type: [String], default: [] },
+    hiddenGalleryUrls: { type: [String], default: [] },
+    galleryManaged: { type: Boolean, default: false },
+    coverManaged: { type: Boolean, default: false },
   },
   { timestamps: true },
 );

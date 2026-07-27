@@ -73,6 +73,22 @@ export async function getTrendingCreators(category?: string) {
 }
 
 /**
+ * Usernames + trending ids for OF creators that already have an Ad Network campaign.
+ * Used on /groups so the TrendingOFCreator fallback never re-shows a linked creator
+ * whose placements were cleared (they are off the feed but still "claimed").
+ */
+export async function getLinkedOFCreatorClaimKeys() {
+  await connectDB();
+  const rows = await TrendingOFCreator.find({ linkedCampaignId: { $ne: null } })
+    .select('username _id')
+    .lean() as any[];
+  return {
+    usernames: rows.map((r) => r.username).filter(Boolean) as string[],
+    trendingIds: rows.map((r) => String(r._id)),
+  };
+}
+
+/**
  * Returns active TrendingOFCreator entries shaped as FeedCampaign objects
  * so they can be injected into the /groups feed alongside regular ads.
  * Clicks tracked via trackTrendingClick (not Campaign model).

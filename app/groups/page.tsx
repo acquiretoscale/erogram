@@ -5,7 +5,7 @@ import { Group, Bot, StorySlideContent, SiteConfig } from '@/lib/models';
 import GroupsClient from './GroupsClient';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { getActiveCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
-import { getFeaturedCreatorFeedItems } from '@/lib/actions/publicData';
+import { getFeaturedCreatorFeedItems, getLinkedOFCreatorClaimKeys } from '@/lib/actions/publicData';
 import { getStoryCategories, DEFAULT_STORY_CATEGORIES, type StoryCategoryConfig } from '@/lib/actions/siteConfig';
 import { listR2Files } from '@/lib/r2';
 import type { StoryCategory, StoryMediaSlide } from './types';
@@ -484,12 +484,13 @@ export async function GroupsPageView({ page = 1 }: { page?: number }) {
   if (storyConfig.length === 0) storyConfig = DEFAULT_STORY_CATEGORIES;
 
   // In-feed ads + story data + featured creators + filter options — all in parallel
-  const [topBannerCampaigns, feedCampaignsRaw, storyData, featuredCreatorItems, filterOpts] = await Promise.all([
+  const [topBannerCampaigns, feedCampaignsRaw, storyData, featuredCreatorItems, filterOpts, linkedOfKeys] = await Promise.all([
     getActiveCampaigns('top-banner', { page: 'groups' }),
     getActiveFeedCampaigns('groups'),
     storiesEnabled ? getStoryData(storyConfig, locale) : Promise.resolve([] as StoryCategory[]),
     getFeaturedCreatorFeedItems().catch(() => []),
     getFilterOptions(),
+    getLinkedOFCreatorClaimKeys(),
   ]);
 
   const trendingCategories = toTrendingCategoryLinks(filterOpts.categoryCounts);
@@ -503,12 +504,13 @@ export async function GroupsPageView({ page = 1 }: { page?: number }) {
 
   // OF creators already promoted via the Ad Network (by their TrendingOFCreator id / username),
   // so the fallback source never double-shows the same creator.
-  const claimedOfKeys = new Set(
-    adNetworkAll
+  const claimedOfKeys = new Set<string>([
+    ...adNetworkAll
       .filter((c) => c.adType === 'onlyfans-creator')
-      .map((c) => c.ofTrendingId || c.ofUsername)
-      .filter(Boolean),
-  );
+      .flatMap((c) => [c.ofTrendingId, c.ofUsername].filter(Boolean)),
+    ...linkedOfKeys.usernames,
+    ...linkedOfKeys.trendingIds,
+  ]);
 
   const fallbackCreatorAds = (featuredCreatorItems as any[]).filter(
     (c) => !claimedOfKeys.has(c.ofTrendingId) && !claimedOfKeys.has(c.ofUsername),

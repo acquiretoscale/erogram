@@ -1,6 +1,7 @@
 import React from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
+import { CircleUser } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { EditorialMasthead, EditorialFooter } from '@/app/blog/EditorialChrome';
 import { BEST_OF_PAGE_MAP, BEST_OF_PAGES } from '@/app/best-onlyfans-accounts/bestOfPages';
@@ -12,6 +13,7 @@ import { getKeywordPlacementCampaigns } from '@/lib/actions/campaigns';
 import { getBestOfFillCreators, getBestOfTopByClicks, getBestOfPreviewAvatars } from '@/lib/actions/bestOfCreators';
 import { getFeaturedCreatorFeedItems } from '@/lib/actions/publicData';
 import BestPageAdBlock from '@/app/best-onlyfans-accounts/BestPageAdBlock';
+import BestOfDeleteButton from '@/app/best-onlyfans-accounts/BestOfDeleteButton';
 import { BestOfHeroIntro, BestOfEditorialBody } from '@/app/best-onlyfans-accounts/BestOfEditorial';
 import { getBestOfPageContent, type BestOfPageContent } from '@/lib/bestOfPageContent';
 import { getBodyTranslation } from '@/lib/bestOfPageContent/bodyTranslations';
@@ -21,27 +23,15 @@ import { getTagLabel } from '@/lib/tags/labelTranslations';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || CANONICAL_BASE;
 const OF_BLUE = '#00AFF0';
+const OF_BLUE_DARK = '#0078A8';
 const PREMIUM_NAVY = 'linear-gradient(135deg, #061018 0%, #0a1c2e 45%, #0d2844 100%)';
 
-/** Stable per-creator base % (5–30) seeded from id, so 0-click creators are pre-populated. */
-function erogramBase(id: string): number {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 26;
-  return 5 + h; // 5..30
-}
-
-/** Internal clicks → public "last 30 days on Erogram" % (never expose raw clicks).
- *  Stable base (5–30%) + 0.11% per click. */
-function erogramMomentum(id: string, clicks: number): number {
-  const val = erogramBase(id) + (clicks || 0) * 0.11;
-  return Math.min(94, Math.round(val));
-}
-
-/** Stable seed from an id (for deterministic high default %). */
-function promoSeed(id: string): number {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return h;
+function OnlyFansIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className="shrink-0" aria-hidden>
+      <path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z" />
+    </svg>
+  );
 }
 
 /** Is the creator inside their GMT live window right now? */
@@ -49,45 +39,6 @@ function ofIsLiveNow(start: number, end: number): boolean {
   if (start < 0 || end < 0) return false;
   const h = new Date().getUTCHours();
   return start <= end ? h >= start && h < end : h >= start || h < end;
-}
-
-/** High-spike trend series for promoted creators — strong upward breakout. */
-function buildSpikeSeries(seed: number, len = 12): number[] {
-  const out: number[] = [];
-  let v = 8 + (seed % 6);
-  for (let i = 0; i < len; i++) {
-    const wobble = (((seed * (i + 2) + i * 5) % 9) - 4) * 0.6;
-    const ramp = i >= len - 4 ? 4.5 + (i - (len - 4)) * 2.4 : 1.1; // sharp spike in the last 4 weeks
-    v = Math.min(48, Math.max(5, v + ramp + wobble));
-    out.push(v);
-  }
-  return out;
-}
-
-/** Realistic traffic-style series — ups and downs, overall upward (12 weeks). */
-function buildTrendSeries(seed: number, len = 12): number[] {
-  const out: number[] = [];
-  let v = 12 + (seed % 8);
-  for (let i = 0; i < len; i++) {
-    const wobble = (((seed * (i + 3) + i * i * 7) % 17) - 8) * 0.9; // -7.2..+7.2
-    const drift = 1.6; // gentle upward bias
-    v = Math.min(46, Math.max(6, v + drift + wobble));
-    out.push(v);
-  }
-  return out;
-}
-
-function trendChartSvg(series: number[], w = 120, h = 44, accent = '#16a34a') {
-  const pad = 2;
-  const step = (w - pad * 2) / (series.length - 1);
-  const pts = series.map((v, i) => {
-    const x = pad + i * step;
-    const y = h - pad - (v / 50) * (h - pad * 2);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  });
-  const line = pts.join(' ');
-  const area = `${pad},${h - pad} ${line} ${(pad + (series.length - 1) * step).toFixed(1)},${h - pad}`;
-  return { line, area, accent };
 }
 
 function rankBadgeStyle(rank: number): { bg: string; color: string; label: string } {
@@ -140,7 +91,6 @@ const HOOK_ADJECTIVES: Record<string, { en: string; de: string; es: string }> = 
   colombian: { en: 'fiery', de: 'feurig', es: 'ardiente' },
   french: { en: 'elegant', de: 'elegant', es: 'elegante' },
   german: { en: 'bold', de: 'selbstbewusst', es: 'atrevida' },
-  indian: { en: 'exotic', de: 'exotisch', es: 'exótica' },
   turkish: { en: 'alluring', de: 'verführerisch', es: 'seductora' },
   australian: { en: 'sun-kissed', de: 'sonnengeküsst', es: 'bronceada' },
   'california': { en: 'golden', de: 'goldene', es: 'dorada' },
@@ -299,18 +249,18 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
       username: ad.ofUsername || '',
       avatar: album[0] || '',
       album,
-      bio: '',
-      location: '',
+      bio: ad.ofBio || ad.description || '',
+      location: ad.ofLocation || '',
       likesCount: ad.ofLikesCount || 0,
-      mediaCount: 0,
-      photosCount: 0,
-      videosCount: 0,
-      postsCount: 0,
-      price: 0,
-      isFree: false,
+      mediaCount: ad.ofMediaCount || 0,
+      photosCount: ad.ofPhotosCount || 0,
+      videosCount: ad.ofVideosCount || 0,
+      postsCount: ad.ofPostsCount || 0,
+      price: ad.ofPrice || 0,
+      isFree: ad.ofIsFree || false,
       online: onlineNow,
       trendPercent: ad.ofTrendPercent || 0,
-      slug: (ad.ofUsername || '').toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, ''),
+      slug: ad.ofSlug || (ad.ofUsername ? `${ad.ofUsername}-onlyfans` : ''),
       url: ad.destinationUrl || '',
       isTrending: true,
       campaignId: String(ad._id),
@@ -415,6 +365,8 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
   const INK = '#FDFDFD';     // on-plum typo
   const MUTED = '#6B6568';   // secondary body
   const OF_BLUE = '#00AFF0'; // OnlyFans blue — CTA buttons + trending markers
+  const PREMIUM_PINK = '#ff2d8a';
+  const PREMIUM_PINK_BTN = { background: PREMIUM_PINK, color: '#fff', borderColor: 'transparent', boxShadow: '0 4px 16px rgba(255,45,138,0.38)' };
 
   const faqItems = (dict.bestOnlyfans.rankingFaq as Array<{q: string; a: string}>).map((item) => ({
     q: item.q.replace('{label}', label),
@@ -494,15 +446,6 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
           <ol className="space-y-5 mb-12 list-none p-0">
             {display.map(({ item: creator, rank }, index: number) => {
               const isPromo = !!creator.isTrending;
-              // Promo %: owner-set in /OF; if unset, a stable HIGH default (100–400) so it always shows.
-              const momentum = isPromo
-                ? (creator.trendPercent > 0 ? creator.trendPercent : 100 + (promoSeed(String(creator._id)) % 301))
-                : erogramMomentum(String(creator._id), creator.clicks || 0);
-              const showTrend = true;
-              const chartSeed = isPromo
-                ? (creator.username?.length || 17) + momentum
-                : Math.floor((creator.clicks || 0) + (creator.likesCount || 0) * 0.01);
-              const series = isPromo ? buildSpikeSeries(chartSeed) : buildTrendSeries(chartSeed);
               const badge = !isPromo && rank ? rankBadgeStyle(rank) : null;
 
               const fmt = (n: number) => {
@@ -518,9 +461,9 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
               const totalContent = media || (photos + videos);
               const posts = creator.postsCount || 0;
 
-              const textMain = PLUM;
-              const textMuted = MUTED;
-              const statBorder = 'rgba(43,27,40,0.10)';
+              const textMain = isPromo ? '#FDFDFD' : PLUM;
+              const textMuted = isPromo ? 'rgba(255,255,255,0.55)' : MUTED;
+              const statBorder = isPromo ? 'rgba(255,255,255,0.10)' : 'rgba(43,27,40,0.10)';
 
               const stats: { label: string; value: string }[] = [];
               if (likes > 0) stats.push({ label: 'Likes', value: fmt(likes) });
@@ -529,70 +472,57 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
               if (videos > 0) stats.push({ label: 'Videos', value: fmt(videos) });
               if (posts > 0) stats.push({ label: 'Posts', value: fmt(posts) });
 
+              const erogramHref = creator.slug
+                ? (String(creator.slug).startsWith('/') ? creator.slug : `/${creator.slug}`)
+                : creator.username ? `/${creator.username}-onlyfans` : '#';
+              const deleteSlug = creator.slug
+                ? String(creator.slug).replace(/^\//, '')
+                : creator.username
+                  ? `${creator.username}-onlyfans`
+                  : '';
+              const cardRowClass = `relative z-10 flex flex-col sm:flex-row gap-0 sm:gap-5`;
+              const CardWrapper = isPromo ? 'div' : 'a';
+              const cardWrapperProps = isPromo
+                ? { className: cardRowClass }
+                : {
+                    href: creator.username ? `/go/${creator.username}` : '#',
+                    target: '_blank' as const,
+                    rel: 'noopener',
+                    className: `${cardRowClass} cursor-pointer`,
+                  };
+
               return (
-                <li key={creator._id} className={isPromo ? 'pt-3' : undefined}>
-                  <div className={isPromo ? 'relative' : undefined}>
-                    {isPromo && (
-                      <div className="absolute left-1/2 top-0 z-20 -translate-x-1/2 -translate-y-1/2">
-                        <span
-                          className="inline-flex items-center gap-1.5 px-5 py-2 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-[0.18em] text-white whitespace-nowrap shadow-lg"
-                          style={{
-                            backgroundColor: '#b31b1b',
-                            boxShadow: '0 10px 28px rgba(179,27,27,0.45)',
-                          }}
-                        >
-                          {dict.bestOnlyfans.topTrending}
-                        </span>
-                      </div>
-                    )}
+                <li key={creator._id}>
                   <article
-                    className={`relative overflow-hidden rounded-[1.35rem] ${isPromo ? 'border-2' : 'border'}`}
-                    style={{
+                    className={`relative overflow-hidden rounded-[1.35rem] ${isPromo ? 'border border-[#00AFF0]/20 bg-gradient-to-br from-[#061018] via-[#0a1c2e] to-[#0d2844] shadow-[0_20px_50px_-12px_rgba(0,175,240,0.18),inset_0_1px_0_0_rgba(255,255,255,0.06)]' : 'border'}`}
+                    style={isPromo ? undefined : {
                       background: INK,
-                      borderColor: isPromo ? OF_BLUE : 'rgba(43,27,40,0.10)',
-                      boxShadow: isPromo
-                        ? '0 12px 40px -12px rgba(0,175,240,0.5), 0 0 0 1px rgba(0,175,240,0.2)'
-                        : '0 20px 60px -40px rgba(43,27,40,0.35)',
+                      borderColor: 'rgba(43,27,40,0.10)',
+                      boxShadow: '0 20px 60px -40px rgba(43,27,40,0.35)',
                     }}
                   >
-
-                    {/* Top-right trend badge */}
-                    {showTrend && (
-                      <div className={`absolute z-20 flex flex-col items-end gap-1 ${isPromo ? 'top-3.5 right-3.5 sm:top-4 sm:right-4' : 'top-3.5 right-3.5'}`}>
-                        <span
-                          className={`inline-flex items-center gap-2.5 shadow-lg ${isPromo ? 'pl-3 pr-4 py-2.5 rounded-xl' : 'pl-2 pr-3 py-1.5 rounded-full'}`}
-                          style={{
-                            backgroundColor: isPromo ? '#0f7a37' : '#0f7a37',
-                            boxShadow: '0 8px 22px rgba(0,0,0,0.25)',
-                          }}
-                        >
-                          <svg width={isPromo ? 52 : 34} height={isPromo ? 24 : 16} viewBox={`0 0 ${isPromo ? 52 : 34} ${isPromo ? 24 : 16}`} className="flex-shrink-0">
-                            <polyline
-                              fill="none"
-                              stroke="#fff"
-                              strokeOpacity="0.95"
-                              strokeWidth={isPromo ? 2 : 1.6}
-                              strokeLinejoin="round"
-                              strokeLinecap="round"
-                              points={trendChartSvg(series, isPromo ? 52 : 34, isPromo ? 24 : 16, '#fff').line}
-                            />
-                          </svg>
-                          <span className={`font-black tabular-nums text-white ${isPromo ? 'text-[18px] sm:text-[20px]' : 'text-[12px]'}`}>+{momentum}%</span>
-                        </span>
-                        {isPromo && (
-                          <span className="text-[9px] font-bold uppercase tracking-[0.14em] pr-1" style={{ color: MUTED }}>
-                            {dict.bestOnlyfans.last30Days}
-                          </span>
-                        )}
-                      </div>
+                    {!isPromo && <BestOfDeleteButton slug={deleteSlug} />}
+                    {isPromo && (
+                      <span
+                        className="absolute top-3 right-3 z-20 inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-[7px] sm:text-[8px] font-black uppercase tracking-[0.14em] shadow-md"
+                        style={{
+                          background: 'linear-gradient(135deg,#f5d061,#c9920a)',
+                          color: '#3d2e00',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.22)',
+                        }}
+                      >
+                        {dict.bestOnlyfans.featuredBadge}
+                      </span>
+                    )}
+                    {isPromo && (
+                      <>
+                        <div className="pointer-events-none absolute -top-28 -right-20 h-56 w-56 rounded-full bg-[#00AFF0]/20 blur-3xl" />
+                        <div className="pointer-events-none absolute -bottom-24 -left-16 h-48 w-48 rounded-full bg-[#00D4FF]/12 blur-3xl" />
+                        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(0,175,240,0.06)_0%,transparent_45%,rgba(0,212,255,0.04)_100%)]" />
+                      </>
                     )}
 
-                    <a
-                      href={creator.username ? `/go/${creator.username}` : '#'}
-                      target="_blank"
-                      rel="noopener"
-                      className="relative flex flex-col sm:flex-row gap-0 sm:gap-5 cursor-pointer"
-                    >
+                    <CardWrapper {...cardWrapperProps}>
                       {/* Avatar */}
                       <div
                         className="relative flex-shrink-0 w-full sm:w-[11.5rem] h-52 sm:h-auto sm:min-h-[15rem] overflow-hidden sm:rounded-l-[1.35rem]"
@@ -631,9 +561,14 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
 
                       {/* Body */}
                       <div className="flex-1 min-w-0 flex flex-col p-4 sm:py-5 sm:pr-5 sm:pl-0">
-                        <div className={showTrend ? (isPromo ? 'pr-28 sm:pr-36' : 'pr-24 sm:pr-28') : ''}>
-                          <h2 className="font-[family-name:var(--font-baloo)] font-extrabold text-[1.25rem] sm:text-[1.45rem] leading-tight tracking-tight truncate" style={{ color: textMain }}>
-                            {creator.name}
+                        <div className={isPromo ? 'pr-24 sm:pr-36' : undefined}>
+                          <h2 className="font-[family-name:var(--font-baloo)] font-extrabold text-[1.25rem] sm:text-[1.45rem] leading-tight tracking-tight flex items-center gap-1.5 min-w-0" style={{ color: textMain }}>
+                            <span className="truncate min-w-0">{creator.name}</span>
+                            {isPromo && (
+                              <svg className="w-4 h-4 sm:w-[1.1rem] sm:h-[1.1rem] shrink-0" viewBox="0 0 24 24" fill="#1D9BF0" aria-label="Verified">
+                                <path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z" />
+                              </svg>
+                            )}
                           </h2>
                           <p className="text-[12px] font-semibold mt-1" style={{ color: textMuted }}>
                             @{creator.username}{creator.location ? ` · ${creator.location}` : ''}
@@ -653,7 +588,7 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                         {stats.length > 0 ? (
                           <div
                             className="flex items-stretch gap-0 mt-4 rounded-xl border overflow-hidden"
-                            style={{ borderColor: statBorder, backgroundColor: 'rgba(43,27,40,0.02)' }}
+                            style={{ borderColor: statBorder, backgroundColor: isPromo ? 'rgba(255,255,255,0.04)' : 'rgba(43,27,40,0.02)' }}
                           >
                             {stats.slice(0, 4).map((s, i) => (
                               <div
@@ -668,23 +603,48 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                           </div>
                         ) : null}
 
-                        <div className="mt-4 sm:mt-auto pt-1">
+                        <div className="mt-4 sm:mt-auto pt-1 flex flex-row items-stretch gap-2">
+                          {isPromo ? (
+                            <>
+                              <a
+                                href={creator.username ? `/go/${creator.username}` : '#'}
+                                target="_blank"
+                                rel="noopener"
+                                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl font-black uppercase text-white px-8 py-4 text-[16px] tracking-[0.14em] transition-opacity hover:opacity-95"
+                                style={{ backgroundColor: OF_BLUE, boxShadow: '0 8px 22px rgba(0,175,240,0.35)' }}
+                              >
+                                <OnlyFansIcon size={18} />
+                                {dict.bestOnlyfans.visitProfile}
+                              </a>
+                              <Link
+                                href={erogramHref}
+                                title={dict.bestOnlyfans.visitErogramProfile}
+                                aria-label={dict.bestOnlyfans.visitErogramProfile}
+                                className="inline-flex flex-shrink-0 w-14 sm:w-[3.5rem] items-center justify-center rounded-xl transition-all hover:scale-[1.03] active:scale-[0.98]"
+                                style={{
+                                  backgroundColor: '#F0EBE3',
+                                  border: '1px solid rgba(43,27,40,0.14)',
+                                  boxShadow: '0 4px 14px rgba(43,27,40,0.14)',
+                                  color: PLUM,
+                                }}
+                              >
+                                <CircleUser size={26} strokeWidth={1.85} />
+                              </Link>
+                            </>
+                          ) : (
                           <span
-                            className={`inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl font-black uppercase text-white ${
-                              isPromo
-                                ? 'px-8 py-4 text-[16px] tracking-[0.14em]'
-                                : 'px-6 py-3 text-[12px] tracking-[0.14em]'
-                            }`}
-                            style={{ backgroundColor: OF_BLUE, boxShadow: isPromo ? '0 10px 28px rgba(0,175,240,0.4)' : '0 8px 22px rgba(0,175,240,0.35)' }}
+                            className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl font-black uppercase text-white px-6 py-3 text-[12px] tracking-[0.14em]"
+                            style={{ backgroundColor: OF_BLUE, boxShadow: '0 8px 22px rgba(0,175,240,0.35)' }}
                           >
+                            <OnlyFansIcon size={15} />
                             {dict.bestOnlyfans.visitProfile}
                           </span>
+                          )}
                         </div>
 
                       </div>
-                    </a>
+                    </CardWrapper>
                   </article>
-                  </div>
                 </li>
               );
             })}
@@ -694,8 +654,8 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
           <div className="mt-6 mb-10 text-center">
             <Link
               href={localePath(`/onlyfanssearch?q=${encodeURIComponent(label)}`, locale)}
-              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl text-[13px] font-bold tracking-[0.06em] transition-all hover:-translate-y-px active:translate-y-0"
-              style={{ backgroundColor: PLUM, color: INK }}
+              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full text-[13px] font-bold tracking-[0.06em] border transition-all hover:-translate-y-px hover:opacity-90 active:translate-y-0"
+              style={PREMIUM_PINK_BTN}
             >
               {dict.bestOnlyfans.exploreMoreNiche.replace('{label}', label)}
             </Link>
@@ -810,8 +770,8 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                         <Link
                           key={rc.slug}
                           href={hottestRankingPublicPath(rc.slug, locale)}
-                          className="inline-flex items-center px-3.5 py-1.5 rounded-full text-[13px] font-semibold border transition-all hover:-translate-y-px"
-                          style={{ color: PLUM, borderColor: 'rgba(43,27,40,0.14)', backgroundColor: 'rgba(43,27,40,0.03)' }}
+                          className="inline-flex items-center px-3.5 py-1.5 rounded-full text-[13px] font-bold border transition-all hover:-translate-y-px hover:opacity-90"
+                          style={PREMIUM_PINK_BTN}
                         >
                           {getTagLabel(rc.slug, rc.label, locale)}
                         </Link>
@@ -819,8 +779,8 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                     </div>
                     <Link
                       href={localePath('/onlyfanssearch', locale)}
-                      className="inline-flex items-center gap-1.5 mt-4 text-[13px] font-bold hover:opacity-70 transition-opacity"
-                      style={{ color: OF_BLUE }}
+                      className="inline-flex items-center gap-1.5 mt-4 px-3.5 py-1.5 rounded-full text-[13px] font-bold border transition-all hover:-translate-y-px hover:opacity-90"
+                      style={PREMIUM_PINK_BTN}
                     >
                       {dict.bestOnlyfans.browseAll}
                     </Link>

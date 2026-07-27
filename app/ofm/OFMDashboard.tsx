@@ -1,11 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { listOFClients, getOFClientDashboard } from '@/lib/actions/ofClients';
+import Link from 'next/link';
+import { getOFMDashboardBySlug } from '@/lib/actions/ofClients';
 
 interface CreatorRow { name: string; username: string; avatar: string; url: string; clicks: number; }
 interface Series { label: string; clicks: number; }
 interface Dashboard {
+  kind?: 'agency' | 'ofm-creators';
+  slug?: string;
   client: { _id: string; name: string; goalClicks: number; dealPrice: number; startDate: string; endDate: string };
   campaignEnded?: boolean;
   totalClicks: number;
@@ -23,14 +26,12 @@ interface Dashboard {
   hourly: Series[];
   daily: Series[];
 }
-interface ClientLite { _id: string; name: string; }
 
 function fmt(n: number) { return n.toLocaleString(); }
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' GMT';
 }
 
-// Circular total-clicks display — no goal reference.
 function TotalRing({ total }: { total: number }) {
   const r = 86;
   const circ = 2 * Math.PI * r;
@@ -48,7 +49,6 @@ function TotalRing({ total }: { total: number }) {
   );
 }
 
-// Bar chart — pure SVG, no deps.
 function BarChart({ data, accent }: { data: Series[]; accent: string }) {
   const max = Math.max(...data.map((d) => d.clicks), 1);
   const barW = Math.max(6, Math.min(26, Math.floor(720 / data.length) - 3));
@@ -68,7 +68,7 @@ function BarChart({ data, accent }: { data: Series[]; accent: string }) {
               <rect x={x} y={H - Math.max(h, 2)} width={barW} height={Math.max(h, 2)} rx={3}
                 fill={d.clicks === 0 ? 'rgba(255,255,255,0.06)' : active ? '#fff' : accent} />
               {d.clicks > 0 && (
-                <text x={x + barW / 2} y={H - Math.max(h, 2) - 4} textAnchor="middle" fontSize={active ? "11" : "9"} fontWeight={active ? "700" : "600"} fill={active ? "#fff" : "rgba(255,255,255,0.55)"}>{d.clicks}</text>
+                <text x={x + barW / 2} y={H - Math.max(h, 2) - 4} textAnchor="middle" fontSize={active ? '11' : '9'} fontWeight={active ? '700' : '600'} fill={active ? '#fff' : 'rgba(255,255,255,0.55)'}>{d.clicks}</text>
               )}
               {i % Math.ceil(data.length / 12) === 0 && (
                 <text x={x + barW / 2} y={H + 15} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.3)">{d.label}</text>
@@ -81,165 +81,164 @@ function BarChart({ data, accent }: { data: Series[]; accent: string }) {
   );
 }
 
-export default function OFMDashboard() {
+export default function OFMDashboard({ slug }: { slug: string }) {
   const [data, setData] = useState<Dashboard | null>(null);
-  const [clients, setClients] = useState<ClientLite[]>([]);
-  const [activeId, setActiveId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'hour' | 'day'>('day');
   const token = () => (typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '');
 
-  const load = async (id?: string) => {
-    setLoading(true);
-    try {
-      const d = await getOFClientDashboard(token(), id);
-      setData(d as Dashboard | null);
-      if (d) setActiveId((d as Dashboard).client._id);
-    } catch { setData(null); }
-    finally { setLoading(false); }
-  };
-
   useEffect(() => {
-    (async () => {
-      try { setClients(await listOFClients(token()) as ClientLite[]); } catch { /* */ }
-      await load();
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    setLoading(true);
+    getOFMDashboardBySlug(token(), slug)
+      .then((d) => setData(d as Dashboard | null))
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, [slug]);
 
   if (loading) {
-    return <div className="min-h-screen bg-[#080c14] flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[#00AFF0]" /></div>;
+    return (
+      <div className="flex items-center justify-center h-48">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[#00AFF0]" />
+      </div>
+    );
   }
   if (!data) {
-    return <div className="min-h-screen bg-[#080c14] flex items-center justify-center text-white/40">No agency client found. Add one in /OF/featured.</div>;
+    return (
+      <div className="text-center py-16 space-y-3">
+        <p className="text-white/40">Client not found.</p>
+        <Link href="/ofm" className="text-[#00AFF0] text-sm font-bold hover:underline">← Back to clients</Link>
+      </div>
+    );
   }
 
   const chart = view === 'hour' ? data.hourly : data.daily;
+  const isAgency = data.kind === 'agency';
+  const isFreeBucket = data.kind === 'ofm-creators';
+  const agencySlug = data.slug || slug;
 
   return (
     <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">{data.client.name}</h1>
-            {clients.length > 1 && (
-              <select value={activeId} onChange={(e) => load(e.target.value)}
-                className="bg-white/[0.06] border border-white/10 rounded-lg px-3 py-1.5 text-sm outline-none">
-                {clients.map((c) => <option key={c._id} value={c._id} className="bg-[#0e1018]">{c.name}</option>)}
-              </select>
-            )}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Link href="/ofm" className="text-white/30 hover:text-white text-sm transition">← Clients</Link>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight">{data.client.name}</h1>
+          {!isAgency && isFreeBucket && <span className="text-[10px] font-bold uppercase tracking-wider text-white/30 bg-white/[0.06] px-2 py-1 rounded-md">Free ads</span>}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { l: 'Launched', v: fmtDate(data.client.startDate) },
+          { l: isAgency ? 'Deal ended' : 'Promo end', v: fmtDate(data.client.endDate) },
+        ].map((s) => (
+          <div key={s.l} className="bg-[#0e1018] border border-white/[0.06] rounded-2xl p-4">
+            <div className="text-[11px] text-white/35 font-bold uppercase tracking-wider">{s.l}</div>
+            <div className="text-sm font-bold mt-1">{s.v}</div>
           </div>
-        </div>
+        ))}
+      </div>
 
-        {/* Campaign window */}
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            { l: 'Launched', v: fmtDate(data.client.startDate) },
-            { l: 'Deal ended', v: fmtDate(data.client.endDate) },
-          ].map((s) => (
-            <div key={s.l} className="bg-[#0e1018] border border-white/[0.06] rounded-2xl p-4">
-              <div className="text-[11px] text-white/35 font-bold uppercase tracking-wider">{s.l}</div>
-              <div className="text-sm font-bold mt-1">{s.v}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Impressions + CTR row */}
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { l: 'Total Clicks', v: fmt(data.totalClicks), color: '#00AFF0' },
-            { l: 'Impressions', v: fmt(data.totalImpressions), color: 'rgba(255,255,255,0.7)' },
-            { l: 'CTR', v: `${data.ctr}%`, color: data.ctr >= 2 ? '#22c55e' : data.ctr >= 0.5 ? '#f59e0b' : 'rgba(255,255,255,0.5)' },
-          ].map((s) => (
-            <div key={s.l} className="bg-[#0e1018] border border-white/[0.06] rounded-2xl p-4">
-              <div className="text-[11px] text-white/35 font-bold uppercase tracking-wider">{s.l}</div>
-              <div className="text-xl font-black mt-1" style={{ color: s.color }}>{s.v}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Total + per-creator */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="bg-[#0e1018] border border-white/[0.06] rounded-2xl p-6 flex flex-col items-center justify-center">
-            <TotalRing total={data.totalClicks} />
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { l: 'Total Clicks', v: fmt(data.totalClicks), color: '#00AFF0' },
+          { l: 'Impressions', v: fmt(data.totalImpressions), color: 'rgba(255,255,255,0.7)' },
+          { l: 'CTR', v: `${data.ctr}%`, color: data.ctr >= 2 ? '#22c55e' : data.ctr >= 0.5 ? '#f59e0b' : 'rgba(255,255,255,0.5)' },
+        ].map((s) => (
+          <div key={s.l} className="bg-[#0e1018] border border-white/[0.06] rounded-2xl p-4">
+            <div className="text-[11px] text-white/35 font-bold uppercase tracking-wider">{s.l}</div>
+            <div className="text-xl font-black mt-1" style={{ color: s.color }}>{s.v}</div>
           </div>
+        ))}
+      </div>
 
-          {/* Per-creator */}
-          <div className="lg:col-span-2 bg-[#0e1018] border border-white/[0.06] rounded-2xl p-5">
-            <div className="flex items-baseline justify-between mb-4">
-              <h2 className="text-sm font-bold text-white/70">Clicks per model</h2>
-              <div className="text-right">
-                <div className="text-2xl font-black text-[#00AFF0]">{fmt(data.totalClicks)}</div>
-                <div className="text-[10px] text-white/30">total combined</div>
-              </div>
-            </div>
-            <div className="space-y-2.5">
-              {data.perCreator.map((c) => {
-                const pct = data.perCreator[0]?.clicks ? (c.clicks / data.perCreator[0].clicks) * 100 : 0;
-                return (
-                  <div key={c.username} className="flex items-center gap-3">
-                    {c.avatar
-                      ? <img src={c.avatar} alt="" className="w-9 h-9 rounded-lg object-cover bg-white/5 flex-shrink-0" />
-                      : <div className="w-9 h-9 rounded-lg bg-[#00AFF0]/15 flex items-center justify-center text-[#00AFF0] font-black flex-shrink-0">{c.name.charAt(0)}</div>}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold truncate">{c.name}</span>
-                        <span className="text-sm font-black text-[#00AFF0] ml-2">{fmt(c.clicks)}</span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden mt-1">
-                        <div className="h-full rounded-full bg-[#00AFF0]" style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="bg-[#0e1018] border border-white/[0.06] rounded-2xl p-6 flex flex-col items-center justify-center">
+          <TotalRing total={data.totalClicks} />
         </div>
 
-        {/* Chart */}
-        <div className="bg-[#0e1018] border border-white/[0.06] rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-white/70">Clicks over time</h2>
-            <div className="flex gap-1 bg-white/[0.04] rounded-lg p-1">
-              {(['hour', 'day'] as const).map((v) => (
-                <button key={v} onClick={() => setView(v)}
-                  className={`px-3 py-1 rounded-md text-xs font-bold transition ${view === v ? 'bg-[#00AFF0] text-white' : 'text-white/40 hover:text-white/70'}`}>
-                  {v === 'hour' ? 'Last 24h' : 'By day'}
-                </button>
-              ))}
-            </div>
-          </div>
-          <BarChart data={chart} accent="#00AFF0" />
-        </div>
-
-        {/* Section breakdown — where clicks come from */}
-        <div className="bg-[#0e1018] border border-white/[0.06] rounded-2xl p-5">
+        <div className="lg:col-span-2 bg-[#0e1018] border border-white/[0.06] rounded-2xl p-5">
           <div className="flex items-baseline justify-between mb-4">
-            <h2 className="text-sm font-bold text-white/70">Where clicks come from</h2>
-            <span className="text-[10px] text-white/30">double down on the top sections</span>
-          </div>
-          {data.sections.length === 0 ? (
-            <div className="text-sm text-white/30 py-4">No clicks yet.</div>
-          ) : (
-            <div className="space-y-2.5">
-              {data.sections.map((s) => {
-                const pct = data.totalClicks ? (s.clicks / data.totalClicks) * 100 : 0;
-                const topPct = data.sections[0]?.clicks ? (s.clicks / data.sections[0].clicks) * 100 : 0;
-                return (
-                  <div key={s.label} className="flex items-center gap-3">
-                    <span className="w-32 sm:w-40 text-sm font-bold text-white/80 flex-shrink-0 truncate">{s.label}</span>
-                    <div className="flex-1 h-2.5 rounded-full bg-white/[0.06] overflow-hidden">
-                      <div className="h-full rounded-full bg-gradient-to-r from-[#00AFF0] to-[#00d4ff]" style={{ width: `${topPct}%` }} />
-                    </div>
-                    <span className="w-20 text-right text-sm font-black text-[#00AFF0] flex-shrink-0">{fmt(s.clicks)}</span>
-                    <span className="w-12 text-right text-[11px] text-white/35 flex-shrink-0">{pct.toFixed(0)}%</span>
-                  </div>
-                );
-              })}
+            <h2 className="text-sm font-bold text-white/70">{isAgency ? 'Clicks per model' : 'Creators'}</h2>
+            <div className="text-right">
+              <div className="text-2xl font-black text-[#00AFF0]">{fmt(data.totalClicks)}</div>
+              <div className="text-[10px] text-white/30">{isAgency ? 'total combined' : 'total clicks'}</div>
             </div>
-          )}
+          </div>
+          <div className="space-y-2.5">
+            {data.perCreator.map((c) => {
+              const pct = data.perCreator[0]?.clicks ? (c.clicks / data.perCreator[0].clicks) * 100 : 0;
+              const modelHref = (isAgency || isFreeBucket)
+                ? `/ofm/${agencySlug}/${(c.username || c.name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+                : undefined;
+              const inner = (
+                <>
+                  {c.avatar
+                    ? <img src={c.avatar} alt="" className="w-9 h-9 rounded-lg object-cover bg-white/5 flex-shrink-0" />
+                    : <div className="w-9 h-9 rounded-lg bg-[#00AFF0]/15 flex items-center justify-center text-[#00AFF0] font-black flex-shrink-0">{c.name.charAt(0)}</div>}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold truncate">{c.name}</span>
+                      <span className="text-sm font-black text-[#00AFF0] ml-2">{fmt(c.clicks)}</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden mt-1">
+                      <div className="h-full rounded-full bg-[#00AFF0]" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                </>
+              );
+              return modelHref ? (
+                <Link key={c.username} href={modelHref} className="flex items-center gap-3 hover:bg-white/[0.03] rounded-lg p-1 -m-1 transition">
+                  {inner}
+                </Link>
+              ) : (
+                <div key={c.username} className="flex items-center gap-3">{inner}</div>
+              );
+            })}
+          </div>
         </div>
+      </div>
+
+      <div className="bg-[#0e1018] border border-white/[0.06] rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-bold text-white/70">Clicks over time</h2>
+          <div className="flex gap-1 bg-white/[0.04] rounded-lg p-1">
+            {(['hour', 'day'] as const).map((v) => (
+              <button key={v} onClick={() => setView(v)}
+                className={`px-3 py-1 rounded-md text-xs font-bold transition ${view === v ? 'bg-[#00AFF0] text-white' : 'text-white/40 hover:text-white/70'}`}>
+                {v === 'hour' ? 'Last 24h' : 'By day'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <BarChart data={chart} accent="#00AFF0" />
+      </div>
+
+      <div className="bg-[#0e1018] border border-white/[0.06] rounded-2xl p-5">
+        <div className="flex items-baseline justify-between mb-4">
+          <h2 className="text-sm font-bold text-white/70">Where clicks come from</h2>
+          <span className="text-[10px] text-white/30">double down on the top sections</span>
+        </div>
+        {data.sections.length === 0 ? (
+          <div className="text-sm text-white/30 py-4">No clicks yet.</div>
+        ) : (
+          <div className="space-y-2.5">
+            {data.sections.map((s) => {
+              const pct = data.totalClicks ? (s.clicks / data.totalClicks) * 100 : 0;
+              const topPct = data.sections[0]?.clicks ? (s.clicks / data.sections[0].clicks) * 100 : 0;
+              return (
+                <div key={s.label} className="flex items-center gap-3">
+                  <span className="w-32 sm:w-40 text-sm font-bold text-white/80 flex-shrink-0 truncate">{s.label}</span>
+                  <div className="flex-1 h-2.5 rounded-full bg-white/[0.06] overflow-hidden">
+                    <div className="h-full rounded-full bg-gradient-to-r from-[#00AFF0] to-[#00d4ff]" style={{ width: `${topPct}%` }} />
+                  </div>
+                  <span className="w-20 text-right text-sm font-black text-[#00AFF0] flex-shrink-0">{fmt(s.clicks)}</span>
+                  <span className="w-12 text-right text-[11px] text-white/35 flex-shrink-0">{pct.toFixed(0)}%</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

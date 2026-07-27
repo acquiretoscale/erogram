@@ -2,7 +2,9 @@
 
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
-import { User, OFClient, TrendingOFCreator, OnlyFansCreator, CampaignClick, CampaignImpressionDaily } from '@/lib/models';
+import { User, OFClient, TrendingOFCreator, OnlyFansCreator, CampaignClick, CampaignImpressionDaily, Campaign } from '@/lib/models';
+
+const OFM_CREATORS_SLUG = 'ofm-creators';
 import { addCreatorAlbumPhoto, removeCreatorAlbumPhoto } from '@/lib/actions/creatorImages';
 
 /**
@@ -217,24 +219,39 @@ export async function getOFMModelDetail(token: string, agencySlug: string, model
   await adminAuth(token);
   await connectDB();
 
-  // Find the client by slug
-  const clients = await OFClient.find({}, 'name').lean();
-  const client = (clients as any[]).find((c) => slugify(c.name) === agencySlug);
-  if (!client) return null;
+  let creators: any[];
+  let agencyName: string;
 
-  // Find the creator by slug within that client
-  const creators = await TrendingOFCreator.find(
-    { ofClientId: client._id },
-    'name username avatar url active liveHourStart liveHourEnd liveOnly pausedImageUrls splitTestStartedAt linkedCampaignId',
-  ).lean();
+  if (agencySlug === OFM_CREATORS_SLUG) {
+    agencyName = 'Individual Creators';
+    creators = await TrendingOFCreator.find(
+      { ofClientId: null, linkedCampaignId: { $ne: null } },
+      'name username avatar url active liveHourStart liveHourEnd liveOnly pausedImageUrls splitTestStartedAt linkedCampaignId',
+    ).lean();
+  } else {
+    const clients = await OFClient.find({}, 'name').lean();
+    const client = (clients as any[]).find((c) => slugify(c.name) === agencySlug);
+    if (!client) return null;
+    agencyName = client.name;
+    creators = await TrendingOFCreator.find(
+      { ofClientId: client._id },
+      'name username avatar url active liveHourStart liveHourEnd liveOnly pausedImageUrls splitTestStartedAt linkedCampaignId',
+    ).lean();
+  }
+
   const cr = (creators as any[]).find((c) => slugify(c.username || c.name) === modelSlug);
   if (!cr) return null;
 
   const ids = cr.linkedCampaignId ? [cr.linkedCampaignId] : [];
-  const [periods, impressions, { album }] = await Promise.all([
+  const [periods, impressions, { album }, campaignDoc] = await Promise.all([
     periodClicks(ids),
     totalImpressions(ids),
     getCreatorAlbum(cr.username),
+    cr.linkedCampaignId
+      ? Campaign.findById(cr.linkedCampaignId)
+          .select('status isVisible startDate endDate placements targetKeywords priority dailyClickCap blockFormat adType')
+          .lean()
+      : Promise.resolve(null),
   ]);
   const ctr = impressions > 0 ? Number(((periods.total / impressions) * 100).toFixed(2)) : 0;
 
@@ -254,8 +271,23 @@ export async function getOFMModelDetail(token: string, agencySlug: string, model
   const winnerIndex: number | null = ranked.length ? ranked[0].index : null;
   const activeCount = pictures.filter((p) => !p.paused).length;
 
+  const campaign = campaignDoc
+    ? {
+        _id: String((campaignDoc as any)._id),
+        status: (campaignDoc as any).status || 'paused',
+        isVisible: (campaignDoc as any).isVisible !== false,
+        startDate: (campaignDoc as any).startDate ? new Date((campaignDoc as any).startDate).toISOString() : null,
+        endDate: (campaignDoc as any).endDate ? new Date((campaignDoc as any).endDate).toISOString() : null,
+        placements: (campaignDoc as any).placements || [],
+        targetKeywords: (campaignDoc as any).targetKeywords || [],
+        priority: ((campaignDoc as any).priority === 'boost' ? 'boost' : 'normal') as 'normal' | 'boost',
+        dailyClickCap: (campaignDoc as any).dailyClickCap ?? null,
+        blockFormat: ((campaignDoc as any).blockFormat === 'banner' ? 'banner' : 'card') as 'banner' | 'card',
+      }
+    : null;
+
   return JSON.parse(JSON.stringify({
-    agencyName: client.name,
+    agencyName,
     agencySlug,
     model: {
       _id: cr._id.toString(),
@@ -278,7 +310,32 @@ export async function getOFMModelDetail(token: string, agencySlug: string, model
     pictures,
     winnerIndex,
     activeCount,
+    campaign,
   }));
+}
+
+/** Update the linked ad campaign for an OFM model (placements, keywords, caps, lifecycle). */
+export async function updateOFMModelCampaign(
+  token: string,
+  creatorId: string,
+  data: Partial<{
+    placements: string[];
+    targetKeywords: string[];
+    priority: 'normal' | 'boost';
+    dailyClickCap: number | null;
+    blockFormat: 'banner' | 'card';
+    status: string;
+    isVisible: boolean;
+    startDate: string;
+    endDate: string | null;
+  }>,
+) {
+  await adminAuth(token);
+  await connectDB();
+  const cr = await TrendingOFCreator.findById(creatorId).select('linkedCampaignId').lean();
+  if (!cr?.linkedCampaignId) throw new Error('No linked ad campaign for this model');
+  const { updateCampaign } = await import('@/lib/actions/campaigns');
+  return updateCampaign(token, String(cr.linkedCampaignId), data);
 }
 
 /** Update a creator's URL, live settings, or liveOnly flag. */
@@ -301,6 +358,10 @@ export async function updateOFMCreatorSettings(
     if (patch[k as keyof typeof patch] !== undefined) safe[k] = patch[k as keyof typeof patch];
   }
   await TrendingOFCreator.findByIdAndUpdate(creatorId, { $set: safe });
+  if (patch.active !== undefined) {
+    const { syncTrendingToCampaign } = await import('@/lib/actions/ofSync');
+    await syncTrendingToCampaign(creatorId);
+  }
   return { ok: true };
 }
 

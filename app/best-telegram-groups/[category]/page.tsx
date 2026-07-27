@@ -246,11 +246,9 @@ export default async function BestGroupsPage({ params }: PageProps) {
         }));
     }
 
-    // Ad network: agnostic ads for this Top-10 page (keyword-targeted to this category).
-    // Up to 5 → 1 blends in as the top slot, up to 4 fill the mid 4-up block before #6.
-    const bestGroupsAds = await getKeywordPlacementCampaigns('best-groups', decodedSlug, 5).catch(() => []);
+    // Ad network: one agnostic ad for this Top-10 page (keyword-targeted to this category).
+    const bestGroupsAds = await getKeywordPlacementCampaigns('best-groups', decodedSlug, 1).catch(() => []);
     const topGroupAd = (bestGroupsAds as any[])[0] || null;
-    const midGroupAds = (bestGroupsAds as any[]).slice(1, 5);
 
     return (
         <div className="min-h-screen bg-[#111111] text-[#f5f5f5]">
@@ -281,7 +279,7 @@ export default async function BestGroupsPage({ params }: PageProps) {
                     </p>
                 </header>
 
-                {/* Main List — order: Premium → Featured ad → #1 free → rest (mid ads before rank 6) */}
+                {/* Main List — order: Premium → Featured ad → #1 free → rest */}
                 {ranking.length > 0 ? (
                     <div className="space-y-12 mb-20">
                         {ranking.map((entry, index) => {
@@ -300,9 +298,6 @@ export default async function BestGroupsPage({ params }: PageProps) {
                             />
                             {index === 0 && headIsPremium && topGroupAd && (
                                 <BestGroupsAds variant="top" ads={[topGroupAd as any]} />
-                            )}
-                            {index === 5 && midGroupAds.length > 0 && (
-                                <BestGroupsAds variant="grid" ads={midGroupAds as any} />
                             )}
                             </React.Fragment>
                             );
@@ -383,32 +378,6 @@ export default async function BestGroupsPage({ params }: PageProps) {
                     >
                         {dict.bestGroups.browseAll}
                     </Link>
-                </div>
-
-                {/* Premium CTA */}
-                <div className="mt-12 max-w-2xl mx-auto">
-                    <p className="text-lg text-gray-400 leading-relaxed">
-                        This is not even 10% of what&rsquo;s in{' '}
-                        <a
-                            href={localePath('/premium', locale)}
-                            target="_blank"
-                            rel="noopener"
-                            className="font-semibold underline decoration-[#ffd700]/40 underline-offset-2"
-                            style={{ background: 'linear-gradient(135deg, #b8860b 0%, #ffd700 45%, #fff8b0 60%, #ffd700 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
-                        >
-                            EROgram Premium
-                        </a>. Over 4,800 groups sorted by niche, unlisted anywhere else, updated weekly. Consider this list the appetizer.{' '}
-                        <a
-                            href={localePath('/premium', locale)}
-                            target="_blank"
-                            rel="noopener"
-                            className="font-semibold underline decoration-[#ffd700]/40 underline-offset-2"
-                            style={{ background: 'linear-gradient(135deg, #b8860b 0%, #ffd700 45%, #fff8b0 60%, #ffd700 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
-                        >
-                            Upgrade to Premium
-                        </a>{' '}
-                        if you want the full menu.
-                    </p>
                 </div>
             </main>
         </div>

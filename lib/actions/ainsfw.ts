@@ -16,6 +16,11 @@ function docToStats(doc: any): ToolStatsData {
     downvotes: doc.downvotes || 0,
     featured: !!doc.featured,
     campaignId: doc.campaignId?.toString() || undefined,
+    descriptionOverride: doc.descriptionOverride || '',
+    imageOverride: doc.imageOverride || '',
+    customGallery: doc.customGallery || [],
+    hiddenGalleryUrls: doc.hiddenGalleryUrls || [],
+    coverManaged: !!doc.coverManaged,
     reviews: (doc.reviews || []).map((r: any) => ({
       text: r.text,
       rating: r.rating,
@@ -29,13 +34,18 @@ export interface ToolStatsData {
   downvotes: number;
   featured: boolean;
   campaignId?: string;
+  descriptionOverride?: string;
+  imageOverride?: string;
+  customGallery?: string[];
+  hiddenGalleryUrls?: string[];
+  coverManaged?: boolean;
   reviews: { text: string; rating: number; createdAt: string }[];
 }
 
 export async function getToolStats(slug: string): Promise<ToolStatsData> {
   await connectDB();
   const doc = await AINsfwToolStats.findOne({ slug: slugQuery(slug) }).lean() as any;
-  if (!doc) return { upvotes: 0, downvotes: 0, featured: false, reviews: [] };
+  if (!doc) return { upvotes: 0, downvotes: 0, featured: false, reviews: [], descriptionOverride: '', imageOverride: '', customGallery: [], hiddenGalleryUrls: [] };
   return docToStats(doc);
 }
 
@@ -100,7 +110,7 @@ export async function adminSetToolVotes(
 export async function adminDeleteReview(slug: string, reviewIdx: number): Promise<ToolStatsData> {
   await connectDB();
   const doc = await AINsfwToolStats.findOne({ slug });
-  if (!doc) return { upvotes: 0, downvotes: 0, featured: false, reviews: [] };
+  if (!doc) return { upvotes: 0, downvotes: 0, featured: false, reviews: [], descriptionOverride: '', imageOverride: '', customGallery: [], hiddenGalleryUrls: [] };
   if (doc.reviews && reviewIdx >= 0 && reviewIdx < doc.reviews.length) {
     doc.reviews.splice(reviewIdx, 1);
     await doc.save();

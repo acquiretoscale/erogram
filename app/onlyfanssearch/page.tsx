@@ -5,7 +5,7 @@ import { OnlyFansCreator } from '@/lib/models';
 import OnlyFansClient from './OnlyFansClient';
 import { getLocale } from '@/lib/i18n/server';
 import { mainOfMeta } from './ofMeta';
-import { getActiveCampaigns } from '@/lib/actions/campaigns';
+import { getActiveCampaigns, getPlacementFeedCampaigns } from '@/lib/actions/campaigns';
 import { getBestOfPreviewAvatars } from '@/lib/actions/bestOfCreators';
 import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
 import { getTopBestOfByType, BEST_OF_PAGE_MAP } from '@/app/best-onlyfans-accounts/bestOfPages';
@@ -53,7 +53,27 @@ export default async function OnlyFansPage({ searchParams }: PageProps) {
     console.error('Failed to fetch OF creators:', e);
   }
 
-  const topBannerCampaigns = await getActiveCampaigns('top-banner', { page: 'onlyfanssearch', device: isMobile ? 'mobile' : 'desktop' }).catch(() => []);
+  const [topBannerCampaigns, ofSearchFeaturedRaw] = await Promise.all([
+    getActiveCampaigns('top-banner', { page: 'onlyfanssearch', device: isMobile ? 'mobile' : 'desktop' }).catch(() => []),
+    getPlacementFeedCampaigns('of-search-featured', 8).catch(() => []),
+  ]);
+  const paidFeatured = (ofSearchFeaturedRaw as any[])
+    .filter((c) => c.adType === 'onlyfans-creator' && (c.creative || c.ofUsername))
+    .map((c) => ({
+      _id: c._id,
+      campaignId: c._id,
+      name: c.name || c.ofUsername || '',
+      username: c.ofUsername || '',
+      avatar: (c.ofAlbum && c.ofAlbum[0]) || c.creative || '',
+      album: c.ofAlbum || [],
+      albumIdx: c.ofAlbumIdx || [],
+      url: c.destinationUrl || '',
+      bio: c.description || '',
+      likesCount: c.ofLikesCount || 0,
+      liveHourStart: c.ofLiveHourStart ?? -1,
+      liveHourEnd: c.ofLiveHourEnd ?? -1,
+      isPaidCampaign: true,
+    }));
 
   const top10Pages = [
     ...getTopBestOfByType('niche'),
@@ -81,6 +101,7 @@ export default async function OnlyFansPage({ searchParams }: PageProps) {
       top10Lists={top10Lists}
       recentlyAdded={recentlyAdded}
       topBannerCampaigns={topBannerCampaigns}
+      paidFeatured={paidFeatured}
       trendingOnErogram={[]}
       top10PreviewAvatars={top10PreviewAvatars}
       bestAccountsPreviewAvatars={bestAccountsPreviewAvatars}

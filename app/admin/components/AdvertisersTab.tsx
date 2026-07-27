@@ -121,7 +121,6 @@ interface CampaignRow {
   category: string;
   country: string;
   buttonText: string;
-  feedPlacement?: 'groups' | 'bots' | 'ainsfw' | 'both';
   internalName?: string;
   videoUrl?: string;
 }
@@ -539,7 +538,6 @@ function FeedAdsBulkBar({
   selectedCount,
   onClear,
   onBulkStatus,
-  onBulkShowOn,
   onBulkLink,
   onBulkDuplicate,
   saving,
@@ -547,13 +545,11 @@ function FeedAdsBulkBar({
   selectedCount: number;
   onClear: () => void;
   onBulkStatus: (status: string) => Promise<void>;
-  onBulkShowOn: (feedPlacement: 'groups' | 'bots' | 'both') => Promise<void>;
   onBulkLink: (destinationUrl: string) => Promise<void>;
   onBulkDuplicate: () => Promise<void>;
   saving: boolean;
 }) {
   const [bulkStatus, setBulkStatus] = useState<string>('');
-  const [bulkShowOn, setBulkShowOn] = useState<'groups' | 'bots' | 'both' | ''>('');
   const [bulkLinkUrl, setBulkLinkUrl] = useState<string>('');
   const isValidUrl = bulkLinkUrl.trim().startsWith('http://') || bulkLinkUrl.trim().startsWith('https://');
   return (
@@ -576,24 +572,6 @@ function FeedAdsBulkBar({
         className="px-3 py-2 bg-[#b31b1b] hover:bg-[#c42b2b] disabled:opacity-50 text-white rounded-lg text-sm font-medium"
       >
         {saving ? 'Saving…' : 'Apply status'}
-      </button>
-      <select
-        value={bulkShowOn}
-        onChange={(e) => setBulkShowOn(e.target.value as 'groups' | 'bots' | 'both' | '')}
-        className="bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
-      >
-        <option value="">Set Show on…</option>
-        <option value="groups">Groups</option>
-        <option value="bots">Bots</option>
-        <option value="both">Both</option>
-      </select>
-      <button
-        type="button"
-        disabled={saving || !bulkShowOn}
-        onClick={() => bulkShowOn && onBulkShowOn(bulkShowOn)}
-        className="px-3 py-2 bg-[#b31b1b] hover:bg-[#c42b2b] disabled:opacity-50 text-white rounded-lg text-sm font-medium"
-      >
-        {saving ? 'Saving…' : 'Apply Show on'}
       </button>
       <div className="flex items-center gap-2">
         <input
@@ -700,8 +678,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
   const [overviewAdvSortOrder, setOverviewAdvSortOrder] = useState<'asc' | 'desc'>('desc');
   const [feedAdsFilterAdvertiser, setFeedAdsFilterAdvertiser] = useState<string>('all');
   const [feedAdsFilterStatus, setFeedAdsFilterStatus] = useState<string>('active');
-  const [feedAdsFilterShowOn, setFeedAdsFilterShowOn] = useState<string>('all');
-  const [feedAdsSortBy, setFeedAdsSortBy] = useState<'position' | 'clicks' | 'status' | 'feedPlacement' | 'last24h' | 'last7d' | 'last30d' | 'total'>('position');
+  const [feedAdsSortBy, setFeedAdsSortBy] = useState<'position' | 'clicks' | 'status' | 'last24h' | 'last7d' | 'last30d' | 'total'>('position');
   const [feedAdsSortOrder, setFeedAdsSortOrder] = useState<'asc' | 'desc'>('asc');
   const [feedAdsSelectedIds, setFeedAdsSelectedIds] = useState<Set<string>>(new Set());
   const [feedAdsBulkSaving, setFeedAdsBulkSaving] = useState(false);
@@ -760,7 +737,6 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
     category: 'All',
     country: 'All',
     buttonText: 'Visit Site',
-    feedPlacement: 'both' as 'groups' | 'bots' | 'ainsfw' | 'both',
     videoUrl: '',
     badgeText: '',
     verified: false,
@@ -1001,7 +977,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       ...prev,
       slot: 'feed', advertiserId: advertisers[0]?._id || '', internalName: '', name: '',
       creative: '', destinationUrl: '', description: '', category: 'All', country: 'All',
-      buttonText: 'Visit Site', feedTier: 1, tierSlot: 1, position: 1, feedPlacement: 'both',
+      buttonText: 'Visit Site', feedTier: 1, tierSlot: 1, position: 1,
       videoUrl: '', badgeText: '', socialProof: 'random', placements: [], dailyClickCap: '', blockFormat: 'card',
     }) as any);
     setView('editCampaign');
@@ -1095,7 +1071,6 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       category: 'All',
       country: 'All',
       buttonText: 'Visit Site',
-      feedPlacement: 'both',
       videoUrl: '',
       badgeText: '',
       verified: false,
@@ -1142,7 +1117,6 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       category: camp.category || 'All',
       country: camp.country || 'All',
       buttonText: camp.buttonText || 'Visit Site',
-      feedPlacement: (camp.feedPlacement || 'both') as 'groups' | 'bots' | 'ainsfw' | 'both',
       videoUrl: (camp as any).videoUrl || '',
       badgeText: (camp as any).badgeText || '',
       verified: Boolean((camp as any).verified),
@@ -1223,7 +1197,6 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
               category: 'All',
               country: 'All',
               buttonText: 'View Profile',
-              feedPlacement: 'both',
               verified: false,
               adType: 'onlyfans-creator',
               socialProof: 'random',
@@ -1328,7 +1301,6 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
         category: isFeed ? (campForm.category ?? 'All') : 'All',
         country: isFeed ? (campForm.country ?? 'All') : 'All',
         buttonText: isFeed ? buttonTextVal : (isCta ? descriptionVal : 'Visit Site'),
-        feedPlacement: isFeed ? (campForm.feedPlacement || 'both') : undefined,
         videoUrl: isFeed ? ((campForm as any).videoUrl || '') : '',
         badgeText: isFeed ? ((campForm as any).badgeText || '') : '',
         verified: isFeed ? Boolean(campForm.verified) : false,
@@ -1394,7 +1366,6 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
         category: 'All',
         country: 'All',
         buttonText: 'Visit Site',
-        feedPlacement: 'both',
         videoUrl: '',
         badgeText: '',
         verified: false,
@@ -2342,19 +2313,6 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                   className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:ring-2 focus:ring-[#b31b1b] outline-none"
                   placeholder="e.g. Visit Site, Join Now"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-[#999] mb-2">Show on</label>
-                <select
-                  value={campForm.feedPlacement || 'both'}
-                  onChange={(e) => setCampForm({ ...campForm, feedPlacement: e.target.value as 'groups' | 'bots' | 'ainsfw' | 'both' })}
-                  className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-[#b31b1b] outline-none"
-                >
-                  <option value="both">Groups + Bots</option>
-                  <option value="groups">Groups only</option>
-                  <option value="bots">Bots only</option>
-                  <option value="ainsfw">AI NSFW only</option>
-                </select>
               </div>
 
               {/* SPOTLIGHT block format — only relevant when this ad targets a Home adspace */}
@@ -3516,7 +3474,6 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                               position: null,
                               feedTier: null,
                               tierSlot: null,
-                              feedPlacement: 'both',
                               videoUrl: '',
                               badgeText: '',
                               socialProof: 'random',
@@ -3780,7 +3737,6 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
             const feedCampaigns = campaigns.filter((c) => c.slot === 'feed' || c.slot === 'ainsfw');
             const filteredByAdvertiser = feedAdsFilterAdvertiser === 'all' ? feedCampaigns : feedCampaigns.filter((c) => c.advertiserId === feedAdsFilterAdvertiser);
             const filteredByStatus = feedAdsFilterStatus === 'all' ? filteredByAdvertiser : filteredByAdvertiser.filter((c) => c.status === feedAdsFilterStatus);
-            const filteredByShowOn = feedAdsFilterShowOn === 'all' ? filteredByStatus : filteredByStatus.filter((c) => (c.feedPlacement || 'both') === feedAdsFilterShowOn);
 
             const getStats = (cid: string, c: CampaignRow) => {
               const s = feedClickStats[cid] || { total: c.clicks ?? 0, last24h: 0, last7d: 0, last30d: 0, impressions: c.impressions ?? 0, ctr: 0 };
@@ -3833,8 +3789,6 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
               if (c.slot === 'ainsfw') return ['ainsfw-featured'];
               const pls: string[] = Array.isArray((c as any).placements) ? (c as any).placements : [];
               if (pls.length > 0) return pls.filter(p => ALL_CORE_PLACEMENTS.includes(p));
-              // AI NSFW in-feed ads route to the dedicated ainsfw-feed slot.
-              if ((c as any).feedPlacement === 'ainsfw') return ['ainsfw-feed'];
               // Legacy fallback
               const ts = c.tierSlot;
               if (ts != null && LEGACY_BRIDGE[ts]) return [LEGACY_BRIDGE[ts]];
@@ -3845,14 +3799,14 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
             // Group campaigns by placement (a multi-placement ad appears in each)
             const posGroups: Record<string, { campaigns: CampaignRow[] }> = {};
             for (const pid of ALL_CORE_PLACEMENTS) posGroups[pid] = { campaigns: [] };
-            for (const c of filteredByShowOn) {
+            for (const c of filteredByStatus) {
               for (const pid of campaignPlacements(c)) {
                 if (posGroups[pid]) posGroups[pid].campaigns.push(c);
               }
             }
 
             // Flattened for KPI totals (deduplicated campaign IDs)
-            const uniqueCampaignIds = new Set(filteredByShowOn.map(c => c._id));
+            const uniqueCampaignIds = new Set(filteredByStatus.map(c => c._id));
             // For the legacy slot header render, build sortedPositions as tier→section→placement
             // but we render differently now (see below).
 
@@ -3920,7 +3874,6 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                     category: c.category || 'All',
                     country: c.country || 'All',
                     buttonText: c.buttonText || 'Visit Site',
-                    feedPlacement: c.feedPlacement || 'both',
                     videoUrl: (c as any).videoUrl || '',
                     badgeText: (c as any).badgeText || '',
                     verified: Boolean((c as any).verified),
@@ -4010,22 +3963,9 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                     <option value="paused">Paused</option>
                     <option value="ended">Ended</option>
                   </select>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[#666] text-sm">Show on:</span>
-                    {['all', 'both', 'groups', 'bots', 'ainsfw'].map((v) => (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() => setFeedAdsFilterShowOn(v)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${feedAdsFilterShowOn === v ? 'bg-[#b31b1b] text-white border-[#b31b1b]' : 'bg-white/5 text-[#999] border-white/10 hover:border-white/20'}`}
-                      >
-                        {v === 'all' ? 'All' : v === 'both' ? 'Both' : v === 'groups' ? 'Groups' : v === 'bots' ? 'Bots' : 'AI NSFW'}
-                      </button>
-                    ))}
-                  </div>
                   <button
                     onClick={() => {
-                      setCampForm({ ...campForm, slot: 'feed', advertiserId: advertisers[0]?._id || '', internalName: '', name: '', creative: '', destinationUrl: '', description: '', category: 'All', country: 'All', buttonText: 'Visit Site', feedTier: 1, tierSlot: 1, position: 1, feedPlacement: 'both', videoUrl: '', badgeText: '', socialProof: 'random', placements: [], dailyClickCap: '', blockFormat: 'card' } as any);
+                      setCampForm({ ...campForm, slot: 'feed', advertiserId: advertisers[0]?._id || '', internalName: '', name: '', creative: '', destinationUrl: '', description: '', category: 'All', country: 'All', buttonText: 'Visit Site', feedTier: 1, tierSlot: 1, position: 1, videoUrl: '', badgeText: '', socialProof: 'random', placements: [], dailyClickCap: '', blockFormat: 'card' } as any);
                       setEditingCampaign(null);
                       setView('editCampaign');
                     }}
@@ -4051,7 +3991,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                 {/* Per-advertiser bird's-eye total line (when one advertiser is selected) */}
                 {feedAdsFilterAdvertiser !== 'all' && (() => {
                   const advName = advertisers.find((a) => a._id === feedAdsFilterAdvertiser)?.name || 'Advertiser';
-                  const tot = filteredByShowOn.reduce((acc, c) => {
+                  const tot = filteredByStatus.reduce((acc, c) => {
                     const s = getStats(c._id, c);
                     return {
                       total: acc.total + (s.total || 0),
@@ -4098,21 +4038,6 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                         const token = getToken();
                         for (const id of feedAdsSelectedIds) {
                           await adminUpdateCampaign(token, id, { status });
-                        }
-                        await fetchAll();
-                        clearFeedAdsSelection();
-                      } catch (err: any) {
-                        alert(err.message || 'Bulk update failed');
-                      } finally {
-                        setFeedAdsBulkSaving(false);
-                      }
-                    }}
-                    onBulkShowOn={async (feedPlacement: 'groups' | 'bots' | 'both') => {
-                      setFeedAdsBulkSaving(true);
-                      try {
-                        const token = getToken();
-                        for (const id of feedAdsSelectedIds) {
-                          await adminUpdateCampaign(token, id, { feedPlacement });
                         }
                         await fetchAll();
                         clearFeedAdsSelection();
@@ -4256,7 +4181,6 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                                                   <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Advertiser</th>
                                                   <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Image</th>
                                                   <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Name</th>
-                                                  <th className="px-3 py-2 text-left font-bold text-[#999] text-xs uppercase">Show on</th>
                                                   {showImpressions && <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">Impr.</th>}
                                                   <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">Clicks</th>
                                                   {showCTR && <th className="px-3 py-2 text-right font-bold text-[#999] text-xs uppercase">CTR</th>}
@@ -4287,7 +4211,6 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                                                           {isWinner && <span className="ml-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">W</span>}
                                                         </span>
                                                       </td>
-                                                      <td className="px-3 py-2 text-[#999] text-xs">{c.feedPlacement === 'both' ? 'Both' : c.feedPlacement === 'groups' ? 'Groups' : c.feedPlacement === 'bots' ? 'Bots' : 'Both'}</td>
                                                       {showImpressions && <td className="px-3 py-2 text-right text-[#999] tabular-nums text-xs">{impressions.toLocaleString()}</td>}
                                                       <td className="px-3 py-2 text-right font-semibold text-white tabular-nums text-xs">{stats.total.toLocaleString()}</td>
                                                       {showCTR && <td className="px-3 py-2 text-right tabular-nums text-xs"><span className={`font-bold ${ctr > 3 ? 'text-green-400' : ctr > 1 ? 'text-blue-400' : 'text-[#999]'}`}>{ctr}%</span></td>}
@@ -4335,7 +4258,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                   })}
                 </div>
 
-                {filteredByShowOn.length === 0 && (
+                {filteredByStatus.length === 0 && (
                   <div className="p-8 text-center text-[#666]">No feed ads match the current filters.</div>
                 )}
 

@@ -9,6 +9,7 @@ import HeaderBanner from '@/components/HeaderBanner';
 import { OF_CATEGORIES, ofCategoryUrl } from './constants';
 import { bestOfBlogSlug, getTopBestOfByType, BEST_OF_PAGE_MAP, type BestOfPage } from '@/app/best-onlyfans-accounts/bestOfPages';
 import { trackCreatorClick, trackTrendingClick } from '@/lib/actions/onlyfansTracking';
+import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
 import { getTrendingCreators } from '@/lib/actions/publicData';
 import { browseCreators, searchCreators, deleteCreatorBySlug } from '@/lib/actions/ofCreatorsBrowse';
 import { getOFMTrending, createOFMTrendingSlot } from '@/lib/actions/ofm';
@@ -85,6 +86,7 @@ interface Props {
   trendingOnErogram?: TrendingCreatorItem[];
   top10PreviewAvatars?: Record<string, string[]>;
   bestAccountsPreviewAvatars?: Record<string, string[]>;
+  paidFeatured?: any[];
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -94,6 +96,18 @@ function shuffle<T>(arr: T[]): T[] {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+function mergeFeaturedLists(paid: any[], rail: any[]) {
+  const seen = new Set<string>();
+  const out: any[] = [];
+  for (const c of [...paid, ...rail]) {
+    const u = (c.username || '').toLowerCase();
+    if (!u || seen.has(u)) continue;
+    seen.add(u);
+    out.push(c);
+  }
+  return out;
 }
 
 function isCreatorLiveNow(start: number, end: number): boolean {
@@ -399,7 +413,7 @@ function BestAccountsLinksSection({ previewAvatars }: { previewAvatars: Record<s
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-2" aria-label="Best OnlyFans accounts by category">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-3 px-0.5">
-        <h2 className="text-base sm:text-lg font-black text-[#2B1B28]">Best OnlyFans Accounts by Category</h2>
+        <h2 className="text-base sm:text-lg font-black text-white">Best OnlyFans Accounts by Category</h2>
         <Link
           href={lp('/best-onlyfans-accounts')}
           className="text-[11px] sm:text-xs font-bold text-[#00AFF0] hover:text-[#009AD6] transition-colors"
@@ -412,7 +426,7 @@ function BestAccountsLinksSection({ previewAvatars }: { previewAvatars: Record<s
           <nav
             key={col.key}
             aria-label={col.title}
-            className="rounded-xl border border-[rgba(43,27,40,0.1)] bg-[#F7F4EC] px-3 py-4 sm:px-4"
+            className="rounded-xl border border-white/10 bg-white px-3 py-4 sm:px-4"
           >
             <h3 className="text-sm sm:text-[15px] font-bold text-[#2B1B28] mb-2.5 leading-snug">{col.title}</h3>
             <ul className="list-none m-0 p-0">
@@ -558,7 +572,7 @@ function CreatorCardSkeleton() {
   );
 }
 
-export default function OnlyFansClient({ initialCreators, totalCreators, initialQuery = '', top10Lists = [], recentlyAdded = [], topBannerCampaigns = [], trendingOnErogram = [], top10PreviewAvatars = {}, bestAccountsPreviewAvatars = {} }: Props) {
+export default function OnlyFansClient({ initialCreators, totalCreators, initialQuery = '', top10Lists = [], recentlyAdded = [], topBannerCampaigns = [], trendingOnErogram = [], top10PreviewAvatars = {}, bestAccountsPreviewAvatars = {}, paidFeatured = [] }: Props) {
   const { t } = useTranslation();
   const lp = useLocalePath();
   const [query, setQuery] = useState(initialQuery);
@@ -587,6 +601,13 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
   // Which stable album image each featured card is currently showing → for split-test click attribution.
   const shownVariantRef = useRef<Record<string, number>>({});
   const [blockFeatured, setBlockFeatured] = useState<any[]>([]);
+  const ofSearchPlacement = (idx: number) => (idx >= 0 ? `of-search-featured:v${idx}` : 'of-search-featured');
+  const clickFeaturedCreator = useCallback((tc: any) => {
+    const variant = shownVariantRef.current[tc._id] ?? -1;
+    if (tc.isPaidCampaign && tc.campaignId) trackCampaignClick(tc.campaignId, ofSearchPlacement(variant));
+    else trackTrendingClick(tc._id, variant);
+    window.open(`/go/${tc.username}`, '_blank', 'noopener');
+  }, []);
   const [searchFocused, setSearchFocused] = useState(false);
   const searchAbortRef = useRef<AbortController | null>(null);
   const searchBoxRef = useRef<HTMLDivElement>(null);
@@ -619,16 +640,27 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
         })
         .catch(() => {});
     }
+  }, []);
 
+  useEffect(() => {
     getTrendingCreators()
       .then(data => {
         if (Array.isArray(data)) {
-          setAllFeatured(data);
-          setBlockFeatured([...data].sort(() => Math.random() - 0.5).slice(0, 4));
+          const merged = mergeFeaturedLists(paidFeatured, data);
+          setAllFeatured(merged);
+          setBlockFeatured([...merged].sort(() => Math.random() - 0.5).slice(0, 4));
+        } else if (paidFeatured.length) {
+          setAllFeatured([...paidFeatured]);
+          setBlockFeatured([...paidFeatured].sort(() => Math.random() - 0.5).slice(0, 4));
         }
       })
-      .catch(() => {});
-  }, []);
+      .catch(() => {
+        if (paidFeatured.length) {
+          setAllFeatured([...paidFeatured]);
+          setBlockFeatured([...paidFeatured].sort(() => Math.random() - 0.5).slice(0, 4));
+        }
+      });
+  }, [paidFeatured]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -791,12 +823,13 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
     getTrendingCreators()
       .then(data => {
         if (Array.isArray(data)) {
-          setAllFeatured(data);
-          setBlockFeatured([...data].sort(() => Math.random() - 0.5).slice(0, 4));
+          const merged = mergeFeaturedLists(paidFeatured, data);
+          setAllFeatured(merged);
+          setBlockFeatured([...merged].sort(() => Math.random() - 0.5).slice(0, 4));
         }
       })
       .catch(() => {});
-  }, []);
+  }, [paidFeatured]);
 
   const handleSendToFeatured = async (creator: Creator) => {
     const token = localStorage.getItem('token');
@@ -1055,10 +1088,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                         >
                           <button
                             type="button"
-                            onClick={() => {
-                              trackTrendingClick(tc._id, shownVariantRef.current[tc._id] ?? -1);
-                              window.open(`/go/${tc.username}`, '_blank', 'noopener');
-                            }}
+                            onClick={() => clickFeaturedCreator(tc)}
                             className="group w-full text-left rounded-2xl overflow-hidden bg-gradient-to-br from-[#0B1D3A] via-[#122B53] to-[#1A3F73] shadow-[0_14px_36px_-12px_rgba(6,16,36,0.9)] hover:shadow-[0_18px_44px_-10px_rgba(10,27,58,0.95)] ring-[3px] ring-[#FF6A00] hover:ring-[#FF8C3A] transition-all duration-300 cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-[#C7DAFF]/50"
                           >
                             <div className="relative aspect-[3/4] bg-[#0F274C] ring-1 ring-inset ring-[#9FC3FF]/30">
@@ -1127,7 +1157,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                               <button
                                 key={`ofcat-search-${blockNum}-${tc._id || tc.username}-${k}`}
                                 type="button"
-                onClick={() => { trackTrendingClick(tc._id, shownVariantRef.current[tc._id] ?? -1); window.open(`/go/${tc.username}`, '_blank', 'noopener'); }}
+                onClick={() => clickFeaturedCreator(tc)}
                 className="group w-full text-left rounded-2xl overflow-hidden bg-white ring-[2px] ring-[#00AFF0]/30 hover:ring-[#00AFF0] shadow-[0_8px_28px_-8px_rgba(0,175,240,0.25)] hover:shadow-[0_12px_36px_-6px_rgba(0,175,240,0.35)] hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none"
               >
                 <div className="relative aspect-[3/4] bg-[#f0f8ff]">
@@ -1243,7 +1273,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5">
                     {blockFeatured.map((tc) => (
-                      <button key={`feat-${tc._id}`} type="button" onClick={() => { trackTrendingClick(tc._id, shownVariantRef.current[tc._id] ?? -1); window.open(`/go/${tc.username}`, '_blank', 'noopener'); }} className="group w-full text-left rounded-2xl overflow-hidden bg-white ring-[2px] ring-[#00AFF0]/30 hover:ring-[#00AFF0] shadow-[0_8px_28px_-8px_rgba(0,175,240,0.25)] hover:shadow-[0_12px_36px_-6px_rgba(0,175,240,0.35)] hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none">
+                      <button key={`feat-${tc._id}`} type="button" onClick={() => clickFeaturedCreator(tc)} className="group w-full text-left rounded-2xl overflow-hidden bg-white ring-[2px] ring-[#00AFF0]/30 hover:ring-[#00AFF0] shadow-[0_8px_28px_-8px_rgba(0,175,240,0.25)] hover:shadow-[0_12px_36px_-6px_rgba(0,175,240,0.35)] hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none">
                         <div className="relative aspect-[3/4] bg-[#f0f8ff]">
                           {tc.avatar ? <RotatingImg album={tc.album} albumIdx={tc.albumIdx} onPick={(v) => { shownVariantRef.current[tc._id] = v; }} fallback={tc.avatar} alt={`${tc.name} OnlyFans`} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" /> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#00AFF0] bg-[#f0f8ff]">{tc.name.charAt(0)}</div>}
                         </div>

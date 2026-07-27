@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
-import HeaderBanner from '@/components/HeaderBanner';
+import LazyClickableVideoAd from '@/components/LazyClickableVideoAd';
 import Footer from '@/components/Footer';
 import ToolCard from './ToolCard';
 import AdvertCard from '../groups/AdvertCard';
@@ -23,7 +23,7 @@ interface AINsfwClientProps {
   topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string; bannerDevice?: 'all' | 'mobile' | 'desktop' }>;
   /** Generic ads assigned to the 'ainsfw-featured' placement — rendered as cards in the Top AI NSFW grid. */
   topAdCampaigns?: FeedCampaign[];
-  /** In-feed ads (feedPlacement 'ainsfw' or 'both') — interleaved into the main tool grid like Groups/Bots. */
+  /** In-feed ads (named placement ainsfw-feed) — interleaved into the main tool grid like Groups/Bots. */
   feedCampaigns?: FeedCampaign[];
   paginationCurrentPage?: number;
   paginationTotalPages?: number;
@@ -170,11 +170,9 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], feat
           </p>
         </motion.div>
 
-        {topBannerCampaigns.length > 0 && (
-          <div className="w-full mb-6">
-            <HeaderBanner campaigns={topBannerCampaigns} />
-          </div>
-        )}
+        <div className="w-full mb-6">
+          <LazyClickableVideoAd maxWidth={672} />
+        </div>
 
         {/* Compact, centered filter bar: category pills + accepted payment + search (right). */}
         <div id="ainsfw-tools" className="mb-6 sm:mb-8 scroll-mt-24">

@@ -8,7 +8,6 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { shouldUseLightAnimations, animationClasses } from '@/lib/utils/animations';
 import Footer from '@/components/Footer';
-import HeaderBanner from '@/components/HeaderBanner';
 import { formatDate } from '@/lib/i18n/date';
 import type { Locale } from '@/lib/i18n/config';
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
@@ -23,6 +22,9 @@ const Navbar = dynamic(() => import('@/components/Navbar'), {
 });
 
 import type { BlogCard } from '@/lib/actions/blog';
+import ToolCard from '@/app/ainsfw/ToolCard';
+import type { AINsfwTool } from '@/app/ainsfw/types';
+import type { ToolStatsData } from '@/lib/actions/ainsfw';
 
 interface NewGroup {
   _id: string;
@@ -68,13 +70,6 @@ interface NewBot {
   memberCount: number;
 }
 
-interface NewAINsfw {
-  slug: string;
-  name: string;
-  image: string;
-  category: string;
-}
-
 interface TopGroupCategory {
   name: string;
   slug: string;
@@ -88,7 +83,8 @@ interface HomeClientProps {
   stats?: SiteStats;
   ofCategories?: OFCategoryPreview[];
   newestBots?: NewBot[];
-  newestAINsfw?: NewAINsfw[];
+  newestAINsfw?: AINsfwTool[];
+  newestAINsfwStats?: Record<string, ToolStatsData>;
   topGroupCategories?: TopGroupCategory[];
   locale?: Locale;
 }
@@ -189,8 +185,20 @@ function CountStatCell({ target, label, raw }: { target: number; label: string; 
   );
 }
 
+function groupListingAlt(name: string): string {
+  return `${name} - Join NSFW Telegram Group`;
+}
+
+function botListingAlt(name: string): string {
+  return `${name} - Use NSFW Telegram Bot`;
+}
+
+function aiNsfwToolAlt(name: string, category: string): string {
+  return `${name} Review - Best ${category} Tool 2026`;
+}
+
 // Compact image-card row for "newest additions" (AI NSFW tools / Bots).
-function NewestRow({ items }: { items: { key: string; href: string; image: string; name: string; category: string }[] }) {
+function NewestRow({ items }: { items: { key: string; href: string; image: string; name: string; category: string; alt: string }[] }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
       {items.map((it) => (
@@ -202,7 +210,7 @@ function NewestRow({ items }: { items: { key: string; href: string; image: strin
           <div className="aspect-square relative overflow-hidden bg-white/5">
             <img
               src={it.image}
-              alt={it.name}
+              alt={it.alt}
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
               loading="lazy"
               referrerPolicy="no-referrer"
@@ -227,7 +235,20 @@ function NewestRow({ items }: { items: { key: string; href: string; image: strin
   );
 }
 
-export default function HomeClient({ featuredArticles, heroCampaigns = [], newGroups = [], stats, ofCategories = [], newestBots = [], newestAINsfw = [], topGroupCategories = [], locale = 'en' }: HomeClientProps) {
+function bestOnlyfansCategoryAlt(name: string, locale: string): string {
+  switch (locale) {
+    case 'de':
+      return `Die 10 besten ${name} OnlyFans-Accounts & Creator`;
+    case 'es':
+      return `Las 10 mejores cuentas ${name} de OnlyFans`;
+    case 'pt':
+      return `As 10 melhores contas ${name} de OnlyFans`;
+    default:
+      return `10 Best ${name} OnlyFans Accounts & Creators`;
+  }
+}
+
+export default function HomeClient({ featuredArticles, heroCampaigns = [], newGroups = [], stats, ofCategories = [], newestBots = [], newestAINsfw = [], newestAINsfwStats = {}, topGroupCategories = [], locale = 'en' }: HomeClientProps) {
   const { t, dict } = useTranslation();
   const lp = useLocalePath();
   const router = useRouter();
@@ -269,7 +290,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
       title: 'AI NSFW Tools',
       href: lp('/ainsfw'),
       iconColor: '#e0102b',
-      icon: <img src="/assets/lips-icon.png" alt="" width="26" height="26" style={{ objectFit: 'contain', filter: 'brightness(0) saturate(100%) invert(13%) sepia(90%) saturate(4000%) hue-rotate(345deg) brightness(80%)' }} />,
+      icon: <img src="/assets/lips-icon.png" alt={dict.meta?.ainsfwTitle || 'AI NSFW Tools'} width="26" height="26" style={{ objectFit: 'contain', filter: 'brightness(0) saturate(100%) invert(13%) sepia(90%) saturate(4000%) hue-rotate(345deg) brightness(80%)' }} />,
     },
     {
       title: 'OnlyFans Search',
@@ -316,7 +337,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
         {/* Left: mascot */}
         <img
           src="/assets/erogram-mascot.webp"
-          alt=""
+          alt="erogram pro mascote"
           className="erogram-mascot erogram-uncut-cta__mascot"
         />
         {/* Center: text */}
@@ -344,12 +365,6 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
 
       {/* Hero Section */}
       <main className="relative z-10 max-w-7xl mx-auto px-5 sm:px-6 pt-20 sm:pt-28 pb-14">
-        {heroCampaigns.length > 0 && (
-          <div className="w-full mb-8">
-            <HeaderBanner campaigns={heroCampaigns} placement="homepage-hero" />
-          </div>
-        )}
-
         <div className="text-center max-w-4xl mx-auto">
           {/* Badge pill */}
           <motion.div
@@ -409,15 +424,17 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
             style={{ willChange: 'transform, opacity' }}
           >
             <SectionTitle accent="AI NSFW Tools" suffix="Additions">Newest</SectionTitle>
-            <NewestRow
-              items={newestAINsfw.map((tool) => ({
-                key: tool.slug,
-                href: lp(`/${tool.slug}`),
-                image: tool.image,
-                name: tool.name,
-                category: tool.category,
-              }))}
-            />
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {newestAINsfw.map((tool, i) => (
+                <ToolCard
+                  key={tool.slug}
+                  tool={tool}
+                  index={i}
+                  initialStats={newestAINsfwStats[tool.slug]}
+                  primaryImageAlt={aiNsfwToolAlt(tool.name, tool.category)}
+                />
+              ))}
+            </div>
             <div className="text-center mt-8">
               <Link
                 href={lp('/ainsfw')}
@@ -448,6 +465,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                 image: bot.image,
                 name: bot.name,
                 category: bot.category,
+                alt: botListingAlt(bot.name),
               }))}
             />
             <div className="text-center mt-8">
@@ -494,7 +512,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                     <div className="aspect-square relative overflow-hidden bg-white/5">
                       <img
                         src={group.image && (group.image.startsWith('https://') || group.image.startsWith('/')) ? group.image : '/assets/placeholder-no-image.png'}
-                        alt={group.name}
+                        alt={groupListingAlt(group.name)}
                         className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                         loading={idx < 4 ? 'eager' : 'lazy'}
                         onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }}
@@ -717,8 +735,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                   {cat.avatar ? (
                     <img
                       src={cat.avatar}
-                      alt=""
-                      aria-hidden="true"
+                      alt={bestOnlyfansCategoryAlt(cat.name, locale)}
                       className="w-full h-full object-cover"
                       loading="lazy"
                       width={56}

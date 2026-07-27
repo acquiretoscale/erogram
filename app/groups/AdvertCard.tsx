@@ -6,6 +6,7 @@ import { useIsTelegramBrowser } from '../hooks/useIsTelegramBrowser';
 import { trackClick as trackCampaignClick, trackImpression } from '@/lib/actions/campaigns';
 import { trackTrendingClick } from '@/lib/actions/onlyfansTracking';
 import { useTranslation } from '@/lib/i18n/client';
+import { isGroupsInFeedPlacement } from '@/lib/adPlacements';
 
 // PAUSED (2026-07-24, owner order) — performance experiment. Impression pings were
 // server-action POSTs that forced a full re-render of force-dynamic pages on every
@@ -46,6 +47,63 @@ function seededRandomVideo(seed: string) {
     }
     return Math.abs(hash) / 2147483647;
 }
+
+function displayAdRating(
+    campaign: { adRating?: number | null; adReviewCount?: number | null },
+    seedFn: (s: string) => number,
+    seed: string,
+): { rating: string; reviews: number } {
+    if (campaign.adRating != null && campaign.adRating > 0) {
+        return {
+            rating: Number(campaign.adRating).toFixed(1),
+            reviews: campaign.adReviewCount ?? 0,
+        };
+    }
+    return {
+        rating: (seedFn(seed + 'rating') * 0.7 + 4.2).toFixed(1),
+        reviews: Math.floor(seedFn(seed + 'reviews') * 38 + 5),
+    };
+}
+
+function isGroupsInFeedAd(campaign?: FeedCampaign): boolean {
+    if (!campaign) return false;
+    if (campaign.placement) return isGroupsInFeedPlacement(campaign.placement);
+    const ts = campaign.tierSlot;
+    return ts != null && ts >= 2 && ts <= 5;
+}
+
+const DEFAULT_AD_BTN: React.CSSProperties = {
+    background: 'linear-gradient(135deg, #ff5e2a, #ff9432)',
+    color: '#ffffff',
+    boxShadow: '0 4px 14px -5px rgba(255,94,42,0.5)',
+};
+
+/** In-feed only: fluo green + 2 neon alternates — same hue/glow level. */
+const IN_FEED_BTN_PALETTE: React.CSSProperties[] = [
+    { background: '#39FF14', color: '#000000', boxShadow: '0 0 10px rgba(57,255,20,0.4), 0 4px 16px rgba(57,255,20,0.5)' },
+    { background: '#00F0FF', color: '#000000', boxShadow: '0 0 10px rgba(0,240,255,0.4), 0 4px 16px rgba(0,240,255,0.5)' },
+    { background: '#FFFF00', color: '#000000', boxShadow: '0 0 10px rgba(255,255,0,0.4), 0 4px 16px rgba(255,255,0,0.5)' },
+];
+
+/** OnlyFans creator ads: darker fluo blue — same glow level as green. */
+const OF_CREATOR_BTN: React.CSSProperties = {
+    background: '#0088FF',
+    color: '#FFFFFF',
+    boxShadow: '0 0 10px rgba(0,136,255,0.4), 0 4px 16px rgba(0,136,255,0.5)',
+};
+
+function adButtonStyle(
+    campaign: FeedCampaign | undefined,
+    seed: string,
+    randomFn: (s: string) => number,
+): React.CSSProperties {
+    if (!campaign || !isGroupsInFeedAd(campaign)) return DEFAULT_AD_BTN;
+    if (campaign.adType === 'onlyfans-creator') return OF_CREATOR_BTN;
+    const idx = Math.floor(randomFn(seed + 'infeed-btn') * IN_FEED_BTN_PALETTE.length);
+    return IN_FEED_BTN_PALETTE[idx];
+}
+
+const AD_BTN_CLASS = 'w-full py-2.5 sm:py-3 px-3 rounded-xl font-black text-sm transition-all duration-300 hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]';
 
 function formatCount(n: number): string {
     if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -210,7 +268,8 @@ function OnlyFansCreatorAdCard({ campaign, handleClick, growthPercent, isIndex =
                     {/* View Profile button */}
                     <button
                         onClick={(e) => { e.stopPropagation(); onCardClick(); }}
-                        className="w-full py-2.5 sm:py-3 rounded-full bg-white hover:bg-white/90 text-[#0a0a0a] text-sm sm:text-base font-black text-center shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                        style={OF_CREATOR_BTN}
+                        className="w-full py-2.5 sm:py-3 rounded-full text-sm sm:text-base font-black text-center transition-all duration-300 hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
                     >
                         {campaign.buttonText || t('groups.viewProfile')}
                     </button>
@@ -272,8 +331,8 @@ function VideoAdCard({ campaign, handleClick, hidePromoted = false, growthPercen
 
     const buttonText = (campaign.buttonText && campaign.buttonText.trim()) ? campaign.buttonText.trim() : t('groups.visitNow');
 
-    const rating = (seededRandomVideo(seed + 'rating') * 0.7 + 4.2).toFixed(1);
-    const reviewCount = Math.floor(seededRandomVideo(seed + 'reviews') * 38 + 5);
+    const { rating, reviews: reviewCount } = displayAdRating(campaign, seededRandomVideo, seed);
+    const btnStyle = adButtonStyle(campaign, seed, seededRandomVideo);
 
     const entry = cardEntryProps(isIndex);
 
@@ -342,8 +401,8 @@ function VideoAdCard({ campaign, handleClick, hidePromoted = false, growthPercen
 
                     <button
                         onClick={(e) => { e.stopPropagation(); handleClick(); }}
-                        className="w-full py-2.5 sm:py-3 px-3 rounded-xl font-black text-white text-sm transition-all duration-300 hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
-                        style={{ background: 'linear-gradient(135deg, #ff5e2a, #ff9432)', color: '#ffffff', boxShadow: '0 4px 14px -5px rgba(255,94,42,0.5)' }}
+                        className={AD_BTN_CLASS}
+                        style={btnStyle}
                     >
                         {buttonText}
                     </button>
@@ -368,6 +427,7 @@ function PremiumMosaicCard({ campaign, handleClick, growthPercent }: { campaign:
         return Math.abs(hash) / 2147483647;
     };
     const seed = `premium-${campaign._id}`;
+    const btnStyle = adButtonStyle(campaign, seed, seededRandom);
 
     const proofSetting = campaign.socialProof || 'random';
     let resolvedProof = proofSetting;
@@ -481,8 +541,8 @@ function PremiumMosaicCard({ campaign, handleClick, growthPercent }: { campaign:
                         <div className="mt-auto">
                             <button
                                 onClick={(e) => { e.stopPropagation(); handleClick(); }}
-                                className="w-full py-2.5 sm:py-3 px-3 rounded-xl font-black text-sm transition-all duration-300 hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
-                                style={{ background: 'linear-gradient(135deg, #fb5607, #ffbe0b)', color: '#1a0800', boxShadow: '0 4px 14px -6px rgba(251,86,7,0.6)' }}
+                                className={AD_BTN_CLASS}
+                                style={btnStyle}
                             >
                                 🔓 {campaign.buttonText || t('groups.unlockTheVault')}
                             </button>
@@ -557,7 +617,13 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
     const seed = `${ad._id}-${isIndex}`;
 
     // CTA button: use only buttonText from the ad (never description)
+    const { rating: cardRating, reviews: cardReviews } = campaign
+        ? displayAdRating(campaign, seededRandom, seed)
+        : { rating: (seededRandom(seed + 'rating') * 0.7 + 4.2).toFixed(1), reviews: Math.floor(seededRandom(seed + 'reviews') * 38 + 5) };
+
     const displayButtonText = (ad.buttonText && String(ad.buttonText).trim()) ? String(ad.buttonText).trim() : (buttonTexts[Math.floor(seededRandom(seed) * buttonTexts.length)]);
+
+    const btnStyle = adButtonStyle(campaign, seed, seededRandom);
 
     // Determine if this should be a "Native" ad (looks like a group card)
     // 50% chance to be native (increased from 40%)
@@ -763,8 +829,8 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                         </div>
                         <button
                             onClick={() => handleClick()}
-                            className="w-full py-2.5 sm:py-3 px-3 rounded-xl font-black text-white text-sm transition-all duration-300 hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
-                            style={{ background: 'linear-gradient(135deg, #ff5e2a, #ff9432)', color: '#ffffff', boxShadow: '0 4px 14px -5px rgba(255,94,42,0.5)' }}
+                            className={AD_BTN_CLASS}
+                            style={btnStyle}
                         >
                             {ad.buttonText || t('groups.tryThisBot')}
                         </button>
@@ -834,16 +900,16 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                             <div className="flex items-center justify-between px-1">
                                 <div className="flex items-center gap-1">
                                     <span className="text-yellow-500 text-[10px] sm:text-sm">⭐</span>
-                                    <span className="text-white font-bold text-[10px] sm:text-sm">{(seededRandom(seed + 'rating') * 0.7 + 4.2).toFixed(1)}</span>
-                                    <span className="text-gray-500 text-[10px] sm:text-xs">({Math.floor(seededRandom(seed + 'reviews') * 38 + 5)})</span>
+                                    <span className="text-white font-bold text-[10px] sm:text-sm">{cardRating}</span>
+                                    <span className="text-gray-500 text-[10px] sm:text-xs">({cardReviews})</span>
                                 </div>
                             </div>
 
                             {/* Main Button */}
                             <button
                                 onClick={() => handleClick()}
-                                className="w-full py-2.5 sm:py-3 px-3 rounded-xl font-black text-white text-sm transition-all duration-300 hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
-                                style={{ background: 'linear-gradient(135deg, #ff5e2a, #ff9432)', color: '#ffffff', boxShadow: '0 4px 14px -5px rgba(255,94,42,0.5)' }}
+                                className={AD_BTN_CLASS}
+                                style={btnStyle}
                             >
                                 {displayButtonText}
                             </button>
@@ -909,8 +975,8 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                     {/* Action Button */}
                     <button
                         onClick={() => handleClick()}
-                        className="w-full py-2.5 sm:py-3 px-3 rounded-xl font-black text-white text-sm transition-all duration-300 hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
-                        style={{ background: 'linear-gradient(135deg, #ff5e2a, #ff9432)', color: '#ffffff', boxShadow: '0 4px 14px -5px rgba(255,94,42,0.5)' }}
+                        className={AD_BTN_CLASS}
+                        style={btnStyle}
                     >
                         {displayButtonText}
                     </button>

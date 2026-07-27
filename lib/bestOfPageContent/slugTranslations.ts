@@ -68,7 +68,6 @@ export const SLUG_TRANSLATIONS: Record<string, { de?: string; es?: string; pt?: 
   "heels": { de: "top-10-heels-onlyfans-models", es: "top-10-modelos-onlyfans-heels", pt: "top-10-modelos-onlyfans-heels" },
   "hotwife": { de: "top-10-hotwife-onlyfans-modelle", es: "top-10-modelos-onlyfans-hotwife", pt: "top-10-modelos-onlyfans-hotwife" },
   "illinois": { de: "top-10-onlyfans-modelle-aus-illinois", es: "top-10-modelos-onlyfans-illinois", pt: "top-10-modelos-onlyfans-illinois" },
-  "indian": { de: "top-10-indische-onlyfans-modelle", es: "top-10-modelos-onlyfans-indian", pt: "top-10-modelos-onlyfans-indian" },
   "influencer": { de: "top-10-influencer-auf-onlyfans", es: "top-10-modelos-onlyfans-influencer", pt: "top-10-modelos-onlyfans-influencer" },
   "irish": { de: "top-10-irische-onlyfans-models", es: "top-10-modelos-onlyfans-irish", pt: "top-10-modelos-onlyfans-irish" },
   "italian": { de: "top-10-italienischen-onlyfans-modelle", es: "top-10-modelos-onlyfans-italian", pt: "top-10-modelos-onlyfans-italian" },

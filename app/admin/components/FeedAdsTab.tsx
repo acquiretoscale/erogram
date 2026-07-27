@@ -24,7 +24,6 @@ type CampaignRow = {
   buttonText: string;
   advertiserId: string;
   advertiserName?: string;
-  feedPlacement?: 'groups' | 'bots' | 'both';
 };
 
 function slotToPosition(slot: number): number {
@@ -55,7 +54,6 @@ export default function FeedAdsTab() {
     endDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
     status: 'active' as string,
     isVisible: true,
-    feedPlacement: 'both' as 'groups' | 'bots' | 'both',
   });
 
   const fetchData = async () => {
@@ -99,7 +97,6 @@ export default function FeedAdsTab() {
       endDate: c.endDate?.slice(0, 10) || new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
       status: c.status || 'active',
       isVisible: c.isVisible !== false,
-      feedPlacement: (c.feedPlacement || 'both') as 'groups' | 'bots' | 'both',
     });
   };
 
@@ -120,7 +117,6 @@ export default function FeedAdsTab() {
       endDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
       status: 'active',
       isVisible: true,
-      feedPlacement: 'both',
     });
   };
 
@@ -179,7 +175,6 @@ export default function FeedAdsTab() {
         position,
         description: form.description?.trim() ?? '',
         buttonText: form.buttonText?.trim() || 'Visit Site',
-        feedPlacement: form.feedPlacement || 'both',
       };
       // When editing, do NOT send feedTier/tierSlot so we don't hit the unique index; backend leaves them unchanged
       if (!editing) {
@@ -316,18 +311,6 @@ export default function FeedAdsTab() {
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-[#999] mb-1">Show on</label>
-              <select
-                value={form.feedPlacement}
-                onChange={(e) => setForm({ ...form, feedPlacement: e.target.value as 'groups' | 'bots' | 'both' })}
-                className="w-full p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white"
-              >
-                <option value="both">Groups + Bots</option>
-                <option value="groups">Groups only</option>
-                <option value="bots">Bots only</option>
-              </select>
-            </div>
-            <div>
               <label className="block text-sm font-semibold text-[#999] mb-1">Status</label>
               <select
                 value={form.status}
@@ -388,7 +371,6 @@ export default function FeedAdsTab() {
               <th className="px-4 py-3 text-[#999] font-semibold">Slot</th>
               <th className="px-4 py-3 text-[#999] font-semibold">Image</th>
               <th className="px-4 py-3 text-[#999] font-semibold">Internal Name</th>
-              <th className="px-4 py-3 text-[#999] font-semibold">Show on</th>
               <th className="px-4 py-3 text-[#999] font-semibold">Button</th>
               <th className="px-4 py-3 text-[#999] font-semibold">Status</th>
               <th className="px-4 py-3 text-[#999] font-semibold text-right">Clicks</th>
@@ -398,7 +380,7 @@ export default function FeedAdsTab() {
           <tbody className="divide-y divide-white/5">
             {displayList.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-[#666]">
+                <td colSpan={7} className="px-4 py-8 text-center text-[#666]">
                   No feed ads yet. Click “New feed ad” to add one.
                 </td>
               </tr>
@@ -417,7 +399,6 @@ export default function FeedAdsTab() {
                     <span className="text-white font-medium">{c.internalName || c.name}</span>
                     <span className="block text-[#666] text-xs mt-0.5 truncate max-w-[200px]">{c.name}</span>
                   </td>
-                  <td className="px-4 py-3 text-[#999]">{c.feedPlacement === 'both' ? 'Groups + Bots' : c.feedPlacement === 'groups' ? 'Groups' : 'Bots'}</td>
                   <td className="px-4 py-3 text-[#999]">{c.buttonText || 'Visit Site'}</td>
                   <td className="px-4 py-3">
                     <span className={c.status === 'active' ? 'text-green-400' : 'text-[#666]'}>{c.status}</span>

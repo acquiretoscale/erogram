@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import mongoose, { type PipelineStage } from 'mongoose';
 import connectDB from '@/lib/db/mongodb';
 import { User, Campaign, CampaignClick, CampaignImpressionDaily, Advertiser, Article, Group, Bot, OnlyFansCreator, TrendingOFCreator } from '@/lib/models';
-import { BOOST_WEIGHT } from '@/lib/adPlacements';
+import { BOOST_WEIGHT, getAdKeywordAliasesForPage } from '@/lib/adPlacements';
 import { getExpiredOFAgencyTargets } from '@/lib/actions/onlyfansTracking';
 import { dropExpiredOFAgencyAds } from '@/lib/ofExpiry';
 import { campaignNotExpired } from '@/lib/campaignDates';
@@ -140,7 +140,6 @@ export async function getCampaigns(token: string, advertiserId?: string) {
     category: c.category || 'All',
     country: c.country || 'All',
     buttonText: c.buttonText || 'Visit Site',
-    feedPlacement: c.feedPlacement || 'both',
     videoUrl: c.videoUrl || '',
     badgeText: c.badgeText || '',
     verified: Boolean(c.verified),
@@ -179,7 +178,6 @@ export async function createCampaign(
     category?: string;
     country?: string;
     buttonText?: string;
-    feedPlacement?: 'groups' | 'bots' | 'ainsfw' | 'both';
     videoUrl?: string;
     badgeText?: string;
     verified?: boolean;
@@ -295,7 +293,6 @@ export async function createCampaign(
     category: data.category || 'All',
     country: data.country || 'All',
     buttonText: data.buttonText || 'Visit Site',
-    feedPlacement: data.slot === 'feed' ? (data.feedPlacement || 'both') : undefined,
     videoUrl: data.slot === 'feed' ? (data.videoUrl || '') : '',
     badgeText: data.slot === 'feed' ? (data.badgeText || '') : '',
     verified: data.slot === 'feed' ? Boolean(data.verified) : false,
@@ -350,7 +347,6 @@ export async function updateCampaign(
     category: string;
     country: string;
     buttonText: string;
-    feedPlacement: 'groups' | 'bots' | 'ainsfw' | 'both';
     advertiserId: string;
     videoUrl: string;
     badgeText: string;
@@ -393,7 +389,6 @@ export async function updateCampaign(
   if ('buttonText' in data) updateData.buttonText = String(data.buttonText ?? 'Visit Site').trim();
   if (data.category != null) updateData.category = String(data.category || 'All');
   if (data.country != null) updateData.country = String(data.country || 'All');
-  if (data.feedPlacement != null) updateData.feedPlacement = data.feedPlacement;
   if ('videoUrl' in data) {
     const nextVideoUrl = String(data.videoUrl ?? '').trim();
     if (nextVideoUrl) assertValidAdVideoUrl(nextVideoUrl);
@@ -411,7 +406,14 @@ export async function updateCampaign(
   if ('socialProof' in data) updateData.socialProof = data.socialProof || 'random';
   if ('bannerPages' in data) updateData.bannerPages = Array.isArray(data.bannerPages) ? data.bannerPages : [];
   if ('bannerDevice' in data) updateData.bannerDevice = data.bannerDevice || 'all';
-  if ('placements' in data) updateData.placements = Array.isArray(data.placements) ? data.placements : [];
+  if ('placements' in data) {
+    updateData.placements = Array.isArray(data.placements) ? data.placements : [];
+    // placements[] is the source of truth — keep legacy tierSlot in sync for admin/stats only.
+    const { placementToTierSlot } = await import('@/lib/adPlacements');
+    const pls: string[] = updateData.placements as string[];
+    const mapped = pls.map((p) => placementToTierSlot(p)).filter((ts): ts is number => ts != null);
+    updateData.tierSlot = mapped.length > 0 ? mapped[0] : null;
+  }
   if ('targetKeywords' in data) updateData.targetKeywords = Array.isArray(data.targetKeywords) ? data.targetKeywords : [];
   if ('weight' in data) updateData.weight = data.weight ?? null;
   if ('dailyClickCap' in data) updateData.dailyClickCap = data.dailyClickCap ?? null;
@@ -745,7 +747,7 @@ export async function getTrendingErogramCampaigns(max = 4) {
  * Keyword-targeted placement fetch for the Top-10 pages (best-onlyfans-accounts / best-telegram-groups).
  * A campaign matches when:
  *   - its placements include the page placement id (e.g. 'best-of' or 'best-groups'), AND
- *   - its targetKeywords is empty (= runs on ALL category pages of that type) OR includes this category slug.
+ *   - its targetKeywords includes this category slug (empty = not shown on category pages).
  * Reuses the same active/visible/in-date + daily-cap filtering and OF enrichment as getPlacementFeedCampaigns.
  * SEO-safe: callers render the result client-side; pages stay static/SSG.
  */
@@ -755,6 +757,7 @@ export async function getKeywordPlacementCampaigns(placement: string, categorySl
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   // Canonicalize so a single keyword matches both OF (big-ass) and group (big ass) pages.
   const slug = (categorySlug || '').toLowerCase().trim().replace(/[\s_]+/g, '-');
+  const keywordAliases = getAdKeywordAliasesForPage(slug);
   const [cappedAdvertisers, cappedCampaigns] = await Promise.all([
     getCappedAdvertiserIds(),
     getCappedCampaignIds(),
@@ -766,12 +769,7 @@ export async function getKeywordPlacementCampaigns(placement: string, categorySl
     startDate: { $lte: now },
     ...campaignNotExpired(startOfToday),
     placements: placement,
-    // Empty/missing targetKeywords = runs on every category page of this type.
-    $or: [
-      { targetKeywords: { $exists: false } },
-      { targetKeywords: { $size: 0 } },
-      { targetKeywords: slug },
-    ],
+    targetKeywords: { $in: keywordAliases },
   })
     .select('_id creative destinationUrl slot description category country buttonText name videoUrl badgeText verified adType ofUsername advertiserId priority targetKeywords')
     .sort({ priority: -1, createdAt: -1 })
@@ -812,11 +810,39 @@ export async function getKeywordPlacementCampaigns(placement: string, categorySl
   const ofUsernames = serving
     .filter((c) => c.adType === 'onlyfans-creator' && c.ofUsername)
     .map((c) => String(c.ofUsername).toLowerCase());
-  const ofStats = new Map<string, { likesCount: number; subscriberCount: number; bio: string }>();
+  const ofStats = new Map<string, {
+    likesCount: number;
+    subscriberCount: number;
+    bio: string;
+    mediaCount: number;
+    photosCount: number;
+    videosCount: number;
+    postsCount: number;
+    slug: string;
+    location: string;
+    price: number;
+    isFree: boolean;
+  }>();
   const ofTrending = await buildOFEnrichMap(ofUsernames);
   if (ofUsernames.length) {
-    const docsStats = await OnlyFansCreator.find({ username: { $in: ofUsernames } }).select('username likesCount subscriberCount bio').lean();
-    for (const d of docsStats as any[]) ofStats.set(String(d.username).toLowerCase(), { likesCount: d.likesCount || 0, subscriberCount: d.subscriberCount || 0, bio: d.bio || '' });
+    const docsStats = await OnlyFansCreator.find({ username: { $in: ofUsernames } })
+      .select('username likesCount subscriberCount bio mediaCount photosCount videosCount postsCount slug location price isFree')
+      .lean();
+    for (const d of docsStats as any[]) {
+      ofStats.set(String(d.username).toLowerCase(), {
+        likesCount: d.likesCount || 0,
+        subscriberCount: d.subscriberCount || 0,
+        bio: d.bio || '',
+        mediaCount: d.mediaCount || 0,
+        photosCount: d.photosCount || 0,
+        videosCount: d.videosCount || 0,
+        postsCount: d.postsCount || 0,
+        slug: d.slug || '',
+        location: d.location || '',
+        price: d.price || 0,
+        isFree: Boolean(d.isFree),
+      });
+    }
   }
 
   // Drop OF creators flagged liveOnly that are currently offline — frees their slot.
@@ -851,6 +877,14 @@ export async function getKeywordPlacementCampaigns(placement: string, categorySl
       ofBio: stats?.bio ?? '',
       ofLikesCount: stats?.likesCount ?? 0,
       ofSubscriberCount: stats?.subscriberCount ?? 0,
+      ofMediaCount: stats?.mediaCount ?? 0,
+      ofPhotosCount: stats?.photosCount ?? 0,
+      ofVideosCount: stats?.videosCount ?? 0,
+      ofPostsCount: stats?.postsCount ?? 0,
+      ofSlug: stats?.slug ?? '',
+      ofLocation: stats?.location ?? '',
+      ofPrice: stats?.price ?? 0,
+      ofIsFree: stats?.isFree ?? false,
       ofTrendingId: tr?._id ?? '',
       ofLiveHourStart: tr?.liveHourStart ?? -1,
       ofLiveHourEnd: tr?.liveHourEnd ?? -1,
@@ -1109,9 +1143,8 @@ async function normalizeFeedPositions(): Promise<void> {
 }
 
 /**
- * Get active feed campaigns for Groups or Bots page. Single source: Campaign slot=feed.
- * placement: 'groups' | 'bots' — only campaigns with feedPlacement matching (or 'both') are returned.
- * Sorted by priority/position 1,2,3…; one ad every 5 entries. No cache.
+ * Get active feed campaigns for Groups, Bots, or AI NSFW page. Single source: Campaign slot=feed.
+ * Page filter uses named placements[] (and legacy tierSlot bridge), not feedPlacement.
  */
 /**
  * Per-advertiser daily click cap (brain: ad-vision).
@@ -1235,26 +1268,13 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ain
     startDate: { $lte: now },
     ...campaignNotExpired(startOfToday),
     feedTier: 1,
-    // Include legacy tierSlot 1-5, any named-placement campaign, OR a no-location feed ad
-    // (no tierSlot and empty placements) which defaults to the repeating in-feed slot.
-    $and: [
-      {
-        $or: [
-          { tierSlot: { $gte: 1, $lte: 5 } },
-          { placements: { $exists: true, $ne: [] } },
-          { tierSlot: null, placements: { $in: [null, []] } },
-        ],
-      },
-      {
-        $or: [
-          { feedPlacement: placement },
-          { feedPlacement: 'both' },
-          { feedPlacement: { $exists: false } },
-        ],
-      },
+    $or: [
+      { tierSlot: { $gte: 1, $lte: 11 } },
+      { placements: { $exists: true, $ne: [] } },
+      { tierSlot: null, placements: { $in: [null, []] } },
     ],
   })
-    .select('_id creative destinationUrl slot feedTier tierSlot position description category country buttonText name feedPlacement videoUrl badgeText verified adType premiumCategory premiumGroupIds socialProof ofUsername placements advertiserId priority')
+    .select('_id creative destinationUrl slot feedTier tierSlot position description category country buttonText name videoUrl badgeText verified adType premiumCategory premiumGroupIds socialProof ofUsername placements advertiserId priority')
     .lean();
 
   // Daily caps: drop campaigns whose advertiser OR whose own campaign cap is hit today.
@@ -1273,32 +1293,36 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ain
   // EMPTY placements → legacy tierSlot used as-is, so existing campaigns behave identically.
   // A multi-placement campaign (e.g. assigned to top-groups-1 AND feed-2/3/4) must appear in EVERY
   // slot it targets — not just the first — so one advertiser can blast across the whole feed.
-  const { placementToTierSlot, tierSlotToPlacement } = await import('@/lib/adPlacements');
-  const effectiveTierSlots = (c: any): number[] => {
+  const { placementToTierSlot, tierSlotToPlacement, placementMatchesFeedPage } = await import('@/lib/adPlacements');
+  const effectivePlacementTargets = (c: any): { placement: string; tierSlot: number }[] => {
     const pls: string[] = Array.isArray(c.placements) ? c.placements : [];
-    if (pls.length > 0) {
-      // Named placements are authoritative. Resolve ONLY the ones that map to a feed slot.
-      // If NONE map to a feed slot (e.g. a banner/CTA-only campaign), return [] so it does
-      // NOT leak into the feed — it will be served by its own surface (getActiveCampaigns /
-      // getPlacementFeedCampaigns) instead. No fallback to slot 4 for placement campaigns.
-      const slots = new Set<number>();
-      for (const p of pls) {
+    const mapPlacements = (ids: string[]) => {
+      const out: { placement: string; tierSlot: number }[] = [];
+      for (const p of ids) {
         const ts = placementToTierSlot(p);
-        if (ts != null) slots.add(ts);
+        if (ts != null) out.push({ placement: p, tierSlot: ts });
       }
-      return [...slots];
+      return out;
+    };
+    // OF creators: placements are the ONLY source of truth. Empty = off the groups feed.
+    if (c.adType === 'onlyfans-creator') {
+      if (pls.length === 0) return [];
+      return mapPlacements(pls);
     }
-    if (c.tierSlot != null) return [c.tierSlot];
-    // Pure-legacy ad with no placement AND no tierSlot → default to the repeating in-feed slot.
-    return [4];
+    if (pls.length > 0) return mapPlacements(pls);
+    if (c.tierSlot != null) {
+      return [{ placement: tierSlotToPlacement(c.tierSlot) || 'feed', tierSlot: c.tierSlot }];
+    }
+    return [{ placement: 'feed-4', tierSlot: 4 }];
   };
 
-  // Group by effective tierSlot (1-10) for A/B variant selection. A campaign can land in several slots.
-  const slotGroups = new Map<number, any[]>();
+  // Group by tierSlot; each entry keeps the real placement id (feed-5 ≠ top-groups-4 even though both use tier 5).
+  const slotGroups = new Map<number, { campaign: any; placement: string }[]>();
   for (const c of campaigns) {
-    for (const ts of effectiveTierSlots(c)) {
+    for (const { placement: p, tierSlot: ts } of effectivePlacementTargets(c)) {
+      if (!placementMatchesFeedPage(p, placement)) continue;
       if (!slotGroups.has(ts)) slotGroups.set(ts, []);
-      slotGroups.get(ts)!.push(c);
+      slotGroups.get(ts)!.push({ campaign: c, placement: p });
     }
   }
 
@@ -1352,12 +1376,12 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ain
     // they're listed first so the client weights them heavier (more visibility), but
     // non-boosted ads in the same slot still rotate in. If one advertiser/agency puts 5
     // creators in a slot, all 5 rotate. No collapsing, no one-per-advertiser.
-    const boosted = variants.filter((v: any) => v.priority === 'boost');
+    const boosted = variants.filter((v) => v.campaign.priority === 'boost');
     const orderedAll = boosted.length > 0
-      ? [...boosted, ...variants.filter((v: any) => v.priority !== 'boost')]
+      ? [...boosted, ...variants.filter((v) => v.campaign.priority !== 'boost')]
       : variants;
     const picks = orderedAll;
-    for (const pick of picks) {
+    for (const { campaign: pick, placement } of picks) {
       const ofData = (pick as any).adType === 'onlyfans-creator'
         ? ofCreatorMap.get(((pick as any).ofUsername || '').toLowerCase())
         : undefined;
@@ -1369,12 +1393,8 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ain
         destinationUrl: pick.destinationUrl,
         slot: pick.slot,
         position: s,
-        // Effective tierSlot: GroupsClient reads tierSlot 1/5/6 for Top Groups spots.
         tierSlot: s,
-        // Canonical placement for THIS slot (top-groups-1..4 / top-bots-1..4 / feed-2..4 / feed-5).
-        // Stamped here from the authoritative map so the click tracker never has to re-guess.
-        // This is what makes Top Groups / Top Bots show as their own dashboard lines.
-        placement: tierSlotToPlacement(s) || undefined,
+        placement,
         description: pick.description || '',
         category: pick.category || 'All',
         country: pick.country || 'All',
@@ -1383,12 +1403,67 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ain
         videoUrl: pick.videoUrl || '',
         badgeText: pick.badgeText || '',
         verified: Boolean(pick.verified),
+        adRating: pick.adRating ?? null,
+        adReviewCount: pick.adReviewCount ?? null,
         adType: pick.adType || 'advertiser',
         premiumCategory: pick.premiumCategory || '',
         socialProof: pick.socialProof || 'random',
         ofUsername: (pick as any).ofUsername || '',
         priority: (pick as any).priority === 'boost' ? 'boost' : 'normal',
         advertiserId: pick.advertiserId ? pick.advertiserId.toString() : null,
+        ...(ofData ? {
+          ofLikesCount: ofData.likesCount,
+          ofSubscriberCount: ofData.subscriberCount,
+          ofIsLive: ofData.lastSeen ? (Date.now() - new Date(ofData.lastSeen).getTime() < 3600000) : false,
+          ofLiveHourStart: ofData.liveHourStart,
+          ofLiveHourEnd: ofData.liveHourEnd,
+          ofLiveOnly: ofData.liveOnly,
+          ofAlbum: ofData.album,
+          ofAlbumIdx: ofData.albumIdx,
+        } : {}),
+      });
+    }
+  }
+
+  // Placements with no legacy tierSlot (e.g. ainsfw-feed) — flat list for the page grid.
+  const seenUntiered = new Set(results.map((r) => `${r._id}:${r.placement}`));
+  let untieredPos = 20;
+  for (const c of campaigns) {
+    const rawPls: string[] = Array.isArray(c.placements) ? c.placements : [];
+    for (const p of rawPls) {
+      if (!placementMatchesFeedPage(p, placement)) continue;
+      if (placementToTierSlot(p) != null) continue;
+      const key = `${c._id}:${p}`;
+      if (seenUntiered.has(key)) continue;
+      seenUntiered.add(key);
+      const ofData = c.adType === 'onlyfans-creator'
+        ? ofCreatorMap.get(String(c.ofUsername || '').toLowerCase())
+        : undefined;
+      if (ofData && ofData.liveOnly && !isOfCreatorLiveNow(ofData.liveHourStart, ofData.liveHourEnd)) continue;
+      results.push({
+        _id: c._id.toString(),
+        creative: c.creative,
+        destinationUrl: c.destinationUrl,
+        slot: c.slot,
+        position: untieredPos++,
+        tierSlot: null,
+        placement: p,
+        description: c.description || '',
+        category: c.category || 'All',
+        country: c.country || 'All',
+        buttonText: c.buttonText || 'Visit Site',
+        name: c.name,
+        videoUrl: c.videoUrl || '',
+        badgeText: c.badgeText || '',
+        verified: Boolean(c.verified),
+        adRating: c.adRating ?? null,
+        adReviewCount: c.adReviewCount ?? null,
+        adType: c.adType || 'advertiser',
+        premiumCategory: c.premiumCategory || '',
+        socialProof: c.socialProof || 'random',
+        ofUsername: c.ofUsername || '',
+        priority: c.priority === 'boost' ? 'boost' : 'normal',
+        advertiserId: c.advertiserId ? c.advertiserId.toString() : null,
         ...(ofData ? {
           ofLikesCount: ofData.likesCount,
           ofSubscriberCount: ofData.subscriberCount,
@@ -1910,7 +1985,7 @@ function normalizeAdSpace(placement?: string | null, slot?: string | null): stri
     if (p === 'ainsfw-featured') return 'ainsfw-featured';
     // 4-ad BLOCKS, tracked per host page so each block's performance is visible separately.
     if (p.startsWith('group-sidebar')) return p;      // group-sidebar / -groups / -bots / -ainsfw
-    if (p === 'best-of' || p === 'best-groups' || p === 'of-cat') return p;
+    if (p === 'best-of' || p === 'best-groups' || p === 'of-cat' || p === 'of-search-featured') return p;
     if (p === 'feed') return 'feed';
     return p; // any other named placement keeps its name
   }

@@ -10,6 +10,7 @@ import {
   toggleVariantPause,
   resetSplitTest,
 } from '@/lib/actions/ofManage';
+import OFMModelAdPanel, { type OFMCampaign } from './OFMModelAdPanel';
 
 interface Picture { index: number; label: string; url: string; paused: boolean; total: number; last24h: number; last48h: number; last7d: number; last30d: number; }
 interface Detail {
@@ -40,6 +41,7 @@ interface Detail {
   pictures: Picture[];
   winnerIndex: number | null;
   activeCount: number;
+  campaign: OFMCampaign | null;
 }
 
 function tok() {
@@ -78,6 +80,18 @@ export default function OFMModelDetail({ agencySlug, modelSlug }: { agencySlug: 
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agencySlug, modelSlug]);
+
+  const live247 = liveStart === 0 && liveEnd === 0;
+
+  const setLive247 = (on: boolean) => {
+    if (on) {
+      setLiveStart(0);
+      setLiveEnd(0);
+    } else {
+      setLiveStart(-1);
+      setLiveEnd(-1);
+    }
+  };
 
   const save = async () => {
     if (!data) return;
@@ -137,9 +151,9 @@ export default function OFMModelDetail({ agencySlug, modelSlug }: { agencySlug: 
       <div className="max-w-4xl mx-auto px-4 sm:px-8 py-6 sm:py-8 space-y-6">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-white/40">
-          <Link href="/ofm" className="hover:text-white/70">/ofm</Link>
+          <Link href="/ofm" className="hover:text-white/70">Clients</Link>
           <span>/</span>
-          <span className="text-white/60">{data.agencyName}</span>
+          <Link href={`/ofm/${data.agencySlug}`} className="hover:text-white/70">{data.agencyName}</Link>
           <span>/</span>
           <span className="text-white font-bold">{m.name}</span>
         </div>
@@ -169,6 +183,13 @@ export default function OFMModelDetail({ agencySlug, modelSlug }: { agencySlug: 
           </div>
         </div>
 
+        <OFMModelAdPanel
+          creatorId={m._id}
+          campaign={data.campaign}
+          token={tok()}
+          onSaved={reload}
+        />
+
         {/* Edit panel */}
         <div className="bg-[#0e1018] border border-white/[0.06] rounded-2xl p-5 space-y-4">
           <h2 className="text-sm font-black uppercase tracking-wider text-white/50">Settings</h2>
@@ -192,8 +213,13 @@ export default function OFMModelDetail({ agencySlug, modelSlug }: { agencySlug: 
               <input type="checkbox" checked={liveOnly} onChange={(e) => setLiveOnly(e.target.checked)} className="accent-emerald-500 w-4 h-4" />
               <span className="text-sm">Live-only (hide ad when offline)</span>
             </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={live247} onChange={(e) => setLive247(e.target.checked)} className="accent-emerald-500 w-4 h-4" />
+              <span className="text-sm font-bold text-emerald-400">Live 24/7</span>
+            </label>
           </div>
 
+          {!live247 && (
           <div className="flex items-center gap-3">
             <div>
               <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider">Live start (GMT hour)</label>
@@ -205,8 +231,16 @@ export default function OFMModelDetail({ agencySlug, modelSlug }: { agencySlug: 
               <input type="number" min={-1} max={23} value={liveEnd} onChange={(e) => setLiveEnd(Number(e.target.value))}
                 className="mt-1 w-24 bg-white/[0.04] border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00AFF0]/50" />
             </div>
-            <span className="text-[11px] text-white/25 self-end pb-2">-1 = 24/7</span>
+            <span className="text-[11px] text-white/25 self-end pb-2">-1 = off · custom hours for live-only</span>
           </div>
+          )}
+
+          {live247 && liveOnly && (
+            <p className="text-[11px] text-emerald-400/80">Ad stays visible all day while live-only is on.</p>
+          )}
+          {live247 && !liveOnly && (
+            <p className="text-[11px] text-white/30">24/7 schedule saved. Turn on live-only to use it.</p>
+          )}
 
           <button
             onClick={save}

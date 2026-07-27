@@ -9,6 +9,8 @@ import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary } from '@/lib/i18n';
 import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
 import { AI_NSFW_TOOLS } from '@/app/ainsfw/data';
+import type { AINsfwTool } from '@/app/ainsfw/types';
+import { getAllToolStats } from '@/lib/actions/ainsfw';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import { filterCategories, categorySlug } from '@/app/groups/constants';
 
@@ -32,7 +34,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const m = dict.meta || {};
 
   const title = m.homeTitle || 'Erogram | Best NSFW Telegram Groups, Bots & AI Tools Directory (2026)';
-  const description = m.homeDesc || 'The best NSFW & Porn Telegram groups directory. Browse thousands of verified adult Telegram communities and AI bots by category — amateur, anal, lesbian, MILF, onlyfans & more. Updated daily.';
+  const description = m.homeDesc || 'The best NSFW & Porn Telegram groups directory. Browse thousands of verified adult Telegram and AI bots, onlyfans, AI NSFW Tools & more. Updated daily.';
   const canonical = `${CANONICAL_BASE}${pathname === '/' ? '' : pathname}`;
 
   return {
@@ -125,14 +127,23 @@ async function getNewestBots(limit: number = 8) {
   }
 }
 
-function getNewestAINsfw(limit: number = 8) {
-  // AI NSFW tools are a static curated list; show the most recently added (end of list).
-  return AI_NSFW_TOOLS.slice(-limit).reverse().map((t) => ({
-    slug: t.slug,
-    name: t.name,
-    image: t.image || '/assets/placeholder-no-image.png',
-    category: t.category || '',
-  }));
+const HOME_AINSFW_CATEGORIES = ['Undress AI', 'AI Girlfriend'] as const;
+
+function getNewestAINsfw(perCategory: number = 2): AINsfwTool[] {
+  const byCategory = new Map<string, AINsfwTool[]>();
+  for (const tool of AI_NSFW_TOOLS) {
+    if (!HOME_AINSFW_CATEGORIES.includes(tool.category as (typeof HOME_AINSFW_CATEGORIES)[number])) continue;
+    const list = byCategory.get(tool.category) ?? [];
+    list.push(tool);
+    byCategory.set(tool.category, list);
+  }
+  const picked: AINsfwTool[] = [];
+  for (const cat of HOME_AINSFW_CATEGORIES) {
+    const tools = byCategory.get(cat);
+    if (!tools?.length) continue;
+    picked.push(...tools.slice(-perCategory).reverse());
+  }
+  return picked;
 }
 
 async function getOFCategoryPreviews() {
@@ -207,7 +218,10 @@ export default async function Home() {
     getNewestBots(8),
     getTopGroupCategories(16),
   ]);
-  const newestAINsfw = getNewestAINsfw(8);
+  const newestAINsfw = getNewestAINsfw(4);
+  const newestAINsfwStats = await getAllToolStats(newestAINsfw.map((t) => t.slug));
+  const { mergeToolContent } = await import('@/lib/ainsfw/toolContent');
+  const displayNewestAINsfw = newestAINsfw.map((t) => mergeToolContent(t, newestAINsfwStats[t.slug]));
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -263,7 +277,8 @@ export default async function Home() {
           stats={stats}
           ofCategories={ofCategories}
           newestBots={newestBots}
-          newestAINsfw={newestAINsfw}
+          newestAINsfw={displayNewestAINsfw}
+          newestAINsfwStats={newestAINsfwStats}
           topGroupCategories={topGroupCategories}
           locale={locale}
         />

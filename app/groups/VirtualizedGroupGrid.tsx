@@ -44,14 +44,15 @@ function buildFeedItems(groups: Group[], campaigns: FeedCampaign[]): Item[] {
         }
         return draw[Math.floor(Math.random() * draw.length)];
     };
-    const slot2all = campaigns.filter(c => c.tierSlot === 2);
-    const slot3all = campaigns.filter(c => c.tierSlot === 3);
-    const slot4 = campaigns.filter(c => c.tierSlot === 4);
-    const slot5all = campaigns.filter(c => c.tierSlot === 5);
+    const byFeedPlacement = (id: string, legacyTier?: number) =>
+        campaigns.filter((c) => c.placement === id || (!c.placement && c.tierSlot === legacyTier));
+    const slot2all = byFeedPlacement('feed-2', 2);
+    const slot3all = byFeedPlacement('feed-3', 3);
+    const slot4 = byFeedPlacement('feed-4', 4);
+    const slot5all = byFeedPlacement('feed-5', 5);
     const slot2pick = rotate(slot2all);
     const slot3pick = rotate(slot3all);
     const slot5pick = rotate(slot5all);
-    const allCampaigns = campaigns;
 
     let groupIdx = 0;
     let groupCount = 0;
@@ -70,9 +71,6 @@ function buildFeedItems(groups: Group[], campaigns: FeedCampaign[]): Item[] {
         } else if (groupCount > SLOT4_GC && (groupCount - SLOT4_GC) % LOOP_GAP === 0) {
             if (slot4.length > 0) {
                 items.push({ type: 'campaign', data: slot4[slot4Idx % slot4.length], index: items.length });
-                slot4Idx++;
-            } else if (allCampaigns.length > 0) {
-                items.push({ type: 'campaign', data: allCampaigns[slot4Idx % allCampaigns.length], index: items.length });
                 slot4Idx++;
             }
         }
@@ -111,6 +109,7 @@ const VirtualizedGroupGrid = React.memo(function VirtualizedGroupGrid({
                             group={groupData}
                             isIndex={Math.floor(item.index)}
                             isFeatured={groupData.pinned && resolvedItemType !== 'bot'}
+                            inFeed={resolvedItemType === 'group'}
                             onOpenReviewModal={resolvedItemType !== 'bot' ? onOpenReviewModal : undefined}
                             onOpenReportModal={resolvedItemType !== 'bot' ? onOpenReportModal : undefined}
                             isBookmarked={!!bmId}

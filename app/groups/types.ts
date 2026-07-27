@@ -70,6 +70,9 @@ export interface FeedCampaign {
     badgeText?: string;
     /** Show verified checkmark next to the ad title */
     verified?: boolean;
+    /** Fixed star rating (overrides random when set) */
+    adRating?: number | null;
+    adReviewCount?: number | null;
     /** Tier slot (1-3): determines which section the ad appears in */
     tierSlot?: number;
     /** Canonical ad-space name for click tracking (top-groups-1..4, top-bots-1..4, feed-2..5).

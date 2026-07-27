@@ -136,13 +136,16 @@ export default async function AINsfwToolPage({ params }: PageProps) {
     getBlogArticlesByCategory('ai-nsfw', 4),
   ]);
 
+  const { mergeToolContent } = await import('@/lib/ainsfw/toolContent');
+  const displayTool = mergeToolContent(aiTool, toolStats);
+
   const sortByUpvotes = (list: any[], stats: Record<string, any>) =>
     [...list].sort((a, b) => ((stats[b.slug]?.upvotes || 0) - (stats[a.slug]?.upvotes || 0)));
 
   const alternatives = sortByUpvotes(categoryTools, catStats).slice(0, 6);
 
-  const toolPageUrl = `${BASE_URL}/ainsfw/${aiTool.slug}`;
-  const toolImgUrl = aiTool.image.startsWith('http') ? aiTool.image : `${BASE_URL}${aiTool.image}`;
+  const toolPageUrl = `${BASE_URL}/ainsfw/${displayTool.slug}`;
+  const toolImgUrl = displayTool.image.startsWith('http') ? displayTool.image : `${BASE_URL}${displayTool.image}`;
 
   const toolBreadcrumb = {
     '@context': 'https://schema.org',
@@ -150,16 +153,16 @@ export default async function AINsfwToolPage({ params }: PageProps) {
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
       { '@type': 'ListItem', position: 2, name: 'AI NSFW Tools', item: `${BASE_URL}/ainsfw` },
-      { '@type': 'ListItem', position: 3, name: aiTool.category, item: `${BASE_URL}/ainsfw/${categoryToSlug(aiTool.category)}` },
-      { '@type': 'ListItem', position: 4, name: aiTool.name, item: toolPageUrl },
+      { '@type': 'ListItem', position: 3, name: displayTool.category, item: `${BASE_URL}/ainsfw/${categoryToSlug(displayTool.category)}` },
+      { '@type': 'ListItem', position: 4, name: displayTool.name, item: toolPageUrl },
     ],
   };
 
   const toolWebPage = {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
-    name: `${aiTool.name} — ${aiTool.category} Tool Review`,
-    description: aiTool.description,
+    name: `${displayTool.name} — ${displayTool.category} Tool Review`,
+    description: displayTool.description,
     url: toolPageUrl,
     isPartOf: { '@type': 'WebSite', name: 'Erogram', url: BASE_URL },
     author: { '@type': 'Organization', name: 'Erogram.pro', url: BASE_URL },
@@ -168,14 +171,14 @@ export default async function AINsfwToolPage({ params }: PageProps) {
   const toolSoftware = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
-    name: aiTool.name,
-    description: aiTool.description,
+    name: displayTool.name,
+    description: displayTool.description,
     url: toolPageUrl,
     applicationCategory: 'EntertainmentApplication',
     operatingSystem: 'Web',
     offers: {
       '@type': 'Offer',
-      price: aiTool.subscription.toLowerCase().includes('free') ? '0' : '0',
+      price: displayTool.subscription.toLowerCase().includes('free') ? '0' : '0',
       priceCurrency: 'USD',
       availability: 'https://schema.org/InStock',
     },
@@ -189,7 +192,7 @@ export default async function AINsfwToolPage({ params }: PageProps) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(toolWebPage) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(toolSoftware) }} />
       <ToolDetailClient
-        tool={aiTool}
+        tool={displayTool}
         fullReview={fullReview}
         reviewAuthor={reviewAuthor}
         alternatives={alternatives}

@@ -3,6 +3,7 @@ import sharp from 'sharp';
 import fs from 'fs';
 import path from 'path';
 import { AINSFW_GALLERY } from '@/app/ainsfw/galleryMap';
+import { getPublicToolGallery, isToolGalleryManaged } from '@/lib/actions/ainsfwAdmin';
 
 const TAVILY_KEY = process.env.TAVILY_API_KEY || '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';
 
@@ -67,6 +68,14 @@ export async function GET(req: NextRequest) {
 
   if (!slug || !name) {
     return NextResponse.json({ images: [] }, { status: 400 });
+  }
+
+  const [adminGallery, galleryManaged] = await Promise.all([
+    getPublicToolGallery(slug),
+    isToolGalleryManaged(slug),
+  ]);
+  if (galleryManaged) {
+    return NextResponse.json({ images: adminGallery });
   }
 
   // Curated R2 gallery from galleryMap — return as-is (may be fewer than 6)

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { getCampaigns, updateCampaign, deleteCampaign, getCampaignPeriodClicks } from '@/lib/actions/campaigns';
 import { getBoostCampaigns, setBoostLifecycle, convertBoostToPlacedCampaign, type BoostCampaign } from '@/lib/actions/paidCampaigns';
 import { getAdvertisers, updateAdvertiser } from '@/lib/actions/advertisers';
-import { PLACEMENTS, RESERVED_PLACEMENTS, AD_KEYWORDS, canonicalKeyword, type PlacementDef } from '@/lib/adPlacements';
+import { PLACEMENTS, RESERVED_PLACEMENTS, AD_KEYWORDS, canonicalKeyword, tierSlotToPlacement, type PlacementDef } from '@/lib/adPlacements';
 
 type Campaign = {
   _id: string;
@@ -12,6 +12,8 @@ type Campaign = {
   advertiserId: string;
   advertiserName: string;
   slot: string;
+  tierSlot?: number | null;
+  internalName?: string;
   status: string;
   adType: string;
   creative: string;
@@ -124,6 +126,13 @@ const PLACEMENTS_IN_GROUP = new Map<string, string[]>(
   CATEGORY_PILLS.map((cat) => [cat.id, PLACEMENTS.filter((p) => p.group === cat.group).map((p) => p.id)]),
 );
 
+/** Placements that actually control serving — explicit checkboxes, or legacy tierSlot mapped to a named spot. */
+function resolvePlacements(c: Campaign): string[] {
+  if (c.placements?.length) return c.placements;
+  const legacy = tierSlotToPlacement(c.tierSlot ?? null);
+  return legacy ? [legacy] : [];
+}
+
 /**
  * Which category bucket a campaign belongs to. Uses NEW placements[] when present,
  * otherwise falls back to the LEGACY slot/tierSlot/adType so existing campaigns
@@ -131,8 +140,7 @@ const PLACEMENTS_IN_GROUP = new Map<string, string[]>(
  */
 function campaignGroups(c: Campaign): Set<string> {
   const groups = new Set<string>();
-  // New engine: explicit placements.
-  for (const pid of c.placements || []) {
+  for (const pid of resolvePlacements(c)) {
     for (const [groupId, ids] of PLACEMENTS_IN_GROUP) {
       if (ids.includes(pid)) groups.add(groupId);
     }
@@ -266,7 +274,7 @@ export default function AdNetworkClient() {
 
   const startEdit = (c: Campaign) => {
     setEditing(c._id);
-    setDraftPlacements(c.placements || []);
+    setDraftPlacements(resolvePlacements(c));
     setDraftKeywords((c.targetKeywords || []).join(', '));
     setDraftPriority(c.priority || 'normal');
     setDraftBlockFormat((c.blockFormat as 'banner' | 'card') || 'card');
@@ -440,10 +448,11 @@ export default function AdNetworkClient() {
       if (ofOnly && c.adType !== 'onlyfans-creator') return false;
       if (statusFilter !== 'all' && c.status !== statusFilter) return false;
       if (typeFilter !== 'all' && c.adType !== typeFilter) return false;
-      if (placedFilter === 'placed' && !(c.placements?.length > 0)) return false;
-      if (placedFilter === 'unplaced' && c.placements?.length > 0) return false;
+      const resolved = resolvePlacements(c);
+      if (placedFilter === 'placed' && resolved.length === 0) return false;
+      if (placedFilter === 'unplaced' && resolved.length > 0) return false;
       if (groupFilter !== 'all' && !campaignGroups(c).has(groupFilter)) return false;
-      if (q && !(`${c.name} ${c.advertiserName}`.toLowerCase().includes(q))) return false;
+      if (q && !(`${c.name} ${c.advertiserName} ${c.internalName || ''}`.toLowerCase().includes(q))) return false;
       return true;
     });
     out.sort((a, b) => {
@@ -622,9 +631,9 @@ export default function AdNetworkClient() {
                             {c.priority === 'boost' ? ' · ⚡ boost' : ''}
                             {advCapMap[c.advertiserId] > 0 ? ` · cap ${fmt(advCapMap[c.advertiserId])}/day` : ''}
                           </div>
-                          {c.placements?.length > 0 && (
+                          {resolvePlacements(c).length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1.5">
-                              {c.placements.map((p) => (
+                              {resolvePlacements(c).map((p) => (
                                 <span key={p} className="px-1.5 py-0.5 rounded-md bg-red-500/10 text-red-300 border border-red-500/20 text-[10px] font-semibold">
                                   {PLACEMENT_LABEL.get(p) || p}
                                 </span>
@@ -779,7 +788,7 @@ export default function AdNetworkClient() {
 
                         {/* Unified keyword picker — appears when a keyword-targeted surface is selected.
                             ONE shared keyword list (OF + Groups). A keyword targets EVERY related page
-                            (e.g. "milf" → OF MILF page + Groups MILF page). Empty = all pages of that type. */}
+                            (e.g. "milf" → OF MILF page + Groups MILF page). None selected = off category pages. */}
                         {(draftPlacements.includes('best-of') || draftPlacements.includes('best-groups') || draftPlacements.includes('of-cat')) && (() => {
                           const selected = new Set(
                             draftKeywords.split(',').map((k) => canonicalKeyword(k)).filter(Boolean),
@@ -795,7 +804,7 @@ export default function AdNetworkClient() {
                             <div className="mt-4 rounded-lg border border-[#00AFF0]/20 bg-[#00AFF0]/[0.04] p-3">
                               <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                                 <div className="text-xs font-bold uppercase tracking-wider text-[#00AFF0]/80">
-                                  Keyword targeting — pick category pages (none = all pages of the selected type)
+                                  Keyword targeting — pick category pages (none = not shown on Top 10 / hottest pages)
                                 </div>
                                 <div className="flex gap-1.5">
                                   <button

@@ -1143,14 +1143,6 @@ export const AINSFW_GALLERY: Record<string, string[]> = {
     "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/undressher-app-undress-ai-5.webp",
     "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/undressher-app-undress-ai-6.webp",
   ],
-  "undressing-ai-undress-ai": [
-    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/undressing-ai-undress-ai-1.webp",
-    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/undressing-ai-undress-ai-2.webp",
-    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/undressing-ai-undress-ai-3.webp",
-    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/undressing-ai-undress-ai-4.webp",
-    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/undressing-ai-undress-ai-5.webp",
-    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/undressing-ai-undress-ai-6.webp",
-  ],
   "undressing-io-undress-ai": [
     "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/undressing-io-undress-ai-1.webp",
     "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/undressing-io-undress-ai-2.webp",

@@ -130,26 +130,6 @@ Look for regular uploads centered on movement rather than just photos. Check upd
 Top performers in our data include Sofia for high-energy addictive content  and large following. Valentina is noted for strong visuals and warm personality. Isabella excels in dance and sensual formats. Camila stands out for creative intimate content. Lucia offers good value with consistent delivery. These creators currently lead the **Top 10 Brazilian OnlyFans Models**.`,
 };
 
-export const INDIAN_COPY: BestOfPageContent = {
-  heroIntro:
-    "Indian beauty carries a mysterious, elegant sensuality that feels deeply exotic. We have followed how these creators blend traditional grace with bold modern confidence. Here we celebrate the **Top 10 Indian OnlyFans Models** who bring that distinctive and captivating energy to OnlyFans.",
-  bottomBody: `## Indian Kinks and Fantasies the Top 10 OnlyFans Models Bring to Life
-
-Indian creators often combine traditional aesthetics with explicit content. Popular formats include saree and traditional dress teasing, slow sensual reveals, eye-contact focused videos, and romantic or dominant/submissive roleplay. Many emphasize grace, storytelling, and a contrast between elegant presentation and explicit performance. Language mix (English + Hindi/regionnal) is common.
-
-**Subscribers** value high-quality teasing, consistent aesthetic, and creators who deliver on custom cultural or fantasy requests.
-
-## Tips for Exploring the Best Indian OnlyFans Models
-
-Assess whether the creator maintains a clear visual identity and posts regularly. check response rates to messages and the quality of custom content. Creators who balance artistic presentation with explicit delivery tend to retain subscribers better.
-
-**Prioritize** accounts with defined  style and reliable communication.
-
-## Our Research on the Leading Top 10 Indian OnlyFans Models
-
-Strong performers include Priya for polished seductive content and large following.. Aisha stands out for strong visuals and engaging presence. Maya excels in artistic and intimate formats. Riya is noted for creative roleplay. Anika offers good accessibility with premium feel. These creators represent the leading standard for  the **Top 10 Indian OnlyFans Models**.`,
-};
-
 export const MOROCCAN_COPY: BestOfPageContent = {
   heroIntro:
     "Moroccan beauty has a mysterious, sun-drenched sensuality that feels both ancient and fresh. We have studied how these creators blend exotic features with confident, modern expression. Here we celebrate the **Top 10 Moroccan OnlyFans Models** who bring that unique North African fire",
@@ -3227,7 +3207,6 @@ const MAP: Record<string, BestOfPageContent> = {
   turkish: TURKISH_COPY,
   colombian: COLOMBIAN_COPY,
   brazilian: BRAZILIAN_COPY,
-  indian: INDIAN_COPY,
   moroccan: MOROCCAN_COPY,
   german: GERMAN_COPY,
   greek: GREEK_COPY,

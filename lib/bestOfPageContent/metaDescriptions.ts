@@ -345,11 +345,6 @@ export const META_DESCRIPTIONS: Record<string, MetaDescriptionSet> = {
     de: "Prairie State mit heißen Geheimnissen! Unsere Top-10 der Illinois OnlyFans-Models auf EROgram zeigen dir, was Windy City wirklich heiß macht.",
     es: "Desde Chicago hasta el campo, las chicas de Illinois son puro Midwest swag. Echa un ojo a las 10 mejores modelos de Illinois en OnlyFans y caliéntate con su estilo único.",
   },
-  "indian": {
-    en: "Exotic beauty meets bold desires in the top 10 Indian OnlyFans models on EROgram. Get ready for a spicy collision of tradition and sin.",
-    de: "Exotische Schönheiten mit Bollywood-Charme! Die 10 Top 10 Indian Girls auf EROgram bringen Farbe in dein Leben. Tanzen sie für dich?",
-    es: "Belleza exótica y curvas de la India. Las 10 mejores modelos indias de OnlyFans te muestran su tradición top 10. No te lo pierdas.",
-  },
   "influencer": {
     en: "Famous faces and naughty places. Our top 10 influencer OnlyFans models bring you the ultimate behind-the-scenes thirst. Dare to click!",
     de: "Instagram-Stars, die auf OnlyFans richtig loslegen. Unsere Top 10 Influencer Models 2026 zeigen dir ihre private Seite. Neugierig? Dann klick!",

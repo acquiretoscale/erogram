@@ -827,26 +827,68 @@ function FooterCol({ label, children }: { label: string; children: React.ReactNo
   );
 }
 
+function FooterSocialBlock() {
+  const tileBase =
+    'group relative flex h-12 w-12 items-center justify-center rounded-[14px] border transition-all duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30';
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-white/[0.09] bg-white/[0.03] px-5 py-4 sm:min-w-[252px] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/[0.07] via-transparent to-[#c0392f]/[0.06]" />
+      <p className="relative mb-4 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a39e97]">
+        Follow EROgram on socials
+      </p>
+      <div className="relative flex items-center justify-center gap-3">
+        <a
+          href="https://x.com/erogrampro"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Follow EROgram on X"
+          className={`${tileBase} bg-[#111]/90 border-white/[0.14] shadow-[0_4px_14px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.08)] hover:border-white/30 hover:bg-[#181818] hover:shadow-[0_10px_28px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.06)]`}
+        >
+          <svg className="h-[19px] w-[19px] text-white transition-transform duration-300 group-hover:scale-110" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+          </svg>
+        </a>
+        <a
+          href="https://www.reddit.com/r/EROGRAM_PRO/"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Join EROgram on Reddit"
+          className={`${tileBase} border-[#ff8a65]/35 bg-gradient-to-b from-[#ff5722] to-[#d93a00] shadow-[0_4px_16px_rgba(255,69,0,0.28),inset_0_1px_0_rgba(255,255,255,0.18)] hover:border-[#ffb199]/45 hover:shadow-[0_10px_28px_rgba(255,69,0,0.38),inset_0_1px_0_rgba(255,255,255,0.22)]`}
+        >
+          <svg className="h-[19px] w-[19px] text-white transition-transform duration-300 group-hover:scale-110" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z" />
+          </svg>
+        </a>
+      </div>
+    </div>
+  );
+}
+
 export function EditorialFooter() {
   const lp = useLocalePath();
   const year = new Date().getFullYear();
   return (
     <footer className="bg-black border-t border-white/[0.08]">
       <div className="max-w-[1280px] mx-auto px-6 sm:px-8 py-8 sm:py-10">
-        {/* Brand + tagline */}
-        <div className="mb-8 pb-8 border-b border-white/[0.08]">
-          <Link
-            href="/"
-            className="inline-flex items-baseline text-[1.65rem] sm:text-[1.85rem] font-black uppercase tracking-tighter leading-none select-none mb-3"
-            style={{ fontFamily: 'var(--font-inter-tight), sans-serif' }}
-          >
-            <span className="text-white">EROGRAM</span>
-            <span className="w-[8px] h-[8px] ml-1 shrink-0 self-end mb-[2px] bg-[#c0392f]" />
-          </Link>
-          <p className="text-[12px] sm:text-[13px] text-[#8c8780] leading-relaxed max-w-md">
-            Your #1 hub for Porn Telegram groups &amp; NSFW tools, bots, AI companions, OnlyFans creators.
-            Explore and save your favorites all in one place.
-          </p>
+        {/* Brand + tagline + socials */}
+        <div className="mb-8 pb-8 border-b border-white/[0.08] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div>
+            <Link
+              href="/"
+              className="inline-flex items-baseline text-[1.65rem] sm:text-[1.85rem] font-black uppercase tracking-tighter leading-none select-none mb-3"
+              style={{ fontFamily: 'var(--font-inter-tight), sans-serif' }}
+            >
+              <span className="text-white">EROGRAM</span>
+              <span className="w-[8px] h-[8px] ml-1 shrink-0 self-end mb-[2px] bg-[#c0392f]" />
+            </Link>
+            <p className="text-[12px] sm:text-[13px] text-[#8c8780] leading-relaxed max-w-md">
+              Your #1 hub for Porn Telegram groups &amp; NSFW tools, bots, AI companions, OnlyFans creators.
+              Explore and save your favorites all in one place.
+            </p>
+          </div>
+
+          <FooterSocialBlock />
         </div>
 
         {/* 4 columns */}

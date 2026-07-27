@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSlug from 'rehype-slug';
@@ -94,24 +94,91 @@ const ARTICLE_COVER_LINKS: Record<string, string> = {
   'create-your-own-ai-porn-porncreate': '/ainsfw/porncreate-undress-ai',
 };
 
+function LazyArticleVideo({
+  url,
+  poster,
+  aspectRatio = '9 / 16',
+}: {
+  url: string;
+  poster?: string;
+  aspectRatio?: string;
+}) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [src, setSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    let cancelled = false;
+
+    const activate = () => {
+      if (cancelled || src) return;
+      setSrc(url);
+    };
+
+    const afterPageLoad = () => {
+      if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(activate, { timeout: 2500 });
+      } else {
+        setTimeout(activate, 600);
+      }
+    };
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) activate();
+      },
+      { rootMargin: '240px' },
+    );
+    io.observe(el);
+
+    if (document.readyState === 'complete') afterPageLoad();
+    else window.addEventListener('load', afterPageLoad, { once: true });
+
+    return () => {
+      cancelled = true;
+      io.disconnect();
+      window.removeEventListener('load', afterPageLoad);
+    };
+  }, [url, src]);
+
+  useEffect(() => {
+    if (!src || !videoRef.current) return;
+    const v = videoRef.current;
+    const play = () => { v.play().catch(() => {}); };
+    if (v.readyState >= 2) play();
+    else v.addEventListener('loadeddata', play, { once: true });
+  }, [src]);
+
+  return (
+    <div ref={wrapRef}>
+      <video
+        ref={videoRef}
+        {...(src ? { src } : {})}
+        poster={poster}
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="none"
+        className="w-full"
+        style={{ aspectRatio, objectFit: 'cover', background: '#000' }}
+      />
+    </div>
+  );
+}
+
 function VideoBlock({ data, articleSlug }: { data: any; articleSlug: string }) {
   if (!data.url) return null;
   const isDirectVideo = /\.(mp4|webm|ogg)(\?|$)/i.test(data.url);
   const ctaLabel = data.linktext || 'Check it out';
+  const aspect = data.ratio || '9 / 16';
   return (
     <div className="not-prose my-10">
-      <div className="rounded-[6px] overflow-hidden border border-black/10 shadow-lg mx-auto" style={{ maxWidth: '400px' }}>
+      <div className="rounded-[6px] overflow-hidden border border-black/10 shadow-lg mx-auto" style={{ maxWidth: data.width ? `${data.width}px` : '400px' }}>
         {isDirectVideo ? (
-          <video
-            src={data.url}
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            className="w-full"
-            style={{ aspectRatio: '9 / 16', objectFit: 'cover', background: '#000' }}
-          />
+          <LazyArticleVideo url={data.url} poster={data.poster} aspectRatio={aspect} />
         ) : (
           <iframe src={data.url} className="w-full aspect-video" allowFullScreen allow="autoplay; encrypted-media" />
         )}
@@ -233,7 +300,7 @@ function buildMarkdownComponents(articleSlug: string, articleTitle: string) {
       }
       if (lang === 'video') {
         const d = parseFence(codeContent);
-        return <VideoBlock data={{ url: d.url, caption: d.caption, link: d.link, linktext: d.linktext }} articleSlug={articleSlug} />;
+        return <VideoBlock data={{ url: d.url, poster: d.poster, caption: d.caption, link: d.link, linktext: d.linktext, ratio: d.ratio, width: d.width }} articleSlug={articleSlug} />;
       }
       return <pre className="bg-black/[0.04] p-5 rounded-[4px] overflow-x-auto my-8 text-sm">{children}</pre>;
     },
@@ -303,7 +370,11 @@ export default function BlogArticleClient({
 
         {/* Eyebrow + title */}
         <div className="text-[10px] font-bold tracking-[0.3em] uppercase text-[#c0392f] mb-4">{cat?.eyebrow || 'Feature'}</div>
-        <h1 className="font-sans font-black text-[2.2rem] sm:text-[3rem] leading-[1.06] tracking-tight text-[#0f0c0a] mb-7">{article.title}</h1>
+        <h1 className="font-sans font-black text-[2.2rem] sm:text-[3rem] leading-[1.06] tracking-tight text-[#0f0c0a] mb-4">{article.title}</h1>
+        {article.excerpt && (
+          <p className="font-sans text-[1.25rem] sm:text-[1.45rem] leading-[1.35] text-[#4a443d] mb-7 max-w-3xl">{article.excerpt}</p>
+        )}
+        {!article.excerpt && <div className="mb-7" />}
 
         {/* Meta — byline with author avatar */}
         <div className="flex items-center gap-3 pb-9 mb-2 border-b border-black/[0.08]">

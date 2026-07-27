@@ -12,6 +12,9 @@
  *  - One ad can target MANY placements (multi-placement selector, Phase 4).
  */
 
+import { BEST_OF_PAGES, BEST_OF_PAGE_MAP } from '@/app/best-onlyfans-accounts/bestOfPages';
+import { filterCategories } from '@/app/groups/constants';
+
 export type PlacementSurface =
   // Top Groups section on /groups — 4 spots, the most valuable inventory
   | 'top-groups-1'
@@ -41,7 +44,9 @@ export type PlacementSurface =
   | 'home-block-2'
   // Global banners / CTA
   | 'top-banner'
-  | 'navbar-cta';
+  | 'navbar-cta'
+  // OnlyFans Search homepage featured strip (/onlyfanssearch)
+  | 'of-search-featured';
 
 /** A placement definition the admin UI reads to build the multi-placement selector. */
 export interface PlacementDef {
@@ -90,13 +95,14 @@ export const PLACEMENTS: PlacementDef[] = [
   { id: 'navbar-cta', label: 'Navbar CTA', group: 'Banners' },
 
   // Top-10 keyword-targeted surfaces. The placement id is fixed; the category is chosen
-  // via the campaign's targetKeywords (empty = all category pages of that type).
+  // via the campaign's targetKeywords (must pick at least one; see AD_KEYWORDS).
   { id: 'best-of', label: 'Best OnlyFans Accounts — Top 10 (keyword-targeted)', group: 'Best Groups', keywordTargetable: true },
   { id: 'best-groups', label: 'Best Telegram Groups — Top 10 (keyword-targeted)', group: 'Best Groups', keywordTargetable: true },
 
   // OnlyFans Search category pages (/{slug}onlyfans) + keyword search results.
   // Featured strip (paid OF creators) + agnostic 4-ad block every 80 results. Keyword = category slug.
-  { id: 'of-cat', label: 'OnlyFans Search — category & keyword pages (keyword-targeted)', group: 'OnlyFans', keywordTargetable: true },
+  { id: 'of-search-featured', label: 'OnlyFans Search — Featured (homepage /onlyfanssearch)', group: 'OnlyFans' },
+  { id: 'of-cat', label: 'OnlyFans Search — category pages only (keyword-targeted)', group: 'OnlyFans', keywordTargetable: true },
 
   // New unified mixed promotional surface: Trending on Erogram.
   // Used on /groups, /bots, /ainsfw (below native Top).
@@ -156,6 +162,13 @@ const LEGACY_TIER_TO_PLACEMENT: Record<number, PlacementSurface> = {
   10: 'top-bots-4',
 };
 
+/** In-feed positions on /groups (and /bots where wired). Top Groups uses top-groups-* only. */
+export const GROUPS_IN_FEED_PLACEMENTS = ['feed-2', 'feed-3', 'feed-4', 'feed-5'] as const;
+
+export function isGroupsInFeedPlacement(placement: string | undefined | null): boolean {
+  return !!placement && (GROUPS_IN_FEED_PLACEMENTS as readonly string[]).includes(placement);
+}
+
 /** Map a legacy tierSlot to its named placement (for stats labelling + back-compat). */
 export function tierSlotToPlacement(tierSlot: number | null | undefined): PlacementSurface | null {
   if (tierSlot == null) return null;
@@ -166,6 +179,34 @@ export function tierSlotToPlacement(tierSlot: number | null | undefined): Placem
 export function placementToTierSlot(placement: string): number | null {
   const def = PLACEMENTS.find((p) => p.id === placement);
   return def?.legacyTierSlot ?? null;
+}
+
+/** Which named placements belong on each main feed page (replaces legacy feedPlacement groups/bots/ainsfw). */
+export type FeedPageSurface = 'groups' | 'bots' | 'ainsfw';
+
+const GROUPS_PAGE_PLACEMENTS = new Set<string>([
+  'top-groups-1', 'top-groups-2', 'top-groups-3', 'top-groups-4',
+  'feed-2', 'feed-3', 'feed-4', 'feed-5',
+  'best-groups',
+]);
+
+const BOTS_PAGE_PLACEMENTS = new Set<string>([
+  'top-bots-1', 'top-bots-2', 'top-bots-3', 'top-bots-4',
+  'feed-2', 'feed-3', 'feed-4', 'feed-5',
+]);
+
+const AINSFW_PAGE_PLACEMENTS = new Set<string>([
+  'ainsfw-featured', 'ainsfw-feed',
+]);
+
+export function feedPageSurfacePlacements(page: FeedPageSurface): ReadonlySet<string> {
+  if (page === 'groups') return GROUPS_PAGE_PLACEMENTS;
+  if (page === 'bots') return BOTS_PAGE_PLACEMENTS;
+  return AINSFW_PAGE_PLACEMENTS;
+}
+
+export function placementMatchesFeedPage(placementId: string, page: FeedPageSurface): boolean {
+  return feedPageSurfacePlacements(page).has(placementId);
 }
 
 /** All selectable placements for the admin UI (active first, reserved flagged). */
@@ -184,17 +225,41 @@ export function canonicalKeyword(s: string): string {
 }
 
 /**
- * ONE unified keyword catalog the admin picks from when keyword-targeting an ad.
- * Union of OnlyFans + Group categories, deduped by canonical slug, sorted.
- * Empty selection = the ad runs on EVERY category page of the selected page type.
+ * All keyword aliases that match a category / Top-10 page slug.
+ * e.g. french page → french, france, française (from bestOfPages patterns).
  */
-const _OF_KW = ['Asian','Blonde','Teen','MILF','Amateur','Redhead','Goth','Petite','Big Ass','Big Boobs','Brunette','Latina','Ahegao','Alt','Cosplay','Streamer','Fitness','JOI','Lesbian','Tattoo','Curvy','Ebony','Feet','Lingerie','Thick','Twerk','Squirt','Piercing'];
-const _GROUP_KW = ['AI NSFW','Adult','Amateur','Anal','Asian','BDSM','Big Ass','Big Tits','Blonde','Blowjob','Brazil','China','Colombia','Cosplay','Creampie','Cuckold','Ebony','Fantasy','Feet','Fetish','France','Free-use','Japan','Latina','Lesbian','MILF','Masturbation','NSFW-Telegram','Onlyfans','Petite','Public','Russian','Spain','Telegram-Porn','Threesome','UK'];
+export function getAdKeywordAliasesForPage(pageSlug: string): string[] {
+  const slug = canonicalKeyword(pageSlug);
+  const aliases = new Set<string>([slug]);
+  const page = BEST_OF_PAGE_MAP.get(slug);
+  if (page?.categorySlug) aliases.add(canonicalKeyword(page.categorySlug));
+  if (page?.patterns?.length) {
+    for (const p of page.patterns) aliases.add(canonicalKeyword(p));
+  }
+  return [...aliases];
+}
 
+/**
+ * ONE unified keyword catalog for Ad Network targeting.
+ * Primary source: every Top-10 / hottest OF page (countries, states, niches).
+ * Plus telegram group categories not already covered. Empty = off category pages.
+ */
 export const AD_KEYWORDS: { label: string; slug: string }[] = (() => {
   const seen = new Set<string>();
-  return [..._OF_KW, ..._GROUP_KW]
-    .map((name) => ({ label: name, slug: canonicalKeyword(name) }))
-    .filter((k) => (seen.has(k.slug) ? false : (seen.add(k.slug), true)))
-    .sort((a, b) => a.label.localeCompare(b.label));
+  const out: { label: string; slug: string }[] = [];
+
+  for (const page of BEST_OF_PAGES) {
+    if (seen.has(page.slug)) continue;
+    seen.add(page.slug);
+    out.push({ label: page.label, slug: page.slug });
+  }
+
+  for (const name of filterCategories) {
+    const slug = canonicalKeyword(name);
+    if (seen.has(slug)) continue;
+    seen.add(slug);
+    out.push({ label: name, slug });
+  }
+
+  return out.sort((a, b) => a.label.localeCompare(b.label));
 })();

@@ -19,6 +19,32 @@ function resolveImageUrl(stored: string | undefined, origin: string): string {
   return `${origin}/uploads/groups/${stored}`;
 }
 
+/** Never eligible for Top Groups organic slots — stays in the main feed. */
+const TOP_GROUPS_ORGANIC_EXCLUDE_SLUGS = new Set(['hijab-hijabi-girl-muslim-girl-hot-hijabi']);
+const TOP_GROUPS_ORGANIC_POOL = 20;
+
+function clicksLast14Days(g: { clickCountByDay?: Record<string, number>; weeklyClicks?: number }): number {
+  const byDay = g.clickCountByDay;
+  if (!byDay || typeof byDay !== 'object') return g.weeklyClicks || 0;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 14);
+  cutoff.setHours(0, 0, 0, 0);
+  let sum = 0;
+  for (const [day, n] of Object.entries(byDay)) {
+    const d = new Date(day);
+    if (!isNaN(d.getTime()) && d >= cutoff) sum += Number(n) || 0;
+  }
+  return sum;
+}
+
+function shuffleInPlace<T>(arr: T[]): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
 // Increase body size limit for base64 images (up to 10MB)
@@ -218,7 +244,7 @@ export async function GET(req: NextRequest) {
       })();
 
       const topLimit = parseInt(searchParams.get('limit') || '3', 10);
-      const POOL_SIZE = Math.max(topLimit * 5, 20);
+      const CANDIDATE_SCAN = 120;
       const now = new Date();
 
       // Expire old boosts
@@ -263,27 +289,29 @@ export async function GET(req: NextRequest) {
         boosted: { $ne: true },
         topGroupSlot: { $nin: [1, 2] },
         category: { $ne: 'Hentai' },
+        slug: { $nin: Array.from(TOP_GROUPS_ORGANIC_EXCLUDE_SLUGS) },
       })
         .sort({ weeklyClicks: -1, views: -1 })
-        .limit(POOL_SIZE)
-        .select('name slug category country categories description description_de description_es image telegramLink clickCount views memberCount verified weeklyClicks')
+        .limit(CANDIDATE_SCAN)
+        .select('name slug category country categories description description_de description_es image telegramLink clickCount views memberCount verified weeklyClicks clickCountByDay')
         .lean();
 
-      const weighted = (candidates as any[]).map((g, i) => ({
-        group: g,
-        weight: Math.max(1, (g.weeklyClicks || 0)) + Math.random() * 5 + (POOL_SIZE - i),
-      }));
-      weighted.sort((a, b) => b.weight - a.weight);
-      const organicPicks = weighted.slice(0, topLimit).map(w => w.group);
+      const organicPool = shuffleInPlace(
+        (candidates as any[])
+          .filter((g) => !reservedIds.has(g._id.toString()))
+          .map((g) => ({ g, clicks14: clicksLast14Days(g) }))
+          .sort((a, b) => b.clicks14 - a.clicks14)
+          .slice(0, TOP_GROUPS_ORGANIC_POOL)
+          .map((x) => x.g),
+      );
 
-      // Merge: boosted first → manual slots → organic fills remaining
+      // Merge: boosted → manual slots → full shuffled 14-day top-20 organic pool (client picks at random per spot).
       const finalGroups: any[] = [...boostedGroups];
       const slot1 = manualSlotMap.get(1);
       const slot2 = manualSlotMap.get(2);
-      if (slot1 && finalGroups.length < topLimit) finalGroups.push(slot1);
-      if (slot2 && finalGroups.length < topLimit) finalGroups.push(slot2);
-      for (const g of organicPicks) {
-        if (finalGroups.length >= topLimit) break;
+      if (slot1) finalGroups.push(slot1);
+      if (slot2) finalGroups.push(slot2);
+      for (const g of organicPool) {
         if (!reservedIds.has(g._id.toString())) finalGroups.push(g);
       }
 
