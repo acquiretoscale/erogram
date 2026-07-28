@@ -121,6 +121,38 @@ export const AINSFW_FULL_REVIEWS: Record<string, AINsfwFullReview> = {
       { name: "Lovescape", slug: "lovescape-ai-girlfriend" },
     ],
   },
+  "free-nudifier-undress-ai": {
+    shortDescription: "Free Nudifier is a browser-based undress tool that lives at freenudifier.com and asks nothing of the visitor before the first result. No account, no email, no card. A user drops a clothed photo, waits somewhere between ten and thirty seconds, and downloads the nude version, and the basic undress output arrives without a watermark, which is not the norm in this niche. The tool takes JPG, PNG, and WebP files up to 10MB, runs on cloud GPUs, and processes everything server-side so the images are not kept afterward. For a category where most rivals hide even a single test behind a signup wall, the open door is the main draw.",
+    featureHighlights: [
+      {
+        title: "Instant Free Undress",
+        body: "The free tier is a real working tool, not a teaser. Basic undress runs without limits on account creation, and the results keep the original lighting and pose reasonably intact. Busy backgrounds or awkward angles sometimes need a second try, as expected.",
+      },
+      {
+        title: "A Large Effect Library on the Paid Side",
+        body: "Beyond the free undress, the demo shows a much bigger catalog that unlocks with a paid upgrade to Mixvid. That side carries 120+ image effects, from pose presets to body edits, and over 300 image-to-video animations built from a single photo. Photoreal mode and ultra detail enhancement also sit behind the paywall.",
+      },
+      {
+        title: "One-Time Credits, No Subscription",
+        body: "Free Nudifier avoids the monthly-plan trap. Paid access works on credit packs that never expire: 200 credits for $9.99, 800 for $29.99, 2,000 for $59.99, and 10,000 for $249.99. The bigger the pack, the cheaper each credit becomes, so heavy users are rewarded and casual ones are not locked into a recurring charge.",
+      },
+    ],
+    sections: [
+      {
+        heading: "Free Nudifier Review",
+        body: "The tool does one thing very well and then quietly points to a full studio for anyone who wants more. The free entry is genuinely free and genuinely useful, and the upgrade path is there without nagging on every screen. The branding is a little confusing, since the site calls the premium platform Mixvid while the checkout runs under a related name, and that is worth a mention but not a dealbreaker.",
+      },
+      {
+        heading: "The Verdict",
+        body: "Free Nudifier is one of the first doors worth knocking on for anyone curious about AI undress. Instant, free, no account, with real depth waiting on the other side of the credits.",
+      },
+    ],
+    alternatives: [
+      { name: "Nudify.VIP", slug: "nudify-vip-undress-ai" },
+      { name: "Unclothy", slug: "unclothy-undress-ai" },
+      { name: "Fastundress", slug: "fastundress-undress-ai" },
+    ],
+  },
 };
 
 export function getFullReview(slug: string): AINsfwFullReview | undefined {

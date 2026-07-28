@@ -456,6 +456,11 @@ export const AINSFW_GALLERY: Record<string, string[]> = {
     "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/fastundress-undress-ai-5.webp",
     "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/fastundress-undress-ai-6.webp",
   ],
+  "free-nudifier-undress-ai": [
+    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/free-nudifier-undress-ai-1.webp",
+    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/free-nudifier-undress-ai-2.webp",
+    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/free-nudifier-undress-ai-3.webp",
+  ],
   "funfun-ai-ai-girlfriend": [
     "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/funfun-ai-ai-girlfriend-1.webp",
     "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/funfun-ai-ai-girlfriend-2.webp",
