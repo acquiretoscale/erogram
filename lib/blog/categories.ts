@@ -17,8 +17,8 @@ export interface BlogCategory {
 export const BLOG_CATEGORIES: BlogCategory[] = [
   {
     slug: 'ai-nsfw',
-    name: 'AI & the Machine',
-    eyebrow: 'AI & The Machine',
+    name: 'AI NSFW TOOLS',
+    eyebrow: 'AI NSFW TOOLS',
     metaTitle: 'AI & the Machine — NSFW AI Guides | Erogram Editorial',
     metaDescription:
       'Deep dives on AI companions, image generators, undress bots, and the tools quietly rewriting adult content.',

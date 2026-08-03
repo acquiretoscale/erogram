@@ -3,9 +3,10 @@ import connectDB from '@/lib/db/mongodb';
 import { Group, SiteConfig } from '@/lib/models';
 import PremiumClient from './PremiumClient';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { getPremiumPricing } from '@/lib/premiumPricing';
 
 const title = 'Upgrade to Premium | Erogram.pro';
-const description = 'Unlock the Erogram Private Vault — hundreds of hand-picked Telegram groups, unlimited bookmarks, custom folders, and early access to new features.';
+const description = 'Unlock the Erogram Private Vault — 4800+ hand-picked Telegram groups, unlimited bookmarks, custom folders, and early access to new features.';
 
 export const metadata: Metadata = {
   title,
@@ -28,14 +29,14 @@ async function getVaultTeaser() {
       .select('name image category country memberCount vaultTeaserOrder vaultCategories')
       .lean();
 
-    if (groups.length > 14) {
-      groups = [...groups].sort(() => Math.random() - 0.5).slice(0, 14);
+    if (groups.length > 36) {
+      groups = [...groups].sort(() => Math.random() - 0.5).slice(0, 36);
     }
 
     if (groups.length === 0) {
       groups = await Group.find({ premiumOnly: true, status: 'approved' })
         .sort({ createdAt: -1 })
-        .limit(14)
+        .limit(36)
         .select('name image category country memberCount vaultCategories')
         .lean();
     }
@@ -55,6 +56,6 @@ async function getVaultTeaser() {
 }
 
 export default async function PremiumPage() {
-  const vaultTeaser = await getVaultTeaser();
-  return <PremiumClient vaultTeaser={vaultTeaser} />;
+  const [vaultTeaser, pricing] = await Promise.all([getVaultTeaser(), getPremiumPricing()]);
+  return <PremiumClient vaultTeaser={vaultTeaser} pricing={pricing} />;
 }

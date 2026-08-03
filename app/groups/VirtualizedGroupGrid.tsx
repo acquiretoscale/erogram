@@ -110,7 +110,7 @@ const VirtualizedGroupGrid = React.memo(function VirtualizedGroupGrid({
                             isIndex={Math.floor(item.index)}
                             isFeatured={groupData.pinned && resolvedItemType !== 'bot'}
                             inFeed={resolvedItemType === 'group'}
-                            onOpenReviewModal={resolvedItemType !== 'bot' ? onOpenReviewModal : undefined}
+                            onOpenReviewModal={onOpenReviewModal}
                             onOpenReportModal={resolvedItemType !== 'bot' ? onOpenReportModal : undefined}
                             isBookmarked={!!bmId}
                             bookmarkId={bmId}

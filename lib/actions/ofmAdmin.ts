@@ -5,6 +5,7 @@ import connectDB from '@/lib/db/mongodb';
 import { User, OnlyFansCreator, TrendingOFCreator, ScrapeRun, SearchQuery, OFMSettings } from '@/lib/models';
 import { getApifyCredentials, markKeyBurned } from '@/lib/apify-key';
 import { processCreatorImages } from '@/lib/actions/creatorImages';
+import { revalidateCreatorPage } from '@/lib/actions/ofCreatorProfile';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -146,11 +147,13 @@ async function createBasicEntryAction(
       name: username,
       username,
       slug,
-      url: `https://onlyfans.com/${username}`,
       scrapedAt: new Date(),
       adminImported: true,
     },
+    // `url` is insert-only: it must NEVER be reset by a re-import/re-scrape, or a tracking
+    // link (e.g. /c27) an admin already saved gets silently downgraded back to a bare link.
     $setOnInsert: {
+      url: `https://onlyfans.com/${username}`,
       avatar: '',
       header: '',
       bio: '',
@@ -180,6 +183,8 @@ async function createBasicEntryAction(
   if (trendingSlot && trendingSlot >= 1 && trendingSlot <= 4) {
     trendingResult = await addToTrendingSlot(creator, trendingSlot);
   }
+
+  await revalidateCreatorPage(slug, username);
 
   return {
     creator,
@@ -343,12 +348,17 @@ export async function importOFMCreator(
       : [];
     const allCats = [...new Set([...catList, ...(matched.scrapedCategories || [])])];
 
-    const existingDoc = await OnlyFansCreator.findOne({ slug }).select('likesCount subscriberCount photosCount videosCount mediaCount').lean() as any;
+    const existingDoc = await OnlyFansCreator.findOne({ slug }).select('likesCount subscriberCount photosCount videosCount mediaCount url').lean() as any;
     const existingLikes = existingDoc?.likesCount || 0;
     const existingSubs = existingDoc?.subscriberCount || 0;
     const existingPhotos = existingDoc?.photosCount || 0;
     const existingVideos = existingDoc?.videosCount || 0;
     const existingMedia = existingDoc?.mediaCount || 0;
+    // Never clobber a tracking link already saved (e.g. an OF trial/campaign link an admin
+    // set for a paying client) with the bare re-scraped `onlyfans.com/{username}` URL.
+    const bareUrl = `https://onlyfans.com/${matched.username}`;
+    const existingUrl = existingDoc?.url || '';
+    const preservedUrl = (existingUrl && existingUrl !== bareUrl) ? existingUrl : matched.url;
 
     const updateOp: any = {
       $set: {
@@ -369,7 +379,7 @@ export async function importOFMCreator(
         isFree: matched.isFree,
         isVerified: !!(matched as any).isVerified,
         gender: matched.gender,
-        url: matched.url,
+        url: preservedUrl,
         scrapedAt: new Date(),
         adminImported: true,
       },
@@ -394,6 +404,8 @@ export async function importOFMCreator(
     if (trendingSlot && trendingSlot >= 1 && trendingSlot <= 4) {
       trendingResult = await addToTrendingSlot(creator, trendingSlot);
     }
+
+    await revalidateCreatorPage(slug, matched.username);
 
     return JSON.parse(JSON.stringify({ creator, trending: trendingResult, source: 'apify' }));
 
@@ -537,10 +549,13 @@ export async function bulkImportCreators(
               likesCount: parsed.likesCount, mediaCount: parsed.mediaCount,
               photosCount: parsed.photosCount, videosCount: parsed.videosCount,
               postsCount: parsed.postsCount, price: parsed.price, isFree: parsed.isFree,
-              isVerified: parsed.isVerified, gender: parsed.gender, url: parsed.url,
+              isVerified: parsed.isVerified, gender: parsed.gender,
               location: parsed.location, website: parsed.website, joinDate: parsed.joinDate,
               onlyfansId: parsed.onlyfansId, scrapedAt: new Date(),
+              adminImported: true,
             },
+            // `url` is insert-only — never reset a saved tracking link on a re-run.
+            $setOnInsert: { url: parsed.url },
           },
           { upsert: true, new: true },
         );
@@ -595,11 +610,14 @@ export async function saveBulkApifyResults(items: any[]) {
             price: typeof item.subscribePrice === 'number' ? item.subscribePrice : parseFloat(String(item.subscribePrice || '0')) || 0,
             isFree: (item.subscribePrice || 0) === 0,
             isVerified: item.isVerified || false,
-            gender: 'female', url: `https://onlyfans.com/${username}`,
+            gender: 'female',
             location: item.location || '', website: item.website || '',
             joinDate: item.joinDate || '', onlyfansId: item.id || 0,
             scrapedAt: new Date(),
+            adminImported: true,
           },
+          // `url` is insert-only — never reset a saved tracking link on a re-run.
+          $setOnInsert: { url: `https://onlyfans.com/${username}` },
         },
         { upsert: true, new: true, strict: false },
       ).select('name username slug avatar likesCount categories price isFree url').lean() as any;

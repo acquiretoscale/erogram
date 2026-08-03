@@ -155,6 +155,210 @@ export async function getMixedFeed(ofSlugs: string[], options: {
   return { feed, creators, groups };
 }
 
+export async function getRecentPremiumGroups(limit = 20) {
+  await connectDB();
+
+  const groups = await Group.find({
+    premiumOnly: true,
+    status: 'approved',
+    category: { $ne: 'Hentai' },
+    categories: { $nin: ['Hentai'] },
+    image: { $nin: [null, '', '/assets/image.jpg', '/assets/placeholder-no-image.png'] },
+  })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .select('name slug image category categories memberCount')
+    .lean();
+
+  return (groups as any[]).map((g) => ({
+    _id: g._id.toString(),
+    name: g.name || '',
+    slug: g.slug || '',
+    image: g.image || '/assets/placeholder-no-image.png',
+    category: g.category || '',
+    categories: Array.isArray(g.categories) ? g.categories : [],
+    memberCount: g.memberCount || 0,
+  }));
+}
+
+const BANNED_HOME_NICHES = new Set(['Hentai', '3D Hentai']);
+const NICHE_COVER_OVERRIDES = new Set(['Russian', 'TikTok', 'Instagram Models']);
+const GOOD_GROUP_IMAGE = { $nin: [null, '', '/assets/image.jpg', '/assets/placeholder-no-image.png'] };
+
+const NICHE_COVER_SKIP: Record<string, RegExp[]> = {
+  Russian: [/katysancheskioficial/i, /onlyfans/i, /filtrados/i, /karenvip/i, /femaleblowjob/i],
+  'Instagram Models': [/katysancheskioficial/i, /onlyfans/i, /bdsm/i, /sfamurri/i, /推特/],
+  TikTok: [/OnlyFans/i],
+};
+
+function shouldSkipNicheCover(niche: string, name: string, image: string) {
+  const patterns = NICHE_COVER_SKIP[niche] || [];
+  const haystack = `${name} ${image}`;
+  return patterns.some((re) => re.test(haystack));
+}
+
+async function buildNicheCoverMap(
+  excludeGroupIds: Set<string>,
+  excludeImages: Set<string>,
+) {
+  const groups = await Group.find({
+    premiumOnly: true,
+    status: 'approved',
+    image: GOOD_GROUP_IMAGE,
+    category: { $ne: 'Hentai' },
+    categories: { $nin: ['Hentai', '3D Hentai'] },
+  })
+    .sort({ memberCount: -1, createdAt: -1 })
+    .limit(300)
+    .select('_id image name category categories')
+    .lean();
+
+  const coverMap = new Map<string, { groupId: string; image: string }>();
+  for (const g of groups as any[]) {
+    const cats = Array.isArray(g.categories) && g.categories.length ? g.categories : [g.category];
+    for (const cat of cats) {
+      if (!cat || BANNED_HOME_NICHES.has(cat) || !NICHE_COVER_OVERRIDES.has(cat) || coverMap.has(cat)) continue;
+      const id = g._id.toString();
+      const img = g.image || '';
+      const name = g.name || '';
+      if (!img || excludeGroupIds.has(id) || excludeImages.has(img)) continue;
+      if (shouldSkipNicheCover(cat, name, img)) continue;
+      coverMap.set(cat, { groupId: id, image: img });
+    }
+  }
+  return coverMap;
+}
+
+async function fetchRecentPremiumNiches(
+  limit: number,
+  excludeGroupIds: Set<string> = new Set(),
+  excludeImages: Set<string> = new Set(),
+) {
+  await connectDB();
+
+  const coverMap = await buildNicheCoverMap(excludeGroupIds, excludeImages);
+
+  const baseMatch = {
+    premiumOnly: true,
+    status: 'approved',
+    category: { $ne: 'Hentai' },
+    categories: { $nin: ['Hentai', '3D Hentai'] },
+    image: GOOD_GROUP_IMAGE,
+  };
+
+  const rows = await Group.aggregate([
+    { $match: baseMatch },
+    {
+      $project: {
+        createdAt: 1,
+        image: 1,
+        memberCount: { $ifNull: ['$memberCount', 0] },
+        cats: {
+          $filter: {
+            input: { $ifNull: ['$categories', ['$category']] },
+            as: 'c',
+            cond: {
+              $and: [
+                { $ne: ['$$c', null] },
+                { $ne: ['$$c', ''] },
+                { $ne: ['$$c', 'Hentai'] },
+                { $ne: ['$$c', '3D Hentai'] },
+              ],
+            },
+          },
+        },
+      },
+    },
+    { $unwind: '$cats' },
+    { $sort: { createdAt: -1 } },
+    {
+      $group: {
+        _id: '$cats',
+        image: { $first: '$image' },
+        groupId: { $first: '$_id' },
+        latestAt: { $first: '$createdAt' },
+        totalSubs: { $sum: '$memberCount' },
+      },
+    },
+    { $sort: { latestAt: -1 } },
+    { $limit: Math.max(limit * 3, 40) },
+  ]);
+
+  const seenNiches = new Set<string>();
+  const niches: { niche: string; image: string; latestAt: string; groupId: string; totalSubs: number }[] = [];
+
+  for (const row of rows) {
+    const niche = row._id as string;
+    if (!niche || seenNiches.has(niche) || BANNED_HOME_NICHES.has(niche)) continue;
+
+    let groupId = row.groupId?.toString?.() || String(row.groupId || '');
+    let image = row.image || '/assets/placeholder-no-image.png';
+
+    if (NICHE_COVER_OVERRIDES.has(niche)) {
+      const picked = coverMap.get(niche);
+      if (!picked) continue;
+      groupId = picked.groupId;
+      image = picked.image;
+    }
+
+    if (excludeGroupIds.has(groupId) || excludeImages.has(image)) continue;
+
+    seenNiches.add(niche);
+    niches.push({
+      niche,
+      image,
+      latestAt: row.latestAt ? new Date(row.latestAt).toISOString() : '',
+      groupId,
+      totalSubs: Number(row.totalSubs) || 0,
+    });
+    if (niches.length >= limit) break;
+  }
+
+  return niches;
+}
+
+export async function getRecentPremiumNiches(limit = 20) {
+  const niches = await fetchRecentPremiumNiches(limit);
+  return niches.map(({ groupId: _groupId, ...rest }) => rest);
+}
+
+export async function getRecentPremiumHomeSections(groupLimit = 20, nicheLimit = 20) {
+  const rawGroups = await getRecentPremiumGroups(groupLimit + 10);
+
+  const seenGroupIds = new Set<string>();
+  const seenImages = new Set<string>();
+  const groups: Awaited<ReturnType<typeof getRecentPremiumGroups>> = [];
+
+  for (const group of rawGroups) {
+    if (seenGroupIds.has(group._id) || seenImages.has(group.image)) continue;
+    seenGroupIds.add(group._id);
+    seenImages.add(group.image);
+    groups.push(group);
+    if (groups.length >= groupLimit) break;
+  }
+
+  const excludeGroupIds = new Set(groups.map((g) => g._id));
+  const rawNiches = await fetchRecentPremiumNiches(nicheLimit + 20, excludeGroupIds, seenImages);
+
+  const seenNiches = new Set<string>();
+  const niches: { niche: string; image: string; latestAt: string; totalSubs: number }[] = [];
+
+  for (const item of rawNiches) {
+    if (seenNiches.has(item.niche) || seenImages.has(item.image)) continue;
+    seenNiches.add(item.niche);
+    seenImages.add(item.image);
+    niches.push({
+      niche: item.niche,
+      image: item.image,
+      latestAt: item.latestAt,
+      totalSubs: item.totalSubs,
+    });
+    if (niches.length >= nicheLimit) break;
+  }
+
+  return { groups, niches };
+}
+
 export async function getVaultPreviewGroups(ofSlugs: string[], limit = 15) {
   await connectDB();
 

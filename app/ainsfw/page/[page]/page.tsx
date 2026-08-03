@@ -6,7 +6,8 @@ import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import { getLocale } from '@/lib/i18n/server';
 import { getDictionary } from '@/lib/i18n';
 
-export const dynamic = 'force-dynamic';
+// Pre-rendered server HTML, refreshed in the background every 5 minutes (ISR).
+export const revalidate = 300;
 
 const BASE_URL = CANONICAL_BASE;
 

@@ -1,10 +1,23 @@
 'use server';
 
 import jwt from 'jsonwebtoken';
+import { revalidatePath } from 'next/cache';
 import connectDB from '@/lib/db/mongodb';
 import { User, Bot, Group } from '@/lib/models';
 import { sendNewBotTelegramNotification } from '@/lib/utils/telegramNotify';
 import { pingIndexNow } from '@/lib/utils/indexNow';
+import { LOCALES } from '@/lib/i18n/config';
+
+/** Bot pages are ISR-cached; rebuild them instantly on approve/edit/delete. */
+function revalidateBotPage(slug: string) {
+  try {
+    for (const locale of LOCALES) {
+      revalidatePath(locale === 'en' ? `/${slug}` : `/${locale}/${slug}`);
+    }
+  } catch (err) {
+    console.error('[Bot Update] revalidatePath failed:', err);
+  }
+}
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -159,6 +172,8 @@ export async function updateBot(token: string, id: string, data: Record<string, 
     pingIndexNow(`https://erogram.pro/${bot.slug}`);
   }
 
+  revalidateBotPage(bot.slug);
+
   return JSON.parse(JSON.stringify(bot));
 }
 
@@ -169,6 +184,7 @@ export async function deleteBot(token: string, id: string) {
   await connectDB();
   const bot = await Bot.findByIdAndDelete(id);
   if (!bot) throw new Error('Bot not found');
+  revalidateBotPage(bot.slug);
   return { success: true };
 }
 

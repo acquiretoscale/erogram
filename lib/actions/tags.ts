@@ -1,10 +1,12 @@
 'use server';
 
 import connectDB from '@/lib/db/mongodb';
-import { Group, OnlyFansCreator } from '@/lib/models';
-import { OF_CATEGORY_MAP, ofCategoryUrl } from '@/app/onlyfanssearch/constants';
+import { AINsfwSubmission, Bot, Group, OnlyFansCreator } from '@/lib/models';
+import { AI_NSFW_TOOLS } from '@/app/ainsfw/data';
+import { OF_CATEGORY_SLUGS } from '@/app/onlyfanssearch/constants';
 import { getBestOfFillCreators, getBestOfPreviewAvatars, getBestOfTopByClicks } from '@/lib/actions/bestOfCreators';
 import { BEST_OF_PAGE_MAP, bestOfBlogSlug } from '@/app/best-onlyfans-accounts/bestOfPages';
+import { getKeywordCategoryPatterns } from '@/lib/onlyfanssearch/keywordCategories';
 import {
   getAllTagDefinitions,
   getTagDefinition,
@@ -27,6 +29,11 @@ const GROUP_BASE = {
   premiumOnly: { $ne: true },
   category: { $ne: 'Hentai' },
 };
+const BOT_BASE = {
+  status: 'approved',
+  isAdvertisement: { $ne: true },
+};
+const AINSFW_BASE = { status: 'approved' };
 
 export interface TagIndexItem {
   slug: string;
@@ -69,6 +76,23 @@ export interface TagTop10Block {
   href: string;
   categorySlug: string;
   creators: TagCreatorResult[];
+}
+
+export interface TagBotResult {
+  _id: string;
+  name: string;
+  slug: string;
+  image: string;
+  category: string;
+  description: string;
+}
+
+export interface TagAiToolResult {
+  slug: string;
+  name: string;
+  image: string;
+  category: string;
+  description: string;
 }
 
 function serializeCreator(c: any): TagCreatorResult {
@@ -124,6 +148,23 @@ function escapeRegex(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function archiveSearchTerms(def: TagDefinition): string[] {
+  const terms = new Set<string>();
+  if (def.label) terms.add(def.label);
+  terms.add(def.slug.replace(/-/g, ' '));
+  for (const p of getKeywordCategoryPatterns(def.slug) || []) {
+    const clean = p.replace(/\\b/g, '').trim();
+    if (clean.length >= 3) terms.add(clean);
+  }
+  return [...terms];
+}
+
+function buildArchiveTextRegex(def: TagDefinition): RegExp | null {
+  const terms = archiveSearchTerms(def).map(escapeRegex).filter(Boolean);
+  if (!terms.length) return null;
+  return new RegExp(terms.join('|'), 'i');
+}
+
 function buildGroupMatch(def: TagDefinition) {
   const labels = [...new Set(def.groupLabels.filter(Boolean))];
   if (!labels.length) return null;
@@ -138,6 +179,62 @@ function buildCreatorMatch(def: TagDefinition) {
   if (def.bestOfPage) return buildBestOfCreatorMatch(def.bestOfPage);
   if (def.creatorCategorySlug) return buildSlugCreatorMatch(def.creatorCategorySlug);
   return null;
+}
+
+function buildBotMatch(def: TagDefinition) {
+  const regex = buildArchiveTextRegex(def);
+  if (!regex) return null;
+  return {
+    ...BOT_BASE,
+    $or: [
+      { name: regex },
+      { description: regex },
+      { category: regex },
+      { categories: regex },
+    ],
+  };
+}
+
+function buildAiDbMatch(def: TagDefinition) {
+  const regex = buildArchiveTextRegex(def);
+  if (!regex) return null;
+  return {
+    ...AINSFW_BASE,
+    $or: [
+      { name: regex },
+      { description: regex },
+      { category: regex },
+      { tags: regex },
+      { categories: regex },
+    ],
+  };
+}
+
+function filterStaticAiTools(def: TagDefinition): TagAiToolResult[] {
+  const regex = buildArchiveTextRegex(def);
+  if (!regex) return [];
+  return AI_NSFW_TOOLS.filter((t) =>
+    regex.test(`${t.name} ${t.description} ${t.category} ${(t.tags || []).join(' ')}`),
+  )
+    .slice(0, 24)
+    .map((t) => ({
+      slug: t.slug,
+      name: t.name,
+      image: t.image || '/assets/image.jpg',
+      category: t.category,
+      description: (t.description || '').slice(0, 120),
+    }));
+}
+
+async function countOfBrowseCreators(): Promise<Map<string, number>> {
+  const slugs = [...OF_CATEGORY_SLUGS];
+  const pairs = await Promise.all(
+    slugs.map(async (slug) => {
+      const count = await OnlyFansCreator.countDocuments(buildSlugCreatorMatch(slug));
+      return [slug, count] as const;
+    }),
+  );
+  return new Map(pairs);
 }
 
 async function countGroups(def: TagDefinition): Promise<number> {
@@ -213,10 +310,17 @@ function creatorCountFromMap(def: TagDefinition, slugMap: Map<string, number>): 
   return 0;
 }
 
-export async function getTagIndex(locale: Locale = 'en'): Promise<TagIndexItem[]> {
+export async function getTagIndex(
+  locale: Locale = 'en',
+  minContent: number = MIN_CONTENT,
+): Promise<TagIndexItem[]> {
   await connectDB();
   const defs = getAllTagDefinitions();
-  const [groupMap, slugMap] = await Promise.all([getGroupCategoryCounts(), getCreatorSlugCounts()]);
+  const [groupMap, slugMap, ofBrowseMap] = await Promise.all([
+    getGroupCategoryCounts(),
+    getCreatorSlugCounts(),
+    countOfBrowseCreators(),
+  ]);
 
   const keywordDefs = defs.filter(
     (d) => d.bestOfPage?.match === 'keyword' && !d.creatorCategorySlug,
@@ -233,17 +337,20 @@ export async function getTagIndex(locale: Locale = 'en'): Promise<TagIndexItem[]
   const items: TagIndexItem[] = [];
 
   for (const def of defs) {
-    let groupCount = groupCountFromMap(def, groupMap);
+    const groupCount = groupCountFromMap(def, groupMap);
     let creatorCount = creatorCountFromMap(def, slugMap);
+    const isOfArchiveTag = OF_CATEGORY_SLUGS.has(def.slug);
 
-    if (def.bestOfPage?.match === 'keyword') {
+    if (isOfArchiveTag) {
+      creatorCount = ofBrowseMap.get(def.slug) ?? 0;
+    } else if (def.bestOfPage?.match === 'keyword') {
       creatorCount = keywordMap.get(def.slug) ?? 0;
-    } else if (def.creatorCategorySlug) {
+    } else if (def.creatorCategorySlug && !isOfArchiveTag) {
       creatorCount = slugMap.get(def.creatorCategorySlug) ?? 0;
     }
 
     const total = groupCount + creatorCount;
-    if (total <= MIN_CONTENT) continue;
+    if (!isOfArchiveTag && total <= minContent) continue;
 
     const label = getTagLabel(def.slug, def.label, locale);
     items.push({
@@ -265,21 +372,36 @@ export async function getTagDetail(slug: string, locale: Locale = 'en') {
 
   await connectDB();
 
+  const isOfArchiveTag = OF_CATEGORY_SLUGS.has(slug);
   const groupMatch = buildGroupMatch(def);
   const creatorMatch = buildCreatorMatch(def);
+  const botMatch = buildBotMatch(def);
+  const aiDbMatch = buildAiDbMatch(def);
   const rankingPages = getRankingPagesForTag(def);
   const primaryPage = def.bestOfPage;
-  const categorySlug = def.creatorCategorySlug || (OF_CATEGORY_MAP.has(slug) ? slug : undefined);
-  const categoryBrowseHref = categorySlug ? ofCategoryUrl(categorySlug) : null;
+  const staticAiTools = filterStaticAiTools(def);
 
   const rankingSlugs = rankingPages.map((p) => p.slug);
   const rankingPageDefs = rankingSlugs
     .map((s) => BEST_OF_PAGE_MAP.get(s))
     .filter(Boolean) as NonNullable<TagDefinition['bestOfPage']>[];
 
-  const [groupCount, creatorCount, groups, top10, previewAvatars, browseCreatorsRaw] = await Promise.all([
+  const [
+    groupCount,
+    creatorCount,
+    botCount,
+    aiDbCount,
+    groups,
+    top10,
+    previewAvatars,
+    browseCreatorsRaw,
+    botsRaw,
+    aiDbRaw,
+  ] = await Promise.all([
     groupMatch ? Group.countDocuments(groupMatch) : Promise.resolve(0),
     creatorMatch ? OnlyFansCreator.countDocuments(creatorMatch) : Promise.resolve(0),
+    botMatch ? Bot.countDocuments(botMatch) : Promise.resolve(0),
+    aiDbMatch ? AINsfwSubmission.countDocuments(aiDbMatch) : Promise.resolve(0),
     groupMatch
       ? Group.find(groupMatch)
           .sort({ memberCount: -1, createdAt: -1 })
@@ -300,6 +422,20 @@ export async function getTagDetail(slug: string, locale: Locale = 'en') {
           )
           .lean()
       : Promise.resolve([]),
+    botMatch
+      ? Bot.find(botMatch)
+          .sort({ clickCount: -1, createdAt: -1 })
+          .limit(24)
+          .select('name slug image category description')
+          .lean()
+      : Promise.resolve([]),
+    aiDbMatch
+      ? AINsfwSubmission.find(aiDbMatch)
+          .sort({ featured: -1, createdAt: -1 })
+          .limit(24)
+          .select('name slug image category description')
+          .lean()
+      : Promise.resolve([]),
   ]);
 
   const top10Usernames = new Set(
@@ -316,8 +452,20 @@ export async function getTagDetail(slug: string, locale: Locale = 'en') {
     previewAvatars: previewAvatars[rp.slug] || [],
   }));
 
-  const total = groupCount + creatorCount;
-  if (total <= MIN_CONTENT) return null;
+  const aiTools: TagAiToolResult[] = [
+    ...staticAiTools,
+    ...(aiDbRaw as any[]).map((t) => ({
+      slug: t.slug,
+      name: t.name || '',
+      image: t.image || '/assets/image.jpg',
+      category: t.category || '',
+      description: (t.description || '').slice(0, 120),
+    })),
+  ].filter((t, i, arr) => arr.findIndex((x) => x.slug === t.slug) === i);
+
+  const aiCount = aiTools.length;
+  const total = groupCount + creatorCount + botCount + aiCount;
+  if (!isOfArchiveTag && total <= MIN_CONTENT) return null;
 
   const label = getTagLabel(def.slug, def.label, locale);
   return {
@@ -325,8 +473,9 @@ export async function getTagDetail(slug: string, locale: Locale = 'en') {
     label,
     groupCount,
     creatorCount,
+    botCount,
+    aiCount,
     total,
-    categoryBrowseHref,
     rankingPages: rankingPagesWithAvatars,
     top10,
     groups: (groups as any[]).map((g) => ({
@@ -338,6 +487,15 @@ export async function getTagDetail(slug: string, locale: Locale = 'en') {
       memberCount: g.memberCount || 0,
       description: (g.description || '').slice(0, 120),
     })) as TagGroupResult[],
+    bots: (botsRaw as any[]).map((b) => ({
+      _id: b._id.toString(),
+      name: b.name || '',
+      slug: b.slug || '',
+      image: b.image || '/assets/image.jpg',
+      category: b.category || '',
+      description: (b.description || '').slice(0, 120),
+    })) as TagBotResult[],
+    aiTools,
     creators: browseCreators,
   };
 }

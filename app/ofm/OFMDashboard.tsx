@@ -53,25 +53,31 @@ function BarChart({ data, accent }: { data: Series[]; accent: string }) {
   const max = Math.max(...data.map((d) => d.clicks), 1);
   const barW = Math.max(6, Math.min(26, Math.floor(720 / data.length) - 3));
   const H = 140;
+  const TOP_PAD = 18;
   const W = data.length * (barW + 3) + 16;
   const [hover, setHover] = useState<number | null>(null);
   return (
     <div className="overflow-x-auto">
-      <svg width={W} height={H + 22} style={{ display: 'block' }} onMouseLeave={() => setHover(null)}>
+      <svg width={W} height={TOP_PAD + H + 22} style={{ display: 'block' }} onMouseLeave={() => setHover(null)}>
         {data.map((d, i) => {
           const h = (d.clicks / max) * H;
           const x = i * (barW + 3) + 8;
           const active = hover === i;
+          const barTop = TOP_PAD + H - Math.max(h, 2);
+          const barHeight = Math.max(h, 2);
+          const labelInside = barHeight >= 22;
+          const labelY = labelInside ? barTop + 14 : barTop - 5;
+          const labelFill = labelInside ? '#fff' : active ? '#fff' : 'rgba(255,255,255,0.55)';
           return (
             <g key={i} onMouseEnter={() => setHover(i)}>
-              <rect x={x} y={0} width={barW} height={H} fill="transparent" />
-              <rect x={x} y={H - Math.max(h, 2)} width={barW} height={Math.max(h, 2)} rx={3}
+              <rect x={x} y={TOP_PAD} width={barW} height={H} fill="transparent" />
+              <rect x={x} y={barTop} width={barW} height={barHeight} rx={3}
                 fill={d.clicks === 0 ? 'rgba(255,255,255,0.06)' : active ? '#fff' : accent} />
               {d.clicks > 0 && (
-                <text x={x + barW / 2} y={H - Math.max(h, 2) - 4} textAnchor="middle" fontSize={active ? '11' : '9'} fontWeight={active ? '700' : '600'} fill={active ? '#fff' : 'rgba(255,255,255,0.55)'}>{d.clicks}</text>
+                <text x={x + barW / 2} y={labelY} textAnchor="middle" fontSize={active ? '11' : '9'} fontWeight={active ? '700' : '600'} fill={labelFill}>{d.clicks}</text>
               )}
               {i % Math.ceil(data.length / 12) === 0 && (
-                <text x={x + barW / 2} y={H + 15} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.3)">{d.label}</text>
+                <text x={x + barW / 2} y={TOP_PAD + H + 15} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.3)">{d.label}</text>
               )}
             </g>
           );

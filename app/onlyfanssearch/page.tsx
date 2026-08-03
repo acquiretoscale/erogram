@@ -1,15 +1,19 @@
 import { Metadata } from 'next';
 import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
 import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator } from '@/lib/models';
-import OnlyFansClient from './OnlyFansClient';
+import OnlyFansClient from '@/app/onlyfanssearch/OnlyFansClient';
 import { getLocale } from '@/lib/i18n/server';
-import { mainOfMeta } from './ofMeta';
+import { mainOfMeta } from '@/app/onlyfanssearch/ofMeta';
 import { getActiveCampaigns, getPlacementFeedCampaigns } from '@/lib/actions/campaigns';
-import { getBestOfPreviewAvatars } from '@/lib/actions/bestOfCreators';
-import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
-import { getTopBestOfByType, BEST_OF_PAGE_MAP } from '@/app/best-onlyfans-accounts/bestOfPages';
+import { whaleBrowseLikesFilter } from '@/lib/tags/creatorMatch';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
+import { getTrendingOnErogram } from '@/lib/actions/publicData';
+import { getVisitorCountryCode } from '@/lib/actions/nearMeCreators';
+import { getBestOfPreviewAvatars } from '@/lib/actions/bestOfCreators';
+import { OF_CATEGORY_MAP, OF_SEARCH_HUB_CATEGORY_SLUGS } from '@/app/onlyfanssearch/constants';
+import { getTopBestOfByType, BEST_OF_PAGE_MAP } from '@/app/best-onlyfans-accounts/bestOfPages';
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
@@ -19,29 +23,30 @@ export async function generateMetadata(): Promise<Metadata> {
 export const revalidate = 300;
 
 interface PageProps {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; cat?: string }>;
 }
 
 export default async function OnlyFansPage({ searchParams }: PageProps) {
   const ua = (await headers()).get('user-agent');
   const { isMobile } = detectDeviceFromUserAgent(ua);
-  const { q } = await searchParams;
+  const { q, cat } = await searchParams;
+  if (cat?.trim()) {
+    redirect(`/onlyfanssearch/${encodeURIComponent(cat.trim())}`);
+  }
   let initialCreators: any[] = [];
   let totalCreators = 0;
   let recentlyAdded: any[] = [];
-  let top10Lists: { category: string; label: string; creators: any[] }[] = [];
 
   try {
     await connectDB();
 
-    const baseMatch = { avatar: { $ne: '' }, gender: 'female', categories: { $exists: true, $ne: [] }, deleted: { $ne: true }, submissionStatus: { $ne: 'pending' } };
+    const baseMatch = { avatar: { $ne: '' }, gender: 'female', categories: { $exists: true, $ne: [] }, deleted: { $ne: true }, submissionStatus: { $ne: 'pending' }, ...whaleBrowseLikesFilter };
 
     const [count, recentRaw] = await Promise.all([
       OnlyFansCreator.countDocuments(baseMatch),
-      // Bucket of the 60 most recently added; client shows a shuffled 8.
       OnlyFansCreator.find(baseMatch)
         .sort({ createdAt: -1 })
-        .limit(60)
+        .limit(20)
         .select('name username slug avatar header categories subscriberCount likesCount photosCount videosCount price isFree url clicks')
         .lean(),
     ]);
@@ -53,9 +58,11 @@ export default async function OnlyFansPage({ searchParams }: PageProps) {
     console.error('Failed to fetch OF creators:', e);
   }
 
-  const [topBannerCampaigns, ofSearchFeaturedRaw] = await Promise.all([
-    getActiveCampaigns('top-banner', { page: 'onlyfanssearch', device: isMobile ? 'mobile' : 'desktop' }).catch(() => []),
+  const [topBannerCampaigns, ofSearchFeaturedRaw, trendingOnErogram, visitorCountryCode] = await Promise.all([
+    getActiveCampaigns('top-banner', { page: 'onlyfans', device: isMobile ? 'mobile' : 'desktop' }).catch(() => []),
     getPlacementFeedCampaigns('of-search-featured', 8).catch(() => []),
+    getTrendingOnErogram().catch(() => []),
+    getVisitorCountryCode().catch(() => ''),
   ]);
   const paidFeatured = (ofSearchFeaturedRaw as any[])
     .filter((c) => c.adType === 'onlyfans-creator' && (c.creative || c.ofUsername))
@@ -80,12 +87,12 @@ export default async function OnlyFansPage({ searchParams }: PageProps) {
     ...getTopBestOfByType('country'),
     ...getTopBestOfByType('state'),
   ];
-  const bestAccountPages = OF_CATEGORIES.filter((c) => BEST_OF_PAGE_MAP.has(c.slug)).map((c) => ({
-    slug: c.slug,
-    label: c.name,
+  const bestAccountPages = OF_SEARCH_HUB_CATEGORY_SLUGS.filter((slug) => BEST_OF_PAGE_MAP.has(slug)).map((slug) => ({
+    slug,
+    label: OF_CATEGORY_MAP.get(slug)?.name || slug,
     type: 'niche' as const,
     match: 'category' as const,
-    categorySlug: c.slug,
+    categorySlug: slug,
     count: 0,
   }));
   const [top10PreviewAvatars, bestAccountsPreviewAvatars] = await Promise.all([
@@ -98,11 +105,11 @@ export default async function OnlyFansPage({ searchParams }: PageProps) {
       initialCreators={initialCreators}
       totalCreators={totalCreators}
       initialQuery={q || ''}
-      top10Lists={top10Lists}
       recentlyAdded={recentlyAdded}
       topBannerCampaigns={topBannerCampaigns}
       paidFeatured={paidFeatured}
-      trendingOnErogram={[]}
+      trendingOnErogram={trendingOnErogram}
+      visitorCountryCode={visitorCountryCode}
       top10PreviewAvatars={top10PreviewAvatars}
       bestAccountsPreviewAvatars={bestAccountsPreviewAvatars}
     />

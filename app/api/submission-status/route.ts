@@ -12,12 +12,13 @@ export async function GET(req: NextRequest) {
   try {
     await connectDB();
     const Model = entity === 'bot' ? Bot : Group;
-    const doc = await Model.findById(id).select('status paidBoost').lean() as any;
+    const doc = await Model.findById(id).select('status paidBoost boostExpiresAt').lean() as any;
     if (!doc) return NextResponse.json({ status: 'not_found' });
 
     return NextResponse.json({
       status: doc.status,
       paid: Boolean(doc.paidBoost),
+      boostExpiresAt: doc.boostExpiresAt ? doc.boostExpiresAt.toISOString() : null,
     });
   } catch {
     return NextResponse.json({ status: 'error' }, { status: 500 });

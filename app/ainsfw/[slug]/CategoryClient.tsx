@@ -1,28 +1,44 @@
 'use client';
+
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import ToolCard from '@/app/ainsfw/ToolCard';
+import RecentAdditionsBlock from '@/app/ainsfw/RecentAdditionsBlock';
 import type { AINsfwTool } from '@/app/ainsfw/types';
 import type { ToolStatsData } from '@/lib/actions/ainsfw';
+import AinsfwHeaderActions from '@/components/AinsfwHeaderActions';
+import { CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { categoryToSlug } from '@/app/ainsfw/data';
 
 interface Props {
   category: string;
   tools: AINsfwTool[];
   allStats: Record<string, ToolStatsData>;
+  recentTools: AINsfwTool[];
+  recentStats: Record<string, ToolStatsData>;
+  verifiedSlugs?: string[];
 }
 
 const CATEGORY_DESC: Record<string, string> = {
-  'AI Girlfriend': 'The best AI girlfriend apps — virtual companions with memory, personality, and explicit chat.',
+  'AI Companion': 'The best AI companion apps — virtual partners with memory, personality, and explicit chat.',
   'Undress AI': 'Top undress AI tools that generate realistic images. Reviewed for quality and privacy.',
-  'AI Chat': 'The best AI NSFW chat platforms for uncensored roleplay and adult conversations.',
-  'AI Image': 'Best AI image generators for NSFW and adult content creation.',
-  'AI Roleplay': 'Top AI roleplay platforms for immersive adult storytelling and character interaction.',
+  'AI Sexting / Chat': 'The best AI sexting and chat platforms for uncensored roleplay and adult conversations.',
+  'AI NSFW Image Generator': 'Best AI NSFW image generators for adult content creation.',
+  'AI Porn Generator': 'AI porn generators that turn prompts into custom adult images and video.',
+  'AI NSFW Roleplay': 'Top AI NSFW roleplay platforms for immersive adult storytelling and character interaction.',
   'Adult Games': 'Adult games and interactive 3D experiences, reviewed and listed separately from AI tools.',
 };
 
-export default function CategoryClient({ category, tools, allStats }: Props) {
+export default function CategoryClient({
+  category,
+  tools,
+  allStats,
+  recentTools,
+  recentStats,
+  verifiedSlugs = [],
+}: Props) {
   const desc = CATEGORY_DESC[category] || `Browse the best ${category} tools — reviewed and ranked by Erogram.`;
 
   return (
@@ -30,15 +46,20 @@ export default function CategoryClient({ category, tools, allStats }: Props) {
       <Navbar />
 
       {/* Breadcrumb */}
-      <div className="relative z-10 px-4 sm:px-6 py-3 border-b border-[#22c55e]/15 bg-[#04140c]/80 backdrop-blur-xl mt-24">
-        <div className="max-w-7xl mx-auto">
-          <nav className="flex items-center text-xs text-gray-500 gap-1.5">
-            <Link href="/" className="hover:text-white transition-colors">Home</Link>
-            <span>/</span>
-            <Link href="/ainsfw" className="hover:text-white transition-colors">AI NSFW Tools</Link>
-            <span>/</span>
-            <span className="text-white font-semibold">{category}</span>
+      <div className="relative z-10 px-4 sm:px-6 py-3 sm:py-3.5 border-b border-[#22c55e]/15 bg-[#04140c]/80 backdrop-blur-xl mt-24 sm:mt-28">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          <nav className="flex items-center text-xs text-gray-500 gap-1.5 min-w-0">
+            <Link href="/" className="hover:text-white transition-colors shrink-0">Home</Link>
+            <span className="shrink-0">/</span>
+            <Link href="/ainsfw" className="hover:text-white transition-colors shrink-0">AI NSFW Tools</Link>
+            <span className="shrink-0">/</span>
+            <span className="text-white font-semibold truncate">{category}</span>
           </nav>
+          <AinsfwHeaderActions
+            shareText={`Check out ${category} AI NSFW tools on Erogram`}
+            emailSubject={`${category} AI NSFW Tools on Erogram`}
+            fallbackUrl={`${CANONICAL_BASE}/ainsfw/${categoryToSlug(category)}`}
+          />
         </div>
       </div>
 
@@ -68,6 +89,8 @@ export default function CategoryClient({ category, tools, allStats }: Props) {
           </Link>
         </motion.div>
 
+        <RecentAdditionsBlock tools={recentTools} allStats={recentStats} verifiedSlugs={verifiedSlugs} />
+
         {/* Tool grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
           {tools.map((tool, i) => (
@@ -76,6 +99,7 @@ export default function CategoryClient({ category, tools, allStats }: Props) {
               tool={tool}
               index={i}
               initialStats={allStats[tool.slug]}
+              verified={verifiedSlugs.includes(tool.slug)}
             />
           ))}
         </div>

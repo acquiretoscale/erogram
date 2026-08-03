@@ -14,6 +14,10 @@ import type { BlogArticleFull, BlogCard } from '@/lib/actions/blog';
 import { BLOG_CATEGORY_MAP } from '@/lib/blog/categories';
 import { trackArticleClick } from '@/lib/actions/articleTracking';
 
+function fmtViews(n: number): string {
+  return Math.max(0, n).toLocaleString();
+}
+
 function fmtFullDate(iso: string | null): string {
   if (!iso) return '';
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -70,7 +74,7 @@ const RELATED_EROGRAM: Record<string, { label: string; href: string; sub: string
   ],
   'onlyfans-creators': [
     { label: 'Best OnlyFans Accounts', href: '/best-onlyfans-accounts', sub: 'Ranked by category' },
-    { label: 'OnlyFans Search', href: '/onlyfanssearch', sub: 'Search 1.8M+ creators' },
+    { label: 'OnlyFans', href: '/onlyfanssearch', sub: 'Search 1.8M+ creators' },
     { label: 'Top AI NSFW Tools', href: '/ainsfw', sub: 'AI companions & generators' },
   ],
   'adult-entertainment': [
@@ -377,32 +381,40 @@ export default function BlogArticleClient({
         {!article.excerpt && <div className="mb-7" />}
 
         {/* Meta — byline with author avatar */}
-        <div className="flex items-center gap-3 pb-9 mb-2 border-b border-black/[0.08]">
+        <div className="flex items-center gap-3 rounded-[4px] bg-[#16110f] px-5 py-4 mb-2">
           {article.author?.avatar && (
             <img
               src={article.author.avatar}
               alt={article.author.name}
               width={44}
               height={44}
-              className="w-11 h-11 rounded-full object-cover shrink-0 ring-1 ring-black/10"
+              className="w-11 h-11 rounded-full object-cover shrink-0 ring-1 ring-white/20"
               referrerPolicy="no-referrer"
             />
           )}
           <div className="flex flex-col gap-0.5">
-            <span className="font-sans font-bold text-[14px] text-[#0f0c0a] leading-none">
+            <span className="font-sans font-bold text-[14px] text-white leading-none">
               By {article.author?.name || article.authorName}
             </span>
-            <span className="flex flex-wrap items-center gap-2 text-[11px] tracking-[0.14em] uppercase text-[#a09890]">
+            <span className="flex flex-wrap items-center gap-2 text-[11px] tracking-[0.14em] uppercase text-white">
               {article.author?.role && (
                 <>
                   <span>{article.author.role}</span>
-                  <span className="text-[#d4cec9]">·</span>
+                  <span className="text-white/60">·</span>
                 </>
               )}
               <span>{article.readMinutes} min read</span>
+              <span className="text-white/60">·</span>
+              <span className="inline-flex items-center gap-1">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                {fmtViews(article.views + 1)} views
+              </span>
               {article.publishedAt && (
                 <>
-                  <span className="text-[#d4cec9]">·</span>
+                  <span className="text-white/60">·</span>
                   <span>{fmtFullDate(article.publishedAt)}</span>
                 </>
               )}

@@ -2,10 +2,12 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
 import { motion } from 'framer-motion';
-import { Search, Heart, Trash2, Crown, X, TrendingUp, ChevronUp, Star, Shuffle, ArrowLeft, User } from 'lucide-react';
+import { Heart, Trash2, Crown, Star, User } from 'lucide-react';
 import Navbar from '@/components/Navbar';
+import ProfileOFPremiumSearch from '@/app/profile/ProfileOFPremiumSearch';
+import { OF_SEARCH_TOKENS, ofSearchNavProps } from '@/app/onlyfanssearch/ofSearchTokens';
 import { trackCreatorClick, trackTrendingClick } from '@/lib/actions/onlyfansTracking';
 import { getTrendingCreators } from '@/lib/actions/publicData';
 import { browseCreators, deleteCreatorBySlug } from '@/lib/actions/ofCreatorsBrowse';
@@ -83,7 +85,7 @@ function CategoryCreatorCard({ creator, onTrack, onSave, onDelete, onSendToTrend
   const handleErogramProfile = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const path = `/${creator.username}-onlyfans`;
+    const path = ofCreatorProfileUrl(creator.username);
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) {
       window.open(`/join-erogram?redirect=${encodeURIComponent(path)}`, '_blank', 'noopener,noreferrer');
@@ -210,11 +212,7 @@ interface Props {
 export default function CategoryClient({ creators: initialCreators, category, label, paidFeatured = [] }: Props) {
   const { t } = useTranslation();
   const lp = useLocalePath();
-  const router = useRouter();
   const [creators, setCreators] = useState(initialCreators);
-  const [navQuery, setNavQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'free' | 'paid' | 'price-low' | 'price-high' | 'most-liked' | 'least-liked' | 'shuffle'>('all');
-  const [shuffleKey, setShuffleKey] = useState(0);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [allTrending, setAllTrending] = useState<any[]>([]);
   // Which stable album image each featured card is showing → for split-test click attribution.
@@ -222,18 +220,10 @@ export default function CategoryClient({ creators: initialCreators, category, la
   // Build the of-cat placement tag with the shown image's stable index.
   const ofCatPlacement = (idx: number) => (idx >= 0 ? `of-cat:v${idx}` : 'of-cat');
   const [isAdmin, setIsAdmin] = useState(false);
-  const [searchFocused, setSearchFocused] = useState(false);
-  const searchBoxRef = useRef<HTMLDivElement>(null);
 
   const [afterCategoryCreators, setAfterCategoryCreators] = useState<Creator[]>([]);
   const [afterCategoryLoading, setAfterCategoryLoading] = useState(false);
   const [afterCategoryHasMore, setAfterCategoryHasMore] = useState(true);
-  const [showBackToTop, setShowBackToTop] = useState(false);
-
-  const TRENDING_SEARCHES = [
-    'milf', 'asian', 'teen', 'blonde', 'latina',
-    'redhead', 'big boobs', 'petite', 'big ass', 'amateur',
-  ];
 
   useEffect(() => {
     setIsAdmin(localStorage.getItem('isAdmin') === 'true');
@@ -260,16 +250,6 @@ export default function CategoryClient({ creators: initialCreators, category, la
       })
       .catch(() => { if ((paidFeatured || []).length) setAllTrending([...paidFeatured]); });
   }, [category]);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (searchBoxRef.current && !searchBoxRef.current.contains(e.target as Node)) {
-        setSearchFocused(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const handleToggleSave = async (creatorId: string) => {
     const token = localStorage.getItem('token');
@@ -387,30 +367,10 @@ export default function CategoryClient({ creators: initialCreators, category, la
   };
 
   const sorted = useMemo(() => {
-    let list = [...creators];
-    if (filter === 'free') list = list.filter((c) => c.isFree);
-    else if (filter === 'paid') list = list.filter((c) => !c.isFree);
-
-    if (filter === 'shuffle') {
-      for (let i = list.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [list[i], list[j]] = [list[j], list[i]];
-      }
-    } else if (filter === 'price-low') list.sort((a, b) => a.price - b.price);
-    else if (filter === 'price-high') list.sort((a, b) => b.price - a.price);
-    else if (filter === 'most-liked') list.sort((a, b) => b.likesCount - a.likesCount);
-    else if (filter === 'least-liked') list.sort((a, b) => a.likesCount - b.likesCount);
-    else list.sort((a, b) => (b.clicks || 0) - (a.clicks || 0));
-
+    const list = [...creators];
+    list.sort((a, b) => (b.clicks || 0) - (a.clicks || 0));
     return list;
-  }, [creators, filter, shuffleKey]);
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (navQuery.trim()) {
-      router.push(`${lp('/onlyfanssearch')}?q=${encodeURIComponent(navQuery.trim())}`);
-    }
-  };
+  }, [creators]);
 
   const loadMoreAfterCategory = useCallback(async () => {
     if (afterCategoryLoading || !afterCategoryHasMore) return;
@@ -440,8 +400,6 @@ export default function CategoryClient({ creators: initialCreators, category, la
 
   useEffect(() => {
     const handleScroll = () => {
-      setShowBackToTop(window.scrollY > 600);
-
       if (
         window.innerHeight + window.scrollY >= document.body.offsetHeight - 800 &&
         !afterCategoryLoading &&
@@ -462,7 +420,20 @@ export default function CategoryClient({ creators: initialCreators, category, la
       <main className="pt-20">
         {/* Hero */}
         <section className="bg-gradient-to-b from-[#00AFF0]/10 via-[#00AFF0]/[0.04] to-[#111111] pt-6 pb-4 sm:pt-8 sm:pb-6">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-white/40 mb-4">
+              <Link href={lp('/')} className="hover:text-[#00AFF0] transition-colors">
+                {t('bestOnlyfans.breadcrumbHome')}
+              </Link>
+              <span aria-hidden="true">/</span>
+              <Link href={lp('/onlyfanssearch')} className="hover:text-[#00AFF0] transition-colors">
+                {t('bestOnlyfans.breadcrumbOfSearch')}
+              </Link>
+              <span aria-hidden="true">/</span>
+              <span className="text-white/70">{label}</span>
+            </nav>
+
+            <div className="text-center">
             <motion.h1
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
@@ -483,130 +454,27 @@ export default function CategoryClient({ creators: initialCreators, category, la
                 : t('ofSearch.noCreatorsLabel').replace('{label}', label.toLowerCase())}
             </motion.p>
 
-            {/* Search bar — navigates to /onlyfans-search */}
-            <motion.form
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.08 }}
-              onSubmit={handleSearchSubmit}
-              className="mt-4 max-w-xl mx-auto"
-            >
-              <div className="relative" ref={searchBoxRef}>
-                <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none">
-                  <Search size={16} className="text-white/30" />
-                </div>
-                <input
-                  type="text"
-                  value={navQuery}
-                  onChange={(e) => setNavQuery(e.target.value)}
-                  onFocus={() => setSearchFocused(true)}
-                  placeholder={t('ofSearch.searchPlaceholderCategory')}
-                  className={`w-full pl-10 pr-10 py-2.5 bg-white/[0.06] border border-white/[0.08] text-white placeholder-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-[#00AFF0]/40 focus:border-[#00AFF0]/30 transition-all ${searchFocused && !navQuery ? 'rounded-t-xl rounded-b-none border-b-0' : 'rounded-xl'}`}
-                />
-                {navQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setNavQuery('')}
-                    className="absolute inset-y-0 right-3.5 flex items-center text-white/30 hover:text-white/70 transition-colors"
-                  >
-                    <X size={16} />
-                  </button>
-                )}
+            <ProfileOFPremiumSearch
+              tokens={OF_SEARCH_TOKENS}
+              isPremium={false}
+              freeAccess
+              hideHeading
+              layout="hero"
+              minimalFilters
+              hideResults
+              searchHubHref={lp('/onlyfanssearch')}
+              loginRedirect={lp(`/onlyfanssearch/${category}`)}
+              savedCreatorIds={savedIds}
+              onToggleSave={handleToggleSave}
+              {...ofSearchNavProps(lp)}
+            />
 
-                {searchFocused && !navQuery && (
-                  <div className="absolute left-0 right-0 top-full z-50 bg-[#1a1a1a] border border-white/[0.08] border-t-0 rounded-b-xl shadow-2xl overflow-hidden">
-                    <div className="grid grid-cols-2">
-                      {TRENDING_SEARCHES.map((term) => (
-                        <button
-                          key={term}
-                          type="button"
-                          onClick={() => {
-                            setSearchFocused(false);
-                            router.push(`${lp('/onlyfanssearch')}?q=${encodeURIComponent(term)}`);
-                          }}
-                          className="flex items-center gap-2.5 px-3.5 py-2 text-left hover:bg-white/[0.05] transition-colors border-b border-r border-white/[0.04] last:border-b-0 [&:nth-last-child(2):nth-child(odd)]:border-b-0"
-                        >
-                          <TrendingUp size={12} className="text-white/25 flex-shrink-0" />
-                          <span className="text-sm text-white/70">{term}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.form>
-
+            </div>
           </div>
         </section>
 
         {/* Results Grid */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Back button */}
-          <div className="flex justify-center mb-3">
-            <Link
-              href={lp('/onlyfanssearch')}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.08] text-white/50 hover:text-white/80 hover:bg-white/[0.08] text-xs font-medium transition-all"
-            >
-              <ArrowLeft size={13} />
-              {t('ofSearch.ofSearchMain')}
-            </Link>
-          </div>
-
-          {/* Filter bar */}
-          <div className="flex justify-center mb-4 sm:mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto scrollbar-hide">
-            <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.08] flex-shrink-0">
-              {([
-                { key: 'all', label: t('ofSearch.all') },
-                { key: 'free', label: t('ofSearch.free') },
-                { key: 'paid', label: t('ofSearch.paid') },
-              ] as const).map(({ key, label: filterLabel }) => (
-                <button
-                  key={key}
-                  onClick={() => setFilter(key)}
-                  className={`px-3 py-2 sm:py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
-                    filter === key
-                      ? 'bg-[#00AFF0]/20 text-[#00AFF0]'
-                      : 'text-white/40 hover:text-white/70'
-                  }`}
-                >
-                  {filterLabel}
-                </button>
-              ))}
-              <button
-                onClick={() => setFilter(filter === 'most-liked' ? 'least-liked' : 'most-liked')}
-                className={`px-3 py-2 sm:py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
-                  filter === 'most-liked' || filter === 'least-liked'
-                    ? 'bg-[#00AFF0]/20 text-[#00AFF0]'
-                    : 'text-white/40 hover:text-white/70'
-                }`}
-              >
-                {filter === 'least-liked' ? t('ofSearch.leastLikes') : t('ofSearch.mostLikes')}
-              </button>
-              <button
-                onClick={() => setFilter(filter === 'price-low' ? 'price-high' : 'price-low')}
-                className={`px-3 py-2 sm:py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
-                  filter === 'price-low' || filter === 'price-high'
-                    ? 'bg-[#00AFF0]/20 text-[#00AFF0]'
-                    : 'text-white/40 hover:text-white/70'
-                }`}
-              >
-                {filter === 'price-high' ? t('ofSearch.highestFirst') : t('ofSearch.lowestFirst')}
-              </button>
-              <button
-                onClick={() => { setFilter('shuffle'); setShuffleKey((k) => k + 1); }}
-                className={`inline-flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
-                  filter === 'shuffle'
-                    ? 'bg-[#00AFF0]/20 text-[#00AFF0]'
-                    : 'text-white/40 hover:text-white/70'
-                }`}
-                title="Shuffle order"
-              >
-                <Shuffle size={12} />
-                {t('ofSearch.shuffle')}
-              </button>
-            </div>
-          </div>
-
           {sorted.length === 0 && allTrending.length === 0 ? (
             <div className="text-center py-20">
               <p className="text-white/30 text-lg">{t('ofSearch.noCreatorsInCategory')}</p>
@@ -813,16 +681,6 @@ export default function CategoryClient({ creators: initialCreators, category, la
         </section>
 
       </main>
-
-      <button
-        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        className={`fixed bottom-6 right-6 z-[9999] w-12 h-12 rounded-full bg-[#00AFF0] text-white shadow-xl shadow-[#00AFF0]/40 flex items-center justify-center hover:bg-[#009ADB] hover:scale-110 active:scale-95 transition-all duration-300 ${
-          showBackToTop ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none'
-        }`}
-        aria-label="Back to top"
-      >
-        <ChevronUp size={24} strokeWidth={2.5} />
-      </button>
 
       {trendingToast && (
         <div className="fixed bottom-6 left-6 z-50 px-5 py-3 bg-[#1a2a30] border border-[#00AFF0]/30 text-[#00AFF0] text-sm font-semibold rounded-xl shadow-xl animate-in fade-in slide-in-from-bottom-3">

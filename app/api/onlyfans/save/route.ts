@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
-import { User, OnlyFansCreator } from '@/lib/models';
+import { User } from '@/lib/models';
 import { authenticateUser } from '@/lib/auth';
+import { addUserSavedOnlyFansCreator, removeUserSavedOnlyFansCreator } from '@/lib/onlyfansCreatorSaveDb';
 
 export async function GET(req: NextRequest) {
   const authUser = await authenticateUser(req);
@@ -27,16 +28,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'creatorId is required' }, { status: 400 });
   }
 
-  await connectDB();
-
-  const creator = await OnlyFansCreator.findById(creatorId).select('_id').lean();
-  if (!creator) {
-    return NextResponse.json({ error: 'Creator not found' }, { status: 404 });
+  try {
+    await addUserSavedOnlyFansCreator(authUser._id.toString(), creatorId);
+  } catch (e: any) {
+    if (e.message === 'Creator not found') {
+      return NextResponse.json({ error: 'Creator not found' }, { status: 404 });
+    }
+    if (e.message === 'Invalid creatorId') {
+      return NextResponse.json({ error: 'creatorId is required' }, { status: 400 });
+    }
+    throw e;
   }
-
-  await User.findByIdAndUpdate(authUser._id, {
-    $addToSet: { savedCreators: creatorId },
-  });
 
   return NextResponse.json({ saved: true });
 }
@@ -52,10 +54,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'creatorId is required' }, { status: 400 });
   }
 
-  await connectDB();
-  await User.findByIdAndUpdate(authUser._id, {
-    $pull: { savedCreators: creatorId },
-  });
+  await removeUserSavedOnlyFansCreator(authUser._id.toString(), creatorId);
 
   return NextResponse.json({ saved: false });
 }

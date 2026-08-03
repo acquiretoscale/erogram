@@ -37,46 +37,6 @@ export const AINSFW_FULL_REVIEWS: Record<string, AINsfwFullReview> = {
       },
     ],
   },
-  "porncreate-undress-ai": {
-    shortDescription: "PornCreate is a place where one account replaces three. The platform undresses AI images, swaps faces, and turns stills into NSFW video, all from a single browser dashboard with one diamond wallet feeding everything. More than 450,000 users have passed through and left over two million renders behind them, so the engine has been put through its paces. There is nothing to download and nothing to pay upfront, since new accounts receive free diamonds on signup and the first undress costs exactly zero.",
-    featureHighlights: [
-      {
-        title: "Undress Any AI Image in Seconds",
-        body: "The undress engine is the star of PornCreate, and it earns the billing. Users drop in an SDXL render, an anime still, or an AI girlfriend picture, choose lingerie, bikini, or the full nude finish, and the result lands in under thirty seconds. The before and after sit side by side in the browser, which makes the reveal half the fun. Exports come out in high resolution, ready to save. The free diamonds cover the first tries, so seeing the quality with one's own eyes costs nothing.",
-      },
-      {
-        title: "Face Swap and Video From the Same Wallet",
-        body: "Most undress tools stop at the still image. PornCreate keeps going, merging faces between two synthetic sources or animating a single picture into a looping NSFW clip with motion presets and custom prompts. Portrait and landscape both work, and the video side carries spoken audio in a pile of languages. The same diamonds pay for everything, no separate coins to juggle. Video takes longer than stills, that is the nature of the beast, but the results are worth the short wait.",
-      },
-      {
-        title: "Diamonds Keep Falling For Free",
-        body: "PornCreate hands out diamonds like a generous host. Signup brings a starter batch, the daily wheel returns between one and one hundred diamonds every twenty-four hours, and inviting a friend pays forty diamonds plus a twenty percent lifetime cut of their purchases. Sharing generated content earns another twenty per approved post. Patient users can keep creating for a long while without opening a wallet, which is not something the competition says often.",
-      },
-    ],
-    sections: [
-      {
-        heading: "PornCreate Review",
-        body: "PornCreate feels like a proper studio rather than a one-button gimmick. The editor gathers image, video, and face swap under one roof, and the Explore gallery lets visitors wander through demos across Straight, Gay, Trans, and Hentai styles before a single diamond is spent. Creators rate it 4.8 out of 5, and the interface speaks sixteen languages, from English and Spanish through Japanese and Korean. Privacy is treated seriously: sessions are encrypted, generation history erases itself after three days, and the billing descriptor on statements stays neutral, so nobody's bank knows anything. All work happens in the browser, since a mobile app is nowhere to be found for now.",
-      },
-      {
-        heading: "How Does It Work",
-        body: "PornCreate keeps the whole affair to three steps. Upload a synthetic still, pick undress, video, face swap, or one of the named presets, and download the result when the GPU is done. The filter blocks identifiable real people on its own, so the platform stays strictly in fictional territory, which also keeps users on the right side of things.\n\nImage jobs finish in under thirty seconds most of the time. Video depends on clip length and how busy the queue is, and Pro members skip ahead with priority GPU access. When the preset library is not enough, custom text prompts drive both image creation and video motion, so imagination is the only real limit.\n\nPro members get one more toy: chat with AI companions, voice messages, and in-chat image generation. The undress studio quietly turns into a companion platform for those who want company with their content, and that combination is rare at this price.",
-      },
-      {
-        heading: "How to Subscribe",
-        body: "Diamonds are the only currency, and they burn only when a job actually starts, never before. Casual users can grab a one-time pack: thirty diamonds for $5, or the Plus pack at $15 for one hundred fifty diamonds, which the platform rightly flags as the best value. The packs climb all the way to 6,250 diamonds for $250, and unused diamonds do not expire on most plans, so nothing goes to waste.\n\nThe Pro subscription at $24.99 per month is where PornCreate makes the most sense. It brings three hundred diamonds monthly, priority GPU queue, HD video exports, watermark-free downloads, and face swap included. Heavy creators can look at Pro+ at $100 for two thousand diamonds or Elite at $250 for the full 6,250 with a dedicated support lane. Credit card and crypto are both accepted, and checkout is encrypted end to end. For anyone planning more than a handful of renders a month, Pro pays for itself quickly.",
-      },
-      {
-        heading: "The Studio That Does It All",
-        body: "PornCreate is the rare undress tool that replaces a whole toolbar. Deepfake.com and Clothoff.net remain fine choices for users who want one job done simply, and N8ked.app suits those who prefer paying per image with no account commitments. But for creators who want undress, face swap, and NSFW video living in one dashboard with one balance, PornCreate stands alone in its corner. The free diamonds make trying it a no-risk affair, and the daily wheel keeps the tab open. The smart move is to sign up, spend the free diamonds on a first undress, and let the results argue for themselves.",
-      },
-    ],
-    alternatives: [
-      { name: "Deepfake.com", slug: "deepfake-com-undress-ai" },
-      { name: "N8ked.app", slug: "n8ked-app-undress-ai" },
-      { name: "Clothoff.net", slug: "clothoff-undress-ai" },
-    ],
-  },
   "joi-ai-nude-generator": {
     shortDescription: "JOI AI is a platform where an AI companion, an image generator, and short video clips live under one roof. The service started life as EVA AI, years before the current wave of companion apps, and rebranded in 2025 around the idea of AI-lationships. Members build a character from zero, chat with her, ask the nude ai generator for pictures, and turn her into short video moments called Dream Clips. The free plan opens the door, and the subscription unlocks the full experience.",
     featureHighlights: [
@@ -157,4 +117,13 @@ export const AINSFW_FULL_REVIEWS: Record<string, AINsfwFullReview> = {
 
 export function getFullReview(slug: string): AINsfwFullReview | undefined {
   return AINSFW_FULL_REVIEWS[slug];
+}
+
+/** Paid submission slugs that have an editorial full review (verified badge). */
+export function getVerifiedPaidSlugs(paidSlugs: Iterable<string>): string[] {
+  const out: string[] = [];
+  for (const slug of paidSlugs) {
+    if (AINSFW_FULL_REVIEWS[slug]) out.push(slug);
+  }
+  return out;
 }

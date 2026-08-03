@@ -22,7 +22,7 @@ const DEFAULTS: PremiumPricing = {
   monthly: { priceUsd: 8.99, starsAmount: 600, days: 30, label: 'Erogram VIP (1 Month)', description: '30-day unlimited access — Secret Vault, bookmarks & more' },
   quarterly: { priceUsd: 9.97, starsAmount: 750, days: 90, label: 'Erogram VIP (3 Months)', description: '3-month unlimited access — Secret Vault, bookmarks & more' },
   yearly: { priceUsd: 19.97, starsAmount: 1500, days: 365, label: 'Erogram VIP (1 Year)', description: '1-year unlimited access — Secret Vault, bookmarks & more' },
-  lifetime: { priceUsd: 190, starsAmount: 15000, days: 36500, label: 'Erogram VIP (Lifetime)', description: 'Lifetime unlimited access — Secret Vault, bookmarks & more' },
+  lifetime: { priceUsd: 97, starsAmount: 7300, days: 36500, label: 'Erogram VIP (Lifetime)', description: 'Lifetime unlimited access — Secret Vault, bookmarks & more' },
   offerBadge: '80% OFF',
   offerText: 'Launch price ends soon',
 };

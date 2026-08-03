@@ -6,6 +6,7 @@ import { campaignNotExpired } from '@/lib/campaignDates';
 import {
   Campaign, TrendingOFCreator, OnlyFansCreator,
   Bookmark, ButtonConfig, User, TrendingErogram,
+  Group, Bot,
 } from '@/lib/models';
 import { getExpiredOFAgencyTargets } from '@/lib/actions/onlyfansTracking';
 import { isOFUsernameOnExpiredAgencyDeal } from '@/lib/ofExpiry';
@@ -281,6 +282,31 @@ export async function checkBookmarks(token: string, ids: string[]) {
     return { bookmarked };
   } catch {
     return { bookmarked: {} };
+  }
+}
+
+/**
+ * View-count ping from the browser (join pages are ISR-cached, so the server
+ * no longer counts views per render — the client reports each real view).
+ */
+export async function trackEntityView(entityId: string, type: 'group' | 'bot') {
+  try {
+    if (!entityId || !/^[0-9a-fA-F]{24}$/.test(entityId)) return;
+    await connectDB();
+    if (type === 'bot') {
+      await Bot.findByIdAndUpdate(entityId, { $inc: { views: 1 } });
+      return;
+    }
+    const todayUtc = new Date().toISOString().slice(0, 10);
+    await Group.findByIdAndUpdate(entityId, {
+      $inc: {
+        views: 1,
+        weeklyViews: 1,
+        [`viewsByDay.${todayUtc}`]: 1,
+      },
+    });
+  } catch {
+    // fire-and-forget — never break the page over a view ping
   }
 }
 

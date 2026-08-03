@@ -1,20 +1,24 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { AI_NSFW_TOOLS } from './data';
 import AINsfwClient from './AINsfwClient';
 import { AINSFW_PAGE_SIZE } from './constants';
+import { pickRecentTools } from './recentCategoryTools';
 import { getLocale } from '@/lib/i18n/server';
 import { getDictionary } from '@/lib/i18n';
-import { getAllToolStats, getFeaturedTools, getApprovedSubmissions } from '@/lib/actions/ainsfw';
+import { getAllToolStats, getFeaturedTools, getBoostFeaturedSlugs, getApprovedSubmissions } from '@/lib/actions/ainsfw';
 import { getActiveCampaigns, getPlacementFeedCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
-import { detectDeviceFromUserAgent } from '@/lib/utils/device';
+import { getAuthorBySlug } from '@/lib/actions/authors';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { getVerifiedPaidSlugs } from '@/app/ainsfw/fullReviews';
 
 const BASE_URL = CANONICAL_BASE;
 
-export const dynamic = 'force-dynamic';
+// Pre-rendered server HTML like /best-telegram-groups, refreshed in the background
+// every 5 minutes (ISR). Google sees stable static HTML; new tools/ads/stats appear
+// within minutes without a deploy. (Was force-dynamic, which buried the hub.)
+export const revalidate = 300;
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
@@ -41,18 +45,18 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export async function AINsfwPageView({ page = 1 }: { page?: number }) {
   const currentPage = Math.max(1, page);
-  const ua = (await headers()).get('user-agent');
-  const { isMobile } = detectDeviceFromUserAgent(ua);
   const locale = await getLocale();
   const dict = await getDictionary(locale);
   const a = dict.ainsfw ?? {};
   const staticSlugs = new Set(AI_NSFW_TOOLS.map(t => t.slug));
-  const [featuredInfos, topBannerCampaigns, paidSubmissions, topAdCampaigns, feedCampaigns] = await Promise.all([
+  const [featuredInfos, boostFeaturedSlugs, topBannerCampaigns, paidSubmissions, topAdCampaigns, feedCampaigns, guideAuthor] = await Promise.all([
     getFeaturedTools(),
-    getActiveCampaigns('top-banner', { page: 'ainsfw', device: isMobile ? 'mobile' : 'desktop' }).catch(() => []),
+    getBoostFeaturedSlugs(),
+    getActiveCampaigns('top-banner', { page: 'ainsfw' }).catch(() => []),
     getApprovedSubmissions(staticSlugs),
     getPlacementFeedCampaigns('ainsfw-featured', 4).catch(() => []),
     getActiveFeedCampaigns('ainsfw').catch(() => []),
+    getAuthorBySlug('eros'),
   ]);
   const allTools = [...AI_NSFW_TOOLS, ...paidSubmissions];
   const paginationTotalPages = Math.max(1, Math.ceil(allTools.length / AINSFW_PAGE_SIZE));
@@ -60,7 +64,13 @@ export async function AINsfwPageView({ page = 1 }: { page?: number }) {
   const allStats = await getAllToolStats(allTools.map(t => t.slug));
   const { mergeToolContent } = await import('@/lib/ainsfw/toolContent');
   const displayTools = allTools.map((t) => mergeToolContent(t, allStats[t.slug]));
+  const toolsBySlug = new Map(allTools.map((t) => [t.slug, t]));
+  const recentTools = currentPage === 1
+    ? pickRecentTools(toolsBySlug, paidSubmissions as Array<(typeof paidSubmissions)[number] & { createdAt?: string }>)
+        .map((t) => mergeToolContent(t, allStats[t.slug]))
+    : [];
   const featuredSlugs = featuredInfos.map(f => f.slug);
+  const verifiedSlugs = getVerifiedPaidSlugs(paidSubmissions.map((t) => t.slug));
   const featuredCampaignMap: Record<string, string> = {};
   for (const f of featuredInfos) {
     if (f.campaignId) featuredCampaignMap[f.slug] = f.campaignId;
@@ -93,28 +103,18 @@ export async function AINsfwPageView({ page = 1 }: { page?: number }) {
   const faqJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
-    mainEntity: [
-      {
-        '@type': 'Question',
-        name: a.faqQ1 || 'What are AI Girlfriend apps?',
-        acceptedAnswer: { '@type': 'Answer', text: a.faqA1 || '' },
-      },
-      {
-        '@type': 'Question',
-        name: a.faqQ2 || 'What is Undress AI?',
-        acceptedAnswer: { '@type': 'Answer', text: a.faqA2 || '' },
-      },
-      {
-        '@type': 'Question',
-        name: a.faqQ3 || 'Are AI NSFW chatbots free?',
-        acceptedAnswer: { '@type': 'Answer', text: a.faqA3 || '' },
-      },
-      {
-        '@type': 'Question',
-        name: a.faqQ4 || 'What AI tools accept crypto payments?',
-        acceptedAnswer: { '@type': 'Answer', text: a.faqA4 || '' },
-      },
-    ],
+    mainEntity: Array.from({ length: 10 }, (_, i) => {
+      const n = i + 1;
+      const q = a[`faqQ${n}` as keyof typeof a] as string | undefined;
+      const ans = a[`faqA${n}` as keyof typeof a] as string | undefined;
+      return q
+        ? {
+            '@type': 'Question',
+            name: q,
+            acceptedAnswer: { '@type': 'Answer', text: ans || '' },
+          }
+        : null;
+    }).filter(Boolean),
   };
 
   return (
@@ -137,7 +137,7 @@ export async function AINsfwPageView({ page = 1 }: { page?: number }) {
           <Link key={p} href={`/ainsfw/page/${p}`}>{`AI NSFW page ${p}`}</Link>
         ))}
       </nav>
-      <AINsfwClient tools={displayTools} allStats={allStats} featuredSlugs={featuredSlugs} featuredCampaignMap={featuredCampaignMap} topBannerCampaigns={topBannerCampaigns} topAdCampaigns={topAdCampaigns} feedCampaigns={feedCampaigns} paginationCurrentPage={currentPage} paginationTotalPages={paginationTotalPages} pageSize={AINSFW_PAGE_SIZE} />
+      <AINsfwClient tools={displayTools} allStats={allStats} featuredSlugs={featuredSlugs} boostFeaturedSlugs={boostFeaturedSlugs} featuredCampaignMap={featuredCampaignMap} topBannerCampaigns={topBannerCampaigns} topAdCampaigns={topAdCampaigns} feedCampaigns={feedCampaigns} paginationCurrentPage={currentPage} paginationTotalPages={paginationTotalPages} pageSize={AINSFW_PAGE_SIZE} guideAuthor={guideAuthor} recentTools={recentTools} verifiedSlugs={verifiedSlugs} />
     </>
   );
 }

@@ -1,10 +1,8 @@
 import { Metadata } from 'next';
-import { headers } from 'next/headers';
 import connectDB from '@/lib/db/mongodb';
 import { Bot, Advert } from '@/lib/models';
 import BotsClient from '../../BotsClient';
-import { detectDeviceFromUserAgent } from '@/lib/utils/device';
-import { getActiveCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
+import { getActiveFeedCampaigns } from '@/lib/actions/campaigns';
 import { buildSocialMeta } from '@/lib/seo/socialMeta';
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
@@ -327,31 +325,25 @@ async function getAdverts() {
 }
 
 export default async function CountryBotsPage({ params }: PageProps) {
-  const ua = (await headers()).get('user-agent');
-  const { isMobile, isTelegram } = detectDeviceFromUserAgent(ua);
-
+  // Device detection removed (reading headers() opts out of static ISR).
+  // The client detects device and refreshes ads after load.
   const { country: rawCountry } = await params;
   const country = normalizeCountryParam(rawCountry);
 
-  const [bots, adverts, topBannerCampaigns, feedCampaigns] = await Promise.all([
+  const [bots, adverts, feedCampaigns] = await Promise.all([
     getBotsByCountry(country),
     getAdverts(),
-    getActiveCampaigns('top-banner', { page: 'bots', device: isMobile ? 'mobile' : 'desktop' }),
     getActiveFeedCampaigns('bots'),
   ]);
-
-  const topBannerForPage =
-    topBannerCampaigns.length > 0 && topBannerCampaigns[0].creative ? topBannerCampaigns : [];
 
   return (
     <BotsClient
       initialBots={bots}
       initialAdverts={adverts}
       feedCampaigns={feedCampaigns}
-      initialIsMobile={isMobile}
-      initialIsTelegram={isTelegram}
+      initialIsMobile={false}
+      initialIsTelegram={false}
       initialCountry={country}
-      topBannerCampaigns={topBannerForPage}
     />
   );
 }

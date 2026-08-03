@@ -18,6 +18,30 @@ function monthYear(iso: string | null): string {
   return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
 }
 
+function ViewAllLink({ href, categoryName, prominent = false }: { href: string; categoryName: string; prominent?: boolean }) {
+  const label = `View All ${categoryName}`;
+  if (prominent) {
+    return (
+      <Link
+        href={href}
+        className="inline-flex items-center justify-center gap-2 rounded-full border border-[#c0392f]/35 bg-[#0f0c0a] px-8 py-3.5 text-[11px] font-bold uppercase tracking-[0.22em] text-white shadow-[0_12px_28px_-12px_rgba(0,0,0,0.45)] transition-all hover:-translate-y-0.5 hover:bg-[#c0392f] hover:border-[#c0392f]"
+      >
+        {label}
+        <span aria-hidden="true">→</span>
+      </Link>
+    );
+  }
+  return (
+    <Link
+      href={href}
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-black/[0.12] bg-white px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.22em] text-[#0f0c0a] transition-colors hover:border-[#c0392f]/40 hover:text-[#c0392f]"
+    >
+      {label}
+      <span aria-hidden="true">→</span>
+    </Link>
+  );
+}
+
 export default function BlogHubClient({
   articles,
   activeCategory,
@@ -35,7 +59,7 @@ export default function BlogHubClient({
   const features = articles.slice(1);
   const coverCat = cover ? BLOG_CATEGORY_MAP[cover.blogCategory] : undefined;
 
-  // Main hub: group the remaining articles by category, max 4 each, in the
+  // Main hub: group the remaining articles by category, max 8 each, in the
   // canonical category order. On category pages we keep the simple flat grid.
   // "The Scene" (adult-entertainment) is hidden from the blog UI per owner —
   // kept in constants only as the routing/default fallback.
@@ -46,7 +70,7 @@ export default function BlogHubClient({
     ? visibleCategories
         .map((c) => ({
           cat: c,
-          items: features.filter((a) => a.blogCategory === c.slug).slice(0, 4),
+          items: features.filter((a) => a.blogCategory === c.slug).slice(0, 8),
         }))
         .filter((s) => s.items.length > 0)
     : [];
@@ -171,24 +195,26 @@ export default function BlogHubClient({
         )}
       </main>
 
-      {/* Hub: full-bleed warm band so white cards pop, one section per category, 4 each */}
+      {/* Hub: full-bleed warm band so white cards pop, one section per category, 8 each */}
       {!activeCategory && sections.length > 0 && (
         <div className="bg-[#f3f0ec] border-t border-black/[0.06]">
           <div className="max-w-[1180px] mx-auto px-6 sm:px-8 py-4">
             {sections.map((s) => (
               <section key={s.cat.slug} className="pt-14 pb-2">
-                <div className="flex items-end justify-between gap-6 border-b border-black/[0.09] pb-7 mb-12">
+                <div className="flex items-end justify-between gap-6 border-b border-black/[0.09] pb-7 mb-8">
                   <div>
                     <div className="text-[10px] font-bold tracking-[0.32em] uppercase text-[#c0392f] mb-3">{s.cat.eyebrow || 'Section'}</div>
                     <h2 className="font-sans font-black text-[2rem] sm:text-[2.4rem] leading-tight tracking-tight text-[#0f0c0a]">{s.cat.name}</h2>
                   </div>
-                  <Link href={`/blog/category/${s.cat.slug}`} className="hidden sm:inline-flex shrink-0 text-[11px] font-semibold tracking-[0.28em] uppercase text-[#9a8f88] hover:text-[#0f0c0a] transition-colors pb-2">View All →</Link>
+                  <ViewAllLink href={`/blog/category/${s.cat.slug}`} categoryName={s.cat.name} />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-7 gap-y-10">
-                  {s.items.map((a, i) => <BlogCardItem key={a._id} article={a} index={i + 1} />)}
+                <div className="flex flex-col gap-4">
+                  {s.items.map((a, i) => (
+                    <BlogCardItem key={a._id} article={a} index={i + 1} horizontal />
+                  ))}
                 </div>
-                <div className="sm:hidden mt-8">
-                  <Link href={`/blog/category/${s.cat.slug}`} className="inline-flex text-[11px] font-semibold tracking-[0.28em] uppercase text-[#9a8f88] hover:text-[#0f0c0a] transition-colors">View All {s.cat.name} →</Link>
+                <div className="mt-8 flex justify-center border-t border-black/[0.08] pt-8">
+                  <ViewAllLink href={`/blog/category/${s.cat.slug}`} categoryName={s.cat.name} prominent />
                 </div>
               </section>
             ))}

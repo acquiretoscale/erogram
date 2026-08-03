@@ -101,7 +101,7 @@ export const PLACEMENTS: PlacementDef[] = [
 
   // OnlyFans Search category pages (/{slug}onlyfans) + keyword search results.
   // Featured strip (paid OF creators) + agnostic 4-ad block every 80 results. Keyword = category slug.
-  { id: 'of-search-featured', label: 'OnlyFans Search — Featured (homepage /onlyfanssearch)', group: 'OnlyFans' },
+  { id: 'of-search-featured', label: 'OnlyFans Search — Featured (homepage /onlyfans)', group: 'OnlyFans' },
   { id: 'of-cat', label: 'OnlyFans Search — category pages only (keyword-targeted)', group: 'OnlyFans', keywordTargetable: true },
 
   // New unified mixed promotional surface: Trending on Erogram.

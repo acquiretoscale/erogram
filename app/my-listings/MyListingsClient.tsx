@@ -1,28 +1,56 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Fragment } from 'react';
 import Link from 'next/link';
 import { getMyListings, updateListingDetails, type ListingItem } from '@/lib/actions/myListings';
-import { getMyAINSFWListings } from '@/lib/actions/myAINSFWListings';
+import { getMyAINSFWListings, updateMyAINSFWListing } from '@/lib/actions/myAINSFWListings';
+import { BOOST_STARS, STAR_RATE, cryptoUsdFromStars, starsToUsd } from '@/lib/boostPricing';
 
-// Pricing: SINGLE SOURCE — mirrors app/add/AddClient.tsx (graph node: groups-pricing)
 const INSTANT_PRICES = { group: 600, bot: 1500 } as const;
-const BOOST_PRICES = { group: { week: 2000, month: 5000 }, bot: { week: 3000, month: 6000 } } as const;
-const RENEWAL_PRICES = { group: { week: 1400, month: 3500 }, bot: { week: 2100, month: 4200 } } as const;
-const STAR_RATE = 0.013;
-function usd(stars: number) { return `~$${(stars * STAR_RATE).toFixed(2)}`; }
+function usd(stars: number) { return `~$${starsToUsd(stars).toFixed(2)}`; }
+function cryptoUsd(stars: number) { return `$${cryptoUsdFromStars(stars).toFixed(2)}`; }
 
-async function createInvoice(groupId: string, type: string, entityType: string, couponCode?: string): Promise<{ url: string | null; freeApproval?: boolean }> {
+async function createInvoice(
+  groupId: string,
+  type: string,
+  entityType: string,
+  paymentMethod: 'stars' | 'crypto' = 'stars',
+  couponCode?: string,
+): Promise<{ url: string | null; freeApproval?: boolean; error?: string }> {
   try {
     const token = localStorage.getItem('token');
     const res = await fetch('/api/payments/group-submission', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      body: JSON.stringify({ groupId, type, entityType, ...(couponCode ? { couponCode } : {}) }),
+      body: JSON.stringify({ groupId, type, entityType, paymentMethod, ...(couponCode ? { couponCode } : {}) }),
     });
     const data = await res.json();
+    if (!res.ok) return { url: null, error: data.message || 'Payment failed' };
     return { url: data.url || null, freeApproval: data.freeApproval };
-  } catch { return { url: null }; }
+  } catch { return { url: null, error: 'Payment failed' }; }
+}
+
+function pollBoostExtension(
+  id: string,
+  entityType: string,
+  expiryBefore: Date,
+  onSuccess: () => void,
+) {
+  let attempts = 0;
+  const timer = setInterval(async () => {
+    attempts += 1;
+    try {
+      const res = await fetch(`/api/submission-status?id=${id}&entity=${entityType}`);
+      const data = await res.json();
+      const nextExpiry = data.boostExpiresAt ? new Date(data.boostExpiresAt) : null;
+      if (nextExpiry && nextExpiry.getTime() > expiryBefore.getTime()) {
+        clearInterval(timer);
+        onSuccess();
+      }
+    } catch { /* retry */ }
+    if (attempts >= 40) clearInterval(timer);
+  }, 3000);
+  return () => clearInterval(timer);
 }
 
 function daysLeft(d: Date) { return Math.max(0, Math.ceil((d.getTime() - Date.now()) / 86400000)); }
@@ -43,10 +71,11 @@ function Lock() { return <span className="text-gray-300">✗</span>; }
 
 function UpgradePanel({ listing, onUpdate }: { listing: ListingItem; onUpdate: () => void }) {
   const [loadingTier, setLoadingTier] = useState<string | null>(null);
+  const [payMethod, setPayMethod] = useState<'stars' | 'crypto'>('stars');
   const isPending = listing.status === 'pending';
   const payType = (listing.type === 'bot' ? 'bot' : 'group') as 'group' | 'bot';
   const instantPrice = INSTANT_PRICES[payType];
-  const boost = BOOST_PRICES[payType] as { week: number; month: number };
+  const boost = BOOST_STARS[payType];
 
   const tiers = [
     {
@@ -98,25 +127,55 @@ function UpgradePanel({ listing, onUpdate }: { listing: ListingItem; onUpdate: (
       </div>
 
       <div className="px-5 pb-5">
+        <div className="flex gap-2 mb-3">
+          <button
+            type="button"
+            onClick={() => setPayMethod('stars')}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all ${payMethod === 'stars' ? 'bg-[#00AFF0] text-white border-[#00AFF0]' : 'bg-gray-50 text-gray-600 border-gray-200'}`}
+          >
+            Telegram Stars
+          </button>
+          <button
+            type="button"
+            onClick={() => setPayMethod('crypto')}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all ${payMethod === 'crypto' ? 'bg-orange-500 text-white border-orange-500' : 'bg-gray-50 text-gray-600 border-gray-200'}`}
+          >
+            Crypto · 15% OFF
+          </button>
+        </div>
+        {payMethod === 'crypto' && (
+          <p className="text-[10px] text-gray-400 mb-3">Crypto discount applies to Boost plans. Instant Approval is Stars only. Secure checkout via NOWPayments.</p>
+        )}
         <div className="grid grid-cols-5 gap-0 text-[11px]">
           <div className="p-2" />
-          {tiers.map((t) => (
+          {tiers.map((t) => {
+            const isBoostTier = t.ctaType === 'boost_week' || t.ctaType === 'boost_month';
+            const showCrypto = payMethod === 'crypto' && isBoostTier && t.price !== null;
+            return (
             <div key={t.name} className={`p-2 text-center rounded-t-xl ${t.highlight ? 'bg-[#00AFF0]/10 border border-[#00AFF0]/20 border-b-0' : ''}`}>
               <div className={`font-black text-xs ${t.highlight ? 'text-[#00AFF0]' : 'text-gray-600'}`}>{t.name}</div>
               {t.price !== null ? (
-                <>
-                  <div className={`font-black text-base mt-1 ${t.highlight ? 'text-[#00AFF0]' : 'text-gray-900'}`}>{t.price.toLocaleString()}★</div>
-                  <div className={`text-[11px] font-bold mt-0.5 ${t.highlight ? 'text-[#00AFF0]/60' : 'text-gray-400'}`}>{usd(t.price)}</div>
-                </>
+                showCrypto ? (
+                  <>
+                    <div className="font-black text-base mt-1 text-orange-500">{cryptoUsd(t.price)}</div>
+                    <div className="text-[10px] font-bold mt-0.5 text-orange-500/70">15% OFF</div>
+                  </>
+                ) : (
+                  <>
+                    <div className={`font-black text-base mt-1 ${t.highlight ? 'text-[#00AFF0]' : 'text-gray-900'}`}>{t.price.toLocaleString()}★</div>
+                    <div className={`text-[11px] font-bold mt-0.5 ${t.highlight ? 'text-[#00AFF0]/60' : 'text-gray-400'}`}>{usd(t.price)}</div>
+                  </>
+                )
               ) : (
                 <div className="font-bold text-base mt-1 text-gray-300">Free</div>
               )}
             </div>
-          ))}
+            );
+          })}
 
           {perkLabels.map((p, i) => (
-            <>
-              <div key={`label-${p.key}`} className={`p-2 text-gray-500 font-semibold flex items-center ${i % 2 === 0 ? 'bg-gray-50' : ''}`}>
+            <Fragment key={`row-${p.key}`}>
+              <div className={`p-2 text-gray-500 font-semibold flex items-center ${i % 2 === 0 ? 'bg-gray-50' : ''}`}>
                 {p.label}
               </div>
               {tiers.map((t) => (
@@ -124,7 +183,7 @@ function UpgradePanel({ listing, onUpdate }: { listing: ListingItem; onUpdate: (
                   {t.perks[p.key] ? <Check /> : <Lock />}
                 </div>
               ))}
-            </>
+            </Fragment>
           ))}
 
           <div className="p-2" />
@@ -134,8 +193,10 @@ function UpgradePanel({ listing, onUpdate }: { listing: ListingItem; onUpdate: (
                 <button
                   disabled={loadingTier === t.ctaType}
                   onClick={async () => {
+                    const isBoostTier = t.ctaType === 'boost_week' || t.ctaType === 'boost_month';
+                    const method = payMethod === 'crypto' && isBoostTier ? 'crypto' : 'stars';
                     setLoadingTier(t.ctaType!);
-                    const result = await createInvoice(listing._id, t.ctaType!, listing.type);
+                    const result = await createInvoice(listing._id, t.ctaType!, listing.type, method);
                     setLoadingTier(null);
                     if (result.freeApproval) { onUpdate(); return; }
                     if (result.url) window.open(result.url, '_blank', 'noopener,noreferrer');
@@ -321,6 +382,10 @@ export default function MyListingsClient() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [error, setError] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [renewPayMethod, setRenewPayMethod] = useState<'stars' | 'crypto'>('stars');
+  const [renewLoading, setRenewLoading] = useState<string | null>(null);
+  const [renewMsg, setRenewMsg] = useState('');
+  const [awaitingRenewal, setAwaitingRenewal] = useState(false);
 
   const fetchData = useCallback(async () => {
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
@@ -361,9 +426,49 @@ export default function MyListingsClient() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('renewed') === '1') {
+      fetchData();
+      setRenewMsg('Boost extended.');
+      window.history.replaceState({}, '', '/my-listings');
+    }
+  }, [fetchData]);
+
   const selectedListing = listings.find(l => l._id === selectedId && l.type !== 'ainsfw') || null;
   const boostExpiry = selectedListing?.boostExpiresAt ? new Date(selectedListing.boostExpiresAt) : null;
   const isSelectedBoostActive = !!(boostExpiry && boostExpiry > new Date());
+
+  const handleRenew = async (type: 'boost_week' | 'boost_month') => {
+    if (!selectedListing || !boostExpiry) return;
+    setRenewLoading(type);
+    setRenewMsg('');
+    const entityType = selectedListing.type === 'bot' ? 'bot' : 'group';
+    const expiryBefore = new Date(boostExpiry);
+    const result = await createInvoice(selectedListing._id, type, entityType, renewPayMethod);
+    setRenewLoading(null);
+    if (result.error) {
+      setRenewMsg(result.error);
+      return;
+    }
+    if (result.freeApproval) {
+      fetchData();
+      setRenewMsg('Boost extended.');
+      return;
+    }
+    if (result.url) {
+      window.open(result.url, '_blank', 'noopener,noreferrer');
+      setAwaitingRenewal(true);
+      setRenewMsg('Complete payment in the new tab. This page updates automatically.');
+      pollBoostExtension(selectedListing._id, entityType, expiryBefore, () => {
+        setAwaitingRenewal(false);
+        setRenewMsg('Boost extended.');
+        fetchData();
+        setTimeout(() => setRenewMsg(''), 3000);
+      });
+    }
+  };
 
   if (!loading && !isLoggedIn) {
     return (
@@ -469,23 +574,62 @@ export default function MyListingsClient() {
                     return <div className="h-full rounded-full bg-[#00AFF0]" style={{ width: `${pct}%` }} />;
                   })()}
                 </div>
+                <div className="flex gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setRenewPayMethod('stars')}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all ${renewPayMethod === 'stars' ? 'bg-[#00AFF0] text-white border-[#00AFF0]' : 'bg-gray-50 text-gray-600 border-gray-200'}`}
+                  >
+                    Telegram Stars
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRenewPayMethod('crypto')}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all ${renewPayMethod === 'crypto' ? 'bg-orange-500 text-white border-orange-500' : 'bg-gray-50 text-gray-600 border-gray-200'}`}
+                  >
+                    Crypto · 15% OFF
+                  </button>
+                </div>
                 <div className="flex gap-2">
                   {(() => {
-                    const renew = RENEWAL_PRICES[(selectedListing.type === 'bot' ? 'bot' : 'group')] as { week: number; month: number };
+                    const payType = (selectedListing.type === 'bot' ? 'bot' : 'group') as 'group' | 'bot';
+                    const prices = BOOST_STARS[payType];
+                    const weekLabel = renewPayMethod === 'stars'
+                      ? `+1 Week · ${prices.week.toLocaleString()}★ · ${usd(prices.week)}`
+                      : `+1 Week · ${cryptoUsd(prices.week)} · 15% OFF`;
+                    const monthLabel = renewPayMethod === 'stars'
+                      ? `+1 Month · ${prices.month.toLocaleString()}★ · ${usd(prices.month)}`
+                      : `+1 Month · ${cryptoUsd(prices.month)} · 15% OFF`;
                     return (
                       <>
-                        <button onClick={async () => { const r = await createInvoice(selectedListing._id, 'boost_week', selectedListing.type); if (r.freeApproval) fetchData(); else if (r.url) window.open(r.url, '_blank', 'noopener,noreferrer'); }}
-                          className="flex-1 py-2.5 rounded-xl font-bold text-white text-xs transition-all bg-[#00AFF0] hover:bg-[#009dd9] shadow-sm shadow-[#00AFF0]/25">
-                          +1 Week · {renew.week.toLocaleString()}★ · {usd(renew.week)} <span className="text-white/70 ml-1">30% OFF</span>
+                        <button
+                          type="button"
+                          disabled={!!renewLoading || awaitingRenewal}
+                          onClick={() => handleRenew('boost_week')}
+                          className="flex-1 py-2.5 rounded-xl font-bold text-white text-xs transition-all bg-[#00AFF0] hover:bg-[#009dd9] shadow-sm shadow-[#00AFF0]/25 disabled:opacity-50"
+                        >
+                          {renewLoading === 'boost_week' ? '...' : weekLabel}
                         </button>
-                        <button onClick={async () => { const r = await createInvoice(selectedListing._id, 'boost_month', selectedListing.type); if (r.freeApproval) fetchData(); else if (r.url) window.open(r.url, '_blank', 'noopener,noreferrer'); }}
-                          className="flex-1 py-2.5 rounded-xl font-bold text-gray-700 text-xs transition-all bg-gray-100 hover:bg-gray-200 border border-gray-200">
-                          +1 Month · {renew.month.toLocaleString()}★ · {usd(renew.month)}
+                        <button
+                          type="button"
+                          disabled={!!renewLoading || awaitingRenewal}
+                          onClick={() => handleRenew('boost_month')}
+                          className="flex-1 py-2.5 rounded-xl font-bold text-gray-700 text-xs transition-all bg-gray-100 hover:bg-gray-200 border border-gray-200 disabled:opacity-50"
+                        >
+                          {renewLoading === 'boost_month' ? '...' : monthLabel}
                         </button>
                       </>
                     );
                   })()}
                 </div>
+                {renewMsg && (
+                  <p className={`text-[10px] mt-2 font-bold ${renewMsg.includes('failed') || renewMsg.includes('Login') ? 'text-red-400' : 'text-emerald-500'}`}>
+                    {renewMsg}
+                  </p>
+                )}
+                {renewPayMethod === 'crypto' && (
+                  <p className="text-[10px] mt-2 text-gray-400">Secure checkout via NOWPayments · USDT, BTC, ETH and more</p>
+                )}
                 </div>
               </div>
             )}

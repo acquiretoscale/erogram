@@ -5,6 +5,7 @@ import { OnlyFansCreator, User } from '@/lib/models';
 import sharp from 'sharp';
 import { uploadToR2, isR2Configured } from '@/lib/r2';
 import jwt from 'jsonwebtoken';
+import { revalidateCreatorPage } from '@/lib/actions/ofCreatorProfile';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -166,7 +167,6 @@ export async function fetchCreatorFromApify(username: string): Promise<CreatorLo
         avatarThumbC144: exact.avatarThumbs?.c144 || '',
         header: exact.header || '',
         bio,
-        url: `https://onlyfans.com/${exact.username}`,
         gender: 'female',
         price: subPrice,
         isFree: subPrice === 0,
@@ -210,6 +210,8 @@ export async function fetchCreatorFromApify(username: string): Promise<CreatorLo
         categories: inferredCategories,
         scrapedAt: new Date(),
       },
+      // `url` is insert-only — never reset a saved tracking link on a re-search/re-lookup.
+      $setOnInsert: { url: `https://onlyfans.com/${exact.username}` },
     },
     { upsert: true, strict: false },
   );
@@ -361,8 +363,20 @@ export async function submitCreator(input: SubmitCreatorInput) {
     submitterUsername = u?.username || '';
   } catch { /* non-fatal */ }
 
+  const ownedProfile = await OnlyFansCreator.findOne({ submittedBy: submitterId, deleted: { $ne: true } })
+    .select('slug username')
+    .lean() as { slug?: string; username?: string } | null;
+
+  if (ownedProfile && ownedProfile.slug !== slug) {
+    const handle = ownedProfile.username || ownedProfile.slug;
+    return { success: false, error: `You already manage @${handle}. One creator profile per account.` };
+  }
+
   const existing = await OnlyFansCreator.findOne({ slug }).lean() as any;
   if (existing) {
+    if (existing.submittedBy && existing.submittedBy.toString() !== submitterId) {
+      return { success: false, error: 'This profile is already linked to another account.' };
+    }
     const merged = [...new Set([...(existing.categories || []), ...(input.categories || [])])];
     const updateFields: Record<string, any> = { categories: merged, submissionStatus: 'pending', submittedByUser: true, submittedBy: submitterId, submittedByUsername: submitterUsername };
     if (input.description?.trim()) updateFields.bio = input.description.trim();
@@ -398,6 +412,7 @@ export async function submitCreator(input: SubmitCreatorInput) {
     }
 
     await OnlyFansCreator.updateOne({ slug }, { $set: updateFields }, { strict: false });
+    await revalidateCreatorPage(slug, username);
     return { success: true, slug, id: existing._id.toString() };
   }
 
@@ -431,7 +446,7 @@ export async function submitCreator(input: SubmitCreatorInput) {
         slug,
         avatar,
         header,
-        url: `https://onlyfans.com/${username}`,
+        url: onlyfansUrl.trim(),
         website: input.website?.trim() || '',
         gender: 'female',
         categories: input.categories?.length ? input.categories : [],

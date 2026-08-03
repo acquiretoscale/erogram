@@ -39,14 +39,16 @@ Every single creator link on `/onlyfanssearch` MUST open in a new tab/window. NO
 - This applies to: CreatorCard, Top10CategoryCard, Trending on Erogram, Featured creators, Recently Added
 - NEVER navigate away from the search page. The user must stay on `/onlyfanssearch`.
 
-## RULE 2: Creator links use `/{username}-onlyfans` — NEVER `/onlyfans/{username}`
+## RULE 2: Creator links use `/onlyfanssearch/{username}` — NEVER `/{username}-onlyfans` or `/onlyfans/{username}`
 
-All creator profile links point to `/{username}-onlyfans` (the public Erogram creator page).
+All creator profile links use `ofCreatorProfileUrl()` from `lib/onlyfanssearch/creatorUrls.ts` → `/onlyfanssearch/{username}`.
 
-- NEVER link to `/onlyfans/{username}` — that route redirects non-logged-in users to OnlyFans
+- **Source of truth:** `ofCreatorProfileUrl(username)` — never hand-build profile URLs
+- **BANNED:** `/{username}-onlyfans` (legacy dead pattern — agents gave wrong links from old rules)
+- **BANNED:** `/onlyfans/{username}` — redirects non-logged-in users to OnlyFans
 - NEVER link directly to OnlyFans URLs (creator.url) from the search page
-- Non-logged-in users go to `/join-erogram?redirect=/{username}-onlyfans` (in new tab)
-- Logged-in users go to `/{username}-onlyfans` (in new tab)
+- Non-logged-in users go to `/join-erogram?redirect=/onlyfanssearch/{username}` (in new tab)
+- Logged-in users go to `/onlyfanssearch/{username}` (in new tab)
 - The ONLY place a user leaves Erogram is from the creator's own profile page CTA button
 
 ## RULE 3: These 16 categories are HIDDEN on the main page pills

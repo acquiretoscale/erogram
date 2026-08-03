@@ -1,14 +1,21 @@
 import { Metadata } from 'next';
-import { notFound, redirect } from 'next/navigation';
+import { notFound, redirect, permanentRedirect } from 'next/navigation';
 import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator } from '@/lib/models';
-import CategoryClient from './CategoryClient';
-import { OF_CATEGORY_SLUGS, OF_CATEGORY_MAP, ofCategoryUrl } from '../constants';
+import CategoryClient from '@/app/onlyfanssearch/[category]/CategoryClient';
+import { OF_CATEGORY_SLUGS, OF_CATEGORY_MAP, ofCategoryUrl } from '@/app/onlyfanssearch/constants';
 import { getLocale } from '@/lib/i18n/server';
-import { categoryOfMeta } from '../ofMeta';
+import { categoryOfMeta } from '@/app/onlyfanssearch/ofMeta';
 import { getKeywordPlacementCampaigns } from '@/lib/actions/campaigns';
 import { bestOfSlugFromPublicPath } from '@/lib/bestOfPageContent/hottestUrls';
 import BestOfPageView, { buildBestOfMetadata } from '@/app/best-onlyfans-accounts/BestOfPageView';
+import { buildSlugCreatorMatch } from '@/lib/tags/creatorMatch';
+import { isReservedOnlyfanssearchSegment, ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { COMBO_BEST_OF_MAP } from '@/lib/onlyfans/categoryComboPills';
+import {
+  CreatorProfilePageView,
+  generateCreatorProfileMetadata,
+} from '@/lib/onlyfanssearch/creatorProfilePage';
 
 // SEO: no more force-dynamic + $sample. The page now serves a STABLE curated
 // ranking so Google sees the same content on every crawl (brain GAP 5 → was
@@ -28,8 +35,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (rawSlug.endsWith('2026')) return {};
 
+  if (COMBO_BEST_OF_MAP.has(rawSlug) && !OF_CATEGORY_MAP.has(rawSlug)) return {};
+
   const cat = OF_CATEGORY_MAP.get(rawSlug);
   if (cat) return categoryOfMeta(locale, rawSlug, cat.name);
+
+  // Anything else in this namespace is a creator profile: /onlyfanssearch/{username}
+  if (!isReservedOnlyfanssearchSegment(rawSlug)) {
+    const meta = await generateCreatorProfileMetadata(rawSlug, locale);
+    if (meta) return meta;
+  }
 
   return {};
 }
@@ -68,11 +83,25 @@ export default async function OnlyFansSlugPage({ params }: PageProps) {
     redirect(`/onlyfanssearch/top-10-${rawSlug.slice(0, -4)}-onlyfans-models`);
   }
 
-  if (!OF_CATEGORY_SLUGS.has(rawSlug)) notFound();
+  if (COMBO_BEST_OF_MAP.has(rawSlug) && !OF_CATEGORY_SLUGS.has(rawSlug)) {
+    notFound();
+  }
+
+  if (rawSlug.endsWith('-onlyfans')) {
+    permanentRedirect(ofCreatorProfileUrl(rawSlug));
+  }
+
+  if (!OF_CATEGORY_SLUGS.has(rawSlug)) {
+    if (!isReservedOnlyfanssearchSegment(rawSlug)) {
+      const page = await CreatorProfilePageView({ profileSegment: rawSlug });
+      if (page) return page;
+    }
+    notFound();
+  }
 
   await connectDB();
 
-  const baseMatch = { categories: rawSlug, gender: 'female', avatar: { $ne: '' }, deleted: { $ne: true } };
+  const baseMatch = buildSlugCreatorMatch(rawSlug);
 
   // Stable ranked list — same top creators on every crawl (clicks → likes → _id
   // as a deterministic tiebreak). Mirrors the curated-list approach that keeps
@@ -115,6 +144,7 @@ export default async function OnlyFansSlugPage({ params }: PageProps) {
     }));
 
   const cat = OF_CATEGORY_MAP.get(rawSlug)!;
+
   return (
     <CategoryClient
       creators={serialized}

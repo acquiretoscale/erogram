@@ -1,13 +1,16 @@
 import { Suspense } from 'react';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
 import JoinClient from './JoinClient';
 import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator } from '@/lib/models';
 
 export const dynamic = 'force-dynamic';
 
-export default async function JoinErogramPage() {
+export default async function JoinErogramPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ redirect?: string }>;
+}) {
+  const { redirect: initialRedirect } = await searchParams;
   await connectDB();
   const docs = await OnlyFansCreator.find({
     avatar: { $exists: true, $ne: '' },
@@ -23,12 +26,8 @@ export default async function JoinErogramPage() {
     .filter((url): url is string => !!url && url.length > 5);
 
   return (
-    <div className="min-h-screen bg-[#060d17] flex flex-col">
-      <Navbar variant="onlyfans" />
-      <Suspense fallback={null}>
-        <JoinClient avatars={avatars} />
-      </Suspense>
-      <Footer />
-    </div>
+    <Suspense fallback={null}>
+      <JoinClient avatars={avatars} initialRedirect={initialRedirect ?? null} />
+    </Suspense>
   );
 }

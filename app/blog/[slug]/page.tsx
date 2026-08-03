@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import BlogArticleClient from './BlogArticleClient';
 import { getBlogArticleBySlug, getRelatedBlogArticles } from '@/lib/actions/blog';
 import { getArticleComments } from '@/lib/actions/articleComments';
@@ -9,6 +9,14 @@ import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 export const revalidate = 60;
 
 const BASE_URL = CANONICAL_BASE;
+
+const CANONICAL_JOI_ARTICLE_SLUG = 'joi-ai-budget-ai-companion-nudes-generator-tested';
+
+const LEGACY_BLOG_SLUG_REDIRECTS: Record<string, string> = {
+  'joi-ai-review-nude-ai-generator-2026': CANONICAL_JOI_ARTICLE_SLUG,
+  'joi-ai-review-nude-ai-generator-hype-gets-right': CANONICAL_JOI_ARTICLE_SLUG,
+  'joi-ai-review-nude-ai-generator-hype-gets-right-review': CANONICAL_JOI_ARTICLE_SLUG,
+};
 
 function toAbsoluteUrl(url?: string | null): string | undefined {
   if (!url) return undefined;
@@ -23,6 +31,8 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
+  const legacy = LEGACY_BLOG_SLUG_REDIRECTS[slug];
+  if (legacy) redirect(`/blog/${legacy}`);
   const article = await getBlogArticleBySlug(slug);
   if (!article) return { title: 'Article Not Found', robots: { index: false, follow: false } };
 
@@ -51,6 +61,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function BlogArticlePage({ params }: PageProps) {
   const { slug } = await params;
+  const legacy = LEGACY_BLOG_SLUG_REDIRECTS[slug];
+  if (legacy) redirect(`/blog/${legacy}`);
   const article = await getBlogArticleBySlug(slug);
   if (!article) notFound();
 

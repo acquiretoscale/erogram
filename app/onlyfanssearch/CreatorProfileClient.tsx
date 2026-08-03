@@ -1,26 +1,35 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   Heart, Image as ImageIcon, Video, Users,
-  ExternalLink, ChevronRight, DollarSign, Lock, Clock,
-  Camera, Film, Globe, MapPin, Calendar, Mic, FileText,
-  Radio, Zap, MessageCircle, Share2, Copy, Check, Mail, X, Star, TrendingUp, TrendingDown, Minus, Bookmark,
-  Home, Pencil, Trash2, Save,
+  ExternalLink, ChevronRight, DollarSign, Clock,
+  Camera, Film, MapPin, Calendar, Mic, FileText,
+  Radio, Zap, Copy, Check, Mail, X, Bookmark,
+  Home, Pencil, Trash2, Save, Upload, UserPlus, TrendingUp, Sparkles,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { trackCreatorClick } from '@/lib/actions/onlyfansTracking';
 import type { CreatorProfile } from '@/lib/actions/ofCreatorProfile';
-import { updateCreatorFields, deleteCreatorPhoto, deleteCreator, getCreatorReviews, submitCreatorReview } from '@/lib/actions/ofCreatorProfile';
+import { updateCreatorFields, deleteCreatorPhoto, deleteCreator, getCreatorReviews, submitCreatorReview, canManageCreatorProfile, getMyCreatorProfile } from '@/lib/actions/ofCreatorProfile';
+import { submitCreatorProfileClaim, getProfileClaimStatus, type ProfileClaimStatus } from '@/lib/actions/creatorProfileClaim';
+import FlameReviewSection, { type FlameReviewItem, MiniFlameRating } from '@/components/FlameReviewSection';
+import { uploadCreatorFeedPhoto, uploadCreatorFeedVideo, uploadCreatorProfilePhoto, removeCreatorFeedVideo } from '@/lib/actions/creatorMediaUpload';
+import { MAX_CREATOR_PHOTO_BYTES, MAX_CREATOR_VIDEO_BYTES, MAX_CREATOR_PHOTO_MB, MAX_CREATOR_VIDEO_MB, humanUploadTooLarge, humanUploadError } from '@/lib/creatorMediaLimits';
 import type { CreatorReviewData } from '@/lib/actions/ofCreatorProfile';
 import { ofCategoryUrl, OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
-import { hottestRankingPublicPath } from '@/lib/bestOfPageContent/hottestUrls';
+import { getCreatorProfileCategories } from '@/lib/tags/creatorProfileTags';
+import { bestOfBlogSlug } from '@/app/best-onlyfans-accounts/bestOfPages';
 import { getCreatorBio } from '@/app/onlyfanssearch/creatorBios';
+import CreatorMediaFeed from '@/app/onlyfanssearch/CreatorMediaFeed';
+import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import ProfileOFPremiumSearch from '@/app/profile/ProfileOFPremiumSearch';
+import { OF_SEARCH_TOKENS, ofSearchNavProps } from '@/app/onlyfanssearch/ofSearchTokens';
 
 function formatCount(n: number) {
   if (!n) return '—';
@@ -34,6 +43,88 @@ function formatExact(n: number) {
   return `${n}K`;
 }
 
+function OnlyFansIcon({ className = 'w-9 h-9', fill = '#00AFF0' }: { className?: string; fill?: string }) {
+  return (
+    <svg className={`flex-shrink-0 ${className}`} viewBox="0 0 24 24" fill={fill} aria-hidden="true">
+      <path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z" />
+    </svg>
+  );
+}
+
+function VerifiedBadge({ className = 'w-5 h-5 sm:w-6 sm:h-6' }: { className?: string }) {
+  return (
+    <span
+      className="relative inline-flex cursor-help group/verified"
+      title="This is a verified creator by EROgram team."
+    >
+      <svg className={`shrink-0 ${className}`} viewBox="0 0 24 24" fill="none" aria-label="Verified">
+        <circle cx="12" cy="12" r="12" fill="#00AFF0" />
+        <path
+          d="M7.2 12.3l2.9 2.9 6.7-6.9"
+          stroke="#fff"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 w-max max-w-[220px] -translate-x-1/2 rounded-lg border border-[#00AFF0]/25 bg-[#0c1e35] px-2.5 py-1.5 text-[10px] font-semibold leading-snug text-white/90 opacity-0 shadow-lg transition-opacity duration-150 group-hover/verified:opacity-100"
+      >
+        This is a verified creator by EROgram team.
+      </span>
+    </span>
+  );
+}
+
+function VisitOnlyFansCTA({ username, onClick, className = '' }: { username: string; onClick: () => void; className?: string }) {
+  return (
+    <a
+      href={`/go/${username}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={onClick}
+      className={`group flex items-center gap-3 px-4 sm:px-5 py-4 sm:py-5 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_28px_rgba(0,175,240,0.45)] no-underline ${className}`}
+      style={{
+        background: 'linear-gradient(135deg, #00AFF0, #0090cc)',
+        border: '1px solid #00AFF0',
+        boxShadow: '0 4px 18px rgba(0,175,240,0.35)',
+      }}
+    >
+      <OnlyFansIcon className="w-10 h-10 sm:w-11 sm:h-11 group-hover:scale-105 transition-transform" fill="#ffffff" />
+      <div className="flex flex-col min-w-0">
+        <span className="font-black text-base sm:text-lg leading-tight text-white whitespace-nowrap">
+          Visit OnlyFans
+        </span>
+        <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-white/80">
+          @{username}
+        </span>
+      </div>
+      <ExternalLink className="w-4 h-4 flex-shrink-0 text-white/70 group-hover:text-white transition-colors" />
+    </a>
+  );
+}
+
+function BioWithCtaShell({ creatorName, username, onClick, children }: { creatorName: string; username: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <div className="mb-6 sm:mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] py-5 sm:py-6 lg:py-8 pl-3 sm:pl-4 pr-5 sm:pr-8 lg:pr-10">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8 md:gap-10 lg:gap-14">
+        <div className="flex-1 min-w-0 max-w-2xl">{children}</div>
+        <div className="flex flex-col items-center justify-center shrink-0 md:ml-auto md:px-6 lg:px-10 py-2 gap-2">
+          <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-400 text-center">
+            {creatorName} main platform
+          </p>
+          <VisitOnlyFansCTA
+            username={username}
+            onClick={onClick}
+            className="w-full md:w-auto min-w-[210px] max-w-[260px]"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div className="flex flex-col items-center gap-1 px-3 sm:px-5 py-3 rounded-xl bg-white/[0.06] border border-white/[0.09] min-w-[80px] sm:min-w-[100px]">
@@ -44,66 +135,198 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
   );
 }
 
-function SocialButton({ href, icon, label, color }: { href: string; icon: React.ReactNode; label: string; color: string }) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="nofollow"
-      className={`group flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-bold transition-all duration-300 hover:-translate-y-0.5 ${color}`}
-    >
-      {icon}
-      <span>{label}</span>
-      <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-    </a>
-  );
+function normalizePlatformUrl(raw: string, network: 'fanvue' | 'fansly'): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  const handle = trimmed.replace(/^@/, '').replace(/\/+$/, '');
+  if (network === 'fanvue') return `https://www.fanvue.com/${handle}`;
+  return `https://fansly.com/${handle}/posts`;
 }
 
-function DetailRow({ label, value, color, href }: { label: string; value: string | React.ReactNode; color?: string; href?: string }) {
+function platformLinkDisplay(url: string | undefined, fallback: string): string {
+  if (!url) return 'N/A';
+  try {
+    const u = new URL(url.startsWith('http') ? url : `https://${url}`);
+    const segment = u.pathname.replace(/^\//, '').replace(/\/$/, '').split('/')[0];
+    if (segment) return `@${segment.replace(/^@/, '')}`;
+    return fallback;
+  } catch {
+    return url.replace(/^https?:\/\//, '').replace(/\/$/, '') || fallback;
+  }
+}
+
+function resolveOtherPlatformLink(creator: {
+  linktreeUrl?: string;
+  allmylinksUrl?: string;
+  beaconsUrl?: string;
+  website?: string;
+}) {
+  const raw = [creator.linktreeUrl, creator.allmylinksUrl, creator.beaconsUrl, creator.website]
+    .map((v) => String(v || '').trim())
+    .find(Boolean);
+  if (!raw) return { href: undefined as string | undefined, value: 'N/A' };
+  const href = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  const value = href.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  return { href, value };
+}
+
+const PROFILE_DARK_PANEL = 'rounded-xl bg-[#0d1e2a] border border-[#00AFF0]/20';
+
+function DetailRow({ label, value, color, href, icon, tone = 'light' }: { label: string; value: string | React.ReactNode; color?: string; href?: string; icon?: React.ReactNode; tone?: 'light' | 'dark' }) {
+  const rowBg = tone === 'dark' ? 'bg-white/[0.06]' : 'bg-white/[0.03]';
+  const labelColor = tone === 'dark' ? 'text-gray-500' : 'text-gray-500';
+  const defaultColor = tone === 'dark' ? 'text-white' : 'text-white';
+  const valueColor = color || defaultColor;
   return (
-    <div className="flex items-center gap-2 py-2.5 px-3 rounded-lg bg-white/[0.03]">
-      <span className="text-gray-500 text-xs w-28 flex-shrink-0">{label}</span>
-      {href ? (
-        <a href={href} target="_blank" rel="nofollow noopener noreferrer" className={`font-bold text-sm hover:underline ${color || 'text-white'}`}>{value}</a>
+    <div className={`flex items-center gap-3 py-2.5 px-3 rounded-lg ${rowBg}`}>
+      {icon ? (
+        <div className="flex-shrink-0">{icon}</div>
       ) : (
-        <span className={`font-bold text-sm ${color || 'text-white'}`}>{value}</span>
+        <span className={`${labelColor} text-xs w-28 flex-shrink-0`}>{label}</span>
+      )}
+      {href ? (
+        <a href={href} target="_blank" rel="nofollow noopener noreferrer" className={`font-bold text-sm hover:underline ${valueColor}`}>{value}</a>
+      ) : icon ? null : (
+        <span className={`font-bold text-sm ${valueColor}`}>{value}</span>
       )}
     </div>
   );
 }
 
-function ShareDropdown({ name, username, slug }: { name: string; username: string; slug: string }) {
+function PremiumSocialIcon({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="relative flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0 overflow-hidden"
+      style={{
+        background: 'linear-gradient(160deg, #3a3a42 0%, #222228 45%, #141418 100%)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.6), 0 4px 14px rgba(0,0,0,0.45)',
+        border: '1px solid rgba(255,255,255,0.1)',
+      }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-white/[0.12] via-transparent to-black/20 pointer-events-none" />
+      <div className="relative z-[1]">{children}</div>
+    </div>
+  );
+}
+
+function PlatformBrandIcon({ src, alt }: { src: string; alt: string }) {
+  return (
+    <div
+      className="relative flex items-center justify-center w-20 h-10 rounded-xl flex-shrink-0 overflow-hidden"
+      style={{
+        background: '#141820',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 14px rgba(0,0,0,0.35)',
+        border: '1px solid rgba(255,255,255,0.12)',
+      }}
+    >
+      <img src={src} alt={alt} className="h-6 w-auto max-w-[104px] object-contain" loading="lazy" decoding="async" />
+    </div>
+  );
+}
+
+function SquareBrandIcon({ src, alt }: { src: string; alt: string }) {
+  return (
+    <div
+      className="relative flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0 overflow-hidden"
+      style={{
+        background: 'linear-gradient(160deg, #3a3a42 0%, #222228 45%, #141418 100%)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.6), 0 4px 14px rgba(0,0,0,0.45)',
+        border: '1px solid rgba(255,255,255,0.1)',
+      }}
+    >
+      <img src={src} alt={alt} width={32} height={32} className="w-8 h-8 object-contain" loading="lazy" decoding="async" />
+    </div>
+  );
+}
+
+function FanvueSocialIcon() {
+  return <PlatformBrandIcon src="/assets/platforms/fanvue-logo.webp" alt="Fanvue" />;
+}
+
+function FanslySocialIcon() {
+  return <PlatformBrandIcon src="/assets/platforms/fansly-logo.webp" alt="Fansly" />;
+}
+
+const REDDIT_ICON_PATH =
+  'M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z';
+
+function RedditSocialIcon() {
+  return (
+    <div className="relative flex items-center justify-center w-10 h-10 rounded-[14px] flex-shrink-0 border border-[#ff8a65]/35 bg-gradient-to-b from-[#ff5722] to-[#d93a00] shadow-[0_4px_16px_rgba(255,69,0,0.28),inset_0_1px_0_rgba(255,255,255,0.18)]">
+      <svg className="h-[19px] w-[19px] text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d={REDDIT_ICON_PATH} />
+      </svg>
+    </div>
+  );
+}
+
+function PatreonSocialIcon() {
+  return <SquareBrandIcon src="/assets/platforms/patreon-logo.webp" alt="Patreon" />;
+}
+
+function InstagramSocialIcon() {
+  return (
+    <PremiumSocialIcon>
+      <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
+        <defs>
+          <linearGradient id="ig-premium" x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#feda75" />
+            <stop offset="25%" stopColor="#fa7e1e" />
+            <stop offset="50%" stopColor="#d62976" />
+            <stop offset="75%" stopColor="#962fbf" />
+            <stop offset="100%" stopColor="#4f5bd5" />
+          </linearGradient>
+        </defs>
+        <rect x="2.5" y="2.5" width="19" height="19" rx="5.5" fill="none" stroke="url(#ig-premium)" strokeWidth="1.8" />
+        <circle cx="12" cy="12" r="4.2" fill="none" stroke="url(#ig-premium)" strokeWidth="1.8" />
+        <circle cx="17.4" cy="6.6" r="1.2" fill="url(#ig-premium)" />
+      </svg>
+    </PremiumSocialIcon>
+  );
+}
+
+function XSocialIcon() {
+  return (
+    <PremiumSocialIcon>
+      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 4l16 16M20 4L4 20" stroke="#f3f4f6" strokeWidth="2.2" strokeLinecap="round" />
+      </svg>
+    </PremiumSocialIcon>
+  );
+}
+
+function TelegramSocialIcon() {
+  return (
+    <PremiumSocialIcon>
+      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M20.5 4.5 4.8 11.2c-.9.4-.9 1.6.1 1.9l4 1.2 1.5 4.8c.3.9 1.5 1 2 .2l2.2-3.2 4.1 3c.8.6 1.9.1 2.1-.9L22 6.3c.2-1.1-.8-2-2.5-1.8z" fill="#38bdf8" />
+        <path d="m10.4 14.1 6.8-5.5" stroke="#0c4a6e" strokeWidth="1.2" strokeLinecap="round" />
+      </svg>
+    </PremiumSocialIcon>
+  );
+}
+
+function WebsiteSocialIcon() {
+  return (
+    <PremiumSocialIcon>
+      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="8.5" stroke="#67e8f9" strokeWidth="1.6" />
+        <ellipse cx="12" cy="12" rx="3.5" ry="8.5" stroke="#67e8f9" strokeWidth="1.4" />
+        <path d="M4.5 9h15M4.5 15h15" stroke="#67e8f9" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    </PremiumSocialIcon>
+  );
+}
+
+function ShareButtons({ name, username, slug, compact = false }: { name: string; username: string; slug: string; compact?: boolean }) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [pageUrl, setPageUrl] = useState('');
-  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setPageUrl(window.location.href);
   }, []);
-
-  const close = useCallback(() => setOpen(false), []);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent | TouchEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) close();
-    };
-    document.addEventListener('mousedown', handler);
-    document.addEventListener('touchstart', handler);
-    return () => {
-      document.removeEventListener('mousedown', handler);
-      document.removeEventListener('touchstart', handler);
-    };
-  }, [open, close]);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [open, close]);
 
   const url = pageUrl || `https://eogram.com/${slug}`;
   const text = `Check out ${name} (@${username}) on OnlyFans`;
@@ -120,10 +343,10 @@ function ShareDropdown({ name, username, slug }: { name: string; username: strin
       document.body.removeChild(el);
     }
     setCopied(true);
-    setTimeout(() => { setCopied(false); close(); }, 1500);
+    setTimeout(() => setCopied(false), 1500);
   };
 
-  const shareItems: { key: string; label: string; href: string; icon: React.ReactNode; iconColor: string }[] = [
+  const shareItems: { key: string; label: string; href: string; icon: React.ReactNode; iconColor: string; buttonClass?: string }[] = [
     {
       key: 'x',
       label: 'X (Twitter)',
@@ -140,11 +363,14 @@ function ShareDropdown({ name, username, slug }: { name: string; username: strin
       label: 'Reddit',
       href: `https://www.reddit.com/submit?url=${encodeURIComponent(url)}&title=${encodeURIComponent(text)}`,
       icon: (
-        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z" />
+        <svg className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d={REDDIT_ICON_PATH} />
         </svg>
       ),
-      iconColor: 'text-orange-400',
+      iconColor: 'text-white',
+      buttonClass: compact
+        ? 'border-[#ff8a65]/35 bg-gradient-to-b from-[#ff5722] to-[#d93a00] shadow-[0_2px_10px_rgba(255,69,0,0.28),inset_0_1px_0_rgba(255,255,255,0.18)] hover:border-[#ffb199]/45 hover:shadow-[0_6px_18px_rgba(255,69,0,0.38),inset_0_1px_0_rgba(255,255,255,0.22)]'
+        : 'border-[#ff8a65]/35 bg-gradient-to-b from-[#ff5722] to-[#d93a00] shadow-[0_4px_16px_rgba(255,69,0,0.28),inset_0_1px_0_rgba(255,255,255,0.18)] hover:border-[#ffb199]/45 hover:shadow-[0_10px_28px_rgba(255,69,0,0.38),inset_0_1px_0_rgba(255,255,255,0.22)]',
     },
     {
       key: 'whatsapp',
@@ -177,147 +403,378 @@ function ShareDropdown({ name, username, slug }: { name: string; username: strin
     },
   ];
 
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        aria-label="Share this profile"
-        className={`flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-xl border transition-all duration-200 ${
-          open
-            ? 'bg-[#00AFF0]/20 border-[#00AFF0]/50 text-[#00AFF0]'
-            : 'bg-white/[0.06] border-white/[0.12] text-gray-400 hover:text-white hover:border-white/25 hover:bg-white/[0.1]'
-        }`}
-      >
-        <Share2 className="w-[18px] h-[18px]" />
-      </button>
+  const btnClass = compact
+    ? 'flex items-center justify-center w-9 h-9 rounded-xl border border-white/15 bg-white/[0.08] transition-all hover:bg-white/[0.14] hover:border-white/25 shrink-0'
+    : 'flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-xl border border-white/15 bg-white/[0.08] transition-all hover:bg-white/[0.14] hover:border-white/25 shrink-0';
 
-      {open && (
-        <div className="absolute right-0 top-full mt-2 z-50 w-52 rounded-xl border border-white/[0.12] bg-[#0d1e2a]/95 backdrop-blur-xl shadow-2xl shadow-black/40 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
-          <div className="px-3 pt-3 pb-1.5">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{t('ofSearch.shareVia')}</p>
-          </div>
-          <div className="py-1">
-            {shareItems.map(({ key, label, href, icon, iconColor }) => (
-              <a
-                key={key}
-                href={href}
-                target={key === 'email' ? '_self' : '_blank'}
-                rel="nofollow"
-                onClick={close}
-                className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/[0.08] transition-colors"
-              >
-                <span className={iconColor}>{icon}</span>
-                {label}
-              </a>
-            ))}
-          </div>
-          <div className="border-t border-white/[0.08]">
-            <button
-              onClick={copyLink}
-              className="flex items-center gap-3 w-full px-3 py-2.5 text-sm transition-colors hover:bg-white/[0.08]"
-            >
-              {copied ? (
-                <>
-                  <Check className="w-4 h-4 text-emerald-400" />
-                  <span className="text-emerald-400 font-medium">{t('ofSearch.copied')}</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-300">{t('ofSearch.copyLink')}</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
+  return (
+    <div className={compact
+      ? 'inline-flex items-center gap-1.5 flex-nowrap [&_svg]:w-3.5 [&_svg]:h-3.5'
+      : `${PROFILE_DARK_PANEL} flex items-center gap-2 flex-nowrap overflow-x-auto max-w-full px-2 py-2 sm:px-3 sm:py-2.5`
+    }>
+      {shareItems.map(({ key, label, href, icon, iconColor, buttonClass }) => (
+        <a
+          key={key}
+          href={href}
+          target={key === 'email' ? '_self' : '_blank'}
+          rel="nofollow noopener noreferrer"
+          title={label}
+          aria-label={label}
+          className={`${btnClass} ${buttonClass || `${iconColor} hover:opacity-80`}`}
+        >
+          {icon}
+        </a>
+      ))}
+      <button
+        type="button"
+        onClick={copyLink}
+        title={copied ? t('ofSearch.copied') : t('ofSearch.copyLink')}
+        aria-label={copied ? t('ofSearch.copied') : t('ofSearch.copyLink')}
+        className={`${btnClass} ${copied ? 'text-emerald-400 border-emerald-400/40' : 'text-white/70 hover:text-white'}`}
+      >
+        {copied ? <Check className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} /> : <Copy className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} />}
+      </button>
     </div>
   );
 }
 
-function RelatedCard({ creator, publicOnlyfansPath = false }: { creator: CreatorProfile; publicOnlyfansPath?: boolean }) {
-  const { t, locale } = useTranslation();
-  const lp = useLocalePath();
-  const profileHref = publicOnlyfansPath ? lp(`/${creator.slug}`) : lp(`/onlyfans/${creator.username}`);
+function PreviewMosaic({ avatars }: { avatars: string[] }) {
+  const pics = avatars.slice(0, 4);
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-      className="group relative rounded-2xl overflow-hidden bg-[#0d1e2a] border border-[#00AFF0]/20 hover:border-[#00AFF0]/60 hover:-translate-y-1 transition-all duration-300 shadow-lg hover:shadow-[0_12px_32px_-8px_rgba(0,175,240,0.30)]"
-    >
-      <Link href={profileHref} prefetch={false} className="block">
-        <div className="relative aspect-[3/4] bg-[#0a1520]">
+    <div className="grid grid-cols-2 gap-px w-14 h-14 shrink-0 rounded-lg overflow-hidden border border-[rgba(43,27,40,0.1)]" aria-hidden="true">
+      {Array.from({ length: 4 }).map((_, idx) => {
+        const src = pics[idx];
+        return (
+          <div key={idx} className="relative aspect-square bg-[rgba(43,27,40,0.05)]">
+            {src ? (
+              <img
+                src={src}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover"
+                loading="lazy"
+                referrerPolicy="no-referrer"
+              />
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CreatorProfileTop10Section({
+  pages,
+  previewAvatars,
+}: {
+  pages: { slug: string; label: string; type: string }[];
+  previewAvatars: Record<string, string[]>;
+}) {
+  const lp = useLocalePath();
+
+  const groups = useMemo(() => {
+    const niche = pages.filter((p) => p.type === 'niche');
+    const country = pages.filter((p) => p.type === 'country');
+    const state = pages.filter((p) => p.type === 'state');
+    return [
+      { key: 'niche', title: 'TOP 10 ranking by niches', items: niche },
+      { key: 'region', title: 'Top 10 ranking by Region', items: country },
+      { key: 'state', title: 'Top 10 ranking by States in the United States', items: state },
+    ].filter((g) => g.items.length > 0);
+  }, [pages]);
+
+  if (!pages.length) return null;
+
+  const gridCols =
+    groups.length >= 3 ? 'lg:grid-cols-3' : groups.length === 2 ? 'lg:grid-cols-2' : '';
+
+  return (
+    <section className="mb-8" aria-label="Top 10 OnlyFans model rankings">
+      <div className={`grid grid-cols-1 gap-4 lg:gap-5 ${gridCols}`}>
+        {groups.map((group) => (
+          <nav
+            key={group.key}
+            aria-label={group.title}
+            className="rounded-xl border border-[rgba(43,27,40,0.1)] bg-[#F7F4EC] px-3 py-4 sm:px-4"
+          >
+            <h2 className="text-sm sm:text-[15px] font-bold text-[#2B1B28] mb-2.5 leading-snug">{group.title}</h2>
+            <ul className="list-none m-0 p-0">
+              {group.items.map((page) => (
+                <li key={page.slug} className="border-b border-[rgba(43,27,40,0.08)] last:border-b-0">
+                  <Link
+                    href={lp(`/onlyfanssearch/${bestOfBlogSlug(page.slug)}`)}
+                    className="flex items-start gap-2.5 py-2 text-[#2B1B28] no-underline"
+                  >
+                    <PreviewMosaic avatars={previewAvatars[page.slug] || []} />
+                    <span className="text-[11px] sm:text-[12px] font-semibold leading-snug pt-0.5">
+                      Top 10 {page.label} OnlyFans Models
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CreatorPromoSquare() {
+  const [redirect, setRedirect] = useState('/onlyfanssearch');
+  const [totalViews, setTotalViews] = useState<number | null>(null);
+  const [liveNow, setLiveNow] = useState<number | null>(null);
+
+  useEffect(() => {
+    setRedirect(window.location.pathname || '/onlyfanssearch');
+    const loadStats = () => {
+      fetch('/api/advertise-stats', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((d) => {
+          if (typeof d.totalViews === 'number') setTotalViews(d.totalViews);
+          if (typeof d.activeVisitors === 'number') setLiveNow(d.activeVisitors);
+        })
+        .catch(() => {});
+    };
+    loadStats();
+    const id = setInterval(loadStats, 300_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const joinHref = `/join-erogram?redirect=${encodeURIComponent(redirect)}`;
+
+  return (
+    <div className="relative w-full overflow-hidden rounded-xl border-2 border-[#00AFF0]/35 bg-gradient-to-br from-[#0b2540] via-[#0a1e35] to-[#061525] shadow-[0_10px_36px_rgba(0,175,240,0.18)]">
+      <div className="pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full bg-[#00AFF0]/20 blur-2xl" />
+      <div className="pointer-events-none absolute -bottom-6 -left-6 h-24 w-24 rounded-full bg-[#00D4FF]/10 blur-2xl" />
+
+      <div className="relative flex h-full flex-col p-3.5">
+        <div className="flex items-center gap-1.5 mb-2">
+          <Sparkles className="w-3 h-3 text-[#00AFF0]" strokeWidth={2.5} />
+          <span className="text-[9px] font-black uppercase tracking-[0.14em] text-[#00AFF0]/90">
+            For OnlyFans creators
+          </span>
+        </div>
+
+        <h3 className="text-[15px] font-black leading-tight text-white mb-1.5">
+          Get discovered.
+          <br />
+          <span className="text-[#00AFF0]">Get more subs.</span>
+        </h3>
+
+        <p className="text-[10px] leading-snug text-white/55 mb-2.5">
+          Create your free Erogram profile. Fans search here every day for creators to subscribe to.
+        </p>
+
+        <div className="grid grid-cols-2 gap-2 mb-2.5 rounded-lg border border-white/10 bg-black/20 p-2">
+          <div>
+            <p className="text-[8px] font-bold uppercase tracking-wide text-white/45 leading-tight">Erogram total page views</p>
+            <p className="text-sm font-black tabular-nums text-white mt-0.5">
+              {totalViews != null ? totalViews.toLocaleString('en-US') : '—'}
+            </p>
+          </div>
+          <div>
+            <p className="text-[8px] font-bold uppercase tracking-wide text-white/45 leading-tight">Browsing right now</p>
+            <p className="text-sm font-black tabular-nums text-[#00AFF0] mt-0.5 flex items-center gap-1">
+              {liveNow != null && (
+                <span className="relative flex h-1.5 w-1.5 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+                </span>
+              )}
+              {liveNow != null ? liveNow.toLocaleString('en-US') : '—'}
+            </p>
+          </div>
+        </div>
+
+        <ul className="space-y-1 mb-3">
+          {[
+            'Free profile & listing',
+            'Turn Erogram traffic into subs',
+          ].map((line) => (
+            <li key={line} className="flex items-start gap-1.5 text-[10px] font-semibold text-white/75">
+              <TrendingUp className="w-3 h-3 shrink-0 text-[#00AFF0] mt-0.5" strokeWidth={2.5} />
+              {line}
+            </li>
+          ))}
+        </ul>
+
+        <a
+          href={joinHref}
+          className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-lg border-2 border-[#0a0a0a] bg-[#FFE566] px-2 py-2 text-[11px] font-black uppercase tracking-wide text-[#0a0a0a] shadow-[3px_3px_0_0_#0a0a0a] transition-all hover:-translate-y-0.5 hover:shadow-[4px_4px_0_0_#0a0a0a] active:translate-y-0 active:shadow-[1px_1px_0_0_#0a0a0a]"
+        >
+          <UserPlus className="w-3.5 h-3.5" strokeWidth={2.75} />
+          Create your fanpage
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function RelatedSidebarCard({ creator, publicOnlyfansPath = false, compact = false, card = false }: { creator: CreatorProfile; publicOnlyfansPath?: boolean; compact?: boolean; card?: boolean }) {
+  const { t } = useTranslation();
+  const lp = useLocalePath();
+  const profileHref = lp(ofCreatorProfileUrl(creator.username));
+
+  if (card) {
+    return (
+      <Link
+        href={profileHref}
+        prefetch={false}
+        className="group block rounded-xl border border-white/[0.08] bg-white/[0.03] hover:border-[#00AFF0]/35 hover:bg-[#00AFF0]/10 transition-all overflow-hidden"
+      >
+        <div className="aspect-[3/4] w-full overflow-hidden bg-[#0d1e2a]">
           {creator.avatar ? (
             <img
               src={creator.avatar}
               alt={`${creator.name} OnlyFans profile`}
-              className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500 ease-out"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
               referrerPolicy="no-referrer"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-4xl font-black text-[#00AFF0]/30 bg-gradient-to-br from-[#00AFF0]/10 to-transparent">
+            <div className="w-full h-full flex items-center justify-center text-3xl font-black text-[#00AFF0]/40">
               {creator.name.charAt(0)}
             </div>
           )}
-          <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
-          {creator.isFree && (
-            <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-emerald-500/90 text-white text-[10px] font-black uppercase tracking-wide backdrop-blur-sm">
-              FREE
-            </span>
-          )}
         </div>
-        <div className="px-3 pt-2 pb-3">
-          <p className="font-black text-sm text-white truncate group-hover:text-[#00AFF0] transition-colors">
-            {creator.name}
-          </p>
-          <p className="text-[11px] text-[#00AFF0]/80 truncate">@{creator.username}</p>
-          {creator.likesCount > 0 && (
-            <p className="text-[10px] text-gray-500 mt-0.5">{formatCount(creator.likesCount)} {t('ofSearch.likes')}</p>
-          )}
+        <div className="p-2">
+          <p className="text-xs font-black text-white truncate group-hover:text-[#00AFF0] transition-colors">{creator.name}</p>
+          <p className="text-[10px] text-[#00AFF0]/80 truncate">@{creator.username}</p>
         </div>
       </Link>
-    </motion.div>
+    );
+  }
+
+  return (
+    <Link
+      href={profileHref}
+      prefetch={false}
+      className={`group flex items-center rounded-lg border border-white/[0.08] bg-white/[0.03] hover:border-[#00AFF0]/35 hover:bg-[#00AFF0]/10 transition-all ${
+        compact ? 'gap-2 p-1.5' : 'gap-3 p-2.5 rounded-xl'
+      }`}
+    >
+      <div className={`rounded-lg overflow-hidden shrink-0 bg-[#0d1e2a] ring-1 ring-white/10 ${compact ? 'w-10 h-10' : 'w-14 h-14 rounded-xl'}`}>
+        {creator.avatar ? (
+          <img
+            src={creator.avatar}
+            alt={`${creator.name} OnlyFans profile`}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-lg font-black text-[#00AFF0]/40">
+            {creator.name.charAt(0)}
+          </div>
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className={`font-bold text-white truncate group-hover:text-[#00AFF0] transition-colors ${compact ? 'text-xs' : 'text-sm font-black'}`}>{creator.name}</p>
+        <p className={`text-[#00AFF0]/80 truncate ${compact ? 'text-[10px]' : 'text-[11px]'}`}>@{creator.username}</p>
+        {!compact && creator.likesCount > 0 && (
+          <p className="text-[10px] text-gray-500 mt-0.5">{formatCount(creator.likesCount)} {t('ofSearch.likes')}</p>
+        )}
+      </div>
+      {!compact && <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-[#00AFF0] shrink-0 transition-colors" />}
+    </Link>
   );
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  asian: 'Asian', blonde: 'Blonde', teen: 'Teen', milf: 'MILF',
-  amateur: 'Amateur', redhead: 'Redhead', goth: 'Goth', petite: 'Petite',
-  'big-ass': 'Big Ass', 'big-boobs': 'Big Boobs', brunette: 'Brunette',
-  latina: 'Latina', ahegao: 'Ahegao', alt: 'Alt', cosplay: 'Cosplay',
-  fitness: 'Fitness', tattoo: 'Tattoo', curvy: 'Curvy', ebony: 'Ebony',
-  feet: 'Feet', lingerie: 'Lingerie', thick: 'Thick', twerk: 'Twerk',
-  squirt: 'Squirt', streamer: 'Streamer', piercing: 'Piercing',
-};
-
-interface TrendingCreatorItem {
-  _id: string;
-  name: string;
+function ProfileRightRail({
+  creatorName,
+  username,
+  slug,
+  nicheLabel,
+  items,
+  publicOnlyfansPath,
+  variant,
+  savedCreatorIds,
+  onToggleSave,
+  loginRedirect,
+}: {
+  creatorName: string;
   username: string;
   slug: string;
-  avatar: string;
-  rank: number;
-  points: number;
-  pointsDelta: number;
-  rankChange: number;
+  nicheLabel: string;
+  items: CreatorProfile[];
+  publicOnlyfansPath: boolean;
+  variant: 'sidebar' | 'mobile';
+  savedCreatorIds: Set<string>;
+  onToggleSave: (creatorId: string) => void;
+  loginRedirect: string;
+}) {
+  const lp = useLocalePath();
+  const firstName = creatorName.split(' ')[0] || creatorName;
+
+  return (
+    <div className="space-y-3">
+      <CreatorPromoSquare />
+
+      <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-2.5">
+        <ProfileOFPremiumSearch
+          tokens={OF_SEARCH_TOKENS}
+          isPremium={false}
+          freeAccess
+          hideHeading
+          layout="hero"
+          minimalFilters
+          compactBlock
+          hideResults
+          searchHubHref={lp('/onlyfanssearch')}
+          loginRedirect={loginRedirect}
+          savedCreatorIds={savedCreatorIds}
+          onToggleSave={onToggleSave}
+          {...ofSearchNavProps(lp)}
+        />
+      </div>
+
+      <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 space-y-3">
+      {items.length > 0 && (
+        <div className="pt-2 border-t border-white/[0.06]">
+          <p className="text-sm sm:text-base font-black text-white leading-snug mb-2">
+            If you like {firstName}, you might also like{' '}
+            <span className="text-[#00AFF0]">{nicheLabel || 'Popular on Erogram'}</span>
+          </p>
+          <div className={variant === 'mobile' ? 'grid grid-cols-2 gap-2' : 'grid grid-cols-1 gap-2.5'}>
+            {items.map((c) => (
+              <RelatedSidebarCard key={c._id} creator={c} publicOnlyfansPath={publicOnlyfansPath} card />
+            ))}
+          </div>
+        </div>
+      )}
+      </div>
+    </div>
+  );
 }
 
 export default function CreatorProfileClient({
   creator,
   related,
-  trendingOnErogram = [],
+  rankingPages = [],
+  topRankingPreviewAvatars = {},
   publicAccess = false,
 }: {
   creator: CreatorProfile;
   related: CreatorProfile[];
-  trendingOnErogram?: TrendingCreatorItem[];
+  rankingPages?: { slug: string; label: string; type: string }[];
+  topRankingPreviewAvatars?: Record<string, string[]>;
   publicAccess?: boolean;
 }) {
   const router = useRouter();
-  const { t, locale } = useTranslation();
+  const { t } = useTranslation();
   const lp = useLocalePath();
+  const profileCategories = getCreatorProfileCategories(
+    creator.categories,
+    creator.location,
+    creator.bio,
+    rankingPages,
+    creator,
+  );
+  const topRankingPages = rankingPages.slice(0, 8);
+  const sidebarRelated = related.slice(0, 4);
+  const nicheLabel = creator.categories[0]
+    ? (OF_CATEGORIES.find((c) => c.slug === creator.categories[0])?.name || creator.categories[0].replace(/-/g, ' '))
+    : '';
   const [headerError, setHeaderError] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
@@ -334,84 +791,196 @@ export default function CreatorProfileClient({
     setAuthChecked(true);
   }, [creator.url, publicAccess]);
 
-  // Admin state
+  // Admin / owner edit state
   const [isAdmin, setIsAdmin] = useState(false);
-  const [adminEdit, setAdminEdit] = useState(false);
+  const [canManageProfile, setCanManageProfile] = useState(false);
+  const [profileEdit, setProfileEdit] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<'avatar' | 'header' | null>(null);
+  const [bulkUpload, setBulkUpload] = useState<{ current: number; total: number } | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const headerInputRef = useRef<HTMLInputElement>(null);
   const panelAvatarRef = useRef<HTMLInputElement>(null);
   const panelHeaderRef = useRef<HTMLInputElement>(null);
+  const panelBulkRef = useRef<HTMLInputElement>(null);
   const [editFields, setEditFields] = useState({
     name: creator.name,
     bio: creator.bio || '',
     location: creator.location || '',
     website: creator.website || '',
     price: String(creator.price || 0),
+    fanvueUrl: creator.fanvueUrl || '',
+    fanslyUrl: creator.fanslyUrl || '',
     instagramUrl: creator.instagramUrl || '',
     twitterUrl: creator.twitterUrl || '',
     tiktokUrl: creator.tiktokUrl || '',
     telegramUrl: creator.telegramUrl || '',
+    patreonUrl: creator.patreonUrl || '',
+    redditUrl: creator.redditUrl || '',
+    linktreeUrl: creator.linktreeUrl || '',
+    allmylinksUrl: creator.allmylinksUrl || '',
+    beaconsUrl: creator.beaconsUrl || '',
   });
   const [publicPage, setPublicPage] = useState(creator.publicPage ?? false);
+  const [claimOpen, setClaimOpen] = useState(false);
+  const [claimStatus, setClaimStatus] = useState<ProfileClaimStatus>('none');
+  const [claimSubmitting, setClaimSubmitting] = useState(false);
+  const [claimForm, setClaimForm] = useState({
+    fullName: '',
+    email: '',
+    contact: '',
+    accountType: 'individual' as 'individual' | 'agency',
+    reason: '',
+  });
 
   useEffect(() => {
-    setIsAdmin(typeof window !== 'undefined' && localStorage.getItem('isAdmin') === 'true');
-  }, []);
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (token) {
+      fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (d) setIsAdmin(!!d.isAdmin); })
+        .catch(() => setIsAdmin(false));
+    } else {
+      setIsAdmin(false);
+    }
+    if (!token) return;
+    canManageCreatorProfile(token, creator.slug).then(setCanManageProfile).catch(() => setCanManageProfile(false));
+    getProfileClaimStatus(token, creator.slug).then((r) => setClaimStatus(r.status)).catch(() => setClaimStatus('none'));
+  }, [creator.slug]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('claim') === '1' && !canManageProfile) setClaimOpen(true);
+  }, [canManageProfile]);
+
+  useEffect(() => {
+    if (!canManageProfile) return;
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('edit') === '1') setProfileEdit(true);
+  }, [canManageProfile]);
+
+  const handleEditProfileClick = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = `/join-erogram?redirect=${encodeURIComponent(`/onlyfanssearch/${creator.slug}?claim=1`)}`;
+      return;
+    }
+    const myProfile = await getMyCreatorProfile(token);
+    if (myProfile && myProfile.slug !== creator.slug) {
+      alert(`You already manage @${myProfile.username}. One creator profile per account.`);
+      window.location.href = `/onlyfanssearch/${myProfile.slug}?edit=1`;
+      return;
+    }
+    if (await canManageCreatorProfile(token, creator.slug)) {
+      setProfileEdit(true);
+      return;
+    }
+    const claim = await getProfileClaimStatus(token, creator.slug);
+    setClaimStatus(claim.status);
+    if (claim.status === 'pending') {
+      alert('Your claim is pending admin approval.');
+      return;
+    }
+    setClaimOpen(true);
+  };
+
+  const handleClaimSubmit = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = `/join-erogram?redirect=${encodeURIComponent(`/onlyfanssearch/${creator.slug}?claim=1`)}`;
+      return;
+    }
+    setClaimSubmitting(true);
+    try {
+      const res = await submitCreatorProfileClaim(token, creator.slug, claimForm);
+      if ('error' in res) {
+        alert(res.error);
+        return;
+      }
+      setClaimStatus('pending');
+      setClaimOpen(false);
+      alert('Claim submitted. You will be able to edit after admin approval.');
+    } finally {
+      setClaimSubmitting(false);
+    }
+  };
 
   const handleAdminSave = async () => {
+    const token = localStorage.getItem('token') || '';
     setSaving(true);
-    await updateCreatorFields(creator.slug, {
+    const payload: Record<string, unknown> = {
       ...editFields,
       price: parseFloat(editFields.price) || 0,
-      publicPage,
-    });
+    };
+    if (isAdmin) payload.publicPage = publicPage;
+    await updateCreatorFields(creator.slug, payload, token);
     setSaving(false);
-    setAdminEdit(false);
+    setProfileEdit(false);
     router.refresh();
   };
 
   const handleDeletePhoto = async (type: 'avatar' | 'header' | 'extra', idx?: number) => {
     if (!confirm('Delete this photo?')) return;
-    await deleteCreatorPhoto(creator.slug, type, idx);
+    const token = localStorage.getItem('token') || '';
+    await deleteCreatorPhoto(creator.slug, type, idx, token);
+    router.refresh();
+  };
+
+  const handleDeleteVideo = async (url: string) => {
+    if (!confirm('Delete this video?')) return;
+    const token = localStorage.getItem('token') || '';
+    const res = await removeCreatorFeedVideo(token, creator.slug, url);
+    if ('error' in res) alert(res.error);
+    router.refresh();
+  };
+
+  const handleBulkAlbumUpload = async (fileList: FileList | File[]) => {
+    const files = Array.from(fileList);
+    if (!files.length) return;
+    const token = localStorage.getItem('token') || '';
+
+    setBulkUpload({ current: 0, total: files.length });
+    const errors: string[] = [];
+    let ok = 0;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      setBulkUpload({ current: i + 1, total: files.length });
+      const isVideo = file.type.startsWith('video/');
+      const maxBytes = isVideo ? MAX_CREATOR_VIDEO_BYTES : MAX_CREATOR_PHOTO_BYTES;
+      if (file.size > maxBytes) {
+        errors.push(humanUploadTooLarge(file.name, isVideo));
+        continue;
+      }
+      try {
+        const res = isVideo
+          ? await uploadCreatorFeedVideo(token, creator.slug, file)
+          : await uploadCreatorFeedPhoto(token, creator.slug, file);
+        if ('error' in res) errors.push(humanUploadError(res.error, file.name));
+        else ok++;
+      } catch (e: any) {
+        errors.push(humanUploadError(e?.message || 'Upload failed', file.name));
+      }
+    }
+
+    setBulkUpload(null);
+    if (errors.length) {
+      alert(`Uploaded ${ok}/${files.length}.\n\n${errors.join('\n')}`);
+    } else if (ok > 0) {
+      alert(`Uploaded ${ok} file${ok === 1 ? '' : 's'} successfully.`);
+    }
     router.refresh();
   };
 
   const handleReplacePhoto = async (type: 'avatar' | 'header', file: File) => {
     setUploading(type);
     try {
-      // Convert to compressed WebP data URL (same pattern as /add/AddClient.tsx)
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const img = new Image();
-        img.onload = () => {
-          // Cap at 800px max dimension for avatars, 1600px for headers
-          const maxDim = type === 'header' ? 1600 : 800;
-          const ratio = Math.min(maxDim / img.width, maxDim / img.height, 1);
-          canvas.width = Math.round(img.width * ratio);
-          canvas.height = Math.round(img.height * ratio);
-          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-          canvas.toBlob((blob) => {
-            if (!blob) return reject(new Error('Canvas toBlob failed'));
-            const r = new FileReader();
-            r.onload = () => resolve(r.result as string);
-            r.onerror = () => reject(r.error);
-            r.readAsDataURL(blob);
-          }, 'image/webp', 0.85);
-        };
-        img.onerror = () => reject(new Error('Image load failed'));
-        img.src = URL.createObjectURL(file);
-      });
-
-      const updateFields: Record<string, string> = { [type]: dataUrl };
-      if (type === 'avatar') {
-        updateFields.avatarThumbC50 = dataUrl;
-        updateFields.avatarThumbC144 = dataUrl;
-      }
-      await updateCreatorFields(creator.slug, updateFields);
-      router.refresh();
+      const token = localStorage.getItem('token') || '';
+      const res = await uploadCreatorProfilePhoto(token, creator.slug, type, file);
+      if ('error' in res) alert(res.error);
+      else router.refresh();
     } catch (e: any) {
       alert(`Upload failed: ${e.message || 'Unknown error'}`);
     } finally {
@@ -422,18 +991,22 @@ export default function CreatorProfileClient({
   const handleDeleteProfile = async () => {
     if (!confirm(`DELETE "${creator.name}" permanently? This cannot be undone.`)) return;
     if (!confirm('Are you absolutely sure?')) return;
-    await deleteCreator(creator.slug);
+    await deleteCreator(creator.slug, localStorage.getItem('token') || '');
     router.push('/onlyfanssearch');
   };
+
+  const canEditProfile = isAdmin || canManageProfile;
 
   const hasHeader = !!creator.header && !headerError;
   const hasAvatar = !!creator.avatar && !avatarError;
   const primaryCat = creator.categories[0] || '';
   const catHref = primaryCat ? ofCategoryUrl(primaryCat) : '/onlyfanssearch';
-
-  const hasSocials = !!(creator.instagramUrl || creator.twitterUrl || creator.tiktokUrl || creator.fanslyUrl || creator.pornhubUrl);
+  const fanvueHref = creator.fanvueUrl?.trim() ? normalizePlatformUrl(creator.fanvueUrl.trim(), 'fanvue') : undefined;
+  const fanslyHref = creator.fanslyUrl?.trim() ? normalizePlatformUrl(creator.fanslyUrl.trim(), 'fansly') : undefined;
+  const otherPlatformLink = resolveOtherPlatformLink(creator);
   const totalMedia = creator.mediaCount || (creator.photosCount + creator.videosCount + creator.audiosCount);
 
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [isSaved, setIsSaved] = useState(false);
 
   useEffect(() => {
@@ -442,69 +1015,81 @@ export default function CreatorProfileClient({
     fetch('/api/onlyfans/save', { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((data) => {
-        if (Array.isArray(data.savedIds) && data.savedIds.includes(creator._id)) setIsSaved(true);
+        if (Array.isArray(data.savedIds)) {
+          setSavedIds(new Set(data.savedIds));
+          setIsSaved(data.savedIds.includes(creator._id));
+        }
       })
       .catch(() => {});
   }, [creator._id]);
 
-  const handleToggleSave = async () => {
+  const handleToggleSaveById = async (creatorId: string) => {
     const token = localStorage.getItem('token');
     if (!token) {
       window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
       return;
     }
-    const was = isSaved;
-    setIsSaved(!was);
+
+    const alreadySaved = savedIds.has(creatorId);
+    setSavedIds((prev) => {
+      const next = new Set(prev);
+      if (alreadySaved) next.delete(creatorId);
+      else next.add(creatorId);
+      return next;
+    });
+    if (creatorId === creator._id) setIsSaved(!alreadySaved);
+
     try {
       await fetch('/api/onlyfans/save', {
-        method: was ? 'DELETE' : 'POST',
+        method: alreadySaved ? 'DELETE' : 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ creatorId: creator._id }),
+        body: JSON.stringify({ creatorId }),
       });
     } catch {
-      setIsSaved(was);
+      setSavedIds((prev) => {
+        const next = new Set(prev);
+        if (alreadySaved) next.add(creatorId);
+        else next.delete(creatorId);
+        return next;
+      });
+      if (creatorId === creator._id) setIsSaved(alreadySaved);
     }
   };
 
-  // ── Review state ──
-  const [reviews, setReviews] = useState<CreatorReviewData[]>([]);
-  const [reviewAvg, setReviewAvg] = useState(0);
-  const [reviewCount, setReviewCount] = useState(0);
-  const [reviewForm, setReviewForm] = useState({ rating: 0, content: '', name: '' });
-  const [reviewSubmitting, setReviewSubmitting] = useState(false);
-  const [reviewSubmitted, setReviewSubmitted] = useState(false);
-  const [hoverRating, setHoverRating] = useState(0);
-  const [burstRating, setBurstRating] = useState(0);
-  const [commentCTAVisible, setCommentCTAVisible] = useState(false);
-  const commentRef = useRef<HTMLTextAreaElement>(null);
+  const handleToggleSave = () => handleToggleSaveById(creator._id);
+
+  const [flameReviews, setFlameReviews] = useState<CreatorReviewData[]>([]);
+  const [flameKey, setFlameKey] = useState(0);
 
   useEffect(() => {
-    getCreatorReviews(creator.slug).then((data) => {
-      setReviews(data.reviews);
-      setReviewAvg(data.avg);
-      setReviewCount(data.count);
-    }).catch(() => {});
+    getCreatorReviews(creator.slug).then((data) => setFlameReviews(data.reviews)).catch(() => {});
   }, [creator.slug]);
 
-  const handleSubmitReview = async () => {
-    if (reviewSubmitting || reviewSubmitted) return;
-    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) {
-      window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
-      return;
-    }
-    if (reviewForm.rating < 1) return;
-    setReviewSubmitting(true);
-    try {
-      const tkn = typeof localStorage !== 'undefined' ? localStorage.getItem('token') || '' : '';
-      await submitCreatorReview(creator.slug, reviewForm.rating, reviewForm.content, tkn);
-      const data = await getCreatorReviews(creator.slug);
-      setReviews(data.reviews);
-      setReviewAvg(data.avg);
-      setReviewCount(data.count);
-      setReviewSubmitted(true);
-    } catch { /* ignore */ }
-    setReviewSubmitting(false);
+  const refreshFlameReviews = async () => {
+    const data = await getCreatorReviews(creator.slug);
+    setFlameReviews(data.reviews);
+    setFlameKey((k) => k + 1);
+  };
+
+  const flameReviewItems: FlameReviewItem[] = flameReviews.map((r) => ({
+    authorName: r.authorName,
+    authorAvatar: r.authorAvatar,
+    rating: r.rating,
+    text: r.content,
+    createdAt: r.createdAt
+      ? new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : '',
+  }));
+
+  const reviewCount = flameReviewItems.length;
+  const reviewAvg = reviewCount > 0
+    ? Math.round((flameReviewItems.reduce((s, r) => s + r.rating, 0) / reviewCount) * 10) / 10
+    : 0;
+
+  const handleQuickRate = async (rating: number) => {
+    const token = localStorage.getItem('token') || '';
+    await submitCreatorReview(creator.slug, rating, '', token);
+    await refreshFlameReviews();
   };
 
   const handleViewProfileClick = () => {
@@ -520,6 +1105,65 @@ export default function CreatorProfileClient({
   const joinFormatted = creator.joinDate
     ? new Date(creator.joinDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
     : '';
+
+  const telegramHref = creator.telegramUrl || getCreatorBio(creator.username)?.telegram;
+  const creatorPlatformLinks = [
+    {
+      label: 'Fanvue',
+      icon: <FanvueSocialIcon />,
+      value: fanvueHref ? platformLinkDisplay(fanvueHref, 'Fanvue') : '',
+      href: fanvueHref,
+    },
+    {
+      label: 'Fansly',
+      icon: <FanslySocialIcon />,
+      value: fanslyHref ? platformLinkDisplay(fanslyHref, 'Fansly') : '',
+      href: fanslyHref,
+    },
+    {
+      label: 'Instagram',
+      icon: <InstagramSocialIcon />,
+      value: creator.instagramUrl
+        ? (creator.instagramUsername
+          ? `@${creator.instagramUsername}`
+          : creator.instagramUrl.replace(/^https?:\/\/(www\.)?instagram\.com\/?/i, '@').replace(/\/$/, ''))
+        : '',
+      href: creator.instagramUrl || undefined,
+    },
+    {
+      label: 'X',
+      icon: <XSocialIcon />,
+      value: creator.twitterUrl
+        ? creator.twitterUrl.replace(/^https?:\/\/(www\.)?(twitter\.com|x\.com)\/?/i, '@').replace(/\/$/, '')
+        : '',
+      href: creator.twitterUrl || undefined,
+    },
+    {
+      label: t('ofSearch.telegram'),
+      icon: <TelegramSocialIcon />,
+      value: telegramHref ? telegramHref.replace(/https?:\/\/(t\.me\/)?/i, '@') : '',
+      href: telegramHref || undefined,
+    },
+    {
+      label: 'Patreon',
+      icon: <PatreonSocialIcon />,
+      value: creator.patreonUrl ? platformLinkDisplay(creator.patreonUrl, 'Patreon') : '',
+      href: creator.patreonUrl || undefined,
+    },
+    {
+      label: 'Reddit',
+      icon: <RedditSocialIcon />,
+      value: creator.redditUrl ? platformLinkDisplay(creator.redditUrl, 'Reddit') : '',
+      href: creator.redditUrl || undefined,
+    },
+    {
+      label: t('ofSearch.website'),
+      icon: <WebsiteSocialIcon />,
+      value: otherPlatformLink.href ? otherPlatformLink.value : '',
+      href: otherPlatformLink.href,
+      color: otherPlatformLink.href ? 'text-[#00AFF0]' : undefined,
+    },
+  ];
 
   const lastSeenFormatted = creator.lastSeen
     ? (() => {
@@ -546,9 +1190,10 @@ export default function CreatorProfileClient({
     <div className="min-h-screen bg-[#0a1117]">
       <Navbar />
 
+      <div className="pt-[82px]">
       {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-2">
-        <ol className="flex items-center gap-1.5 text-xs text-gray-500">
+      <nav aria-label="Breadcrumb" className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 pt-3 pb-2">
+        <ol className="flex items-center gap-1.5 text-xs text-gray-400 min-w-0">
           <li>
             <Link href={lp('/')} className="flex items-center gap-1 hover:text-white transition-colors">
               <Home className="w-3 h-3" />
@@ -567,33 +1212,53 @@ export default function CreatorProfileClient({
       </nav>
 
       {/* Hero / Banner */}
-      <div className="relative w-full h-[220px] sm:h-[300px] md:h-[360px] overflow-hidden bg-gradient-to-br from-[#001824] via-[#041e2e] to-[#0a1117]">
+      <div className="relative w-full h-[220px] sm:h-[300px] md:h-[360px] overflow-hidden bg-[#041e2e]">
         {hasHeader ? (
           <img
             src={creator.header}
             alt={`${creator.name} OnlyFans banner`}
-            className="absolute inset-0 w-full h-full object-cover opacity-70"
+            className="absolute inset-0 w-full h-full object-cover"
             referrerPolicy="no-referrer"
             onError={() => setHeaderError(true)}
           />
         ) : (
-          <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#001824] via-[#041e2e] to-[#0a2840]">
             <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full bg-[#00AFF0]/15 blur-[100px]" />
             <div className="absolute -bottom-20 -left-10 w-60 h-60 rounded-full bg-[#00D4FF]/10 blur-[80px]" />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0a1117] via-[#0a1117]/40 to-transparent" />
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: 'linear-gradient(to top, #0a1117 0%, rgba(10,17,23,0.92) 12%, transparent 48%)' }}
+        />
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
-        {/* ── Top section: profile info LEFT + trending RIGHT ── */}
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_240px] gap-5 items-start">
 
-          {/* LEFT — profile info block */}
-          <div className="flex-1 min-w-0">
+          {/* RIGHT sidebar — desktop */}
+          <aside className="hidden lg:block lg:col-start-2 lg:row-start-1 sticky top-[90px] self-start">
+            <ProfileRightRail
+              creatorName={creator.name}
+              username={creator.username}
+              slug={creator.slug}
+              nicheLabel={nicheLabel}
+              items={sidebarRelated}
+              publicOnlyfansPath={publicAccess}
+              variant="sidebar"
+              savedCreatorIds={savedIds}
+              onToggleSave={handleToggleSaveById}
+              loginRedirect={lp(ofCreatorProfileUrl(creator.username))}
+            />
+          </aside>
+
+          {/* MAIN column */}
+          <div className="min-w-0 lg:col-start-1 lg:row-start-1">
             {/* Avatar + name */}
-            <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 -mt-16 sm:-mt-20 mb-6">
-              <div className="relative flex-shrink-0 w-28 h-28 sm:w-36 sm:h-36 rounded-2xl overflow-hidden ring-4 ring-[#0a1117] bg-[#0d1e2a] shadow-2xl group/avatar">
+            <div className="flex items-start gap-4 sm:gap-6 -mt-28 sm:-mt-36 mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 flex-1 min-w-0">
+              <div className="flex flex-col items-stretch flex-shrink-0 w-56 sm:w-72">
+              <div className="relative w-full aspect-square rounded-2xl overflow-hidden ring-4 ring-[#0a1117] bg-[#0d1e2a] shadow-2xl group/avatar">
                 {hasAvatar ? (
                   <img
                     src={creator.avatar}
@@ -603,11 +1268,11 @@ export default function CreatorProfileClient({
                     onError={() => setAvatarError(true)}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-5xl font-black text-[#00AFF0]/40 bg-gradient-to-br from-[#00AFF0]/10 to-[#001824]">
+                  <div className="w-full h-full flex items-center justify-center text-7xl sm:text-8xl font-black text-[#00AFF0]/40 bg-gradient-to-br from-[#00AFF0]/10 to-[#001824]">
                     {creator.name.charAt(0)}
                   </div>
                 )}
-                {isAdmin && (
+                {canEditProfile && (
                   <>
                     <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleReplacePhoto('avatar', f); e.target.value = ''; }} />
                     {uploading === 'avatar' ? (
@@ -621,24 +1286,53 @@ export default function CreatorProfileClient({
                 )}
               </div>
 
-              <div className="flex-1 pb-1">
+              <div className="flex items-stretch gap-2 w-full">
+                <div className="flex-1 min-w-0">
+                  <MiniFlameRating
+                    creatorName={creator.name}
+                    reviewCount={reviewCount}
+                    reviewAvg={reviewAvg}
+                    loginHref={`/join-erogram?redirect=/onlyfanssearch/${creator.slug}`}
+                    onRate={handleQuickRate}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleToggleSave}
+                  className="mt-2 flex items-center justify-center w-11 sm:w-12 shrink-0 rounded-xl self-stretch transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,175,240,0.45)]"
+                  style={{
+                    background: 'linear-gradient(135deg, #00AFF0, #0090cc)',
+                    border: '1px solid #00AFF0',
+                    boxShadow: '0 4px 14px rgba(0,175,240,0.35)',
+                  }}
+                  title={isSaved ? t('ofSearch.removeSaved') : t('ofSearch.saveCreator')}
+                  aria-label={isSaved ? t('ofSearch.removeSaved') : t('ofSearch.saveCreator')}
+                >
+                  <Bookmark size={20} className="text-white" fill={isSaved ? 'currentColor' : 'none'} />
+                </button>
+              </div>
+              </div>
+
+              <div className="flex-1 pb-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-1">
-                  <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight flex items-center gap-1.5">
+                  <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight flex items-center gap-1.5 min-w-0">
                     {creator.name}
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-500 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
+                    <VerifiedBadge />
                   </h1>
-                  {creator.isFree ? (
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-xs font-black uppercase tracking-wide">
-                      FREE
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#00AFF0]/15 border border-[#00AFF0]/30 text-[#00AFF0] text-xs font-black">
-                      <Lock className="w-3 h-3" />
-                      {displayPrice}
-                    </span>
-                  )}
                 </div>
                 <p className="text-[#00AFF0] text-sm sm:text-base font-bold">@{creator.username}</p>
+
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleEditProfileClick}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/15 text-white text-xs font-bold hover:bg-[#00AFF0]/15 hover:border-[#00AFF0]/40 hover:text-[#00AFF0] transition-all shrink-0"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    {claimStatus === 'pending' ? 'Claim pending approval' : 'Edit my profile'}
+                  </button>
+                  <ShareButtons name={creator.name} username={creator.username} slug={creator.slug} compact />
+                </div>
 
                 {/* Location + Last seen row */}
                 <div className="flex flex-wrap items-center gap-3 mt-1.5">
@@ -657,35 +1351,44 @@ export default function CreatorProfileClient({
                 </div>
 
               </div>
-
-              {/* Bookmark + Share + Submit — desktop */}
-              <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
-                <button
-                  onClick={handleToggleSave}
-                  className={`flex items-center justify-center w-10 h-10 rounded-xl border transition-all ${
-                    isSaved
-                      ? 'bg-[#00AFF0] border-[#00AFF0] text-white shadow-lg shadow-[#00AFF0]/30'
-                      : 'bg-white/[0.06] border-white/[0.10] text-white/50 hover:bg-[#00AFF0]/15 hover:border-[#00AFF0]/30 hover:text-[#00AFF0]'
-                  }`}
-                  title={isSaved ? t('ofSearch.removeSaved') : t('ofSearch.saveCreator')}
-                >
-                  <Bookmark size={16} fill={isSaved ? 'currentColor' : 'none'} />
-                </button>
-                <ShareDropdown name={creator.name} username={creator.username} slug={creator.slug} />
               </div>
             </div>
 
-            {/* Stats Strip */}
-            <div className="flex flex-wrap gap-2 sm:gap-3 mb-6">
+            {/* Browse categories — /onlyfanssearch/{slug} creator lists */}
+            {profileCategories.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {profileCategories.map((cat) => (
+                  <Link
+                    key={cat.slug}
+                    href={lp(`/onlyfanssearch/${cat.slug}`)}
+                    className="px-3 py-1.5 rounded-xl bg-[#00AFF0]/10 border border-[#00AFF0]/25 text-[#00AFF0] text-xs font-bold capitalize hover:bg-[#00AFF0]/20 hover:border-[#00AFF0]/50 transition-all"
+                  >
+                    {cat.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {/* Stats + fair use note */}
+            <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3 mb-4">
+              <div className="flex flex-wrap items-stretch gap-2 sm:gap-3">
               {creator.likesCount > 0 && (
-                <div className="flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 rounded-xl"
-                  style={{ background: 'linear-gradient(135deg, rgba(0,175,240,0.15), rgba(0,175,240,0.07))', border: '1px solid rgba(0,175,240,0.30)', minWidth: '160px' }}>
-                  <svg className="w-9 h-9 flex-shrink-0" viewBox="0 0 24 24" fill="#00AFF0">
-                    <path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z"/>
-                  </svg>
+                <div
+                  className="flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 rounded-xl"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(0,175,240,0.15), rgba(0,175,240,0.07))',
+                    border: '1px solid rgba(0,175,240,0.30)',
+                    minWidth: '160px',
+                  }}
+                >
+                  <OnlyFansIcon />
                   <div className="flex flex-col">
-                    <span className="font-black text-xl sm:text-2xl leading-tight" style={{ color: '#00AFF0' }}>{formatCount(creator.likesCount)}</span>
-                    <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider" style={{ color: '#00AFF0', opacity: 0.65 }}>{t('ofSearch.ofLikes')}</span>
+                    <span className="font-black text-xl sm:text-2xl leading-tight" style={{ color: '#00AFF0' }}>
+                      {formatCount(creator.likesCount)}
+                    </span>
+                    <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider" style={{ color: '#00AFF0', opacity: 0.65 }}>
+                      {t('ofSearch.ofLikes')}
+                    </span>
                   </div>
                 </div>
               )}
@@ -693,45 +1396,22 @@ export default function CreatorProfileClient({
                 <StatCard icon={<ImageIcon className="w-4 h-4" />} label={t('ofSearch.totalMedia')} value={formatCount(totalMedia)} />
               )}
               <StatCard icon={<DollarSign className="w-4 h-4" />} label={t('ofSearch.price')} value={displayPrice} />
-            </div>
-
-            {/* Bookmark + Share + Submit — mobile only */}
-            <div className="sm:hidden flex items-center justify-end gap-2 mb-6">
-              <button
-                onClick={handleToggleSave}
-                className={`flex items-center justify-center w-9 h-9 rounded-xl border transition-all ${
-                  isSaved
-                    ? 'bg-[#00AFF0] border-[#00AFF0] text-white shadow-lg shadow-[#00AFF0]/30'
-                    : 'bg-white/[0.06] border-white/[0.10] text-white/50 hover:bg-[#00AFF0]/15 hover:border-[#00AFF0]/30 hover:text-[#00AFF0]'
-                }`}
-                title={isSaved ? t('ofSearch.removeSaved') : t('ofSearch.saveCreator')}
-              >
-                <Bookmark size={14} fill={isSaved ? 'currentColor' : 'none'} />
-              </button>
-              <ShareDropdown name={creator.name} username={creator.username} slug={creator.slug} />
-            </div>
-
-            {/* Categories */}
-            {creator.categories.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-6">
-                {creator.categories.map((cat) => (
-                  <Link
-                    key={cat}
-                    href={lp(ofCategoryUrl(cat))}
-                    className="px-3 py-1.5 rounded-xl bg-[#00AFF0]/10 border border-[#00AFF0]/25 text-[#00AFF0] text-xs font-bold capitalize hover:bg-[#00AFF0]/20 hover:border-[#00AFF0]/50 transition-all"
-                  >
-                    {CATEGORY_LABELS[cat] || cat}
-                  </Link>
-                ))}
               </div>
-            )}
+              <div className="text-[10px] leading-snug text-white/35 sm:max-w-xs sm:pt-3">
+                <p className="font-semibold text-white/45 mb-1">© Copyright</p>
+                <p>
+                  Thumbnail and cover of the model&apos;s public OnlyFans.com profile shown under fair use for identification and commentary. We review and link to their official OnlyFans account. We do not host, stream, or distribute any copyrighted content.
+                </p>
+              </div>
+            </div>
 
             {/* ── Enhanced About Section ── */}
         {(() => {
+          const bioSection = (() => {
           const bioData = getCreatorBio(creator.username);
           if (bioData) {
             return (
-              <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8">
+              <>
                 <h2 className="text-sm font-black text-white mb-4 flex items-center gap-2">
                   <FileText className="w-4 h-4 text-[#00AFF0]" />
                   About {bioData.name}
@@ -739,7 +1419,7 @@ export default function CreatorProfileClient({
                 <div className="text-sm text-gray-300 leading-relaxed">
                   <p>{bioData.bio}</p>
                 </div>
-              </div>
+              </>
             );
           }
           const username = creator.username?.toLowerCase();
@@ -1101,562 +1781,124 @@ export default function CreatorProfileClient({
             );
           }
           return creator.bio ? (
-            <div className="mb-6 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 sm:p-6">
+            <>
               <h2 className="text-sm font-black text-white mb-3 flex items-center gap-2">
                 <FileText className="w-4 h-4 text-[#00AFF0]" />
                 {t('ofSearch.aboutCreator') || 'About'}
               </h2>
               <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-line">{creator.bio}</p>
-            </div>
+            </>
           ) : null;
+          })();
+          if (!bioSection) return null;
+          return (
+            <BioWithCtaShell
+              creatorName={creator.name}
+              username={creator.username}
+              onClick={handleViewProfileClick}
+            >
+              {bioSection}
+            </BioWithCtaShell>
+          );
         })()}
 
-        {/* ── Social Links & Platforms ── */}
-        {hasSocials && (
-          <div className="mb-6">
-            <h2 className="text-sm font-black text-white mb-3 flex items-center gap-2">
-              <Globe className="w-4 h-4 text-[#00AFF0]" />
-              {t('ofSearch.socialMedia')}
-            </h2>
-            <div className="flex flex-wrap gap-2">
-              {creator.instagramUrl && (
-                <SocialButton
-                  href={creator.instagramUrl}
-                  icon={<svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>}
-                  label={creator.instagramUsername ? `@${creator.instagramUsername}` : 'Instagram'}
-                  color="bg-gradient-to-r from-purple-500/15 to-pink-500/15 border-purple-500/30 text-pink-300 hover:border-pink-400/60 hover:shadow-lg hover:shadow-pink-500/20"
-                />
-              )}
-              {creator.twitterUrl && (
-                <SocialButton
-                  href={creator.twitterUrl}
-                  icon={<svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>}
-                  label="X (Twitter)"
-                  color="bg-white/[0.06] border-white/20 text-white hover:border-white/40 hover:shadow-lg hover:shadow-white/10"
-                />
-              )}
-              {creator.tiktokUrl && (
-                <SocialButton
-                  href={creator.tiktokUrl}
-                  icon={<svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>}
-                  label="TikTok"
-                  color="bg-[#00f2ea]/10 border-[#00f2ea]/30 text-[#00f2ea] hover:border-[#00f2ea]/60 hover:shadow-lg hover:shadow-[#00f2ea]/20"
-                />
-              )}
-              {creator.fanslyUrl && (
-                <SocialButton
-                  href={creator.fanslyUrl}
-                  icon={<Zap className="w-4 h-4" />}
-                  label="Fansly"
-                  color="bg-cyan-500/10 border-cyan-500/30 text-cyan-300 hover:border-cyan-400/60 hover:shadow-lg hover:shadow-cyan-500/20"
-                />
-              )}
-              {creator.pornhubUrl && (
-                <SocialButton
-                  href={creator.pornhubUrl}
-                  icon={<Film className="w-4 h-4" />}
-                  label="Pornhub"
-                  color="bg-orange-500/10 border-orange-500/30 text-orange-300 hover:border-orange-400/60 hover:shadow-lg hover:shadow-orange-500/20"
-                />
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── Profile Details + Photos ── */}
+        {/* ── Profile Details ── */}
         <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 sm:p-6 mb-6">
-          <div className="flex flex-col md:flex-row gap-6">
-            {/* Left — Profile Details */}
-            <div className="flex-1 min-w-0">
-              <h2 className="text-sm font-black text-white mb-4">{t('ofSearch.profileDetails')}</h2>
-              <div className="flex flex-col gap-2">
-                <DetailRow label={t('ofSearch.username')} value={`@${creator.username}`} />
-                <DetailRow label={t('ofSearch.totalLikes')} value={creator.likesCount > 0 ? formatExact(creator.likesCount) : 'N/A'} color={creator.likesCount > 0 ? undefined : 'text-gray-500'} />
+          <h2 className="text-sm font-black text-white mb-4">{creator.name}&apos;s ONLYFANS Profile details</h2>
+          <div className="flex flex-col gap-2">
                 <DetailRow label={t('ofSearch.photos')} value={creator.photosCount > 0 ? formatExact(creator.photosCount) : 'N/A'} color={creator.photosCount > 0 ? undefined : 'text-gray-500'} />
                 <DetailRow label={t('ofSearch.videos')} value={creator.videosCount > 0 ? formatExact(creator.videosCount) : 'N/A'} color={creator.videosCount > 0 ? undefined : 'text-gray-500'} />
-                <DetailRow label={t('ofSearch.posts')} value={creator.postsCount > 0 ? formatExact(creator.postsCount) : 'N/A'} color={creator.postsCount > 0 ? undefined : 'text-gray-500'} />
                 <DetailRow label={t('ofSearch.location')} value={creator.location || 'N/A'} color={creator.location ? undefined : 'text-gray-500'} />
                 <DetailRow label={t('ofSearch.joinedOnlyfans')} value={joinFormatted || 'N/A'} color={joinFormatted ? undefined : 'text-gray-500'} />
+
+                <div className={`mt-4 ${PROFILE_DARK_PANEL} p-4 sm:p-5`}>
+                  <h3 className="text-lg sm:text-xl font-black uppercase tracking-wide text-white mb-4">
+                    Other Creator&apos;s platforms
+                  </h3>
+                  <div className="flex flex-col gap-2">
+                {creatorPlatformLinks.map((row) => (
                 <DetailRow
-                  label={t('ofSearch.telegram')}
-                  value={(() => {
-                    if (creator.telegramUrl) return creator.telegramUrl.replace(/https?:\/\/(t\.me\/)?/i, '@');
-                    const bioData = getCreatorBio(creator.username);
-                    if (bioData?.telegram) return bioData.telegram.replace(/https?:\/\/(t\.me\/)?/i, '@');
-                    return 'N/A';
-                  })()}
-                  color={(creator.telegramUrl || !!getCreatorBio(creator.username)?.telegram) ? 'text-white' : 'text-gray-500'}
-                  href={creator.telegramUrl || getCreatorBio(creator.username)?.telegram || undefined}
+                  key={row.label}
+                  tone="dark"
+                  label={row.label}
+                  icon={row.icon}
+                  value={row.value}
+                  color={row.color || (row.href ? 'text-white' : undefined)}
+                  href={row.href}
                 />
-                <DetailRow
-                  label={t('ofSearch.website')}
-                  value={creator.website ? creator.website.replace(/^https?:\/\//, '').replace(/\/$/, '') : 'N/A'}
-                  color={creator.website ? 'text-[#00AFF0]' : 'text-gray-500'}
-                  href={creator.website ? (creator.website.startsWith('http') ? creator.website : `https://${creator.website}`) : undefined}
-                />
-              </div>
-            </div>
-
-            {/* Right — Photos + CTA */}
-            <div className="w-full md:w-56 lg:w-64 flex-shrink-0 flex flex-col gap-3">
-              {(() => {
-                const allPhotos: { src: string; alt: string }[] = [];
-                if (hasAvatar) allPhotos.push({ src: creator.avatar, alt: `${creator.name} OnlyFans profile photo` });
-                if (hasHeader) allPhotos.push({ src: creator.header, alt: `${creator.name} OnlyFans banner photo` });
-                if (creator.extraPhotos?.length) {
-                  creator.extraPhotos.forEach((url, i) => {
-                    if (url) allPhotos.push({ src: url, alt: `${creator.name} OnlyFans photo ${i + 3}` });
-                  });
-                }
-                if (allPhotos.length === 0) return null;
-
-                return (
-                  <>
-                    <h2 className="text-sm font-black text-white flex items-center gap-2">
-                      <Camera className="w-4 h-4 text-[#00AFF0]" />
-                      {t('ofSearch.photos')}
-                    </h2>
-                    {allPhotos.length <= 2 ? (
-                      <div className="flex flex-col gap-2">
-                        {allPhotos.map((p, i) => (
-                          <button key={i} onClick={() => setLightboxImg(p.src)} className="w-full rounded-xl overflow-hidden border border-white/10 hover:border-[#00AFF0]/50 transition-all hover:scale-[1.02] cursor-zoom-in">
-                            <img src={p.src} alt={p.alt} className="w-full aspect-square object-cover" />
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <button onClick={() => setLightboxImg(allPhotos[0].src)} className="w-full rounded-xl overflow-hidden border border-white/10 hover:border-[#00AFF0]/50 transition-all hover:scale-[1.02] cursor-zoom-in">
-                          <img src={allPhotos[0].src} alt={allPhotos[0].alt} className="w-full aspect-[4/3] object-cover" />
-                        </button>
-                        <div className="grid grid-cols-2 gap-2">
-                          {allPhotos.slice(1).map((p, i) => (
-                            <button key={i} onClick={() => setLightboxImg(p.src)} className="rounded-lg overflow-hidden border border-white/10 hover:border-[#00AFF0]/50 transition-all hover:scale-[1.03] cursor-zoom-in">
-                              <img src={p.src} alt={p.alt} className="w-full aspect-square object-cover" />
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
-              <div className="flex justify-center mt-auto pt-2">
-                  <a
-                    href={`/go/${creator.username}`}
-                    target="_blank"
-                    rel="noopener"
-                    onClick={handleViewProfileClick}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white font-black text-sm shadow-md shadow-[#00AFF0]/25 hover:shadow-lg hover:shadow-[#00AFF0]/40 hover:-translate-y-0.5 transition-all no-underline"
-                  >
-                    {t('ofSearch.visitCreatorOf').replace('{name}', creator.name.split(' ')[0])}
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
-              </div>
-
-              {/* ── Compact inline flame rating — below OnlyFans CTA ── */}
-              <div className="flex items-center justify-center gap-2 mt-3 px-2 py-2 rounded-xl" style={{ background: 'rgba(255,80,0,0.08)', border: '1px solid rgba(255,100,0,0.18)' }}>
-                <style>{`
-                  @keyframes flameBurstInline {
-                    0%   { transform: scale(1); }
-                    25%  { transform: scale(2); filter: drop-shadow(0 0 10px rgba(255,120,0,1)) brightness(1.5); }
-                    60%  { transform: scale(1.3); }
-                    100% { transform: scale(1.15); filter: drop-shadow(0 0 5px rgba(255,100,0,0.8)); }
-                  }
-                  @keyframes sparkleInline {
-                    0%   { opacity: 1; transform: translate(0,0) scale(1); }
-                    100% { opacity: 0; transform: translate(var(--tx),var(--ty)) scale(0); }
-                  }
-                `}</style>
-                {reviewCount > 0 && (
-                  <span className="text-[10px] font-bold shrink-0 tabular-nums" style={{ color: 'rgba(255,160,80,0.75)' }}>
-                    {reviewAvg}/5
-                  </span>
-                )}
-                <div className="flex gap-1 items-center">
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <div key={s} className="relative">
-                      {burstRating === s && [0,1,2,3,4,5,6,7].map((i) => (
-                        <span key={i} className="pointer-events-none absolute text-[8px] select-none" style={{ top: '50%', left: '50%', '--tx': `${Math.cos((i/8)*2*Math.PI)*20}px`, '--ty': `${Math.sin((i/8)*2*Math.PI)*20}px`, animation: 'sparkleInline 0.45s ease-out forwards', animationDelay: `${i*18}ms` } as React.CSSProperties}>
-                          {i%2===0?'✦':'🔥'}
-                        </span>
-                      ))}
-                      <button
-                        onClick={() => {
-                          setReviewForm((f) => ({ ...f, rating: s }));
-                          setBurstRating(s);
-                          setTimeout(() => setBurstRating(0), 600);
-                          if (!commentCTAVisible) setTimeout(() => { setCommentCTAVisible(true); setTimeout(() => commentRef.current?.focus(), 350); }, 500);
-                        }}
-                        onMouseEnter={() => setHoverRating(s)}
-                        onMouseLeave={() => setHoverRating(0)}
-                        className="text-base select-none leading-none block"
-                        style={{
-                          filter: s <= (hoverRating || reviewForm.rating) ? 'drop-shadow(0 0 5px rgba(255,100,0,0.9)) brightness(1.1)' : 'grayscale(0.6) brightness(0.5)',
-                          animation: burstRating === s ? 'flameBurstInline 0.4s ease-out forwards' : undefined,
-                          transition: burstRating === s ? 'none' : 'all 0.12s ease',
-                        }}
-                      >🔥</button>
-                    </div>
-                  ))}
+                ))}
+                  </div>
                 </div>
-                {(hoverRating || reviewForm.rating) > 0 ? (
-                  <span className="text-[10px] font-black" style={{ color: '#ff8c00' }}>
-                    {(hoverRating || reviewForm.rating) === 5 ? 'ON FIRE!' : (hoverRating || reviewForm.rating) === 4 ? 'Very Hot' : (hoverRating || reviewForm.rating) === 3 ? 'Hot' : (hoverRating || reviewForm.rating) === 2 ? 'Warm' : 'Meh'}
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-semibold" style={{ color: 'rgba(255,160,80,0.5)' }}>Rate</span>
-                )}
-              </div>
-            </div>
           </div>
         </div>
-          </div>
 
+        {(canEditProfile || hasAvatar || hasHeader || (creator.extraPhotos?.length || 0) > 0 || (creator.extraVideos?.length || 0) > 0) && (
+          <CreatorMediaFeed
+            slug={creator.slug}
+            creatorId={creator._id}
+            creatorName={creator.name}
+            avatar={hasAvatar ? creator.avatar : undefined}
+            header={hasHeader ? creator.header : undefined}
+            extraPhotos={creator.extraPhotos || []}
+            extraVideos={creator.extraVideos || []}
+            isAdmin={canEditProfile}
+            onLightbox={setLightboxImg}
+            onUpdated={() => router.refresh()}
+          />
+        )}
+
+        {/* Share + suggestions — mobile (after main content, before reviews) */}
+        <div className="lg:hidden mb-6">
+          <ProfileRightRail
+            creatorName={creator.name}
+            username={creator.username}
+            slug={creator.slug}
+            nicheLabel={nicheLabel}
+            items={sidebarRelated}
+            publicOnlyfansPath={publicAccess}
+            variant="mobile"
+            savedCreatorIds={savedIds}
+            onToggleSave={handleToggleSaveById}
+            loginRedirect={lp(ofCreatorProfileUrl(creator.username))}
+          />
         </div>
 
         <div className="h-px bg-gradient-to-r from-transparent via-[#00AFF0]/20 to-transparent mb-8" />
 
-        {/* ── Rate Creator — Flame Meter ── */}
-        <section className="mb-8 rounded-2xl overflow-hidden shadow-lg" style={{ background: 'linear-gradient(135deg, #1a0a00 0%, #2d0f00 40%, #1a0a00 100%)', border: '1px solid rgba(251,100,20,0.35)' }}>
-          {/* Header */}
-          <div className="px-5 pt-5 pb-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ background: 'linear-gradient(135deg, #ff6b00, #ff3d00)' }}>
-              🔥
-            </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-black text-white leading-tight">
-                How hot is <span style={{ background: 'linear-gradient(90deg, #ff8c00, #ff3d00)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{creator.name}</span>?
-              </h2>
-              {reviewCount > 0 && (
-                <p className="text-[12px] font-semibold" style={{ color: 'rgba(255,160,80,0.75)' }}>
-                  {reviewCount} {reviewCount === 1 ? 'person rated' : 'people rated'} · {reviewAvg}/5
-                </p>
-              )}
-            </div>
-          </div>
+        <div id="creator-reviews" className="scroll-mt-24">
+        <FlameReviewSection
+          key={flameKey}
+          entityName={creator.name}
+          promptLabel={creator.username}
+          reviews={flameReviewItems}
+          loginHref={`/join-erogram?redirect=/onlyfanssearch/${creator.slug}`}
+          onSubmit={async (rating, text) => {
+            const token = localStorage.getItem('token') || '';
+            await submitCreatorReview(creator.slug, rating, text, token);
+            return 'Your rating is live!';
+          }}
+          onSubmitted={refreshFlameReviews}
+          requireText={false}
+          successTitle="Your rating is live!"
+          successSubtitle={`Thanks for rating ${creator.name}`}
+        />
+        </div>
 
-          {/* Community flame bar — shown when reviews exist */}
-          {reviewCount > 0 && (
-            <div className="px-5 pb-4">
-              <div className="h-3 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
-                <div
-                  className="h-full rounded-full transition-all duration-700"
-                  style={{
-                    width: `${(reviewAvg / 5) * 100}%`,
-                    background: reviewAvg >= 4.5
-                      ? 'linear-gradient(90deg, #ff6b00, #ff3d00, #ffcc00)'
-                      : reviewAvg >= 3
-                      ? 'linear-gradient(90deg, #ff8c00, #ff5500)'
-                      : 'linear-gradient(90deg, #cc4400, #ff6600)',
-                    boxShadow: reviewAvg >= 4.5 ? '0 0 12px 2px rgba(255,100,0,0.6)' : 'none',
-                  }}
-                />
-              </div>
-              <div className="flex justify-between mt-1">
-                <span className="text-[10px] font-bold" style={{ color: 'rgba(255,160,80,0.5)' }}>Lukewarm</span>
-                <span className="text-[10px] font-bold" style={{ color: 'rgba(255,160,80,0.5)' }}>On Fire 🔥</span>
-              </div>
-            </div>
-          )}
-
-          {/* Existing comments — white cards so they pop */}
-          {reviews.length > 0 && (
-            <div className="px-5 pb-4 space-y-2">
-              {reviews.map((r) => (
-                <div key={r._id} className="rounded-xl px-4 py-3 bg-white shadow-sm flex gap-3">
-                  <div className="w-8 h-8 rounded-full shrink-0 overflow-hidden bg-gradient-to-br from-[#ff6b00] to-[#ff3d00] flex items-center justify-center text-white text-xs font-black">
-                    {r.authorAvatar ? (
-                      <img src={r.authorAvatar} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                    ) : (
-                      (r.authorName || 'A').charAt(0).toUpperCase()
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-sm font-bold text-gray-800">{r.authorName || 'Anonymous'}</span>
-                      <div className="flex gap-0.5 ml-1">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <span key={i} className="text-[11px]">{i < r.rating ? '🔥' : '○'}</span>
-                        ))}
-                      </div>
-                      <span className="text-[10px] text-gray-400 ml-auto">{new Date(r.createdAt).toLocaleDateString()}</span>
-                    </div>
-                    {r.content && <p className="text-sm text-gray-600 leading-relaxed">{r.content}</p>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Rating form */}
-          <div className="px-5 pb-5">
-            {!reviewSubmitted ? (
-              <div className="rounded-xl p-4 space-y-4">
-
-                {/* Flame selector */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <style>{`
-                      @keyframes flameBurst {
-                        0%   { transform: scale(1); }
-                        20%  { transform: scale(1.8); filter: drop-shadow(0 0 14px rgba(255,120,0,1)) brightness(1.4); }
-                        50%  { transform: scale(1.35); filter: drop-shadow(0 0 10px rgba(255,80,0,0.9)); }
-                        100% { transform: scale(1.2); filter: drop-shadow(0 0 6px rgba(255,100,0,0.9)) brightness(1.15); }
-                      }
-                      @keyframes sparkle {
-                        0%   { opacity: 1; transform: translate(0,0) scale(1); }
-                        100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.2); }
-                      }
-                      @keyframes fadeSlideIn {
-                        from { opacity: 0; transform: translateY(-6px); }
-                        to   { opacity: 1; transform: translateY(0); }
-                      }
-                    `}</style>
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <div key={s} className="relative">
-                        {burstRating === s && [0,1,2,3,4,5,6,7].map((i) => (
-                          <span
-                            key={i}
-                            className="pointer-events-none absolute text-xs select-none"
-                            style={{
-                              top: '50%', left: '50%',
-                              '--tx': `${Math.cos((i / 8) * 2 * Math.PI) * 28}px`,
-                              '--ty': `${Math.sin((i / 8) * 2 * Math.PI) * 28}px`,
-                              animation: 'sparkle 0.5s ease-out forwards',
-                              animationDelay: `${i * 20}ms`,
-                            } as React.CSSProperties}
-                          >
-                            {i % 2 === 0 ? '✦' : '🔥'}
-                          </span>
-                        ))}
-                        <button
-                          onClick={() => {
-                            setReviewForm((f) => ({ ...f, rating: s }));
-                            setBurstRating(s);
-                            setTimeout(() => setBurstRating(0), 600);
-                            if (!commentCTAVisible) {
-                              setTimeout(() => {
-                                setCommentCTAVisible(true);
-                                setTimeout(() => commentRef.current?.focus(), 350);
-                              }, 500);
-                            }
-                          }}
-                          onMouseEnter={() => setHoverRating(s)}
-                          onMouseLeave={() => setHoverRating(0)}
-                          className="text-2xl sm:text-3xl select-none"
-                          style={{
-                            filter: s <= (hoverRating || reviewForm.rating)
-                              ? 'drop-shadow(0 0 6px rgba(255,100,0,0.9)) brightness(1.15)'
-                              : 'grayscale(0.7) brightness(0.5)',
-                            transform: s <= (hoverRating || reviewForm.rating) ? 'scale(1.2)' : 'scale(1)',
-                            animation: burstRating === s ? 'flameBurst 0.45s ease-out forwards' : undefined,
-                            transition: burstRating === s ? 'none' : 'all 0.15s ease',
-                          }}
-                        >
-                          🔥
-                        </button>
-                      </div>
-                    ))}
-                    {(hoverRating || reviewForm.rating) > 0 && (
-                      <span className="ml-1 text-xs font-black" style={{ color: '#ff8c00' }}>
-                        {(hoverRating || reviewForm.rating) === 5 ? 'ON FIRE!' : (hoverRating || reviewForm.rating) === 4 ? 'Very Hot 🌶️' : (hoverRating || reviewForm.rating) === 3 ? 'Hot' : (hoverRating || reviewForm.rating) === 2 ? 'Warm' : 'Lukewarm'}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Flame meter bar */}
-                  {(hoverRating || reviewForm.rating) > 0 && (
-                    <div className="h-2.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${((hoverRating || reviewForm.rating) / 5) * 100}%`,
-                          background: (hoverRating || reviewForm.rating) >= 5
-                            ? 'linear-gradient(90deg, #ff6b00, #ff3d00, #ffcc00)'
-                            : (hoverRating || reviewForm.rating) >= 3
-                            ? 'linear-gradient(90deg, #ff8c00, #ff5500)'
-                            : 'linear-gradient(90deg, #cc4400, #ff6600)',
-                          boxShadow: (hoverRating || reviewForm.rating) >= 5 ? '0 0 10px 2px rgba(255,100,0,0.7)' : '0 0 6px rgba(255,100,0,0.4)',
-                          transition: 'width 0.25s ease, box-shadow 0.25s ease',
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Comment box — logged-in only, slides in after rating */}
-                {commentCTAVisible && (
-                  typeof window !== 'undefined' && !localStorage.getItem('token') ? (
-                    <div
-                      className="rounded-xl p-5 text-center space-y-3"
-                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,120,40,0.25)', animation: 'fadeSlideIn 0.35s ease forwards' }}
-                    >
-                      <p className="text-sm font-bold text-white/80">
-                        💬 Drop a message to <span className="text-white font-black">{creator.username}</span>
-                      </p>
-                      <p className="text-xs" style={{ color: 'rgba(255,160,80,0.65)' }}>
-                        Join Erogram to interact with top creators
-                      </p>
-                      <a
-                        href={`/login?redirect=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname : '')}`}
-                        className="block w-full py-3 rounded-xl text-white text-sm font-black tracking-wide shadow-lg transition-all hover:opacity-90"
-                        style={{ background: 'linear-gradient(135deg, #16a34a, #15803d)', boxShadow: '0 4px 18px rgba(22,163,74,0.45)' }}
-                      >
-                        Login / Open free account
-                      </a>
-                    </div>
-                  ) : (
-                    <div style={{ animation: 'fadeSlideIn 0.35s ease forwards' }}>
-                      <p className="text-xs font-bold mb-1.5" style={{ color: 'rgba(255,180,80,0.85)' }}>
-                        💬 Drop a message to <span className="text-white">{creator.username}</span>
-                      </p>
-                      <textarea
-                        ref={commentRef}
-                        placeholder={`What do you like most about ${creator.username}?`}
-                        value={reviewForm.content}
-                        onChange={(e) => setReviewForm((f) => ({ ...f, content: e.target.value }))}
-                        maxLength={500}
-                        rows={3}
-                        className="w-full rounded-lg px-3 py-2 text-sm text-white placeholder:text-orange-200/30 outline-none resize-none"
-                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,120,40,0.35)' }}
-                        onFocus={(e) => (e.currentTarget.style.borderColor = 'rgba(255,140,40,0.8)')}
-                        onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,120,40,0.35)')}
-                      />
-                    </div>
-                  )
-                )}
-
-                <button
-                  onClick={handleSubmitReview}
-                  disabled={reviewSubmitting || reviewForm.rating < 1}
-                  className="w-full py-2.5 rounded-xl text-white text-sm font-black tracking-wide transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                  style={{
-                    background: reviewForm.rating >= 1
-                      ? 'linear-gradient(90deg, #ff6b00, #ff3d00)'
-                      : 'rgba(255,255,255,0.1)',
-                    boxShadow: reviewForm.rating >= 1 ? '0 4px 16px rgba(255,80,0,0.45)' : 'none',
-                  }}
-                >
-                  {reviewSubmitting ? 'Submitting…' : reviewForm.rating >= 1 ? `Rate ${creator.name} ${Array(reviewForm.rating).fill('🔥').join('')}` : 'Pick your heat level above'}
-                </button>
-              </div>
-            ) : (
-              <div className="rounded-xl p-5 text-center" style={{ background: 'rgba(255,100,0,0.12)', border: '1px solid rgba(255,120,40,0.3)' }}>
-                <p className="text-2xl mb-1">🔥🔥🔥</p>
-                <p className="text-sm font-black text-white">Your rating is live!</p>
-                <p className="text-xs mt-0.5" style={{ color: 'rgba(255,160,80,0.7)' }}>Thanks for rating {creator.name}</p>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* ── Related Creators ── */}
-        {related.length > 0 && (
-          <section className="mb-12">
-            <div className="flex items-center gap-3 mb-4">
-              <h2 className="text-base sm:text-lg font-black text-white">
-                Suggested <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00D4FF] to-[#00AFF0]">Top OnlyFans</span> Creators
-              </h2>
-              <div className="flex-1 h-px bg-gradient-to-r from-[#00AFF0]/20 to-transparent" />
-              <Link
-                href={lp('/onlyfanssearch')}
-                className="text-[#00AFF0] text-xs font-bold hover:underline flex items-center gap-1"
-              >
-                {t('ofSearch.seeAll')} <ChevronRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-              {related.map((c) => (
-                <RelatedCard key={c._id} creator={c} publicOnlyfansPath={publicAccess} />
-              ))}
-            </div>
-          </section>
+        {topRankingPages.length > 0 && (
+          <CreatorProfileTop10Section
+            pages={topRankingPages}
+            previewAvatars={topRankingPreviewAvatars}
+          />
         )}
 
-        {/* ── Trending on Erogram ── */}
-        {trendingOnErogram.length > 0 && (
-          <section className="mb-10">
-            <div className="relative overflow-hidden rounded-2xl border border-[#00AFF0]/20 bg-gradient-to-br from-[#061018] via-[#0a1c2e] to-[#0d2844] p-4 sm:p-6 shadow-[0_20px_50px_-12px_rgba(0,175,240,0.18),inset_0_1px_0_0_rgba(255,255,255,0.06)]">
-              <div className="pointer-events-none absolute -top-28 -right-20 h-56 w-56 rounded-full bg-[#00AFF0]/20 blur-3xl" />
-              <div className="pointer-events-none absolute -bottom-24 -left-16 h-48 w-48 rounded-full bg-[#00D4FF]/12 blur-3xl" />
-              <div className="relative">
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-[#00AFF0] to-[#00D4FF] flex items-center justify-center shrink-0 shadow-lg shadow-[#00AFF0]/30">
-                    <TrendingUp size={18} className="text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">
-                      Trending on <span className="text-[#00D4FF]">Erogram</span>
-                    </h2>
-                    <p className="text-[11px] text-white/50 font-semibold">Top {trendingOnErogram.length} · Last 7 days</p>
-                  </div>
-                  <Link href={lp('/onlyfanssearch')} className="text-[#00AFF0] text-xs font-bold hover:underline flex items-center gap-1 shrink-0">
-                    {t('ofSearch.seeAll')} <ChevronRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                  {[0, 1, 2, 3].map((col) => {
-                    const perCol = Math.ceil(trendingOnErogram.length / 4);
-                    const chunk = trendingOnErogram.slice(col * perCol, col * perCol + perCol);
-                    if (chunk.length === 0) return null;
-                    return (
-                      <div key={col} className="rounded-xl bg-white overflow-hidden shadow-md">
-                        {chunk.map((tc, j) => (
-                          <Link
-                            key={tc._id}
-                            href={lp(`/${tc.username}-onlyfans`)}
-                            prefetch={false}
-                            className={`w-full flex items-center hover:brightness-95 transition-all ${j < chunk.length - 1 ? 'border-b border-gray-100' : ''}`}
-                          >
-                            <div className="flex items-center gap-3 px-2 py-2.5 flex-1 min-w-0">
-                              <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 shrink-0">
-                                {tc.avatar ? (
-                                  <img src={tc.avatar} alt={tc.name} className="w-full h-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-sm font-bold text-gray-400">{tc.name.charAt(0)}</div>
-                                )}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-[13px] font-bold text-gray-900 truncate">{tc.name}</p>
-                                <p className="text-[11px] text-gray-500 truncate">@{tc.username}</p>
-                              </div>
-                            </div>
-                          </Link>
-                        ))}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* ── Explore more OnlyFans categories ── */}
-        <section className="mb-8">
-          <h2 className="text-base font-black text-white mb-4 flex items-center gap-2">
-            <Globe className="w-5 h-5 text-[#00AFF0]" />
-            Explore more OnlyFans categories
-          </h2>
-          <div className="flex flex-wrap gap-2.5">
-            {OF_CATEGORIES.filter((cat) => ['asian', 'blonde', 'teen', 'milf', 'amateur', 'redhead', 'petite', 'big-ass', 'big-boobs'].includes(cat.slug)).map((cat) => (
-              <Link
-                key={cat.slug}
-                href={hottestRankingPublicPath(cat.slug, locale)}
-                className="px-4 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-white text-sm font-bold hover:bg-[#00AFF0]/15 hover:border-[#00AFF0]/40 hover:text-[#00AFF0] transition-all"
-              >
-                {cat.name} OnlyFans
-              </Link>
-            ))}
           </div>
-        </section>
+        </div>
       </div>
 
       {/* Admin floating toolbar */}
-      {isAdmin && !adminEdit && (
+      {isAdmin && !profileEdit && (
         <div className="fixed bottom-6 right-6 z-40 flex gap-2">
-          <button onClick={() => setAdminEdit(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#00AFF0] text-white font-bold text-sm shadow-lg shadow-[#00AFF0]/30 hover:bg-[#009dd9] transition-all">
+          <button onClick={() => setProfileEdit(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#00AFF0] text-white font-bold text-sm shadow-lg shadow-[#00AFF0]/30 hover:bg-[#009dd9] transition-all">
             <Pencil className="w-4 h-4" /> Edit Profile
           </button>
           <button onClick={handleDeleteProfile} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 text-white font-bold text-sm shadow-lg shadow-red-600/30 hover:bg-red-700 transition-all">
@@ -1666,12 +1908,93 @@ export default function CreatorProfileClient({
       )}
 
       {/* Admin edit panel */}
-      {isAdmin && adminEdit && (
+      {claimOpen && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/80 backdrop-blur-sm overflow-y-auto py-10">
           <div className="w-full max-w-lg mx-4 rounded-2xl border border-white/10 bg-[#0d1a24] p-6 space-y-4">
             <div className="flex items-center justify-between mb-2">
-              <h2 className="text-lg font-black text-white">Edit Profile</h2>
-              <button onClick={() => setAdminEdit(false)} className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
+              <h2 className="text-lg font-black text-white">CLAIM YOUR PROFILE</h2>
+              <button type="button" onClick={() => setClaimOpen(false)} className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+            <p className="text-xs text-gray-400">
+              Profile: <span className="text-[#00AFF0] font-bold">@{creator.username}</span>
+            </p>
+
+            <div>
+              <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Full name</label>
+              <input
+                type="text"
+                value={claimForm.fullName}
+                onChange={(e) => setClaimForm((p) => ({ ...p, fullName: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-white text-sm focus:outline-none focus:border-[#00AFF0]/50"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Email</label>
+              <input
+                type="email"
+                value={claimForm.email}
+                onChange={(e) => setClaimForm((p) => ({ ...p, email: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-white text-sm focus:outline-none focus:border-[#00AFF0]/50"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Telegram or WhatsApp</label>
+              <input
+                type="text"
+                value={claimForm.contact}
+                onChange={(e) => setClaimForm((p) => ({ ...p, contact: e.target.value }))}
+                placeholder="@username or phone"
+                className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-white text-sm focus:outline-none focus:border-[#00AFF0]/50"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-400 uppercase mb-2 block">Individual or agency</label>
+              <div className="flex gap-3">
+                {(['individual', 'agency'] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setClaimForm((p) => ({ ...p, accountType: type }))}
+                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold capitalize border transition-all ${claimForm.accountType === type ? 'bg-[#00AFF0]/20 border-[#00AFF0] text-[#00AFF0]' : 'bg-white/[0.04] border-white/10 text-gray-400'}`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Why do you want to claim this profile?</label>
+              <textarea
+                value={claimForm.reason}
+                onChange={(e) => setClaimForm((p) => ({ ...p, reason: e.target.value }))}
+                rows={4}
+                className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-white text-sm focus:outline-none focus:border-[#00AFF0]/50 resize-y"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleClaimSubmit}
+                disabled={claimSubmitting}
+                className="flex-1 py-3 rounded-xl bg-[#00AFF0] text-white font-black text-sm hover:bg-[#009dd9] transition-all disabled:opacity-50"
+              >
+                {claimSubmitting ? 'Submitting…' : 'Submit claim'}
+              </button>
+              <button type="button" onClick={() => setClaimOpen(false)} className="px-5 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 font-bold text-sm hover:text-white transition-all">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {canEditProfile && profileEdit && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/80 backdrop-blur-sm overflow-y-auto py-10">
+          <div className="w-full max-w-lg mx-4 rounded-2xl border border-white/10 bg-[#0d1a24] p-6 space-y-4">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-lg font-black text-white">{isAdmin ? 'Edit Profile' : 'Edit my profile'}</h2>
+              <button onClick={() => setProfileEdit(false)} className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
 
             {/* Photos — upload + delete */}
@@ -1747,7 +2070,7 @@ export default function CreatorProfileClient({
                 {/* Extra photos */}
                 {(creator.extraPhotos || []).length > 0 && (
                   <div>
-                    <div className="text-[10px] font-bold text-gray-500 uppercase mb-1.5">Extra Photos</div>
+                    <div className="text-[10px] font-bold text-gray-500 uppercase mb-1.5">Album Photos ({(creator.extraPhotos || []).length})</div>
                     <div className="flex flex-wrap gap-2">
                       {(creator.extraPhotos || []).map((url, i) => (
                         <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-white/10">
@@ -1758,10 +2081,55 @@ export default function CreatorProfileClient({
                     </div>
                   </div>
                 )}
+                {/* Extra videos */}
+                {(creator.extraVideos || []).length > 0 && (
+                  <div>
+                    <div className="text-[10px] font-bold text-gray-500 uppercase mb-1.5">Album Videos ({(creator.extraVideos || []).length})</div>
+                    <div className="flex flex-wrap gap-2">
+                      {(creator.extraVideos || []).map((url, i) => (
+                        <div key={i} className="relative w-24 h-16 rounded-lg overflow-hidden border border-white/10 bg-black">
+                          <video src={url} className="w-full h-full object-cover" muted playsInline preload="metadata" />
+                          <button onClick={() => handleDeleteVideo(url)} className="absolute top-1 right-1 p-0.5 rounded bg-red-600 text-white"><X className="w-3 h-3" /></button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* Add more album photos */}
+                <div className="p-3 rounded-xl bg-white/[0.04] border border-dashed border-white/15">
+                  <input
+                    ref={panelBulkRef}
+                    type="file"
+                    accept="image/*,video/mp4,video/webm,video/quicktime"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (files?.length) handleBulkAlbumUpload(files);
+                      e.target.value = '';
+                    }}
+                  />
+                  <div className="text-xs font-bold text-white mb-1">Add photos</div>
+                  <p className="text-[10px] text-gray-500 mb-3">
+                    Upload as many photos as you want. Max {MAX_CREATOR_PHOTO_MB} MB each. Videos max {MAX_CREATOR_VIDEO_MB} MB.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => panelBulkRef.current?.click()}
+                    disabled={bulkUpload !== null}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#00AFF0] text-white text-xs font-bold hover:bg-[#009dd9] transition-all disabled:opacity-50 w-full justify-center"
+                  >
+                    {bulkUpload ? (
+                      <>Uploading {bulkUpload.current}/{bulkUpload.total}…</>
+                    ) : (
+                      <><Upload className="w-3.5 h-3.5" /> Choose photos</>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Public access toggle */}
+            {isAdmin && (
             <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.04] border border-white/10">
               <button
                 type="button"
@@ -1772,7 +2140,7 @@ export default function CreatorProfileClient({
                 <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${publicPage ? 'left-[22px]' : 'left-0.5'}`} />
               </button>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold text-white mb-0.5">Public page — no login required</div>
+                <div className="text-xs font-bold text-white mb-0.5">Public page - no login required</div>
                 <div className="text-[10px] text-[#666]">
                   {publicPage
                     ? 'Anyone can view this profile without signing in.'
@@ -1780,6 +2148,7 @@ export default function CreatorProfileClient({
                 </div>
               </div>
             </div>
+            )}
 
             {/* Editable fields */}
             {([
@@ -1787,11 +2156,6 @@ export default function CreatorProfileClient({
               ['bio', 'Bio'],
               ['location', 'Location'],
               ['price', 'Price'],
-              ['website', 'Website'],
-              ['instagramUrl', 'Instagram'],
-              ['twitterUrl', 'X / Twitter'],
-              ['tiktokUrl', 'TikTok'],
-              ['telegramUrl', 'Telegram'],
             ] as const).map(([key, label]) => (
               <div key={key}>
                 <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">{label}</label>
@@ -1813,6 +2177,37 @@ export default function CreatorProfileClient({
               </div>
             ))}
 
+            <div>
+              <label className="text-xs font-bold text-gray-400 uppercase mb-2 block">Platforms</label>
+              <div className="space-y-3">
+                {([
+                  ['fanvueUrl', 'Fanvue'],
+                  ['fanslyUrl', 'Fansly'],
+                  ['instagramUrl', 'Instagram'],
+                  ['twitterUrl', 'X / Twitter'],
+                  ['telegramUrl', 'Telegram'],
+                  ['patreonUrl', 'Patreon'],
+                  ['redditUrl', 'Reddit'],
+                  ['website', 'Website'],
+                  ['linktreeUrl', 'Linktree'],
+                  ['allmylinksUrl', 'AllMyLinks'],
+                  ['beaconsUrl', 'Beacons'],
+                  ['tiktokUrl', 'TikTok'],
+                ] as const).map(([key, label]) => (
+                  <div key={key}>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">{label}</label>
+                    <input
+                      type="text"
+                      value={editFields[key]}
+                      onChange={(e) => setEditFields(prev => ({ ...prev, [key]: e.target.value }))}
+                      placeholder="https://"
+                      className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-white text-sm focus:outline-none focus:border-[#00AFF0]/50"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="flex gap-3 pt-2">
               <button
                 onClick={handleAdminSave}
@@ -1821,17 +2216,21 @@ export default function CreatorProfileClient({
               >
                 <Save className="w-4 h-4" /> {saving ? 'Saving…' : 'Save Changes'}
               </button>
-              <button onClick={() => setAdminEdit(false)} className="px-5 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 font-bold text-sm hover:text-white transition-all">
+              <button onClick={() => setProfileEdit(false)} className="px-5 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 font-bold text-sm hover:text-white transition-all">
                 Cancel
               </button>
             </div>
 
+            {isAdmin && (
             <button onClick={handleDeleteProfile} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-600/10 border border-red-600/30 text-red-400 font-bold text-xs hover:bg-red-600/20 transition-all">
               <Trash2 className="w-3.5 h-3.5" /> Delete This Profile Permanently
             </button>
+            )}
           </div>
         </div>
       )}
+
+      </div>
 
       <Footer />
 

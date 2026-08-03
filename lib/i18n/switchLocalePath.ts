@@ -15,7 +15,7 @@ import {
   hottestRankingPublicPath,
 } from '@/lib/bestOfPageContent/hottestUrls';
 import { bestTgCategoryPublicPath, bestTgCategoryFromPublicSegment } from '@/lib/bestTelegramGroups/btgUrls';
-import { ofCategoryPublicPath, ofCategoryFromPublicSegment } from '@/lib/bestOnlyfansAccounts/boaUrls';
+import { ofCategoryPublicPath, ofCategoryFromPublicSegment, bestHubPublicPath } from '@/lib/bestOnlyfansAccounts/boaUrls';
 
 const LOCALE_PREFIX_RE = /^\/(de|es|pt)(?=\/|$)/;
 const ENGLISH_ONLY_HUBS = new Set(['blog', 'articles', 'ainsfw']);
@@ -54,7 +54,7 @@ export function internalPathFromPublicRest(rest: string): string {
 
   if (ENGLISH_ONLY_HUBS.has(hubKey)) return `/${hubKey}${parts.length > 1 ? `/${parts.slice(1).join('/')}` : ''}`;
 
-  if (hubKey === 'onlyfanssearch') {
+  if (hubKey === 'onlyfans') {
     if (parts.length === 1) return '/onlyfanssearch';
     const seg = parts[1];
     const bestOf = bestOfSlugFromPublicPath(seg);
@@ -69,7 +69,7 @@ export function internalPathFromPublicRest(rest: string): string {
     return `/best-telegram-groups/${enCat}`;
   }
 
-  if (hubKey === 'best-onlyfans-accounts') {
+  if (hubKey === 'best' || hubKey === 'best-onlyfans-accounts') {
     if (parts.length === 1) return '/best-onlyfans-accounts';
     const enCat = ofCategoryFromPublicSegment(parts[1]) || parts[1];
     return `/best-onlyfans-accounts/${enCat}`;
@@ -110,7 +110,7 @@ export function publicPathFromInternal(internal: string, locale: Locale): string
     return localePath(normalized, locale);
   }
 
-  if (hub === 'onlyfanssearch') {
+  if (hub === 'onlyfans' || hub === 'onlyfanssearch') {
     if (parts.length === 1) {
       return locale === DEFAULT_LOCALE ? '/onlyfanssearch' : `/${locale}/${OF_SEARCH_HUB[locale]}`;
     }
@@ -133,8 +133,8 @@ export function publicPathFromInternal(internal: string, locale: Locale): string
     return bestTgCategoryPublicPath(parts[1], locale);
   }
 
-  if (hub === 'best-onlyfans-accounts') {
-    if (parts.length === 1) return hubPublicPath('best-onlyfans-accounts', locale);
+  if (hub === 'best' || hub === 'best-onlyfans-accounts') {
+    if (parts.length === 1) return bestHubPublicPath(locale);
     return ofCategoryPublicPath(parts[1], locale);
   }
 

@@ -15,6 +15,8 @@ export interface Group {
     featuredOrder?: number;
     boosted?: boolean;
     boostExpiresAt?: string;
+    paidBoost?: boolean;
+    paidBoostStars?: number | null;
     clickCount?: number;
     views?: number;
     createdBy?: {

@@ -9,8 +9,8 @@ import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary } from '@/lib/i18n';
 import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
 import { AI_NSFW_TOOLS } from '@/app/ainsfw/data';
-import type { AINsfwTool } from '@/app/ainsfw/types';
-import { getAllToolStats } from '@/lib/actions/ainsfw';
+import { pickRecentTools, RECENT_POOL_LIMIT } from '@/app/ainsfw/recentCategoryTools';
+import { getAllToolStats, getApprovedSubmissions } from '@/lib/actions/ainsfw';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import { filterCategories, categorySlug } from '@/app/groups/constants';
 
@@ -127,25 +127,6 @@ async function getNewestBots(limit: number = 8) {
   }
 }
 
-const HOME_AINSFW_CATEGORIES = ['Undress AI', 'AI Girlfriend'] as const;
-
-function getNewestAINsfw(perCategory: number = 2): AINsfwTool[] {
-  const byCategory = new Map<string, AINsfwTool[]>();
-  for (const tool of AI_NSFW_TOOLS) {
-    if (!HOME_AINSFW_CATEGORIES.includes(tool.category as (typeof HOME_AINSFW_CATEGORIES)[number])) continue;
-    const list = byCategory.get(tool.category) ?? [];
-    list.push(tool);
-    byCategory.set(tool.category, list);
-  }
-  const picked: AINsfwTool[] = [];
-  for (const cat of HOME_AINSFW_CATEGORIES) {
-    const tools = byCategory.get(cat);
-    if (!tools?.length) continue;
-    picked.push(...tools.slice(-perCategory).reverse());
-  }
-  return picked;
-}
-
 async function getOFCategoryPreviews() {
   const fallback = OF_CATEGORIES.slice(0, 12).map((c) => ({ slug: c.slug, name: c.name, emoji: c.emoji, avatar: '' }));
   try {
@@ -206,19 +187,29 @@ async function getStats() {
 export default async function Home() {
   const locale = await getLocale();
   const dict = await getDictionary(locale);
-  const faq: { q: string; a: string }[] = dict.home?.faq || [];
+  const faq: { q: string; a: string }[] = [
+    ...(dict.home?.faq || []),
+    ...(dict.home?.faqAinsfw || []),
+    ...(dict.home?.faqOnlyfans || []),
+  ];
   const metaDict = dict.meta || {};
 
-  const [featuredArticles, heroCampaigns, newGroups, stats, ofCategories, newestBots, topGroupCategories] = await Promise.all([
+  const staticSlugs = new Set(AI_NSFW_TOOLS.map((t) => t.slug));
+  const [featuredArticles, heroCampaigns, newGroups, stats, ofCategories, newestBots, topGroupCategories, paidSubmissions] = await Promise.all([
     getPublishedBlogArticles(6),
     getActiveCampaigns('homepage-hero'),
-    getNewGroups(8),
+    getNewGroups(4),
     getStats(),
     getOFCategoryPreviews(),
-    getNewestBots(8),
+    getNewestBots(4),
     getTopGroupCategories(16),
+    getApprovedSubmissions(staticSlugs),
   ]);
-  const newestAINsfw = getNewestAINsfw(4);
+  const newestAINsfw = pickRecentTools(
+    new Map(),
+    paidSubmissions as Array<(typeof paidSubmissions)[number] & { createdAt?: string }>,
+    { limit: RECENT_POOL_LIMIT },
+  );
   const newestAINsfwStats = await getAllToolStats(newestAINsfw.map((t) => t.slug));
   const { mergeToolContent } = await import('@/lib/ainsfw/toolContent');
   const displayNewestAINsfw = newestAINsfw.map((t) => mergeToolContent(t, newestAINsfwStats[t.slug]));

@@ -689,6 +689,500 @@ body {
   .fire-btn--hero:not(:hover)::before { animation: none; }
 }
 
+/* Profile cyberpunk — AINSFW scanline logo + stacking above CRT overlay */
+.profile-cyberpunk header a[href="/"] > span.text-white {
+  font-style: italic;
+  font-family: var(--font-archivo, 'Arial Black', 'Arial', sans-serif);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  -webkit-text-fill-color: transparent;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    #ffffff 0px,
+    #ffffff 2px,
+    #8c8c8c 2px,
+    #8c8c8c 4px
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.profile-cyberpunk header a[href="/"] > span:last-child {
+  background-color: #22c55e !important;
+}
+
+.profile-cyberpunk aside {
+  position: fixed;
+  z-index: 30;
+}
+
+.profile-cyberpunk main,
+.profile-cyberpunk > div:last-child {
+  position: relative;
+  z-index: 2;
+}
+
+.profile-cyberpunk .profile-cyber-nav-active {
+  position: relative;
+  overflow: hidden;
+  background-color: #22c55e !important;
+  color: #000 !important;
+  font-family: var(--font-archivo, 'Arial Black', 'Arial', sans-serif);
+  font-style: italic;
+  font-weight: 900;
+}
+
+.profile-cyberpunk .profile-cyber-nav-active::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.12) 2px,
+    rgba(0, 0, 0, 0.12) 4px
+  );
+  z-index: 1;
+}
+
+.profile-cyberpunk .profile-cyber-nav-active > * {
+  position: relative;
+  z-index: 2;
+}
+
+.profile-cyberpunk .profile-cyber-nav-label {
+  font-family: var(--font-archivo, 'Arial Black', 'Arial', sans-serif);
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.profile-cyberpunk .profile-cyber-content-card {
+  position: relative;
+  overflow: hidden;
+  background: #0a1f12 !important;
+  border: 1px solid rgba(34, 197, 94, 0.15) !important;
+}
+
+.profile-cyberpunk .profile-cyber-content-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(255, 255, 255, 0.02) 3px,
+    rgba(255, 255, 255, 0.02) 4px
+  );
+  z-index: 0;
+}
+
+.profile-cyberpunk .profile-cyber-content-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Profile Pornhub — black + orange wordmark, titles, nav */
+.profile-pornhub {
+  background-color: #000000;
+  color: #ffffff;
+  font-family: var(--font-inter-tight), 'Arial Black', Arial, sans-serif;
+}
+
+.profile-pornhub header {
+  background-color: #000000 !important;
+  border-bottom-color: rgba(255, 144, 0, 0.35) !important;
+}
+
+.profile-pornhub .profile-ph-wordmark-main {
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.profile-pornhub .profile-ph-wordmark-hub {
+  display: inline-block;
+  margin-left: 1px;
+  padding: 0.08em 0.28em 0.12em;
+  border-radius: 0.28em;
+  background-color: #ff9000;
+  color: #000000;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.profile-pornhub aside {
+  position: fixed;
+  z-index: 30;
+}
+
+.profile-pornhub main,
+.profile-pornhub > div:last-child {
+  position: relative;
+  z-index: 2;
+}
+
+.profile-pornhub .profile-ph-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.12em;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  font-family: var(--font-inter-tight), 'Arial Black', Arial, sans-serif;
+}
+
+.profile-pornhub .profile-ph-title-main {
+  color: #ffffff;
+}
+
+.profile-pornhub .profile-ph-title-hub {
+  display: inline-block;
+  padding: 0.06em 0.22em 0.1em;
+  border-radius: 0.18em;
+  background-color: #ff9000;
+  color: #000000;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+}
+
+.profile-pornhub .profile-ph-title-hub-text {
+  color: #ff9000;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.profile-pornhub .profile-pornhub-nav-active {
+  background-color: #ff9000 !important;
+  color: #000000 !important;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+.profile-pornhub .profile-pornhub-nav-label {
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.profile-pornhub .profile-pornhub-content-card {
+  background: #1b1b1b !important;
+  border: 1px solid rgba(255, 144, 0, 0.28) !important;
+  box-shadow: 0 24px 64px -24px rgba(255, 144, 0, 0.25);
+}
+
+.profile-pornhub .profile-pornhub-sidebar-greeting {
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+/* Profile OnlyFans — white + #00AFF0 typography */
+.profile-onlyfans {
+  background-color: #ffffff;
+  color: #1a1a1a;
+  font-family: var(--font-inter-tight), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.profile-onlyfans header {
+  background-color: #000000 !important;
+  border-bottom-color: rgba(0, 175, 240, 0.35) !important;
+}
+
+.profile-onlyfans .profile-of-wordmark-main {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.profile-onlyfans .profile-of-wordmark-fans {
+  color: #00aff0;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.profile-onlyfans aside {
+  position: fixed;
+  z-index: 30;
+}
+
+.profile-onlyfans main,
+.profile-onlyfans > div:last-child {
+  position: relative;
+  z-index: 2;
+}
+
+.profile-onlyfans .profile-of-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.18em;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-family: var(--font-inter-tight), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.profile-onlyfans .profile-of-title-main {
+  color: #1a1a1a;
+}
+
+.profile-onlyfans .profile-of-title-accent {
+  color: #00aff0;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.profile-onlyfans .profile-onlyfans-nav-active {
+  background-color: #00aff0 !important;
+  color: #ffffff !important;
+  font-weight: 700;
+}
+
+.profile-onlyfans .profile-onlyfans-nav-label {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.profile-onlyfans .profile-onlyfans-content-card {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 175, 240, 0.22) !important;
+  box-shadow: 0 12px 32px -8px rgba(0, 175, 240, 0.14);
+}
+
+.profile-onlyfans .profile-onlyfans-sidebar-greeting {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Profile Telegram — night blue + #2AABEE (no flat gray) */
+.profile-telegram {
+  background-color: #0e1621;
+  background-image:
+    radial-gradient(900px circle at 10% -5%, rgba(42, 171, 238, 0.12), transparent 55%),
+    radial-gradient(700px circle at 100% 0%, rgba(42, 171, 238, 0.06), transparent 50%),
+    linear-gradient(180deg, #0e1621 0%, #0a1118 100%);
+  background-attachment: fixed;
+  color: #ffffff;
+  font-family: var(--font-inter-tight), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.profile-telegram header {
+  background-color: #0e1621 !important;
+  border-bottom-color: rgba(42, 171, 238, 0.22) !important;
+}
+
+.profile-telegram aside {
+  position: fixed;
+  z-index: 30;
+}
+
+.profile-telegram main,
+.profile-telegram > div:last-child {
+  position: relative;
+  z-index: 2;
+}
+
+.profile-telegram .profile-tg-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.18em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.profile-telegram .profile-tg-title-main {
+  color: #ffffff;
+}
+
+.profile-telegram .profile-tg-title-accent {
+  color: #6ab2f3;
+  font-weight: 700;
+}
+
+.profile-telegram .profile-telegram-nav-active {
+  background-color: #2aabee !important;
+  color: #ffffff !important;
+  font-weight: 700;
+}
+
+.profile-telegram .profile-telegram-nav-label {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.profile-telegram .profile-telegram-content-card {
+  background: #17212b !important;
+  border: 1px solid rgba(42, 171, 238, 0.24) !important;
+  box-shadow: 0 16px 48px -20px rgba(42, 171, 238, 0.16);
+}
+
+.profile-telegram .profile-telegram-sidebar-greeting {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Profile EROgram — dark red + black */
+.profile-erogram {
+  background-color: #0a0a0a;
+  background-image:
+    radial-gradient(900px circle at 10% -5%, rgba(127, 29, 29, 0.5), transparent 55%),
+    radial-gradient(700px circle at 100% 0%, rgba(185, 28, 28, 0.22), transparent 50%),
+    linear-gradient(180deg, #0a0a0a 0%, #050505 100%);
+  background-attachment: fixed;
+  color: #fdfdfd;
+  font-family: var(--font-inter-tight), sans-serif;
+}
+
+.profile-erogram header {
+  background-color: #0a0a0a !important;
+  border-bottom-color: rgba(127, 29, 29, 0.45) !important;
+}
+
+.profile-erogram aside {
+  position: fixed;
+  z-index: 30;
+  background-color: #0a0a0a !important;
+  background-image:
+    radial-gradient(420px circle at 100% 0%, rgba(185, 28, 28, 0.32), transparent 58%),
+    radial-gradient(260px circle at 100% 12%, rgba(127, 29, 29, 0.2), transparent 62%),
+    linear-gradient(180deg, #0a0a0a 0%, #070707 100%) !important;
+  border-left-color: rgba(185, 28, 28, 0.35) !important;
+}
+
+.profile-erogram main,
+.profile-erogram > div:last-child {
+  position: relative;
+  z-index: 2;
+}
+
+.profile-erogram .profile-ero-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.14em;
+  font-family: var(--font-inter-tight), sans-serif;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  line-height: 0.95;
+}
+
+.profile-erogram .profile-ero-title-main {
+  color: #fdfdfd;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.profile-erogram .profile-ero-title-accent {
+  color: #991b1b;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.profile-erogram .profile-erogram-nav-active {
+  background-color: rgba(153, 27, 27, 0.85) !important;
+  color: #fdfdfd !important;
+  font-weight: 900;
+  box-shadow: inset 0 0 0 1px rgba(185, 28, 28, 0.35);
+}
+
+.profile-erogram .profile-erogram-nav-label {
+  font-family: var(--font-inter-tight), sans-serif;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.profile-erogram .profile-erogram-content-card {
+  background: #0a0a0a !important;
+  border: 1px solid rgba(185, 28, 28, 0.35) !important;
+  box-shadow: 0 24px 64px -24px rgba(127, 29, 29, 0.45);
+}
+
+.profile-erogram .profile-erogram-sidebar-greeting {
+  font-family: var(--font-inter-tight), sans-serif;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+/* Profile Console — admin sidebar + /groups dark feed */
+.profile-console {
+  background-color: #0d1117;
+  background-image:
+    radial-gradient(420px circle at 15% -5%, rgba(255, 94, 42, 0.12), transparent 55%),
+    radial-gradient(380px circle at 85% 0%, rgba(255, 148, 50, 0.08), transparent 50%),
+    linear-gradient(180deg, #0d1117 0%, #0a0e16 100%);
+  background-attachment: fixed;
+  color: #ffffff;
+  font-family: var(--font-inter-tight), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.profile-console header {
+  background-color: #0d1117 !important;
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.profile-console aside {
+  position: fixed;
+  z-index: 30;
+  background-color: #0f0f0f !important;
+  border-left-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+.profile-console main,
+.profile-console > div:last-child {
+  position: relative;
+  z-index: 2;
+}
+
+.profile-console .profile-console-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.18em;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.profile-console .profile-console-title-main {
+  color: #ffffff;
+}
+
+.profile-console .profile-console-title-accent {
+  color: #ff5e2a;
+  font-weight: 800;
+}
+
+.profile-console .profile-console-nav-active {
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+  font-weight: 700;
+}
+
+.profile-console .profile-console-nav-label {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.profile-console .profile-console-content-card {
+  background: #131a24 !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  box-shadow: 0 8px 30px -12px rgba(0, 0, 0, 0.6);
+}
+
+.profile-console .profile-console-sidebar-greeting {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
 /* ── AINSFW FUTURISTIC DESIGN SYSTEM ──────────────────────────── */
 
 /* Cyberpunk black + dark-green branding background.
@@ -741,6 +1235,39 @@ body {
   );
   -webkit-background-clip: text;
   background-clip: text;
+}
+
+.ainsfw-hero-customers {
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  font-family: var(--font-archivo, 'Arial Black', 'Arial', sans-serif);
+  -webkit-text-fill-color: transparent;
+  background-image: linear-gradient(
+    90deg,
+    #22c55e 0%,
+    #4ade80 25%,
+    #86efac 50%,
+    #4ade80 75%,
+    #22c55e 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 16px rgba(34, 197, 94, 0.45));
+  animation: ainsfw-hero-shine 4s ease-in-out infinite;
+}
+
+@keyframes ainsfw-hero-shine {
+  0%,
+  100% {
+    background-position: 0% center;
+  }
+
+  50% {
+    background-position: 100% center;
+  }
 }
 
 /* Green scanline button — the electric CRT effect on the CTA */

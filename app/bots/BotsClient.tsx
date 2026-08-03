@@ -6,7 +6,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
 import Navbar from '@/components/Navbar';
-import HeaderBanner from '@/components/HeaderBanner';
+import LazyClickableVideoAd from '@/components/LazyClickableVideoAd';
 import BotCardSkeleton from './BotCardSkeleton';
 import BotsEditorialSeo from './BotsEditorialSeo';
 import AdvertCard from '../groups/AdvertCard';
@@ -16,6 +16,7 @@ import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 import { useTranslation, useLocalePath } from '@/lib/i18n';
 import { voteOnBot, unvoteOnBot, getAllBotStats } from '@/lib/actions/botVotes';
 import type { BotStatsData } from '@/lib/actions/botVotes';
+import { getActiveFeedCampaigns } from '@/lib/actions/campaigns';
 import { BOOST_WEIGHT } from '@/lib/adPlacements';
 // Removed react-window import as virtualization is no longer used
 
@@ -71,7 +72,6 @@ interface BotsClientProps {
   initialIsMobile: boolean;
   initialIsTelegram: boolean;
   initialCountry?: string;
-  topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string }>;
   allBotStats?: Record<string, BotStatsData>;
   paginationCurrentPage?: number;
   paginationTotalPages?: number;
@@ -82,7 +82,7 @@ function botsPageHref(page: number): string {
   return page <= 1 ? '/bots' : `/bots/page/${page}`;
 }
 
-export default function BotsClient({ initialBots, initialTopBots = [], initialAdverts, feedCampaigns = [], initialIsMobile, initialIsTelegram, initialCountry, topBannerCampaigns = [], allBotStats, paginationCurrentPage = 1, paginationTotalPages = 1, botsPageSize = 16 }: BotsClientProps) {
+export default function BotsClient({ initialBots, initialTopBots = [], initialAdverts, feedCampaigns: initialFeedCampaigns = [], initialIsMobile, initialIsTelegram, initialCountry, allBotStats, paginationCurrentPage = 1, paginationTotalPages = 1, botsPageSize = 16 }: BotsClientProps) {
   const [username, setUsername] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedSubcategory, setSelectedSubcategory] = useState('All');
@@ -139,9 +139,28 @@ export default function BotsClient({ initialBots, initialTopBots = [], initialAd
   const pinnedAdverts = initialAdverts.filter(a => a.pinned);
   const regularAdverts = initialAdverts.filter(a => !a.pinned);
 
-  // Use server-provided device detection to avoid client-only layout changes (CLS).
-  const isMobile = initialIsMobile;
-  const isTelegram = initialIsTelegram;
+  // The hub is ISR-cached (no server headers()), so device is detected in the
+  // browser after mount. Ads default to shown, then hidden inside Telegram's app.
+  const [isMobile, setIsMobile] = useState(initialIsMobile);
+  const [isTelegram, setIsTelegram] = useState(initialIsTelegram);
+
+  useEffect(() => {
+    const ua = navigator.userAgent || '';
+    setIsMobile(/Mobi|Android|iPhone|iPad|iPod/i.test(ua) || window.innerWidth < 768);
+    setIsTelegram(/Telegram/i.test(ua) || typeof (window as any).TelegramWebviewProxy !== 'undefined');
+  }, []);
+
+  // LIVE ADS: page HTML is ISR-cached (up to 5 min stale). Refresh campaigns in the
+  // browser so every visitor gets current rotation and fresh advertisers.
+  // These aliases keep the rest of the component using the same names.
+  const [feedCampaigns, setFeedCampaigns] = useState<FeedCampaign[]>(initialFeedCampaigns);
+
+  useEffect(() => {
+    getActiveFeedCampaigns('bots').catch(() => [] as FeedCampaign[])
+      .then((feed) => {
+        if (feed.length > 0) setFeedCampaigns(feed);
+      }).catch(() => {});
+  }, []);
 
   console.log('BotsClient render - pinned bots:', pinnedBots.length, 'regular bots:', regularBots.length);
   console.log('Pinned bot IDs:', pinnedBots.map(b => ({ id: b._id, name: b.name, pinned: b.pinned })));
@@ -432,9 +451,8 @@ export default function BotsClient({ initialBots, initialTopBots = [], initialAd
           </p>
         </motion.div>
 
-        {/* Global top banner (single campaign) */}
-        <div className="w-full mb-4">
-          <HeaderBanner campaigns={topBannerCampaigns} />
+        <div className="w-full mb-6">
+          <LazyClickableVideoAd maxWidth={672} />
         </div>
 
         {/* Filter bar — same framework as AI NSFW: compact, centered, inline */}

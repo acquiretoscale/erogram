@@ -1,17 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
+import ErogramDiscoveryBanner from '@/components/ErogramDiscoveryBanner';
+import ErogramDevilGirlFooter from '@/components/ErogramDevilGirlFooter';
 import Footer from '@/components/Footer';
 import AdvertiseStats from './AdvertiseStats';
-import HeroSection from './HeroSection';
-import AudienceCountries from './AudienceCountries';
-import OrganicGrowth from './OrganicGrowth';
-import PageReplica from './PageReplica';
-import AdShop from './AdShop';
-import AdvertiseContactForm from './AdvertiseContactForm';
+import PromoAudienceProof from './PromoAudienceProof';
 import TrustedByLeaders from '../advertise/TrustedByLeaders';
+import { PROMO_BORDER, PROMO_CTA, PROMO_SHADOW } from './promoTheme';
 
 export default function MediaKitClient() {
   const [username, setUsername] = useState<string | null>(null);
@@ -24,45 +23,57 @@ export default function MediaKitClient() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-[#f5f5f5] overflow-hidden">
-        {/* Animated Background */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-[#0ea5e9]/8 to-transparent rounded-full blur-[120px] opacity-40" />
-          <div className="absolute bottom-0 right-0 w-[800px] h-[800px] bg-[#0ea5e9]/5 rounded-full blur-[140px] opacity-20" />
-        </div>
-
-        {/* Erogram global navigation */}
+    <div className="ainsfw-page ainsfw-bg min-h-screen text-white overflow-hidden">
         <Navbar username={username} setUsername={setUsername} />
+        <ErogramDiscoveryBanner />
+        <h1 className="text-center font-black leading-none tracking-tighter whitespace-nowrap text-[clamp(1.55rem,7.2vw,3.75rem)] sm:text-6xl mt-4 sm:mt-6 mb-6 px-4">
+          <span className="text-white">We have your </span>
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#22c55e] via-[#4ade80] to-[#86efac]">customers.</span>
+        </h1>
 
-        {/* Page-specific sub-nav */}
-        <div className="sticky top-[64px] z-20 border-b border-[#0ea5e9]/20 bg-[#0a0a0a]/95 backdrop-blur-md">
-          <div className="max-w-5xl mx-auto px-4 sm:px-8 flex items-center gap-1 sm:gap-2 overflow-x-auto scrollbar-none py-2">
-            <span className="shrink-0 text-[10px] font-black uppercase tracking-widest text-[#0ea5e9] mr-2 hidden sm:block">Media Kit</span>
-            <a href="#audience-stats" className="whitespace-nowrap px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white/50 hover:text-white hover:bg-white/10 transition-all">
-              Audience Stats
-            </a>
-            <a href="#website-ads" className="whitespace-nowrap px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white/50 hover:text-white hover:bg-white/10 transition-all">
-              Ad Placements
-            </a>
-            <a href="#ad-pricing-list" className="whitespace-nowrap px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white" style={{ background: '#0ea5e9', border: '2px solid #000', boxShadow: '2px 2px 0px #000' }}>
-              Advertising Rates
-            </a>
-            <a href="#contact-form" className="whitespace-nowrap px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white/50 hover:text-white hover:bg-white/10 transition-all">
-              Contact
-            </a>
+        <div className="max-w-3xl mx-auto px-4 sm:px-8 mb-10 space-y-4 text-center">
+          <p className="text-base sm:text-lg text-white/75 leading-relaxed">
+            Stop paying for cold traffic. EROGRAM connects your AI tool with users actively searching for premium AI experiences. Get discovered by thousands of high-intent buyers every day while your listing keeps generating visibility through our rapidly growing Google presence.
+          </p>
+          <p className="text-base sm:text-lg text-white/75 leading-relaxed">
+            Get featured on one of the fastest-growing AI discovery platforms with 40% month-over-month organic growth.
+          </p>
+          <p className="text-xl sm:text-2xl font-black text-white leading-snug">
+            Reach 180,000+ Monthly Visitors Ready to Buy.
+          </p>
+          <p className="text-sm sm:text-base text-white/60 leading-relaxed">
+            Our top 10 countries: US 29%, Germany 7%, Netherlands 4%, UK 4%, Canada 4%, Italy 3%, Spain 2.5%, Australia 2%, Turkey 2%, Singapore 2%, Malaysia 2%.
+          </p>
+          <div className="pt-2">
+            <Link
+              href="/add/ainsfw"
+              className="inline-flex w-full sm:w-auto items-center justify-center px-8 py-3.5 text-base sm:text-sm font-black uppercase tracking-widest text-black transition-all hover:brightness-105 active:translate-x-[2px] active:translate-y-[2px]"
+              style={{ background: PROMO_CTA, border: PROMO_BORDER, boxShadow: PROMO_SHADOW }}
+            >
+              GET LISTED ON EROGRAM
+            </Link>
           </div>
         </div>
 
-        <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 pt-8 sm:pt-14 pb-20">
-          {/* Hero */}
-          <HeroSection />
+        <div className="max-w-5xl mx-auto px-4 sm:px-8 mb-10">
+          <TrustedByLeaders variant="green" />
+        </div>
 
-          {/* Live Stats */}
+        <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 pt-2 sm:pt-4 pb-4">
           <div id="audience-stats">
             <AdvertiseStats />
           </div>
 
-          {/* Audience Insights */}
+          <div className="flex justify-center mb-10 sm:mb-12">
+            <Link
+              href="/add/ainsfw"
+              className="inline-flex w-full sm:w-auto items-center justify-center px-8 py-3.5 text-base sm:text-sm font-black uppercase tracking-widest text-black transition-all hover:brightness-105 active:translate-x-[2px] active:translate-y-[2px]"
+              style={{ background: PROMO_CTA, border: PROMO_BORDER, boxShadow: PROMO_SHADOW }}
+            >
+              GET LISTED ON EROGRAM
+            </Link>
+          </div>
+
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -70,74 +81,19 @@ export default function MediaKitClient() {
             transition={{ duration: 0.5 }}
             className="mb-14"
           >
-            {/* PART 1: Erogram Website */}
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-1 h-5 bg-gradient-to-b from-[#0ea5e9] to-[#0369a1]" />
-              <h3 className="text-xl font-black text-[#f5f5f5]">Erogram Website</h3>
+            <div className="mb-6 sm:mb-8 text-center px-1 sm:px-2">
+              <h2 className="text-lg sm:text-2xl md:text-3xl lg:text-[2rem] font-black uppercase tracking-tight text-white leading-snug max-w-4xl mx-auto">
+                GET LISTED ON THE FASTEST GROWING ADULT ENTRETAINEMENT DISCOVERY HUB.
+              </h2>
             </div>
-            <AudienceCountries />
-            <OrganicGrowth />
+            <PromoAudienceProof />
           </motion.div>
 
-          {/* ── Section divider ── */}
-          <div className="my-10 sm:my-16 flex items-center gap-3 sm:gap-4">
-            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[#0ea5e9]/40 to-transparent" />
-            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-[#0ea5e9]/50">Ad Placements</span>
-            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[#0ea5e9]/40 to-transparent" />
+          <div className="mb-14">
+            <TrustedByLeaders variant="green" />
           </div>
 
-          {/* Interactive page replica — ad slot preview */}
-          <motion.section
-            id="website-ads"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.4 }}
-            className="scroll-mt-28 mb-10"
-          >
-            <div className="text-center mb-6 sm:mb-10">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
-                <span style={{ background: 'linear-gradient(135deg, #0ea5e9, #38bdf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>EROGRAM</span>
-                <span className="text-white"> ADS PLACEMENTS</span>
-              </h2>
-              <p className="mt-2 sm:mt-3 text-xs sm:text-sm md:text-base text-[#999] max-w-xl mx-auto">
-                Visual overview of every ad location across the website. Click any highlighted slot for specs and pricing.
-              </p>
-            </div>
-            <PageReplica />
-          </motion.section>
-
-          {/* Pricing */}
-          <motion.section
-            id="ad-pricing-list"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.4 }}
-            className="scroll-mt-28 mb-14"
-          >
-            <div className="text-center mb-6 sm:mb-10">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
-                <span style={{ background: 'linear-gradient(135deg, #0ea5e9, #38bdf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>ADVERTISING</span>
-                <span className="text-white"> RATES</span>
-              </h2>
-            </div>
-            <AdShop />
-
-            <TrustedByLeaders />
-
-            {/* Contact form — right below pricing */}
-            <div id="contact-form" className="scroll-mt-28 mt-10 max-w-2xl mx-auto p-6 sm:p-8" style={{ background: 'linear-gradient(180deg, #0c2d48 0%, #0a1929 100%)', border: '3px solid #0ea5e9', boxShadow: '6px 6px 0px #0ea5e9' }}>
-              <div className="text-center mb-6">
-                <h3 className="text-xl sm:text-2xl font-black text-white">Have a question?</h3>
-                <p className="mt-1 text-sm text-white/50">
-                  Send us a message and we&apos;ll get back to you shortly.
-                </p>
-              </div>
-              <AdvertiseContactForm />
-            </div>
-          </motion.section>
-
+          <ErogramDevilGirlFooter />
         </main>
 
         <Footer />

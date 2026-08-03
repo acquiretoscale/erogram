@@ -1,7 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Heart, ExternalLink, Grid2X2, LayoutGrid } from 'lucide-react';
+import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import Link from 'next/link';
+import ProfileGridDensityToggle from './ProfileGridDensityToggle';
+import {
+  loadProfileGridDensity,
+  profileGridClass,
+  profileGridGapClass,
+  type ProfileGridDensity,
+} from './profileGridDensity';
 
 interface SavedCreator {
   _id: string;
@@ -18,10 +26,18 @@ interface SavedCreator {
   likesCount?: number;
 }
 
-export default function SavedModelsTab() {
+import type { ProfileThemeId } from './profileTheme';
+import { isProfileThemedMode, profileComponentColors } from './profileTheme';
+import { useProfileTheme } from './ProfileThemeContext';
+
+export default function SavedModelsTab({ editorial = false, themeMode }: { editorial?: boolean; themeMode?: ProfileThemeId }) {
   const [creators, setCreators] = useState<SavedCreator[]>([]);
   const [loading, setLoading] = useState(true);
-  const [cols, setCols] = useState<2 | 4>(4);
+  const [gridDensity, setGridDensity] = useState<ProfileGridDensity>(() => loadProfileGridDensity());
+  const [editMode, setEditMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deletingSelected, setDeletingSelected] = useState(false);
+  const { tokens } = useProfileTheme();
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -51,15 +67,52 @@ export default function SavedModelsTab() {
         body: JSON.stringify({ creatorId }),
       });
     } catch {
-      // Silently fail — the UI already updated optimistically
+      // UI already updated
     }
   };
+
+  const exitEditMode = () => {
+    setEditMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const deleteSelected = async () => {
+    if (selectedIds.size === 0) return;
+    setDeletingSelected(true);
+    try {
+      for (const id of selectedIds) {
+        await handleUnsave(id);
+      }
+      exitEditMode();
+    } finally {
+      setDeletingSelected(false);
+    }
+  };
+
+  const mode = themeMode ?? (editorial ? 'light' : undefined);
+  const themed = isProfileThemedMode(mode);
+  const colors = mode && themed ? profileComponentColors(mode) : null;
+  const plum = themed && tokens ? tokens.text : undefined;
+  const muted = themed && tokens ? tokens.muted : undefined;
 
   if (loading) {
     return (
       <div className="space-y-3">
         {Array.from({ length: 4 }, (_, i) => (
-          <div key={i} className="h-20 rounded-xl bg-white/[0.03] animate-pulse" />
+          <div
+            key={i}
+            className="h-20 rounded-xl animate-pulse"
+            style={{ backgroundColor: colors?.fieldBg ?? 'rgba(255,255,255,0.03)' }}
+          />
         ))}
       </div>
     );
@@ -68,11 +121,18 @@ export default function SavedModelsTab() {
   if (creators.length === 0) {
     return (
       <div className="text-center py-16">
-        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white/[0.04] flex items-center justify-center">
-          <Heart size={28} className="text-white/20" />
+        <div
+          className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center"
+          style={{ backgroundColor: editorial ? 'rgba(43,27,40,0.06)' : 'rgba(255,255,255,0.04)' }}
+        >
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color: themed ? muted : 'rgba(255,255,255,0.2)' }}>
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
         </div>
-        <h3 className="text-lg font-bold text-white/60 mb-1">No saved models yet</h3>
-        <p className="text-sm text-white/30 max-w-sm mx-auto">
+        <h3 className={`text-lg font-bold mb-1 ${themed ? '' : 'text-white/60'}`} style={themed ? { color: plum } : undefined}>
+          No saved models yet
+        </h3>
+        <p className={`text-sm max-w-sm mx-auto ${themed ? '' : 'text-white/30'}`} style={themed ? { color: muted } : undefined}>
           Browse the{' '}
           <a href="/onlyfanssearch" className="text-[#00AFF0] hover:underline">
             OnlyFans directory
@@ -85,98 +145,133 @@ export default function SavedModelsTab() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-white/40">
+      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+        <p className={`text-sm ${themed ? '' : 'text-white/40'}`} style={themed ? { color: muted } : undefined}>
           {creators.length} saved model{creators.length !== 1 ? 's' : ''}
         </p>
-        <div className="flex items-center gap-1 bg-white/[0.04] rounded-lg p-0.5">
+        <div className="flex items-center gap-1.5">
+          {editMode && selectedIds.size > 0 && (
+            <button
+              type="button"
+              onClick={deleteSelected}
+              disabled={deletingSelected}
+              className="px-2.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all disabled:opacity-50"
+              style={{ background: '#ef4444', color: '#fff' }}
+            >
+              {deletingSelected ? 'Deleting...' : `Delete (${selectedIds.size})`}
+            </button>
+          )}
           <button
-            onClick={() => setCols(4)}
-            className={`p-1.5 rounded-md transition-all ${cols === 4 ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/50'}`}
-            title="4 per row"
+            type="button"
+            onClick={() => editMode ? exitEditMode() : setEditMode(true)}
+            className="px-2.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all"
+            style={
+              editMode
+                ? { background: tokens.accent, color: tokens.ink }
+                : { background: tokens.hover, color: tokens.muted, border: `1px solid ${tokens.border}` }
+            }
           >
-            <LayoutGrid size={16} />
+            {editMode ? 'Done' : 'Edit'}
           </button>
-          <button
-            onClick={() => setCols(2)}
-            className={`p-1.5 rounded-md transition-all ${cols === 2 ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/50'}`}
-            title="2 per row"
-          >
-            <Grid2X2 size={16} />
-          </button>
+          <ProfileGridDensityToggle
+            value={gridDensity}
+            onChange={setGridDensity}
+            tokens={{
+              pillBorder: tokens.border,
+              pillBg: editorial ? 'rgba(43,27,40,0.06)' : 'rgba(255,255,255,0.04)',
+              viewBtnBg: tokens.accent,
+              viewBtnTxt: tokens.ink,
+              accentDim: tokens.muted,
+            }}
+          />
         </div>
       </div>
 
-      <div className={`grid gap-2 sm:gap-3 ${cols === 4 ? 'grid-cols-4' : 'grid-cols-2'}`}>
-        {creators.map((creator) => (
-          <div
-            key={creator._id}
-            className="relative rounded-2xl overflow-hidden bg-white shadow-md"
-          >
-            <a
-              href={`/go/${creator.username}`}
-              target="_blank"
-              rel="noopener"
-              className="group block"
-            >
-              <div className="relative aspect-[3/4] bg-gray-100">
-                {creator.avatar ? (
+      <div className={`grid ${profileGridClass(gridDensity)} ${profileGridGapClass(gridDensity)}`}>
+        {creators.map((creator) => {
+          const selected = selectedIds.has(creator._id);
+          const subtitle = creator.likesCount
+            ? `${creator.likesCount >= 1000 ? `${(creator.likesCount / 1000).toFixed(1)}k` : creator.likesCount} likes`
+            : creator.isFree ? 'Free' : `$${creator.price}`;
+
+          if (editMode) {
+            return (
+              <button
+                key={creator._id}
+                type="button"
+                onClick={() => toggleSelected(creator._id)}
+                className="group rounded-xl overflow-hidden border text-left transition-all"
+                style={{
+                  borderColor: selected ? '#ef4444' : tokens.border,
+                  backgroundColor: tokens.card,
+                  boxShadow: selected ? '0 0 0 1px #ef444488' : undefined,
+                }}
+              >
+                <div className="aspect-[3/4] overflow-hidden relative">
                   <img
-                    src={creator.avatar}
-                    alt={creator.name}
-                    className="absolute inset-0 w-full h-full object-cover"
+                    src={creator.avatar || '/assets/placeholder-no-image.png'}
+                    alt=""
+                    className="w-full h-full object-cover"
                     loading="lazy"
                     referrerPolicy="no-referrer"
                   />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-gray-300 bg-gradient-to-br from-gray-100 to-gray-200">
-                    {creator.name.charAt(0)}
-                  </div>
-                )}
-
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent pt-8 pb-2 px-3">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-white font-bold text-sm truncate">{creator.name}</span>
-                    <span className={`flex-shrink-0 px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase ${
-                      creator.isFree ? 'bg-emerald-400 text-white' : 'bg-[#00AFF0] text-white'
-                    }`}>
-                      {creator.isFree ? 'Free' : `$${creator.price}`}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    {creator.likesCount ? (
-                      <span className="text-[9px] text-white/50 flex items-center gap-0.5">
-                        <svg width="9" height="9" viewBox="0 0 24 24" fill="#f472b6" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                        {creator.likesCount >= 1000 ? `${(creator.likesCount / 1000).toFixed(1)}k` : creator.likesCount}
-                      </span>
-                    ) : null}
-                    {creator.categories && creator.categories.slice(0, 2).map((cat, i) => (
-                      <span key={i} className="px-1 py-[1px] rounded text-[7px] font-semibold text-white/70 capitalize" style={{ background: 'rgba(0,175,240,0.3)' }}>{cat}</span>
-                    ))}
-                  </div>
+                  <span
+                    className="absolute bottom-2 right-2 text-[9px] font-bold tracking-[0.14em] uppercase px-2 py-0.5 rounded-full"
+                    style={{ backgroundColor: 'rgba(0,175,240,0.9)', color: '#fff' }}
+                  >
+                    OnlyFans
+                  </span>
+                  <span
+                    className="absolute top-2 right-2 w-6 h-6 rounded-full border-2 flex items-center justify-center"
+                    style={{
+                      borderColor: selected ? '#ef4444' : 'rgba(255,255,255,0.8)',
+                      backgroundColor: selected ? '#ef4444' : 'rgba(0,0,0,0.35)',
+                    }}
+                  >
+                    {selected && (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><path d="M5 13l4 4L19 7"/></svg>
+                    )}
+                  </span>
                 </div>
-              </div>
-            </a>
+                <div className="p-2.5">
+                  <p className="text-xs font-bold truncate" style={{ color: tokens.text }}>{creator.name}</p>
+                  <p className="text-[10px] truncate mt-0.5" style={{ color: tokens.muted }}>{subtitle}</p>
+                </div>
+              </button>
+            );
+          }
 
-            <button
-              onClick={() => handleUnsave(creator._id)}
-              className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center transition-all hover:bg-red-500/80 hover:scale-110"
-              title="Remove from saved"
-            >
-              <Heart size={15} className="text-rose-500" fill="currentColor" />
-            </button>
-
-            <a
-              href={`/go/${creator.username}`}
+          return (
+            <Link
+              key={creator._id}
+              href={ofCreatorProfileUrl(creator.slug || creator.username)}
               target="_blank"
-              rel="noopener"
-              className="flex items-center justify-center gap-1.5 py-2.5 text-sm font-bold text-[#00AFF0] hover:bg-[#00AFF0]/5 transition-colors"
+              rel="noopener noreferrer"
+              className="group rounded-xl overflow-hidden border transition-all hover:opacity-95"
+              style={{ borderColor: tokens.border, backgroundColor: tokens.card }}
             >
-              Visit OnlyFans
-              <ExternalLink size={13} />
-            </a>
-          </div>
-        ))}
+              <div className="aspect-[3/4] overflow-hidden relative">
+                <img
+                  src={creator.avatar || '/assets/placeholder-no-image.png'}
+                  alt=""
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                />
+                <span
+                  className="absolute bottom-2 right-2 text-[9px] font-bold tracking-[0.14em] uppercase px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: 'rgba(0,175,240,0.9)', color: '#fff' }}
+                >
+                  OnlyFans
+                </span>
+              </div>
+              <div className="p-2.5">
+                <p className="text-xs font-bold truncate" style={{ color: tokens.text }}>{creator.name}</p>
+                <p className="text-[10px] truncate mt-0.5" style={{ color: tokens.muted }}>{subtitle}</p>
+              </div>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

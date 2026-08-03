@@ -3,35 +3,104 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Script from 'next/script';
+import axios from 'axios';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
+import ErogramDiscoveryBanner from '@/components/ErogramDiscoveryBanner';
 import { Search, Bookmark, Rocket, Shield, LogIn, ArrowLeft } from 'lucide-react';
+
+const AINSFW_ACCENT = '#22c55e';
 
 type Tab = 'join' | 'signin';
 
-export default function JoinClient({ avatars }: { avatars: string[] }) {
+function readRedirectParam(searchParams: URLSearchParams): string | null {
+  const direct = searchParams.get('redirect');
+  if (direct) return direct;
+  for (const [key] of searchParams.entries()) {
+    if (key.startsWith('redirect=')) {
+      return decodeURIComponent(key.slice('redirect='.length));
+    }
+  }
+  return null;
+}
+
+export default function JoinClient({
+  avatars,
+  initialRedirect = null,
+}: {
+  avatars: string[];
+  initialRedirect?: string | null;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [redirect, setRedirect] = useState('/onlyfanssearch');
+  const [redirect, setRedirect] = useState(initialRedirect || '/onlyfanssearch');
   const [tab, setTab] = useState<Tab>('join');
+  const [error, setError] = useState('');
+
+  const getRedirectPath = () => {
+    const stored = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('joinRedirect') : null;
+    const value = stored || redirect;
+    if (!value.startsWith('/')) return '/profile';
+    return value;
+  };
 
   useEffect(() => {
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
-    const paramRd = searchParams.get('redirect');
-    const rd = paramRd || sessionStorage.getItem('joinRedirect') || '/profile';
+    const paramRd = readRedirectParam(searchParams);
+    const rd = paramRd || sessionStorage.getItem('joinRedirect') || initialRedirect || '/profile';
     if (paramRd) {
       sessionStorage.setItem('joinRedirect', paramRd);
       window.history.replaceState(null, '', '/join-erogram');
+    } else if (initialRedirect) {
+      sessionStorage.setItem('joinRedirect', initialRedirect);
     }
     setRedirect(rd);
     if (token) {
       sessionStorage.removeItem('joinRedirect');
       router.replace(rd);
     }
-  }, [router, searchParams]);
+  }, [router, searchParams, initialRedirect]);
+
+  useEffect(() => {
+    (window as any).onTelegramAuth = async function(user: any) {
+      if (!user || !user.id || !user.hash) return;
+
+      try {
+        const res = await axios.post('/api/auth/telegram', user);
+        if (!res.data?.token) return;
+
+        localStorage.setItem('token', res.data.token);
+        localStorage.setItem('username', res.data.username);
+        localStorage.setItem('isAdmin', res.data.isAdmin);
+        localStorage.setItem('firstName', res.data.firstName);
+        localStorage.setItem('photoUrl', res.data.photoUrl);
+
+        const rd = getRedirectPath();
+        sessionStorage.removeItem('joinRedirect');
+
+        if (res.data.isAdmin === 'true' || res.data.isAdmin === true) {
+          router.push('/admin');
+        } else if (res.data.isNewUser) {
+          router.push('/profile');
+        } else {
+          router.push(rd);
+        }
+      } catch (err: any) {
+        console.error('Telegram login error:', err);
+        setError(err.response?.data?.message || 'Login failed');
+      }
+    };
+  }, [router, redirect]);
 
   const googleHref = `/api/auth/google?state=${encodeURIComponent(`redirect:${redirect}`)}`;
+  const isAinsfwTheme =
+    redirect.includes('ainsfw') || (initialRedirect?.includes('ainsfw') ?? false);
 
   return (
-    <main className="flex-1 flex items-center justify-center px-4 sm:px-6 py-24 relative overflow-hidden">
+    <div className={`min-h-screen flex flex-col ${isAinsfwTheme ? 'ainsfw-page bg-black' : 'bg-[#060d17]'}`}>
+      <Navbar accent={isAinsfwTheme ? AINSFW_ACCENT : undefined} variant={isAinsfwTheme ? undefined : 'onlyfans'} />
+      <main className="flex-1 flex items-center justify-center px-4 sm:px-6 py-24 relative overflow-hidden">
       {/* Mosaic background */}
       {avatars.length > 0 && (
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -59,21 +128,36 @@ export default function JoinClient({ avatars }: { avatars: string[] }) {
               </div>
             ))}
           </div>
-          {/* Dark overlay + vignette */}
-          <div className="absolute inset-0 bg-[#0a1525]/80" />
-          <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, transparent 10%, #060d17 75%)' }} />
+          <div className={`absolute inset-0 ${isAinsfwTheme ? 'bg-black/80' : 'bg-[#0a1525]/80'}`} />
+          <div
+            className="absolute inset-0"
+            style={{
+              background: isAinsfwTheme
+                ? 'radial-gradient(ellipse at center, transparent 10%, #000 75%)'
+                : 'radial-gradient(ellipse at center, transparent 10%, #060d17 75%)',
+            }}
+          />
         </div>
       )}
 
-      {/* Fallback subtle glow if no avatars */}
+      {/* Fallback subtle glow when no avatars */}
       {avatars.length === 0 && (
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/3 left-1/4 w-[500px] h-[500px] bg-[#00AFF0] rounded-full blur-[200px] opacity-[0.06]" />
-          <div className="absolute bottom-1/4 right-1/3 w-[400px] h-[400px] bg-[#00D4FF] rounded-full blur-[180px] opacity-[0.04]" />
+          {isAinsfwTheme ? (
+            <>
+              <div className="absolute top-1/3 left-1/4 w-[500px] h-[500px] bg-black rounded-full blur-[200px] opacity-[0.35]" />
+              <div className="absolute bottom-1/4 right-1/3 w-[400px] h-[400px] bg-black rounded-full blur-[180px] opacity-[0.25]" />
+            </>
+          ) : (
+            <>
+              <div className="absolute top-1/3 left-1/4 w-[500px] h-[500px] bg-[#00AFF0] rounded-full blur-[200px] opacity-[0.06]" />
+              <div className="absolute bottom-1/4 right-1/3 w-[400px] h-[400px] bg-[#00D4FF] rounded-full blur-[180px] opacity-[0.04]" />
+            </>
+          )}
         </div>
       )}
 
-      <div className="relative z-10 w-full max-w-md">
+      <div className="relative z-10 w-full max-w-md mx-auto">
         <button
           onClick={() => router.back()}
           className="flex items-center gap-1.5 text-white/40 hover:text-white/70 text-sm font-medium mb-4 transition-colors"
@@ -82,10 +166,26 @@ export default function JoinClient({ avatars }: { avatars: string[] }) {
           Back
         </button>
 
-        <div className="rounded-3xl border border-[#1e4a7a]/60 bg-[#0c1e35] backdrop-blur-xl p-8 sm:p-10 shadow-2xl shadow-black/60" style={{ boxShadow: '0 0 0 1px rgba(0,175,240,0.08), 0 24px 60px rgba(0,0,0,0.6)' }}>
-
+        <div
+          className={
+            isAinsfwTheme
+              ? 'rounded-3xl border border-[#22c55e]/20 bg-[#0a1f12] p-8 sm:p-10 shadow-2xl shadow-black/60'
+              : 'rounded-3xl border border-[#1e4a7a]/60 bg-[#0c1e35] backdrop-blur-xl p-8 sm:p-10 shadow-2xl shadow-black/60'
+          }
+          style={
+            isAinsfwTheme
+              ? { boxShadow: '0 0 0 1px rgba(34,197,94,0.1), 0 24px 60px rgba(0,0,0,0.6)' }
+              : { boxShadow: '0 0 0 1px rgba(0,175,240,0.08), 0 24px 60px rgba(0,0,0,0.6)' }
+          }
+        >
           {/* Toggle */}
-          <div className="flex items-center rounded-xl bg-[#0F274C] border border-[#1e4a7a]/60 p-1 mb-7">
+          <div
+            className={
+              isAinsfwTheme
+                ? 'flex items-center rounded-xl bg-[#04140c] border border-[#22c55e]/20 p-1 mb-7'
+                : 'flex items-center rounded-xl bg-[#0F274C] border border-[#1e4a7a]/60 p-1 mb-7'
+            }
+          >
             {([
               { id: 'join' as Tab, label: 'Create Account' },
               { id: 'signin' as Tab, label: 'Sign In' },
@@ -95,7 +195,9 @@ export default function JoinClient({ avatars }: { avatars: string[] }) {
                 onClick={() => setTab(id)}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${
                   tab === id
-                    ? 'bg-[#00AFF0] text-white shadow-lg shadow-[#00AFF0]/25'
+                    ? isAinsfwTheme
+                      ? 'bg-[#22c55e] text-black shadow-lg shadow-[#22c55e]/25'
+                      : 'bg-[#00AFF0] text-white shadow-lg shadow-[#00AFF0]/25'
                     : 'text-white/40 hover:text-white/60'
                 }`}
               >
@@ -126,9 +228,22 @@ export default function JoinClient({ avatars }: { avatars: string[] }) {
                 { icon: Rocket, text: 'Unlock the full Erogram experience' },
                 { icon: Shield, text: 'Unlock beta features' },
               ].map(({ icon: Icon, text }) => (
-                <div key={text} className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[#0F274C]/80 border border-[#1e4a7a]/50">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-[#00AFF0]/10 flex items-center justify-center">
-                    <Icon className="w-4 h-4 text-[#00AFF0]" />
+                <div
+                  key={text}
+                  className={
+                    isAinsfwTheme
+                      ? 'flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[#04140c]/80 border border-[#22c55e]/15'
+                      : 'flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[#0F274C]/80 border border-[#1e4a7a]/50'
+                  }
+                >
+                  <div
+                    className={
+                      isAinsfwTheme
+                        ? 'flex-shrink-0 w-8 h-8 rounded-lg bg-[#22c55e]/10 flex items-center justify-center'
+                        : 'flex-shrink-0 w-8 h-8 rounded-lg bg-[#00AFF0]/10 flex items-center justify-center'
+                    }
+                  >
+                    <Icon className={`w-4 h-4 ${isAinsfwTheme ? 'text-[#22c55e]' : 'text-[#00AFF0]'}`} />
                   </div>
                   <span className="text-sm text-white/70 font-medium">{text}</span>
                 </div>
@@ -136,6 +251,13 @@ export default function JoinClient({ avatars }: { avatars: string[] }) {
             </div>
           )}
 
+          {error && (
+            <div className="mb-4 p-3 rounded-xl bg-red-500/15 border border-red-500/40 text-red-300 text-sm">
+              {error}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-3">
           {/* Google button */}
           <a
             href={googleHref}
@@ -149,14 +271,56 @@ export default function JoinClient({ avatars }: { avatars: string[] }) {
             </svg>
             {tab === 'join' ? 'Continue with Google' : 'Sign in with Google'}
           </a>
+          <div
+            className={
+              isAinsfwTheme
+                ? 'flex justify-center items-center min-h-[60px] rounded-xl bg-[#04140c]/80 border border-[#22c55e]/15 p-4'
+                : 'flex justify-center items-center min-h-[60px] rounded-xl bg-[#0F274C]/80 border border-[#1e4a7a]/50 p-4'
+            }
+            id="telegram-login-container"
+          />
+          </div>
 
           <p className="mt-6 text-center text-[11px] text-white/25">
             By continuing, you agree to our{' '}
-            <Link href="/terms" className="text-[#00AFF0]/50 hover:text-[#00AFF0]">Terms</Link>{' & '}
-            <Link href="/privacy" className="text-[#00AFF0]/50 hover:text-[#00AFF0]">Privacy Policy</Link>
+            <Link href="/terms" className={isAinsfwTheme ? 'text-[#22c55e]/50 hover:text-[#22c55e]' : 'text-[#00AFF0]/50 hover:text-[#00AFF0]'}>Terms</Link>{' & '}
+            <Link href="/privacy" className={isAinsfwTheme ? 'text-[#22c55e]/50 hover:text-[#22c55e]' : 'text-[#00AFF0]/50 hover:text-[#00AFF0]'}>Privacy Policy</Link>
           </p>
+
+          {isAinsfwTheme && (
+            <div className="mt-6 -mx-4 sm:-mx-6 [&>div]:!mb-0">
+              <ErogramDiscoveryBanner embedded edgeFade="corners" />
+            </div>
+          )}
         </div>
       </div>
-    </main>
+
+      <Script
+        id="telegram-login"
+        strategy="lazyOnload"
+        dangerouslySetInnerHTML={{
+          __html: `
+            (function() {
+              const container = document.getElementById('telegram-login-container');
+              if (!container) return;
+
+              const script = document.createElement('script');
+              script.src = 'https://telegram.org/js/telegram-widget.js?22';
+              script.async = true;
+              script.setAttribute('data-telegram-login', 'erogramvipbot');
+              script.setAttribute('data-size', 'large');
+              script.setAttribute('data-userpic', 'false');
+              script.setAttribute('data-onauth', 'onTelegramAuth(user)');
+              script.setAttribute('data-request-access', 'write');
+
+              container.innerHTML = '';
+              container.appendChild(script);
+            })();
+          `,
+        }}
+      />
+      </main>
+      <Footer />
+    </div>
   );
 }

@@ -5,8 +5,10 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import type { AINsfwTool } from './types';
 import { voteOnTool, unvoteOnTool, submitReview } from '@/lib/actions/ainsfw';
+import type { ToolReviewData } from '@/lib/actions/ainsfw';
 import type { ToolStatsData } from '@/lib/actions/ainsfw';
 import { trackClick, trackImpression } from '@/lib/actions/campaigns';
+import VerifiedBadge, { AINSFW_VERIFIED_TOOLTIP } from '@/components/VerifiedBadge';
 
 // PAUSED (2026-07-24, owner order) — see AdvertCard.tsx. Flip to false to resume.
 const IMPRESSION_TRACKING_PAUSED = true;
@@ -19,23 +21,27 @@ interface ToolCardProps {
   featured?: boolean;
   campaignId?: string;
   primaryImageAlt?: string;
+  verified?: boolean;
+  light?: boolean;
 }
 
 const CATEGORY_BADGE: Record<string, string> = {
-  'AI Girlfriend': 'bg-blue-700 text-white',
+  'AI Companion': 'bg-blue-700 text-white',
   'Undress AI': 'bg-slate-700 text-white',
-  'AI Chat': 'bg-emerald-700 text-white',
-  'AI Image': 'bg-amber-600 text-white',
-  'AI Roleplay': 'bg-zinc-800 text-white',
+  'AI Sexting / Chat': 'bg-emerald-700 text-white',
+  'AI NSFW Image Generator': 'bg-amber-600 text-white',
+  'AI Porn Generator': 'bg-rose-700 text-white',
+  'AI NSFW Roleplay': 'bg-zinc-800 text-white',
   'Adult Games': 'bg-purple-800 text-white',
 };
 
 const CATEGORY_BTN: Record<string, string> = {
-  'AI Girlfriend': 'bg-yellow-400 hover:bg-yellow-300 text-black',
+  'AI Companion': 'bg-yellow-400 hover:bg-yellow-300 text-black',
   'Undress AI': 'bg-yellow-400 hover:bg-yellow-300 text-black',
-  'AI Chat': 'bg-yellow-400 hover:bg-yellow-300 text-black',
-  'AI Image': 'bg-yellow-400 hover:bg-yellow-300 text-black',
-  'AI Roleplay': 'bg-yellow-400 hover:bg-yellow-300 text-black',
+  'AI Sexting / Chat': 'bg-yellow-400 hover:bg-yellow-300 text-black',
+  'AI NSFW Image Generator': 'bg-yellow-400 hover:bg-yellow-300 text-black',
+  'AI Porn Generator': 'bg-yellow-400 hover:bg-yellow-300 text-black',
+  'AI NSFW Roleplay': 'bg-yellow-400 hover:bg-yellow-300 text-black',
 };
 
 function getBookmarkKey(slug: string) { return `ainsfw_bookmark_${slug}`; }
@@ -48,7 +54,7 @@ function capWords(text: string, max = 18): string {
   return words.slice(0, max).join(' ') + '…';
 }
 
-export default function ToolCard({ tool, index, initialStats, onVoteChange, featured, campaignId, primaryImageAlt }: ToolCardProps) {
+export default function ToolCard({ tool, index, initialStats, onVoteChange, featured, campaignId, primaryImageAlt, verified = false, light = false }: ToolCardProps) {
   const mainImageAlt = primaryImageAlt ?? `${tool.name} NSFW AI ${tool.category} tool`;
   const galleryImageAlt = (idx: number) =>
     idx === 0 ? mainImageAlt : `${tool.name} NSFW AI ${tool.category} screenshot ${idx}`;
@@ -72,16 +78,17 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
   const [showReview, setShowReview] = useState(false);
   const [reviewText, setReviewText] = useState('');
   const [reviewRating, setReviewRating] = useState(5);
-  const [reviews, setReviews] = useState<{ text: string; rating: number; date: string }[]>(
-    initialStats?.reviews?.map(r => ({ text: r.text, rating: r.rating, date: r.createdAt })) ?? []
-  );
+  const [reviews, setReviews] = useState<ToolReviewData[]>(initialStats?.reviews ?? []);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [reviewError, setReviewError] = useState('');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     try {
       const savedVote = localStorage.getItem(`ainsfw_vote_${tool.slug}`) as 'up' | 'down' | null;
       if (savedVote) setUserVote(savedVote);
       setBookmarked(localStorage.getItem(getBookmarkKey(tool.slug)) === '1');
+      setIsLoggedIn(!!localStorage.getItem('token'));
     } catch {}
   }, [tool.slug]);
 
@@ -165,17 +172,34 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
     try { localStorage.setItem(getBookmarkKey(tool.slug), next ? '1' : '0'); } catch {}
   };
 
-  const handleReviewOpen = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); setShowReview(true); };
+  const handleReviewOpen = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isLoggedIn) {
+      window.open(`/join-erogram?redirect=/ainsfw/${tool.slug}`, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    setShowReview(true);
+  };
 
   const handleReviewSubmit = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!reviewText.trim()) return;
-    const result = await submitReview(tool.slug, reviewText.trim(), reviewRating);
-    setReviews(result.reviews.map(r => ({ text: r.text, rating: r.rating, date: r.createdAt })));
-    setVotes({ up: result.upvotes, down: result.downvotes });
-    setReviewSubmitted(true);
-    setTimeout(() => { setShowReview(false); setReviewText(''); setReviewRating(5); setReviewSubmitted(false); }, 1200);
+    setReviewError('');
+    const token = localStorage.getItem('token') || '';
+    if (!token) {
+      window.open(`/join-erogram?redirect=/ainsfw/${tool.slug}`, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    try {
+      const result = await submitReview(tool.slug, reviewText.trim(), reviewRating, token);
+      setReviewSubmitted(true);
+      setReviewError(result.message);
+      setTimeout(() => { setShowReview(false); setReviewText(''); setReviewRating(5); setReviewSubmitted(false); setReviewError(''); }, 2500);
+    } catch (err: any) {
+      setReviewError(err?.message || 'Could not submit review');
+    }
   };
 
   const score = votes.up - votes.down;
@@ -184,6 +208,19 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
   const avgRating = reviews.length > 0
     ? Math.round(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) : 0;
   const currentSrc = gallery[slideIdx] || mainImg;
+
+  const cardShell = light
+    ? 'bg-white rounded-xl overflow-hidden h-full flex flex-col border border-black/10 hover:border-[#22c55e]/50 shadow-sm transition-all duration-150 group'
+    : 'bg-[#111] rounded-xl overflow-hidden h-full flex flex-col border border-white/10 hover:border-[#22c55e]/50 transition-all duration-150 group';
+  const imageShell = light ? 'relative w-full h-32 sm:h-36 overflow-hidden bg-gray-100 shrink-0' : 'relative w-full h-32 sm:h-36 overflow-hidden bg-[#0a0a0a] shrink-0';
+  const titleCls = light ? 'text-xs sm:text-sm font-black text-gray-900 mb-0.5 leading-tight truncate group-hover:text-[#22c55e] transition-colors flex items-center gap-1 min-w-0' : 'text-xs sm:text-sm font-black text-white mb-0.5 leading-tight truncate group-hover:text-[#22c55e] transition-colors flex items-center gap-1 min-w-0';
+  const vendorCls = light ? 'text-[9px] sm:text-[10px] text-gray-500 mb-1 truncate' : 'text-[9px] sm:text-[10px] text-white/50 mb-1 truncate';
+  const descCls = light ? 'text-gray-600 text-[10px] sm:text-xs line-clamp-2 leading-relaxed flex-grow mb-2' : 'text-white/70 text-[10px] sm:text-xs line-clamp-2 leading-relaxed flex-grow mb-2';
+  const reviewCountCls = light ? 'text-[9px] text-gray-500' : 'text-[9px] text-white/50';
+  const dividerCls = light ? 'flex items-center justify-between pt-1.5 border-t border-black/10 mb-2' : 'flex items-center justify-between pt-1.5 border-t border-white/10 mb-2';
+  const voteIdleCls = light ? 'bg-gray-100 text-gray-500' : 'bg-white/10 text-white/50';
+  const scoreNeutralCls = light ? 'bg-gray-100 text-gray-400' : 'bg-white/5 text-white/30';
+  const starEmptyCls = light ? 'text-gray-200' : 'text-white/20';
 
   /* ─── FEATURED: completely different dark premium card ─── */
   if (featured) {
@@ -260,8 +297,9 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
 
               {/* Body */}
               <div className="p-2.5 sm:p-3 flex-grow flex flex-col">
-                <h3 className="text-xs sm:text-sm font-black text-white mb-0.5 leading-tight truncate group-hover:text-[#FF8C3A] transition-colors">
-                  {tool.name}
+                <h3 className="text-xs sm:text-sm font-black text-white mb-0.5 leading-tight truncate group-hover:text-[#FF8C3A] transition-colors flex items-center gap-1 min-w-0">
+                  <span className="truncate">{tool.name}</span>
+                  {verified && <VerifiedBadge className="w-3.5 h-3.5" tooltip={AINSFW_VERIFIED_TOOLTIP} />}
                 </h3>
                 <p className="text-[9px] sm:text-[10px] text-[#7BAEFF] mb-1 truncate">{tool.vendor}</p>
 
@@ -269,6 +307,13 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                 <p className="text-white/70 text-[10px] sm:text-xs line-clamp-2 leading-relaxed flex-grow mb-2">
                   {capWords(tool.description)}
                 </p>
+
+                {reviews.length > 0 && (
+                  <div className="flex items-center gap-1 mb-1.5">
+                    <div className="flex">{[1,2,3,4,5].map((s) => (<svg key={s} className={`w-2.5 h-2.5 ${s <= avgRating ? 'text-[#22c55e]' : 'text-white/20'}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>))}</div>
+                    <span className="text-[9px] text-white/50">({reviews.length})</span>
+                  </div>
+                )}
 
                 {/* Votes row */}
                 <div className="flex items-center justify-between pt-1.5 border-t border-white/[0.08] mb-2">
@@ -332,13 +377,14 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                   <p className="text-xs font-bold text-white/50 uppercase tracking-wide mb-1">Previous reviews</p>
                   {reviews.slice(0, 5).map((r, i) => (
                     <div key={i} className="bg-white/[0.04] rounded-lg px-3 py-2 border border-white/10">
-                      <div className="flex items-center gap-2 mb-0.5"><div className="flex">{[1,2,3,4,5].map((s) => (<svg key={s} className={`w-3 h-3 ${s <= r.rating ? 'text-[#22c55e]' : 'text-white/30'}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>))}</div><span className="text-white/40 text-[10px]">{r.date}</span></div>
+                      <div className="flex items-center gap-2 mb-0.5"><div className="flex">{[1,2,3,4,5].map((s) => (<svg key={s} className={`w-3 h-3 ${s <= r.rating ? 'text-[#22c55e]' : 'text-white/30'}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>))}</div><span className="text-white/40 text-[10px]">{r.createdAt}</span></div>
                       <p className="text-white/70 text-xs line-clamp-2">{r.text}</p>
                     </div>
                   ))}
                 </div>
               )}
               <button onClick={handleReviewSubmit} disabled={!reviewText.trim() || reviewSubmitted} className="w-full py-2.5 rounded-xl font-black text-sm bg-[#22c55e] text-black active:bg-[#16a34a] transition-all disabled:opacity-40">{reviewSubmitted ? '✓ Submitted!' : 'Submit Review'}</button>
+              {reviewError && <p className={`text-xs mt-2 text-center ${reviewSubmitted ? 'text-[#22c55e]' : 'text-red-400'}`}>{reviewError}</p>}
             </motion.div>
           </div>
         )}
@@ -358,11 +404,11 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
         <Link href={`/ainsfw/${tool.slug}`} className="block h-full">
           <div
             ref={cardRef}
-            className="bg-[#111] rounded-xl overflow-hidden h-full flex flex-col border border-white/10 hover:border-[#22c55e]/50 transition-all duration-150 group"
+            className={cardShell}
           >
             {/* Image carousel */}
             <div
-              className="relative w-full h-32 sm:h-36 overflow-hidden bg-[#0a0a0a] shrink-0"
+              className={imageShell}
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
             >
@@ -407,27 +453,30 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
 
             {/* Body */}
             <div className="p-2.5 sm:p-3 flex-grow flex flex-col">
-              <h3 className="text-xs sm:text-sm font-black text-white mb-0.5 leading-tight truncate group-hover:text-[#22c55e] transition-colors">{tool.name}</h3>
-              <p className="text-[9px] sm:text-[10px] text-white/50 mb-1 truncate">{tool.vendor}</p>
+              <h3 className={titleCls}>
+                <span className="truncate">{tool.name}</span>
+                {verified && <VerifiedBadge className="w-3.5 h-3.5" tooltip={AINSFW_VERIFIED_TOOLTIP} />}
+              </h3>
+              <p className={vendorCls}>{tool.vendor}</p>
 
-              <p className="text-white/70 text-[10px] sm:text-xs line-clamp-2 leading-relaxed flex-grow mb-2">{capWords(tool.description)}</p>
+              <p className={descCls}>{capWords(tool.description)}</p>
 
               {reviews.length > 0 && (
                 <div className="flex items-center gap-1 mb-1.5">
-                  <div className="flex">{[1,2,3,4,5].map((s) => (<svg key={s} className={`w-2.5 h-2.5 ${s <= avgRating ? 'text-[#22c55e]' : 'text-white/20'}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>))}</div>
-                  <span className="text-[9px] text-white/50">({reviews.length})</span>
+                  <div className="flex">{[1,2,3,4,5].map((s) => (<svg key={s} className={`w-2.5 h-2.5 ${s <= avgRating ? 'text-[#22c55e]' : starEmptyCls}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>))}</div>
+                  <span className={reviewCountCls}>({reviews.length})</span>
                 </div>
               )}
 
-              <div className="flex items-center justify-between pt-1.5 border-t border-white/10 mb-2">
+              <div className={dividerCls}>
                 <div className="flex items-center gap-1">
-                  <button onClick={(e) => handleVote(e, 'up')} title="Upvote" className={`flex items-center justify-center w-6 h-6 rounded text-[10px] font-bold transition-all ${userVote === 'up' ? 'bg-green-500 text-white' : 'bg-white/10 text-white/50 hover:bg-green-500/20 hover:text-green-300'}`}>
+                  <button onClick={(e) => handleVote(e, 'up')} title="Upvote" className={`flex items-center justify-center w-6 h-6 rounded text-[10px] font-bold transition-all ${userVote === 'up' ? 'bg-green-500 text-white' : `${voteIdleCls} hover:bg-green-500/20 hover:text-green-600`}`}>
                     <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l8 8H4z"/></svg>
                   </button>
-                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${score > 0 ? 'bg-green-500/20 text-green-300' : score < 0 ? 'bg-red-500/20 text-red-300' : 'bg-white/5 text-white/30'}`}>
+                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${score > 0 ? 'bg-green-500/20 text-green-600' : score < 0 ? 'bg-red-500/20 text-red-500' : scoreNeutralCls}`}>
                     {score > 0 ? `+${score}` : score}
                   </span>
-                  <button onClick={(e) => handleVote(e, 'down')} title="Downvote" className={`flex items-center justify-center w-6 h-6 rounded text-[10px] font-bold transition-all ${userVote === 'down' ? 'bg-red-500 text-white' : 'bg-white/10 text-white/50 hover:bg-red-500/20 hover:text-red-300'}`}>
+                  <button onClick={(e) => handleVote(e, 'down')} title="Downvote" className={`flex items-center justify-center w-6 h-6 rounded text-[10px] font-bold transition-all ${userVote === 'down' ? 'bg-red-500 text-white' : `${voteIdleCls} hover:bg-red-500/20 hover:text-red-500`}`}>
                     <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20l-8-8h16z"/></svg>
                   </button>
                 </div>
@@ -458,13 +507,14 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                 <p className="text-xs font-bold text-white/50 uppercase tracking-wide mb-1">Previous reviews</p>
                 {reviews.slice(0, 5).map((r, i) => (
                     <div key={i} className="bg-white/[0.04] rounded-lg px-3 py-2 border border-white/10">
-                      <div className="flex items-center gap-2 mb-0.5"><div className="flex">{[1,2,3,4,5].map((s) => (<svg key={s} className={`w-3 h-3 ${s <= r.rating ? 'text-[#22c55e]' : 'text-white/30'}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>))}</div><span className="text-white/40 text-[10px]">{r.date}</span></div>
+                      <div className="flex items-center gap-2 mb-0.5"><div className="flex">{[1,2,3,4,5].map((s) => (<svg key={s} className={`w-3 h-3 ${s <= r.rating ? 'text-[#22c55e]' : 'text-white/30'}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>))}</div><span className="text-white/40 text-[10px]">{r.createdAt}</span></div>
                       <p className="text-white/70 text-xs line-clamp-2">{r.text}</p>
                     </div>
                 ))}
               </div>
             )}
             <button onClick={handleReviewSubmit} disabled={!reviewText.trim() || reviewSubmitted} className="w-full py-2.5 rounded-xl font-black text-sm bg-[#22c55e] text-black active:bg-[#16a34a] transition-all disabled:opacity-40">{reviewSubmitted ? '✓ Submitted!' : 'Submit Review'}</button>
+            {reviewError && <p className={`text-xs mt-2 text-center ${reviewSubmitted ? 'text-[#22c55e]' : 'text-red-400'}`}>{reviewError}</p>}
           </motion.div>
         </div>
       )}

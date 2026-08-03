@@ -162,6 +162,10 @@ async function getGroups(limit: number, isMobile: boolean = false, locale: strin
           views: { $ifNull: ['$views', 0] },
           memberCount: { $ifNull: ['$memberCount', 0] },
           verified: { $ifNull: ['$verified', false] },
+          paidBoost: { $ifNull: ['$paidBoost', false] },
+          paidBoostStars: 1,
+          boosted: { $ifNull: ['$boosted', false] },
+          boostExpiresAt: 1,
           image: 1
         }
       }
@@ -190,6 +194,10 @@ async function getGroups(limit: number, isMobile: boolean = false, locale: strin
       views: group.views || 0,
       memberCount: group.memberCount || 0,
       verified: group.verified || false,
+      paidBoost: group.paidBoost || false,
+      paidBoostStars: group.paidBoostStars ?? null,
+      boosted: group.boosted || false,
+      boostExpiresAt: group.boostExpiresAt ? new Date(group.boostExpiresAt).toISOString() : null,
     }));
   } catch (error) {
     console.error('Error fetching groups:', error);

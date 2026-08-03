@@ -4,11 +4,15 @@ import connectDB from '@/lib/db/mongodb';
 import { User, Group, Bot, AINsfwSubmission, OnlyFansCreator, PremiumEvent } from '@/lib/models';
 import { notifyAdminsOfSale } from '@/lib/utils/notifyAdmins';
 import { getPremiumPricing } from '@/lib/premiumPricing';
+import { buildBoostPaymentUpdate, type BoostPaymentType } from '@/lib/boostPricing';
 
 const IPN_SECRET = process.env.NOWPAYMENTS_IPN_SECRET || '';
 
 const VALID_PLANS = new Set(['monthly', 'quarterly', 'yearly', 'lifetime']);
-const VALID_SUBMISSION_TIERS = new Set(['basic', 'instant', 'boost', 'platinum']);
+const VALID_SUBMISSION_TIERS = new Set([
+  'basic', 'instant', 'boost', 'startup', 'platinum',
+  'normal_listing', 'instant_approval', 'boost_week', 'boost_month',
+]);
 const ACTIVATE_ON = new Set(['finished', 'confirmed']);
 
 function logEvent(data: Record<string, any>) {
@@ -64,9 +68,7 @@ async function handleSubmissionPayment(
     return;
   }
 
-  // ainsfw submissions set correct dates at creation — just confirm payment
   if (entityType === 'ainsfw') {
-    // Idempotency: skip only if THIS exact payment was already recorded
     if (entity.paymentId === String(paymentId) && entity.paymentStatus === 'paid') {
       return;
     }
@@ -75,42 +77,46 @@ async function handleSubmissionPayment(
       paymentStatus: 'paid',
       paymentId: String(paymentId),
     });
+    if (entity.featured || entity.submissionTier === 'boost') {
+      const { adminSetFeatured } = await import('@/lib/actions/ainsfw');
+      await adminSetFeatured(entity.slug, true);
+    }
     logEvent({ event: 'submission_payment_success', entityType, entityId, tier, paymentId, paymentMethod: 'crypto' });
     notifyAdminsOfSale({ plan: `${entityType}_${tier}`, method: 'crypto', username: entity.name || 'Unknown' }).catch(() => {});
     return;
   }
 
-  const now = new Date();
-  const update: Record<string, any> = { status: 'approved' };
-
-  if (tier === 'boost' || tier === 'platinum') {
-    update.boosted = true;
-    update.paidBoost = true;
-    const boostDays = tier === 'platinum' ? 30 : 7;
-    const exp = new Date(now);
-    exp.setDate(exp.getDate() + boostDays);
-    update.boostExpiresAt = exp;
-    update.boostDuration = boostDays === 30 ? '30d' : '7d';
+  if (paymentId && entity.lastPaymentChargeId === String(paymentId)) {
+    return;
   }
 
-  if (tier === 'platinum') {
-    update.featured = true;
-    update.featuredAt = now;
+  const normalizedTier: BoostPaymentType =
+    tier === 'boost' ? 'boost_week' : tier === 'platinum' ? 'boost_month' : tier as BoostPaymentType;
+
+  if (!['normal_listing', 'instant_approval', 'boost_week', 'boost_month'].includes(normalizedTier)) {
+    return;
   }
 
-  await Model.findByIdAndUpdate(entityId, update);
+  const update = buildBoostPaymentUpdate(
+    entity,
+    normalizedTier,
+    entityType as 'group' | 'bot',
+    { lastPaymentChargeId: String(paymentId) },
+  );
+
+  await Model.findByIdAndUpdate(entityId, { $set: update });
 
   logEvent({
     event: 'submission_payment_success',
     entityType,
     entityId,
-    tier,
+    tier: normalizedTier,
     paymentId,
     paymentMethod: 'crypto',
   });
 
   notifyAdminsOfSale({
-    plan: `${entityType}_${tier}`,
+    plan: `${entityType}_${normalizedTier}`,
     method: 'crypto',
     username: entity.name || 'Unknown',
   }).catch(() => {});

@@ -21,7 +21,12 @@ export async function GET(req: NextRequest) {
     .select('name username slug avatar bio price isFree url clicks categories likesCount')
     .lean();
 
+  const byId = new Map(creators.map((c: any) => [c._id.toString(), c]));
+  const ordered = savedIds
+    .map((id: any) => byId.get(id.toString()))
+    .filter(Boolean);
+
   return NextResponse.json({
-    creators: creators.map((c: any) => ({ ...c, _id: c._id.toString() })),
+    creators: ordered.map((c: any) => ({ ...c, _id: c._id.toString() })),
   });
 }

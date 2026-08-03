@@ -1,5 +1,6 @@
 'use server';
 
+import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
 import jwt from 'jsonwebtoken';
 import { revalidatePath } from 'next/cache';
 import connectDB from '@/lib/db/mongodb';
@@ -158,7 +159,7 @@ export async function assignCreatorToUncut(
     blurb: (creator.bio || '').trim(),
     coverImage: (creator.avatar || '').trim(),
     avatar: (creator.avatar || '').trim(),
-    destinationUrl: (creator.url || '').trim() || ((creator.username || '').trim() ? `/${(creator.username || '').trim()}-onlyfans` : ''),
+    destinationUrl: (creator.url || '').trim() || ((creator.username || '').trim() ? ofCreatorProfileUrl((creator.username || '').trim()) : ''),
     ctaLabel: 'See the feature',
     active: true,
   });

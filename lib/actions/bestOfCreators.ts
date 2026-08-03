@@ -3,6 +3,7 @@
 import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator } from '@/lib/models';
 import type { BestOfPage } from '@/app/best-onlyfans-accounts/bestOfPages';
+import { whaleBrowseLikesFilter, buildComboCreatorMatch } from '@/lib/tags/creatorMatch';
 
 const R2 = process.env.R2_PUBLIC_URL || '';
 function buildR2AvatarMatch() {
@@ -38,11 +39,16 @@ function buildBestOfBaseMatch(page: BestOfPage) {
     gender: 'female',
     deleted: { $ne: true },
     ...notSpamTagged,
+    ...whaleBrowseLikesFilter,
   };
 
   if (page.match === 'category' && page.categorySlug) {
     base.categories = page.categorySlug;
     return base;
+  }
+
+  if (page.match === 'combo' && page.categorySlugs?.length === 2) {
+    return buildComboCreatorMatch(page.categorySlugs[0], page.categorySlugs[1]);
   }
 
   if (page.patterns?.length) {
@@ -69,10 +75,6 @@ export async function getBestOfTopByClicks(page: BestOfPage, limit = 10) {
     .lean();
 }
 
-/**
- * 4 preview avatars per best-of page, for the "More Top OnlyFans Rankings" cards.
- * One query per page (small, indexed, top-by-likes) — runs in parallel by the caller.
- */
 export async function getBestOfPreviewAvatars(pages: BestOfPage[], per = 4): Promise<Record<string, string[]>> {
   await connectDB();
   const entries = await Promise.all(

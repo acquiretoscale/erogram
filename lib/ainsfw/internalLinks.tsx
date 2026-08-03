@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { categoryToSlug } from '@/app/ainsfw/data';
+import { AI_NSFW_TOOLS, categoryToSlug } from '@/app/ainsfw/data';
 import { getTagDefinition } from '@/lib/tags/registry';
+import { getAinsfwToolHref } from '@/lib/ainsfw/toolArticles';
 import type { AINsfwReviewAlternative } from '@/app/ainsfw/reviewTypes';
 
 type LinkRule = {
@@ -26,16 +27,17 @@ const INTERNAL_LINK_RULES: LinkRule[] = [
 
   // AI NSFW hub + categories
   { pattern: /\b(?:ai nsfw tools?|nsfw ai tools?|ai adult tools?)\b/i, href: '/ainsfw' },
-  { pattern: /\b(?:virtual girlfriend|ai girlfriend|ai companion|ai boyfriend|virtual companion|ai waifu)\b/i, href: AINSFW('AI Girlfriend') },
+  { pattern: /\b(?:virtual girlfriend|ai girlfriend|ai companion|ai boyfriend|virtual companion|ai waifu)\b/i, href: AINSFW('AI Companion') },
   { pattern: /\b(?:undress tools?|clothes remover|clothes changer|ai undresser|ai nudifier)\b/i, href: AINSFW('Undress AI') },
-  { pattern: /\b(?:face swap|faceswap|swap faces)\b/i, href: AINSFW('AI Image') },
-  { pattern: /\b(?:ai image generator|ai image|image generator|photo generator|text-to-image|sdxl)\b/i, href: AINSFW('AI Image') },
-  { pattern: /\b(?:ai chatbot|ai chat|chatbot platform)\b/i, href: AINSFW('AI Chat') },
-  { pattern: /\b(?:ai roleplay|nsfw roleplay|erotic roleplay|role-play)\b/i, href: AINSFW('AI Roleplay') },
+  { pattern: /\b(?:face swap|faceswap|swap faces)\b/i, href: AINSFW('AI NSFW Image Generator') },
+  { pattern: /\b(?:ai image generator|ai image|image generator|photo generator|text-to-image|sdxl)\b/i, href: AINSFW('AI NSFW Image Generator') },
+  { pattern: /\b(?:ai porn generator|ai generated porn|create ai porn|custom ai porn)\b/i, href: AINSFW('AI Porn Generator') },
+  { pattern: /\b(?:ai chatbot|ai chat|chatbot platform|ai sexting)\b/i, href: AINSFW('AI Sexting / Chat') },
+  { pattern: /\b(?:ai roleplay|nsfw roleplay|erotic roleplay|role-play)\b/i, href: AINSFW('AI NSFW Roleplay') },
   { pattern: /\b(?:adult games?|adult gaming|3d game)\b/i, href: AINSFW('Adult Games') },
   { pattern: /\b(?:undress|deepfake|nudify|nudif\w*)\b/i, href: AINSFW('Undress AI') },
-  { pattern: /\broleplay\b/i, href: AINSFW('AI Roleplay') },
-  { pattern: /\bchatbot\b/i, href: AINSFW('AI Chat') },
+  { pattern: /\broleplay\b/i, href: AINSFW('AI NSFW Roleplay') },
+  { pattern: /\bchatbot\b/i, href: AINSFW('AI Sexting / Chat') },
 
   // Cross-ecosystem
   { pattern: /\b(?:onlyfans|only fans|fansly|patreon)\b/i, href: '/onlyfanssearch' },
@@ -78,23 +80,30 @@ const INTERNAL_LINK_RULES: LinkRule[] = [
   { pattern: /\b(?:ai nsfw|nsfw ai)\b/i, href: TAG('ai-nsfw') },
 ];
 
+
+const LINK_CLASS = 'text-[#22c55e] hover:underline';
+const GUIDE_LINK_CLASS = 'text-[#22c55e] hover:underline';
+
+const TOOL_BY_NAME = new Map(AI_NSFW_TOOLS.map((tool) => [tool.name.toLowerCase(), tool]));
+
 const TAG_EXACT: Record<string, string> = {
-  'ai girlfriend': AINSFW('AI Girlfriend'),
-  'ai companion': AINSFW('AI Girlfriend'),
-  'ai sexting': AINSFW('AI Girlfriend'),
-  'ai boyfriend': AINSFW('AI Girlfriend'),
-  'ai chat': AINSFW('AI Chat'),
-  'ai chatbot': AINSFW('AI Chat'),
-  'ai chatbots': AINSFW('AI Chat'),
-  'ai chatbot platform': AINSFW('AI Chat'),
-  'ai roleplay': AINSFW('AI Roleplay'),
-  'ai nsfw roleplay': AINSFW('AI Roleplay'),
-  'ai erotic roleplay': AINSFW('AI Roleplay'),
-  'ai image': AINSFW('AI Image'),
-  'ai image generator': AINSFW('AI Image'),
-  'ai nsfw image generator': AINSFW('AI Image'),
-  'ai face swap': AINSFW('AI Image'),
-  'face swap': AINSFW('AI Image'),
+  'ai girlfriend': AINSFW('AI Companion'),
+  'ai companion': AINSFW('AI Companion'),
+  'ai sexting': AINSFW('AI Sexting / Chat'),
+  'ai boyfriend': AINSFW('AI Companion'),
+  'ai chat': AINSFW('AI Sexting / Chat'),
+  'ai chatbot': AINSFW('AI Sexting / Chat'),
+  'ai chatbots': AINSFW('AI Sexting / Chat'),
+  'ai chatbot platform': AINSFW('AI Sexting / Chat'),
+  'ai roleplay': AINSFW('AI NSFW Roleplay'),
+  'ai nsfw roleplay': AINSFW('AI NSFW Roleplay'),
+  'ai erotic roleplay': AINSFW('AI NSFW Roleplay'),
+  'ai image': AINSFW('AI NSFW Image Generator'),
+  'ai image generator': AINSFW('AI NSFW Image Generator'),
+  'ai nsfw image generator': AINSFW('AI NSFW Image Generator'),
+  'ai porn generator': AINSFW('AI Porn Generator'),
+  'ai face swap': AINSFW('AI NSFW Image Generator'),
+  'face swap': AINSFW('AI NSFW Image Generator'),
   'ai deepfake': AINSFW('Undress AI'),
   'ai undress': AINSFW('Undress AI'),
   'ai undresser': AINSFW('Undress AI'),
@@ -120,10 +129,11 @@ export function getAinsfwTagHref(tag: string): string | null {
   if (getTagDefinition(slug)) return TAG(slug);
 
   if (/undress|nudif|deepfake|clothes remover|clothes changer|nudifier/.test(key)) return AINSFW('Undress AI');
-  if (/girlfriend|companion|sexting|boyfriend|waifu/.test(key)) return AINSFW('AI Girlfriend');
-  if (/roleplay|role play/.test(key)) return AINSFW('AI Roleplay');
-  if (/chatbot|\bchat\b/.test(key)) return AINSFW('AI Chat');
-  if (/face swap|image generator|image gen|text-to-image|sdxl|faceswap/.test(key)) return AINSFW('AI Image');
+  if (/porn generator|generated porn|ai porn/.test(key)) return AINSFW('AI Porn Generator');
+  if (/girlfriend|companion|sexting|boyfriend|waifu/.test(key)) return AINSFW('AI Companion');
+  if (/roleplay|role play/.test(key)) return AINSFW('AI NSFW Roleplay');
+  if (/chatbot|\bchat\b/.test(key)) return AINSFW('AI Sexting / Chat');
+  if (/face swap|image generator|image gen|text-to-image|sdxl|faceswap/.test(key)) return AINSFW('AI NSFW Image Generator');
   if (/adult game|\bgame\b/.test(key)) return AINSFW('Adult Games');
   if (/hentai|anime/.test(key)) return TG('hentai');
   if (/furry|yiff/.test(key)) return TG('furry');
@@ -148,7 +158,7 @@ function applyLiteralRule(parts: (string | ReactNode)[], match: string, href: st
       const index = m.index ?? 0;
       if (index > lastIndex) next.push(part.slice(lastIndex, index));
       next.push(
-        <Link key={`${href}-${next.length}`} href={href} className="text-[#22c55e] hover:underline">
+        <Link key={`${href}-${next.length}`} href={href} className={LINK_CLASS}>
           {m[0]}
         </Link>,
       );
@@ -173,7 +183,7 @@ function applyRegexRule(parts: (string | ReactNode)[], pattern: RegExp, href: st
       const index = m.index ?? 0;
       if (index > lastIndex) next.push(part.slice(lastIndex, index));
       next.push(
-        <Link key={`${href}-${next.length}`} href={href} className="text-[#22c55e] hover:underline">
+        <Link key={`${href}-${next.length}`} href={href} className={LINK_CLASS}>
           {m[0]}
         </Link>,
       );
@@ -200,4 +210,61 @@ export function renderAinsfwLinkedText(text: string, alternatives?: AINsfwReview
   }
 
   return parts.length === 1 && typeof parts[0] === 'string' ? parts[0] : parts;
+}
+
+type TextSegment = { bold: boolean; text: string };
+
+function renderGuideMarkers(text: string): ReactNode[] {
+  const re = /\{\{(tool|cat|href):([^}|]+)(?:\|([^}]+))?\}\}|\*\*([^*]+)\*\*/g;
+  const nodes: ReactNode[] = [];
+  let lastIndex = 0;
+
+  for (const match of text.matchAll(re)) {
+    const index = match.index ?? 0;
+    if (index > lastIndex) nodes.push(text.slice(lastIndex, index));
+
+    const kind = match[1];
+    const value = match[2]?.trim();
+    const label = match[3]?.trim();
+    const boldText = match[4];
+
+    if (kind === 'tool' && value) {
+      const tool = TOOL_BY_NAME.get(value.toLowerCase());
+      nodes.push(
+        <Link key={`tool-${index}`} href={tool ? getAinsfwToolHref(tool.slug) : '/ainsfw'} className={GUIDE_LINK_CLASS}>
+          {label || value}
+        </Link>,
+      );
+    } else if (kind === 'cat' && value) {
+      nodes.push(
+        <Link key={`cat-${index}`} href={AINSFW(value)} className={GUIDE_LINK_CLASS}>
+          {label || value}
+        </Link>,
+      );
+    } else if (kind === 'href' && value) {
+      nodes.push(
+        <Link key={`href-${index}`} href={value} className={GUIDE_LINK_CLASS}>
+          {label || value}
+        </Link>,
+      );
+    } else if (boldText) {
+      nodes.push(
+        <strong key={`bold-${index}`} className="font-bold text-white">
+          {boldText}
+        </strong>,
+      );
+    }
+
+    lastIndex = index + match[0].length;
+  }
+
+  if (lastIndex < text.length) nodes.push(text.slice(lastIndex));
+  return nodes.length > 0 ? nodes : [text];
+}
+
+/** Hub guide + FAQ: explicit {{tool:}}, {{cat:}}, {{href:}} markers only. */
+export function renderAinsfwGuideText(text: string): ReactNode {
+  const nodes = renderGuideMarkers(text);
+  if (nodes.length === 1 && typeof nodes[0] === 'string') return nodes[0];
+  return nodes;
 }

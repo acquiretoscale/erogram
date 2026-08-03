@@ -4,15 +4,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { AI_NSFW_TOOLS } from '@/app/ainsfw/data';
 import type { AINsfwTool } from '@/app/ainsfw/types';
 import {
-  getAllToolStats,
+  getAllToolStatsAdmin,
   adminSetToolVotes,
-  adminDeleteReview,
   adminSetFeatured,
   getAdminSubmissions,
   adminUpdateSubmission,
   type ToolStatsData,
   type AdminSubmission,
 } from '@/lib/actions/ainsfw';
+import Link from 'next/link';
 
 type SortKey = 'name' | 'category' | 'upvotes' | 'downvotes' | 'score' | 'reviews';
 
@@ -27,7 +27,6 @@ export default function AINsfwTab() {
   const [editSlug, setEditSlug] = useState<string | null>(null);
   const [editUp, setEditUp] = useState(0);
   const [editDown, setEditDown] = useState(0);
-  const [reviewSlug, setReviewSlug] = useState<string | null>(null);
   const [toast, setToast] = useState('');
 
   // Submissions state
@@ -40,6 +39,7 @@ export default function AINsfwTab() {
   const [editSubStatus, setEditSubStatus] = useState('pending');
   const [editSubUnlisted, setEditSubUnlisted] = useState(false);
   const [subSaving, setSubSaving] = useState(false);
+  const [subPaymentFilter, setSubPaymentFilter] = useState<'all' | 'unpaid' | 'paid'>('all');
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -58,6 +58,13 @@ export default function AINsfwTab() {
     }
   }, []);
 
+  const filteredSubs = subs.filter((s) => {
+    if (subPaymentFilter === 'unpaid') return s.paymentStatus === 'pending';
+    if (subPaymentFilter === 'paid') return s.paymentStatus === 'paid';
+    return true;
+  });
+  const unpaidCount = subs.filter((s) => s.paymentStatus === 'pending').length;
+
   const staticSlugs = new Set(AI_NSFW_TOOLS.map((t) => t.slug));
   const paidSubTools: AINsfwTool[] = subs
     .filter((s) => s.paymentStatus === 'paid' && !staticSlugs.has(s.slug))
@@ -71,7 +78,7 @@ export default function AINsfwTab() {
   const fetchStats = useCallback(async (slugs: string[]) => {
     setLoading(true);
     try {
-      const data = await getAllToolStats(slugs);
+      const data = await getAllToolStatsAdmin(slugs);
       setStats((prev) => ({ ...prev, ...data }));
     } catch {
       showToast('Failed to load stats');
@@ -152,19 +159,6 @@ export default function AINsfwTab() {
     }
   };
 
-  const handleDeleteReview = async (slug: string, idx: number) => {
-    setSaving(slug);
-    try {
-      const result = await adminDeleteReview(slug, idx);
-      setStats((prev) => ({ ...prev, [slug]: result }));
-      showToast('Review deleted');
-    } catch {
-      showToast('Failed to delete review');
-    } finally {
-      setSaving(null);
-    }
-  };
-
   const handleToggleFeatured = async (slug: string) => {
     const current = getStats(slug).featured;
     setSaving(slug);
@@ -199,7 +193,7 @@ export default function AINsfwTab() {
       case 'upvotes': cmp = getStats(a.slug).upvotes - getStats(b.slug).upvotes; break;
       case 'downvotes': cmp = getStats(a.slug).downvotes - getStats(b.slug).downvotes; break;
       case 'score': cmp = score(a.slug) - score(b.slug); break;
-      case 'reviews': cmp = (getStats(a.slug).reviews?.length || 0) - (getStats(b.slug).reviews?.length || 0); break;
+      case 'reviews': cmp = (getStats(a.slug).reviews?.filter((r) => !r.status || r.status === 'approved').length || 0) - (getStats(b.slug).reviews?.filter((r) => !r.status || r.status === 'approved').length || 0); break;
     }
     return sortAsc ? cmp : -cmp;
   });
@@ -214,7 +208,10 @@ export default function AINsfwTab() {
 
   const totalUp = Object.values(stats).reduce((s, v) => s + (v.upvotes || 0), 0);
   const totalDown = Object.values(stats).reduce((s, v) => s + (v.downvotes || 0), 0);
-  const totalReviews = Object.values(stats).reduce((s, v) => s + (v.reviews?.length || 0), 0);
+  const totalReviews = Object.values(stats).reduce(
+    (s, v) => s + (v.reviews?.filter((r) => !r.status || r.status === 'approved').length || 0),
+    0,
+  );
   const toolsWithVotes = Object.values(stats).filter((v) => v.upvotes > 0 || v.downvotes > 0).length;
   const featuredCount = Object.values(stats).filter((v) => v.featured).length;
 
@@ -231,7 +228,7 @@ export default function AINsfwTab() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-white">AI NSFW Tools</h1>
-          <p className="text-sm text-white/40 mt-0.5">Manage upvotes, downvotes & reviews</p>
+          <p className="text-sm text-white/40 mt-0.5">Manage upvotes & downvotes · <Link href="/admin/reviews?type=ainsfw" className="text-yellow-400/80 hover:text-yellow-300 underline">Reviews hub</Link></p>
         </div>
         <button
           onClick={() => { fetchSubs(); fetchStats(allAdminTools.map(t => t.slug)); }}
@@ -346,13 +343,16 @@ export default function AINsfwTab() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      {(s.reviews?.length || 0) > 0 ? (
-                        <button
-                          onClick={() => setReviewSlug(reviewSlug === tool.slug ? null : tool.slug)}
+                      {(s.reviews?.filter((r) => !r.status || r.status === 'approved').length || 0) > 0 || s.reviews?.some((r) => r.status === 'pending') ? (
+                        <Link
+                          href={`/admin/reviews?type=ainsfw&q=${encodeURIComponent(tool.slug)}`}
                           className="text-yellow-400 hover:text-yellow-300 font-semibold transition-colors"
                         >
-                          {s.reviews.length}
-                        </button>
+                          {s.reviews.filter((r) => !r.status || r.status === 'approved').length}
+                          {s.reviews.some((r) => r.status === 'pending') ? (
+                            <span className="ml-1 text-[10px] text-yellow-300">+{s.reviews.filter((r) => r.status === 'pending').length}p</span>
+                          ) : null}
+                        </Link>
                       ) : (
                         <span className="text-white/20">0</span>
                       )}
@@ -386,64 +386,39 @@ export default function AINsfwTab() {
         </table>
       </div>
 
-      {/* Reviews panel */}
-      {reviewSlug && (
-        <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-white font-bold text-sm">
-              Reviews for {allAdminTools.find((t) => t.slug === reviewSlug)?.name}
-            </h3>
-            <button onClick={() => setReviewSlug(null)} className="text-white/30 hover:text-white transition-colors text-lg leading-none">&times;</button>
-          </div>
-          {(getStats(reviewSlug).reviews?.length || 0) === 0 ? (
-            <p className="text-white/30 text-sm">No reviews yet</p>
-          ) : (
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {getStats(reviewSlug).reviews.map((r, i) => (
-                <div key={i} className="flex items-start justify-between gap-3 bg-white/[0.04] rounded-lg p-3 border border-white/[0.06]">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="flex">
-                        {[1, 2, 3, 4, 5].map((s) => (
-                          <span key={s} className={`text-xs ${s <= r.rating ? 'text-yellow-400' : 'text-white/15'}`}>&#9733;</span>
-                        ))}
-                      </div>
-                      <span className="text-white/30 text-[10px]">{r.createdAt}</span>
-                    </div>
-                    <p className="text-white/70 text-xs leading-relaxed">{r.text}</p>
-                  </div>
-                  <button
-                    onClick={() => handleDeleteReview(reviewSlug, i)}
-                    disabled={saving === reviewSlug}
-                    className="shrink-0 px-2 py-1 rounded text-[10px] font-semibold bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/20 transition-all disabled:opacity-40"
-                  >
-                    Delete
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ─── Paid Submissions ─── */}
+      {/* ─── Submissions ─── */}
       <div className="mt-8">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <div>
-            <h2 className="text-lg font-bold text-white">Paid Submissions</h2>
-            <p className="text-sm text-white/40 mt-0.5">Tools submitted & paid by clients</p>
+            <h2 className="text-lg font-bold text-white">Submissions</h2>
           </div>
-          <button onClick={fetchSubs} disabled={subsLoading} className="px-4 py-2 rounded-lg text-sm font-semibold bg-white/[0.06] border border-white/[0.10] text-white/70 hover:text-white hover:bg-white/[0.10] transition-all disabled:opacity-40">
-            {subsLoading ? 'Loading...' : 'Refresh'}
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {(['all', 'unpaid', 'paid'] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => setSubPaymentFilter(f)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                  subPaymentFilter === f
+                    ? 'bg-white/[0.12] border-white/[0.20] text-white'
+                    : 'bg-white/[0.04] border-white/[0.08] text-white/50 hover:text-white'
+                }`}
+              >
+                {f === 'all' ? 'All' : f === 'unpaid' ? `Unpaid (${unpaidCount})` : 'Paid'}
+              </button>
+            ))}
+            <button onClick={fetchSubs} disabled={subsLoading} className="px-4 py-2 rounded-lg text-sm font-semibold bg-white/[0.06] border border-white/[0.10] text-white/70 hover:text-white hover:bg-white/[0.10] transition-all disabled:opacity-40">
+              {subsLoading ? 'Loading...' : 'Refresh'}
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
           {[
             { label: 'Total', value: subs.length, color: 'text-blue-400' },
+            { label: 'Unpaid', value: unpaidCount, color: 'text-orange-400' },
             { label: 'Paid', value: subs.filter(s => s.paymentStatus === 'paid').length, color: 'text-green-400' },
             { label: 'Featured', value: subs.filter(s => s.featured).length, color: 'text-purple-400' },
-            { label: 'Pending', value: subs.filter(s => s.status === 'pending').length, color: 'text-yellow-400' },
+            { label: 'Pending review', value: subs.filter(s => s.status === 'pending').length, color: 'text-yellow-400' },
           ].map((c) => (
             <div key={c.label} className="bg-white/[0.04] border border-white/[0.08] rounded-xl p-4">
               <p className="text-[11px] font-semibold text-white/40 uppercase tracking-wider">{c.label}</p>
@@ -456,7 +431,7 @@ export default function AINsfwTab() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-white/[0.04] border-b border-white/[0.08]">
-                {['Tool', 'Category', 'Tier', 'Status', 'Payment', 'Featured', 'Date', 'Actions'].map((h) => (
+                {['Tool', 'Contact', 'Category', 'Tier', 'Status', 'Payment', 'Featured', 'Date', 'Actions'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/50 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -464,20 +439,32 @@ export default function AINsfwTab() {
             <tbody className="divide-y divide-white/[0.05]">
               {subsLoading ? (
                 Array.from({ length: 3 }).map((_, i) => (
-                  <tr key={i} className="animate-pulse"><td className="px-4 py-3" colSpan={8}><div className="h-4 bg-white/[0.06] rounded w-full" /></td></tr>
+                  <tr key={i} className="animate-pulse"><td className="px-4 py-3" colSpan={9}><div className="h-4 bg-white/[0.06] rounded w-full" /></td></tr>
                 ))
-              ) : subs.length === 0 ? (
-                <tr><td className="px-4 py-8 text-center text-white/30" colSpan={8}>No submissions yet</td></tr>
+              ) : filteredSubs.length === 0 ? (
+                <tr><td className="px-4 py-8 text-center text-white/30" colSpan={9}>No submissions yet</td></tr>
               ) : (
-                subs.map((sub) => (
-                  <tr key={sub._id} className="hover:bg-white/[0.03] transition-colors">
+                filteredSubs.map((sub) => (
+                  <tr key={sub._id} className={`hover:bg-white/[0.03] transition-colors ${sub.paymentStatus === 'pending' ? 'bg-orange-500/[0.06]' : ''}`}>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
                         <img src={sub.image || '/assets/image.jpg'} alt={sub.name} className="w-8 h-8 rounded-md object-cover shrink-0 border border-white/10" />
                         <div>
                           <p className="text-white font-medium text-[13px] truncate max-w-[160px]">{sub.name}</p>
-                          <p className="text-white/30 text-[11px] truncate max-w-[160px]">{sub.contactEmail}</p>
+                          <p className="text-white/30 text-[11px] truncate max-w-[160px]">{sub.slug}</p>
                         </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="space-y-0.5">
+                        {sub.contactEmail ? (
+                          <a href={`mailto:${sub.contactEmail}`} className="block text-[11px] text-blue-400 hover:underline truncate max-w-[140px]">{sub.contactEmail}</a>
+                        ) : (
+                          <span className="text-white/20 text-[11px]">—</span>
+                        )}
+                        {sub.contactTelegram ? (
+                          <p className="text-[11px] text-white/50 truncate max-w-[140px]">{sub.contactTelegram}</p>
+                        ) : null}
                       </div>
                     </td>
                     <td className="px-4 py-3"><span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-white/[0.06] text-white/60">{sub.category}</span></td>
@@ -573,7 +560,8 @@ export default function AINsfwTab() {
 
               <div className="bg-white/[0.04] rounded-lg p-3 border border-white/[0.06] text-[11px] text-white/40 space-y-1">
                 <p>Tier: <span className="text-white/60 font-semibold">{editSub.submissionTier}</span> · Payment: <span className="text-white/60 font-semibold">{editSub.paymentStatus}</span></p>
-                <p>Email: <span className="text-white/60">{editSub.contactEmail}</span></p>
+                <p>Email: <span className="text-white/60">{editSub.contactEmail || '—'}</span></p>
+                <p>Telegram: <span className="text-white/60">{editSub.contactTelegram || '—'}</span></p>
                 <p>Website: <a href={editSub.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">{editSub.websiteUrl}</a></p>
               </div>
             </div>

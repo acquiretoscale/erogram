@@ -1,16 +1,49 @@
 'use server';
 
+import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
-import { AINsfwToolStats, Campaign, Advertiser, AINsfwSubmission } from '@/lib/models';
+import { AINsfwToolStats, Campaign, Advertiser, AINsfwSubmission, User } from '@/lib/models';
 import type { AINsfwTool } from '@/app/ainsfw/types';
 import { invertToolSlug, toolSlug } from '@/app/ainsfw/data';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
 function slugQuery(slug: string): string | { $in: string[] } {
   const alt = invertToolSlug(slug);
   return alt && alt !== slug ? { $in: [slug, alt] } : slug;
 }
 
-function docToStats(doc: any): ToolStatsData {
+export interface ToolReviewData {
+  text: string;
+  rating: number;
+  createdAt: string;
+  authorName: string;
+  authorAvatar: string;
+  status?: 'pending' | 'approved' | 'rejected';
+}
+
+function mapReview(r: any, includeStatus = false): ToolReviewData {
+  const row: ToolReviewData = {
+    text: r.text,
+    rating: r.rating,
+    createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '',
+    authorName: r.authorName || 'Member',
+    authorAvatar: r.authorAvatar || '',
+  };
+  if (includeStatus) {
+    row.status = r.status || 'approved';
+  }
+  return row;
+}
+
+function isPublicReview(r: any): boolean {
+  const status = r.status || 'approved';
+  return status === 'approved' && !!r.author;
+}
+
+function docToStats(doc: any, admin = false): ToolStatsData {
+  const raw = doc.reviews || [];
+  const filtered = admin ? raw : raw.filter(isPublicReview);
   return {
     upvotes: doc.upvotes || 0,
     downvotes: doc.downvotes || 0,
@@ -21,11 +54,7 @@ function docToStats(doc: any): ToolStatsData {
     customGallery: doc.customGallery || [],
     hiddenGalleryUrls: doc.hiddenGalleryUrls || [],
     coverManaged: !!doc.coverManaged,
-    reviews: (doc.reviews || []).map((r: any) => ({
-      text: r.text,
-      rating: r.rating,
-      createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '',
-    })),
+    reviews: filtered.map((r: any) => mapReview(r, admin)),
   };
 }
 
@@ -39,7 +68,7 @@ export interface ToolStatsData {
   customGallery?: string[];
   hiddenGalleryUrls?: string[];
   coverManaged?: boolean;
-  reviews: { text: string; rating: number; createdAt: string }[];
+  reviews: ToolReviewData[];
 }
 
 export async function getToolStats(slug: string): Promise<ToolStatsData> {
@@ -63,6 +92,42 @@ export async function getAllToolStats(slugs: string[]): Promise<Record<string, T
     if (doc) map[slug] = docToStats(doc);
   }
   return map;
+}
+
+export async function getAllToolStatsAdmin(slugs: string[]): Promise<Record<string, ToolStatsData>> {
+  await connectDB();
+  const querySlugs = [...new Set(slugs.flatMap((s) => {
+    const alt = invertToolSlug(s);
+    return alt && alt !== s ? [s, alt] : [s];
+  }))];
+  const docs = await AINsfwToolStats.find({ slug: { $in: querySlugs } }).lean() as any[];
+  const bySlug = new Map(docs.map((d) => [d.slug, d]));
+  const map: Record<string, ToolStatsData> = {};
+  for (const slug of slugs) {
+    const doc = bySlug.get(slug) || bySlug.get(invertToolSlug(slug) || '');
+    if (doc) map[slug] = docToStats(doc, true);
+  }
+  return map;
+}
+
+/** Fire-and-forget outbound click on Visit / Try Now (all tools). */
+export async function trackAinsfwToolClick(slug: string): Promise<void> {
+  if (!slug?.trim()) return;
+  try {
+    await connectDB();
+    const existing = await AINsfwToolStats.findOne({ slug: slugQuery(slug) }).select('_id slug').lean() as
+      | { _id: unknown; slug: string }
+      | null;
+    const key = existing?.slug || slug;
+    await AINsfwToolStats.updateOne(
+      { slug: key },
+      { $inc: { clickCount: 1 }, $set: { lastClickedAt: new Date() } },
+      { upsert: true },
+    );
+    await AINsfwSubmission.updateMany({ slug: slugQuery(slug) }, { $inc: { clickCount: 1 } });
+  } catch {
+    // Never block the user on tracking
+  }
 }
 
 export async function voteOnTool(slug: string, direction: 'up' | 'down'): Promise<{ upvotes: number; downvotes: number }> {
@@ -109,53 +174,73 @@ export async function adminSetToolVotes(
 
 export async function adminDeleteReview(slug: string, reviewIdx: number): Promise<ToolStatsData> {
   await connectDB();
-  const doc = await AINsfwToolStats.findOne({ slug });
+  const doc = await AINsfwToolStats.findOne({ slug: slugQuery(slug) });
   if (!doc) return { upvotes: 0, downvotes: 0, featured: false, reviews: [], descriptionOverride: '', imageOverride: '', customGallery: [], hiddenGalleryUrls: [] };
   if (doc.reviews && reviewIdx >= 0 && reviewIdx < doc.reviews.length) {
     doc.reviews.splice(reviewIdx, 1);
     await doc.save();
   }
-  const plain = doc.toObject();
-  return {
-    upvotes: plain.upvotes || 0,
-    downvotes: plain.downvotes || 0,
-    featured: !!plain.featured,
-    reviews: (plain.reviews || []).map((r: any) => ({
-      text: r.text,
-      rating: r.rating,
-      createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '',
-    })),
-  };
+  return docToStats(doc.toObject(), true);
 }
 
-export async function submitReview(slug: string, text: string, rating: number): Promise<ToolStatsData> {
-  if (!text.trim() || rating < 1 || rating > 5) throw new Error('Invalid review');
+export async function adminModerateReview(
+  slug: string,
+  reviewIdx: number,
+  status: 'approved' | 'rejected',
+): Promise<ToolStatsData> {
   await connectDB();
+  const doc = await AINsfwToolStats.findOne({ slug: slugQuery(slug) });
+  if (!doc) throw new Error('Tool not found');
+  if (!doc.reviews || reviewIdx < 0 || reviewIdx >= doc.reviews.length) throw new Error('Review not found');
+  doc.reviews[reviewIdx].status = status;
+  await doc.save();
+  return docToStats(doc.toObject(), true);
+}
+
+export async function submitReview(
+  slug: string,
+  text: string,
+  rating: number,
+  token: string,
+): Promise<{ message: string }> {
+  if (!text.trim() || rating < 1 || rating > 5) throw new Error('Invalid review');
+  if (!token) throw new Error('Login required to submit a review');
+
+  let user: { _id: string; username: string; photoUrl?: string | null } | null = null;
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { id?: string };
+    await connectDB();
+    user = await User.findById(decoded.id).select('username photoUrl').lean() as any;
+  } catch {
+    throw new Error('Login required to submit a review');
+  }
+  if (!user) throw new Error('Login required to submit a review');
+
   const existing = await AINsfwToolStats.findOne({ slug: slugQuery(slug) }).lean() as any;
   const key = existing?.slug || slug;
-  const doc = await AINsfwToolStats.findOneAndUpdate(
+  await AINsfwToolStats.findOneAndUpdate(
     { slug: key },
     {
       $push: {
         reviews: {
-          $each: [{ text: text.trim().slice(0, 1000), rating, createdAt: new Date() }],
+          $each: [{
+            text: text.trim().slice(0, 1000),
+            rating,
+            author: user._id,
+            authorName: user.username,
+            authorAvatar: user.photoUrl || '',
+            status: 'approved',
+            createdAt: new Date(),
+          }],
           $position: 0,
           $slice: 100,
         },
       },
     },
     { upsert: true, new: true },
-  ).lean() as any;
-  return {
-    upvotes: doc.upvotes || 0,
-    downvotes: doc.downvotes || 0,
-    featured: !!doc.featured,
-    reviews: (doc.reviews || []).map((r: any) => ({
-      text: r.text,
-      rating: r.rating,
-      createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '',
-    })),
-  };
+  );
+
+  return { message: 'Your review is live!' };
 }
 
 async function getOrCreateNsfwAdvertiser() {
@@ -165,6 +250,41 @@ async function getOrCreateNsfwAdvertiser() {
   }
   return adv._id;
 }
+
+/** Drop expired 1-month boost featured flags (submission + matching stats + pause campaign). */
+async function expireAinsfwBoostFeatured() {
+  const now = new Date();
+  const expired = await AINsfwSubmission.find(
+    { featured: true, featuredExpiresAt: { $ne: null, $lte: now } },
+    { slug: 1 },
+  ).lean() as any[];
+  if (!expired.length) return;
+
+  const slugs = expired.map((d) => d.slug);
+  await AINsfwSubmission.updateMany(
+    { slug: { $in: slugs } },
+    { $set: { featured: false, boosted: false, boostExpiresAt: null } },
+  );
+
+  const statsDocs = await AINsfwToolStats.find({ slug: { $in: slugs } }, { slug: 1, campaignId: 1 }).lean() as any[];
+  await AINsfwToolStats.updateMany({ slug: { $in: slugs } }, { $set: { featured: false } });
+  for (const d of statsDocs) {
+    if (d.campaignId) {
+      await Campaign.findByIdAndUpdate(d.campaignId, { $set: { status: 'paused', isVisible: false } });
+    }
+  }
+}
+
+const activeBoostFeaturedFilter = () => {
+  const now = new Date();
+  return {
+    featured: true,
+    status: 'approved',
+    paymentStatus: 'paid',
+    unlisted: { $ne: true },
+    $or: [{ featuredExpiresAt: null }, { featuredExpiresAt: { $gt: now } }],
+  };
+};
 
 export async function adminSetFeatured(slug: string, featured: boolean): Promise<boolean> {
   await connectDB();
@@ -213,11 +333,21 @@ export interface FeaturedToolInfo {
   campaignId?: string;
 }
 
+export async function getBoostFeaturedSlugs(): Promise<string[]> {
+  await connectDB();
+  await expireAinsfwBoostFeatured();
+  const docs = await AINsfwSubmission.find(activeBoostFeaturedFilter(), { slug: 1 })
+    .sort({ featuredExpiresAt: 1, createdAt: -1 })
+    .lean() as any[];
+  return docs.map((d) => d.slug);
+}
+
 export async function getFeaturedSlugs(): Promise<string[]> {
   await connectDB();
+  await expireAinsfwBoostFeatured();
   const [statsDocs, subDocs] = await Promise.all([
     AINsfwToolStats.find({ featured: true }, { slug: 1 }).lean() as any,
-    AINsfwSubmission.find({ featured: true, status: 'approved', paymentStatus: 'paid', unlisted: { $ne: true } }, { slug: 1 }).lean() as any,
+    AINsfwSubmission.find(activeBoostFeaturedFilter(), { slug: 1 }).lean() as any,
   ]);
   const slugs = new Set<string>();
   for (const d of statsDocs) slugs.add(d.slug);
@@ -227,9 +357,10 @@ export async function getFeaturedSlugs(): Promise<string[]> {
 
 export async function getFeaturedTools(): Promise<FeaturedToolInfo[]> {
   await connectDB();
+  await expireAinsfwBoostFeatured();
   const [statsDocs, subDocs] = await Promise.all([
     AINsfwToolStats.find({ featured: true }, { slug: 1, campaignId: 1 }).lean() as any,
-    AINsfwSubmission.find({ featured: true, status: 'approved', paymentStatus: 'paid', unlisted: { $ne: true } }, { slug: 1 }).lean() as any,
+    AINsfwSubmission.find(activeBoostFeaturedFilter(), { slug: 1 }).lean() as any,
   ]);
   const results: FeaturedToolInfo[] = [];
   const seen = new Set<string>();
@@ -264,7 +395,11 @@ export async function getFeaturedTools(): Promise<FeaturedToolInfo[]> {
 
   for (const d of subDocs) {
     if (!seen.has(d.slug)) {
-      results.push({ slug: d.slug });
+      const stat = await AINsfwToolStats.findOne({ slug: d.slug }, { campaignId: 1 }).lean() as any;
+      results.push({
+        slug: d.slug,
+        ...(stat?.campaignId ? { campaignId: stat.campaignId.toString() } : {}),
+      });
     }
   }
 
@@ -281,6 +416,7 @@ export interface AdminSubmission {
   image: string;
   websiteUrl: string;
   contactEmail: string;
+  contactTelegram: string;
   status: string;
   submissionTier: string;
   paymentStatus: string;
@@ -301,7 +437,7 @@ export async function getAdminSubmissions(): Promise<AdminSubmission[]> {
     _id: d._id.toString(),
     name: d.name, slug: d.slug, category: d.category, vendor: d.vendor || '',
     description: d.description, image: d.image || '', websiteUrl: d.websiteUrl || '',
-    contactEmail: d.contactEmail || '', status: d.status, submissionTier: d.submissionTier || 'basic',
+    contactEmail: d.contactEmail || '', contactTelegram: d.contactTelegram || '', status: d.status, submissionTier: d.submissionTier || 'basic',
     paymentStatus: d.paymentStatus || 'none', featured: !!d.featured,
     featuredExpiresAt: d.featuredExpiresAt ? new Date(d.featuredExpiresAt).toISOString() : null,
     boosted: !!d.boosted,
@@ -337,7 +473,7 @@ export async function adminUpdateSubmission(
     _id: doc._id.toString(),
     name: doc.name, slug: doc.slug, category: doc.category, vendor: doc.vendor || '',
     description: doc.description, image: doc.image || '', websiteUrl: doc.websiteUrl || '',
-    contactEmail: doc.contactEmail || '', status: doc.status, submissionTier: doc.submissionTier || 'basic',
+    contactEmail: doc.contactEmail || '', contactTelegram: doc.contactTelegram || '', status: doc.status, submissionTier: doc.submissionTier || 'basic',
     paymentStatus: doc.paymentStatus || 'none', featured: !!doc.featured,
     featuredExpiresAt: doc.featuredExpiresAt ? new Date(doc.featuredExpiresAt).toISOString() : null,
     boosted: !!doc.boosted,
@@ -352,13 +488,16 @@ export async function getApprovedSubmissions(existingSlugs: Set<string>): Promis
   await connectDB();
   const docs = await AINsfwSubmission.find(
     { status: 'approved', paymentStatus: 'paid', unlisted: { $ne: true } },
-    { slug: 1, name: 1, category: 1, vendor: 1, description: 1, image: 1, tags: 1, subscription: 1, payment: 1, tryNowUrl: 1, websiteUrl: 1 },
+    { slug: 1, name: 1, category: 1, vendor: 1, description: 1, image: 1, tags: 1, subscription: 1, payment: 1, tryNowUrl: 1, websiteUrl: 1, createdAt: 1 },
   ).lean() as any[];
 
   return docs
-    .filter((d: any) => !existingSlugs.has(toolSlug(d.category, d.name)))
+    .filter((d: any) => {
+      const slug = d.slug || toolSlug(d.category, d.name);
+      return !existingSlugs.has(slug);
+    })
     .map((d: any) => ({
-      slug: toolSlug(d.category, d.name),
+      slug: d.slug || toolSlug(d.category, d.name),
       name: d.name,
       category: d.category,
       vendor: d.vendor || d.name,
@@ -369,6 +508,7 @@ export async function getApprovedSubmissions(existingSlugs: Set<string>): Promis
       payment: d.payment || [],
       tryNowUrl: d.tryNowUrl || d.websiteUrl,
       sourceUrl: d.websiteUrl,
+      createdAt: d.createdAt ? new Date(d.createdAt).toISOString() : undefined,
     }));
 }
 

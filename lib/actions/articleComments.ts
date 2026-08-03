@@ -18,7 +18,7 @@ export interface ArticleCommentData {
 export async function getArticleComments(slug: string): Promise<{ comments: ArticleCommentData[]; count: number }> {
   try {
     await connectDB();
-    const rows = await ArticleComment.find({ articleSlug: slug, status: 'approved' })
+    const rows = await ArticleComment.find({ articleSlug: slug, status: 'approved', author: { $ne: null } })
       .sort({ createdAt: -1 })
       .limit(100)
       .populate('author', 'username photoUrl')
@@ -44,7 +44,7 @@ export async function getArticleCommentCounts(slugs: string[]): Promise<Record<s
     if (!slugs.length) return {};
     await connectDB();
     const rows = await ArticleComment.aggregate([
-      { $match: { articleSlug: { $in: slugs }, status: 'approved' } },
+      { $match: { articleSlug: { $in: slugs }, status: 'approved', author: { $ne: null } } },
       { $group: { _id: '$articleSlug', count: { $sum: 1 } } },
     ]);
     const map: Record<string, number> = {};
@@ -57,24 +57,26 @@ export async function getArticleCommentCounts(slugs: string[]): Promise<Record<s
 }
 
 /** Submit a comment (goes to moderation queue as 'pending'). */
-export async function submitArticleComment(slug: string, content: string, guestName: string, token: string) {
+export async function submitArticleComment(slug: string, content: string, token: string) {
   const text = (content || '').trim();
   if (text.length < 2) throw new Error('Comment is too short');
   if (text.length > 1000) throw new Error('Comment is too long (max 1000 characters)');
+  if (!token) throw new Error('Login required to post a comment');
 
   let userId: string | null = null;
-  let username = (guestName || '').trim().slice(0, 40) || 'Anonymous';
-  if (token) {
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET) as any;
-      await connectDB();
-      const user = await User.findById(decoded.id).select('username').lean() as any;
-      if (user) {
-        userId = user._id.toString();
-        username = user.username;
-      }
-    } catch { /* invalid token — treat as guest */ }
+  let username = 'Member';
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    await connectDB();
+    const user = await User.findById(decoded.id).select('username').lean() as any;
+    if (user) {
+      userId = user._id.toString();
+      username = user.username;
+    }
+  } catch {
+    throw new Error('Login required to post a comment');
   }
+  if (!userId) throw new Error('Login required to post a comment');
 
   await connectDB();
   const comment = await ArticleComment.create({
@@ -82,7 +84,7 @@ export async function submitArticleComment(slug: string, content: string, guestN
     author: userId,
     authorName: username,
     content: text,
-    status: 'pending',
+    status: 'approved',
   });
 
   return { _id: comment._id.toString() };

@@ -31,7 +31,7 @@ const TRACKING_URL = 'https://erogram.pro/go/joi-ai';
 const TOOL_URL = '/ainsfw/joi-ai-nude-generator';
 const ALLURE_URL = '/ainsfw/aiallure-ai-chat';
 const FEATURED = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/joi-ai-ai-chat-1.webp';
-const VIDEO_URL = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/joi-ai-promo-v111.mp4';
+const VIDEO_URL = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/joi-ai-promo-v112.mp4';
 const VIDEO_POSTER = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/joi-ai-promo-v111-poster.webp';
 const IMG_1 = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/joi-ai-ai-chat-2.webp';
 const IMG_2 = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/joi-ai-ai-chat-4.webp';
@@ -137,7 +137,7 @@ description: Free tier available. Character builder, nude ai generator, and Drea
 headline: Try the nude ai generator free
 \`\`\``;
 
-const SLUG = 'joi-ai-review-nude-ai-generator-2026';
+const SLUG = 'joi-ai-budget-ai-companion-nudes-generator-tested';
 
 const existing = await Article.findOne({ slug: SLUG });
 if (existing) {
@@ -146,7 +146,7 @@ if (existing) {
 }
 
 const article = await Article.create({
-  title: 'I Spent a Week Inside JOI AI. Here Is What the Nude AI Hype Gets Right',
+  title: 'JOI AI - The Budget AI Companion and Nudes generator,  Tested',
   slug: SLUG,
   content,
   excerpt: 'A week testing JOI AI as a nude ai generator and companion platform. Real pricing, what the photo nude maker actually produces, and how it compares to Candy AI, SugarLab AI, and AIAllure.',
@@ -157,10 +157,10 @@ const article = await Article.create({
   blogCategory: 'ai-nsfw',
   authorSlug: 'eros',
   tags: ['JOI AI', 'Nude AI Generator', 'AI Nude', 'Candy AI', 'AI Companion', 'AI NSFW', 'Photo Nude Maker'],
-  metaTitle: 'JOI AI Review 2026: Nude AI Generator Tested + Candy AI Comparison',
+  metaTitle: 'JOI AI - The Budget AI Companion and Nudes generator,  Tested',
   metaDescription: 'A week of testing JOI AI as a nude ai generator and companion platform. Real pricing, what the photo nude maker actually produces, and how it compares to Candy AI, SugarLab AI, and AIAllure.',
   metaKeywords: 'joi ai, nude ai, photo nude maker, nud ai generator, ai nude generatoe, genrate nude ai, ai generate nude free, free ai nude make, realistic nude photos, ai created nude, generate nude picture, what ai can generate naked images, ai nude content, generate ai nude picture, nude ai make, ai nude gernerator, free ai nude image maker, ai photo generator for nudes, ai nudity image generator, nude ai photo website, naked ai pics, candy ai',
-  ogTitle: 'I Spent a Week Inside JOI AI. Here Is What the Nude AI Hype Gets Right',
+  ogTitle: 'JOI AI - The Budget AI Companion and Nudes generator,  Tested',
   ogDescription: 'Real testing of JOI AI as a nude ai generator. Pricing, Dream Clips, Neurons, and a straight comparison against Candy AI, SugarLab AI, and AIAllure.',
   ...(joi ? { advertiserId: joi._id } : {}),
 });

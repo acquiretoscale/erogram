@@ -16,15 +16,25 @@ function getSid(): string {
   }
 }
 
+function getCountryCookie(): string | undefined {
+  try {
+    const match = document.cookie.match(/(?:^|;\s*)__ero_cc=([A-Z]{2})/);
+    return match?.[1];
+  } catch {
+    return undefined;
+  }
+}
+
 export default function SiteBeacon() {
   useEffect(() => {
     const ping = () => {
       try {
         const sid = getSid();
+        const country = getCountryCookie();
         fetch('/api/beacon', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sid }),
+          body: JSON.stringify(country ? { sid, country } : { sid }),
           keepalive: true,
         }).catch(() => {});
       } catch {}

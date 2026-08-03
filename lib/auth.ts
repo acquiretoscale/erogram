@@ -41,6 +41,5 @@ export async function authenticateUser(req: NextRequest): Promise<AuthUser | nul
   }
 }
 
-export const FREE_BOOKMARK_LIMIT = 20;
-export const FREE_FOLDER_LIMIT = 2;
+export { FREE_BOOKMARK_LIMIT, FREE_FOLDER_LIMIT } from '@/lib/premiumLimits';
 export const MAX_PREMIUM_SLOTS = 100;

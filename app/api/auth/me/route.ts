@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
       username: user.username,
       email: user.email,
       firstName: u.firstName || null,
+      bio: u.bio || null,
       photoUrl: u.photoUrl || null,
       isAdmin: user.isAdmin,
       authProvider,
@@ -51,9 +52,12 @@ export async function GET(req: NextRequest) {
       city: u.city || null,
       timezone: u.timezone || null,
       interests: u.interests || [],
+      aiInterests: u.aiInterests || [],
       preferredPlatforms: u.preferredPlatforms || [],
       interestedInAI: u.interestedInAI || false,
       onboardingCompleted: u.onboardingCompleted || false,
+      profileTheme: u.profileTheme || null,
+      createdAt: u.createdAt || null,
     });
   } catch (error: any) {
     console.error('Auth check error:', error);

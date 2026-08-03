@@ -9,7 +9,7 @@ import { Bot, MessageSquareWarning, Flag } from 'lucide-react';
 
 const SECTIONS = [
   { id: 'bots',    label: 'Pending Bots', icon: Bot,                 color: '#7c3aed' },
-  { id: 'reviews', label: 'Reviews',      icon: MessageSquareWarning, color: '#0284c7' },
+  { id: 'reviews', label: 'Comments & Reviews', icon: MessageSquareWarning, color: '#0284c7' },
   { id: 'reports', label: 'Reports',      icon: Flag,                 color: '#ef4444' },
 ] as const;
 

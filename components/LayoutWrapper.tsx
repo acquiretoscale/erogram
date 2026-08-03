@@ -6,6 +6,7 @@ import SiteBeacon from './SiteBeacon';
 import AdminSaleAlert from './AdminSaleAlert';
 import CookieBanner from './CookieBanner';
 import AgeGate from './AgeGate';
+import BackToTopButton from './BackToTopButton';
 
 interface LayoutWrapperProps {
   children: ReactNode;
@@ -17,6 +18,7 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
       <Suspense fallback={null}><SiteBeacon /></Suspense>
       <Suspense fallback={null}><AdminSaleAlert /></Suspense>
       {children}
+      <BackToTopButton />
       <CookieBanner />
       <AgeGate />
     </ErrorBoundary>

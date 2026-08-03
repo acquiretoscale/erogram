@@ -11,15 +11,18 @@ import HeaderBanner from '@/components/HeaderBanner';
 import BookmarkButton from '@/components/BookmarkButton';
 import ShareDropdown from '@/components/ShareDropdown';
 import { categorySlug } from '@/app/groups/constants';
-import { getButtonConfig } from '@/lib/actions/publicData';
+import { getButtonConfig, trackEntityView } from '@/lib/actions/publicData';
+import { getActiveCampaigns, getPlacementFeedCampaigns } from '@/lib/actions/campaigns';
 import { trackTrendingClick } from '@/lib/actions/onlyfansTracking';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 import { getCreatorReviews, submitCreatorReview, type CreatorReviewData } from '@/lib/actions/ofCreatorProfile';
+import FlameReviewSection, { type FlameReviewItem } from '@/components/FlameReviewSection';
 import VaultTeaserFeed from '@/app/groups/VaultTeaserFeed';
 import AdvertCard from '@/app/groups/AdvertCard';
 import type { FeedCampaign } from '@/app/groups/types';
 import { useTranslation, useLocalePath } from '@/lib/i18n';
 import { compressImage } from '@/lib/utils/compressImage';
+import { entityShowsVerifiedBadge } from '@/lib/boostPricing';
 
 interface Entity {
   _id: string;
@@ -46,6 +49,10 @@ interface Entity {
     username?: string;
     showNicknameUnderGroups?: boolean;
   } | null;
+  paidBoost?: boolean;
+  paidBoostStars?: number | null;
+  boosted?: boolean;
+  boostExpiresAt?: string | null;
 }
 
 interface ButtonConfig {
@@ -229,45 +236,32 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
   const [linkReady, setLinkReady] = useState(false);
   const [buttonConfig, setButtonConfig] = useState<ButtonConfig | null>(null);
 
-  // ── Flame review/rating (unified vote system, same as OnlyFans creators) ──
-  const [reviews, setReviews] = useState<CreatorReviewData[]>([]);
-  const [reviewAvg, setReviewAvg] = useState(0);
-  const [reviewCount, setReviewCount] = useState(0);
-  const [reviewForm, setReviewForm] = useState({ rating: 0, content: '' });
-  const [reviewSubmitting, setReviewSubmitting] = useState(false);
-  const [reviewSubmitted, setReviewSubmitted] = useState(false);
-  const [hoverRating, setHoverRating] = useState(0);
-  const [burstRating, setBurstRating] = useState(0);
-  const [commentCTAVisible, setCommentCTAVisible] = useState(false);
-  const commentRef = useRef<HTMLTextAreaElement>(null);
+  const [flameReviews, setFlameReviews] = useState<CreatorReviewData[]>([]);
+  const [flameKey, setFlameKey] = useState(0);
 
   useEffect(() => {
-    getCreatorReviews(entity.slug).then((data) => {
-      setReviews(data.reviews);
-      setReviewAvg(data.avg);
-      setReviewCount(data.count);
-    }).catch(() => {});
+    getCreatorReviews(entity.slug).then((data) => setFlameReviews(data.reviews)).catch(() => {});
   }, [entity.slug]);
 
-  const handleSubmitReview = async () => {
-    if (reviewSubmitting || reviewSubmitted) return;
-    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) {
-      window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
-      return;
-    }
-    if (reviewForm.rating < 1) return;
-    setReviewSubmitting(true);
-    try {
-      await submitCreatorReview(entity.slug, reviewForm.rating, reviewForm.content, token);
-      const data = await getCreatorReviews(entity.slug);
-      setReviews(data.reviews);
-      setReviewAvg(data.avg);
-      setReviewCount(data.count);
-      setReviewSubmitted(true);
-    } catch { /* ignore */ }
-    setReviewSubmitting(false);
+  const refreshFlameReviews = async () => {
+    const data = await getCreatorReviews(entity.slug);
+    setFlameReviews(data.reviews);
+    setFlameKey((k) => k + 1);
   };
+
+  const flameReviewItems: FlameReviewItem[] = flameReviews.map((r) => ({
+    authorName: r.authorName,
+    authorAvatar: r.authorAvatar,
+    rating: r.rating,
+    text: r.content,
+    createdAt: r.createdAt
+      ? new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : '',
+  }));
+  const reviewCount = flameReviews.length;
+  const reviewAvg = reviewCount > 0
+    ? Math.round((flameReviews.reduce((s, r) => s + r.rating, 0) / reviewCount) * 10) / 10
+    : 0;
   const [popupAdvert, setPopupAdvert] = useState<PopupAdvert | null>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [countdownStarted, setCountdownStarted] = useState(false);
@@ -275,17 +269,45 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
   const [failedSimilarImages, setFailedSimilarImages] = useState<Record<string, boolean>>({});
   const [userInteracted, setUserInteracted] = useState(false);
   const [adsReady, setAdsReady] = useState(false);
+
+  // LIVE ADS: the page HTML is ISR-cached, so the server-provided ads can be up to
+  // 5 min stale. The browser refreshes them right after load so every visitor gets
+  // the current campaigns (rotation, new advertisers, ended campaigns).
+  const [liveTopBanners, setLiveTopBanners] = useState(topBannerCampaigns);
+  const [liveSidebarAds, setLiveSidebarAds] = useState<FeedCampaign[]>(sidebarAds);
+  const [viewCount, setViewCount] = useState(entity.views || 0);
+
+  useEffect(() => {
+    setViewCount(entity.views || 0);
+  }, [entity._id, entity.views]);
+
+  useEffect(() => {
+    // View ping — counts every real visit (server no longer counts per render).
+    trackEntityView(entity._id, type)
+      .then(() => setViewCount((v) => v + 1))
+      .catch(() => {});
+
+    Promise.all([
+      getActiveCampaigns('top-banner', { page: 'join' }).catch(() => []),
+      getPlacementFeedCampaigns('group-sidebar', 4).catch(() => []),
+    ]).then(([banners, sidebar]) => {
+      const b = banners as any[];
+      if (b.length > 0 && b[0].creative) setLiveTopBanners(b as any);
+      if ((sidebar as any[]).length > 0) setLiveSidebarAds(sidebar as any);
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entity._id]);
+
   // Sidebar promo slot: show up to 4 AGNOSTIC ads (any adType, via AdvertCard) like Top Groups,
   // shuffled per load for rotation. Falls back to EROGRAM PREMIUM when no ads are assigned.
   const sidebarAdsShuffled = useMemo(() => {
-    const arr = [...sidebarAds];
+    const arr = [...liveSidebarAds];
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [arr[i], arr[j]] = [arr[j], arr[i]];
     }
     return arr.slice(0, 4);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [liveSidebarAds]);
   const showSidebarAds = sidebarAdsShuffled.length > 0 && !initialIsTelegram;
   const clickTrackedRef = useRef(false);
   const { t } = useTranslation();
@@ -603,7 +625,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
 
       {/* Top banner: same size as Groups/Bots, minimal spacing */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-2">
-        <HeaderBanner campaigns={topBannerCampaigns} />
+        <HeaderBanner campaigns={liveTopBanners} />
       </div>
 
       {/* Popup Advert Modal */}
@@ -797,10 +819,11 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                     onError={() => setGroupImage(PLACEHOLDER_IMAGE_URL)}
                   />
                 )}
-                {/* Verified Badge Overlay */}
-                <div className="absolute top-3 right-3 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-md shadow-lg flex items-center gap-1">
-                  <span>✓</span> {t('common.verified')}
-                </div>
+                {entityShowsVerifiedBadge(entity) && (
+                  <div className="absolute top-3 right-3 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-md shadow-lg flex items-center gap-1">
+                    <span>✓</span> {t('common.verified')}
+                  </div>
+                )}
                 {/* Premium Badge Overlay */}
                 {isPremiumGated && (
                   <div className="absolute bottom-3 left-3 right-3 flex justify-center">
@@ -816,7 +839,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-white/[0.03] p-3 rounded-xl border border-white/5 text-center overflow-hidden">
                   <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-1">{t('slug.pageViews')}</div>
-                  <div className="text-xs font-semibold text-white tabular-nums truncate">{(entity.views || 0).toLocaleString()}</div>
+                  <div className="text-xs font-semibold text-white tabular-nums truncate">{viewCount.toLocaleString()}</div>
                 </div>
                 <div className="bg-white/[0.03] p-3 rounded-xl border border-white/5 text-center overflow-hidden">
                   <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-1">
@@ -1005,46 +1028,58 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                   </div>
                 )}
 
-                {/* Premium CTA — always shown, right below the join button */}
-                <div className="mt-6 border-t border-white/5 pt-6">
-                    <div className="rounded-2xl border-2 border-orange-500/70 bg-[#0d0d0d] p-5 text-center space-y-4 shadow-[0_0_18px_rgba(249,115,22,0.2)]">
-                      <a
-                        href="/premium"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block w-full text-center font-black py-5 rounded-2xl text-lg uppercase tracking-widest transition-all duration-150 transform hover:-translate-y-1 hover:brightness-110 active:translate-y-0"
-                        style={{ background: 'linear-gradient(180deg,#4ade80 0%,#16a34a 100%)', color: '#fff', border: '2.5px solid #15803d', boxShadow: '0 0 0 1px #bbf7d0, 0 0 24px 6px rgba(74,222,128,0.55), 0 6px 0 #14532d', textShadow: '0 1px 3px rgba(0,0,0,0.5)', letterSpacing: '0.08em' }}
-                      >
-                        🔒 UNLOCK 4800 UNLISTED PREMIUM GROUPS
-                      </a>
+                <a
+                  href="/premium"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="relative z-10 block w-full text-center font-black py-5 rounded-2xl text-lg uppercase tracking-widest transition-all duration-150 transform hover:-translate-y-1 hover:brightness-110 active:translate-y-0 mt-3"
+                  style={{
+                    background: 'linear-gradient(135deg, #f5d061 0%, #c9973a 45%, #a67c00 100%)',
+                    color: '#2a1f00',
+                    border: '1px solid #e8c547',
+                    boxShadow: '0 0 20px rgba(201,151,58,0.45)',
+                    letterSpacing: '0.08em',
+                  }}
+                >
+                  <span className="block text-lg uppercase tracking-widest">🔒 UNLOCK 4800 UNLISTED GROUPS</span>
+                  <span className="block mt-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.14em] opacity-90">
+                    DAILY UPDATED / NO DEAD LINKS / VERIFIED
+                  </span>
+                </a>
 
-                      <div className="space-y-1.5 text-left max-w-md mx-auto">
-                        <p className="text-base font-bold">
-                          <span style={{ background: '#b91c1c', color: '#fff', padding: '2px 6px', borderRadius: '2px', boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' as any }}>Access Instantly Over 4800 unlisted groups</span>
-                        </p>
-                        <ul className="text-sm font-medium space-y-1.5">
-                          <li><span style={{ background: '#b91c1c', color: '#fff', padding: '2px 6px', borderRadius: '2px', boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' as any }}>• Organized by categories, total subs, and country.</span></li>
-                          <li><span style={{ background: '#b91c1c', color: '#fff', padding: '2px 6px', borderRadius: '2px', boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' as any }}>• Unlimited Bookmarking &amp; folders.</span></li>
-                          <li><span style={{ background: '#b91c1c', color: '#fff', padding: '2px 6px', borderRadius: '2px', boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' as any }}>• Enhanced filtering, advanced search to find faster what you&apos;re looking for &amp; Much more.</span></li>
-                        </ul>
+                {vaultTeaser.length > 0 && (
+                  <Link
+                    href={lp('/premium')}
+                    className="block mt-6 group/premium cursor-pointer rounded-2xl"
+                  >
+                    <div className="relative p-[2px] rounded-2xl" style={{ background: 'linear-gradient(135deg, #f5d061, #c9973a, #a67c00)' }}>
+                      <div className="absolute -top-px right-3 z-10">
+                        <span
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-b-md text-[9px] font-black uppercase tracking-[0.15em]"
+                          style={{ background: 'linear-gradient(135deg, #f5d061, #c9973a)', color: '#2a1f00' }}
+                        >
+                          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                          </svg>
+                          PREMIUM
+                        </span>
                       </div>
-
-                      {vaultTeaser.length > 0 && (
-                        <div className="grid grid-cols-3 gap-1.5 py-2">
+                      <div className="relative rounded-[14px] bg-white p-2 transition-transform group-hover/premium:scale-[1.005]">
+                        <div className="grid grid-cols-3 gap-1.5">
                           {vaultTeaser.slice(0, 12).map((g) => {
                             const cats = g.vaultCategories && g.vaultCategories.length > 0 ? g.vaultCategories : [g.category];
                             const fmt = g.memberCount >= 1_000_000 ? (g.memberCount/1_000_000).toFixed(1)+'M' : g.memberCount >= 1_000 ? (g.memberCount/1_000).toFixed(g.memberCount>=10_000?0:1)+'K' : g.memberCount > 0 ? String(g.memberCount) : null;
                             return (
                               <div
                                 key={g._id}
-                                className="relative rounded-lg flex items-center gap-2 px-2 py-1.5 select-none"
+                                className="relative rounded-lg flex items-center gap-2 px-2 py-1.5 select-none pointer-events-none"
                                 style={{ background: '#ffffff', border: '1px solid rgba(249,115,22,0.3)' }}
                               >
                                 <div className="shrink-0 w-8 h-8 rounded-md overflow-hidden border border-orange-200">
                                   <img src={g.image || '/assets/placeholder-no-image.png'} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <div className="font-bold text-[10px] truncate leading-tight mb-0.5 select-none pointer-events-none" aria-hidden="true">
+                                  <div className="font-bold text-[10px] truncate leading-tight mb-0.5 select-none" aria-hidden="true">
                                     <span className="text-black">{g.name.slice(0, 4)}</span><span style={{ filter: 'blur(4px)', color: '#000' }}>{g.name.slice(4) || '····'}</span>
                                   </div>
                                   <div className="flex items-center gap-1 flex-wrap">
@@ -1061,264 +1096,55 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                             );
                           })}
                         </div>
-                      )}
-
-                      <a
-                        href="/premium"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block w-full text-center font-black py-5 rounded-2xl text-xl uppercase tracking-widest transition-all duration-150 transform hover:-translate-y-1 hover:brightness-110 active:translate-y-0"
-                        style={{ background: 'linear-gradient(180deg,#4ade80 0%,#16a34a 100%)', color: '#fff', border: '2.5px solid #15803d', boxShadow: '0 0 0 1px #bbf7d0, 0 0 28px 8px rgba(74,222,128,0.6), 0 6px 0 #14532d', textShadow: '0 1px 3px rgba(0,0,0,0.5)', letterSpacing: '0.08em' }}
-                      >
-                        🔒 UNLOCK EROGRAM PREMIUM
-                      </a>
-                      <p className="text-xs text-white/50 mt-2">Over 60 categories · Updated regularly</p>
-                    </div>
-
-                    {showSidebarAds && (
-                      <div className="mt-6 rounded-2xl border border-[#00AFF0]/30 bg-white p-4 shadow-[0_18px_40px_-20px_rgba(0,175,240,0.45)]">
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="text-[#00AFF0]" style={{ fontSize: 14 }}>★</span>
-                          <h3 className="text-sm font-black text-[#0f172a]">FEATURED ON <span className="text-[#00AFF0]">EROGRAM</span></h3>
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                          {sidebarAdsShuffled.map((c, i) => (
-                            <AdvertCard key={c._id} campaign={c} isIndex={i} forceVisible hidePromoted placementOverride={type === 'bot' ? 'group-sidebar-bots' : 'group-sidebar-groups'} />
-                          ))}
-                        </div>
+                        <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none rounded-b-[14px]" style={{ background: 'linear-gradient(to bottom, transparent, #ffffff)' }} />
                       </div>
-                    )}
-                </div>
+                    </div>
+                    <div
+                      className="mt-2 flex items-center justify-center gap-2 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all group-hover/premium:brightness-110"
+                      style={{ background: 'linear-gradient(135deg, #f5d061 0%, #c9973a 45%, #a67c00 100%)', color: '#2a1f00' }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      </svg>
+                      UNLOCK 4800 UNLISTED GROUPS
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </div>
+                  </Link>
+                )}
+
+                {showSidebarAds && (
+                  <div className="mt-6 rounded-2xl border border-[#00AFF0]/30 bg-white p-4 shadow-[0_18px_40px_-20px_rgba(0,175,240,0.45)]">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-[#00AFF0]" style={{ fontSize: 14 }}>★</span>
+                      <h3 className="text-sm font-black text-[#0f172a]">FEATURED ON <span className="text-[#00AFF0]">EROGRAM</span></h3>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {sidebarAdsShuffled.map((c, i) => (
+                        <AdvertCard key={c._id} campaign={c} isIndex={i} forceVisible hidePromoted placementOverride={type === 'bot' ? 'group-sidebar-bots' : 'group-sidebar-groups'} />
+                      ))}
+                    </div>
+                  </div>
+                )}
 
 
               </div>
               )}
 
-              {/* ── Rate this {group/bot} — Flame Meter (unified vote + review) ── */}
-              <section className="mb-12 rounded-2xl overflow-hidden shadow-lg" style={{ background: 'linear-gradient(135deg, #1a0a00 0%, #2d0f00 40%, #1a0a00 100%)', border: '1px solid rgba(251,100,20,0.35)' }}>
-                <div className="px-5 pt-5 pb-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ background: 'linear-gradient(135deg, #ff6b00, #ff3d00)' }}>
-                    🔥
-                  </div>
-                  <div>
-                    <h2 className="text-base sm:text-lg font-black text-white leading-tight">
-                      How hot is <span style={{ background: 'linear-gradient(90deg, #ff8c00, #ff3d00)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{editName}</span>?
-                    </h2>
-                    {reviewCount > 0 && (
-                      <p className="text-[12px] font-semibold" style={{ color: 'rgba(255,160,80,0.75)' }}>
-                        {reviewCount} {reviewCount === 1 ? 'person rated' : 'people rated'} · {reviewAvg}/5
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {reviewCount > 0 && (
-                  <div className="px-5 pb-4">
-                    <div className="h-3 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
-                      <div
-                        className="h-full rounded-full transition-all duration-700"
-                        style={{
-                          width: `${(reviewAvg / 5) * 100}%`,
-                          background: reviewAvg >= 4.5
-                            ? 'linear-gradient(90deg, #ff6b00, #ff3d00, #ffcc00)'
-                            : reviewAvg >= 3
-                            ? 'linear-gradient(90deg, #ff8c00, #ff5500)'
-                            : 'linear-gradient(90deg, #cc4400, #ff6600)',
-                          boxShadow: reviewAvg >= 4.5 ? '0 0 12px 2px rgba(255,100,0,0.6)' : 'none',
-                        }}
-                      />
-                    </div>
-                    <div className="flex justify-between mt-1">
-                      <span className="text-[10px] font-bold" style={{ color: 'rgba(255,160,80,0.5)' }}>Lukewarm</span>
-                      <span className="text-[10px] font-bold" style={{ color: 'rgba(255,160,80,0.5)' }}>On Fire 🔥</span>
-                    </div>
-                  </div>
-                )}
-
-                {reviews.length > 0 && (
-                  <div className="px-5 pb-4 space-y-2">
-                    {reviews.map((r) => (
-                      <div key={r._id} className="rounded-xl px-4 py-3 bg-white shadow-sm flex gap-3">
-                        <div className="w-8 h-8 rounded-full shrink-0 overflow-hidden bg-gradient-to-br from-[#ff6b00] to-[#ff3d00] flex items-center justify-center text-white text-xs font-black">
-                          {r.authorAvatar ? (
-                            <img src={r.authorAvatar} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                          ) : (
-                            (r.authorName || 'A').charAt(0).toUpperCase()
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <span className="text-sm font-bold text-gray-800">{r.authorName || 'Anonymous'}</span>
-                            <div className="flex gap-0.5 ml-1">
-                              {Array.from({ length: 5 }).map((_, i) => (
-                                <span key={i} className="text-[11px]">{i < r.rating ? '🔥' : '○'}</span>
-                              ))}
-                            </div>
-                            <span className="text-[10px] text-gray-400 ml-auto">{new Date(r.createdAt).toLocaleDateString()}</span>
-                          </div>
-                          {r.content && <p className="text-sm text-gray-600 leading-relaxed">{r.content}</p>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className="px-5 pb-5">
-                  {!reviewSubmitted ? (
-                    <div className="rounded-xl p-4 space-y-4">
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <style>{`
-                            @keyframes flameBurst {
-                              0%   { transform: scale(1); }
-                              20%  { transform: scale(1.8); filter: drop-shadow(0 0 14px rgba(255,120,0,1)) brightness(1.4); }
-                              50%  { transform: scale(1.35); filter: drop-shadow(0 0 10px rgba(255,80,0,0.9)); }
-                              100% { transform: scale(1.2); filter: drop-shadow(0 0 6px rgba(255,100,0,0.9)) brightness(1.15); }
-                            }
-                            @keyframes sparkle {
-                              0%   { opacity: 1; transform: translate(0,0) scale(1); }
-                              100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.2); }
-                            }
-                            @keyframes fadeSlideIn {
-                              from { opacity: 0; transform: translateY(-6px); }
-                              to   { opacity: 1; transform: translateY(0); }
-                            }
-                          `}</style>
-                          {[1, 2, 3, 4, 5].map((s) => (
-                            <div key={s} className="relative">
-                              {burstRating === s && [0,1,2,3,4,5,6,7].map((i) => (
-                                <span
-                                  key={i}
-                                  className="pointer-events-none absolute text-xs select-none"
-                                  style={{
-                                    top: '50%', left: '50%',
-                                    '--tx': `${Math.cos((i / 8) * 2 * Math.PI) * 28}px`,
-                                    '--ty': `${Math.sin((i / 8) * 2 * Math.PI) * 28}px`,
-                                    animation: 'sparkle 0.5s ease-out forwards',
-                                    animationDelay: `${i * 20}ms`,
-                                  } as React.CSSProperties}
-                                >
-                                  {i % 2 === 0 ? '✦' : '🔥'}
-                                </span>
-                              ))}
-                              <button
-                                onClick={() => {
-                                  setReviewForm((f) => ({ ...f, rating: s }));
-                                  setBurstRating(s);
-                                  setTimeout(() => setBurstRating(0), 600);
-                                  if (!commentCTAVisible) {
-                                    setTimeout(() => {
-                                      setCommentCTAVisible(true);
-                                      setTimeout(() => commentRef.current?.focus(), 350);
-                                    }, 500);
-                                  }
-                                }}
-                                onMouseEnter={() => setHoverRating(s)}
-                                onMouseLeave={() => setHoverRating(0)}
-                                className="text-2xl sm:text-3xl select-none cursor-pointer"
-                                style={{
-                                  filter: s <= (hoverRating || reviewForm.rating)
-                                    ? 'drop-shadow(0 0 6px rgba(255,100,0,0.9)) brightness(1.15)'
-                                    : 'grayscale(0.7) brightness(0.5)',
-                                  transform: s <= (hoverRating || reviewForm.rating) ? 'scale(1.2)' : 'scale(1)',
-                                  animation: burstRating === s ? 'flameBurst 0.45s ease-out forwards' : undefined,
-                                  transition: burstRating === s ? 'none' : 'all 0.15s ease',
-                                }}
-                              >
-                                🔥
-                              </button>
-                            </div>
-                          ))}
-                          {(hoverRating || reviewForm.rating) > 0 && (
-                            <span className="ml-1 text-xs font-black" style={{ color: '#ff8c00' }}>
-                              {(hoverRating || reviewForm.rating) === 5 ? 'ON FIRE!' : (hoverRating || reviewForm.rating) === 4 ? 'Very Hot 🌶️' : (hoverRating || reviewForm.rating) === 3 ? 'Hot' : (hoverRating || reviewForm.rating) === 2 ? 'Warm' : 'Lukewarm'}
-                            </span>
-                          )}
-                        </div>
-
-                        {(hoverRating || reviewForm.rating) > 0 && (
-                          <div className="h-2.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
-                            <div
-                              className="h-full rounded-full"
-                              style={{
-                                width: `${((hoverRating || reviewForm.rating) / 5) * 100}%`,
-                                background: (hoverRating || reviewForm.rating) >= 5
-                                  ? 'linear-gradient(90deg, #ff6b00, #ff3d00, #ffcc00)'
-                                  : (hoverRating || reviewForm.rating) >= 3
-                                  ? 'linear-gradient(90deg, #ff8c00, #ff5500)'
-                                  : 'linear-gradient(90deg, #cc4400, #ff6600)',
-                                boxShadow: (hoverRating || reviewForm.rating) >= 5 ? '0 0 10px 2px rgba(255,100,0,0.7)' : '0 0 6px rgba(255,100,0,0.4)',
-                                transition: 'width 0.25s ease, box-shadow 0.25s ease',
-                              }}
-                            />
-                          </div>
-                        )}
-                      </div>
-
-                      {commentCTAVisible && (
-                        typeof window !== 'undefined' && !localStorage.getItem('token') ? (
-                          <div
-                            className="rounded-xl p-5 text-center space-y-3"
-                            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,120,40,0.25)', animation: 'fadeSlideIn 0.35s ease forwards' }}
-                          >
-                            <p className="text-sm font-bold text-white/80">
-                              💬 Leave a review for <span className="text-white font-black">{editName}</span>
-                            </p>
-                            <p className="text-xs" style={{ color: 'rgba(255,160,80,0.65)' }}>
-                              Join Erogram to rate and review {type === 'group' ? 'groups' : 'bots'}
-                            </p>
-                            <a
-                              href={`/login?redirect=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname : '')}`}
-                              className="block w-full py-3 rounded-xl text-white text-sm font-black tracking-wide shadow-lg transition-all hover:opacity-90"
-                              style={{ background: 'linear-gradient(135deg, #16a34a, #15803d)', boxShadow: '0 4px 18px rgba(22,163,74,0.45)' }}
-                            >
-                              Login / Open free account
-                            </a>
-                          </div>
-                        ) : (
-                          <div style={{ animation: 'fadeSlideIn 0.35s ease forwards' }}>
-                            <p className="text-xs font-bold mb-1.5" style={{ color: 'rgba(255,180,80,0.85)' }}>
-                              💬 Leave a review for <span className="text-white">{editName}</span>
-                            </p>
-                            <textarea
-                              ref={commentRef}
-                              placeholder={`What do you think about ${editName}?`}
-                              value={reviewForm.content}
-                              onChange={(e) => setReviewForm((f) => ({ ...f, content: e.target.value }))}
-                              maxLength={500}
-                              rows={3}
-                              className="w-full rounded-lg px-3 py-2 text-sm text-white placeholder:text-orange-200/30 outline-none resize-none"
-                              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,120,40,0.35)' }}
-                              onFocus={(e) => (e.currentTarget.style.borderColor = 'rgba(255,140,40,0.8)')}
-                              onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,120,40,0.35)')}
-                            />
-                          </div>
-                        )
-                      )}
-
-                      <button
-                        onClick={handleSubmitReview}
-                        disabled={reviewSubmitting || reviewForm.rating < 1}
-                        className="w-full py-2.5 rounded-xl text-white text-sm font-black tracking-wide transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                        style={{
-                          background: reviewForm.rating >= 1
-                            ? 'linear-gradient(90deg, #ff6b00, #ff3d00)'
-                            : 'rgba(255,255,255,0.1)',
-                          boxShadow: reviewForm.rating >= 1 ? '0 4px 16px rgba(255,80,0,0.45)' : 'none',
-                        }}
-                      >
-                        {reviewSubmitting ? 'Submitting…' : reviewForm.rating >= 1 ? `Rate ${editName} ${Array(reviewForm.rating).fill('🔥').join('')}` : 'Pick your heat level above'}
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="rounded-xl p-5 text-center" style={{ background: 'rgba(255,100,0,0.12)', border: '1px solid rgba(255,120,40,0.3)' }}>
-                      <p className="text-2xl mb-1">🔥🔥🔥</p>
-                      <p className="text-sm font-black text-white">Your rating is live!</p>
-                      <p className="text-xs mt-0.5" style={{ color: 'rgba(255,160,80,0.7)' }}>Thanks for rating {editName}</p>
-                    </div>
-                  )}
-                </div>
-              </section>
+              <FlameReviewSection
+                key={flameKey}
+                entityName={editName}
+                reviews={flameReviewItems}
+                loginHref={`/login?redirect=${encodeURIComponent(`/${entity.slug}`)}`}
+                onSubmit={async (rating, text) => {
+                  const token = localStorage.getItem('token') || '';
+                  await submitCreatorReview(entity.slug, rating, text, token);
+                  return 'Your rating is live!';
+                }}
+                onSubmitted={refreshFlameReviews}
+                requireText={false}
+                successTitle="Your rating is live!"
+                successSubtitle={`Thanks for rating ${editName}`}
+              />
 
               {/* Internal Linking / SEO Section */}
               <div className="border-t border-white/10 pt-10 mb-12">

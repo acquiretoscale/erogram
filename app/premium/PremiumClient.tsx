@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
+import type { PremiumPricing } from '@/lib/premiumPricing';
+import PremiumCompareBlock from '@/components/PremiumCompareBlock';
 
 function trackPremiumEvent(event: string, extra?: Record<string, string | null>) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -36,20 +38,74 @@ function formatTime(ms: number) {
 interface VaultTeaserItem { _id: string; name: string; image: string; category: string; country: string; memberCount: number; vaultCategories?: string[]; }
 
 const G = { gold: '#00aff0', goldLight: '#00d4ff', goldDim: 'rgba(255,255,255,0.4)', goldText: 'rgba(255,255,255,0.55)', border: 'rgba(255,255,255,0.08)', borderLight: 'rgba(255,255,255,0.12)', innerBg: 'rgba(255,255,255,0.03)' };
-const PREMIUM_BEIGE = '#fcf9d1';
-const PREMIUM_PINK = '#ff2d8a';
+const PREMIUM_BEIGE = '#ffffff';
+const TELEGRAM_BLUE = '#1877b8';
+const ORDER_GREEN = '#16a34a';
+const ORDER_GREEN_DARK = '#15803d';
+const CRYPTO_ORANGE = '#f7931a';
+const CRYPTO_ORANGE_BORDER = '#e07d0a';
 
-const premiumImageCornerLayer = `
-  radial-gradient(ellipse 85% 70% at 0% 0%, rgba(10, 15, 30, 0.92) 0%, transparent 68%),
-  radial-gradient(ellipse 85% 70% at 100% 0%, rgba(10, 15, 30, 0.92) 0%, transparent 68%),
-  radial-gradient(ellipse 75% 65% at 0% 100%, rgba(10, 18, 32, 0.88) 0%, transparent 62%),
-  radial-gradient(ellipse 75% 65% at 100% 100%, rgba(10, 18, 32, 0.88) 0%, transparent 62%),
-  linear-gradient(to bottom, rgba(10, 15, 30, 0.45) 0%, transparent 22%, transparent 78%, rgba(10, 18, 32, 0.65) 100%)
-`;
+function formatUsd(amount: number): string {
+  return amount % 1 === 0 ? `$${amount}` : `$${amount.toFixed(2)}`;
+}
+
+function formatPerMonth(priceUsd: number, months: number): string {
+  return `$${(priceUsd / months).toFixed(2)}/mo`;
+}
+
+function formatStars(amount: number | null): string {
+  if (!amount) return '';
+  return amount >= 1000 ? `${amount.toLocaleString('en-US')} ★` : `${amount} ★`;
+}
+
+const fmtMemberCount = (n: number) =>
+  n >= 1_000_000 ? (n / 1_000_000).toFixed(1) + 'M' : n >= 1_000 ? (n / 1_000).toFixed(n >= 10_000 ? 0 : 1) + 'K' : n > 0 ? String(n) : null;
+
+/* ─── Full-page premium groups mosaic (fixed behind content) ─── */
+function PremiumMosaicBackground({ items }: { items: VaultTeaserItem[] }) {
+  if (!items.length) return null;
+
+  const tiles: VaultTeaserItem[] = [];
+  while (tiles.length < 30) tiles.push(...items);
+  const display = tiles.slice(0, 30);
+
+  return (
+    <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-px min-h-screen h-full w-full">
+        {display.map((g, i) => {
+          const niche = (g.vaultCategories && g.vaultCategories.length > 0 ? g.vaultCategories[0] : g.category) || '';
+          const subs = fmtMemberCount(g.memberCount);
+          return (
+            <div key={`${g._id}-${i}`} className="relative aspect-[3/4] sm:aspect-square overflow-hidden bg-black">
+              <img
+                src={g.image || '/assets/placeholder-no-image.png'}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover"
+                loading="lazy"
+                decoding="async"
+                onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }}
+              />
+              <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 35%, rgba(0,0,0,0.92) 100%)' }} />
+              <div className="absolute bottom-0 left-0 right-0 p-1.5 sm:p-2">
+                {niche ? (
+                  <span className="block text-[7px] sm:text-[8px] font-black uppercase tracking-wide text-white truncate">{niche}</span>
+                ) : null}
+                {subs ? (
+                  <span className="block text-[8px] sm:text-[9px] font-bold text-white/75 tabular-nums">{subs} subs</span>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="absolute inset-0 bg-black/78" />
+    </div>
+  );
+}
 
 /* ─── Vault Preview — identical to /groups VaultTeaserSection ─── */
 function VaultPreview({ items, whiteCaption = false }: { items: VaultTeaserItem[]; whiteCaption?: boolean }) {
-  const fmtNum = (n: number) => n >= 1_000_000 ? (n/1_000_000).toFixed(1)+'M' : n >= 1_000 ? (n/1_000).toFixed(n>=10_000?0:1)+'K' : n > 0 ? String(n) : null;
+  const fmtNum = fmtMemberCount;
   if (!items.length) return null;
 
   return (
@@ -101,9 +157,9 @@ function VaultPreview({ items, whiteCaption = false }: { items: VaultTeaserItem[
   );
 }
 
-interface PremiumClientProps { vaultTeaser?: VaultTeaserItem[]; }
+interface PremiumClientProps { vaultTeaser?: VaultTeaserItem[]; pricing: PremiumPricing; }
 
-export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) {
+export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClientProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [soldOut, setSoldOut] = useState(false);
@@ -126,7 +182,39 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
   const [isIOSDevice, setIsIOSDevice] = useState(false);
   const [appInstalled, setAppInstalled] = useState(false);
   const [payMethod, setPayMethod] = useState<'stars' | 'crypto'>('stars');
-  const [showScrollHint, setShowScrollHint] = useState(true);
+
+  const planDisplay = useMemo(() => ({
+    quarterly: {
+      label: '3 Months',
+      stars: formatStars(pricing.quarterly.starsAmount),
+      usd: formatUsd(pricing.quarterly.priceUsd),
+      perMo: formatPerMonth(pricing.quarterly.priceUsd, 3),
+      perMoShort: `$${(pricing.quarterly.priceUsd / 3).toFixed(2)}/mo ONLY`,
+    },
+    yearly: {
+      label: '1 Year',
+      stars: formatStars(pricing.yearly.starsAmount),
+      usd: formatUsd(pricing.yearly.priceUsd),
+      perMo: formatPerMonth(pricing.yearly.priceUsd, 12),
+      perMoShort: `$${(pricing.yearly.priceUsd / 12).toFixed(2)}/mo ONLY`,
+    },
+    lifetime: {
+      label: 'Lifetime',
+      stars: formatStars(pricing.lifetime.starsAmount),
+      usd: formatUsd(pricing.lifetime.priceUsd),
+      perMo: 'forever' as const,
+      perMoShort: 'Use Forever!',
+    },
+    monthly: {
+      label: '1 Month',
+      stars: formatStars(pricing.monthly.starsAmount),
+      usd: formatUsd(pricing.monthly.priceUsd),
+      perMo: formatUsd(pricing.monthly.priceUsd) + '/mo',
+      perMoShort: formatUsd(pricing.monthly.priceUsd) + '/mo ONLY',
+    },
+  }), [pricing]);
+
+  const ctaBg = ORDER_GREEN;
 
   const checkPremiumStatus = useCallback(async (fromPoll = false) => {
     const token = localStorage.getItem('token');
@@ -147,10 +235,29 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
 
   useEffect(() => {
     if (!tracked.current) { tracked.current = true; trackPremiumEvent('page_view'); }
+    const isCryptoReturn = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('payment') === 'crypto_success';
+    if (isCryptoReturn) {
+      setAwaitingPayment(true);
+      setPaymentMethodUsed('crypto');
+      window.history.replaceState({}, '', '/premium');
+    }
     const token = localStorage.getItem('token');
     if (token) {
       setIsLoggedIn(true); setAuthChecked(true); checkPremiumStatus();
       fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(d => { if (d.isAdmin) setIsAdmin(true); }).catch(() => {});
+      if (isCryptoReturn) {
+        if (pollRef.current) clearInterval(pollRef.current);
+        let a = 0;
+        pollRef.current = setInterval(async () => {
+          a++;
+          const confirmed = await checkPremiumStatus(true);
+          if (confirmed || a >= 120) {
+            clearInterval(pollRef.current!);
+            pollRef.current = null;
+            if (!confirmed) setAwaitingPayment(false);
+          }
+        }, 5000);
+      }
     } else {
       setAuthChecked(true);
     }
@@ -167,13 +274,6 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
     const handler = (e: Event) => { e.preventDefault(); setDeferredPrompt(e); };
     window.addEventListener('beforeinstallprompt', handler as EventListener);
     return () => window.removeEventListener('beforeinstallprompt', handler as EventListener);
-  }, []);
-
-  useEffect(() => {
-    const onScroll = () => setShowScrollHint(window.scrollY < 48);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   const handlePurchase = async (plan: 'monthly' | 'quarterly' | 'yearly' | 'lifetime') => {
@@ -204,34 +304,9 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(160deg, #0a0f1e 0%, #0d1628 50%, #0a1220 100%)' }}>
-      <div className="max-w-[520px] mx-auto px-3 sm:px-4 pt-5 pb-16">
-        <div className="mb-5 rounded-xl overflow-hidden relative">
-          <picture className="block w-full">
-            <source media="(max-width: 640px)" srcSet="/assets/premium-landing-mobile.webp" type="image/webp" />
-            <img
-              src="/assets/premium-landing.webp"
-              alt=""
-              className="block w-full h-auto object-contain"
-              fetchPriority="high"
-              decoding="async"
-            />
-          </picture>
-          <div
-            className="pointer-events-none absolute inset-0 rounded-xl"
-            style={{ background: premiumImageCornerLayer }}
-            aria-hidden="true"
-          />
-          {showScrollHint && (
-            <div className="absolute bottom-3 left-0 right-0 z-[2] flex flex-col items-center pointer-events-none animate-bounce">
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/80 mb-0.5">Scroll</span>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M12 5v14M5 12l7 7 7-7"/>
-              </svg>
-            </div>
-          )}
-        </div>
-
+    <div className="min-h-screen relative">
+      <PremiumMosaicBackground items={vaultTeaser} />
+      <div className="relative z-10 max-w-[520px] mx-auto px-3 sm:px-4 pt-5 pb-16">
         {/* ━━━ TIMER — at top of page (logged-in only) ━━━ */}
         {!isPremium && !soldOut && timeLeft > 0 && (
           <div className="mb-5 rounded-xl bg-white p-3 shadow-lg shadow-white/5">
@@ -260,7 +335,7 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
               Exclusive groups, rare niches, and leak communities you won&apos;t find anywhere else.
             </p>
             {!isPremium && (
-              <a href="#pricing" className="inline-flex items-center justify-center mt-3 px-3.5 py-2.5 rounded-lg text-sm font-black text-white uppercase tracking-wide transition-all active:scale-95 hover:opacity-90" style={{ background: PREMIUM_PINK }}>
+              <a href="#pricing" className="inline-flex items-center justify-center mt-3 px-3.5 py-2.5 rounded-lg text-sm font-black text-white uppercase tracking-wide transition-all active:scale-95 hover:opacity-90" style={{ background: ORDER_GREEN }}>
                 Access Now
               </a>
             )}
@@ -316,57 +391,12 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
               <a
                 href="#pricing"
                 className="inline-flex items-center justify-center px-3.5 py-2.5 rounded-lg text-sm font-black text-white uppercase tracking-wide transition-all active:scale-95 hover:opacity-90"
-                style={{ background: PREMIUM_PINK }}
+                style={{ background: ORDER_GREEN }}
               >
                 Join Now
               </a>
             </div>
           )}
-
-          {/* Mobile App */}
-          <div>
-            <h3 className="text-sm font-black text-gray-900 mb-1.5">
-              Mobile App — Install on Your Phone <span className="font-black text-red-600 uppercase tracking-wide">BETA</span>
-            </h3>
-            <p className="text-xs pl-6 mb-1 text-gray-700">Premium members get access to the <span className="font-bold text-gray-900">Erogram mobile app.</span></p>
-            <div className="space-y-0.5 pl-6">
-              <p className="text-xs text-gray-700">• Works on Android & iOS</p>
-              <p className="text-xs text-gray-700">• Full-screen native experience</p>
-              <p className="text-xs text-gray-700">• Quick access from your home screen</p>
-            </div>
-          </div>
-
-          {/* Inner Circle */}
-          <div className="pt-2 border-t border-gray-900/10">
-            <h3 className="text-sm font-black text-gray-900 mb-1.5">Join the Erogram Inner Circle</h3>
-            <p className="text-xs leading-relaxed text-gray-700">
-              Unlock hidden Telegram networks, discover new groups before everyone else, and explore the best NSFW communities without wasting hours searching.
-            </p>
-          </div>
-
-          {/* Vote on new features */}
-          <div>
-            <h3 className="text-sm font-black text-gray-900 mb-1.5">
-              Vote on New Features
-            </h3>
-            <p className="text-xs pl-6 text-gray-700">Have your say — help shape what Erogram builds next.</p>
-          </div>
-
-          {/* Save unlimited OF Creators */}
-          <div>
-            <h3 className="text-sm font-black text-gray-900 mb-1.5">
-              Save Unlimited OF Creators
-            </h3>
-            <p className="text-xs pl-6 text-gray-700">Bookmark as many OnlyFans creators as you want — no limits.</p>
-          </div>
-
-          {/* Access beta features */}
-          <div>
-            <h3 className="text-sm font-black text-gray-900 mb-1.5">
-              Access Beta Features
-            </h3>
-            <p className="text-xs pl-6 text-gray-700">Be the first to test new tools and features before they go public.</p>
-          </div>
 
         </div>
 
@@ -420,18 +450,16 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
 
             {error && <div className="mb-3 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center">{error}</div>}
 
-            {(isPremium || isAdmin) && (
+            {isPremium && (
               <div className="py-4 px-4 rounded-xl mb-3 space-y-2.5" style={{ background: 'rgba(34,197,94,0.04)', border: '1px solid rgba(34,197,94,0.15)' }}>
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-green-100">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="#16a34a"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
                   </div>
-                  <span className="font-bold text-sm text-green-700">{isAdmin && !isPremium ? 'Admin Access' : 'You\u2019re Premium'}</span>
+                  <span className="font-bold text-sm text-green-700">You&apos;re Premium</span>
                   {premiumPlan && <span className="ml-auto px-2 py-0.5 rounded-full text-[9px] font-black uppercase capitalize bg-green-50 text-green-700 border border-green-200">{premiumPlan}</span>}
-                  {isAdmin && !isPremium && <span className="ml-auto px-2 py-0.5 rounded-full text-[9px] font-black uppercase" style={{ background: 'rgba(168,85,247,0.1)', color: '#7c3aed', border: '1px solid rgba(168,85,247,0.2)' }}>Admin</span>}
                 </div>
-                {isPremium && (
-                  <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                     {premiumSince && (
                       <div className="rounded-lg px-2.5 py-1.5 bg-gray-50 border border-gray-100">
                         <p className="text-[8px] uppercase font-bold tracking-wider mb-0.5 text-gray-400">Member since</p>
@@ -448,7 +476,6 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                       ) : <p className="text-[11px] font-bold text-purple-600">Lifetime ♾</p>}
                     </div>
                   </div>
-                )}
                 <Link href="/profile?tab=vault" className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-lg text-sm font-bold text-white transition-all hover:scale-[1.02]" style={{ background: 'linear-gradient(135deg, #16a34a, #15803d)', boxShadow: '0 4px 12px rgba(22,163,74,0.25)' }}>
                   🔒 Open Vault
                 </Link>
@@ -481,8 +508,22 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
               </div>
             )}
 
+            {awaitingPayment && !paymentUrl && !isPremium && (
+              <div className="mb-4 rounded-xl px-4 py-4 text-center space-y-2" style={{ background: 'rgba(247,147,26,0.08)', border: '1px solid rgba(247,147,26,0.25)' }}>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide text-white" style={{ background: CRYPTO_ORANGE }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  Secure payment via NOWPayments
+                </div>
+                <p className="text-sm font-bold text-gray-900">Confirming your crypto payment...</p>
+                <p className="text-[10px] text-gray-600">This page updates automatically · After payment you will be redirected back to Erogram</p>
+                <div className="flex justify-center pt-1">
+                  <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none" stroke={CRYPTO_ORANGE} strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                </div>
+              </div>
+            )}
+
             {/* Pricing */}
-            {!isPremium && !soldOut && !paymentUrl && (
+            {!isPremium && !soldOut && !paymentUrl && !awaitingPayment && (
               <div className="rounded-xl p-3 space-y-2.5">
 
                 {/* Payment method picker */}
@@ -493,8 +534,8 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                       onClick={() => setPayMethod('stars')}
                       className="rounded-xl py-3 text-center transition-all"
                       style={{
-                        background: payMethod === 'stars' ? '#111827' : '#f3f4f6',
-                        border: payMethod === 'stars' ? '2px solid #111827' : '2px solid #e5e7eb',
+                        background: payMethod === 'stars' ? TELEGRAM_BLUE : '#f3f4f6',
+                        border: payMethod === 'stars' ? `2px solid ${TELEGRAM_BLUE}` : '2px solid #e5e7eb',
                       }}
                     >
                       <div className={`text-[12px] font-black ${payMethod === 'stars' ? 'text-white' : 'text-gray-900'}`}>⭐ Telegram Stars</div>
@@ -504,12 +545,12 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                       onClick={() => setPayMethod('crypto')}
                       className="rounded-xl py-3 text-center transition-all"
                       style={{
-                        background: payMethod === 'crypto' ? '#f7931a' : '#f3f4f6',
-                        border: payMethod === 'crypto' ? '2px solid #e07d0a' : '2px solid #e5e7eb',
+                        background: payMethod === 'crypto' ? CRYPTO_ORANGE : 'rgba(247,147,26,0.14)',
+                        border: payMethod === 'crypto' ? `2px solid ${CRYPTO_ORANGE_BORDER}` : `2px solid ${CRYPTO_ORANGE}`,
                       }}
                     >
-                      <div className={`text-[12px] font-black ${payMethod === 'crypto' ? 'text-white' : 'text-gray-900'}`}>₿ Crypto</div>
-                      <div className={`text-[9px] mt-0.5 ${payMethod === 'crypto' ? 'text-white/70' : 'text-gray-900'}`}>USDT, BTC, ETH & more</div>
+                      <div className={`text-[12px] font-black ${payMethod === 'crypto' ? 'text-white' : 'text-gray-900'}`} style={payMethod === 'crypto' ? undefined : { color: CRYPTO_ORANGE_BORDER }}>₿ Crypto</div>
+                      <div className={`text-[9px] mt-0.5 ${payMethod === 'crypto' ? 'text-white/70' : 'text-gray-700'}`}>USDT, BTC, ETH & more</div>
                     </button>
                   </div>
                 </div>
@@ -524,14 +565,12 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                       <div className="flex items-center gap-1 flex-wrap">
                         {payMethod === 'stars' ? (
                           <>
-                            <span className="font-black text-[20px] leading-none text-gray-900">750</span>
+                            <span className="font-black text-[20px] leading-none text-gray-900">{pricing.quarterly.starsAmount?.toLocaleString('en-US')}</span>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="#111827"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                            <span className="font-black text-[14px] leading-none text-gray-900 ml-1">$9.97</span>
+                            <span className="font-black text-[14px] leading-none text-gray-900 ml-1">{planDisplay.quarterly.usd}</span>
                           </>
                         ) : (
-                          <>
-                            <span className="font-black text-[20px] leading-none text-gray-900">$9.97</span>
-                          </>
+                          <span className="font-black text-[20px] leading-none text-gray-900">{planDisplay.quarterly.usd}</span>
                         )}
                       </div>
                       <p className="text-[9px] mt-1 text-gray-900 font-semibold">One-time payment · No auto-renewal</p>
@@ -540,22 +579,22 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                       onClick={() => handlePurchase('quarterly')}
                       disabled={!!loading}
                       className="shrink-0 px-3.5 py-2 rounded-lg font-black text-white transition-all active:scale-95 disabled:opacity-50 hover:opacity-90 flex flex-col items-center"
-                      style={{ background: PREMIUM_PINK, whiteSpace: 'nowrap' }}
+                      style={{ background: ctaBg, whiteSpace: 'nowrap' }}
                     >
                       {loading === 'quarterly' ? (
                         <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
                       ) : (
                         <>
                           <span className="text-[11px] uppercase tracking-wide">Get 3 Months</span>
-                          <span className="text-[9px] font-bold text-white/70">$3.32/mo ONLY</span>
+                          <span className="text-[9px] font-bold text-white/70">{planDisplay.quarterly.perMoShort}</span>
                         </>
                       )}
                     </button>
                   </div>
 
                   {/* Yearly · BESTSELLER */}
-                  <div className="rounded-lg overflow-hidden" style={{ border: '2px solid #111827' }}>
-                    <div className="flex items-center justify-between px-3 py-1.5" style={{ background: '#111827' }}>
+                  <div className="rounded-lg overflow-hidden" style={{ border: `2px solid ${ctaBg}` }}>
+                    <div className="flex items-center justify-between px-3 py-1.5" style={{ background: ctaBg }}>
                       <span className="font-black text-white text-[13px]">1 Year</span>
                       <span className="text-[8px] font-black tracking-widest text-white uppercase opacity-70">BESTSELLER</span>
                     </div>
@@ -564,14 +603,12 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                         <div className="flex items-center gap-1 flex-wrap">
                           {payMethod === 'stars' ? (
                             <>
-                              <span className="font-black text-[20px] leading-none text-gray-900">1,500</span>
+                              <span className="font-black text-[20px] leading-none text-gray-900">{pricing.yearly.starsAmount?.toLocaleString('en-US')}</span>
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="#111827"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                              <span className="font-black text-[14px] leading-none text-gray-900 ml-1">$19.97</span>
+                              <span className="font-black text-[14px] leading-none text-gray-900 ml-1">{planDisplay.yearly.usd}</span>
                             </>
                           ) : (
-                            <>
-                              <span className="font-black text-[20px] leading-none text-gray-900">$19.97</span>
-                            </>
+                            <span className="font-black text-[20px] leading-none text-gray-900">{planDisplay.yearly.usd}</span>
                           )}
                         </div>
                         <p className="text-[9px] mt-1 text-gray-900 font-semibold">One-time payment · No auto-renewal</p>
@@ -580,14 +617,14 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                         onClick={() => handlePurchase('yearly')}
                         disabled={!!loading}
                         className="shrink-0 px-3.5 py-2 rounded-lg font-black text-white transition-all active:scale-95 disabled:opacity-50 hover:opacity-90 flex flex-col items-center"
-                        style={{ background: PREMIUM_PINK, whiteSpace: 'nowrap' }}
+                        style={{ background: ctaBg, whiteSpace: 'nowrap' }}
                       >
                         {loading === 'yearly' ? (
                           <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
                         ) : (
                           <>
                             <span className="text-[11px] uppercase tracking-wide">Get Yearly</span>
-                            <span className="text-[9px] font-bold text-white/70">$1.66/mo ONLY</span>
+                            <span className="text-[9px] font-bold text-white/70">{planDisplay.yearly.perMoShort}</span>
                           </>
                         )}
                       </button>
@@ -604,14 +641,14 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                       <div className="flex items-center gap-1 flex-wrap">
                         {payMethod === 'stars' ? (
                           <>
-                            <span className="font-black text-[20px] leading-none text-gray-900">15,000</span>
+                            <span className="font-black text-[20px] leading-none text-gray-900">{pricing.lifetime.starsAmount?.toLocaleString('en-US')}</span>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="#111827"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                            <span className="font-black text-[14px] leading-none text-gray-900 ml-1">$190</span>
+                            <span className="font-black text-[14px] leading-none text-gray-900 ml-1">{planDisplay.lifetime.usd}</span>
                             <span className="text-gray-900 text-[10px]">· Access forever</span>
                           </>
                         ) : (
                           <>
-                            <span className="font-black text-[20px] leading-none text-gray-900">$190</span>
+                            <span className="font-black text-[20px] leading-none text-gray-900">{planDisplay.lifetime.usd}</span>
                             <span className="text-gray-900 text-[10px]">· Access forever</span>
                           </>
                         )}
@@ -622,14 +659,14 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                       onClick={() => handlePurchase('lifetime')}
                       disabled={!!loading}
                       className="shrink-0 px-3.5 py-2 rounded-lg font-black text-white transition-all active:scale-95 disabled:opacity-50 hover:opacity-90 flex flex-col items-center"
-                      style={{ background: PREMIUM_PINK, whiteSpace: 'nowrap' }}
+                      style={{ background: ctaBg, whiteSpace: 'nowrap' }}
                     >
                       {loading === 'lifetime' ? (
                         <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
                       ) : (
                         <>
                           <span className="text-[11px] uppercase tracking-wide">Pay Once</span>
-                          <span className="text-[9px] font-bold text-white/70">Use Forever!</span>
+                          <span className="text-[9px] font-bold text-white/70">{planDisplay.lifetime.perMoShort}</span>
                         </>
                       )}
                     </button>
@@ -643,25 +680,29 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
             )}
 
             {paymentUrl && !isPremium && (() => {
-              const info: Record<string, { label: string; stars: string; usd: string; perMo: string }> = {
-                monthly: { label: '1 Month', stars: '600 ★', usd: '$7.80', perMo: '$7.80/mo' },
-                quarterly: { label: '3 Months', stars: '750 ★', usd: '$9.97', perMo: '$3.32/mo' },
-                yearly: { label: '1 Year', stars: '1,500 ★', usd: '$19.97', perMo: '$1.66/mo' },
-                lifetime: { label: 'Lifetime', stars: '15,000 ★', usd: '$190', perMo: 'forever' },
-              };
-              const p = info[selectedPlan || ''] || info.quarterly;
+              const p = planDisplay[(selectedPlan || 'quarterly') as keyof typeof planDisplay] || planDisplay.quarterly;
+              const isCrypto = paymentMethodUsed === 'crypto';
+              const payBtnBg = ORDER_GREEN;
+              const payBtnShadow = '0 6px 18px rgba(22,163,74,0.4)';
               return (
               <div className="space-y-3">
                 <button
                   onClick={() => { setPaymentUrl(null); setSelectedPlan(null); setAwaitingPayment(false); if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } }}
                   className="w-full py-2.5 rounded-lg text-[13px] font-bold text-white transition-all hover:opacity-90 flex items-center justify-center gap-1.5"
-                  style={{ background: '#111827' }}
+                  style={{ background: payBtnBg }}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
                   Change Plan
                 </button>
 
                 <div className="rounded-xl p-4 space-y-3" style={{ backgroundColor: 'rgba(255,255,255,0.45)', border: '1px solid rgba(0,0,0,0.06)' }}>
+                  {isCrypto && (
+                    <div className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide text-white" style={{ background: CRYPTO_ORANGE }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                      Secure payment via NOWPayments
+                    </div>
+                  )}
+
                   <p className="text-[11px] font-bold text-gray-900 uppercase tracking-wider text-center">Order Summary</p>
 
                   <div className="rounded-lg px-4 py-3" style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}>
@@ -669,7 +710,7 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                       <span className="font-black text-gray-900 text-[14px]">Erogram VIP — {p.label}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-900 text-[12px]">{paymentMethodUsed === 'stars' ? p.stars : p.usd}</span>
+                      <span className="text-gray-900 text-[12px]">{isCrypto ? p.usd : p.stars}</span>
                       <span className="font-bold text-gray-900 text-[13px]">{p.perMo === 'forever' ? 'Pay once, use forever' : p.perMo + ' only'}</span>
                     </div>
                   </div>
@@ -679,16 +720,18 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2 w-full py-4 rounded-xl text-white font-black text-base tracking-wide transition-all hover:scale-[1.02] active:scale-[0.97]"
-                    style={{ background: '#16a34a', boxShadow: '0 6px 18px rgba(22,163,74,0.4)' }}
+                    style={{ background: payBtnBg, boxShadow: payBtnShadow }}
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
                     </svg>
-                    {paymentMethodUsed === 'stars' ? `PAY ${p.stars}` : `PAY ${p.usd}`}
+                    {isCrypto ? `PAY ${p.usd}` : `PAY ${p.stars}`}
                   </a>
 
                   <p className="text-[10px] text-gray-900 text-center">
-                    Complete payment in Telegram · This page updates automatically · After payment you will be redirected back to Erogram
+                    {isCrypto
+                      ? 'Complete payment on NOWPayments · This page updates automatically · After payment you will be redirected back to Erogram'
+                      : 'Complete payment in Telegram · This page updates automatically · After payment you will be redirected back to Erogram'}
                   </p>
                   <p className="text-[10px] text-gray-900 text-center">
                     Need help? Telegram: <a href="https://t.me/erogramDOTpro" target="_blank" rel="noopener noreferrer" className="font-bold underline">@erogramDOTpro</a> · <a href="mailto:support@erogram.biz" className="font-bold underline">support@erogram.biz</a>
@@ -705,6 +748,8 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
           </div>
         </div>
 
+        {!isPremium && <PremiumCompareBlock ctaHref="#pricing" className="mb-6" />}
+
         {/* ━━━ SECOND VAULT PREVIEW — below payment ━━━ */}
         {vaultTeaser.length > 0 && <VaultPreview items={vaultTeaser} whiteCaption />}
 
@@ -713,7 +758,7 @@ export default function PremiumClient({ vaultTeaser = [] }: PremiumClientProps) 
             <a
               href="#pricing"
               className="inline-flex items-center justify-center px-3.5 py-2.5 rounded-lg text-xs sm:text-sm font-black text-white uppercase tracking-wide text-center transition-all active:scale-95 hover:opacity-90"
-              style={{ background: PREMIUM_PINK }}
+              style={{ background: ORDER_GREEN }}
             >
               Unlock Erogram Premium
             </a>

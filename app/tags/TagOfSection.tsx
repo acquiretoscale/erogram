@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
 import { useLocalePath } from '@/lib/i18n/client';
 import type { TagCreatorResult, TagTop10Block } from '@/lib/actions/tags';
 import type { TagRankingPage } from '@/lib/tags/rankings';
@@ -43,7 +44,7 @@ function PreviewMosaic({ avatars }: { avatars: string[] }) {
 }
 
 function OfCreatorCard({ creator }: { creator: TagCreatorResult }) {
-  const profileHref = creator.slug ? `/${creator.slug}-onlyfans` : '#';
+  const profileHref = creator.slug ? ofCreatorProfileUrl(creator.slug) : creator.username ? ofCreatorProfileUrl(creator.username) : '#';
 
   const openProfile = () => {
     if (profileHref !== '#') window.open(profileHref, '_blank', 'noopener,noreferrer');
@@ -124,7 +125,7 @@ function Top10Card({ block }: { block: TagTop10Block }) {
             <button
               key={c._id}
               type="button"
-              onClick={() => window.open(`/${c.slug}-onlyfans`, '_blank', 'noopener,noreferrer')}
+              onClick={() => window.open(ofCreatorProfileUrl(c.slug), '_blank', 'noopener,noreferrer')}
               className="group flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-gray-50"
             >
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-900 text-[10px] font-black tabular-nums text-white">
@@ -173,20 +174,18 @@ export default function TagOfSection({
   label,
   rankingPages,
   top10,
-  categoryBrowseHref,
   creators,
   creatorCount,
 }: {
   label: string;
   rankingPages: (TagRankingPage & { previewAvatars: string[] })[];
   top10: TagTop10Block | null;
-  categoryBrowseHref: string | null;
   creators: TagCreatorResult[];
   creatorCount: number;
 }) {
   const lp = useLocalePath();
 
-  if (!rankingPages.length && !top10 && !creators.length && !categoryBrowseHref) return null;
+  if (!rankingPages.length && !top10 && !creators.length) return null;
 
   return (
     <section className="mt-12 border-t border-[#ececec] pt-10">
@@ -236,17 +235,6 @@ export default function TagOfSection({
         <div className="mb-8 max-w-md">
           <Top10Card block={top10} />
         </div>
-      )}
-
-      {categoryBrowseHref && (
-        <Link
-          href={lp(categoryBrowseHref)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mb-8 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] px-5 py-3 text-sm font-bold text-white transition-all hover:from-[#009ADB] hover:to-[#00BFE8]"
-        >
-          Browse all {label} on OnlyFans Search →
-        </Link>
       )}
 
       {creators.length > 0 && (

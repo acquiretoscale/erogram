@@ -67,6 +67,21 @@ export function middleware(request: NextRequest) {
     return NextResponse.next({ request: { headers: request.headers } });
   }
 
+  function attachVisitorCountry(response: NextResponse) {
+    const country =
+      request.headers.get('x-vercel-ip-country') ||
+      request.headers.get('cf-ipcountry') ||
+      request.headers.get('cloudfront-viewer-country');
+    if (country && /^[A-Za-z]{2}$/.test(country)) {
+      response.cookies.set('__ero_cc', country.toUpperCase(), {
+        maxAge: 3600,
+        path: '/',
+        sameSite: 'lax',
+      });
+    }
+    return response;
+  }
+
   // Helper: create a rewrite that forwards locale info via REQUEST headers
   // so that headers() in server components can read them.
   function rewriteWithLocale(dest: string, locale: string, originalPath: string) {
@@ -75,19 +90,19 @@ export function middleware(request: NextRequest) {
     reqHeaders.set('x-pathname', originalPath);
     const url = request.nextUrl.clone();
     url.pathname = dest;
-    return NextResponse.rewrite(url, { request: { headers: reqHeaders } });
+    return attachVisitorCountry(NextResponse.rewrite(url, { request: { headers: reqHeaders } }));
   }
 
   function nextWithLocale(locale: string, originalPath: string) {
     const reqHeaders = new Headers(request.headers);
     reqHeaders.set('x-locale', locale);
     reqHeaders.set('x-pathname', originalPath);
-    return NextResponse.next({ request: { headers: reqHeaders } });
+    return attachVisitorCountry(NextResponse.next({ request: { headers: reqHeaders } }));
   }
 
   // ── Localized OnlyFans search paths ─────────────────────────────────────────
-  // /de/onlyfans-suche* → rewrite to /onlyfanssearch*, x-locale: de
-  // /es/onlyfans-busca* → rewrite to /onlyfanssearch*, x-locale: es
+  // /de/onlyfanssearch* → rewrite to /onlyfanssearch*, x-locale: de
+  // /es/onlyfanssearch* → rewrite to /onlyfanssearch*, x-locale: es
   const OF_LOCALE_SEGMENTS: Record<string, string> = {
     de: OF_SEARCH_HUB.de,
     es: OF_SEARCH_HUB.es,
@@ -107,17 +122,6 @@ export function middleware(request: NextRequest) {
         }
       }
       return rewriteWithLocale(dest, loc, pathname);
-    }
-  }
-
-  // 301: /de/onlyfanssearch* → /de/onlyfans-suche* (and ES equivalent)
-  for (const [loc, seg] of Object.entries(OF_LOCALE_SEGMENTS)) {
-    const oldPrefix = `/${loc}/onlyfanssearch`;
-    if (pathname === oldPrefix || pathname.startsWith(`${oldPrefix}/`)) {
-      const rest = pathname.slice(oldPrefix.length);
-      const url = request.nextUrl.clone();
-      url.pathname = `/${loc}/${seg}${rest}`;
-      return NextResponse.redirect(url, 301);
     }
   }
 
@@ -152,7 +156,7 @@ export function middleware(request: NextRequest) {
   // ── Localized listing slugs (/de/geile-amateur-gruppe → /amateur-group) ──
   const RESERVED_LOCALE_SEGMENTS = new Set([
     'groups', 'bots', 'onlyfanssearch',
-    'best-telegram-groups', 'best-onlyfans-accounts', 'add', 'about', 'terms',
+    'best-telegram-groups', 'best-onlyfans-accounts', 'best-ai-nsfw-tools', 'add', 'about', 'terms',
     'privacy', 'contact', 'blog', 'ainsfw', 'advertise', 'advertisers', 'trending',
     'top100', 'premium', 'premium10', 'premium15',
   ]);

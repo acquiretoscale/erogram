@@ -22,12 +22,12 @@ import {
     Bell,
     Sparkles,
     Crown,
-    Lightbulb,
     UserCheck,
     Megaphone,
     Network,
     Target,
     Mail,
+    MessageSquare,
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -43,6 +43,7 @@ type TabItem = { href: string; name: string; icon: any; hasBadge?: boolean };
 const tabs: TabItem[] = [
     { href: '/admin',                  name: 'Overview',        icon: LayoutDashboard },
     { href: '/admin/pending-actions',  name: 'Pending Actions', icon: Bell, hasBadge: true },
+    { href: '/admin/reviews',          name: 'Comments & Reviews', icon: MessageSquare },
     { href: '/admin/groups',           name: 'Groups Hub',      icon: Users },
     { href: '/admin/featured',         name: 'Featured',        icon: Star },
     { href: '/admin/best-groups',      name: 'Best Groups',     icon: Trophy },
@@ -57,7 +58,6 @@ const tabs: TabItem[] = [
     { href: '/admin/users',            name: 'Users',           icon: User },
     { href: '/admin/leads',            name: 'Leads',           icon: Target },
     { href: '/admin/newsletter',       name: 'Newsletter',      icon: Mail },
-    { href: '/admin/suggestions',      name: 'Feature Ideas',   icon: Lightbulb },
     { href: '/admin/paid-campaigns',   name: 'Paid Campaigns',  icon: Megaphone },
     { href: '/admin/coupons',          name: 'Coupons',         icon: Star },
     { href: '/admin/settings',         name: 'Settings',        icon: Settings },

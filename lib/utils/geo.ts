@@ -11,8 +11,14 @@ export function extractGeoData(req: NextRequest) {
     req.headers.get('x-real-ip') ||
     undefined;
 
-  const country = req.headers.get('x-vercel-ip-country') || undefined;
-  const city = req.headers.get('x-vercel-ip-city') || undefined;
+  const country =
+    req.headers.get('x-vercel-ip-country') ||
+    req.headers.get('cf-ipcountry') ||
+    req.headers.get('cloudfront-viewer-country') ||
+    req.headers.get('x-country-code') ||
+    undefined;
+
+  const city = parseCity(req.headers.get('x-vercel-ip-city'));
   const timezone = req.headers.get('x-vercel-ip-timezone') || undefined;
 
   const userAgent = req.headers.get('user-agent') || undefined;
@@ -21,6 +27,49 @@ export function extractGeoData(req: NextRequest) {
   const referrer = req.headers.get('referer') || undefined;
 
   return { ip, country, city, timezone, userAgent, language, referrer };
+}
+
+/** ISO 3166-1 alpha-2 country code from edge headers, if present. */
+export function getRequestCountry(req: NextRequest): string | undefined {
+  const { country } = extractGeoData(req);
+  if (!country) return undefined;
+  const code = country.toUpperCase();
+  return /^[A-Z]{2}$/.test(code) ? code : undefined;
+}
+
+function parseCountryCode(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const code = value.toUpperCase();
+  return /^[A-Z]{2}$/.test(code) ? code : undefined;
+}
+
+export { parseCountryCode };
+
+/** Decode Vercel/geo city values (URL-encoded, e.g. S%C3%A3o%20Paulo). */
+export function parseCity(value?: string | null): string | undefined {
+  if (!value?.trim()) return undefined;
+  let raw = value.trim().replace(/\+/g, ' ');
+  for (let i = 0; i < 2; i++) {
+    if (!/%[0-9A-Fa-f]{2}/.test(raw)) break;
+    try {
+      const next = decodeURIComponent(raw);
+      if (next === raw) break;
+      raw = next;
+    } catch {
+      break;
+    }
+  }
+  const out = raw.trim();
+  return out || undefined;
+}
+
+/** ISO 3166-1 alpha-2 → regional indicator flag emoji. */
+export function countryCodeToFlag(code: string | undefined | null): string {
+  const parsed = parseCountryCode(code);
+  if (!parsed) return '';
+  return String.fromCodePoint(
+    ...parsed.split('').map((char) => 0x1f1e6 + char.charCodeAt(0) - 65),
+  );
 }
 
 /**

@@ -358,6 +358,20 @@ export async function updateOFMCreatorSettings(
     if (patch[k as keyof typeof patch] !== undefined) safe[k] = patch[k as keyof typeof patch];
   }
   await TrendingOFCreator.findByIdAndUpdate(creatorId, { $set: safe });
+
+  // The actual outbound click (/go/[username]) redirects using OnlyFansCreator.url, NOT
+  // TrendingOFCreator.url. Without this, a tracking link pasted here in the OFM admin UI
+  // never reaches OnlyFans — clicks keep going to whatever bare link was saved at import time.
+  if (patch.url !== undefined && patch.url.trim()) {
+    const cr = await TrendingOFCreator.findById(creatorId).select('username').lean() as any;
+    if (cr?.username) {
+      await OnlyFansCreator.updateOne(
+        { username: { $regex: new RegExp(`^${String(cr.username).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } },
+        { $set: { url: patch.url.trim() } },
+      );
+    }
+  }
+
   if (patch.active !== undefined) {
     const { syncTrendingToCampaign } = await import('@/lib/actions/ofSync');
     await syncTrendingToCampaign(creatorId);

@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import { User, Group } from '@/lib/models';
 import { sendNewGroupTelegramNotification, sendPremiumGroupTelegramNotification } from '@/lib/utils/telegramNotify';
 import { pingIndexNow } from '@/lib/utils/indexNow';
+import { LOCALES } from '@/lib/i18n/config';
+
+/** Group pages are ISR-cached; rebuild them instantly on approve/edit/delete. */
+function revalidateGroupPage(slug: string) {
+  try {
+    for (const locale of LOCALES) {
+      revalidatePath(locale === 'en' ? `/${slug}` : `/${locale}/${slug}`);
+    }
+  } catch (err) {
+    console.error('[Group Update] revalidatePath failed:', err);
+  }
+}
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -98,7 +111,10 @@ export async function PUT(
         { status: 404 }
       );
     }
-    
+
+    // Instant refresh: approve/edit shows on the live page immediately.
+    revalidateGroupPage(group.slug);
+
     // Send Telegram notification if status changed to approved
     if (body.status === 'approved' && oldGroup.status !== 'approved') {
       try {
@@ -216,6 +232,8 @@ export async function DELETE(
         { status: 404 }
       );
     }
+
+    revalidateGroupPage(group.slug);
 
     return NextResponse.json({ message: 'Group permanently deleted' });
   } catch (error: any) {

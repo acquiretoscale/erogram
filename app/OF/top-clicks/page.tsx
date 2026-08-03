@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { getTopClickedCreators, type TopCreator } from '@/lib/actions/ofmCreators';
+import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
 
 export default function TopClicksPage() {
   const [creators, setCreators] = useState<TopCreator[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getTopClickedCreators(100).then((data) => {
+    getTopClickedCreators(300).then((data) => {
       setCreators(data);
       setLoading(false);
     });
@@ -19,7 +20,7 @@ export default function TopClicksPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-white">Top 100 Most Clicked Creators</h1>
+        <h1 className="text-xl font-bold text-white">Top 300 Most Clicked Creators</h1>
         <p className="text-white/40 text-sm mt-1">Ranked by total clicks on their profile page</p>
       </div>
 
@@ -42,7 +43,9 @@ export default function TopClicksPage() {
               </tr>
             </thead>
             <tbody>
-              {creators.map((c, i) => (
+              {creators.map((c, i) => {
+                const profileUrl = ofCreatorProfileUrl(c.username || c.slug);
+                return (
                 <tr
                   key={c._id}
                   className="border-b border-white/[0.04] hover:bg-white/[0.03] transition"
@@ -50,17 +53,31 @@ export default function TopClicksPage() {
                   <td className="px-4 py-3 text-white/30 font-mono text-xs">{i + 1}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      {c.avatar ? (
-                        <img src={c.avatar} alt={c.name} className="w-8 h-8 rounded-full object-cover shrink-0 bg-white/5" />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-[#00AFF0]/10 border border-[#00AFF0]/20 flex items-center justify-center shrink-0">
-                          <span className="text-[#00AFF0] text-[10px] font-bold">{c.name?.[0]?.toUpperCase() || '?'}</span>
-                        </div>
-                      )}
+                      <a
+                        href={profileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0 hover:opacity-80 transition"
+                      >
+                        {c.avatar ? (
+                          <img src={c.avatar} alt={c.name} className="w-8 h-8 rounded-full object-cover bg-white/5" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-[#00AFF0]/10 border border-[#00AFF0]/20 flex items-center justify-center">
+                            <span className="text-[#00AFF0] text-[10px] font-bold">{c.name?.[0]?.toUpperCase() || '?'}</span>
+                          </div>
+                        )}
+                      </a>
                       <div>
-                        <div className="text-white font-medium leading-tight">{c.name}</div>
                         <a
-                          href={`/onlyfanssearch/${c.slug}`}
+                          href={profileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-white font-medium leading-tight hover:text-[#00AFF0] transition block"
+                        >
+                          {c.name}
+                        </a>
+                        <a
+                          href={profileUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-white/30 text-xs hover:text-[#00AFF0] transition"
@@ -89,7 +106,7 @@ export default function TopClicksPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              );})}
             </tbody>
           </table>
         </div>

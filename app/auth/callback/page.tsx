@@ -50,10 +50,10 @@ export default function AuthCallbackPage() {
       router.replace('/admin');
     } else if (state === 'premium') {
       router.replace('/premium');
-    } else if (newUser) {
-      router.replace('/profile');
     } else if (redirectTarget) {
       router.replace(normalizeRedirect(redirectTarget));
+    } else if (newUser) {
+      router.replace('/profile');
     } else {
       router.replace('/profile');
     }

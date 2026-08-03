@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
 import {
   getBlogFeaturedCreatorAdmin,
   upsertBlogFeaturedCreator,
@@ -68,7 +69,7 @@ export default function CreatorOfMonthManager() {
       username: creator.username,
       avatar: creator.avatar,
       coverImage: creator.avatar,
-      destinationUrl: creator.username ? `/${creator.username}-onlyfans` : '',
+      destinationUrl: creator.username ? ofCreatorProfileUrl(creator.username) : '',
       monthLabel: f.monthLabel || now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
     }));
     setQuery('');

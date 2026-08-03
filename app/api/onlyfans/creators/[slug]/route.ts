@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator, User } from '@/lib/models';
+import { revalidateCreatorPage } from '@/lib/actions/ofCreatorProfile';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -27,6 +28,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ s
   if (result.deletedCount === 0) {
     return NextResponse.json({ error: 'Creator not found' }, { status: 404 });
   }
+  await revalidateCreatorPage(slug);
   return NextResponse.json({ success: true, slug });
 }
 
@@ -45,6 +47,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ sl
       { new: true },
     );
     if (!creator) return NextResponse.json({ error: 'Creator not found' }, { status: 404 });
+    await revalidateCreatorPage(slug, creator.username);
     return NextResponse.json({ success: true, slug, featured: creator.featured });
   }
 

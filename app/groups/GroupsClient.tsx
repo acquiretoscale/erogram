@@ -129,8 +129,8 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   const [topGroups, setTopGroups] = useState<Group[]>([]);
   const [topGroupsLoading, setTopGroupsLoading] = useState(true);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewLoginPath, setReviewLoginPath] = useState('/groups');
   const [selectedGroupForReview, setSelectedGroupForReview] = useState<Group | null>(null);
-  const [groupReviews, setGroupReviews] = useState<any[]>([]);
   const [showReportModal, setShowReportModal] = useState(false);
   const [selectedGroupForReport, setSelectedGroupForReport] = useState<Group | null>(null);
   const [bookmarkedMap, setBookmarkedMap] = useState<Record<string, string>>({});
@@ -229,44 +229,16 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
 
 
-  // Handle opening review modal
-  const openReviewModal = async (group: Group) => {
+  const openReviewModal = (group: Group) => {
     setSelectedGroupForReview(group);
+    setReviewLoginPath(group.slug ? `/${group.slug}` : '/groups');
     setShowReviewModal(true);
-
-    // Fetch reviews for this group
-    try {
-      const response = await axios.get(`/api/groups/${group._id}/reviews`);
-      setGroupReviews(response.data);
-    } catch (error) {
-      console.error('Error fetching group reviews:', error);
-      setGroupReviews([]);
-    }
   };
 
   // Handle opening report modal
   const openReportModal = (group: Group) => {
     setSelectedGroupForReport(group);
     setShowReportModal(true);
-  };
-
-  // Handle submitting a review
-  const handleSubmitReview = async (reviewData: { rating: number; content: string; authorName: string }) => {
-    if (!selectedGroupForReview) return;
-
-    try {
-      await axios.post(`/api/groups/${selectedGroupForReview._id}/reviews`, {
-        content: reviewData.content,
-        rating: reviewData.rating,
-        authorName: reviewData.authorName
-      });
-      setShowReviewModal(false);
-      setSelectedGroupForReview(null);
-      // Optionally refresh the page or show success message
-      alert(t('groups.reviewSuccess'));
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to submit review');
-    }
   };
 
   // Client-side randomization to avoid deterministic ordering from SSR/cache
@@ -973,14 +945,13 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
       {/* Review Modal */}
       {showReviewModal && selectedGroupForReview && (
         <ReviewModal
-          group={selectedGroupForReview}
-          reviews={groupReviews}
+          entityName={selectedGroupForReview.name}
+          slug={selectedGroupForReview.slug}
+          loginRedirectPath={reviewLoginPath}
           onClose={() => {
             setShowReviewModal(false);
             setSelectedGroupForReview(null);
-            setGroupReviews([]);
           }}
-          onSubmitReview={handleSubmitReview}
         />
       )}
 

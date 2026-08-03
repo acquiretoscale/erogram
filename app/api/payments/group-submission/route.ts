@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
 import { Group, Bot } from '@/lib/models';
 import { validateCoupon, recordCouponUsage } from '@/lib/actions/coupons';
+import { authenticateUser } from '@/lib/auth';
+import { buildBoostPaymentUpdate, cryptoUsdFromStars } from '@/lib/boostPricing';
 
 const BOT_TOKEN = process.env.TELEGRAM_PAYMENT_BOT_TOKEN || '';
+const NP_API_KEY = process.env.NOWPAYMENTS_API_KEY || '';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
+const NP_BASE = 'https://api.nowpayments.io/v1';
 
 export type SubmissionType = 'normal_listing' | 'instant_approval' | 'boost_week' | 'boost_month';
 export type EntityType = 'group' | 'bot';
@@ -15,13 +20,13 @@ const GROUP_PLANS: Partial<Record<SubmissionType, { title: string; description: 
     amount: 600,
   },
   boost_week: {
-    title: 'Instant + Boost (1 Week)',
-    description: 'Instantly approved AND boosted in Top Groups for 7 days (40× more exposure)',
+    title: 'Boost Extension (1 Week)',
+    description: 'Boost in Top Groups for 7 days (40× more exposure)',
     amount: 2000,
   },
   boost_month: {
-    title: 'Instant + Boost (1 Month)',
-    description: 'Instantly approved AND boosted in Top Groups for 30 days (40× more exposure)',
+    title: 'Boost Extension (1 Month)',
+    description: 'Boost in Top Groups for 30 days (40× more exposure)',
     amount: 5000,
   },
 };
@@ -38,30 +43,32 @@ const BOT_PLANS: Record<SubmissionType, { title: string; description: string; am
     amount: 1500,
   },
   boost_week: {
-    title: 'Instant + Boost (1 Week)',
-    description: 'Instantly approved AND boosted in Top Bots for 7 days — 40× more exposure',
+    title: 'Boost Extension (1 Week)',
+    description: 'Boost in Top Bots for 7 days. 40× more exposure',
     amount: 3000,
   },
   boost_month: {
-    title: 'Instant + Boost (1 Month)',
-    description: 'Instantly approved AND boosted in Most Popular Bots for 30 days',
+    title: 'Boost Extension (1 Month)',
+    description: 'Boost in Most Popular Bots for 30 days',
     amount: 6000,
   },
 };
 
 export async function POST(req: NextRequest) {
-  if (!BOT_TOKEN) {
-    return NextResponse.json({ message: 'Payments are not configured. Contact admin.' }, { status: 503 });
-  }
-
-  let body: { groupId?: string; type?: SubmissionType; entityType?: EntityType; couponCode?: string };
+  let body: {
+    groupId?: string;
+    type?: SubmissionType;
+    entityType?: EntityType;
+    couponCode?: string;
+    paymentMethod?: 'stars' | 'crypto';
+  };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ message: 'Invalid request body' }, { status: 400 });
   }
 
-  const { groupId, type, entityType = 'group', couponCode } = body;
+  const { groupId, type, entityType = 'group', couponCode, paymentMethod = 'stars' } = body;
 
   const plans = entityType === 'bot' ? BOT_PLANS : GROUP_PLANS;
 
@@ -72,12 +79,68 @@ export async function POST(req: NextRequest) {
   await connectDB();
 
   const Model = entityType === 'bot' ? Bot : Group;
-  const entity = await Model.findById(groupId).lean();
+  const entity = await Model.findById(groupId).lean() as any;
   if (!entity) {
     return NextResponse.json({ message: 'Group/bot not found' }, { status: 404 });
   }
 
-  const plan = plans[type];
+  const plan = plans[type]!;
+
+  if (paymentMethod === 'crypto') {
+    if (!NP_API_KEY) {
+      return NextResponse.json({ message: 'Crypto payments are not configured.' }, { status: 503 });
+    }
+    if (type !== 'boost_week' && type !== 'boost_month') {
+      return NextResponse.json({ message: 'Crypto is only available for boost renewals.' }, { status: 400 });
+    }
+
+    const user = await authenticateUser(req);
+    if (!user) {
+      return NextResponse.json({ message: 'Login required for crypto payment.' }, { status: 401 });
+    }
+    if (entity.createdBy?.toString() !== user._id) {
+      return NextResponse.json({ message: 'You can only renew your own listings.' }, { status: 403 });
+    }
+
+    const priceUsd = cryptoUsdFromStars(plan.amount);
+    const orderId = `sub__${entityType}__${groupId}__${type}__${Date.now()}`;
+
+    try {
+      const res = await fetch(`${NP_BASE}/invoice`, {
+        method: 'POST',
+        headers: {
+          'x-api-key': NP_API_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          price_amount: priceUsd,
+          price_currency: 'usd',
+          pay_currency: 'usdttrc20',
+          order_id: orderId,
+          order_description: `${plan.title} | ${entity.name || entityType} (15% crypto discount)`,
+          ipn_callback_url: `${SITE_URL}/api/payments/nowpayments/webhook`,
+          success_url: `${SITE_URL}/my-listings?renewed=1`,
+          cancel_url: `${SITE_URL}/my-listings`,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.invoice_url) {
+        console.error('NowPayments boost renewal invoice error:', data);
+        return NextResponse.json({ message: data?.message || 'Failed to create crypto invoice.' }, { status: 500 });
+      }
+
+      return NextResponse.json({ url: data.invoice_url, paymentMethod: 'crypto' });
+    } catch (err) {
+      console.error('NowPayments boost renewal error:', err);
+      return NextResponse.json({ message: 'Server error' }, { status: 500 });
+    }
+  }
+
+  if (!BOT_TOKEN) {
+    return NextResponse.json({ message: 'Payments are not configured. Contact admin.' }, { status: 503 });
+  }
+
   let finalAmount = plan.amount;
   let couponValidation: any = null;
 
@@ -91,20 +154,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // 100% discount — skip Telegram invoice, approve directly
     if (finalAmount <= 0) {
-      const now = new Date();
-      const updateFields: Record<string, any> = { paidBoost: true, paidBoostStars: 0 };
-      if (type === 'instant_approval' || type === 'boost_week' || type === 'boost_month') {
-        updateFields.status = 'approved';
-      }
-      if (type === 'boost_week') {
-        const exp = new Date(now); exp.setDate(exp.getDate() + 7);
-        Object.assign(updateFields, { featured: true, featuredAt: now, boosted: true, boostExpiresAt: exp, boostDuration: '7d' });
-      } else if (type === 'boost_month') {
-        const exp = new Date(now); exp.setDate(exp.getDate() + 30);
-        Object.assign(updateFields, { featured: true, featuredAt: now, boosted: true, boostExpiresAt: exp, boostDuration: '30d' });
-      }
+      const updateFields = buildBoostPaymentUpdate(entity, type, entityType, { paidBoostStars: 0 });
       await Model.findByIdAndUpdate(groupId, { $set: updateFields });
 
       if (couponValidation?.couponId) {
@@ -121,7 +172,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ url: null, freeApproval: true });
     }
 
-    const invoicePayload = JSON.stringify({ groupId, type, entityType, couponCode: couponCode || undefined, couponId: couponValidation?.couponId });
+    const invoicePayload = JSON.stringify({
+      groupId,
+      type,
+      entityType,
+      couponCode: couponCode || undefined,
+      couponId: couponValidation?.couponId,
+    });
     const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/createInvoiceLink`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -142,7 +199,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Failed to create invoice. Please try again.' }, { status: 500 });
     }
 
-    return NextResponse.json({ url: data.result });
+    return NextResponse.json({ url: data.result, paymentMethod: 'stars' });
   } catch (err) {
     console.error('Group submission payment error:', err);
     return NextResponse.json({ message: 'Server error' }, { status: 500 });

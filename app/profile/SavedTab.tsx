@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -8,7 +8,60 @@ import axios from 'axios';
 import UpgradeModal from '@/components/UpgradeModal';
 import ReportModal from '@/app/groups/ReportModal';
 import { useToast } from '@/components/Toast';
-import PremiumCompareBlock from './PremiumCompareBlock';
+import PremiumCompareBlock from '@/components/PremiumCompareBlock';
+import { FREE_BOOKMARK_LIMIT, FREE_FOLDER_LIMIT } from '@/lib/premiumLimits';
+import { AI_NSFW_TOOLS } from '@/app/ainsfw/data';
+import ProfileGridDensityToggle from './ProfileGridDensityToggle';
+import {
+  loadProfileGridDensity,
+  profileGridClass,
+  profileGridGapClass,
+  type ProfileGridDensity,
+} from './profileGridDensity';
+import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+
+type BookmarkFilter = 'all' | 'group' | 'bot' | 'ainsfw' | 'creator';
+
+interface BookmarkedUnified {
+  id: string;
+  kind: 'group' | 'bot' | 'ainsfw' | 'creator';
+  name: string;
+  image: string;
+  slug: string;
+  href: string;
+  categories: string[];
+  memberCount?: number;
+  telegramLink?: string;
+  priceLabel?: string;
+  bookmark?: BookmarkedItem;
+  ainsfwSlug?: string;
+  creatorId?: string;
+}
+
+interface SavedCreator {
+  _id: string;
+  name: string;
+  username: string;
+  slug: string;
+  avatar: string;
+  price: number;
+  isFree: boolean;
+  categories?: string[];
+}
+
+function loadAinsfwBookmarkSlugs(): string[] {
+  if (typeof window === 'undefined') return [];
+  const slugs: string[] = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith('ainsfw_bookmark_') && localStorage.getItem(key) === '1') {
+        slugs.push(key.replace('ainsfw_bookmark_', ''));
+      }
+    }
+  } catch { /* ignore */ }
+  return slugs;
+}
 
 interface BookmarkedItem {
   _id: string;
@@ -37,17 +90,83 @@ interface Folder {
   sortOrder: number;
 }
 
+import { getProfileTabColors, isProfileThemedMode, type ProfileThemeId } from './profileTheme';
+import { useProfileTheme } from './ProfileThemeContext';
+import { getSavedLikesOrder, saveSavedLikesOrder } from '@/lib/actions/userProfile';
+
+function applyLikesOrder(items: BookmarkedUnified[], order: string[]): BookmarkedUnified[] {
+  const map = new Map(items.map((i) => [`${i.kind}:${i.id}`, i]));
+  const out: BookmarkedUnified[] = [];
+  for (const k of order) {
+    const item = map.get(k);
+    if (item) {
+      out.push(item);
+      map.delete(k);
+    }
+  }
+  for (const item of items) {
+    const k = `${item.kind}:${item.id}`;
+    if (map.has(k)) out.push(item);
+  }
+  return out;
+}
+
+function mergeReorderedKeys(fullOrder: string[], visibleKeys: string[], newVisibleOrder: string[]): string[] {
+  const visibleSet = new Set(visibleKeys);
+  const result: string[] = [];
+  let vi = 0;
+  for (const k of fullOrder) {
+    if (visibleSet.has(k)) {
+      if (vi < newVisibleOrder.length) result.push(newVisibleOrder[vi++]);
+    } else {
+      result.push(k);
+    }
+  }
+  for (const k of newVisibleOrder) {
+    if (!result.includes(k)) result.push(k);
+  }
+  return result;
+}
+
+function dragKindLabel(kind: BookmarkedUnified['kind']) {
+  if (kind === 'ainsfw') return 'AI NSFW';
+  if (kind === 'creator') return 'OnlyFans';
+  return kind;
+}
+
+function dragKindBadgeBg(kind: BookmarkedUnified['kind']) {
+  if (kind === 'ainsfw') return 'rgba(124,58,237,0.9)';
+  if (kind === 'creator') return 'rgba(0,175,240,0.9)';
+  return 'rgba(38,165,228,0.9)';
+}
+
+function DragHint() {
+  return (
+    <span
+      className="absolute bottom-2 left-2 z-[2] pointer-events-none flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide opacity-0 transition-opacity group-hover/drag:opacity-100 group-active/drag:opacity-100"
+      style={{ backgroundColor: 'rgba(0,0,0,0.55)', color: 'rgba(255,255,255,0.92)' }}
+    >
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M18 11V6a2 2 0 0 0-4 0" /><path d="M14 10V4a2 2 0 0 0-4 0v2" /><path d="M10 10.5V5a2 2 0 0 0-4 0v8" />
+        <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.7-2.3" />
+      </svg>
+      Drag
+    </span>
+  );
+}
+
 export default function SavedTab({
   isPremium,
-  showOnboardingHint = false,
+  editorial = false,
+  themeMode,
 }: {
   isPremium: boolean;
-  showOnboardingHint?: boolean;
+  editorial?: boolean;
+  themeMode?: ProfileThemeId;
 }) {
-  const FREE_BOOKMARK_LIMIT = 20;
-  const FREE_FOLDER_LIMIT = 2;
   const router = useRouter();
   const { toast } = useToast();
+  const { tokens: profileTokens } = useProfileTheme();
   const [bookmarks, setBookmarks] = useState<BookmarkedItem[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
@@ -61,9 +180,19 @@ export default function SavedTab({
     if (typeof window !== 'undefined') return (localStorage.getItem('saved_view') as 'list' | 'grid') || 'list';
     return 'list';
   });
+  const [gridDensity, setGridDensity] = useState<ProfileGridDensity>(() => loadProfileGridDensity());
   const [allBookmarks, setAllBookmarks] = useState<BookmarkedItem[]>([]);
+  const [ainsfwSlugs, setAinsfwSlugs] = useState<string[]>([]);
+  const [savedCreators, setSavedCreators] = useState<SavedCreator[]>([]);
+  const [typeFilter, setTypeFilter] = useState<BookmarkFilter>('all');
   const [showInfoBox, setShowInfoBox] = useState(false);
   const [reportGroup, setReportGroup] = useState<{ _id: string; name: string; category: string; country: string } | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [deletingSelected, setDeletingSelected] = useState(false);
+  const [likesOrder, setLikesOrder] = useState<string[]>([]);
+  const dragItem = useRef<number | null>(null);
+  const dragOverItem = useRef<number | null>(null);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}` };
@@ -71,14 +200,19 @@ export default function SavedTab({
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [bkRes, flRes, allRes] = await Promise.all([
+      setAinsfwSlugs(loadAinsfwBookmarkSlugs());
+      const [bkRes, flRes, allRes, orderRes, creatorsRes] = await Promise.all([
         axios.get('/api/bookmarks', { headers, params: activeFolder ? { folderId: activeFolder } : {} }),
         axios.get('/api/bookmarks/folders', { headers }),
         activeFolder ? axios.get('/api/bookmarks', { headers }) : Promise.resolve(null),
+        token ? getSavedLikesOrder(token).catch(() => []) : Promise.resolve([]),
+        fetch('/api/onlyfans/save/creators', { headers }).then((r) => (r.ok ? r.json() : { creators: [] })).catch(() => ({ creators: [] })),
       ]);
       setBookmarks(bkRes.data);
       setFolders(flRes.data);
       setAllBookmarks(allRes ? allRes.data : bkRes.data);
+      setSavedCreators(Array.isArray(creatorsRes?.creators) ? creatorsRes.creators : []);
+      setLikesOrder(Array.isArray(orderRes) ? orderRes : []);
     } catch {
       toast('Failed to load saved items', 'error');
     }
@@ -95,6 +229,60 @@ export default function SavedTab({
       toast('Removed from saved', 'success');
     } catch {
       toast('Failed to remove item', 'error');
+    }
+  };
+
+  const itemKey = (item: BookmarkedUnified) => `${item.kind}-${item.id}`;
+  const orderKey = (item: BookmarkedUnified) => `${item.kind}:${item.id}`;
+
+  const kindLabel = dragKindLabel;
+  const kindBadgeBg = dragKindBadgeBg;
+
+  const exitEditMode = () => {
+    setEditMode(false);
+    setSelectedKeys(new Set());
+  };
+
+  const toggleSelected = (key: string) => {
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const deleteSelected = async () => {
+    if (selectedKeys.size === 0) return;
+    setDeletingSelected(true);
+    try {
+      const toDelete = filteredItems.filter((item) => selectedKeys.has(itemKey(item)));
+      for (const item of toDelete) {
+        if (item.bookmark) {
+          await axios.delete(`/api/bookmarks/${item.bookmark._id}`, { headers });
+          setBookmarks((prev) => prev.filter((b) => b._id !== item.bookmark!._id));
+          setAllBookmarks((prev) => prev.filter((b) => b._id !== item.bookmark!._id));
+        } else if (item.ainsfwSlug) {
+          try { localStorage.setItem(`ainsfw_bookmark_${item.ainsfwSlug}`, '0'); } catch { /* ignore */ }
+          setAinsfwSlugs((prev) => prev.filter((s) => s !== item.ainsfwSlug));
+        } else if (item.creatorId) {
+          await fetch('/api/onlyfans/save', {
+            method: 'DELETE',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ creatorId: item.creatorId }),
+          });
+          setSavedCreators((prev) => prev.filter((c) => c._id !== item.creatorId));
+        }
+      }
+      exitEditMode();
+      const nextOrder = likesOrder.filter((k) => !selectedKeys.has(k));
+      setLikesOrder(nextOrder);
+      if (token) await saveSavedLikesOrder(token, nextOrder);
+      toast(`Removed ${toDelete.length} item${toDelete.length === 1 ? '' : 's'}`, 'success');
+    } catch {
+      toast('Failed to remove items', 'error');
+    } finally {
+      setDeletingSelected(false);
     }
   };
 
@@ -177,7 +365,120 @@ export default function SavedTab({
   const freeFoldersRemaining = Math.max(FREE_FOLDER_LIMIT - folders.length, 0);
   const canCreateFolder = isPremium || freeFoldersRemaining > 0;
 
-  const t = isPremium ? {
+  const ainsfwLikes = useMemo(
+    () => ainsfwSlugs
+      .map((slug) => AI_NSFW_TOOLS.find((t) => t.slug === slug))
+      .filter((t): t is (typeof AI_NSFW_TOOLS)[number] => !!t),
+    [ainsfwSlugs],
+  );
+
+  const { filteredItems, typeCounts, totalLikesCount, showFolders } = useMemo(() => {
+    const bookmarkItems: BookmarkedUnified[] = bookmarks
+      .filter((bk) => bk.item)
+      .map((bk) => ({
+        id: bk._id,
+        kind: bk.itemType,
+        name: bk.item!.name,
+        image: bk.item!.image || '/assets/placeholder-no-image.png',
+        slug: bk.item!.slug,
+        href: `/${bk.item!.slug}`,
+        categories: (bk.item!.categories?.length ? bk.item!.categories : [bk.item!.category]).filter(Boolean) as string[],
+        memberCount: bk.item!.memberCount,
+        telegramLink: bk.item!.telegramLink,
+        bookmark: bk,
+      }));
+
+    const ainsfwItems: BookmarkedUnified[] = activeFolder ? [] : ainsfwLikes.map((tool) => ({
+      id: tool.slug,
+      kind: 'ainsfw' as const,
+      name: tool.name,
+      image: tool.image?.startsWith('http') || tool.image?.startsWith('/') ? tool.image : '/assets/image.jpg',
+      slug: tool.slug,
+      href: `/ainsfw/${tool.slug}`,
+      categories: [tool.category].filter(Boolean),
+      ainsfwSlug: tool.slug,
+    }));
+
+    const creatorItems: BookmarkedUnified[] = activeFolder ? [] : savedCreators.map((creator) => ({
+      id: creator._id,
+      kind: 'creator' as const,
+      name: creator.name,
+      image: creator.avatar || '/assets/placeholder-no-image.png',
+      slug: creator.slug || creator.username,
+      href: ofCreatorProfileUrl(creator.username),
+      categories: (creator.categories?.length ? creator.categories : ['OnlyFans']).filter(Boolean),
+      priceLabel: creator.isFree ? 'Free' : `$${creator.price}`,
+      creatorId: creator._id,
+    }));
+
+    const allBookmarkItems = [...bookmarkItems, ...ainsfwItems, ...creatorItems];
+    const counts = {
+      all: allBookmarks.filter((b) => b.item).length + ainsfwLikes.length + savedCreators.length,
+      group: allBookmarks.filter((b) => b.item && b.itemType === 'group').length,
+      bot: allBookmarks.filter((b) => b.item && b.itemType === 'bot').length,
+      ainsfw: ainsfwLikes.length,
+      creator: savedCreators.length,
+    };
+
+    return {
+      filteredItems: applyLikesOrder(
+        typeFilter === 'all' ? allBookmarkItems : allBookmarkItems.filter((item) => item.kind === typeFilter),
+        likesOrder,
+      ),
+      typeCounts: counts,
+      totalLikesCount: counts.all,
+      showFolders: !activeFolder && (typeFilter === 'all' || typeFilter === 'group' || typeFilter === 'bot'),
+    };
+  }, [bookmarks, ainsfwLikes, savedCreators, activeFolder, typeFilter, allBookmarks, likesOrder]);
+
+  const orderedItems = filteredItems;
+
+  const persistOrder = async (nextVisibleOrder: BookmarkedUnified[]) => {
+    if (!token) return;
+    const newVisibleOrderKeys = nextVisibleOrder.map(orderKey);
+    const visibleKeys = orderedItems.map(orderKey);
+    const merged = mergeReorderedKeys(likesOrder, visibleKeys, newVisibleOrderKeys);
+    setLikesOrder(merged);
+    await saveSavedLikesOrder(token, merged);
+  };
+
+  const handleDragStart = (idx: number, e?: React.DragEvent) => {
+    dragItem.current = idx;
+    dragOverItem.current = idx;
+    if (e?.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(idx));
+    }
+  };
+
+  const handleDragEnter = (idx: number) => {
+    dragOverItem.current = idx;
+  };
+
+  const handleDragEnd = () => {
+    const from = dragItem.current;
+    const to = dragOverItem.current;
+    dragItem.current = null;
+    dragOverItem.current = null;
+    if (from === null || to === null || from === to) return;
+    const copy = [...orderedItems];
+    const [removed] = copy.splice(from, 1);
+    copy.splice(to, 0, removed);
+    void persistOrder(copy);
+  };
+
+  const TYPE_FILTERS: { key: BookmarkFilter; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'group', label: 'Groups' },
+    { key: 'bot', label: 'Bots' },
+    { key: 'creator', label: 'OnlyFans' },
+    { key: 'ainsfw', label: 'AI NSFW' },
+  ];
+
+  const profileThemed = isProfileThemedMode(themeMode) || editorial;
+  const t = profileThemed && themeMode
+    ? getProfileTabColors(themeMode)
+    : editorial || themeMode === 'light' ? getProfileTabColors('light') : isPremium ? {
     accent: '#c9973a',
     accentDim: '#7a6040',
     activeBg: 'linear-gradient(135deg, #c9973a, #a67c2e)',
@@ -193,6 +494,8 @@ export default function SavedTab({
     leftAccent: 'linear-gradient(180deg, transparent, #c9973a55, transparent)',
     viewBtnBg: '#c9973a',
     viewBtnTxt: '#0d0c0a',
+    text: '#fff',
+    textMuted: 'rgba(255,255,255,0.4)',
   } : {
     accent: '#b31b1b',
     accentDim: '#999',
@@ -209,13 +512,9 @@ export default function SavedTab({
     leftAccent: 'linear-gradient(180deg, transparent, rgba(255,255,255,0.06), transparent)',
     viewBtnBg: 'rgba(255,255,255,0.15)',
     viewBtnTxt: '#fff',
+    text: '#fff',
+    textMuted: 'rgba(255,255,255,0.4)',
   };
-  const hasAnyBookmarks = allBookmarks.length > 0;
-  const hasAnyFolders = folders.length > 0;
-  const hasOrganizedBookmark = allBookmarks.some(b => !!b.folderId);
-  const checklistCompleted = [hasAnyBookmarks, hasAnyFolders, hasOrganizedBookmark].filter(Boolean).length;
-  const showActivationChecklist = showOnboardingHint || !hasOrganizedBookmark;
-
   function ThreeDotMenu({ bk }: { bk: BookmarkedItem }) {
     const [open, setOpen] = useState(false);
     const [showMoveMenu, setShowMoveMenu] = useState(false);
@@ -274,13 +573,6 @@ export default function SavedTab({
       >
         {!showMoveMenu ? (
           <>
-            <button
-              onClick={e => { e.preventDefault(); e.stopPropagation(); removeBookmark(bk._id); setOpen(false); }}
-              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left text-[12px] font-semibold text-red-400 hover:bg-red-500/10 transition-colors"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-              Remove
-            </button>
             {isPremium && folders.length > 0 && (
               <button
                 onClick={e => { e.preventDefault(); e.stopPropagation(); setShowMoveMenu(true); }}
@@ -363,12 +655,14 @@ export default function SavedTab({
 
   return (
     <div>
+      {!isPremium && <PremiumCompareBlock className="mb-6" />}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-lg font-black text-white tracking-wide">SAVED</h2>
-          <p className="text-[11px] text-white/30">
-            {allBookmarks.length} saved{' '}
+          <h2 className="text-lg font-black tracking-wide" style={{ color: t.text }}>My Bookmarks</h2>
+          <p className="text-[11px]" style={{ color: t.textMuted }}>
+            {totalLikesCount} bookmarked{' '}
             {!isPremium && (
               <>
                 <span>(remaining: {freeBookmarksRemaining}/{FREE_BOOKMARK_LIMIT})</span>
@@ -384,6 +678,33 @@ export default function SavedTab({
           </p>
         </div>
         <div className="flex items-center gap-1.5">
+          {orderedItems.length > 0 && (
+            <>
+              {editMode && selectedKeys.size > 0 && (
+                <button
+                  type="button"
+                  onClick={deleteSelected}
+                  disabled={deletingSelected}
+                  className="px-2.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all disabled:opacity-50"
+                  style={{ background: '#ef4444', color: '#fff' }}
+                >
+                  {deletingSelected ? 'Deleting...' : `Delete (${selectedKeys.size})`}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => editMode ? exitEditMode() : setEditMode(true)}
+                className="px-2.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all"
+                style={
+                  editMode
+                    ? { background: t.viewBtnBg, color: t.viewBtnTxt }
+                    : { background: t.pillBg, color: t.accentDim, border: `1px solid ${t.pillBorder}` }
+                }
+              >
+                {editMode ? 'Done' : 'Edit'}
+              </button>
+            </>
+          )}
           {isPremium && (
             <button
               onClick={() => setShowInfoBox(v => !v)}
@@ -416,7 +737,45 @@ export default function SavedTab({
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
             </button>
           </div>
+          {viewMode === 'grid' && (
+            <ProfileGridDensityToggle
+              value={gridDensity}
+              onChange={setGridDensity}
+              tokens={{
+                pillBorder: t.pillBorder,
+                pillBg: t.pillBg,
+                viewBtnBg: t.viewBtnBg,
+                viewBtnTxt: t.viewBtnTxt,
+                accentDim: t.accentDim,
+              }}
+            />
+          )}
         </div>
+      </div>
+
+      <div
+        className="inline-flex flex-wrap gap-0 mb-4 rounded-lg border overflow-hidden"
+        style={{ borderColor: t.pillBorder }}
+      >
+        {TYPE_FILTERS.map((item) => {
+          const active = typeFilter === item.key;
+          const count = typeCounts[item.key];
+          return (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setTypeFilter(item.key)}
+              className="px-3 py-2 text-[10px] font-bold uppercase tracking-[0.08em] transition-colors border-r last:border-r-0"
+              style={{
+                borderColor: t.pillBorder,
+                backgroundColor: active ? t.activeBg : t.pillBg,
+                color: active ? t.activeTxt : t.accentDim,
+              }}
+            >
+              {item.label} ({count})
+            </button>
+          );
+        })}
       </div>
 
       {/* Info box — toggled by the (i) button */}
@@ -427,42 +786,15 @@ export default function SavedTab({
         >
           <ul className="text-[10px] text-white/40 leading-relaxed space-y-0.5">
             <li><span style={{ color: '#c9973a' }}>Save</span> any group or bot to keep it here.</li>
+            <li>Drag cards by the grip to reorder.</li>
+            <li>Use <span style={{ color: '#c9973a' }}>Edit</span> to select and remove items.</li>
             <li>Create <span style={{ color: '#c9973a' }}>folders</span> to organize your collection.</li>
             <li>Switch between <span style={{ color: '#c9973a' }}>list</span> &amp; <span style={{ color: '#c9973a' }}>grid</span> view anytime.</li>
-            <li>Use the <span style={{ color: '#c9973a' }}>three-dot menu</span> to remove or move items between folders.</li>
           </ul>
         </div>
       )}
 
-      {showActivationChecklist && (
-        <div className="mb-3 rounded-xl p-3" style={{ background: isPremium ? '#12100a' : '#1a1a1a', border: `1px solid ${t.divider}` }}>
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-black uppercase tracking-wider text-white/80">Quick Start</p>
-              <p className="text-[11px] text-white/40">Save your first favorites and organize them.</p>
-            </div>
-            <span className="text-[11px] font-bold" style={{ color: t.accent }}>
-              {checklistCompleted}/3
-            </span>
-          </div>
-          <div className="mt-2.5 space-y-1.5 text-[11px]">
-            <div className={`flex items-center gap-2 ${hasAnyBookmarks ? 'text-green-300' : 'text-white/55'}`}>
-              <span>{hasAnyBookmarks ? '✓' : '○'}</span>
-              <span>Save your first group or bot</span>
-            </div>
-            <div className={`flex items-center gap-2 ${hasAnyFolders ? 'text-green-300' : 'text-white/55'}`}>
-              <span>{hasAnyFolders ? '✓' : '○'}</span>
-              <span>Create your first folder</span>
-            </div>
-            <div className={`flex items-center gap-2 ${hasOrganizedBookmark ? 'text-green-300' : 'text-white/55'}`}>
-              <span>{hasOrganizedBookmark ? '✓' : '○'}</span>
-              <span>Move one saved item into a folder</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {!loading && allBookmarks.length === 0 && (
+      {!loading && totalLikesCount === 0 && (
         <div
           className="mb-3 rounded-xl p-3.5"
           style={{
@@ -495,12 +827,20 @@ export default function SavedTab({
               >
                 Save a Bot
               </Link>
+              <Link
+                href="/ainsfw"
+                className="px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all hover:scale-[1.03]"
+                style={{ background: t.pillBg, color: isPremium ? '#c9973a' : '#fff', border: `1px solid ${t.pillBorder}` }}
+              >
+                Save an AI Tool
+              </Link>
             </div>
           </div>
         </div>
       )}
 
       {/* Folders — compact horizontal row */}
+      {showFolders && (
       <div className="mb-3">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-hide">
           {/* All Saved */}
@@ -621,6 +961,7 @@ export default function SavedTab({
           )}
         </div>
       </div>
+      )}
 
       {/* Active folder name */}
       {activeFolder && (
@@ -636,16 +977,18 @@ export default function SavedTab({
       {/* Loading */}
       {loading ? (
         <div className="py-16 text-center">
-          <div className="w-8 h-8 border-2 border-white/10 border-t-white/40 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-white/30 text-sm">Loading your saved items...</p>
+          <div className="w-8 h-8 border-2 rounded-full animate-spin mx-auto mb-4" style={{ borderColor: `${t.divider}`, borderTopColor: t.textMuted }} />
+          <p className="text-sm" style={{ color: t.textMuted }}>Loading your saved items...</p>
         </div>
-      ) : bookmarks.filter(bk => bk.item).length === 0 ? (
+      ) : orderedItems.length === 0 && bookmarks.filter((bk) => !bk.item).length === 0 ? (
         <div className="py-16 text-center">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="mx-auto text-white/10 mb-4">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="mx-auto mb-4" style={{ color: t.textMuted, opacity: 0.35 }}>
             <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          <p className="text-white/25 text-sm font-medium">{activeFolder ? 'This folder is empty' : 'No saved items yet'}</p>
-          <p className="text-white/15 text-xs mt-1">
+          <p className="text-sm font-medium" style={{ color: t.textMuted }}>
+            {activeFolder ? 'This folder is empty' : typeFilter === 'all' ? 'No bookmarks yet' : `No ${TYPE_FILTERS.find(f => f.key === typeFilter)?.label.toLowerCase()} bookmarked yet`}
+          </p>
+          <p className="text-xs mt-1" style={{ color: t.textMuted, opacity: 0.7 }}>
             {activeFolder ? 'Try another folder or save more items.' : 'Tap the save icon on any card to save it here.'}
           </p>
           {!activeFolder && (
@@ -673,7 +1016,7 @@ export default function SavedTab({
       ) : viewMode === 'list' ? (
         /* List View */
         <div className="space-y-1.5">
-          {bookmarks.map(bk => !bk.item ? (
+          {bookmarks.filter((bk) => !bk.item).map((bk) => (
             <div
               key={bk._id}
               className="relative rounded-2xl overflow-hidden"
@@ -696,65 +1039,106 @@ export default function SavedTab({
                 </button>
               </div>
             </div>
-          ) : (
+          ))}
+          {orderedItems.map((item, idx) => {
+            const key = itemKey(item);
+            const selected = selectedKeys.has(key);
+            return (
             <div
-              key={bk._id}
+              key={key}
+              onDragEnter={() => handleDragEnter(idx)}
+              onDragOver={(e) => e.preventDefault()}
               className="group/card relative rounded-2xl overflow-hidden transition-all duration-300"
-              style={{ background: t.cardBg, border: `1px solid ${t.cardBorder}` }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.border = `1px solid ${t.cardHover}`; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.border = `1px solid ${t.cardBorder}`; }}
+              style={{
+                background: t.cardBg,
+                border: `1px solid ${selected ? '#ef4444' : t.cardBorder}`,
+                boxShadow: selected ? '0 0 0 1px #ef444488' : undefined,
+              }}
+              onMouseEnter={e => { if (!editMode) (e.currentTarget as HTMLElement).style.border = `1px solid ${t.cardHover}`; }}
+              onMouseLeave={e => { if (!editMode && !selected) (e.currentTarget as HTMLElement).style.border = `1px solid ${t.cardBorder}`; }}
             >
               <div className="absolute left-0 top-0 bottom-0 w-px" style={{ background: t.leftAccent }} />
               <div className="flex items-center gap-3 px-3 py-2.5">
-                <Link href={`/${bk.item.slug}`} className="shrink-0">
+                <div
+                  draggable
+                  onDragStart={(e) => handleDragStart(idx, e)}
+                  onDragEnd={handleDragEnd}
+                  className="shrink-0 cursor-grab active:cursor-grabbing touch-none p-1 -ml-1 opacity-40 group-hover/card:opacity-100 transition-opacity"
+                  style={{ color: t.textMuted }}
+                  title="Drag to reorder"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M18 11V6a2 2 0 0 0-4 0" /><path d="M14 10V4a2 2 0 0 0-4 0v2" /><path d="M10 10.5V5a2 2 0 0 0-4 0v8" />
+                    <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.7-2.3" />
+                  </svg>
+                </div>
+                {editMode && (
+                  <button
+                    type="button"
+                    onClick={() => toggleSelected(key)}
+                    className="shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all"
+                    style={{
+                      borderColor: selected ? '#ef4444' : t.divider,
+                      backgroundColor: selected ? '#ef4444' : 'transparent',
+                    }}
+                    aria-label={selected ? 'Deselect' : 'Select'}
+                  >
+                    {selected && (
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><path d="M5 13l4 4L19 7"/></svg>
+                    )}
+                  </button>
+                )}
+                <Link href={editMode ? '#' : item.href} onClick={editMode ? (e) => { e.preventDefault(); toggleSelected(key); } : undefined} className="shrink-0" {...(item.kind === 'creator' && !editMode ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
                   <div className="w-12 h-12 rounded-xl overflow-hidden" style={{ border: `1px solid ${t.divider}` }}>
-                    <img src={bk.item.image || '/assets/placeholder-no-image.png'} alt={bk.item.name} className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
+                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
                   </div>
                 </Link>
                 <div className="flex-1 min-w-0">
-                  <Link href={`/${bk.item.slug}`} className={`block font-bold text-[14px] text-white truncate leading-tight transition-colors ${isPremium ? 'hover:text-[#c9973a]' : 'hover:text-white/70'}`}>{bk.item.name}</Link>
+                  <Link href={editMode ? '#' : item.href} onClick={editMode ? (e) => e.preventDefault() : undefined} className={`block font-bold text-[14px] truncate leading-tight transition-colors ${isPremium ? 'hover:text-[#c9973a]' : 'hover:opacity-70'}`} style={{ color: t.text }} {...(item.kind === 'creator' && !editMode ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>{item.name}</Link>
                   <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                    {(bk.item.categories?.length ? bk.item.categories : [bk.item.category]).filter(Boolean).slice(0, 3).map((cat, i) => (
+                    {item.categories.slice(0, 3).map((cat, i) => (
                       <span key={i} className="text-[9px] font-black uppercase tracking-[0.12em] px-1.5 py-0.5 rounded" style={{ background: t.tagBg, border: `1px solid ${t.tagBorder}`, color: i === 0 ? t.accent : t.accentDim }}>{cat}</span>
                     ))}
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase" style={{ background: bk.itemType === 'bot' ? '#0088cc15' : `${t.accent}10`, color: bk.itemType === 'bot' ? '#4ab3f4' : t.accentDim }}>{bk.itemType}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase" style={{
+                      background: item.kind === 'bot' ? '#0088cc15' : item.kind === 'ainsfw' ? '#7C3AED15' : item.kind === 'creator' ? '#00AFF015' : `${t.accent}10`,
+                      color: item.kind === 'bot' ? '#4ab3f4' : item.kind === 'ainsfw' ? '#a78bfa' : item.kind === 'creator' ? '#00AFF0' : t.accentDim,
+                    }}>
+                      {kindLabel(item.kind)}
+                    </span>
+                    {item.priceLabel ? (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase" style={{ background: '#00AFF015', color: '#00AFF0' }}>{item.priceLabel}</span>
+                    ) : null}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {bk.item.memberCount ? (
-                    <div className="text-right mr-1">
-                      <div className="text-[15px] font-black leading-none" style={{ color: t.accent }}>{formatNum(bk.item.memberCount)}</div>
-                      <div className="text-[8px] font-bold uppercase tracking-widest" style={{ color: t.accentDim }}>subs</div>
-                    </div>
-                  ) : null}
-                  <div className="w-px h-7" style={{ background: t.divider }} />
-                  {bk.item.telegramLink && (
-                    <a
-                      href={bk.item.telegramLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={e => e.stopPropagation()}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide transition-all hover:scale-[1.04]"
-                      style={{ background: 'linear-gradient(135deg, #0088cc, #0077b5)', color: '#fff' }}
-                      title="Open in Telegram"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-                      Telegram
-                    </a>
-                  )}
-                  <Link href={`/${bk.item.slug}`} className="px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide transition-all hover:scale-[1.04]" style={isPremium ? { background: 'linear-gradient(135deg, #c9973a, #a67c2e)', color: '#0d0c0a' } : { background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }}>
-                    View
-                  </Link>
-                  <ThreeDotMenu bk={bk} />
-                </div>
+                {!editMode && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    {item.memberCount ? (
+                      <div className="text-right mr-1">
+                        <div className="text-[15px] font-black leading-none" style={{ color: t.accent }}>{formatNum(item.memberCount)}</div>
+                        <div className="text-[8px] font-bold uppercase tracking-widest" style={{ color: t.accentDim }}>subs</div>
+                      </div>
+                    ) : null}
+                    {item.memberCount ? <div className="w-px h-7" style={{ background: t.divider }} /> : null}
+                    {item.telegramLink && (
+                      <a href={item.telegramLink} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide transition-all hover:scale-[1.04]" style={{ background: 'linear-gradient(135deg, #0088cc, #0077b5)', color: '#fff' }} title="Open in Telegram">
+                        Telegram
+                      </a>
+                    )}
+                    <Link href={item.href} className="px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide transition-all hover:scale-[1.04]" style={isPremium ? { background: 'linear-gradient(135deg, #c9973a, #a67c2e)', color: '#0d0c0a' } : { background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }} {...(item.kind === 'creator' ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+                      View
+                    </Link>
+                    {item.bookmark ? <ThreeDotMenu bk={item.bookmark} /> : null}
+                  </div>
+                )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         /* Grid View */
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-          {bookmarks.map(bk => !bk.item ? (
+        <div className={`grid ${profileGridClass(gridDensity)} ${profileGridGapClass(gridDensity)}`}>
+          {bookmarks.filter((bk) => !bk.item).map((bk) => (
             <div
               key={bk._id}
               className="relative rounded-xl overflow-hidden aspect-square flex flex-col items-center justify-center text-center p-3"
@@ -770,69 +1154,113 @@ export default function SavedTab({
                 Remove
               </button>
             </div>
-          ) : (
-            <div
-              key={bk._id}
-              className="group/tile relative rounded-xl overflow-hidden transition-all duration-300 hover:scale-[1.03]"
-              style={{ border: `1px solid ${t.cardBorder}` }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.border = `1px solid ${t.cardHover}`; (e.currentTarget as HTMLElement).style.boxShadow = isPremium ? '0 4px 20px #c9973a15' : '0 4px 20px rgba(0,0,0,0.3)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.border = `1px solid ${t.cardBorder}`; (e.currentTarget as HTMLElement).style.boxShadow = 'none'; }}
-            >
-              <Link href={`/${bk.item.slug}`} className="block aspect-square relative">
-                <img
-                  src={bk.item.image || '/assets/placeholder-no-image.png'}
-                  alt=""
-                  className="w-full h-full object-cover"
-                  onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }}
-                />
-                <div className="absolute inset-0" style={{ background: isPremium ? 'linear-gradient(180deg, transparent 30%, #0a0908dd 70%, #0a0908 100%)' : 'linear-gradient(180deg, transparent 30%, #111d 70%, #111 100%)' }} />
-                <div className="absolute bottom-0 left-0 right-0 p-2">
-                  <p className="text-[11px] font-bold text-white leading-tight truncate mb-1">{bk.item.name}</p>
-                  <div className="flex flex-wrap gap-0.5 mb-1">
-                    {(bk.item.categories?.length ? bk.item.categories : [bk.item.category]).filter(Boolean).slice(0, 2).map((cat, i) => (
-                      <span key={i} className="text-[7px] font-black uppercase tracking-wide px-1 py-px rounded" style={{ background: isPremium ? '#0a090866' : 'rgba(0,0,0,0.4)', color: i === 0 ? t.accent : t.accentDim }}>{cat}</span>
-                    ))}
-                  </div>
-                  {bk.item.memberCount ? (
-                    <p className="text-[9px] font-semibold" style={{ color: isPremium ? '#9a8060' : 'rgba(255,255,255,0.5)' }}>{formatNum(bk.item.memberCount)} subs</p>
-                  ) : null}
-                </div>
-              </Link>
-              {/* 3-dot menu */}
-              <div className="absolute top-1.5 right-1.5 z-10">
-                <ThreeDotMenu bk={bk} />
-              </div>
-              {/* Telegram shortcut */}
-              {bk.item.telegramLink && (
-                <div className="absolute top-1.5 left-1.5 z-10 flex items-center gap-1">
-                  {bk.itemType === 'bot' && (
-                    <span className="text-[7px] font-black uppercase tracking-wider px-1.5 py-1 rounded-md" style={{ background: '#0a0908cc', border: '1px solid #0088cc33', color: '#4ab3f4' }}>Bot</span>
-                  )}
-                  <a
-                    href={bk.item.telegramLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={e => e.stopPropagation()}
-                    className="flex items-center justify-center w-7 h-7 rounded-lg backdrop-blur transition-all hover:scale-110"
-                    style={{ background: '#0088cccc' }}
-                    title="Open in Telegram"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-                  </a>
-                </div>
-              )}
-              {/* Type badge (only when no telegram link) */}
-              {bk.itemType === 'bot' && !bk.item.telegramLink && (
-                <div className="absolute top-1.5 left-1.5 z-10">
-                  <span className="text-[7px] font-black uppercase tracking-wider px-1.5 py-1 rounded-md" style={{ background: '#0a0908cc', border: '1px solid #0088cc33', color: '#4ab3f4' }}>Bot</span>
-                </div>
-              )}
-            </div>
           ))}
+          {orderedItems.map((item, idx) => {
+            const key = itemKey(item);
+            const selected = selectedKeys.has(key);
+            const subtitle = item.memberCount
+              ? `${formatNum(item.memberCount)} subs`
+              : item.priceLabel || item.categories[0] || kindLabel(item.kind);
+
+            if (editMode) {
+              return (
+                <div
+                  key={key}
+                  onDragEnter={() => handleDragEnter(idx)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onClick={() => toggleSelected(key)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSelected(key); } }}
+                  className="group rounded-xl overflow-hidden border transition-all"
+                  style={{
+                    borderColor: selected ? '#ef4444' : profileTokens.border,
+                    backgroundColor: profileTokens.card,
+                    boxShadow: selected ? '0 0 0 1px #ef444488' : undefined,
+                  }}
+                >
+                  <div
+                    draggable
+                    onDragStart={(e) => { e.stopPropagation(); handleDragStart(idx, e); }}
+                    onDragEnd={handleDragEnd}
+                    onClick={(e) => e.stopPropagation()}
+                    className="relative overflow-hidden group/drag cursor-grab active:cursor-grabbing touch-none aspect-square"
+                  >
+                    <img
+                      src={item.image}
+                      alt=""
+                      className="w-full h-full object-cover pointer-events-none"
+                      referrerPolicy="no-referrer"
+                      onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }}
+                    />
+                    <span
+                      className="absolute bottom-2 right-2 z-[2] pointer-events-none text-[9px] font-bold tracking-[0.14em] uppercase px-2 py-0.5 rounded-full"
+                      style={{ backgroundColor: kindBadgeBg(item.kind), color: '#fff' }}
+                    >
+                      {kindLabel(item.kind)}
+                    </span>
+                    <span
+                      className="absolute top-2 right-2 z-[3] w-6 h-6 rounded-full border-2 flex items-center justify-center pointer-events-none"
+                      style={{
+                        borderColor: selected ? '#ef4444' : 'rgba(255,255,255,0.8)',
+                        backgroundColor: selected ? '#ef4444' : 'rgba(0,0,0,0.35)',
+                      }}
+                    >
+                      {selected && (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><path d="M5 13l4 4L19 7"/></svg>
+                      )}
+                    </span>
+                    <DragHint />
+                  </div>
+                  <div className="p-2.5 pointer-events-none">
+                    <p className="text-xs font-bold truncate" style={{ color: profileTokens.text }}>{item.name}</p>
+                    <p className="text-[10px] truncate mt-0.5" style={{ color: profileTokens.muted }}>{subtitle}</p>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+            <div
+              key={key}
+              onDragEnter={() => handleDragEnter(idx)}
+              onDragOver={(e) => e.preventDefault()}
+              className="group rounded-xl overflow-hidden border transition-all hover:opacity-95"
+              style={{ borderColor: profileTokens.border, backgroundColor: profileTokens.card }}
+            >
+              <div
+                draggable
+                onDragStart={(e) => { e.stopPropagation(); handleDragStart(idx, e); }}
+                onDragEnd={handleDragEnd}
+                className="relative overflow-hidden group/drag cursor-grab active:cursor-grabbing touch-none aspect-square"
+                title="Drag to reorder"
+              >
+                <Link href={item.href} className="block w-full h-full" draggable={false} {...(item.kind === 'creator' ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+                  <img
+                    src={item.image}
+                    alt=""
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none"
+                    referrerPolicy="no-referrer"
+                    onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }}
+                  />
+                </Link>
+                <span
+                  className="absolute bottom-2 right-2 z-[2] pointer-events-none text-[9px] font-bold tracking-[0.14em] uppercase px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: kindBadgeBg(item.kind), color: '#fff' }}
+                >
+                  {kindLabel(item.kind)}
+                </span>
+                <DragHint />
+              </div>
+              <Link href={item.href} className="block p-2.5">
+                <p className="text-xs font-bold truncate" style={{ color: profileTokens.text }}>{item.name}</p>
+                <p className="text-[10px] truncate mt-0.5" style={{ color: profileTokens.muted }}>{subtitle}</p>
+              </Link>
+            </div>
+            );
+          })}
         </div>
       )}
-
-      {!isPremium && <PremiumCompareBlock className="mt-6" />}
 
       <UpgradeModal isOpen={showUpgrade} onClose={() => setShowUpgrade(false)} reason="folder_create" />
       {reportGroup && (

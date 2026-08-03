@@ -427,10 +427,7 @@ export const META_DESCRIPTIONS: Record<string, GroupMetaSet> = {  "adult": {
     pt: "Quer grupos Telegram de fetiche de escritório? Top 10 EROgram: canais +18 com secretárias, reuniões picantes e links verificados sem erro.",
   },
   "onlyfans": {
-    en: "Want the best OnlyFans Telegram groups? Erogram's top 10 ranks curated +18 channels with verified links and active models sharing exclusive content.",
-    de: "Die besten OnlyFans-Telegram-Gruppen gesucht? Erograms Top 10: kuratierte +18-Kanäle mit verifizierten Links und aktiven Models, die exklusive Inhalte teilen.",
-    es: "¿Quieres grupos de Telegram con contenido de OnlyFans? Top 10 EROgram: comunidades +18 verificadas, activas y sin spam.",
-    pt: "Quer os melhores grupos Telegram de OnlyFans? Top 10 da Erogram: canais +18 curados com links verificados e modelos ativas postando conteúdo exclusivo.",
+    en: "onlyfans推特分享 on Telegram. Explore the best onlyfans telegram groups on EROgram.",
   },
   "onlyfans-leaks": {
     en: "Hunting OnlyFans leaks Telegram groups? Erogram's top 10 picks curated +18 channels with verified links and active updates — no dead groups.",
@@ -891,6 +888,123 @@ export const META_DESCRIPTIONS: Record<string, GroupMetaSet> = {  "adult": {
   },
   "kazakhstan": {
     en: "Hunting Kazakhstan Telegram groups with real communities? EROgram's top 10 features verified +18 channels and active posters updated daily.",
+  },
+  "4hutvcom18": {
+    en: "4hutvcom18 on Telegram. Explore the best chinese av telegram groups on EROgram.",
+  },
+  "-6": {
+    en: "猎奇小屋👽 on Telegram. Explore the best amateur telegram groups on EROgram.",
+  },
+  "xorgasmocom-canal": {
+    en: "XORGASMO.COM | Canal 📺 on Telegram. Explore the best amateur telegram groups on EROgram.",
+  },
+  "-29": {
+    en: "推特福利中文精选 on Telegram. Explore the best china asian telegram groups on EROgram.",
+  },
+  "asianparadiseee-official": {
+    en: "Asianparadiseee Official on Telegram. Explore the best asian OnlyFans telegram groups on EROgram.",
+  },
+  "marisabeloficial": {
+    en: "Marisabeloficial💋 on Telegram. Explore the best latina OnlyFans telegram groups on EROgram.",
+  },
+  "onlyfans-1": {
+    en: "Onlyfans 福利姬 on Telegram. Explore the best milf onlyfans telegram groups on EROgram.",
+  },
+  "micaelablue": {
+    en: "Micaelablue🐰 on Telegram. Explore the best blonde OnlyFans telegram groups on EROgram.",
+  },
+  "barbie-of": {
+    en: "BARBIE OF🔞 on Telegram. Explore the best onlyfans latina telegram groups on EROgram.",
+  },
+  "brenda-aguiar": {
+    en: "BRENDA AGUIAR 😈 on Telegram. Explore the best latina OnlyFans telegram groups on EROgram.",
+  },
+  "p-onlyfans": {
+    en: "p-onlyfans on Telegram. Explore the best china OnlyFans telegram groups on EROgram.",
+  },
+  "laura-cookie": {
+    en: "Laura Cookie on Telegram. Explore the best onlyfans latina telegram groups on EROgram.",
+  },
+  "robertita-franco-roberta-franco-1": {
+    en: "Robertita Franco on Telegram. Explore the best latina OnlyFans telegram groups on EROgram.",
+  },
+  "jav-uncensored": {
+    en: "JAV Uncensored on Telegram. Explore the best JAV uncensored telegram groups on EROgram.",
+  },
+  "my-bdsm-collection-18": {
+    en: "My BDSM Collection 18+ on Telegram. Explore the best bdsm OnlyFans telegram groups on EROgram.",
+  },
+  "videos-onlyfans-gratis": {
+    en: "Videos OnlyFans Gratis on Telegram. Explore the best colombia OnlyFans telegram groups on EROgram.",
+  },
+  "lesbian-foot-worship": {
+    en: "LESBIAN FOOT WORSHIP on Telegram. Explore the best lesbian feet telegram groups on EROgram.",
+  },
+  "real-bdsm": {
+    en: "Real BDSM (Реальный БДСМ) on Telegram. Explore the best bdsm OnlyFans telegram groups on EROgram.",
+  },
+  "bondage-bdsm-and-other-kinky-pics": {
+    en: "Bondage BDSM kinky pics on Telegram. Explore the best bdsm telegram groups on EROgram.",
+  },
+  "japanese-adult-videos-to-taste-": {
+    en: "Japanese Adult Videos on Telegram. Explore the best JAV telegram groups on EROgram.",
+  },
+  "porn-addict-bbcorgyslutanalblowjobfacial": {
+    en: "PORN ADDICT on Telegram. Explore the best anal gangbang telegram groups on EROgram.",
+  },
+  "lesbians-confession": {
+    en: "lesbians confession🧡🤍🩷 on Telegram. Explore the best lesbian telegram groups on EROgram.",
+  },
+  "laalemonz-official-tg": {
+    en: "LAALEMONZ OFFICIAL TG on Telegram. Explore the best onlyfans telegram groups on EROgram.",
+  },
+  "-60": {
+    en: "Гид БДСМ🌶 on Telegram. Explore the best bdsm telegram groups on EROgram.",
+  },
+  "bdsm-dating-ua": {
+    en: "BDSM Dating UA🇺🇦 on Telegram. Explore the best bdsm dating telegram groups on EROgram.",
+  },
+  "mikaisfree": {
+    en: "Mika.is.free on Telegram. Explore the best bdsm fetish telegram groups on EROgram.",
+  },
+  "fetish-community": {
+    en: "𝐅𝐞𝐭𝐢𝐬𝐡 𝐂𝐨𝐦𝐦𝐮𝐧𝐢𝐭𝐲️ on Telegram. Explore the best bdsm fetish telegram groups on EROgram.",
+  },
+  "only-peruanas-mas": {
+    en: "Only Peruanas & Más 🔞 on Telegram. Explore the best latina telegram groups on EROgram.",
+  },
+  "bdsm-femdom-stickers": {
+    en: "Bdsm FemDom Stickers on Telegram. Explore the best femdom telegram groups on EROgram.",
+  },
+  "-63": {
+    en: "Dragon Tower DDLG on Telegram. Explore the best bdsm fetish telegram groups on EROgram.",
+  },
+  "-64": {
+    en: "Рабыни Рабыня on Telegram. Explore the best bdsm fetish telegram groups on EROgram.",
+  },
+  "bdsm-dating-chat": {
+    en: "BDSM Dating Chat 🇺🇦 on Telegram. Explore the best bdsm dating telegram groups on EROgram.",
+  },
+  "queen-bdsm-18": {
+    en: "Queen BDSM 18+ on Telegram. Explore the best bdsm telegram groups on EROgram.",
+  },
+  "-66": {
+    en: "БДСМная🔥 on Telegram. Explore the best bdsm telegram groups on EROgram.",
+  },
+  "-65": {
+    en: "БДСМочная on Telegram. Explore the best femdom telegram groups on EROgram.",
+  },
+  "sexy-feet": {
+    en: "sexy feet 💕 on Telegram. Explore the best feet telegram groups on EROgram.",
+  },
+  "creampie-gold": {
+    en: "creampie gold сетевая грязь. on Telegram. Explore the best creampie telegram groups on EROgram.",
+  },
+  "nylon_england": {
+    en: "NYLON_ENGLAND on Telegram. Explore the best nylon pantyhose telegram groups on EROgram.",
+  },
+  "ethereal": {
+    en: "ethereal on Telegram. Explore the best amateur telegram groups on EROgram.",
   },
 };
 

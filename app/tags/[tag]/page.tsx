@@ -49,12 +49,15 @@ export default async function TagDetailPage({ params }: PageProps) {
       slug={detail.slug}
       groupCount={detail.groupCount}
       creatorCount={detail.creatorCount}
+      botCount={detail.botCount}
+      aiCount={detail.aiCount}
       total={detail.total}
       groups={detail.groups}
       rankingPages={detail.rankingPages}
       top10={detail.top10}
-      categoryBrowseHref={detail.categoryBrowseHref}
       creators={detail.creators}
+      bots={detail.bots}
+      aiTools={detail.aiTools}
     />
   );
 }

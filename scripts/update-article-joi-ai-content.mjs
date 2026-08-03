@@ -11,10 +11,12 @@ await mongoose.connect(process.env.MONGODB_URI, { family: 4 });
 const TRACKING_URL = 'https://erogram.pro/go/joi-ai';
 const TOOL_URL = '/ainsfw/joi-ai-nude-generator';
 const ALLURE_URL = '/ainsfw/aiallure-ai-chat';
-const VIDEO_URL = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/joi-ai-promo-v111.mp4';
+const VIDEO_URL = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/joi-ai-promo-v112.mp4';
 const VIDEO_POSTER = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/joi-ai-promo-v111-poster.webp';
 const IMG_1 = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/joi-ai-nude-generator-screenshot.webp';
 const IMG_2 = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/joi-ai-dashboard-screenshot.webp';
+const IMG_BODY = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/joi-ai-character-body-customizer.webp';
+const IMG_KINKS = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/joi-ai-character-kinks-customizer.webp';
 
 const content = `\`\`\`video
 url: ${VIDEO_URL}
@@ -63,6 +65,8 @@ headline: Test the photo nude maker free
 
 ## Realistic nude photos that hold up
 
+![JOI AI character body customizer with height, physique, and body type options](${IMG_BODY})
+
 Now the part that surprised me. The outputs are genuinely good. The realistic nude photos pass at a glance and keep passing when you look closer. Skin texture holds up, lighting behaves, and the photoreal style has clearly been tuned hard. I showed a friend three renders mixed with stock photography and he picked wrong twice.
 
 For naked ai pics in anime style, the results are just as strong. The anime renderer is consistent and expressive, so whichever lane you prefer, the engine delivers. And when you want a different take on a scene, a quick re-roll gets you there in under a minute, which turns generation into something closer to play than work.
@@ -76,6 +80,8 @@ The subscription is fair. Premium runs around $10 to $14 per month and unlocks f
 On top of that sits Neurons, the platform's internal currency for power users. Advanced generations and exclusive unlocks run on them, so heavy creators can go as deep as they want whenever they want. Casual members will rarely think about them; the subscription covers the core experience. Everything is clearly labeled, and by day five the character customization had pulled me back in for reasons that had nothing to do with pricing.
 
 ## Dream Clips, the part nobody else has
+
+![JOI AI character kinks and preferences customizer](${IMG_KINKS})
 
 Dream Clips are short AI-generated video moments built from your character and a prompt. As a category, almost nobody else offers this at all. Watching a character you built move and act out a scene makes the platform feel like an entertainment product rather than a chat window. If JOI AI has one feature that justifies the subscription by itself, this is the one.
 
@@ -115,7 +121,7 @@ description: Free tier available. Character builder, nude ai generator, and Drea
 headline: Try the nude ai generator free
 \`\`\``;
 
-const SLUG = 'joi-ai-review-nude-ai-generator-2026';
+const SLUG = 'joi-ai-budget-ai-companion-nudes-generator-tested';
 
 const result = await mongoose.connection.collection('articles').updateOne(
   { slug: SLUG },

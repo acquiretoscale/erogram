@@ -1,23 +1,63 @@
 'use client';
 
+import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Suspense, useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import Navbar from '@/components/Navbar';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { EditorialMasthead, EditorialFooter } from '@/app/blog/EditorialChrome';
 import { ToastProvider, useToast } from '@/components/Toast';
 import SavedTab from './SavedTab';
 import VaultTab from './VaultTab';
-import SavedModelsTab from './SavedModelsTab';
-import PremiumCompareBlock from './PremiumCompareBlock';
-import FeatureSuggestionsTab from '@/app/profile1/FeatureSuggestionsTab';
+import PremiumCompareBlock from '@/components/PremiumCompareBlock';
+import ProfileHomeSetupSteps from './ProfileHomeSetupSteps';
+import AvatarPicker from '@/components/AvatarPicker';
+import ProfileEditSection from '@/components/ProfileEditSection';
+import InterestsEditSection from '@/components/InterestsEditSection';
+import { type InterestOption } from '@/lib/userInterests';
+import { getProfileInterestOptions } from '@/lib/actions/userProfile';
+import { getProfileLikedMedia } from '@/lib/actions/profileFeed';
+import { getRecentPremiumHomeSections } from '@/lib/actions/onboarding';
+import ProfileFeedTab from './ProfileFeedTab';
+import MyLikesTab from './MyLikesTab';
+import ThemeTab from './ThemeTab';
+import LeaderboardTab from './LeaderboardTab';
+import { ProfileThemeProvider, useProfileTheme } from './ProfileThemeContext';
+import { ProfileEyebrow, ProfileHeading } from './ProfileTypography';
+import {
+  profileCardClass,
+  profileBtnClass,
+  profileComponentColors,
+  profileCyberShellClass,
+  profilePornhubShellClass,
+  profileOnlyfansShellClass,
+  profileTelegramShellClass,
+  profileErogramShellClass,
+  profileConsoleShellClass,
+} from './profileTheme';
 
-type Tab = 'home' | 'saved' | 'models' | 'vault' | 'settings' | 'suggestions';
+type Tab = 'home' | 'feed' | 'saved' | 'likes' | 'subscription' | 'vault' | 'settings' | 'theme' | 'leaderboard';
+
+function TelegramMenuIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="shrink-0" aria-hidden>
+      <path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z" />
+    </svg>
+  );
+}
+
+const PREMIUM_MEMBER_GOLD = {
+  background: 'linear-gradient(135deg, #f5d061 0%, #c9973a 45%, #a67c00 100%)',
+  color: '#2a1f00',
+  border: '1px solid #e8c547',
+  boxShadow: '0 0 10px rgba(201,151,58,0.45)',
+};
 type ViewMode = 'admin' | 'premium' | 'free';
 
 interface UserData {
   firstName: string | null;
   photoUrl: string | null;
   interests: string[];
+  aiInterests: string[];
   preferredPlatforms: string[];
   interestedInAI: boolean;
   onboardingCompleted: boolean;
@@ -28,6 +68,8 @@ function ProfileContent() {
   const [username, setUsername] = useState<string | null>(null);
   const [firstName, setFirstName] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [bio, setBio] = useState<string | null>(null);
+  const [memberSince, setMemberSince] = useState<string | null>(null);
   const [isPremium, setIsPremium] = useState(false);
   const [premiumPlan, setPremiumPlan] = useState<string | null>(null);
   const [premiumSince, setPremiumSince] = useState<string | null>(null);
@@ -36,19 +78,72 @@ function ProfileContent() {
   const [viewMode, setViewMode] = useState<ViewMode>('admin');
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [userData, setUserData] = useState<UserData>({
-    firstName: null, photoUrl: null, interests: [], preferredPlatforms: [],
+    firstName: null, photoUrl: null, interests: [], aiInterests: [], preferredPlatforms: [],
     interestedInAI: false, onboardingCompleted: false,
   });
+  const [tagOptions, setTagOptions] = useState<InterestOption[]>([]);
+  const [aiOptions, setAiOptions] = useState<InterestOption[]>([]);
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const tabParam = searchParams.get('tab');
-  const initialTab: Tab = tabParam === 'saved' ? 'saved' : tabParam === 'models' ? 'models'
-    : tabParam === 'vault' ? 'vault' : tabParam === 'settings' ? 'settings'
-    : tabParam === 'suggestions' ? 'suggestions' : 'home';
+  const initialTab: Tab = pathname === '/profile/leaderboard' ? 'leaderboard'
+    : tabParam === 'feed' ? 'feed'
+    : tabParam === 'saved' ? 'saved'
+    : tabParam === 'models' ? 'likes'
+    : tabParam === 'likes' ? 'likes'
+    : tabParam === 'subscription' ? 'subscription' : tabParam === 'vault' ? 'vault' : tabParam === 'settings' ? 'settings' : tabParam === 'theme' ? 'theme' : tabParam === 'leaderboard' ? 'leaderboard' : 'home';
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+  const [menuCollapsed, setMenuCollapsed] = useState(false);
+  const [viewBarOpen, setViewBarOpen] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(82);
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const measure = () => setHeaderHeight(el.offsetHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [mounted]);
+
+  const selectTab = (tab: Tab) => {
+    setActiveTab(tab);
+    if (tab === 'leaderboard') router.push('/profile/leaderboard');
+    else if (tab === 'home') router.push('/profile');
+    else router.push(`/profile?tab=${tab}`);
+  };
+
+  useEffect(() => {
+    if (pathname === '/profile/leaderboard') {
+      setActiveTab('leaderboard');
+      return;
+    }
+    if (tabParam === 'feed') setActiveTab('feed');
+    else if (tabParam === 'saved') setActiveTab('saved');
+    else if (tabParam === 'models' || tabParam === 'likes') setActiveTab('likes');
+    else if (tabParam === 'subscription') setActiveTab('subscription');
+    else if (tabParam === 'vault') setActiveTab('vault');
+    else if (tabParam === 'settings') setActiveTab('settings');
+    else if (tabParam === 'theme') setActiveTab('theme');
+    else if (tabParam === 'leaderboard') setActiveTab('leaderboard');
+    else if (pathname === '/profile') setActiveTab('home');
+  }, [pathname, tabParam]);
+
+  useEffect(() => {
+    getProfileInterestOptions()
+      .then((opts) => {
+        setTagOptions(opts.tagInterests);
+        setAiOptions(opts.aiInterests);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!mounted) return;
@@ -63,17 +158,21 @@ function ProfileContent() {
     fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(data => {
+        if (data.id) setCurrentUserId(String(data.id));
         if (data.premium) setIsPremium(true);
         if (data.isAdmin) { setIsAdmin(true); localStorage.setItem('isAdmin', 'true'); }
         if (data.premiumPlan) setPremiumPlan(data.premiumPlan);
         if (data.premiumSince) setPremiumSince(data.premiumSince);
         if (data.premiumExpiresAt) setPremiumExpiresAt(data.premiumExpiresAt);
-        if (data.firstName) setFirstName(data.firstName);
+        setFirstName(data.firstName || null);
         if (data.photoUrl) setPhotoUrl(data.photoUrl);
+        if (data.createdAt) setMemberSince(data.createdAt);
+        setBio(data.bio || null);
         setUserData({
           firstName: data.firstName || null,
           photoUrl: data.photoUrl || null,
           interests: data.interests || [],
+          aiInterests: data.aiInterests || [],
           preferredPlatforms: data.preferredPlatforms || [],
           interestedInAI: data.interestedInAI || false,
           onboardingCompleted: data.onboardingCompleted || false,
@@ -127,125 +226,348 @@ function ProfileContent() {
 
   if (!mounted) return null;
 
-  const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: 'home', label: 'Home', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
-    { key: 'saved', label: 'Saved', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg> },
-    { key: 'models', label: 'Models', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> },
-    { key: 'suggestions', label: 'Suggestion Box', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 10 18.469V19a2 2 0 1 0 4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg> },
-    { key: 'settings', label: 'Settings', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> },
+  return <ProfileThemedShell {...{
+    mounted, username, firstName, photoUrl, bio, memberSince, isPremium, premiumPlan, premiumSince, premiumExpiresAt,
+    isAdmin, viewMode, viewBarOpen, deletingAccount, userData, tagOptions, aiOptions, activeTab, menuCollapsed, headerHeight,
+    headerRef, effectivePremium, effectiveAdmin, selectTab, setMenuCollapsed, setViewBarOpen, setViewMode, handleLogout, handleDeleteAccount,
+    getRemainingDays, toast, router, setFirstName, setBio, setPhotoUrl, setUserData, currentUserId,
+  }} />;
+}
+
+function ProfileThemedShell(props: any) {
+  const { theme, tokens } = useProfileTheme();
+  const {
+    username, firstName, photoUrl, bio, memberSince, isPremium, premiumPlan, premiumSince, premiumExpiresAt,
+    isAdmin, viewMode, viewBarOpen, deletingAccount, userData, tagOptions, aiOptions, activeTab, menuCollapsed, headerHeight,
+    headerRef, effectivePremium, effectiveAdmin, selectTab, setMenuCollapsed, setViewBarOpen, setViewMode, handleLogout, handleDeleteAccount,
+    getRemainingDays, toast, setFirstName, setBio, setPhotoUrl, setUserData, currentUserId,
+  } = props;
+
+  const VIEW_MODES: { key: ViewMode; label: string; short: string }[] = [
+    { key: 'admin', label: 'Admin', short: 'A' },
+    { key: 'premium', label: 'Premium', short: 'P' },
+    { key: 'free', label: 'Free', short: 'F' },
   ];
 
-  return (
-    <div className="min-h-screen bg-[#111111]">
-      <Navbar username={username} setUsername={setUsername} />
+  const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
+    { key: 'home', label: 'Main', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
+    { key: 'vault', label: 'Premium TG Groups', icon: <TelegramMenuIcon /> },
+    { key: 'feed', label: 'My Feed', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M10 8l6 4-6 4V8z"/></svg> },
+    { key: 'likes', label: 'My Likes', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> },
+    { key: 'saved', label: 'My Bookmarks', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg> },
+    { key: 'subscription', label: 'My Subscription', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg> },
+    { key: 'settings', label: 'Settings', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> },
+    { key: 'theme', label: 'Theme', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg> },
+  ];
 
-      <div className="pt-24 px-4 sm:px-6">
-        <div className="max-w-2xl mx-auto">
-          {/* Admin View-As switcher */}
+  const sidebarMargin = menuCollapsed ? 'mr-[60px]' : 'mr-[220px]';
+  const greeting = firstName ? `Welcome back, ${firstName}` : 'Welcome back';
+  const cyber = theme === 'cyberpunk';
+  const ph = theme === 'pornhub';
+  const of = theme === 'onlyfans';
+  const tg = theme === 'telegram';
+  const er = theme === 'erogram';
+  const con = theme === 'console';
+  const themedShell = cyber || ph || of || tg || er || con;
+
+  return (
+    <div
+      className={`min-h-screen ${cyber ? profileCyberShellClass : ph ? profilePornhubShellClass : of ? profileOnlyfansShellClass : tg ? profileTelegramShellClass : er ? profileErogramShellClass : con ? profileConsoleShellClass : 'font-[family-name:var(--font-baloo)]'}`}
+      style={themedShell ? { color: tokens.text } : { backgroundColor: tokens.bg, color: tokens.text }}
+    >
+      <div ref={headerRef}>
+        <EditorialMasthead
+          wordmarkMode={ph ? 'pornhub' : of ? 'onlyfans' : 'default'}
+          accent={ph ? '#FF9000' : of ? '#00AFF0' : tg ? '#2AABEE' : er ? '#991b1b' : con ? '#ff5e2a' : undefined}
+        />
+      </div>
+
+      <aside
+        className={`fixed right-0 z-30 flex flex-col overflow-hidden border-l transition-all duration-300 ease-in-out ${menuCollapsed ? 'w-[60px]' : 'w-[220px]'}`}
+        style={{
+          top: headerHeight,
+          height: `calc(100vh - ${headerHeight}px)`,
+          backgroundColor: tokens.card,
+          borderColor: tokens.border,
+        }}
+      >
+        <div className="border-b shrink-0" style={{ borderColor: tokens.border }}>
           {isAdmin && (
-            <div className="mb-4 p-3 rounded-xl bg-purple-500/5 border border-purple-500/20 flex items-center gap-3 flex-wrap">
-              <span className="text-xs text-purple-400 font-bold uppercase tracking-wider">View as:</span>
-              {([
-                { key: 'admin' as ViewMode, label: 'Admin', color: 'purple' },
-                { key: 'premium' as ViewMode, label: 'Premium', color: 'amber' },
-                { key: 'free' as ViewMode, label: 'Free', color: 'gray' },
-              ]).map(mode => (
+            <div
+              className="border-b"
+              style={{ borderColor: tokens.border, backgroundColor: tokens.adminBarBg }}
+            >
+              {viewBarOpen ? (
+                <div className={menuCollapsed ? 'px-2 py-2 space-y-2' : 'px-3 py-2.5 space-y-2'}>
+                  <div className={`flex items-center gap-2 ${menuCollapsed ? 'justify-center' : 'justify-between'}`}>
+                    {!menuCollapsed && <ProfileEyebrow muted className="text-[9px]">View as</ProfileEyebrow>}
+                    <button
+                      type="button"
+                      onClick={() => setViewBarOpen(false)}
+                      aria-label="Hide view switcher"
+                      className="flex h-6 w-6 items-center justify-center rounded-md transition-colors shrink-0"
+                      style={{ color: tokens.muted }}
+                      title="Hide to see full experience"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 15l-6-6-6 6" /></svg>
+                    </button>
+                  </div>
+                  <div className={`flex gap-1 ${menuCollapsed ? 'flex-col items-center' : 'flex-wrap'}`}>
+                    {VIEW_MODES.map(mode => (
+                      <button
+                        key={mode.key}
+                        type="button"
+                        onClick={() => setViewMode(mode.key)}
+                        title={mode.label}
+                        className={`rounded-full font-bold transition-all ${menuCollapsed ? 'h-7 w-7 text-[10px]' : 'px-2.5 py-1 text-[10px]'}`}
+                        style={
+                          viewMode === mode.key
+                            ? { backgroundColor: tokens.accent, color: tokens.ink }
+                            : { backgroundColor: 'transparent', color: tokens.muted, border: `1px solid ${tokens.border}` }
+                        }
+                      >
+                        {menuCollapsed ? mode.short : mode.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
                 <button
-                  key={mode.key}
-                  onClick={() => setViewMode(mode.key)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    viewMode === mode.key
-                      ? mode.color === 'purple' ? 'bg-purple-500/20 text-purple-300 ring-1 ring-purple-500/30'
-                      : mode.color === 'amber' ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/30'
-                      : 'bg-white/10 text-white ring-1 ring-white/20'
-                      : 'bg-white/5 text-white/40 hover:bg-white/10'
-                  }`}
+                  type="button"
+                  onClick={() => setViewBarOpen(true)}
+                  aria-label="Show view switcher"
+                  title={`View as: ${viewMode} (click to expand)`}
+                  className={`w-full flex items-center h-9 transition-colors ${menuCollapsed ? 'justify-center px-0' : 'gap-2 px-3'}`}
+                  style={{ color: tokens.muted }}
                 >
-                  {mode.label}
+                  <span
+                    className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black uppercase shrink-0"
+                    style={{ backgroundColor: tokens.accent, color: tokens.ink }}
+                  >
+                    {VIEW_MODES.find(m => m.key === viewMode)?.short}
+                  </span>
+                  {!menuCollapsed && (
+                    <span className="text-[10px] font-bold tracking-[0.12em] uppercase truncate">
+                      {VIEW_MODES.find(m => m.key === viewMode)?.label} view
+                    </span>
+                  )}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className={menuCollapsed ? '' : 'ml-auto shrink-0'}><path d="M6 9l6 6 6-6" /></svg>
                 </button>
-              ))}
+              )}
             </div>
           )}
-
-          {/* Tabs */}
-          <div className="flex gap-1 mb-6 bg-white/[0.03] rounded-xl p-1 border border-white/5 overflow-x-auto">
-            {TABS.map(t => (
-              <button
-                key={t.key}
-                onClick={() => setActiveTab(t.key)}
-                className={`flex-1 py-2.5 rounded-lg text-[13px] font-semibold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
-                  activeTab === t.key ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/60'
-                }`}
-              >
-                {t.icon}
-                {t.label}
-              </button>
-            ))}
+          <div className={`flex items-center h-10 ${menuCollapsed ? 'justify-center px-0' : 'px-3 justify-end'}`}>
             <button
-              onClick={() => setActiveTab('vault')}
-              className={`flex-1 py-2.5 rounded-lg text-[13px] font-black uppercase tracking-wide transition-all flex items-center justify-center gap-1.5 ${
-                activeTab === 'vault' ? 'ring-2 ring-yellow-400/60 scale-[1.03]' : 'hover:scale-[1.02]'
-              }`}
-              style={{
-                background: activeTab === 'vault'
-                  ? 'linear-gradient(135deg, #d4a94c 0%, #e8c66a 30%, #c9973a 60%, #b8860b 100%)'
-                  : 'linear-gradient(135deg, #b8860b 0%, #c9973a 50%, #a67c00 100%)',
-                color: '#1a1000',
-                boxShadow: activeTab === 'vault'
-                  ? '0 0 20px rgba(201,151,58,0.5), 0 4px 12px rgba(0,0,0,0.3)'
-                  : '0 0 10px rgba(201,151,58,0.25)',
-              }}
+              type="button"
+              onClick={() => setMenuCollapsed((v: boolean) => !v)}
+              aria-label={menuCollapsed ? 'Expand menu' : 'Collapse menu'}
+              className="flex h-7 w-7 items-center justify-center rounded-md transition-colors"
+              style={{ color: tokens.muted }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="#1a1000" stroke="#1a1000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
-              Vault
+              {menuCollapsed ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M15 18l-6-6 6-6" /></svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
+              )}
             </button>
           </div>
 
-          {/* Tab Content */}
+          <div className={`${menuCollapsed ? 'px-2 pb-3 flex justify-center' : 'px-4 pb-4'}`}>
+            {photoUrl && (
+              <div
+                className={`rounded-full overflow-hidden border-2 mx-auto ${menuCollapsed ? 'w-10 h-10' : 'w-16 h-16'}`}
+                style={{ borderColor: tokens.border }}
+                title={menuCollapsed ? greeting : undefined}
+              >
+                <img src={photoUrl} alt="" className="w-full h-full object-cover scale-110" />
+              </div>
+            )}
+            {!menuCollapsed && (
+              <div className="mt-3 text-center">
+                <p className="text-[13px] font-bold leading-tight" style={{ color: tokens.text }}>{greeting}</p>
+                {username && <p className="text-[12px] mt-1.5" style={{ color: tokens.muted }}>@{username}</p>}
+                {effectivePremium ? (
+                  <span
+                    className="inline-flex items-center gap-1 mt-2.5 px-2.5 py-1 rounded-full text-[9px] font-bold tracking-[0.18em] uppercase"
+                    style={PREMIUM_MEMBER_GOLD}
+                  >
+                    PREMIUM Member
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => selectTab('subscription')}
+                    className="inline-flex items-center gap-1 mt-2.5 px-2.5 py-1 rounded-full text-[9px] font-bold tracking-[0.18em] uppercase transition-all hover:brightness-110 active:scale-[0.98]"
+                    style={PREMIUM_MEMBER_GOLD}
+                  >
+                    UPGRADE TO PREMIUM
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <nav className="flex-1 min-h-0 overflow-y-auto py-3 px-2 space-y-0.5">
+          {TABS.map((tabItem) => {
+            const active = activeTab === tabItem.key;
+            const isVaultTab = tabItem.key === 'vault';
+            return (
+              <button
+                key={tabItem.key}
+                type="button"
+                onClick={() => selectTab(tabItem.key)}
+                title={menuCollapsed ? tabItem.label : undefined}
+                className={`relative w-full flex items-center h-9 rounded-md transition-all duration-150 ${
+                  menuCollapsed ? 'justify-center px-0' : 'gap-2.5 px-3'
+                } ${!isVaultTab && cyber && active ? 'profile-cyber-nav-active' : ''} ${!isVaultTab && ph && active ? 'profile-pornhub-nav-active' : ''} ${!isVaultTab && of && active ? 'profile-onlyfans-nav-active' : ''} ${!isVaultTab && tg && active ? 'profile-telegram-nav-active' : ''} ${!isVaultTab && er && active ? 'profile-erogram-nav-active' : ''} ${!isVaultTab && con && active ? 'profile-console-nav-active' : ''}`}
+                style={
+                  isVaultTab
+                    ? PREMIUM_MEMBER_GOLD
+                    : {
+                        backgroundColor: !cyber && !ph && !of && !tg && !er && active ? tokens.accent : undefined,
+                        color: !cyber && !ph && !of && !tg && !er && active ? tokens.ink : cyber && active ? undefined : ph && active ? undefined : of && active ? undefined : tg && active ? undefined : er && active ? undefined : tokens.muted,
+                      }
+                }
+                onMouseEnter={(e) => {
+                  if (isVaultTab) return;
+                  if (!active) e.currentTarget.style.backgroundColor = tokens.hover;
+                }}
+                onMouseLeave={(e) => {
+                  if (isVaultTab) return;
+                  if (!active) e.currentTarget.style.backgroundColor = '';
+                }}
+              >
+                <span className="shrink-0">{tabItem.icon}</span>
+                {!menuCollapsed && (
+                  <>
+                    <span className={`text-[12px] font-bold truncate ${isVaultTab ? 'tracking-[0.06em] uppercase' : of ? 'profile-onlyfans-nav-label' : tg ? 'profile-telegram-nav-label' : er ? 'profile-erogram-nav-label' : con ? 'profile-console-nav-label' : 'tracking-[0.06em] uppercase'} ${cyber && !isVaultTab ? 'profile-cyber-nav-label' : ''} ${ph && !isVaultTab ? 'profile-pornhub-nav-label' : ''}`}>{tabItem.label}</span>
+                    {tabItem.key === 'theme' && (
+                      <span className="ml-auto shrink-0 text-[8px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-[#22c55e] text-white">
+                        New
+                      </span>
+                    )}
+                  </>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      </aside>
+
+      <main
+        className={`max-w-[1180px] mx-auto px-6 sm:px-8 pt-12 pb-16 transition-all duration-300 ease-in-out min-w-0 ${sidebarMargin}`}
+      >
+        <section className="pb-8">
+          {of ? (
+            <ProfileHeading size="hero" accent="Profile">My</ProfileHeading>
+          ) : er ? (
+            <ProfileHeading size="hero" accent="PROFILE">MY</ProfileHeading>
+          ) : con ? (
+            <ProfileHeading size="hero" accent="Profile">My</ProfileHeading>
+          ) : (
+            <ProfileHeading size="hero" accent="PROFILE.">MY</ProfileHeading>
+          )}
+        </section>
+
+        <div
+          className={`${cyber ? 'profile-cyber-content-card rounded-2xl' : ph ? 'profile-pornhub-content-card rounded-2xl' : of ? 'profile-onlyfans-content-card rounded-2xl' : tg ? 'profile-telegram-content-card rounded-2xl' : er ? 'profile-erogram-content-card rounded-2xl' : con ? 'profile-console-content-card rounded-2xl' : profileCardClass} p-6 sm:p-8`}
+          style={themedShell ? undefined : { backgroundColor: tokens.card, borderColor: tokens.border, boxShadow: tokens.cardShadow }}
+        >
           {activeTab === 'home' ? (
             <HomeTab
-              firstName={firstName}
-              photoUrl={photoUrl}
               isPremium={effectivePremium}
-              userData={userData}
-              onNavigate={setActiveTab}
+              photoUrl={photoUrl}
+              interests={userData.interests}
+              onNavigate={selectTab}
             />
+          ) : activeTab === 'feed' ? (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+              <ProfileFeedTab
+                interests={userData.interests}
+                preferredPlatforms={userData.preferredPlatforms}
+                onNavigateSettings={() => selectTab('settings')}
+              />
+            </motion.div>
           ) : activeTab === 'saved' ? (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-              <SavedTab isPremium={effectivePremium} />
+              <SavedTab isPremium={effectivePremium} themeMode={theme} />
             </motion.div>
-          ) : activeTab === 'models' ? (
+          ) : activeTab === 'likes' ? (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-              <SavedModelsTab />
+              <MyLikesTab isPremium={effectivePremium} themeMode={theme} />
             </motion.div>
+          ) : activeTab === 'subscription' ? (
+            <SubscriptionTab
+              isPremium={effectivePremium}
+              premiumPlan={premiumPlan}
+              premiumSince={premiumSince}
+              premiumExpiresAt={premiumExpiresAt}
+              getRemainingDays={getRemainingDays}
+            />
           ) : activeTab === 'vault' ? (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-              <VaultTab isPremium={effectivePremium} isAdmin={effectiveAdmin} />
+              <div className="mb-6">
+                <ProfileHeading size="md" className="!mt-0 leading-snug tracking-[0.04em]">
+                  PREMIUM TELEGRAM GROUPS
+                </ProfileHeading>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] mt-2" style={{ color: tokens.muted }}>
+                  UPDATED / VERIFIED DAILY
+                </p>
+              </div>
+              <VaultTab isPremium={effectivePremium} isAdmin={effectiveAdmin} onUpgrade={() => selectTab('subscription')} />
             </motion.div>
-          ) : activeTab === 'suggestions' ? (
+          ) : activeTab === 'theme' ? (
+            <ThemeTab isPremium={effectivePremium} />
+          ) : activeTab === 'leaderboard' ? (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-              <FeatureSuggestionsTab isAdmin={isAdmin} />
+              <LeaderboardTab currentUserId={currentUserId} />
             </motion.div>
           ) : activeTab === 'settings' ? (
             <SettingsTab
               username={username}
               firstName={firstName}
+              bio={bio}
+              memberSince={memberSince}
               photoUrl={photoUrl}
               isPremium={effectivePremium}
               isAdmin={isAdmin}
               viewMode={viewMode}
-              premiumPlan={premiumPlan}
-              premiumSince={premiumSince}
-              premiumExpiresAt={premiumExpiresAt}
-              getRemainingDays={getRemainingDays}
               deletingAccount={deletingAccount}
+              themeMode={theme}
               onLogout={handleLogout}
               onDeleteAccount={handleDeleteAccount}
+              onAvatarSaved={(url) => { setPhotoUrl(url); toast('Avatar saved', 'success'); }}
+              onAvatarError={(msg) => toast(msg, 'error')}
+              onProfileSaved={({ firstName: fn, bio: b }) => {
+                setFirstName(fn);
+                setBio(b);
+                toast('Profile saved', 'success');
+              }}
+              onProfileError={(msg) => toast(msg, 'error')}
+              preferredPlatforms={userData.preferredPlatforms}
+              interests={userData.interests}
+              aiInterests={userData.aiInterests}
+              tagOptions={tagOptions}
+              aiOptions={aiOptions}
+              onInterestsSaved={(data) => {
+                setUserData((prev: UserData) => ({
+                  ...prev,
+                  preferredPlatforms: data.preferredPlatforms,
+                  interests: data.interests,
+                  aiInterests: data.aiInterests,
+                  interestedInAI: data.preferredPlatforms.includes('ai'),
+                }));
+                toast('Interests saved', 'success');
+              }}
+              onInterestsError={(msg) => toast(msg, 'error')}
             />
           ) : null}
         </div>
+      </main>
+
+      <div className={`transition-all duration-300 ease-in-out ${sidebarMargin}`} style={{ background: tokens.footerGradient }}>
+        <EditorialFooter />
       </div>
     </div>
   );
@@ -256,21 +578,50 @@ function ProfileContent() {
    ═══════════════════════════════════════════════════════════════════ */
 
 function HomeTab({
-  firstName,
-  photoUrl,
   isPremium,
-  userData,
+  photoUrl,
+  interests,
   onNavigate,
 }: {
-  firstName: string | null;
-  photoUrl: string | null;
   isPremium: boolean;
-  userData: UserData;
+  photoUrl: string | null;
+  interests: string[];
   onNavigate: (tab: Tab) => void;
 }) {
+  const { tokens } = useProfileTheme();
   const [savedCreators, setSavedCreators] = useState<any[]>([]);
   const [savedBookmarks, setSavedBookmarks] = useState<any[]>([]);
+  const [likedMedia, setLikedMedia] = useState<{ url: string; type: string }[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [recentPremiumGroups, setRecentPremiumGroups] = useState<
+    { _id: string; name: string; slug: string; image: string; category: string; categories: string[]; memberCount: number }[]
+  >([]);
+  const [recentPremiumNiches, setRecentPremiumNiches] = useState<
+    { niche: string; image: string; latestAt: string; totalSubs: number }[]
+  >([]);
+  const [recentGroupsLoaded, setRecentGroupsLoaded] = useState(false);
+  const [recentNichesLoaded, setRecentNichesLoaded] = useState(false);
+
+  useEffect(() => {
+    if (isPremium) {
+      setRecentGroupsLoaded(true);
+      setRecentNichesLoaded(true);
+      return;
+    }
+    getRecentPremiumHomeSections(20, 20)
+      .then(({ groups, niches }) => {
+        setRecentPremiumGroups(groups);
+        setRecentPremiumNiches(niches);
+      })
+      .catch(() => {
+        setRecentPremiumGroups([]);
+        setRecentPremiumNiches([]);
+      })
+      .finally(() => {
+        setRecentGroupsLoaded(true);
+        setRecentNichesLoaded(true);
+      });
+  }, [isPremium]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -280,148 +631,284 @@ function HomeTab({
     Promise.all([
       fetch('/api/onlyfans/save/creators', { headers }).then(r => r.ok ? r.json() : { creators: [] }).catch(() => ({ creators: [] })),
       fetch('/api/bookmarks?limit=8', { headers }).then(r => r.ok ? r.json() : []).catch(() => []),
-    ]).then(([creatorsRes, bookmarks]) => {
+      getProfileLikedMedia(token).catch(() => ({ items: [] })),
+    ]).then(([creatorsRes, bookmarks, likedRes]) => {
       const creators = Array.isArray(creatorsRes?.creators) ? creatorsRes.creators : [];
       setSavedCreators(creators.slice(0, 8));
       setSavedBookmarks(Array.isArray(bookmarks) ? bookmarks.slice(0, 8) : []);
+      setLikedMedia((likedRes.items || []).slice(0, 8).map((item) => ({ url: item.url, type: item.type })));
       setLoaded(true);
     });
   }, []);
 
-  const allImages = [
-    ...savedCreators.map((c: any) => c.avatar || c.photoUrl).filter(Boolean),
+  const bookmarkImages = [
     ...savedBookmarks.map((b: any) => b.item?.image).filter(Boolean),
+    ...savedCreators.map((c: any) => c.avatar || c.photoUrl).filter(Boolean),
   ];
-  const totalSaved = savedCreators.length + savedBookmarks.length;
-  const greeting = firstName ? `Welcome ${firstName} to Erogram` : 'Welcome to Erogram';
-  const interests = userData.interests.length > 0 ? userData.interests.map(s => s.replace(/-/g, ' ')) : [];
+  const bookmarkCount = savedBookmarks.length + savedCreators.length;
+  const likedPreviewImages = likedMedia.map((item) => item.url).filter(Boolean);
+
+  const renderPreview = (images: string[]) => (
+    <div className="grid grid-cols-4 gap-1.5 rounded-2xl overflow-hidden border" style={{ borderColor: tokens.border }}>
+      {images.slice(0, 8).map((img, i) => (
+        <div key={i} className="aspect-square overflow-hidden">
+          <img src={img} alt="" className="w-full h-full object-cover" loading="lazy"
+            onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
+        </div>
+      ))}
+    </div>
+  );
+
+  const handlePremiumGate = (premiumTab: Tab) => {
+    if (isPremium) onNavigate(premiumTab);
+    else onNavigate('subscription');
+  };
+
+  const formatGroupCount = (n: number) => {
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+    return String(n);
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-      {/* Welcome header */}
-      <div className="text-center mb-6">
-        {photoUrl && (
-          <img src={photoUrl} alt="" className="w-16 h-16 rounded-full mx-auto mb-3 border-2 border-white/10 object-cover" />
+      <ProfileHomeSetupSteps
+        photoUrl={photoUrl}
+        interests={interests}
+        onNavigate={onNavigate}
+      />
+
+      {!isPremium && <PremiumCompareBlock className="mb-10" />}
+
+      {!isPremium && (
+      <>
+      <Link
+        href="/premium"
+        className="mb-6 w-full rounded-xl px-5 py-4 sm:py-5 text-center transition-all hover:opacity-95 active:scale-[0.995] border block"
+        style={{
+          background: PREMIUM_MEMBER_GOLD.background,
+          color: PREMIUM_MEMBER_GOLD.color,
+          border: PREMIUM_MEMBER_GOLD.border,
+          boxShadow: PREMIUM_MEMBER_GOLD.boxShadow,
+        }}
+      >
+        <span className="text-[16px] sm:text-[20px] font-black uppercase tracking-[0.06em] leading-none">
+          UPGRADE TO PREMIUM
+        </span>
+      </Link>
+
+      <section className="mb-10">
+        <div className="border-b pb-4 mb-5" style={{ borderColor: tokens.border }}>
+          <ProfileHeading size="md" as="h3" className="!mt-0">Recently Added Premium Groups</ProfileHeading>
+        </div>
+        {!recentGroupsLoaded ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} className="aspect-square rounded-xl animate-pulse" style={{ backgroundColor: tokens.hover }} />
+            ))}
+          </div>
+        ) : recentPremiumGroups.length === 0 ? (
+          <p className="text-[13px]" style={{ color: tokens.muted }}>No groups yet.</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+            {recentPremiumGroups.map((group) => {
+              const cats = group.categories?.length ? group.categories : [group.category].filter(Boolean);
+              return (
+                <button
+                  key={group._id}
+                  type="button"
+                  onClick={() => handlePremiumGate('vault')}
+                  className="aspect-square rounded-xl overflow-hidden relative text-left transition-all hover:opacity-95 active:scale-[0.98]"
+                >
+                  <img
+                    src={group.image}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }}
+                  />
+                  <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 30%, rgba(10,9,8,0.85) 70%, rgba(10,9,8,0.95) 100%)' }} />
+                  <div className="absolute bottom-0 left-0 right-0 p-2">
+                    <p className="text-[10px] sm:text-[11px] font-bold text-white leading-tight truncate mb-1">
+                      {(group.name || '').slice(0, 5)}
+                      <span style={{ filter: 'blur(5px)', opacity: 0.7, userSelect: 'none' }}>{(group.name || '').slice(5) || '██████'}</span>
+                    </p>
+                    {cats[0] && (
+                      <span className="text-[7px] font-black uppercase tracking-wide px-1 py-px rounded" style={{ background: 'rgba(10,9,8,0.5)', color: '#c9973a' }}>{cats[0]}</span>
+                    )}
+                    {group.memberCount > 0 && (
+                      <p className="text-[9px] font-semibold mt-1" style={{ color: '#9a8060' }}>{formatGroupCount(group.memberCount)} subs</p>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         )}
-        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-1">{greeting}</h1>
-        {interests.length > 0 && (
-          <div className="flex items-center justify-center gap-1.5 flex-wrap mt-2">
-            {interests.slice(0, 5).map(i => (
-              <span key={i} className="px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize text-white/50 bg-white/5 border border-white/8">
-                {i}
-              </span>
+      </section>
+
+      <section className="mb-10">
+        <div className="border-b pb-4 mb-5" style={{ borderColor: tokens.border }}>
+          <ProfileHeading size="md" as="h3" className="!mt-0">Recently Added Premium Niches</ProfileHeading>
+        </div>
+        {!recentNichesLoaded ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} className="aspect-square rounded-xl animate-pulse" style={{ backgroundColor: tokens.hover }} />
+            ))}
+          </div>
+        ) : recentPremiumNiches.length === 0 ? (
+          <p className="text-[13px]" style={{ color: tokens.muted }}>No niches yet.</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+            {recentPremiumNiches.map((item) => (
+              <button
+                key={item.niche}
+                type="button"
+                onClick={() => handlePremiumGate('vault')}
+                className="aspect-square rounded-xl overflow-hidden relative text-left transition-all hover:opacity-95 active:scale-[0.98]"
+              >
+                <img
+                  src={item.image}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                  onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }}
+                />
+                <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 25%, rgba(10,9,8,0.88) 65%, rgba(10,9,8,0.98) 100%)' }} />
+                <div className="absolute bottom-0 left-0 right-0 p-2">
+                  <p className="text-[11px] sm:text-[12px] font-black text-white leading-tight line-clamp-2 uppercase tracking-wide">
+                    {item.niche}
+                  </p>
+                  {item.totalSubs > 0 && (
+                    <p className="text-[9px] font-semibold mt-1" style={{ color: '#9a8060' }}>{formatGroupCount(item.totalSubs)} subs</p>
+                  )}
+                </div>
+              </button>
             ))}
           </div>
         )}
-        {isPremium && (
-          <div className="inline-flex items-center gap-1 mt-2 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-[#00aff0]/10 to-[#00aff0]/5 border border-[#00aff0]/20 text-[#00aff0]">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="#00aff0"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-            VIP Member
-          </div>
-        )}
-      </div>
+      </section>
+      </>
+      )}
 
-      {/* Saved content mosaic */}
-      {loaded && allImages.length > 0 && (
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[12px] font-bold text-white/50">{totalSaved} saved items</span>
-            <button onClick={() => onNavigate('saved')} className="text-[11px] font-semibold text-[#00aff0] hover:text-[#00aff0]/80 transition-colors">
-              View all
+      {isPremium && loaded && bookmarkImages.length > 0 && (
+        <section className="mb-10">
+          <div className="flex items-end justify-between gap-4 border-b pb-4 mb-5" style={{ borderColor: tokens.border }}>
+            <div>
+              <ProfileEyebrow>Bookmarks</ProfileEyebrow>
+              <ProfileHeading size="md" as="h3">My Bookmarks ({bookmarkCount})</ProfileHeading>
+            </div>
+            <button
+              type="button"
+              onClick={() => onNavigate('saved')}
+              className="text-[11px] font-semibold tracking-[0.22em] uppercase shrink-0"
+              style={{ color: tokens.muted }}
+            >
+              View all →
             </button>
           </div>
-          <div className="grid grid-cols-4 gap-1 rounded-xl overflow-hidden">
-            {allImages.slice(0, 8).map((img, i) => (
-              <div key={i} className="aspect-square overflow-hidden">
-                <img src={img} alt="" className="w-full h-full object-cover" loading="lazy"
-                  onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
-              </div>
-            ))}
+          {renderPreview(bookmarkImages.slice(0, 8))}
+        </section>
+      )}
+
+      {isPremium && loaded && likedPreviewImages.length > 0 && (
+        <section className="mb-10">
+          <div className="flex items-end justify-between gap-4 border-b pb-4 mb-5" style={{ borderColor: tokens.border }}>
+            <div>
+              <ProfileEyebrow>OnlyFans</ProfileEyebrow>
+              <ProfileHeading size="md" as="h3">My Likes ({likedPreviewImages.length})</ProfileHeading>
+            </div>
+            <button
+              type="button"
+              onClick={() => onNavigate('likes')}
+              className="text-[11px] font-semibold tracking-[0.22em] uppercase shrink-0"
+              style={{ color: tokens.muted }}
+            >
+              View all →
+            </button>
           </div>
+          {renderPreview(likedPreviewImages.slice(0, 8))}
+        </section>
+      )}
+
+      <div className="flex items-center justify-center gap-4 pt-4 border-t" style={{ borderColor: tokens.border }}>
+        <a href="mailto:support@erogram.biz" className="text-[11px] font-semibold tracking-[0.18em] uppercase transition-colors hover:opacity-70" style={{ color: tokens.muted }}>Support</a>
+        <span style={{ color: tokens.border }}>|</span>
+        <a href="https://t.me/erogramDOTpro" target="_blank" rel="noopener noreferrer" className="text-[11px] font-semibold tracking-[0.18em] uppercase transition-colors hover:opacity-70" style={{ color: tokens.muted }}>Telegram</a>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SUBSCRIPTION TAB
+   ═══════════════════════════════════════════════════════════════════ */
+
+function SubscriptionTab({
+  isPremium,
+  premiumPlan,
+  premiumSince,
+  premiumExpiresAt,
+  getRemainingDays,
+}: {
+  isPremium: boolean;
+  premiumPlan: string | null;
+  premiumSince: string | null;
+  premiumExpiresAt: string | null;
+  getRemainingDays: () => number | null;
+}) {
+  const { tokens } = useProfileTheme();
+  const remaining = getRemainingDays();
+  const soon = remaining !== null && remaining <= 7;
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+      <ProfileEyebrow>Membership</ProfileEyebrow>
+      <ProfileHeading size="xl" className="mb-6">My Subscription</ProfileHeading>
+      <div className="space-y-4 max-w-md">
+        <div className="flex justify-between text-sm border-b pb-3" style={{ borderColor: tokens.border }}>
+          <span style={{ color: tokens.muted }}>Plan</span>
+          <span className="font-bold capitalize" style={{ color: isPremium ? '#8a6115' : tokens.text }}>
+            {isPremium ? (premiumPlan || 'Premium') : 'Free'}
+          </span>
         </div>
-      )}
-
-      {/* Quick actions */}
-      <div className="grid grid-cols-3 gap-2 mb-6">
-        <button
-          onClick={() => window.open('/onlyfanssearch', '_blank', 'noopener,noreferrer')}
-          className="rounded-xl py-4 text-center transition-all hover:bg-white/[0.06]"
-          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-        >
-          <svg width="20" height="20" viewBox="0 0 48 48" fill="none" className="mx-auto mb-1.5">
-            <circle cx="24" cy="24" r="24" fill="#00AFF0" />
-            <path d="M24 10C16.27 10 10 16.27 10 24C10 31.73 16.27 38 24 38C31.73 38 38 31.73 38 24C38 16.27 31.73 10 24 10ZM24 32C19.58 32 16 28.42 16 24C16 19.58 19.58 16 24 16C28.42 16 32 19.58 32 24C32 28.42 28.42 32 24 32Z" fill="white" />
-            <circle cx="24" cy="24" r="4" fill="white" />
-          </svg>
-          <div className="text-[11px] font-bold text-white/60">Creators</div>
-        </button>
-        <button
-          onClick={() => window.open('/', '_blank', 'noopener,noreferrer')}
-          className="rounded-xl py-4 text-center transition-all hover:bg-white/[0.06]"
-          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-        >
-          <svg width="20" height="20" viewBox="0 0 48 48" fill="none" className="mx-auto mb-1.5">
-            <circle cx="24" cy="24" r="24" fill="#26A5E4" />
-            <path d="M35.5 13.5L10.5 22.8C10.5 22.8 9.8 23.1 9.9 23.7C10 24.3 10.7 24.6 10.7 24.6L16.5 26.5L19 33.5C19 33.5 19.3 34.3 20 34.3C20.7 34.3 21.2 33.8 21.2 33.8L24.5 30.5L30.5 35C30.5 35 31.1 35.3 31.7 35C32.3 34.7 32.5 34 32.5 34L36.5 15C36.5 15 36.7 13.8 35.5 13.5ZM31 18.5L20.5 27.8C20.5 27.8 20.1 28.1 20 28.6L19.3 32L18 27.5L31 18.5Z" fill="white" />
-          </svg>
-          <div className="text-[11px] font-bold text-white/60">Groups</div>
-        </button>
-        <button
-          onClick={() => window.open('/ainsfw', '_blank', 'noopener,noreferrer')}
-          className="rounded-xl py-4 text-center transition-all hover:bg-white/[0.06]"
-          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-        >
-          <svg width="20" height="20" viewBox="0 0 48 48" fill="none" className="mx-auto mb-1.5">
-            <circle cx="24" cy="24" r="24" fill="#7C3AED" />
-            <path d="M16 20C16 20 18 14 24 14C30 14 32 20 32 20" stroke="white" strokeWidth="2" strokeLinecap="round" />
-            <rect x="14" y="20" width="20" height="12" rx="3" fill="white" fillOpacity="0.15" stroke="white" strokeWidth="1.5" />
-            <circle cx="19" cy="26" r="2.5" fill="white" />
-            <circle cx="29" cy="26" r="2.5" fill="white" />
-          </svg>
-          <div className="text-[11px] font-bold text-white/60">AI Tools</div>
-        </button>
-      </div>
-
-      {!isPremium ? (
-        <PremiumCompareBlock />
-      ) : (
-        <>
-          <button
-            onClick={() => onNavigate('vault')}
-            className="mb-6 w-full flex items-center gap-4 rounded-xl px-4 py-3 transition-all hover:bg-white/[0.06]"
-            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-          >
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(201,151,58,0.1)' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c9973a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            </div>
-            <div className="flex-1 min-w-0 text-left">
-              <div className="text-[13px] font-bold text-white">Browse the Vault</div>
-              <div className="text-[10px] text-white/35">4,000+ exclusive groups at your fingertips</div>
-            </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
-          </button>
-          <div className="mb-6 rounded-xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <div className="flex items-center gap-3 px-4 py-3">
-              <img src="/assets/vicky-ai-avatar.jpg" alt="" className="w-10 h-10 rounded-full object-cover ring-2 ring-[#00aff0]/20 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-bold text-white">Ask Vicky AI</div>
-                <div className="text-[10px] text-white/35">Tap the chat bubble to find the best content</div>
-              </div>
-              <div className="relative w-3 h-3">
-                <div className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-30" />
-                <div className="absolute inset-0 rounded-full bg-emerald-400" />
-              </div>
-            </div>
+        <div className="flex justify-between text-sm border-b pb-3" style={{ borderColor: tokens.border }}>
+          <span style={{ color: tokens.muted }}>Started</span>
+          <span style={{ color: tokens.text }}>
+            {isPremium && premiumSince ? new Date(premiumSince).toLocaleDateString() : '-'}
+          </span>
+        </div>
+        <div className="flex justify-between text-sm border-b pb-3" style={{ borderColor: tokens.border }}>
+          <span style={{ color: tokens.muted }}>Ends</span>
+          <span className={soon ? 'text-red-600 font-semibold' : ''} style={{ color: soon ? undefined : tokens.text }}>
+            {!isPremium
+              ? '-'
+              : premiumPlan === 'lifetime'
+                ? 'Never'
+                : premiumExpiresAt
+                  ? new Date(premiumExpiresAt).toLocaleDateString()
+                  : '-'}
+          </span>
+        </div>
+        {isPremium && remaining !== null && remaining > 0 && (
+          <div className="flex justify-between text-sm">
+            <span style={{ color: tokens.muted }}>Remaining</span>
+            <span className={`font-bold ${soon ? 'text-red-600' : ''}`} style={{ color: soon ? undefined : '#8a6115' }}>
+              {remaining} day{remaining !== 1 ? 's' : ''}
+            </span>
           </div>
-        </>
-      )}
-
-      {/* Support links */}
-      <div className="flex items-center justify-center gap-4 mt-4 mb-8">
-        <a href="mailto:support@erogram.biz" className="text-[11px] text-white/25 hover:text-white/50 transition-colors font-medium">Support</a>
-        <span className="text-white/10">|</span>
-        <a href="https://t.me/erogramDOTpro" target="_blank" rel="noopener noreferrer" className="text-[11px] text-white/25 hover:text-white/50 transition-colors font-medium">Telegram</a>
+        )}
       </div>
+      {!isPremium && (
+        <a
+          href="/premium"
+          className={`${profileBtnClass} mt-8`}
+          style={{ color: tokens.ink, backgroundColor: tokens.accent }}
+        >
+          Upgrade to Premium →
+        </a>
+      )}
     </motion.div>
   );
 }
@@ -431,110 +918,85 @@ function HomeTab({
    ═══════════════════════════════════════════════════════════════════ */
 
 function SettingsTab({
-  username, firstName, photoUrl, isPremium, isAdmin, viewMode,
-  premiumPlan, premiumSince, premiumExpiresAt, getRemainingDays,
-  deletingAccount, onLogout, onDeleteAccount,
+  username, firstName, bio, memberSince, photoUrl, isPremium, isAdmin, viewMode,
+  deletingAccount, onLogout, onDeleteAccount, onAvatarSaved, onAvatarError,
+  onProfileSaved, onProfileError,
+  preferredPlatforms, interests, aiInterests, tagOptions, aiOptions, onInterestsSaved, onInterestsError,
+  themeMode,
 }: {
-  username: string | null; firstName: string | null; photoUrl: string | null;
+  username: string | null; firstName: string | null; bio: string | null; memberSince: string | null;
+  photoUrl: string | null;
   isPremium: boolean; isAdmin: boolean; viewMode: ViewMode;
-  premiumPlan: string | null; premiumSince: string | null; premiumExpiresAt: string | null;
-  getRemainingDays: () => number | null;
   deletingAccount: boolean; onLogout: () => void; onDeleteAccount: () => void;
+  onAvatarSaved: (url: string) => void; onAvatarError: (msg: string) => void;
+  onProfileSaved: (data: { firstName: string | null; bio: string | null }) => void;
+  onProfileError: (msg: string) => void;
+  preferredPlatforms: string[];
+  interests: string[];
+  aiInterests: string[];
+  tagOptions: InterestOption[];
+  aiOptions: InterestOption[];
+  onInterestsSaved: (data: { preferredPlatforms: string[]; interests: string[]; aiInterests: string[] }) => void;
+  onInterestsError: (msg: string) => void;
+  themeMode: import('./profileTheme').ProfileThemeId;
 }) {
+  const { tokens } = useProfileTheme();
+  const fieldBg = profileComponentColors(themeMode).fieldBg;
+
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-      <div className="glass rounded-2xl p-6 sm:p-8 backdrop-blur-lg border border-white/10 mb-6">
-        <div className="text-center mb-6">
-          {photoUrl && (
-            <img src={photoUrl} alt="" className="w-20 h-20 rounded-full mx-auto mb-3 border-2 border-white/10 object-cover" />
-          )}
-          <h2 className="text-xl font-black text-white">{firstName || username || 'User'}</h2>
-          {username && <p className="text-xs text-white/35 mt-0.5">@{username}</p>}
-          {isPremium && (
-            <div className="inline-flex items-center gap-1 mt-2 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-amber-500/20 to-amber-600/20 border border-amber-500/30 text-amber-400">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-              Premium{isAdmin && viewMode !== 'admin' ? ' (simulated)' : ''}
-            </div>
-          )}
-        </div>
-
-        {isPremium && (premiumPlan || premiumSince || premiumExpiresAt) && (
-          <div className="mb-6 mx-auto max-w-xs rounded-xl border border-amber-500/15 bg-amber-500/[0.04] p-3 space-y-1.5">
-            {premiumPlan && (
-              <div className="flex justify-between text-xs">
-                <span className="text-white/40">Plan</span>
-                <span className="text-amber-400 font-semibold capitalize">{premiumPlan}</span>
-              </div>
-            )}
-            {premiumSince && (
-              <div className="flex justify-between text-xs">
-                <span className="text-white/40">Since</span>
-                <span className="text-white/70">{new Date(premiumSince).toLocaleDateString()}</span>
-              </div>
-            )}
-            {premiumExpiresAt ? (() => {
-              const remaining = getRemainingDays();
-              const soon = remaining !== null && remaining <= 7;
-              return (
-                <>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-white/40">Expires</span>
-                    <span className={`font-medium ${soon ? 'text-red-400' : 'text-white/70'}`}>{new Date(premiumExpiresAt).toLocaleDateString()}</span>
-                  </div>
-                  {remaining !== null && remaining > 0 && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-white/40">Remaining</span>
-                      <span className={`font-bold ${soon ? 'text-red-400' : 'text-amber-400'}`}>{remaining} day{remaining !== 1 ? 's' : ''}</span>
-                    </div>
-                  )}
-                </>
-              );
-            })() : premiumPlan === 'lifetime' ? (
-              <div className="flex justify-between text-xs">
-                <span className="text-white/40">Expires</span>
-                <span className="text-green-400 font-medium">Never</span>
-              </div>
-            ) : null}
+      <div className="text-center mb-8 pb-8 border-b" style={{ borderColor: tokens.border }}>
+        <ProfileHeading size="lg" as="h2">{firstName || username || 'User'}</ProfileHeading>
+        {username && <p className="text-sm mt-1" style={{ color: tokens.muted }}>@{username}</p>}
+        {bio && <p className="text-[15px] leading-relaxed mt-3 max-w-md mx-auto" style={{ color: tokens.muted }}>{bio}</p>}
+        {isPremium && (
+          <div
+            className="inline-flex items-center gap-1 mt-3 px-3 py-1 rounded-full text-[10px] font-bold tracking-[0.2em] uppercase"
+            style={{ backgroundColor: 'rgba(201,151,58,0.15)', color: '#8a6115', border: '1px solid rgba(201,151,58,0.3)' }}
+          >
+            Premium{isAdmin && viewMode !== 'admin' ? ' (simulated)' : ''}
           </div>
         )}
+      </div>
 
-        {!isPremium && (
-          <div className="mb-6 mx-auto max-w-xs rounded-xl border border-white/10 bg-white/[0.03] p-3 space-y-1">
-            <div className="flex justify-between text-xs">
-              <span className="text-white/40">Plan</span>
-              <span className="text-white/60 font-semibold">Free</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-white/40">Saves</span>
-              <span className="text-white/60">20 max</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-white/40">Folders</span>
-              <span className="text-white/60">2 max</span>
-            </div>
-          </div>
-        )}
+      <AvatarPicker themeMode={themeMode} currentPhotoUrl={photoUrl} onSaved={onAvatarSaved} onError={onAvatarError} />
 
-        {/* Support */}
-        <div className="space-y-2 mb-6">
-          <a href="mailto:support@erogram.biz" className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] transition-all">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-            <span className="text-xs font-semibold text-white/60">support@erogram.biz</span>
-          </a>
-          <a href="https://t.me/erogramDOTpro" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] transition-all">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="#3b82f6"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0h-.056zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-            <span className="text-xs font-semibold text-white/60">@erogramDOTpro</span>
-          </a>
-        </div>
+      <ProfileEditSection themeMode={themeMode} username={username} firstName={firstName} bio={bio} memberSince={memberSince} onSaved={onProfileSaved} onError={onProfileError} />
 
-        <div className="flex flex-col items-center gap-3">
-          <button onClick={onLogout} className="w-full max-w-xs px-4 py-2.5 rounded-xl text-sm font-semibold text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all">
-            Log out
-          </button>
-          <button onClick={onDeleteAccount} disabled={deletingAccount} className="text-[11px] text-red-400/40 hover:text-red-400 transition-colors underline underline-offset-2 disabled:opacity-50">
-            {deletingAccount ? 'Deleting...' : 'Delete account permanently'}
-          </button>
-        </div>
+      <InterestsEditSection
+        themeMode={themeMode}
+        preferredPlatforms={preferredPlatforms}
+        interests={interests}
+        aiInterests={aiInterests}
+        tagOptions={tagOptions}
+        aiOptions={aiOptions}
+        onSaved={onInterestsSaved}
+        onError={onInterestsError}
+      />
+
+      <div className="space-y-2 mb-8 pt-6 border-t" style={{ borderColor: tokens.border }}>
+        <a href="mailto:support@erogram.biz" className="flex items-center gap-3 p-3 rounded-xl transition-all hover:opacity-80 border" style={{ borderColor: tokens.border, backgroundColor: fieldBg }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+          <span className="text-xs font-semibold" style={{ color: tokens.text }}>support@erogram.biz</span>
+        </a>
+        <a href="https://t.me/erogramDOTpro" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-xl transition-all hover:opacity-80 border" style={{ borderColor: tokens.border, backgroundColor: fieldBg }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="#3b82f6"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0h-.056zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+          <span className="text-xs font-semibold" style={{ color: tokens.text }}>@erogramDOTpro</span>
+        </a>
+      </div>
+
+      <div className="flex flex-col items-center gap-3">
+        <button
+          type="button"
+          onClick={onLogout}
+          className={`${profileBtnClass} w-full max-w-xs justify-center`}
+          style={{ color: tokens.ink, backgroundColor: tokens.accent }}
+        >
+          Log out
+        </button>
+        <button type="button" onClick={onDeleteAccount} disabled={deletingAccount} className="text-[11px] text-red-600/60 hover:text-red-600 transition-colors underline underline-offset-2 disabled:opacity-50">
+          {deletingAccount ? 'Deleting...' : 'Delete account permanently'}
+        </button>
       </div>
     </motion.div>
   );
@@ -543,9 +1005,11 @@ function SettingsTab({
 export default function ProfilePage() {
   return (
     <ToastProvider>
-      <Suspense>
-        <ProfileContent />
-      </Suspense>
+      <ProfileThemeProvider>
+        <Suspense>
+          <ProfileContent />
+        </Suspense>
+      </ProfileThemeProvider>
     </ToastProvider>
   );
 }

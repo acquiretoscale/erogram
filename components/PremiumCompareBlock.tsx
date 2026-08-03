@@ -1,18 +1,29 @@
 import Link from 'next/link';
-
-const FREE_BOOKMARK_LIMIT = 20;
-const FREE_FOLDER_LIMIT = 2;
+import { FREE_BOOKMARK_LIMIT, FREE_FOLDER_LIMIT } from '@/lib/premiumLimits';
 
 const ROWS = [
   { feature: 'Catalog', free: '300 groups', premium: '4,800+ hand-picked' },
   { feature: 'Search', free: 'Standard', premium: 'Advanced filters' },
-  { feature: 'Access', free: 'Public feed', premium: 'Instant + updates' },
-  { feature: 'Niches', free: 'Public only', premium: 'Exclusive groups' },
-  { feature: 'Saved', free: `${FREE_BOOKMARK_LIMIT} max`, premium: 'Unlimited' },
+  { feature: 'Access', free: 'Public feed', premium: 'Instant + Constant updates with fresh new verfied groups.' },
+  { feature: 'Freshness', free: "We don't verify daily the expired links", premium: 'No expired links / Verfied Daily' },
+  { feature: 'Categories', free: 'Public only', premium: 'over 60 categories (Kinks, Ethnicity, Body type etc...)' },
+  { feature: 'Bookmarks', free: `${FREE_BOOKMARK_LIMIT} max`, premium: 'Unlimited' },
   { feature: 'Folders', free: `${FREE_FOLDER_LIMIT} max`, premium: 'Unlimited' },
+  { feature: 'Theme', free: '2 themes', premium: 'Unlock all EROgram themes and pick what fits your vibe.' },
 ];
 
-export default function PremiumCompareBlock({ className = 'mb-6' }: { className?: string }) {
+export default function PremiumCompareBlock({
+  className = 'mb-6',
+  ctaHref = '/premium',
+}: {
+  className?: string;
+  ctaHref?: string;
+}) {
+  const ctaClass =
+    'shrink-0 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all hover:scale-[1.03]';
+  const ctaStyle = { background: 'linear-gradient(135deg, #c9973a, #a67c2e)', color: '#0d0c0a' };
+  const footerCtaClass =
+    'mt-2.5 w-full flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-[12px] font-black uppercase tracking-wide transition-all hover:scale-[1.01] active:scale-[0.98]';
   return (
     <section
       className={`rounded-2xl p-4 sm:p-5 ${className}`}
@@ -28,13 +39,15 @@ export default function PremiumCompareBlock({ className = 'mb-6' }: { className?
             See exactly what you unlock with Premium.
           </p>
         </div>
-        <Link
-          href="/premium"
-          className="shrink-0 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all hover:scale-[1.03]"
-          style={{ background: 'linear-gradient(135deg, #c9973a, #a67c2e)', color: '#0d0c0a' }}
-        >
-          Upgrade
-        </Link>
+        {ctaHref.startsWith('#') ? (
+          <a href={ctaHref} className={ctaClass} style={ctaStyle}>
+            Upgrade
+          </a>
+        ) : (
+          <Link href={ctaHref} className={ctaClass} style={ctaStyle}>
+            Upgrade
+          </Link>
+        )}
       </div>
 
       <div className="rounded-lg border border-gray-200 overflow-hidden">
@@ -47,7 +60,7 @@ export default function PremiumCompareBlock({ className = 'mb-6' }: { className?
           <div key={row.feature} className="grid grid-cols-3 text-[11px] border-t border-gray-200">
             <div className="px-2 py-1.5 font-semibold text-gray-800">{row.feature}</div>
             <div className="px-2 py-1.5 text-gray-700 border-l border-gray-200">{row.free}</div>
-            <div className="px-2 py-1.5 font-semibold text-gray-900 border-l border-gray-200" style={{ background: '#fff8e8' }}>
+            <div className="px-2 py-1.5 font-semibold text-gray-900 border-l border-gray-200 leading-snug" style={{ background: '#fff8e8' }}>
               {row.premium}
             </div>
           </div>
@@ -64,14 +77,17 @@ export default function PremiumCompareBlock({ className = 'mb-6' }: { className?
         </div>
       </div>
 
-      <Link
-        href="/premium"
-        className="mt-2.5 w-full flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-[12px] font-black uppercase tracking-wide transition-all hover:scale-[1.01] active:scale-[0.98]"
-        style={{ background: 'linear-gradient(135deg, #c9973a, #a67c2e)', color: '#0d0c0a' }}
-      >
-        Unlock Premium Vault
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </Link>
+      {ctaHref.startsWith('#') ? (
+        <a href={ctaHref} className={footerCtaClass} style={ctaStyle}>
+          Unlock Premium Vault
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      ) : (
+        <Link href={ctaHref} className={footerCtaClass} style={ctaStyle}>
+          Unlock Premium Vault
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </Link>
+      )}
     </section>
   );
 }

@@ -1986,7 +1986,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                     { value: 'homepage', label: 'Homepage' },
                     { value: 'groups', label: 'Groups' },
                     { value: 'bots', label: 'Bots' },
-                    { value: 'onlyfanssearch', label: 'OnlyFans Search' },
+                    { value: 'onlyfans', label: 'OnlyFans Search' },
                     { value: 'ainsfw', label: 'AI NSFW' },
                     { value: 'articles', label: 'Articles' },
                     { value: 'join', label: 'Join Pages' },

@@ -8,13 +8,15 @@ import type { BlogCard } from '@/lib/actions/blog';
 import { AINsfwSubmission } from '@/lib/models';
 import type { AINsfwTool } from '@/app/ainsfw/types';
 import ToolDetailClient from '@/app/ainsfw/[slug]/ToolDetailClient';
-import { getFullReview } from '@/app/ainsfw/fullReviews';
-import { getToolStats } from '@/lib/actions/ainsfw';
+import { getFullReview, getVerifiedPaidSlugs } from '@/app/ainsfw/fullReviews';
+import { getToolStats, getAllToolStats, getApprovedSubmissions } from '@/lib/actions/ainsfw';
+import { pickRecentCategoryTools } from '@/app/ainsfw/recentCategoryTools';
 import { getAuthorBySlug } from '@/lib/actions/authors';
 import { getAinsfwMetaDescription } from '@/lib/ainsfw/metaDescriptions';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-// ISR for public pages
+// Pre-built at deploy (generateStaticParams below) + background refresh every
+// 5 minutes (ISR): stable server HTML for Google, fresh stats/ads for users.
 export const revalidate = 300;
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
@@ -109,12 +111,37 @@ export default async function AINsfwToolPage({ params }: PageProps) {
   const category = getCategoryBySlug(slug);
   if (category) {
     const tools = getToolsByCategory(category);
-    const { getAllToolStats } = await import('@/lib/actions/ainsfw');
-    const allStats = await getAllToolStats(tools.map(t => t.slug));
-    return <CategoryClient category={category} tools={tools} allStats={allStats} />;
+    const staticSlugs = new Set(AI_NSFW_TOOLS.map((t) => t.slug));
+    const [allStats, paidSubmissions] = await Promise.all([
+      getAllToolStats(tools.map((t) => t.slug)),
+      getApprovedSubmissions(staticSlugs),
+    ]);
+    const categoryToolsBySlug = new Map([
+      ...tools.map((t) => [t.slug, t] as const),
+      ...paidSubmissions.filter((t) => t.category === category).map((t) => [t.slug, t] as const),
+    ]);
+    const recentTools = pickRecentCategoryTools(
+      category,
+      categoryToolsBySlug,
+      paidSubmissions as Array<(typeof paidSubmissions)[number] & { createdAt?: string }>,
+    );
+    const recentStats = await getAllToolStats(recentTools.map((t) => t.slug));
+    const verifiedSlugs = getVerifiedPaidSlugs(paidSubmissions.map((t) => t.slug));
+    return (
+      <CategoryClient
+        category={category}
+        tools={tools}
+        allStats={allStats}
+        recentTools={recentTools}
+        recentStats={recentStats}
+        verifiedSlugs={verifiedSlugs}
+      />
+    );
   }
 
-  const aiTool = getToolBySlug(slug) || await getSubmissionTool(slug);
+  const catalogTool = getToolBySlug(slug);
+  const submissionTool = catalogTool ? null : await getSubmissionTool(slug);
+  const aiTool = catalogTool || submissionTool;
   if (!aiTool) {
     notFound();
   }
@@ -125,9 +152,8 @@ export default async function AINsfwToolPage({ params }: PageProps) {
 
   const categoryTools = getToolsByCategory(aiTool.category).filter((t) => t.slug !== aiTool.slug);
 
-  const { getAllToolStats } = await import('@/lib/actions/ainsfw');
-
   const fullReview = getFullReview(aiTool.slug);
+  const showVerified = !!submissionTool && !!fullReview;
   const reviewAuthor = fullReview ? await getAuthorBySlug('eros') : undefined;
 
   const [catStats, toolStats, aiArticles] = await Promise.all([
@@ -194,6 +220,7 @@ export default async function AINsfwToolPage({ params }: PageProps) {
       <ToolDetailClient
         tool={displayTool}
         fullReview={fullReview}
+        showVerified={showVerified}
         reviewAuthor={reviewAuthor}
         alternatives={alternatives}
         aiArticles={aiArticles}

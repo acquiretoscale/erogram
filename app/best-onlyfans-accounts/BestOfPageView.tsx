@@ -4,8 +4,9 @@ import Link from 'next/link';
 import { CircleUser } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { EditorialMasthead, EditorialFooter } from '@/app/blog/EditorialChrome';
-import { BEST_OF_PAGE_MAP, BEST_OF_PAGES } from '@/app/best-onlyfans-accounts/bestOfPages';
+import { BEST_OF_PAGE_MAP, BEST_OF_PAGES, type BestOfPage } from '@/app/best-onlyfans-accounts/bestOfPages';
 import { hottestRankingPublicPath } from '@/lib/bestOfPageContent/hottestUrls';
+import { ofCategoryPublicPath } from '@/lib/bestOnlyfansAccounts/boaUrls';
 import { getLocale } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, LOCALE_HREFLANG, localePath } from '@/lib/i18n';
 import type { Locale } from '@/lib/i18n';
@@ -19,7 +20,9 @@ import { getBestOfPageContent, type BestOfPageContent } from '@/lib/bestOfPageCo
 import { getBodyTranslation } from '@/lib/bestOfPageContent/bodyTranslations';
 import { getMetaDescription } from '@/lib/bestOfPageContent/metaDescriptions';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
 import { getTagLabel } from '@/lib/tags/labelTranslations';
+import { resolveBestOfPage } from '@/lib/onlyfans/categoryComboPills';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || CANONICAL_BASE;
 const OF_BLUE = '#00AFF0';
@@ -46,6 +49,13 @@ function rankBadgeStyle(rank: number): { bg: string; color: string; label: strin
   if (rank === 2) return { bg: 'linear-gradient(135deg,#eef0f4,#a8adb8)', color: '#2a2d33', label: '#02' };
   if (rank === 3) return { bg: 'linear-gradient(135deg,#e8a86a,#b5651d)', color: '#3d2208', label: '#03' };
   return { bg: 'linear-gradient(135deg,#2B1B28,#1a1018)', color: '#FDFDFD', label: `#${String(rank).padStart(2, '0')}` };
+}
+
+function bioSnippet(bio?: string, max = 144): string {
+  const text = bio?.replace(/\s+/g, ' ').trim();
+  if (!text) return '';
+  if (text.length <= max) return text;
+  return `${text.slice(0, max).trim()}…`;
 }
 
 /**
@@ -118,6 +128,11 @@ function hookAdjective(slug: string, locale: Locale): string {
 }
 
 type RankingVariant = 'top10' | 'best';
+export type { RankingVariant };
+
+function rankingPublicPath(slug: string, locale: Locale, variant: RankingVariant): string {
+  return variant === 'best' ? ofCategoryPublicPath(slug, locale) : hottestRankingPublicPath(slug, locale);
+}
 
 function applyRankingVariantContent(content: BestOfPageContent, variant: RankingVariant): BestOfPageContent {
   if (variant === 'top10') return content;
@@ -170,16 +185,16 @@ function rankingTitle(label: string, year: number, locale: Locale, variant: Rank
   return variant === 'best' ? bestRankingTitle(label, year, locale) : top10RankingTitle(label, year, locale);
 }
 
-export async function buildBestOfMetadata(slug: string): Promise<Metadata> {
+export async function buildBestOfMetadata(slug: string, variant: RankingVariant = 'top10'): Promise<Metadata> {
   const locale = await getLocale();
-  const page = BEST_OF_PAGE_MAP.get(slug);
+  const page = resolveBestOfPage(slug);
   if (!page) return {};
 
   const year = new Date().getFullYear();
   const label = getTagLabel(slug, page.label, locale);
   const l = label.toLowerCase();
   const adj = hookAdjective(slug, locale);
-  const blogPath = hottestRankingPublicPath(slug, locale);
+  const blogPath = rankingPublicPath(slug, locale, variant);
 
   // Meta title — PimpBunny replica. The layout template ("%s | Erogram") appends the brand,
   // producing "Top 10 {Label} OnlyFans Models In {year} | Erogram" — do NOT add it here.
@@ -225,7 +240,7 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
 
   const year = new Date().getFullYear();
 
-  const page = BEST_OF_PAGE_MAP.get(slug);
+  const page = resolveBestOfPage(slug);
   if (!page) notFound();
 
   const pageContent = resolveBestOfContent(slug, locale, variant);
@@ -373,7 +388,7 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
     a: item.a.replace(/\{label\}/g, label),
   }));
 
-  const pageUrl = `${SITE_URL}${hottestRankingPublicPath(slug, locale)}`;
+  const pageUrl = `${SITE_URL}${rankingPublicPath(slug, locale, variant)}`;
 
   return (
     <div className="min-h-screen font-[family-name:var(--font-baloo)]" style={{ backgroundColor: CREAM, color: PLUM }}>
@@ -472,22 +487,22 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
               if (videos > 0) stats.push({ label: 'Videos', value: fmt(videos) });
               if (posts > 0) stats.push({ label: 'Posts', value: fmt(posts) });
 
-              const erogramHref = creator.slug
-                ? (String(creator.slug).startsWith('/') ? creator.slug : `/${creator.slug}`)
-                : creator.username ? `/${creator.username}-onlyfans` : '#';
+              const erogramHref = creator.username
+                ? ofCreatorProfileUrl(creator.username)
+                : creator.slug
+                  ? ofCreatorProfileUrl(creator.slug)
+                  : '#';
               const deleteSlug = creator.slug
                 ? String(creator.slug).replace(/^\//, '')
                 : creator.username
                   ? `${creator.username}-onlyfans`
                   : '';
               const cardRowClass = `relative z-10 flex flex-col sm:flex-row gap-0 sm:gap-5`;
-              const CardWrapper = isPromo ? 'div' : 'a';
+              const CardWrapper = isPromo ? 'div' : Link;
               const cardWrapperProps = isPromo
                 ? { className: cardRowClass }
                 : {
-                    href: creator.username ? `/go/${creator.username}` : '#',
-                    target: '_blank' as const,
-                    rel: 'noopener',
+                    href: erogramHref,
                     className: `${cardRowClass} cursor-pointer`,
                   };
 
@@ -562,26 +577,39 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                       {/* Body */}
                       <div className="flex-1 min-w-0 flex flex-col p-4 sm:py-5 sm:pr-5 sm:pl-0">
                         <div className={isPromo ? 'pr-24 sm:pr-36' : undefined}>
-                          <h2 className="font-[family-name:var(--font-baloo)] font-extrabold text-[1.25rem] sm:text-[1.45rem] leading-tight tracking-tight flex items-center gap-1.5 min-w-0" style={{ color: textMain }}>
-                            <span className="truncate min-w-0">{creator.name}</span>
+                          <h2 className="font-[family-name:var(--font-baloo)] font-extrabold text-[1.25rem] sm:text-[1.45rem] leading-tight tracking-tight flex items-center justify-between gap-3 min-w-0" style={{ color: textMain }}>
+                            <span className="truncate min-w-0 flex-1">{creator.name}</span>
+                            <span className="flex items-center gap-2 flex-shrink-0">
                             {isPromo && (
                               <svg className="w-4 h-4 sm:w-[1.1rem] sm:h-[1.1rem] shrink-0" viewBox="0 0 24 24" fill="#1D9BF0" aria-label="Verified">
                                 <path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z" />
                               </svg>
                             )}
+                            {!isPromo && (creator.isFree || creator.price === 0) && (
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wide text-white" style={{ backgroundColor: '#22c55e' }}>
+                                {dict.bestOnlyfans.free}
+                              </span>
+                            )}
+                            </span>
                           </h2>
                           <p className="text-[12px] font-semibold mt-1" style={{ color: textMuted }}>
                             @{creator.username}{creator.location ? ` · ${creator.location}` : ''}
                           </p>
-                          {!isPromo && (creator.isFree || creator.price > 0) && (
+                          {!isPromo && !(creator.isFree || creator.price === 0) && creator.price > 0 && (
                             <span
                               className="inline-flex mt-2 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wide"
-                              style={creator.isFree
-                                ? { backgroundColor: '#16a34a', color: '#fff' }
-                                : { backgroundColor: 'rgba(43,27,40,0.08)', color: PLUM }}
+                              style={{ backgroundColor: 'rgba(43,27,40,0.08)', color: PLUM }}
                             >
-                              {creator.isFree ? dict.bestOnlyfans.free : `$${creator.price}/mo`}
+                              ${creator.price}/mo
                             </span>
+                          )}
+                          {creator.bio && (
+                            <p
+                              className="text-[11px] leading-snug line-clamp-4 mt-2"
+                              style={{ color: textMuted, opacity: 0.85 }}
+                            >
+                              {bioSnippet(creator.bio)}
+                            </p>
                           )}
                         </div>
 
@@ -633,11 +661,10 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                             </>
                           ) : (
                           <span
-                            className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl font-black uppercase text-white px-6 py-3 text-[12px] tracking-[0.14em]"
+                            className="inline-flex w-full sm:w-auto items-center justify-center rounded-xl font-black uppercase text-white px-6 py-3 text-[12px] tracking-[0.14em]"
                             style={{ backgroundColor: OF_BLUE, boxShadow: '0 8px 22px rgba(0,175,240,0.35)' }}
                           >
-                            <OnlyFansIcon size={15} />
-                            {dict.bestOnlyfans.visitProfile}
+                            Visit Profile
                           </span>
                           )}
                         </div>
@@ -653,7 +680,7 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
           {/* CTA: Explore more of this niche on OFSearch */}
           <div className="mt-6 mb-10 text-center">
             <Link
-              href={localePath(`/onlyfanssearch?q=${encodeURIComponent(label)}`, locale)}
+              href={localePath(`/onlyfans?q=${encodeURIComponent(label)}`, locale)}
               className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full text-[13px] font-bold tracking-[0.06em] border transition-all hover:-translate-y-px hover:opacity-90 active:translate-y-0"
               style={PREMIUM_PINK_BTN}
             >
@@ -687,7 +714,7 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                 return (
                   <Link
                     key={rc.slug}
-                    href={hottestRankingPublicPath(rc.slug, locale)}
+                    href={rankingPublicPath(rc.slug, locale, variant)}
                     className="group relative flex flex-col p-5 rounded-3xl border transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_30px_70px_-32px_rgba(43,27,40,0.5)] shadow-[0_18px_50px_-34px_rgba(43,27,40,0.35)] overflow-hidden"
                     style={{ borderColor: 'rgba(43,27,40,0.10)', backgroundColor: INK }}
                   >
@@ -769,7 +796,7 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                       {group.pages.map((rc) => (
                         <Link
                           key={rc.slug}
-                          href={hottestRankingPublicPath(rc.slug, locale)}
+                          href={rankingPublicPath(rc.slug, locale, variant)}
                           className="inline-flex items-center px-3.5 py-1.5 rounded-full text-[13px] font-bold border transition-all hover:-translate-y-px hover:opacity-90"
                           style={PREMIUM_PINK_BTN}
                         >

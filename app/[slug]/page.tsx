@@ -1,14 +1,13 @@
 import { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
-import { headers } from 'next/headers';
 import mongoose from 'mongoose';
 import connectDB from '@/lib/db/mongodb';
-import { Group, Bot, Post, OnlyFansCreator } from '@/lib/models';
+import { getCreatorReviews } from '@/lib/actions/ofCreatorProfile';
+import { Group, Bot, Post } from '@/lib/models';
 import JoinClient from './JoinClient';
 import { getTelegramMemberCount } from '@/lib/utils/telegram';
-import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import { getActiveCampaigns, getPlacementFeedCampaigns } from '@/lib/actions/campaigns';
-import { getLocale, getPathname } from '@/lib/i18n/server';
+import { getLocale } from '@/lib/i18n/server';
 import { LOCALES, localePath } from '@/lib/i18n';
 import type { Locale } from '@/lib/i18n';
 import { getToolBySlug, getToolsByCategory, AI_NSFW_TOOLS, toolSlug, invertToolSlug } from '@/app/ainsfw/data';
@@ -17,12 +16,10 @@ import type { AINsfwTool } from '@/app/ainsfw/types';
 import ToolDetailClient from '@/app/ainsfw/[slug]/ToolDetailClient';
 import { getToolStats } from '@/lib/actions/ainsfw';
 import { getBotStats } from '@/lib/actions/botVotes';
-import { getCreatorBySlug, getRelatedCreators, getCreatorReviews } from '@/lib/actions/ofCreatorProfile';
 import { getGroupMetaDescription } from '@/lib/groups/metaDescriptions';
 import { getBotMetaDescription } from '@/lib/bots/metaDescriptions';
 import { getAinsfwMetaDescription } from '@/lib/ainsfw/metaDescriptions';
-import CreatorProfileClient from '@/app/onlyfanssearch/CreatorProfileClient';
-import { getTrendingOnErogram, getTrendingCreators } from '@/lib/actions/publicData';
+import { getTrendingCreators } from '@/lib/actions/publicData';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import {
   buildBotListingMetaDescription,
@@ -30,8 +27,29 @@ import {
   resolveEntityMetaDescription,
 } from '@/lib/seo/entityMetaDescription';
 
-// ISR for public join pages (keeps SSR output crawlable while avoiding per-request rendering)
+// Pre-built at deploy (all approved groups + bots via generateStaticParams below)
+// + background refresh every 5 minutes (ISR): Google sees stable server HTML like
+// /best-telegram-groups, while new groups, view counts, stats and ads stay fresh.
 export const revalidate = 300;
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+  try {
+    await connectDB();
+    const [groups, bots] = await Promise.all([
+      Group.find({ status: 'approved', premiumOnly: { $ne: true }, category: { $ne: 'Hentai' } })
+        .select('slug').lean(),
+      Bot.find({ status: 'approved' }).select('slug').lean(),
+    ]);
+    const slugs = [
+      ...(groups as any[]).map((g) => g.slug),
+      ...(bots as any[]).map((b) => b.slug),
+    ].filter(Boolean);
+    return slugs.map((slug: string) => ({ slug }));
+  } catch {
+    return [];
+  }
+}
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
 const PLACEHOLDER_REL = process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png';
@@ -160,16 +178,8 @@ async function getGroup(slug: string, locale: string = 'en') {
     const isDeleted = (group as any).status === 'deleted';
 
     // Only increment view count for non-deleted groups
-    if (!isDeleted) {
-      const todayUtc = new Date().toISOString().slice(0, 10);
-      Group.findByIdAndUpdate(groupId, {
-        $inc: {
-          views: 1,
-          weeklyViews: 1,
-          [`viewsByDay.${todayUtc}`]: 1,
-        },
-      }).catch(err => console.error('Error updating views:', err));
-    }
+    // Views are counted by the client ping (trackEntityView) — the page is
+    // ISR-cached, so a server-side increment would only fire once per rebuild.
 
     // Background update of member count if stale (older than 24h)
     const lastUpdate = (group as any).memberCountUpdatedAt ? new Date((group as any).memberCountUpdatedAt) : new Date(0);
@@ -231,6 +241,10 @@ async function getGroup(slug: string, locale: string = 'en') {
         showNicknameUnderGroups: (group as any).createdBy.showNicknameUnderGroups
       } : null,
       hasTranslations: !!((group as any).description_de?.trim() || (group as any).description_es?.trim()),
+      paidBoost: !!(group as any).paidBoost,
+      paidBoostStars: (group as any).paidBoostStars ?? null,
+      boosted: !!(group as any).boosted,
+      boostExpiresAt: (group as any).boostExpiresAt ? new Date((group as any).boostExpiresAt).toISOString() : null,
     };
 
     return result;
@@ -252,11 +266,8 @@ async function getBot(slug: string, locale: string = 'en') {
       return null;
     }
 
-    // Increment view count (fire and forget)
+    // Views are counted by the client ping (trackEntityView) — ISR-cached page.
     const botId = (bot as any)._id;
-    Bot.findByIdAndUpdate(botId, {
-      $inc: { views: 1 }
-    }).catch(err => console.error('Error updating views:', err));
 
     // Background update of member count if stale (older than 24h)
     const lastUpdate = (bot as any).memberCountUpdatedAt ? new Date((bot as any).memberCountUpdatedAt) : new Date(0);
@@ -314,6 +325,10 @@ async function getBot(slug: string, locale: string = 'en') {
         showNicknameUnderGroups: (bot as any).createdBy.showNicknameUnderGroups
       } : null,
       hasTranslations: !!((bot as any).description_de?.trim() || (bot as any).description_es?.trim()),
+      paidBoost: !!(bot as any).paidBoost,
+      paidBoostStars: (bot as any).paidBoostStars ?? null,
+      boosted: !!(bot as any).boosted,
+      boostExpiresAt: (bot as any).boostExpiresAt ? new Date((bot as any).boostExpiresAt).toISOString() : null,
     };
 
     return result;
@@ -485,8 +500,9 @@ async function getGroupReviewStats(groupId: string) {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const pathname = await getPathname();
   const locale = await getLocale();
+  // Static-safe canonical: derive from slug + locale (BTG pattern), not the request path.
+  const pathname = localePath(`/${slug}`, locale);
 
   // Try to find a group first
   const group = await getGroup(slug, locale);
@@ -595,99 +611,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     permanentRedirect(`/ainsfw/${aiTool.slug}`);
   }
 
-  // Resolve OnlyFans creator. Every registered user must be able to view any
-  // creator at /{username}-onlyfans. Google stays out of non-admin profiles via
-  // the robots: noindex flag below — but the page itself must render, never 404.
-  const creator = await getCreatorBySlug(slug);
-  if (creator) {
-    const pageUrl = `${BASE_URL}/${slug}`;
-    const name = creator.name;
-    const username = creator.username;
-    const primaryCat = creator.categories[0] || 'onlyfans';
-
-    const fmtNum = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(0)}K` : `${n}K`;
-
-    const statsLabels: Record<Locale, { likes: string; fans: string; photos: string; videos: string }> = {
-      en: { likes: 'likes', fans: 'fans', photos: 'photos', videos: 'videos' },
-      de: { likes: 'Likes', fans: 'Fans', photos: 'Fotos', videos: 'Videos' },
-      es: { likes: 'me gusta', fans: 'fans', photos: 'fotos', videos: 'videos' },
-      pt: { likes: 'curtidas', fans: 'fãs', photos: 'fotos', videos: 'vídeos' },
-    };
-    const sl = statsLabels[locale] || statsLabels.en;
-    const statsSnippet = [
-      creator.likesCount > 0 ? `${fmtNum(creator.likesCount)} ${sl.likes}` : '',
-      creator.subscriberCount > 0 ? `${fmtNum(creator.subscriberCount)} ${sl.fans}` : '',
-      creator.photosCount > 0 ? `${creator.photosCount.toLocaleString()} ${sl.photos}` : '',
-      creator.videosCount > 0 ? `${creator.videosCount.toLocaleString()} ${sl.videos}` : '',
-    ].filter(Boolean).join(', ');
-
-    const priceTexts: Record<Locale, { free: string; perMonth: string }> = {
-      en: { free: 'Free subscription', perMonth: '/month' },
-      de: { free: 'Kostenloses Abo', perMonth: '/Monat' },
-      es: { free: 'Suscripción gratis', perMonth: '/mes' },
-      pt: { free: 'Assinatura grátis', perMonth: '/mês' },
-    };
-    const priceLocale = priceTexts[locale] || priceTexts.en;
-    const priceText = creator.isFree ? priceLocale.free : creator.price > 0 ? `$${creator.price.toFixed(2)}${priceLocale.perMonth}` : '';
-
-    const socialHint = [
-      creator.instagramUrl ? 'Instagram' : '',
-      creator.twitterUrl ? 'Twitter' : '',
-      creator.tiktokUrl ? 'TikTok' : '',
-    ].filter(Boolean);
-    const alsoOn: Record<Locale, string> = {
-      en: 'Also on',
-      de: 'Auch auf',
-      es: 'También en',
-      pt: 'Também em',
-    };
-    const socialText = socialHint.length > 0 ? ` ${alsoOn[locale] || alsoOn.en} ${socialHint.join(', ')}.` : '';
-
-    const descTemplates: Record<Locale, string> = {
-      en: `${name} OnlyFans profile (@${username}). ${statsSnippet ? `${statsSnippet}. ` : ''}${priceText ? `${priceText}. ` : ''}${socialText}Browse verified OnlyFans creators on Erogram — the #1 OnlyFans search tool.`,
-      de: `${name} OnlyFans-Profil (@${username}). ${statsSnippet ? `${statsSnippet}. ` : ''}${priceText ? `${priceText}. ` : ''}${socialText}Verifizierte OnlyFans Creator auf Erogram entdecken — das #1 OnlyFans Suchtool.`,
-      es: `${name} OnlyFans perfil (@${username}). ${statsSnippet ? `${statsSnippet}. ` : ''}${priceText ? `${priceText}. ` : ''}${socialText}Explora creadoras verificadas en Erogram — el #1 buscador de OnlyFans.`,
-      pt: `${name} OnlyFans perfil (@${username}). ${statsSnippet ? `${statsSnippet}. ` : ''}${priceText ? `${priceText}. ` : ''}${socialText}Explore criadoras verificadas no Erogram — a melhor busca OnlyFans.`,
-    };
-    let desc = descTemplates[locale] || descTemplates.en;
-    if (desc.length > 160) desc = desc.slice(0, 157) + '...';
-
-    const titleTemplates: Record<Locale, string> = {
-      en: `${name} OnlyFans — @${username} Profile, Photos & Videos (2026)`,
-      de: `${name} OnlyFans — @${username} Profil, Fotos & Videos (2026)`,
-      es: `${name} OnlyFans — @${username} Perfil, Fotos y Videos (2026)`,
-      pt: `${name} OnlyFans — @${username} Perfil, Fotos e Vídeos (2026)`,
-    };
-    const ogTitleTemplates: Record<Locale, string> = {
-      en: `${name} OnlyFans — @${username} | Erogram`,
-      de: `${name} OnlyFans — @${username} | Erogram`,
-      es: `${name} OnlyFans — @${username} | Erogram`,
-      pt: `${name} OnlyFans — @${username} | Erogram`,
-    };
-    const ogTitle = ogTitleTemplates[locale] || ogTitleTemplates.en;
-    const creatorImage = creator.header && creator.header.startsWith('https://')
-      ? creator.header
-      : creator.avatar && creator.avatar.startsWith('https://')
-        ? creator.avatar
-        : undefined;
-
-    return {
-      title: titleTemplates[locale] || titleTemplates.en,
-      description: desc,
-      keywords: `${name} OnlyFans, @${username} OnlyFans, ${primaryCat} OnlyFans creator, OnlyFans profile, ${creator.categories.join(', ')}, best OnlyFans 2026`,
-      other: { rating: 'adult' },
-      alternates: { canonical: pageUrl },
-      ...buildSocialMeta({
-        title: ogTitle,
-        description: desc,
-        url: pageUrl,
-        type: 'profile',
-        image: creatorImage,
-        imageAlt: `${name} OnlyFans`,
-      }),
-    };
-  }
-
   // If nothing found
   const notFoundTitle = 'Not Found - Discover NSFW Telegram Communities';
   const notFoundDescription = 'The requested NSFW Telegram community or bot could not be found. Discover thousands of adult communities and bots on Erogram.pro.';
@@ -704,8 +627,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function JoinPage({ params }: PageProps) {
-  const ua = (await headers()).get('user-agent');
-  const { isMobile, isTelegram } = detectDeviceFromUserAgent(ua);
+  // Static like /best-telegram-groups: no per-request device detection.
+  // The client re-detects mobile/Telegram on mount, so defaults are safe.
+  const isMobile = false;
+  const isTelegram = false;
 
   const { slug } = await params;
   const locale = await getLocale();
@@ -714,7 +639,10 @@ export default async function JoinPage({ params }: PageProps) {
   const group = await getGroup(slug, locale);
   if (group) {
     const similarGroups = await getRandomSimilarGroups(group._id, group.category);
-    const reviewStats = await getGroupReviewStats(group._id);
+    const reviewData = await getCreatorReviews(group.slug);
+    const reviewStats = reviewData.count > 0
+      ? { ratingCount: reviewData.count, ratingValue: reviewData.avg }
+      : null;
     const pageUrl = `${BASE_URL}/${group.slug}`;
     const breadcrumbJsonLd = {
       '@context': 'https://schema.org',
@@ -929,104 +857,6 @@ export default async function JoinPage({ params }: PageProps) {
   const aiTool = getToolBySlug(slug) || await getSubmissionTool(slug);
   if (aiTool) {
     permanentRedirect(`/ainsfw/${aiTool.slug}`);
-  }
-
-  // Resolve OnlyFans creator. Registered users get the full profile for any
-  // creator. Non-admin creators stay noindex (set in generateMetadata above) so
-  // Google never sees them, and CreatorProfileClient's own auth check bounces
-  // non-logged-in visitors. We must never 404 a real creator here.
-  const creator = await getCreatorBySlug(slug);
-  if (creator) {
-    const [related, trendingOnErogram, reviewData] = await Promise.all([
-      getRelatedCreators(creator.categories, creator.slug, 6),
-      getTrendingOnErogram().catch(() => []),
-      getCreatorReviews(creator.slug).catch(() => ({ reviews: [], avg: 0, count: 0 })),
-    ]);
-    const pageUrl = `${BASE_URL}/${slug}`;
-
-    const breadcrumbJsonLd = {
-      '@context': 'https://schema.org',
-      '@type': 'BreadcrumbList',
-      itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
-        { '@type': 'ListItem', position: 2, name: 'Top OnlyFans Creators', item: `${BASE_URL}/Toponlyfanscreators` },
-        { '@type': 'ListItem', position: 3, name: creator.name, item: pageUrl },
-      ],
-    };
-
-    const webPageJsonLd: Record<string, any> = {
-      '@context': 'https://schema.org',
-      '@type': 'WebPage',
-      name: `${creator.name} OnlyFans — @${creator.username}`,
-      description: `${creator.name} OnlyFans profile. Browse photos, videos, and subscription info.`,
-      url: pageUrl,
-      isPartOf: { '@type': 'WebSite', name: 'Erogram', url: BASE_URL },
-    };
-
-    const personJsonLd: Record<string, any> = {
-      '@context': 'https://schema.org',
-      '@type': 'ProfilePage',
-      mainEntity: {
-        '@type': 'Person',
-        name: creator.name,
-        alternateName: `@${creator.username}`,
-        url: pageUrl,
-        ...(creator.avatar ? { image: creator.avatar } : {}),
-        sameAs: [
-          creator.url,
-          creator.instagramUrl,
-          creator.twitterUrl,
-          creator.tiktokUrl,
-        ].filter(Boolean),
-      },
-    };
-
-    if (reviewData.count > 0) {
-      personJsonLd.mainEntity.aggregateRating = {
-        '@type': 'AggregateRating',
-        ratingValue: reviewData.avg,
-        ratingCount: reviewData.count,
-        bestRating: 5,
-        worstRating: 1,
-      };
-    } else if (creator.likesCount > 0) {
-      const rating = Math.min(5, 3.5 + (Math.log10(Math.max(creator.likesCount, 1)) / Math.log10(5_000_000)) * 1.5);
-      personJsonLd.mainEntity.aggregateRating = {
-        '@type': 'AggregateRating',
-        ratingValue: Math.round(rating * 10) / 10,
-        ratingCount: creator.likesCount,
-        bestRating: 5,
-        worstRating: 1,
-      };
-    }
-
-    const offerJsonLd = {
-      '@context': 'https://schema.org',
-      '@type': 'Product',
-      name: `${creator.name} OnlyFans Subscription`,
-      ...(creator.avatar ? { image: creator.avatar } : {}),
-      url: pageUrl,
-      offers: {
-        '@type': 'Offer',
-        price: creator.isFree ? '0' : creator.price > 0 ? creator.price.toFixed(2) : '0',
-        priceCurrency: 'USD',
-        availability: 'https://schema.org/InStock',
-      },
-    };
-
-    return (
-      <>
-        {creator.adminImported && (
-          <>
-            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
-            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageJsonLd) }} />
-            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }} />
-            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(offerJsonLd) }} />
-          </>
-        )}
-        <CreatorProfileClient creator={creator} related={related} trendingOnErogram={trendingOnErogram} publicAccess={creator.publicPage || creator.adminImported} />
-      </>
-    );
   }
 
   // If nothing found, show not found

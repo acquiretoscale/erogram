@@ -4,6 +4,16 @@ import sharp from 'sharp';
 import { uploadToR2, isR2Configured } from '@/lib/r2';
 import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator } from '@/lib/models';
+import { revalidateCreatorPage } from '@/lib/actions/ofCreatorProfile';
+import {
+  optimizeCreatorPhoto,
+  optimizeCreatorVideo,
+  validateCreatorPhotoUpload,
+  validateCreatorVideoUpload,
+  creatorAlbumPhotoKey,
+  creatorAlbumVideoKey,
+} from '@/lib/creatorMedia';
+import { MAX_CREATOR_PHOTO_BYTES } from '@/lib/creatorMediaLimits';
 
 const EXIF_COPYRIGHT = '© Erogram.pro';
 const EXIF_ARTIST = 'Erogram.pro';
@@ -75,7 +85,7 @@ export async function processCreatorImages(slug: string): Promise<{
   if (avatarSrc && !isAlreadyOnR2(avatarSrc)) {
     const buf = await downloadImage(avatarSrc);
     if (buf) {
-      const optimized = await optimizeAndBrand(buf);
+      const optimized = await optimizeCreatorPhoto(buf);
       const key = `onlyfanssearch/${slug}-onlyfans.jpg`;
       avatarR2 = await uploadToR2(optimized, key, 'image/jpeg');
     }
@@ -87,7 +97,7 @@ export async function processCreatorImages(slug: string): Promise<{
   if (headerSrc && !isAlreadyOnR2(headerSrc)) {
     const buf = await downloadImage(headerSrc);
     if (buf) {
-      const optimized = await optimizeAndBrand(buf);
+      const optimized = await optimizeCreatorPhoto(buf);
       const key = `onlyfanssearch/${slug}-onlyfans-header.jpg`;
       headerR2 = await uploadToR2(optimized, key, 'image/jpeg');
     }
@@ -105,7 +115,7 @@ export async function processCreatorImages(slug: string): Promise<{
     }
     const buf = await downloadImage(src);
     if (buf) {
-      const optimized = await optimizeAndBrand(buf);
+      const optimized = await optimizeCreatorPhoto(buf);
       const key = `onlyfanssearch/${slug}-onlyfans-${i + 1}.jpg`;
       const url = await uploadToR2(optimized, key, 'image/jpeg');
       extrasR2.push(url);
@@ -123,6 +133,7 @@ export async function processCreatorImages(slug: string): Promise<{
 
   if (Object.keys(updateFields).length > 0) {
     await OnlyFansCreator.updateOne({ slug }, { $set: updateFields });
+    await revalidateCreatorPage(slug, creator.username);
   }
 
   return { avatarR2, headerR2, extrasR2 };
@@ -137,12 +148,21 @@ export async function replaceCreatorPhoto(formData: FormData): Promise<{ url: st
   const type = formData.get('type') as 'avatar' | 'header';
   const file = formData.get('file') as File | null;
   if (!slug || !type || !file) return { error: 'Missing slug, type, or file' };
-  if (file.size === 0) return { error: 'Empty file' };
+  const sizeErr = validateCreatorPhotoUpload(file.size);
+  if (sizeErr) return { error: sizeErr };
   if (!isR2Configured()) return { error: 'R2 not configured' };
 
   const buf = Buffer.from(await file.arrayBuffer());
   if (buf.length === 0) return { error: 'File buffer empty' };
-  const optimized = await optimizeAndBrand(buf);
+  let optimized: Buffer;
+  try {
+    optimized = await optimizeCreatorPhoto(buf);
+    if (optimized.length > MAX_CREATOR_PHOTO_BYTES) {
+      return { error: 'Photo still too large after optimization (max 1 MB)' };
+    }
+  } catch (e: any) {
+    return { error: e.message || 'Photo optimization failed' };
+  }
   const cacheBust = Date.now().toString(36);
   const keySuffix = type === 'header' ? '-header' : '';
   const key = `onlyfanssearch/${slug}-onlyfans${keySuffix}-${cacheBust}.jpg`;
@@ -155,6 +175,8 @@ export async function replaceCreatorPhoto(formData: FormData): Promise<{ url: st
     update.avatarThumbC144 = url;
   }
   await OnlyFansCreator.updateOne({ slug }, { $set: update });
+  const creator = await OnlyFansCreator.findOne({ slug }).select('username').lean() as any;
+  await revalidateCreatorPage(slug, creator?.username);
   return { url };
 }
 
@@ -165,25 +187,82 @@ export async function replaceCreatorPhoto(formData: FormData): Promise<{ url: st
  */
 export async function addCreatorAlbumPhoto(slug: string, file: File): Promise<{ url: string } | { error: string }> {
   if (!slug || !file) return { error: 'Missing slug or file' };
-  if (file.size === 0) return { error: 'Empty file' };
+  const sizeErr = validateCreatorPhotoUpload(file.size);
+  if (sizeErr) return { error: sizeErr };
   if (!isR2Configured()) return { error: 'R2 not configured' };
 
   const buf = Buffer.from(await file.arrayBuffer());
   if (buf.length === 0) return { error: 'File buffer empty' };
-  const optimized = await optimizeAndBrand(buf);
+  let optimized: Buffer;
+  try {
+    optimized = await optimizeCreatorPhoto(buf);
+    if (optimized.length > MAX_CREATOR_PHOTO_BYTES) {
+      return { error: 'Photo still too large after optimization (max 1 MB)' };
+    }
+  } catch (e: any) {
+    return { error: e.message || 'Photo optimization failed' };
+  }
 
   await connectDB();
-  const creator = await OnlyFansCreator.findOne({ slug }, 'extraPhotos').lean() as any;
+  const creator = await OnlyFansCreator.findOne({ slug }, 'extraPhotos username').lean() as any;
   if (!creator) return { error: 'Creator not found' };
 
   const existing: string[] = creator.extraPhotos || [];
-  const cacheBust = Date.now().toString(36);
-  // Continue the scraped naming scheme: {slug}-onlyfans-{n}.jpg
-  const key = `onlyfanssearch/${slug}-onlyfans-${existing.length + 1}-${cacheBust}.jpg`;
+  const key = creatorAlbumPhotoKey(slug, existing.length);
   const url = await uploadToR2(optimized, key, 'image/jpeg');
 
   await OnlyFansCreator.updateOne({ slug }, { $push: { extraPhotos: url } });
+  await revalidateCreatorPage(slug, creator.username);
   return { url };
+}
+
+/**
+ * Admin / creator: add a video to profile album (extraVideos).
+ * Max 1 MB upload; auto-compressed before R2.
+ */
+export async function addCreatorAlbumVideo(slug: string, file: File): Promise<{ url: string } | { error: string }> {
+  if (!slug || !file) return { error: 'Missing slug or file' };
+  const sizeErr = validateCreatorVideoUpload(file.size);
+  if (sizeErr) return { error: sizeErr };
+  if (!isR2Configured()) return { error: 'R2 not configured' };
+
+  const allowed = ['video/mp4', 'video/webm', 'video/quicktime'];
+  if (!allowed.includes(file.type)) {
+    return { error: 'Use MP4, WebM, or MOV' };
+  }
+
+  const buf = Buffer.from(await file.arrayBuffer());
+  if (buf.length === 0) return { error: 'File buffer empty' };
+  let optimized: Buffer;
+  try {
+    optimized = await optimizeCreatorVideo(buf);
+  } catch (e: any) {
+    return { error: e.message || 'Video optimization failed' };
+  }
+
+  await connectDB();
+  const creator = await OnlyFansCreator.findOne({ slug }, 'extraVideos username').lean() as any;
+  if (!creator) return { error: 'Creator not found' };
+
+  const existing: string[] = creator.extraVideos || [];
+  const key = creatorAlbumVideoKey(slug, existing.length);
+  const url = await uploadToR2(optimized, key, 'video/mp4');
+
+  await OnlyFansCreator.updateOne({ slug }, { $push: { extraVideos: url } });
+  await revalidateCreatorPage(slug, creator.username);
+  return { url };
+}
+
+/**
+ * Admin: remove ONE video from a creator's album (extraVideos) by URL.
+ */
+export async function removeCreatorAlbumVideo(slug: string, url: string): Promise<{ ok: boolean } | { error: string }> {
+  if (!slug || !url) return { error: 'Missing slug or url' };
+  await connectDB();
+  await OnlyFansCreator.updateOne({ slug }, { $pull: { extraVideos: url } });
+  const creator = await OnlyFansCreator.findOne({ slug }).select('username').lean() as any;
+  await revalidateCreatorPage(slug, creator?.username);
+  return { ok: true };
 }
 
 /**
@@ -193,6 +272,8 @@ export async function removeCreatorAlbumPhoto(slug: string, url: string): Promis
   if (!slug || !url) return { error: 'Missing slug or url' };
   await connectDB();
   await OnlyFansCreator.updateOne({ slug }, { $pull: { extraPhotos: url } });
+  const creator = await OnlyFansCreator.findOne({ slug }).select('username').lean() as any;
+  await revalidateCreatorPage(slug, creator?.username);
   return { ok: true };
 }
 

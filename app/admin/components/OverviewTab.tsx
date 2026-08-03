@@ -886,7 +886,7 @@ export default function OverviewTab({ data, loading, onRefresh }: Props) {
                 {([
                   { label:'Groups',  count:pending.groups,  href:'/admin/groups?tab=pending', color:'#f59e0b' },
                   { label:'Bots',    count:pending.bots,    href:'/admin/pending-bots',       color:'#7c3aed' },
-                  { label:'Reviews', count:pending.reviews, href:'/admin/reviews',            color:'#0284c7' },
+                  { label:'Comments & Reviews', count:pending.reviews, href:'/admin/reviews',            color:'#0284c7' },
                   { label:'Reports', count:pending.reports, href:'/admin/reports',            color:'#ef4444' },
                 ]).map(item => (
                   <Link key={item.label} href={item.href}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
 
 /* ─── Types ─── */
 interface SavedCreator {
@@ -104,7 +105,7 @@ export default function SavedCreatorsTab1({
 
   const openCreator = (c: SavedCreator | SimCreator) => {
     const slug = ('slug' in c && c.slug) ? c.slug : c.username;
-    window.open(`/${slug}-onlyfans`, '_blank', 'noopener,noreferrer');
+    window.open(ofCreatorProfileUrl(slug), '_blank', 'noopener,noreferrer');
   };
 
   const items: (SavedCreator | SimCreator)[] = isSimulation ? (simData || []) : creators;

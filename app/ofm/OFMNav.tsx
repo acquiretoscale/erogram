@@ -2,10 +2,11 @@ import Link from 'next/link';
 
 const TABS = [
   { id: 'home', label: 'Clients', href: '/ofm' },
+  { id: 'claims', label: 'Claimed Profiles', href: '/ofm/claims' },
   { id: 'manage', label: 'Manage Ads', href: '/ofm/manage' },
 ] as const;
 
-export default function OFMNav({ active }: { active: 'home' | 'dashboard' | 'manage' }) {
+export default function OFMNav({ active }: { active: 'home' | 'dashboard' | 'manage' | 'claims' }) {
   return (
     <div className="sticky top-0 z-30 bg-[#080c14]/95 backdrop-blur border-b border-white/[0.06]">
       <div className="max-w-6xl mx-auto px-4 sm:px-8 flex items-center gap-1 h-12">

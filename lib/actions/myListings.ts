@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import { Group, Bot } from '@/lib/models';
 import { getR2PublicUrl } from '@/lib/r2';
+import { BOOST_STARS, cryptoUsdFromStars } from '@/lib/boostPricing';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -200,46 +201,48 @@ export async function updateListingDetails(
   }
 }
 
-// Renewal pricing: 30% OFF the original boost price
-const RENEWAL_DISCOUNT = 0.7;
-
-const RENEWAL_PRICES = {
-  group: {
-    boost_week: Math.round(2000 * RENEWAL_DISCOUNT),
-    boost_month: Math.round(4000 * RENEWAL_DISCOUNT),
-  },
-  bot: {
-    boost_week: Math.round(3000 * RENEWAL_DISCOUNT),
-    boost_month: Math.round(6000 * RENEWAL_DISCOUNT),
-  },
-} as const;
+// Renewal uses full boost price (Stars) or 15% off USD via crypto — see lib/boostPricing.ts
 
 export async function getBoostRenewalInfo(
   token: string,
   listingId: string,
   listingType: 'group' | 'bot'
-): Promise<{ canRenew: boolean; prices: Record<string, number>; currentExpiry: string | null; error?: string }> {
+): Promise<{
+  canRenew: boolean;
+  starsPrices: { week: number; month: number };
+  cryptoPrices: { week: number; month: number };
+  currentExpiry: string | null;
+  error?: string;
+}> {
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
-    if (!decoded?.id) return { canRenew: false, prices: {}, currentExpiry: null, error: 'Invalid token' };
+    if (!decoded?.id) {
+      return { canRenew: false, starsPrices: { week: 0, month: 0 }, cryptoPrices: { week: 0, month: 0 }, currentExpiry: null, error: 'Invalid token' };
+    }
 
     await connectDB();
 
     const Model = listingType === 'group' ? Group : Bot;
     const item = await Model.findOne({ _id: listingId, createdBy: decoded.id }).select('boosted boostExpiresAt status').lean() as any;
-    if (!item) return { canRenew: false, prices: {}, currentExpiry: null, error: 'Not found' };
-
-    if (item.status !== 'approved') {
-      return { canRenew: false, prices: {}, currentExpiry: null, error: 'Listing must be approved first' };
+    if (!item) {
+      return { canRenew: false, starsPrices: { week: 0, month: 0 }, cryptoPrices: { week: 0, month: 0 }, currentExpiry: null, error: 'Not found' };
     }
 
-    const prices = RENEWAL_PRICES[listingType];
+    if (item.status !== 'approved') {
+      return { canRenew: false, starsPrices: { week: 0, month: 0 }, cryptoPrices: { week: 0, month: 0 }, currentExpiry: null, error: 'Listing must be approved first' };
+    }
+
+    const starsPrices = BOOST_STARS[listingType];
     return {
       canRenew: true,
-      prices,
+      starsPrices,
+      cryptoPrices: {
+        week: cryptoUsdFromStars(starsPrices.week),
+        month: cryptoUsdFromStars(starsPrices.month),
+      },
       currentExpiry: item.boostExpiresAt ? item.boostExpiresAt.toISOString() : null,
     };
   } catch {
-    return { canRenew: false, prices: {}, currentExpiry: null, error: 'Failed' };
+    return { canRenew: false, starsPrices: { week: 0, month: 0 }, cryptoPrices: { week: 0, month: 0 }, currentExpiry: null, error: 'Failed' };
   }
 }

@@ -1,3 +1,6 @@
+import { OF_KEYWORD_CATEGORIES } from '@/lib/onlyfanssearch/keywordCategories';
+import { buildBioHashtagCategoryRows } from '@/lib/tags/bioHashtagCategories';
+
 // OnlyFans Search — categories and URL helpers
 // URL pattern: /{cat}onlyfans → /blondeonlyfans
 //
@@ -5,7 +8,7 @@
 // it must be added as a CATEGORY — same as Brunette, Asian, etc.
 // The owner will add them later as categories. Do NOT re-introduce OF_COUNTRIES.
 
-export const OF_CATEGORIES = [
+const OF_CORE_CATEGORIES = [
   { name: 'Asian', emoji: '🌸', slug: 'asian' },
   { name: 'Blonde', emoji: '👱‍♀️', slug: 'blonde' },
   { name: 'Teen', emoji: '🔥', slug: 'teen' },
@@ -34,7 +37,80 @@ export const OF_CATEGORIES = [
   { name: 'Twerk', emoji: '💃', slug: 'twerk' },
   { name: 'Squirt', emoji: '💦', slug: 'squirt' },
   { name: 'Piercing', emoji: '💎', slug: 'piercing' },
+  { name: 'BBW', emoji: '💗', slug: 'bbw' },
+  { name: 'BDSM', emoji: '⛓️', slug: 'bdsm' },
+  { name: 'Pornstar', emoji: '⭐', slug: 'pornstar' },
+  { name: 'Couple', emoji: '👫', slug: 'couple' },
+  { name: 'Nurse', emoji: '🏥', slug: 'nurse' },
+  { name: 'Arab', emoji: '🌙', slug: 'arab' },
+  { name: 'Anal', emoji: '🔥', slug: 'anal' },
+  { name: 'ASMR', emoji: '🎧', slug: 'asmr' },
+  { name: 'Influencer', emoji: '📱', slug: 'influencer' },
+  { name: 'Celebrity', emoji: '🌟', slug: 'celebrity' },
+  { name: 'No PPV', emoji: '🆓', slug: 'no-ppv' },
+  { name: 'Colombian', emoji: '🇨🇴', slug: 'colombian' },
+  { name: 'Findom', emoji: '💸', slug: 'findom' },
+  { name: 'British', emoji: '🇬🇧', slug: 'british' },
+  { name: 'Blowjob', emoji: '💋', slug: 'blowjob' },
+  { name: 'Student', emoji: '📚', slug: 'student' },
+  { name: 'Roleplay', emoji: '🎭', slug: 'roleplay' },
+  { name: 'Submissive', emoji: '🙇', slug: 'submissive' },
+  { name: 'Brazilian', emoji: '🇧🇷', slug: 'brazilian' },
+  { name: 'Chubby', emoji: '💕', slug: 'chubby' },
+  { name: 'Pregnant', emoji: '🤰', slug: 'pregnant' },
+  { name: 'Mature', emoji: '🌹', slug: 'mature' },
+  { name: 'Muscle', emoji: '💪', slug: 'muscle' },
+  { name: 'Teacher', emoji: '📖', slug: 'teacher' },
+  { name: 'Housewife', emoji: '🏠', slug: 'housewife' },
 ] as const;
+
+/** Live /onlyfanssearch hub BOA rows — prod order (28 slugs, 26 with BOA pages). */
+export const OF_SEARCH_HUB_CATEGORY_SLUGS = [
+  'asian',
+  'blonde',
+  'teen',
+  'milf',
+  'amateur',
+  'redhead',
+  'goth',
+  'petite',
+  'big-ass',
+  'big-boobs',
+  'brunette',
+  'latina',
+  'ahegao',
+  'alt',
+  'cosplay',
+  'streamer',
+  'fitness',
+  'joi',
+  'lesbian',
+  'tattoo',
+  'curvy',
+  'ebony',
+  'feet',
+  'lingerie',
+  'thick',
+  'twerk',
+  'squirt',
+  'piercing',
+] as const;
+
+function buildOfCategories(): { name: string; emoji: string; slug: string }[] {
+  const seen = new Set<string>();
+  const out: { name: string; emoji: string; slug: string }[] = [];
+  for (const c of [...OF_CORE_CATEGORIES, ...OF_KEYWORD_CATEGORIES]) {
+    if (seen.has(c.slug)) continue;
+    seen.add(c.slug);
+    out.push({ name: c.name, emoji: c.emoji, slug: c.slug });
+  }
+  for (const c of buildBioHashtagCategoryRows(seen)) {
+    out.push(c);
+  }
+  return out;
+}
+
+export const OF_CATEGORIES = buildOfCategories();
 
 export const OF_CATEGORY_SLUGS: Set<string> = new Set(OF_CATEGORIES.map((c) => c.slug));
 

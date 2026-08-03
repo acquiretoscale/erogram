@@ -12,6 +12,7 @@ interface NavbarProps {
   // 'onlyfans' forces the OnlyFans-blue accent; otherwise accent is derived
   // from the current route (OnlyFans pages = blue, everything else = dark red).
   variant?: 'default' | 'onlyfans';
+  accent?: string;
 }
 
 /**
@@ -19,6 +20,7 @@ interface NavbarProps {
  * editorial masthead so every page across Erogram shares the same /blog menu.
  * It preserves the legacy fixed layout (pages still pad with pt-20/24/28).
  */
-export default function Navbar({ variant }: NavbarProps) {
-  return <EditorialMasthead fixed accent={variant === 'onlyfans' ? '#00AFF0' : undefined} />;
+export default function Navbar({ variant, accent }: NavbarProps) {
+  const resolvedAccent = accent ?? (variant === 'onlyfans' ? '#00AFF0' : undefined);
+  return <EditorialMasthead fixed accent={resolvedAccent} />;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { submitArticleComment, type ArticleCommentData } from '@/lib/actions/articleComments';
 
 function timeAgo(iso: string): string {
@@ -34,26 +34,34 @@ function tintFor(name: string): string {
 
 export default function BlogComments({ slug, initialComments }: { slug: string; initialComments: ArticleCommentData[] }) {
   const [comments] = useState<ArticleCommentData[]>(initialComments);
-  const [name, setName] = useState('');
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const loginHref = `/login?redirect=${encodeURIComponent(`/blog/${slug}`)}`;
+
+  useEffect(() => {
+    setIsLoggedIn(!!localStorage.getItem('token'));
+  }, []);
 
   const ready = content.trim().length >= 2;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    const token = (typeof window !== 'undefined' && localStorage.getItem('token')) || '';
+    if (!token) {
+      window.open(loginHref, '_blank', 'noopener,noreferrer');
+      return;
+    }
     if (!ready) { setError('Please write a comment first.'); return; }
     setSubmitting(true);
     try {
-      const token = (typeof window !== 'undefined' && localStorage.getItem('token')) || '';
-      await submitArticleComment(slug, content, name, token);
+      await submitArticleComment(slug, content, token);
       setDone(true);
       setContent('');
-      setName('');
     } catch (err: any) {
       setError(err?.message || 'Could not post your comment. Try again.');
     } finally {
@@ -76,7 +84,6 @@ export default function BlogComments({ slug, initialComments }: { slug: string; 
         </span>
       </div>
 
-      {/* Composer — premium dark panel matching creator pages */}
       <div
         className="relative overflow-hidden rounded-2xl p-6 sm:p-7 mb-12"
         style={{
@@ -91,9 +98,22 @@ export default function BlogComments({ slug, initialComments }: { slug: string; 
             <div className="flex items-center gap-4 py-2" style={{ animation: 'blogFadeIn 0.35s ease forwards' }}>
               <span className="flex items-center justify-center w-11 h-11 rounded-full text-xl shrink-0" style={{ background: 'rgba(22,163,74,0.16)', color: '#34d399' }}>✓</span>
               <div>
-                <p className="font-sans font-black text-[15px] text-white">Thanks — your comment is in review.</p>
-                <p className="text-[13px] text-white/55 mt-0.5">It’ll appear here once approved by our editors.</p>
+                <p className="font-sans font-black text-[15px] text-white">Thanks — your comment is live.</p>
+                <p className="text-[13px] text-white/55 mt-0.5">Refresh the page to see it in the list.</p>
               </div>
+            </div>
+          ) : !isLoggedIn ? (
+            <div className="text-center space-y-3 py-2">
+              <p className="font-sans font-black text-[15px] text-white">Log in to join the conversation</p>
+              <a
+                href={loginHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block rounded-xl text-white text-[13px] font-black tracking-[0.08em] uppercase px-7 py-3"
+                style={{ background: 'linear-gradient(135deg, #16a34a, #15803d)', boxShadow: '0 4px 18px rgba(22,163,74,0.45)' }}
+              >
+                Login / Open free account
+              </a>
             </div>
           ) : (
             <form onSubmit={submit}>
@@ -113,16 +133,6 @@ export default function BlogComments({ slug, initialComments }: { slug: string; 
                 onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(192,57,47,0.35)'; e.currentTarget.style.boxShadow = 'none'; }}
               />
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-3">
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  maxLength={40}
-                  placeholder="Your name (optional)"
-                  className="flex-1 rounded-xl px-4 py-2.5 text-[14px] text-white placeholder:text-white/30 outline-none transition-colors"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = 'rgba(255,90,70,0.6)')}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
-                />
                 <button
                   type="submit"
                   disabled={submitting || !ready}
@@ -137,13 +147,12 @@ export default function BlogComments({ slug, initialComments }: { slug: string; 
                 </button>
               </div>
               {error && <p className="text-[13px] text-[#ff6b5e] mt-3">{error}</p>}
-              <p className="text-[12px] text-white/40 mt-3">Comments are moderated before they appear. Keep it respectful.</p>
+              <p className="text-[12px] text-white/40 mt-3">Log in to comment. Keep it respectful.</p>
             </form>
           )}
         </div>
       </div>
 
-      {/* List */}
       {comments.length === 0 ? (
         <p className="text-[15px] text-[#6a6258] py-2">No comments yet — be the first to start the conversation.</p>
       ) : (

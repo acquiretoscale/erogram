@@ -17,6 +17,7 @@ export const userSchema = new Schema(
     telegramId: { type: Number, unique: true, sparse: true },
     telegramUsername: { type: String, default: null },
     firstName: { type: String, default: null },
+    bio: { type: String, default: null, maxlength: 160 },
     photoUrl: { type: String, default: null },
     ip: { type: String },
     userAgent: { type: String },
@@ -44,10 +45,18 @@ export const userSchema = new Schema(
     paymentMethod: { type: String, enum: ['stars', 'crypto', null], default: null },
     lastPaymentChargeId: { type: String, default: null },
     savedCreators: [{ type: Schema.Types.ObjectId, ref: 'OnlyFansCreator' }],
+    /** Unified My Likes order keys: "group:id", "bot:id", "onlyfans:id", "ainsfw:slug" */
+    savedLikesOrder: { type: [String], default: [] },
     interests: { type: [String], default: [] },
+    aiInterests: { type: [String], default: [] },
     preferredPlatforms: { type: [String], default: [] },
     interestedInAI: { type: Boolean, default: false },
     onboardingCompleted: { type: Boolean, default: false },
+    profileTheme: {
+      type: String,
+      enum: ['light', 'night', 'cyberpunk', 'onlyfans', 'pornhub', 'telegram', 'erogram', 'console', null],
+      default: null,
+    },
     stats: {
       groupsCreated: { type: Number, default: 0 },
       groupsSaved: { type: Number, default: 0 },
@@ -960,9 +969,17 @@ export const onlyFansCreatorSchema = new Schema(
     twitterUrl: { type: String, default: '' },
     tiktokUrl: { type: String, default: '' },
     fanslyUrl: { type: String, default: '' },
+    fanvueUrl: { type: String, default: '' },
+    privacyUrl: { type: String, default: '' },
     pornhubUrl: { type: String, default: '' },
     telegramUrl: { type: String, default: '' },
+    linktreeUrl: { type: String, default: '' },
+    allmylinksUrl: { type: String, default: '' },
+    beaconsUrl: { type: String, default: '' },
+    redditUrl: { type: String, default: '' },
+    patreonUrl: { type: String, default: '' },
     extraPhotos: { type: [String], default: [] },
+    extraVideos: { type: [String], default: [] },
     submittedByUser: { type: Boolean, default: false },
     submittedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
     submittedByUsername: { type: String, default: '' },
@@ -982,6 +999,30 @@ onlyFansCreatorSchema.index({ deleted: 1 });
 onlyFansCreatorSchema.index({ submittedBy: 1, submissionStatus: 1 });
 
 export const OnlyFansCreator = models.OnlyFansCreator || model('OnlyFansCreator', onlyFansCreatorSchema);
+
+// Creator profile ownership claim — user requests to manage an existing scraped profile
+const creatorProfileClaimSchema = new Schema(
+  {
+    creatorSlug: { type: String, required: true, index: true },
+    creatorUsername: { type: String, required: true },
+    creatorName: { type: String, default: '' },
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    erogramUsername: { type: String, default: '' },
+    fullName: { type: String, required: true },
+    email: { type: String, required: true },
+    contact: { type: String, required: true },
+    accountType: { type: String, enum: ['individual', 'agency'], required: true },
+    reason: { type: String, required: true },
+    status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending', index: true },
+    reviewedAt: { type: Date, default: null },
+    reviewedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  },
+  { timestamps: true },
+);
+creatorProfileClaimSchema.index({ creatorSlug: 1, status: 1 });
+creatorProfileClaimSchema.index({ userId: 1, status: 1 });
+
+export const CreatorProfileClaim = models.CreatorProfileClaim || model('CreatorProfileClaim', creatorProfileClaimSchema);
 
 // Creator Review Schema — user ratings for OnlyFans creator pages
 const creatorReviewSchema = new Schema(
@@ -1016,6 +1057,33 @@ const articleCommentSchema = new Schema(
 articleCommentSchema.index({ articleSlug: 1, status: 1 });
 
 export const ArticleComment = models.ArticleComment || model('ArticleComment', articleCommentSchema);
+
+const profileFeedLikeSchema = new Schema(
+  {
+    mediaKey: { type: String, required: true, index: true },
+    creatorId: { type: Schema.Types.ObjectId, ref: 'OnlyFansCreator', required: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  },
+  { timestamps: true },
+);
+profileFeedLikeSchema.index({ mediaKey: 1, userId: 1 }, { unique: true });
+
+export const ProfileFeedLike = models.ProfileFeedLike || model('ProfileFeedLike', profileFeedLikeSchema);
+
+const profileFeedCommentSchema = new Schema(
+  {
+    mediaKey: { type: String, required: true, index: true },
+    creatorId: { type: Schema.Types.ObjectId, ref: 'OnlyFansCreator', required: true },
+    author: { type: Schema.Types.ObjectId, ref: 'User' },
+    authorName: { type: String, default: 'User' },
+    content: { type: String, required: true, maxlength: 500 },
+    status: { type: String, enum: ['approved', 'pending', 'rejected'], default: 'approved' },
+  },
+  { timestamps: true },
+);
+profileFeedCommentSchema.index({ mediaKey: 1, status: 1, createdAt: -1 });
+
+export const ProfileFeedComment = models.ProfileFeedComment || model('ProfileFeedComment', profileFeedCommentSchema);
 
 // Blog "Creator of the Month" — single admin-controlled paid cover slot on /blog
 const blogFeaturedCreatorSchema = new Schema(
@@ -1215,6 +1283,10 @@ const ainsfwToolStatsSchema = new Schema(
       {
         text: { type: String, required: true, maxlength: 1000 },
         rating: { type: Number, required: true, min: 1, max: 5 },
+        author: { type: Schema.Types.ObjectId, ref: 'User' },
+        authorName: { type: String, default: '' },
+        authorAvatar: { type: String, default: '' },
+        status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'approved' },
         ip: { type: String, default: '' },
         createdAt: { type: Date, default: Date.now },
       },
@@ -1225,6 +1297,8 @@ const ainsfwToolStatsSchema = new Schema(
     hiddenGalleryUrls: { type: [String], default: [] },
     galleryManaged: { type: Boolean, default: false },
     coverManaged: { type: Boolean, default: false },
+    clickCount: { type: Number, default: 0 },
+    lastClickedAt: { type: Date, default: null },
   },
   { timestamps: true },
 );
@@ -1251,7 +1325,7 @@ const ainsfwSubmissionSchema = new Schema(
     createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
     createdByUsername: { type: String, default: '' },
     status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
-    submissionTier: { type: String, enum: ['basic', 'boost', 'free', 'instant', 'platinum'], default: 'basic' },
+    submissionTier: { type: String, enum: ['basic', 'boost', 'startup', 'free', 'instant', 'platinum'], default: 'basic' },
     paymentStatus: { type: String, enum: ['pending', 'paid', 'none'], default: 'none' },
     paymentId: { type: String, default: null },
     boosted: { type: Boolean, default: false },

@@ -137,10 +137,11 @@ export async function getOFMDashboardBySlug(token: string, slug: string) {
 
 /**
  * Full tracking dashboard for ONE agency client:
- *  - combined total clicks since campaign start through TODAY (keeps counting after endDate
- *    while creators stay live — what clients need for "goal achieved to date" reports)
- *  - per-creator click totals (same window: launch → today)
- *  - per-hour (last 24h) and per-day (launch → today) click series
+ *  - per-creator + combined totals = ALL clicks on each linked campaign (lifetime),
+ *    same source as the home cards and /ofm/[agency]/[model] detail page.
+ *    Do NOT filter by OFClient.startDate — creators often run (and accumulate clicks)
+ *    before the agency record / deal dates are formalized in admin.
+ *  - per-hour (last 24h) and per-day (first click → today) click series
  * All from CampaignClick on linked campaigns. No new infra.
  */
 export async function getOFClientDashboard(token: string, clientId?: string) {
@@ -157,25 +158,19 @@ export async function getOFClientDashboard(token: string, clientId?: string) {
 async function buildClientDashboard(client: any) {
   const c = client;
 
-  const creators = await TrendingOFCreator.find({ ofClientId: c._id }, 'name username avatar url linkedCampaignId').lean();
+  const creators = await TrendingOFCreator.find({ ofClientId: c._id }, 'name username avatar url linkedCampaignId createdAt').lean();
   const campaignIds = (creators as any[]).map((cr) => cr.linkedCampaignId).filter(Boolean);
 
   const start = new Date(c.startDate);
   const end = new Date(c.endDate);
   const now = new Date();
-  const startDay = ymd(start);
-  const todayDay = ymd(now);
   const campaignEnded = now.getTime() > end.getTime();
-  const clickSinceLaunch = { $gte: start };
 
   const perCreator = await Promise.all(
     (creators as any[]).map(async (cr) => {
       let clicks = 0;
       if (cr.linkedCampaignId) {
-        clicks = await CampaignClick.countDocuments({
-          campaignId: cr.linkedCampaignId,
-          clickedAt: clickSinceLaunch,
-        });
+        clicks = await CampaignClick.countDocuments({ campaignId: cr.linkedCampaignId });
       }
       return {
         name: cr.name || cr.username,
@@ -191,7 +186,7 @@ async function buildClientDashboard(client: any) {
 
   const impRows = campaignIds.length
     ? await CampaignImpressionDaily.aggregate([
-        { $match: { campaignId: { $in: campaignIds }, date: { $gte: startDay, $lte: todayDay } } },
+        { $match: { campaignId: { $in: campaignIds } } },
         { $group: { _id: null, total: { $sum: '$count' } } },
       ])
     : [];
@@ -216,21 +211,33 @@ async function buildClientDashboard(client: any) {
 
   const dayRows = campaignIds.length
     ? await CampaignClick.aggregate([
-        { $match: { campaignId: { $in: campaignIds }, clickedAt: clickSinceLaunch } },
+        { $match: { campaignId: { $in: campaignIds } } },
         { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$clickedAt' } }, count: { $sum: 1 } } },
       ])
     : [];
   const dayMap = new Map<string, number>();
   for (const r of dayRows as any[]) dayMap.set(r._id, r.count);
+  let chartStart = start;
+  if (dayRows.length) {
+    const firstDay = (dayRows as any[]).map((r) => r._id as string).sort()[0];
+    const firstClick = new Date(`${firstDay}T00:00:00.000Z`);
+    if (firstClick < chartStart) chartStart = firstClick;
+  }
+  for (const cr of creators as any[]) {
+    if (cr.createdAt) {
+      const attached = new Date(cr.createdAt);
+      if (attached < chartStart) chartStart = attached;
+    }
+  }
   const daily: { label: string; clicks: number }[] = [];
-  for (let d = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate())); d <= now; d.setUTCDate(d.getUTCDate() + 1)) {
+  for (let d = new Date(Date.UTC(chartStart.getUTCFullYear(), chartStart.getUTCMonth(), chartStart.getUTCDate())); d <= now; d.setUTCDate(d.getUTCDate() + 1)) {
     const key = ymd(d);
     daily.push({ label: key.slice(5), clicks: dayMap.get(key) || 0 });
   }
 
   const sectionRows = campaignIds.length
     ? await CampaignClick.aggregate([
-        { $match: { campaignId: { $in: campaignIds }, clickedAt: clickSinceLaunch } },
+        { $match: { campaignId: { $in: campaignIds } } },
         { $group: { _id: '$placement', n: { $sum: 1 } } },
       ])
     : [];

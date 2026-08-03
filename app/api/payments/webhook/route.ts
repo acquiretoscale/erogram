@@ -5,6 +5,7 @@ import { recordCouponUsage } from '@/lib/actions/coupons';
 import { MAX_PREMIUM_SLOTS } from '@/lib/auth';
 import { notifyAdminsOfSale } from '@/lib/utils/notifyAdmins';
 import { getPremiumPricing } from '@/lib/premiumPricing';
+import { buildBoostPaymentUpdate } from '@/lib/boostPricing';
 
 const GROUP_SUBMISSION_TYPES = new Set(['normal_listing', 'instant_approval', 'boost_week', 'boost_month']);
 
@@ -128,49 +129,19 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ ok: true });
           }
 
-          const now = new Date();
           const GROUP_STARS: Record<string, number> = { instant_approval: 600, boost_week: 2000, boost_month: 5000 };
           const BOT_STARS: Record<string, number> = { normal_listing: 1000, instant_approval: 1500, boost_week: 3000, boost_month: 6000 };
           const STARS_AMOUNTS = payload.entityType === 'bot' ? BOT_STARS : GROUP_STARS;
 
-          // If a boost is still active, stack new days on top of the remaining time
-          // instead of resetting to now. Otherwise start from now.
-          const currentExpiry = entity.boostExpiresAt ? new Date(entity.boostExpiresAt) : null;
-          const boostBase = currentExpiry && currentExpiry > now ? currentExpiry : now;
-
-          const updateFields: Record<string, any> = {};
-          if (chargeId) updateFields.lastPaymentChargeId = chargeId;
-
-          if (payload.type === 'normal_listing') {
-            updateFields.paidBoost = true;
-            updateFields.paidBoostStars = STARS_AMOUNTS.normal_listing;
-          } else if (payload.type === 'boost_week') {
-            updateFields.status = 'approved';
-            const boostExpiry = new Date(boostBase);
-            boostExpiry.setDate(boostExpiry.getDate() + 7);
-            updateFields.featured = true;
-            updateFields.featuredAt = now;
-            updateFields.boosted = true;
-            updateFields.boostExpiresAt = boostExpiry;
-            updateFields.boostDuration = '7d';
-            updateFields.paidBoost = true;
-            updateFields.paidBoostStars = STARS_AMOUNTS.boost_week;
-          } else if (payload.type === 'boost_month') {
-            updateFields.status = 'approved';
-            const boostExpiry = new Date(boostBase);
-            boostExpiry.setDate(boostExpiry.getDate() + 30);
-            updateFields.featured = true;
-            updateFields.featuredAt = now;
-            updateFields.boosted = true;
-            updateFields.boostExpiresAt = boostExpiry;
-            updateFields.boostDuration = '30d';
-            updateFields.paidBoost = true;
-            updateFields.paidBoostStars = STARS_AMOUNTS.boost_month;
-          } else if (payload.type === 'instant_approval') {
-            updateFields.status = 'approved';
-            updateFields.paidBoost = true;
-            updateFields.paidBoostStars = STARS_AMOUNTS.instant_approval;
-          }
+          const updateFields = buildBoostPaymentUpdate(
+            entity,
+            payload.type,
+            payload.entityType === 'bot' ? 'bot' : 'group',
+            {
+              ...(chargeId ? { lastPaymentChargeId: chargeId } : {}),
+              paidBoostStars: STARS_AMOUNTS[payload.type] ?? payment.total_amount,
+            },
+          );
 
           await Model.findByIdAndUpdate(payload.groupId, { $set: updateFields });
 

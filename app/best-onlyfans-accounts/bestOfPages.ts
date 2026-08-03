@@ -2,7 +2,7 @@
 // Regenerate: node scripts/generate-best-of-pages.js
 
 export type BestOfPageType = "niche" | "country" | "state";
-export type BestOfMatchType = "category" | "keyword";
+export type BestOfMatchType = "category" | "keyword" | "combo";
 
 export interface BestOfPage {
   slug: string;
@@ -10,6 +10,8 @@ export interface BestOfPage {
   type: BestOfPageType;
   match: BestOfMatchType;
   categorySlug?: string;
+  /** Combo pages: creators must match all listed category slugs. */
+  categorySlugs?: string[];
   patterns?: string[];
   count: number;
 }
@@ -1533,6 +1535,201 @@ export const BEST_OF_PAGES: BestOfPage[] = [
       ", az\\b"
     ],
     "count": 10
+  },
+  {
+    "slug": "girlfriend",
+    "label": "Girlfriend",
+    "type": "niche",
+    "match": "keyword",
+    "patterns": [
+      "girlfriend",
+      "gfe",
+      "girlfriend experience"
+    ],
+    "count": 0
+  },
+  {
+    "slug": "toys",
+    "label": "Toys",
+    "type": "niche",
+    "match": "keyword",
+    "patterns": [
+      "toys",
+      "dildo",
+      "vibrator",
+      "sex toy"
+    ],
+    "count": 0
+  },
+  {
+    "slug": "instagram",
+    "label": "Instagram",
+    "type": "niche",
+    "match": "keyword",
+    "patterns": [
+      "instagram",
+      "insta model",
+      "ig model"
+    ],
+    "count": 0
+  },
+  {
+    "slug": "korean",
+    "label": "Korean",
+    "type": "country",
+    "match": "keyword",
+    "patterns": [
+      "korean",
+      "korea",
+      "seoul korea"
+    ],
+    "count": 0
+  },
+  {
+    "slug": "asexual",
+    "label": "Asexual",
+    "type": "niche",
+    "match": "keyword",
+    "patterns": [
+      "asexual",
+      " ace "
+    ],
+    "count": 0
+  },
+  {
+    "slug": "bulgarian",
+    "label": "Bulgarian",
+    "type": "country",
+    "match": "keyword",
+    "patterns": [
+      "bulgarian",
+      "bulgaria"
+    ],
+    "count": 0
+  },
+  {
+    "slug": "caucasian",
+    "label": "Caucasian",
+    "type": "niche",
+    "match": "keyword",
+    "patterns": [
+      "caucasian",
+      "white girl"
+    ],
+    "count": 0
+  },
+  {
+    "slug": "couple-lesbian",
+    "label": "Couple Lesbian",
+    "type": "niche",
+    "match": "keyword",
+    "patterns": [
+      "lesbian couple",
+      "girl on girl couple"
+    ],
+    "count": 0
+  },
+  {
+    "slug": "couple-straight",
+    "label": "Couple Straight",
+    "type": "niche",
+    "match": "keyword",
+    "patterns": [
+      "straight couple",
+      "boy girl couple"
+    ],
+    "count": 0
+  },
+  {
+    "slug": "croatian",
+    "label": "Croatian",
+    "type": "country",
+    "match": "keyword",
+    "patterns": [
+      "croatian",
+      "croatia"
+    ],
+    "count": 0
+  },
+  {
+    "slug": "ecuadorian",
+    "label": "Ecuadorian",
+    "type": "country",
+    "match": "keyword",
+    "patterns": [
+      "ecuadorian",
+      "ecuador"
+    ],
+    "count": 0
+  },
+  {
+    "slug": "malaysian",
+    "label": "Malaysian",
+    "type": "country",
+    "match": "keyword",
+    "patterns": [
+      "malaysian",
+      "malaysia"
+    ],
+    "count": 0
+  },
+  {
+    "slug": "public-sex",
+    "label": "Public Sex",
+    "type": "niche",
+    "match": "keyword",
+    "patterns": [
+      "public sex",
+      "public play",
+      "outdoor sex"
+    ],
+    "count": 0
+  },
+  {
+    "slug": "shower-sex",
+    "label": "Shower Sex",
+    "type": "niche",
+    "match": "keyword",
+    "patterns": [
+      "shower sex",
+      "shower play"
+    ],
+    "count": 0
+  },
+  {
+    "slug": "singaporean",
+    "label": "Singaporean",
+    "type": "country",
+    "match": "keyword",
+    "patterns": [
+      "singaporean",
+      "singapore"
+    ],
+    "count": 0
+  },
+  {
+    "slug": "slovak",
+    "label": "Slovak",
+    "type": "country",
+    "match": "keyword",
+    "patterns": [
+      "slovak",
+      "slovakia"
+    ],
+    "count": 0
+  },
+  {
+    "slug": "step-fantasy",
+    "label": "Step Fantasy",
+    "type": "niche",
+    "match": "keyword",
+    "patterns": [
+      "step fantasy",
+      "stepmom",
+      "step sister",
+      "stepdaughter"
+    ],
+    "count": 0
   }
 ];
 

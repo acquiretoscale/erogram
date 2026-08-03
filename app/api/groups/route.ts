@@ -128,7 +128,7 @@ export async function GET(req: NextRequest) {
       })
         .sort({ featuredOrder: 1, featuredAt: -1 })
         .limit(limit)
-        .select('name slug category country categories description description_de description_es image telegramLink clickCount views memberCount verified featured featuredOrder boosted')
+        .select('name slug category country categories description description_de description_es image telegramLink clickCount views memberCount verified paidBoost paidBoostStars featured featuredOrder boosted boostExpiresAt')
         .lean();
 
       const origin = req.headers.get('x-forwarded-host')
@@ -263,7 +263,7 @@ export async function GET(req: NextRequest) {
       })
         .sort({ boostExpiresAt: 1 })
         .limit(topLimit)
-        .select('name slug category country categories description description_de description_es image telegramLink clickCount views memberCount verified weeklyClicks boosted boostExpiresAt')
+        .select('name slug category country categories description description_de description_es image telegramLink clickCount views memberCount verified paidBoost paidBoostStars weeklyClicks boosted boostExpiresAt')
         .lean();
 
       const boostedIds = new Set((boostedGroups as any[]).map(g => g._id.toString()));
@@ -342,9 +342,12 @@ export async function GET(req: NextRequest) {
             views: g.views || 0,
             memberCount: g.memberCount || 0,
             verified: g.verified || false,
+            paidBoost: g.paidBoost || false,
+            paidBoostStars: g.paidBoostStars ?? null,
             weeklyClicks: g.weeklyClicks || 0,
             topGroupSlot: g.topGroupSlot || null,
             boosted: g.boosted || false,
+            boostExpiresAt: g.boostExpiresAt ? new Date(g.boostExpiresAt).toISOString() : null,
             averageRating: rs.averageRating,
             reviewCount: rs.reviewCount,
           };
@@ -484,6 +487,10 @@ export async function GET(req: NextRequest) {
             views: { $ifNull: ['$views', 0] },
             memberCount: { $ifNull: ['$memberCount', 0] },
             verified: { $ifNull: ['$verified', false] },
+            paidBoost: { $ifNull: ['$paidBoost', false] },
+            paidBoostStars: 1,
+            boosted: { $ifNull: ['$boosted', false] },
+            boostExpiresAt: 1,
             createdBy: {
               username: 1,
               showNicknameUnderGroups: 1
@@ -539,6 +546,10 @@ export async function GET(req: NextRequest) {
         views: g.views || 0,
         memberCount: g.memberCount || 0,
         verified: g.verified || false,
+        paidBoost: g.paidBoost || false,
+        paidBoostStars: g.paidBoostStars ?? null,
+        boosted: g.boosted || false,
+        boostExpiresAt: g.boostExpiresAt ? new Date(g.boostExpiresAt).toISOString() : null,
         reviewCount: stats.reviewCount,
         averageRating: stats.averageRating,
         itemType: 'group' as const,

@@ -1,12 +1,10 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { headers } from 'next/headers';
 import connectDB from '@/lib/db/mongodb';
 import { Bot, Advert } from '@/lib/models';
 import BotsClient from './BotsClient';
-import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { getActiveCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
+import { getActiveFeedCampaigns } from '@/lib/actions/campaigns';
 import { getAllBotStats } from '@/lib/actions/botVotes';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
@@ -186,14 +184,12 @@ export async function BotsPageView({ page = 1 }: { page?: number }) {
   const currentPage = Math.max(1, page);
   const skip = (currentPage - 1) * BOTS_FEED_PAGE_SIZE;
 
-  const ua = (await headers()).get('user-agent');
-  const { isMobile, isTelegram } = detectDeviceFromUserAgent(ua);
-
-  const [bots, totalBots, adverts, topBannerCampaigns, feedCampaigns, topBots] = await Promise.all([
+  // Device detection removed: reading headers() opts the page out of static ISR
+  // (same fix as the AINSFW hub). The client refreshes device-specific ads after load.
+  const [bots, totalBots, adverts, feedCampaigns, topBots] = await Promise.all([
     getBots(BOTS_FEED_PAGE_SIZE, skip),
     getApprovedBotsCount(),
     getAdverts(),
-    getActiveCampaigns('top-banner', { page: 'bots', device: isMobile ? 'mobile' : 'desktop' }),
     getActiveFeedCampaigns('bots'),
     getTopBots(10),
   ]);
@@ -201,9 +197,6 @@ export async function BotsPageView({ page = 1 }: { page?: number }) {
   const paginationTotalPages = Math.max(1, Math.ceil(totalBots / BOTS_FEED_PAGE_SIZE));
   const statSlugs = [...new Set([...bots.map((b) => b.slug), ...topBots.map((b) => b.slug)])];
   const allBotStats = await getAllBotStats(statSlugs);
-
-  const topBannerForPage =
-    topBannerCampaigns.length > 0 && topBannerCampaigns[0].creative ? topBannerCampaigns : [];
 
   return (
     <>
@@ -220,10 +213,9 @@ export async function BotsPageView({ page = 1 }: { page?: number }) {
           initialTopBots={topBots}
           initialAdverts={adverts}
           feedCampaigns={feedCampaigns}
-          initialIsMobile={isMobile}
-          initialIsTelegram={isTelegram}
+          initialIsMobile={false}
+          initialIsTelegram={false}
           initialCountry="All"
-          topBannerCampaigns={topBannerForPage}
           allBotStats={allBotStats}
           paginationCurrentPage={currentPage}
           paginationTotalPages={paginationTotalPages}

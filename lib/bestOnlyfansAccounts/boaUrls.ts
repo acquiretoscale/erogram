@@ -2,6 +2,11 @@ import type { Locale } from '@/lib/i18n/config';
 import { getLocalizedOfCategorySlug, resolveOfCategorySlugFromPublicSegment } from './slugTranslations';
 import { getLocalizedHubSegment } from '@/lib/i18n/hubSlugTranslations';
 
+export function bestHubPublicPath(locale: Locale): string {
+  if (locale === 'en') return '/best-onlyfans-accounts';
+  return `/${locale}/${getLocalizedHubSegment('best-onlyfans-accounts', locale) || 'best-onlyfans-accounts'}`;
+}
+
 export function ofCategoryPublicPath(categorySlug: string, locale: Locale): string {
   const hub =
     locale === 'en'

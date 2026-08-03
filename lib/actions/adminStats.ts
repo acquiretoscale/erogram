@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { revalidatePath } from 'next/cache';
 import connectDB from '@/lib/db/mongodb';
 import { User, Group, Bot, Post, Report, PremiumEvent } from '@/lib/models';
+import { countPendingReviewsAll } from '@/lib/actions/adminReviews';
 import mongoose from 'mongoose';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
@@ -33,7 +34,7 @@ export async function getMetrics(token: string) {
     Group.countDocuments({ status: 'pending' }),
     Group.aggregate([{ $group: { _id: null, totalViews: { $sum: '$views' } } }]),
     Bot.countDocuments({ status: 'pending' }),
-    Post.countDocuments({ status: 'pending' }),
+    countPendingReviewsAll(),
     Report.countDocuments({ status: 'pending' }),
   ]);
 
@@ -56,7 +57,7 @@ export async function getPendingCounts(token: string) {
   await connectDB();
   const [bots, reviews, reports] = await Promise.all([
     Bot.countDocuments({ status: 'pending' }),
-    Post.countDocuments({ status: 'pending' }),
+    countPendingReviewsAll(),
     Report.countDocuments({ status: 'pending' }),
   ]);
 
@@ -147,7 +148,7 @@ export async function getAdminNotifications(token: string) {
     notifs.push({ id: `pb-${b._id}`, type: 'pending_bot', title: `Bot "${b.name}" pending`, subtitle: b.createdByUsername ? `by @${b.createdByUsername}` : 'awaiting review', href: '/admin/pending-actions', color: '#7c3aed', icon: 'bot', createdAt: b.createdAt, urgent: false });
   }
   for (const r of pendingReviews as any[]) {
-    notifs.push({ id: `rv-${r._id}`, type: 'pending_review', title: `Review by ${r.authorName || 'Anonymous'}`, subtitle: r.groupId?.name ? `on "${r.groupId.name}"` : (r.content?.substring(0, 40) || 'needs moderation'), href: '/admin/pending-actions', color: '#0284c7', icon: 'message', createdAt: r.createdAt, urgent: false });
+    notifs.push({ id: `rv-${r._id}`, type: 'pending_review', title: `Review by ${r.authorName || 'Member'}`, subtitle: r.groupId?.name ? `on "${r.groupId.name}"` : (r.content?.substring(0, 40) || 'needs moderation'), href: '/admin/reviews', color: '#0284c7', icon: 'message', createdAt: r.createdAt, urgent: false });
   }
   for (const rp of pendingReports as any[]) {
     notifs.push({ id: `rp-${rp._id}`, type: 'pending_report', title: `Report: ${rp.reason || 'Flagged content'}`, subtitle: rp.groupDetails?.name ? `on "${rp.groupDetails.name}"` : 'needs resolution', href: '/admin/pending-actions', color: '#ef4444', icon: 'flag', createdAt: rp.createdAt, urgent: true });

@@ -3,12 +3,10 @@
 import { motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { shouldUseLightAnimations, animationClasses } from '@/lib/utils/animations';
 import Footer from '@/components/Footer';
-import { formatDate } from '@/lib/i18n/date';
 import type { Locale } from '@/lib/i18n/config';
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
 
@@ -21,6 +19,8 @@ const Navbar = dynamic(() => import('@/components/Navbar'), {
   ),
 });
 
+import HomeBlogCard from '@/app/components/HomeBlogCard';
+import { renderFaqAnswer, type HomeFaqSectionId } from '@/lib/faq/homeFaqLinks';
 import type { BlogCard } from '@/lib/actions/blog';
 import ToolCard from '@/app/ainsfw/ToolCard';
 import type { AINsfwTool } from '@/app/ainsfw/types';
@@ -197,11 +197,109 @@ function aiNsfwToolAlt(name: string, category: string): string {
   return `${name} Review - Best ${category} Tool 2026`;
 }
 
-// Compact image-card row for "newest additions" (AI NSFW tools / Bots).
-function NewestRow({ items }: { items: { key: string; href: string; image: string; name: string; category: string; alt: string }[] }) {
+function fmtCompactCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+  return String(n);
+}
+
+type NewestRowItem = {
+  key: string;
+  href: string;
+  image: string;
+  name: string;
+  category: string;
+  alt: string;
+  memberCount?: number;
+  views?: number;
+  description?: string;
+  country?: string;
+};
+
+// Compact image-card row for "newest additions" (AI NSFW tools / Bots / Groups).
+function NewestRow({
+  items,
+  compact = false,
+}: {
+  items: NewestRowItem[];
+  compact?: boolean;
+}) {
+  const list = compact ? items.slice(0, 4) : items;
+
+  if (compact) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 max-w-5xl mx-auto">
+        {list.map((it) => (
+          <Link
+            key={it.key}
+            href={it.href}
+            className="group flex flex-col gap-2 rounded-xl border border-black/10 bg-white shadow-sm p-2.5 sm:p-3 hover:border-[#c0392f]/40 hover:shadow-md transition-all duration-200"
+          >
+            <div className="flex items-start gap-2.5 min-w-0">
+              <div className="relative shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden bg-gray-100 border border-black/10">
+                <img
+                  src={it.image}
+                  alt={it.alt}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }}
+                />
+              </div>
+              <div className="flex-1 min-w-0 pt-0.5">
+                <div className="flex items-start justify-between gap-1 mb-1">
+                  <h3 className="text-gray-900 font-bold text-xs sm:text-[13px] leading-snug line-clamp-2 group-hover:text-[#ff8a00] transition-colors">
+                    {it.name}
+                  </h3>
+                  <span className="shrink-0 px-1.5 py-0.5 rounded-full bg-[#ff8a00]/15 text-[#ff8a00] text-[8px] font-bold uppercase tracking-wide">
+                    New
+                  </span>
+                </div>
+                {it.category && (
+                  <span className="inline-block max-w-full truncate px-1.5 py-0.5 rounded-md bg-gray-100 border border-black/10 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wide text-gray-600">
+                    {it.category}
+                  </span>
+                )}
+              </div>
+            </div>
+            {(it.description || it.memberCount || it.views || it.country) && (
+              <div className="space-y-1.5 pt-0.5 border-t border-black/10">
+                {it.description && (
+                  <p className="text-[10px] sm:text-[11px] text-gray-500 leading-snug line-clamp-2">
+                    {it.description}
+                  </p>
+                )}
+                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[9px] sm:text-[10px] text-gray-500 font-medium">
+                  {it.memberCount != null && it.memberCount > 0 && (
+                    <span className="inline-flex items-center gap-1">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="opacity-70"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg>
+                      {fmtCompactCount(it.memberCount)}
+                    </span>
+                  )}
+                  {it.views != null && it.views > 0 && (
+                    <span className="inline-flex items-center gap-1">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-70"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      {fmtCompactCount(it.views)}
+                    </span>
+                  )}
+                  {it.country && (
+                    <span className="inline-flex items-center gap-1 truncate max-w-[5rem]">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-70 shrink-0"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                      {it.country}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </Link>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-      {items.map((it) => (
+      {list.map((it) => (
         <Link
           key={it.key}
           href={it.href}
@@ -216,9 +314,9 @@ function NewestRow({ items }: { items: { key: string; href: string; image: strin
               referrerPolicy="no-referrer"
               onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
             <div className="absolute top-2 left-2">
-              <span className="px-2 py-0.5 rounded-full bg-white text-black text-[10px] font-bold uppercase tracking-wide">New</span>
+              <span className="rounded-full bg-white text-black px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">New</span>
             </div>
             <div className="absolute bottom-0 left-0 right-0 p-3">
               <h3 className="text-white font-bold text-sm leading-tight line-clamp-2 drop-shadow-lg">{it.name}</h3>
@@ -329,26 +427,6 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
       <div className="grid grid-cols-1 sm:flex sm:flex-row gap-2.5 sm:gap-2 w-full">
         {topCards.map(renderCard)}
       </div>
-      {/* Row 2: EROGRAM SPOTLIGHT — featured banner */}
-      <button
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(lp('/trending')), 0); }}
-        className="erogram-uncut-cta"
-      >
-        {/* Left: mascot */}
-        <img
-          src="/assets/erogram-mascot.webp"
-          alt="erogram pro mascote"
-          className="erogram-mascot erogram-uncut-cta__mascot"
-        />
-        {/* Center: text */}
-        <span className="erogram-uncut-cta__text">
-          <span className="erogram-uncut-cta__label">TRENDING ON EROGRAM</span>
-        </span>
-        {/* Right: arrow */}
-        <span className="erogram-uncut-cta__arrow">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </span>
-      </button>
     </div>
   );
 
@@ -391,16 +469,32 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
             {t('home.heroTitle1', 'Your #1 hub for Adult Entertainment.')}
           </motion.h1>
 
-          {/* Subtitle */}
-          <motion.p
-            className="text-sm sm:text-lg md:text-xl text-white/45 mb-10 sm:mb-12 max-w-md sm:max-w-xl mx-auto px-4 leading-relaxed"
+          {/* Subtitle + mascote */}
+          <motion.div
+            className="mb-10 sm:mb-12 max-w-2xl sm:max-w-3xl mx-auto px-4"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.2 }}
           >
-            {t('home.heroDesc1', 'Porn Telegram groups & NSFW bots, AI companions & tools, OnlyFans creators.')}{' '}
-            {t('home.heroDesc2', 'Explore and save your favorites all in one place.')}
-          </motion.p>
+            <div className="flex flex-row items-center justify-center gap-2 sm:gap-2.5">
+              <p className="text-center text-sm sm:text-lg md:text-xl text-white/45 leading-relaxed">
+                {t('home.heroDesc1', 'Porn Telegram groups & NSFW bots, AI companions & tools, OnlyFans creators.')}{' '}
+                {t('home.heroDesc2', 'Explore and save your favorites all in one place.')}
+              </p>
+              <div className="shrink-0 flex items-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/assets/erogram-pro-mascote.png"
+                  alt="erogram pro mascote"
+                  width={167}
+                  height={300}
+                  className="w-10 sm:w-12 md:w-14 h-auto object-contain block"
+                  loading="eager"
+                  decoding="async"
+                />
+              </div>
+            </div>
+          </motion.div>
 
           {/* 2x2 Glass nav cards */}
           <motion.div
@@ -430,6 +524,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                   key={tool.slug}
                   tool={tool}
                   index={i}
+                  light
                   initialStats={newestAINsfwStats[tool.slug]}
                   primaryImageAlt={aiNsfwToolAlt(tool.name, tool.category)}
                 />
@@ -454,11 +549,12 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
             whileInView="animate"
             viewport={{ once: true, margin: '-100px' }}
             variants={fadeInUp}
-            className="mt-20 sm:mt-32 max-w-7xl mx-auto px-4"
+            className="mt-10 sm:mt-14 max-w-7xl mx-auto px-4"
             style={{ willChange: 'transform, opacity' }}
           >
-            <SectionTitle accent="Telegram AI NSFW Bots" suffix="Additions">Newest</SectionTitle>
+            <SectionTitle accent="Telegram AI NSFW Bots" suffix="Additions" className="!text-2xl sm:!text-3xl mb-4 sm:mb-5">Newest</SectionTitle>
             <NewestRow
+              compact
               items={newestBots.map((bot) => ({
                 key: bot._id,
                 href: lp(`/${bot.slug}`),
@@ -466,15 +562,16 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                 name: bot.name,
                 category: bot.category,
                 alt: botListingAlt(bot.name),
+                memberCount: bot.memberCount,
               }))}
             />
-            <div className="text-center mt-8">
+            <div className="text-center mt-4">
               <Link
                 href={lp('/bots')}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-white hover:bg-white/90 text-black rounded-xl text-lg font-semibold transition-all hover:scale-105 shadow-[0_10px_30px_-8px_rgba(0,0,0,0.5)]"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-white/90 text-black rounded-lg text-sm font-semibold transition-colors"
               >
                 Browse All Bots
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
               </Link>
             </div>
           </motion.div>
@@ -487,70 +584,34 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
             whileInView="animate"
             viewport={{ once: true, margin: '-100px' }}
             variants={fadeInUp}
-            className="mt-20 sm:mt-40 max-w-7xl mx-auto px-4"
+            className="mt-10 sm:mt-14 max-w-7xl mx-auto px-4"
             style={{ willChange: 'transform, opacity' }}
           >
-            <SectionTitle accent={t('home.freshTitle2', 'New Additions')} className="mb-4">
+            <SectionTitle accent={t('home.freshTitle2', 'New Additions')} className="!text-2xl sm:!text-3xl mb-4 sm:mb-5">
               {t('home.freshTitle1', 'Fresh')}
             </SectionTitle>
-            <p className="text-center text-white/55 text-sm mb-12 sm:mb-16 max-w-xl mx-auto">
-              {t('home.freshSubtitle', 'The latest groups added to Erogram — updated daily')}
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-              {newGroups.map((group, idx) => (
-                <motion.div
-                  key={group._id}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: idx * 0.05 }}
-                >
-                  <Link
-                    href={lp(`/${group.slug}`)}
-                    className={`block overflow-hidden ${CARD} hover:scale-[1.03] group`}
-                  >
-                    <div className="aspect-square relative overflow-hidden bg-white/5">
-                      <img
-                        src={group.image && (group.image.startsWith('https://') || group.image.startsWith('/')) ? group.image : '/assets/placeholder-no-image.png'}
-                        alt={groupListingAlt(group.name)}
-                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                        loading={idx < 4 ? 'eager' : 'lazy'}
-                        onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                      <div className="absolute top-2 left-2">
-                        <span className="px-2 py-0.5 rounded-full bg-white text-black text-[10px] font-bold uppercase tracking-wide">
-                          {t('home.new', 'New')}
-                        </span>
-                      </div>
-                      <div className="absolute bottom-0 left-0 right-0 p-3">
-                        <h3 className="text-white font-bold text-sm leading-tight line-clamp-2 drop-shadow-lg">
-                          {group.name}
-                        </h3>
-                      </div>
-                    </div>
-                    <div className="p-3 flex items-center justify-between">
-                      <span className="text-[10px] text-white/50 font-medium uppercase tracking-wide truncate">
-                        {group.category}
-                      </span>
-                      {group.memberCount > 0 && (
-                        <span className="text-[10px] text-white/50 flex items-center gap-1 shrink-0">
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg>
-                          {group.memberCount >= 1000 ? `${(group.memberCount / 1000).toFixed(1)}K` : group.memberCount}
-                        </span>
-                      )}
-                    </div>
-                  </Link>
-                </motion.div>
-              ))}
-            </div>
-            <div className="text-center mt-8">
+            <NewestRow
+              compact
+              items={newGroups.map((group) => ({
+                key: group._id,
+                href: lp(`/${group.slug}`),
+                image: group.image && (group.image.startsWith('https://') || group.image.startsWith('/')) ? group.image : '/assets/placeholder-no-image.png',
+                name: group.name,
+                category: group.category,
+                alt: groupListingAlt(group.name),
+                memberCount: group.memberCount,
+                views: group.views,
+                description: group.description,
+                country: group.country,
+              }))}
+            />
+            <div className="text-center mt-4">
               <Link
                 href={lp('/groups')}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-white hover:bg-white/90 text-black rounded-xl text-lg font-semibold transition-all hover:scale-105 shadow-[0_10px_30px_-8px_rgba(0,0,0,0.5)]"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-white/90 text-black rounded-lg text-sm font-semibold transition-colors"
               >
                 {t('home.browseAllGroups', 'Browse All Groups')}
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
               </Link>
             </div>
           </motion.div>
@@ -598,85 +659,30 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
 
         {/* Articles Section — English only */}
         {locale === 'en' && featuredArticles.length > 0 && (
-          <motion.div
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true, margin: '-100px' }}
-            variants={fadeInUp}
-            className="mt-20 sm:mt-40 max-w-7xl mx-auto px-4"
-            style={{ willChange: 'transform, opacity' }}
-          >
+          <section className="mt-20 sm:mt-40 max-w-7xl mx-auto px-4">
             <SectionTitle accent={t('home.latestTitle2', 'Articles')}>
               {t('home.latestTitle1', 'Latest')}
             </SectionTitle>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {featuredArticles.map((article, idx) => (
-                <motion.div
+                <HomeBlogCard
                   key={article._id}
-                  initial={{ opacity: 0, y: 50 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.6, delay: idx * 0.1 }}
-                  whileHover={{ y: -10 }}
-                  className={`overflow-hidden ${CARD}`}
-                  style={{ willChange: 'transform, opacity' }}
-                >
-                  <Link href={lp(`/blog/${article.slug}`)}>
-                    {article.featuredImage && (
-                      <div className="aspect-video overflow-hidden relative">
-                        <Image
-                          src={article.featuredImage}
-                          alt={article.title}
-                          fill
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                          className="object-cover hover:scale-105 transition-transform duration-300"
-                          priority={idx < 3}
-                        />
-                      </div>
-                    )}
-                    <div className="p-6">
-                      <h3 className="text-xl font-bold mb-3 text-white line-clamp-2">
-                        {article.title}
-                      </h3>
-                      <p className="text-white/55 text-sm mb-4 line-clamp-3">
-                        {article.excerpt}
-                      </p>
-                      <div className="flex items-center justify-between text-xs text-white/50">
-                        <span className="flex items-center gap-2 min-w-0">
-                          {article.authorAvatar && (
-                            <img
-                              src={article.authorAvatar}
-                              alt={article.authorName}
-                              width={20}
-                              height={20}
-                              className="w-5 h-5 rounded-full object-cover shrink-0 ring-1 ring-white/20"
-                              referrerPolicy="no-referrer"
-                            />
-                          )}
-                          <span className="truncate">{t('home.by', 'By')} {article.authorName}</span>
-                        </span>
-                        {article.publishedAt && (
-                          <span>{formatDate(article.publishedAt, locale)}</span>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
-                </motion.div>
+                  article={article}
+                  href={lp(`/blog/${article.slug}`)}
+                  locale={locale}
+                  index={idx}
+                />
               ))}
             </div>
-            <div className="text-center mt-8">
-              <Link href={lp('/blog')}>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="px-6 py-3 bg-white hover:bg-white/90 text-black rounded-xl text-lg font-semibold transition-all shadow-[0_10px_30px_-8px_rgba(0,0,0,0.5)]"
-                  style={{ willChange: 'transform' }}
-                >
-                  {t('home.viewAllArticles', 'View All Articles')}
-                </motion.button>
+            <div className="mt-8 text-center">
+              <Link
+                href={lp('/blog')}
+                className="inline-flex rounded-xl bg-white px-6 py-3 text-lg font-semibold text-black shadow-[0_10px_30px_-8px_rgba(0,0,0,0.5)]"
+              >
+                {t('home.viewAllArticles', 'View All Articles')}
               </Link>
             </div>
-          </motion.div>
+          </section>
         )}
 
         {/* FAQ Section */}
@@ -691,21 +697,34 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
           <SectionTitle accent={t('home.faqTitle2', 'Questions')}>
             {t('home.faqTitle1', 'Frequently Asked')}
           </SectionTitle>
-          <div className="space-y-6">
-            {((dict.home?.faq as { q: string; a: string }[]) || []).map((faq: { q: string; a: string }, idx: number) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: idx * 0.1 }}
-                className={`p-6 ${CARD}`}
-                style={{ willChange: 'transform, opacity' }}
-              >
-                <h3 className="text-lg sm:text-xl font-bold mb-3 text-white">{faq.q}</h3>
-                <p className="text-white/55 text-sm sm:text-base leading-relaxed">{faq.a}</p>
-              </motion.div>
-            ))}
+          <div className="space-y-14">
+            {([
+              { id: 'telegram' as HomeFaqSectionId, title: t('home.faqTelegramTitle', 'Telegram & Bots'), items: (dict.home?.faq as { q: string; a: string }[]) || [] },
+              { id: 'ainsfw' as HomeFaqSectionId, title: t('home.faqAinsfwTitle', 'AI NSFW'), items: (dict.home?.faqAinsfw as { q: string; a: string }[]) || [] },
+              { id: 'onlyfans' as HomeFaqSectionId, title: t('home.faqOnlyfansTitle', 'OnlyFans Creators'), items: (dict.home?.faqOnlyfans as { q: string; a: string }[]) || [] },
+            ] as const)
+              .filter((section) => section.items.length > 0)
+              .map((section) => (
+                <div key={section.id} className="space-y-6">
+                  <h3 className="text-xl sm:text-2xl font-bold text-center text-white/90 tracking-tight">{section.title}</h3>
+                  {section.items.map((faq, idx) => (
+                    <motion.div
+                      key={`${section.id}-${idx}`}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.5, delay: idx * 0.1 }}
+                      className={`p-6 ${CARD}`}
+                      style={{ willChange: 'transform, opacity' }}
+                    >
+                      <h4 className="text-lg sm:text-xl font-bold mb-3 text-white">{faq.q}</h4>
+                      <p className="text-white/55 text-sm sm:text-base leading-relaxed">
+                        {renderFaqAnswer(faq.a, section.id, lp)}
+                      </p>
+                    </motion.div>
+                  ))}
+                </div>
+              ))}
           </div>
         </motion.div>
 

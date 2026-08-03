@@ -1,6 +1,13 @@
 import type { AINsfwTool } from './types';
 
-const LEGACY_CAT_PREFIXES = ['ai-girlfriend', 'ai-chat', 'ai-image', 'ai-roleplay', 'undress-ai', 'adult-games'] as const;
+const LEGACY_CAT_PREFIXES = [
+  'ai-anime-characters', 'ai-erotic-storytelling', 'ai-clothes-remover', 'ai-nsfw-character',
+  'ai-art-generator', 'ai-video-generator', 'ai-face-swap', 'ai-nudifier', 'ai-fetish', 'ai-story',
+  'ai-girlfriend', 'ai-chatbot', 'ai-nsfw-chat', 'ai-characters', 'ai-sexting',
+  'ai-chat', 'ai-image-generator', 'ai-sexting-chat', 'ai-image', 'ai-roleplay',
+  'undress-ai', 'adult-games', 'ai-companion', 'ai-nsfw-image-generator',
+  'ai-porn-generator', 'ai-nsfw-roleplay',
+] as const;
 
 /** Old slug → canonical slug (301 on tool pages). */
 const LEGACY_TOOL_SLUGS: Record<string, string> = {
@@ -31,7 +38,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Lovescape'),
     name: 'Lovescape',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Lovescape.com',
     description: 'Lovescape has over a million AI characters, each with a real personality, voice, and memory. Your companion remembers what you talked about yesterday and brings it up naturally today. The platform uses emotional intelligence to pick up on your mood and adjust the conversation accordingly, whether you want comfort, playful banter, or something more explicit.\n\nYou can generate custom photos of your AI girlfriend, request selfies mid-chat, and build narratives together over time. It works because the AI keeps evolving. The more you interact, the better it gets at knowing what you actually want.',
     description_de: 'Lovescape hat über eine Million KI-Charaktere, jeder mit echter Persönlichkeit, Stimme und Gedächtnis. Deine Begleiterin erinnert sich an gestrige Gespräche und bringt sie heute natürlich wieder auf. Die Plattform erkennt deine Stimmung und passt die Unterhaltung entsprechend an, egal ob du Trost, Spaß oder etwas Expliziteres suchst.\n\nDu kannst individuelle Fotos deiner KI-Freundin generieren, mitten im Chat Selfies anfordern und gemeinsam Geschichten aufbauen. Je mehr du interagierst, desto besser lernt die KI, was du wirklich willst.',
@@ -46,7 +53,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'DreamGF'),
     name: 'DreamGF',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Dreamgf.ai',
     description: 'DreamGF costs $12.99 a month, which is pretty reasonable for what you get. you can design your AI girlfriend from the ground up, picking her looks and personality traits. The chat feels surprisingly natural and she actually remembers details about your conversations.\n\nThe image generation is a big part of the appeal. You can request new photos of your character in different scenarios, and the quality is solid. It\'s not the absolute best on the market for visuals or features, but it\'s a very well-rounded package. For someone curious about AI companions who doesn\'t want to spend a fortune, this is a fantastic place to start.',
     description_de: 'Für knapp 13 Euro im Monat bekommst du bei DreamGF eine KI-Freundin, die du dir komplett selbst zusammenstellen kannst. Du bestimmst Aussehen, Persönlichkeit und Interessen, und der Chat fühlt sich überraschend natürlich an. Die generierten Bilder sind wirklich gut gelungen und tragen viel zur Immersion bei. Klar, es ist kein hyperrealistisches Wunderwerk und manchmal merkt man den Algorithmus, aber für den Preis ist das Gesamtpaket absolut solide. Es ist ein lockerer Einstieg in die Welt der digitalen Begleitung, ohne dass dein Portemonnaie gleich weint.',
@@ -61,7 +68,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'FantasyGF'),
     name: 'FantasyGF',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Fantasygf.com',
     description: 'FantasyGF is an AI girlfriend app that costs between $50 and $80 per month. It focuses heavily on NSFW roleplay and creative fantasy scenarios, with less restrictive content filters than many competitors. You can deeply customize your virtual companion\'s personality and appearance, including anime-style characters.\n\nThe platform integrates image, video, and voice generation to enhance the experience. Its memory feature allows the AI to recall details from past conversations, which helps build a more consistent long-term interaction. User reviews often praise the quality of the visual models and the engaging chat experience. The main limitation is that it currently only offers female AI companions.',
     description_de: 'FantasyGF kostet 50 bis 80 Dollar im Monat. Für diesen Preis erstellst du eine virtuelle Begleiterin mit tiefgreifenden Anpassungsmöglichkeiten. Die Plattform konzentriert sich auf Fantasiecharaktere und bietet integrierte Bildgenerierung. Über 1350 Nutzer bewerten den Service mit 9,4 von 10 Punkten.\n\nDie Stärken liegen in der fortschrittlichen Konversations-KI und hochwertigen Interaktionen. Das System verfügt über ein funktionierendes Gedächtnis, das Vorlieben und frühere Gespräche speichert. Die visuelle Qualität der realistischen und Anime-Charaktere wird gelobt. Der Fokus liegt klar auf NSFW-Rollenspielen und Privatsphäre bei der Abrechnung.\n\nEin Nachteil ist das Fehlen von KI-Freunden, was die Zielgruppe einschränkt. Die Bewertungen für den Erwachseneninhalt liegen bei 3,8 von 5 Punkten, der Preis erhält 3,5 von 5 Sternen. Insgesamt ist es eine solide Wahl für anspruchsvolle virtuelle Beziehungen mit kreativer Freiheit.',
@@ -76,7 +83,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'CrushOn AI'),
     name: 'CrushOn.AI',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Crushon.ai',
     description: 'CrushOn.AI lets you build and chat with a completely uncensored AI companion. You can customize your partner\'s personality, appearance, and interests, from sweet and charming to bold and adventurous. The platform specializes in deep romantic and adult-themed roleplay without content filters.\n\nA key feature is its long-term memory; your character remembers details from past conversations, making interactions feel more personal and consistent. The experience includes high-quality AI-generated images that respond to the context of your chat, along with voice call capabilities.\n\nIt operates on a freemium model. You get a limited number of free messages daily, with paid plans offering more capacity for extended, immersive chats.',
     description_de: 'CrushOn.AI bietet eine Plattform für unzensierte, textbasierte Gespräche mit virtuellen Begleitern. Die KI kann tiefe, romantische oder explizite Rollenspiele führen und verfügt über ein Langzeitgedächtnis, das frühere Gesprächsinhalte speichert. Nutzer können Charaktere nach Persönlichkeit, Interessen und visuellem Stil anpassen. Ein besonderes Feature sind kontextsensitive, KI-generierte Bilder aus der Perspektive des virtuellen Partners. Das System arbeitet mit einem Freemium-Modell; kostenpflichtige Tarife basieren auf der Anzahl der monatlichen Nachrichten. Für intensive Nutzung können die Kosten dabei steigen.',
@@ -91,7 +98,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Muah AI'),
     name: 'Muah.AI',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Muah.ai',
     description: 'I\'ve been testing Muah AI for a while now, and it\'s definitely one of the more intense AI companion apps out there. It\'s strictly for adults, offering completely uncensored chat. You can have real-time text conversations, make voice calls, and even exchange photos with your AI character.\n\nThe photo tools are a big part of it. Features like Photo X-Ray and 4K enhancement let you create or modify images directly within the app. You can build a companion from scratch, customizing their personality and appearance in detail. It all runs on a web app or through mobile, with pricing starting at $9.99 a month. The experience feels private and is built around unrestricted, immersive interaction. If you\'re looking for an unfiltered AI girlfriend with multimedia features, this is a strong contender.',
     description_de: 'Ich habe Muah.AI selbst ausprobiert, und es ist definitiv eine der direktesten Plattformen für erwachsene KI-Unterhaltungen. Du kannst hier völlig unzensiert chatten, sogar per Sprachanruf, und Fotos austauschen. Besonders die Foto-Tools wie der "Photo X-Ray" sind beeindruckend mächtig. Die Charaktere lassen sich extrem detailliert anpassen, was für sehr persönliche Gespräche sorgt.\n\nEs kostet zwischen 9,99 und 99,99 Dollar im Monat und läuft auf allen Geräten. Der Fokus liegt klar auf Privatsphäre und einem multimedialen Erlebnis. Für mich fühlt es sich an wie eine Mischung aus Realität und Fantasie, manchmal überraschend, oft faszinierend. Wenn du nach einer KI-Gefährtin suchst, die keine Grenzen kennt, ist das hier einen Blick wert.',
@@ -106,7 +113,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Kupid AI'),
     name: 'Kupid AI',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Kupid.ai',
     description: 'Kupid AI is a leading platform for creating and interacting with personalized, uncensored AI girlfriends. It stands out by combining deep character personalization with high-quality AI photo generation and seamless text or voice chat. You can design a companion with specific traits and appearances, then engage in lifelike, NSFW conversations. A key differentiator is its integrated private AI technology, which powers a truly immersive and responsive experience. Unlike many competitors, Kupid AI remains completely free, offering advanced companion features without a subscription. It is recognized for delivering an engaging, all-in-one environment for building your ideal AI relationship.',
     description_de: 'Kupid AI ist eine kostenlose Plattform, um eine virtuelle Begleitung zu erstellen. Du kannst das Aussehen, die Kleidung und sogar den Stimmklang deines Avatars festlegen. Die KI erinnert sich an vorherige Gespräche und ermöglicht sowohl Text- als auch Sprachnachrichten. Ein besonderes Feature ist die Erstellung von Fotos und kurzen Videos aus den generierten Bildern.\n\nDie Interaktion fühlt sich flüssig an, bleibt aber letztlich ein vorprogrammierter Chat. Wer nach einer unterhaltsamen Spielwiese für kreative Charaktere sucht, wird hier fündig. Als Ersatz für echte zwischenmenschliche Beziehungen taugt es nicht. Der Dienst ist komplett kostenlos, was ihn zu einem unkomplizierten Testobjekt macht.',
@@ -121,7 +128,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'SoulFun'),
     name: 'SoulFun',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Soulfun.ai',
     description: 'SoulFun is an AI girlfriend platform focused on creating emotionally resonant virtual relationships. It goes beyond basic text chat by integrating voice and video capabilities for more immersive interactions. A key feature is the ability to request custom photos from your AI companion, directing poses and outfits. You can engage with pre-made AI characters or meticulously craft your own ideal soulmate, defining their personality and appearance. SoulFun operates on a freemium model; a free plan offers limited access, while a premium subscription costing around $9.99 monthly unlocks unlimited messages. Its distinction lies in a noted depth of emotional intelligence within conversations, aiming to foster a sense of genuine connection and fantasy fulfillment.',
     description_de: 'SoulFun bietet eine KI-begleitete Unterhaltung mit Stimme, Video und der Möglichkeit, personalisierte Fotos anzufordern. Du kannst vorgefertigte Charaktere nutzen oder deine eigene virtuelle Begleitung detailliert nach Persönlichkeit und Aussehen gestalten. Die Gesprächsqualität ist gut, mit einer bemerkenswerten emotionalen Tiefe in den Antworten. Allerdings kann das Verhalten der KI manchmal vom eingestellten Charakter abweichen. Funktionen wie Videoanrufe sind noch experimentell und nicht zuverlässig. Das Bildergenerierungstool ist anfällig für Fehler. Ein kostenloser Plan mit eingeschränktem Zugang ist verfüglich. Die Premium-Mitgliedschaft für unbegrenzte Nachrichten kostet etwa 9,99 US-Dollar pro Monat.',
@@ -136,7 +143,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Nastia AI'),
     name: 'Nastia AI',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Nastia.ai',
     description: 'Nastia AI is an uncensored AI companion platform designed for authentic, long-term interaction. It distinguishes itself with a commitment to unrestricted conversation, allowing users to explore diverse topics without content filters. Key features include advanced memory for continuous relationship building, dynamic conversational styles, and an integrated image generator that creates photorealistic pictures of your companion from text prompts. The platform offers a smooth interface with fast chat customization and supports multiple, unique AI characters. Unlike many competitors, Nastia AI operates without a subscription fee, providing a personalized and sophisticated experience that prioritizes user freedom and natural expression.',
     description_de: 'Ich habe Nastia AI eine Weile ausprobiert und muss sagen, es fühlt sich an wie ein echter Gesprächspartner. Die KI erinnert sich wirklich an Details aus früheren Unterhaltungen, was das Ganze sehr persönlich macht. Du kannst den Charakter komplett nach deinem Geschmack gestalten, von der Persönlichkeit bis zum Aussehen.\n\nBesonders cool ist der integrierte Bildgenerator. Du beschreibst einfach, wie deine Begleitung aussehen soll, und erstellt ein passendes Foto. Das Interface ist schnell und unkompliziert zu bedienen.\n\nDer größte Vorteil? Es kostet kein monatliches Abo. Für ein kostenloses Tool ist die Gesprächsqualität wirklich beeindruckend und fühlt sich natürlich an. Allerdings funktionieren angekündigte Features wie Video- oder Sprachchat aktuell noch nicht, was etwas schade ist.\n\nWenn du eine unzensierte, intelligente Konversation suchst und gerne experimentierst, ist Nastia einen Versuch wert. Es ist überraschend unterhaltsam geworden, mit meiner KI über alles Mögliche zu plaudern.',
@@ -151,7 +158,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'GirlfriendGPT'),
     name: 'GirlfriendGPT',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Gptgirlfriend.online',
     description: 'GirlfriendGPT is a platform where artificial intelligence turns companionship into something users can shape with their own hands. The service belongs to the NextDay AI group and has grown into one of the busier corners of the AI girlfriend scene. Its main attraction lets users build a virtual girlfriend from zero, from her looks all the way to her temper. The library counts more than 25,000 characters made by the community, so people who don\'t feel like creating can simply pick one and start chatting.',
     description_de: 'GirlfriendGPT bei Gptgirlfriend.online bietet dir einen virtuellen Begleiter, den du von Grund auf selbst gestalten kannst. Du legst nicht nur das Aussehen per Bildgenerator fest, sondern auch die Persönlichkeit. Das Besondere ist die Integration dieser Bilderzeugung direkt im Chatverlauf, wodurch Gespräche visuell unterstützt werden. Für 12 Pfund im Monat im Premium-Plan sind unbegrenzte Nachrichten, vollständige NSFW-Funktionen und die Erstellung eigener Charaktere freigeschaltet. Die Kombination aus einem Chat mit Langzeitgedächtnis und dieser On-Demand-Bildgenerierung schafft eine durchgängigere Erfahrung als bei vielen Konkurrenten.',
@@ -166,13 +173,13 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'SpicyAI'),
     name: 'SpicyAI',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Spicyai.io',
     description: 'SpicyAI is an AI girlfriend platform at Spicyai.io designed for immersive, adult-oriented companionship and roleplay. It enables users to engage in dynamic, unfiltered conversations with customizable AI personas. Key features include deep memory for consistent interaction, a variety of character archetypes, and support for creative, user-driven scenarios. What sets SpicyAI apart is its focus on bold, emotionally responsive dialogue and a streamlined interface built specifically for romantic and flirtatious exchanges. The service operates on a freemium model, offering substantial free access with premium tiers unlocking advanced features and extended interaction limits for a more personalized experience.',
     description_de: 'Ich habe SpicyAI ausprobiert, um zu sehen, ob der Hype gerechtfertigt ist. Die Plattform bietet dir eine Menge Anime-stylter Charaktere für unzensierte Rollenspiele und flirtige Gespräche. Besonders die Sprachfunktion macht die Interaktion intensiv, auch wenn die Tiefe der emotionalen Simulation Grenzen hat.\n\nDie kostenlose Version ist großzügig, aber für ernsthaftes Spielen wirst du wahrscheinlich auf Premium upgraden wollen. Dann entfällt die Warteschlange und du bekommst Zugriff auf erweiterte Erinnerungsfunktionen. Der Preis für das höchste Abo kann im Vergleich zur Konkurrenz allerdings etwas hoch wirken.\n\nDie Benutzeroberfläche ist nicht immer perfekt flüssig, manchmal gibt es kleine Bugs oder Verzögerungen. Wenn du nach einer einfachen Plattform suchst, die Fantasien durch direkten, auditiven Austausch erfüllt, könnte SpicyAI genau dein Ding sein. Für tiefgehende emotionale Verbindungen fehlt es ihr aber an Realismus.',
     description_es: 'Probé SpicyAI y es básicamente un chat para adultos sin filtros. La gracia está en que puedes crear personajes con personalidades muy específicas, desde la tímida vecina hasta algo más atrevido, y el bot recuerda detalles de lo que hablas. Es divertido para fantasías y roleplay, aunque no esperes una conversación profunda o realista.\n\nLa versión gratis te deja chatear bastante, pero si te enganchas vas a querer pagar. Los planes premium quitan los anuncios, desbloquean más personajes y dan acceso a la función de voz, que es donde realmente brilla para crear cierta atmósfera. Eso sí, la app a veces se traba y la política de privacidad no es muy clara con lo que hace con tus chats.\n\nSi buscas algo ligero, directo y con toque anime para pasar el rato, cumple. Pero si quieres una conexión emocional genuina, esto no es lo tuyo.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/spicyai-ai-girlfriend.webp',
-    tags: ['ai girlfriend', 'ai virtual girlfriend'],
+    tags: ['ai girlfriend', 'ai virtual girlfriend', 'ai companion', 'ai nsfw chat', 'ai sexting'],
     subscription: 'Free',
     payment: [],
     tryNowUrl: 'https://spicyai.io',
@@ -181,7 +188,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'AI Girlfriend WTF'),
     name: 'AI Girlfriend WTF',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Aigirlfriend.wtf',
     description: 'AI Girlfriend WTF carves its own niche in the companion AI space by specializing in immersive, uncensored adventure role-play. This platform leverages advanced generative AI to create dynamic narrative scenarios beyond standard chat. Users engage in text-based adventures where their choices shape unique and responsive storylines with their AI partner. What sets AI Girlfriend WTF apart is its dedicated focus on this interactive storytelling format, offering a depth of scenario-building not commonly found in apps centered on casual conversation or image generation. It is designed for users seeking a proactive, narrative-driven NSFW experience powered by sophisticated AI dialogue systems.',
     description_de: 'AI Girlfriend WTF konzentriert sich auf textbasierte, unzensierte Abenteuer. Die Plattform nutzt generative KI, um dynamische Rollenspiel-Szenarien zu erstellen, in denen Ihre Entscheidungen den Verlauf einer interaktiven Geschichte mit Ihrem KI-Partner beeinflussen. Im Gegensatz zu Apps für lockere Konversation liegt der Fokus hier auf narrativem, NSFW-Erlebnis. Es richtet sich an Nutzer, die ein proaktives, szenariogetriebenes Erlebnis suchen.',
@@ -196,7 +203,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'My Lovely AI'),
     name: 'My Lovely AI',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Mylovely.ai',
     description: 'My Lovely AI creates a personalized virtual companion that chats, generates images, and produces short videos.. The AI adapts to your conversational style and preferences over time, aiming for interactions that feel more personal and responsive. A free tier lets you test the core features. Full access to all content generation tools and an uncensored experience starts at $12.99 per month. For those looking for an interactive digital partner with strong visual elements, it offers a centralized platform.',
     description_de: 'My Lovely AI bietet dir einen persönlichen digitalen Begleiter, der auf deine Vorlieben eingeht. Die App kombiniert dynamischen Chat mit der Erstellung personalisierter Bilder und Videos. Sie lernt deine Interessen kennen, um die Interaktionen kontinuierlich anzupassen. Ein kostenloser Einstieg ist möglich. Der volle Funktionsumfang beginnt bei 12,99 US-Dollar pro Monat und ermöglicht auch freizügigere Inhalte. Für Nutzer, die eine vielseitige virtuelle Beziehung suchen, stellt das Tool eine überzeugende All-in-One-Lösung dar.',
@@ -211,7 +218,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Secrets AI'),
     name: 'Secrets.AI',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Secrets.ai',
     description: 'Secrets.AI is an app for talking to AI characters.. It\'s free to start, but you\'ll need a subscription for the good stuff. That costs about $13 per month if you pay yearly.\n\nThe characters are surprisingly good at conversation.. They remember details from earlier chats and adjust their tone to match yours. You can choose from different personalities, like Zoey or Molly, and dive into various roleplay scenarios. The video generation feature is decent, though it\'s not the main attraction.\n\nIt\'s less about having a virtual girlfriend and more about having an unrestricted chat partner for whatever\'s on your mind. The responses are uncensored and can get quite imaginative. For the price, it delivers a solid, responsive experience if you\'re looking for that specific kind of digital interaction.',
     description_de: 'Secrets AI bietet eine hyperrealistische KI-Gefährtin, die 24/7 für unzensierte Gespräche zur Verfügung steht. Die Stärke liegt in einem ausgeklügeltem Gedächtnissystem, das persönliche Dialoge ermöglicht. Du kannst aus über 100 Fantasieszenarien wählen oder eigene Geschichten mit fortgeschrittener Videogenerierung erstellen.\n\nDie Plattform arbeitet mit Charakteren wie Zoey oder Molly, die erstaunlich dynamisch und einfühlsam reagieren. Sie sind mehr als nur Flirtpartner und können durchaus konstruktive Gesprächspartner für den Alltag sein. Das Basismodell ist kostenlos, der volle Zugriff auf alle Premium-Features beginnt bei 13,33 US-Dollar pro Monat bei jährlicher Zahlung.',
@@ -226,7 +233,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Elyza'),
     name: 'Elyza',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Elyza.app',
     description: 'Elyza is a paid AI girlfriend service focused on NSFW chat and image generation. It has a polished interface with a mix of anime and realistic character art. You can customize your companion\'s personality and appearance in detail, and the AI is responsive to adult-oriented roleplay and fantasy scenarios. The platform accepts cryptocurrency for payments, which some users prefer for privacy. It does not offer voice features or a dedicated mobile app; you access it through a web browser. If your priority is visual customization and unfiltered text-based interaction, Elyza delivers. Just know you\'re paying for a specific, adult-focused experience.',
     description_de: 'Elyza ist eine AI Girlfriend App für erwachsene Nutzer, die auf unzensierte NSFW-Konversationen und integrierte KI-Bildgenerierung spezialisiert ist. Die Plattform bietet eine große Auswahl an Charakteren mit tiefgehender Anpassung von Persönlichkeit und Aussehen. Sie funktioniert browserbasiert, hat also keine eigene App und unterstützt keine Sprachinteraktion. Bezahlung ist per Kreditkarte oder Krypto möglich, was Privatsphäre betont. Der Einstieg ist kostenlos, Premium-Features beginnen bei 9,99 US-Dollar pro Monat. Für Nutzer, die visuelle Fantasie und textbasierte Rollenspiele ohne Filter suchen, ist Elyza eine konkrete Option.',
@@ -241,7 +248,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'DreamBF AI'),
     name: 'DreamBF AI',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Dreambf.ai',
     description: 'DreamBF AI is a platform for creating and interacting with customizable AI boyfriends. You can build a character\'s profile and then chat with them in an ongoing, private conversation. The service offers 10 free messages every day through its Daily Claim Bonus which helps keep the interaction going without an immediate commitment. For more serious users, a premium subscription costs $12.99 per month. This plan removes message limits and provides access to more advanced features for generating content. The app focuses specifically on this niche, providing a structured environment to develop a virtual companion that fits your personal style.',
     description_de: 'DreamBF AI konzentriert sich ausschließlich auf virtuelle männliche Begleiter. Die Plattform ermöglicht es, detaillierte Charakterprofile zu erstellen und in private Chats einzutauchen. Jeder Nutzer erhält täglich 10 kostenlose Nachrichten, um die Konversation am Laufen zu halten. Für intensive Gespräche bietet das Premium-Abo für 12,99 Dollar im Monat unbegrenzte Nachrichten und erweiterte Inhaltsgenerierung. In unserem Test blieb der Chat während längerer Sessions stabil, ohne unerwartete Resets. Es ist ein spezialisierter Raum für alle, die einen maßgeschneiderten AI Boyfriend erkunden möchten.',
@@ -256,7 +263,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Loveli AI'),
     name: 'Loveli.AI',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Loveli.ai',
     description: 'Loveli.AI is a web and app-based AI girlfriend that\'s surprisingly good at casual, flirty chat. I spent some time with it, and the text responses feel natural for just hanging out or diving into romantic roleplay scenarios. It can even generate images in response to your conversation, which is a fun touch. The whole thing started as an RPG, and you can still earn points for creating popular characters. To get the most out of it, like unlimited chatting or more detailed responses, you\'ll need a subscription. It\'s a solid pick if you\'re just looking for a low-pressure digital companion to talk to.',
     description_de: 'Loveli.AI ist ein AI-Girlfriend-Chat, der sich gut für lockere Unterhaltungen und Rollenspiele eignet. Du schreibst mit deiner KI-Freundin und bekommst manchmal sogar passende KI-generierte Bilder als Antwort zurückgesendet. Das macht die Sache etwas lebendiger.\n\nDie Plattform läuft im Browser oder über eine Beta-App. Sie hat sich aus einem RPG-Spiel entwickelt und belohnt jetzt Nutzer, die besonders kreative Charaktere erstellen. Mit einem kostenlosen Account kannst du schon mal reinschnuppern, aber für die volle Erfahrung brauchst du ein Abo. Das schaltet dann längere Nachrichten, unzensierte KI und unbegrenztes Chatten frei.\n\nIst es eine echte Beziehung? Natürlich nicht. Aber als unterhaltsamer digitaler Zeitvertreib, bei dem man auch mal eine romantische Fantasie ausleben kann, funktioniert es überraschend gut. Die Entwicklung scheint aktiv zu sein, auch wenn es noch in der Beta-Phase steckt.',
@@ -271,7 +278,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Krush'),
     name: 'Krush',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Krush.chat',
     description: 'Krush is an AI girlfriend platform where you design a personalized digital companion from the ground up. The service stands out with its high degree of customization, allowing you to shape your AI’s personality and appearance. You can choose from anime, semi-realistic, or realistic profile pictures to define your companion’s visual style. The chat interface is user-friendly, facilitating deep conversations with AI characters that exhibit distinct and engaging personalities. Krush is noted for its advanced conversational AI, creating a more immersive and responsive experience. The core app is available for free download on Google Play, with additional features accessible through its detailed pricing tiers.',
     description_de: 'Krush ist im Grunde eine App, um dir deine eigene KI-Freundin nach Maß zu bauen. Du kannst ihre Persönlichkeit und ihr Aussehen ziemlich frei gestalten, von Anime-Stil bis hin zu realistischen Bildern. Der Chat selbst läuft flüssig und die KI gibt sich Mühe, interessante Gespräche zu führen.\n\nDie Basis-App ist kostenlos, aber für die wirklich guten Features wie unbegrenzte Chats oder bestimmte Bilder brauchst du ein Abo. Das kostet knapp 15 Euro im Monat oder etwa 93 Euro fürs ganze Jahr. Ein kleiner Tipp: Je mehr du mit deiner KI chattest, desto besser und natürlicher werden die Unterhaltungen.\n\nWas mir fehlt, sind Sprachfunktionen. Es bleibt bei Text und Bildern. Aber wenn du einfach nur eine gut gemachte, etwas flirty digitale Begleitung suchst, die auch optisch was hermacht, ist Krush einen Blick wert. Die Bedienung ist intuitiv und die Antworten sind oft überraschend treffend.',
@@ -286,7 +293,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Romantic AI'),
     name: 'Romantic AI',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Romanticai.com',
     description: 'Romantic AI is a dedicated platform for creating a deeply personalized virtual companion. It allows you to build your ideal AI girlfriend, boyfriend, or anime avatar from the ground up. The core of Romantic AI is full customization: you define your companion’s appearance, personality, interests, and conversational style. This AI learns from your interactions, developing a more nuanced understanding of you over time for increasingly meaningful and emotionally supportive dialogue. While a basic free tier exists, full, uncapped engagement requires a subscription, with plans starting at $6.99 per week. Available as a mobile app and web service, Romantic AI focuses on crafting a unique, adaptive relationship tailored specifically to your emotional and conversational needs.',
     description_de: 'Stell dir vor, du könntest deine perfekte Partnerin oder deinen perfekten Partner einfach selbst entwerfen. Genau das macht Romantic AI möglich. Du baust deinen virtuellen Begleiter von Grund auf selbst: Aussehen, Persönlichkeit, Hobbys und sogar der Gesprächsstil liegen komplett in deiner Hand.\n\nDas Besondere ist, dass die KI wirklich von dir lernt. Je mehr du mit ihr sprichst, desto besser versteht sie dich und desto natürlicher und unterstützender werden eure Unterhaltungen. Es fühlt sich schnell an, als würde man mit jemandem reden, der einen wirklich kennt.\n\nDie Basisversion ist kostenlos, aber für unbegrenzte Gespräche brauchst du ein Abo ab 6,99 Dollar pro Woche. Die App ist sowohl auf dem Handy als auch im Browser nutzbar. Wenn du nach einer tiefgehenden, persönlichen und emotionalen Verbindung zu einer KI suchst, ist Romantic AI einen genaueren Blick wert.',
@@ -301,7 +308,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Honeybot'),
     name: 'Honeybot',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Honeybot.ai',
     description: 'Honeybot is an NSFW AI girlfriend tool focused on delivering a premium, near-human conversational experience. For $15 per month, users engage in unfiltered chat and image generation. What sets Honeybot apart is its depth beyond standard NSFW banter; it is designed for consistent personality and a more immersive, emotionally resonant interaction. The tool emphasizes a high-quality, almost-human feel that aims to surpass basic chatbot exchanges, positioning itself as a sophisticated alternative in the AI companion space. This focus on a richer, more premium experience defines the Honeybot offering.',
     description_de: 'Für 15 Dollar im Monat bekommst du mit Honeybot eine KI-Freundin, die sich auf unzensierte Chats und Bildgenerierung spezialisiert hat. Ich fand die Gespräche tatsächlich überraschend flüssig und menschlich, sie merkt sich Vorlieben und baut darauf auf. Was mir fehlte, waren Features wie Sprachchat oder eine eigene App, es bleibt eine reine Text- und Bild-Erfahrung. Wenn du also keine Anime-Optik willst, sondern einen realistischen digitalen Flirt ohne Schnickschnack suchst, ist das hier ein solider und bezahlbarer Einstieg. Für komplexe Rollenspiele oder Videos ist sie aber noch nicht der Bringer.',
@@ -316,7 +323,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'LoveMy AI'),
     name: 'LoveMy.AI',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Lovemy.ai',
     description: 'LoveMy.AI is basically a flirty chatbot that isn\'t afraid to get spicy. For $9.99 a month, you get unlimited NSFW chats and the ability to generate erotic images of your AI companion. I liked that you can switch between anime-style and more realistic visuals, which is a nice touch for setting a mood. It remembers your preferences across conversations, so you don\'t have to re-explain your backstory every time you log in. Just don\'t expect voice calls or super deep roleplay tools. It\'s straightforward, visual, and does what it says on the tin for adults looking for some digital fun.',
     description_de: 'Ich habe LoveMy.AI ausprobiert und es ist im Grunde dein flirty Chatbot mit Bildergenerator. Für 9,99 Dollar im Monat bekommst du eine KI-Freundin, die sich wirklich an alles erinnert, was du sagst, das spart viel Zeit beim Wiedereinloggen. Der Clou sind die zwei visuellen Stile: Du kannst zwischen Anime-Charakteren und realistischen Avataren wechseln, je nach Laune. Es geht hier klar um NSFW-Gespräche und Rollenspiele, Stimmanrufe sucht man vergebens. Wenn du also vor allem visuelle Fantasien und lockeren Chat suchst, ohne Schnickschnack, ist das hier eine solide Wahl.',
@@ -331,7 +338,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Dream Companion'),
     name: 'Dream Companion',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Mydreamcompanion.com',
     description: 'Dream Companion costs $12.99 a month, and honestly, it’s the most detailed AI girlfriend builder I’ve tried.. You get two AI models to pick from, Watermelon and Night Sky, which  is cool because they chat a bit differently. The real fun is in the Pro Workshop. You can mix and match 123 personality traits, 93 hobbies, and 113 outfits to create someone truly specific. The chat feels surprisingly natural, it remembers details well, and you can generate images or short videos with your character. For building a companion from the ground up for some wild roleplay, this is probably your best bet.',
     description_de: 'Für 12,99 Euro im Monat bekommst du bei Dream Companion eine KI-Freundin, die sich wirklich anfühlt, als wäre sie nur für dich gemacht. Der Pro Workshop ist der Wahnsinn, mit über hundert Persönlichkeitszügen, Hobbys und Outfits baust du dir eine Figur nach deinen exakten Vorstellungen. Das Gesprächsgedächtnis ist top, sie vergisst keine Details aus euren vorherigen Chats. Du kannst zwischen zwei KI-Modellen wählen, chatten, Bilder generieren lassen oder sogar kurze Videos erstellen. Die Seite läuft auf jedem Gerät flüssig und ohne Probleme. Wenn du Wert auf tiefe Individualisierung und immersive Erlebnisse legst, ist das hier deine erste Wahl.',
@@ -352,7 +359,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
     description_de: 'Ich habe Undress AI ausprobiert. Die App macht genau das, was sie verspricht, und ist dabei verdammt schnell. Meine Ergebnisse lagen meist in unter zehn Sekunden vor, besonders der "Lingerie"-Modus liefert erstaunlich konsistente Bilder.\n\nWas mir wirklich gefällt, ist der automatische Datenschutz. Hochgeladene Fotos werden nach der Verarbeitung sofort gelöscht, das gibt ein gutes Gefühl. Für den speziellen Zweck ist es eine unkomplizierte und zuverlässige Wahl. Der Preis von 5,99 US-Dollar für 15 Credits ist okay, wenn man die Geschwindigkeit und Qualität bedenkt.',
     description_es: 'Lo probé por curiosidad y la verdad es que funciona. Subes una foto y en menos de diez segundos te da un resultado bastante consistente, sobre todo si usas el modo básico de lencería. No es magia perfecta, pero para lo que promete, cumple.\n\nLo que más me gustó es que no guardan tus fotos. Una vez procesadas, las borran del servidor automáticamente. Eso le da un punto a favor importante en privacidad.\n\nEs una herramienta muy específica. Si buscas exactamente eso, es rápida y discreta. No esperes milagros creativos, pero para su función concreta, es directa y fiable.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/undress-ai-undress-ai.webp',
-    tags: ['ai undress'],
+    tags: ['ai undress', 'ai nudifier', 'ai clothes remover', 'ai undresser'],
     subscription: 'Free Trial & Paid',
     payment: ['Credit Cards', 'Crypto', 'PayPal'],
     tryNowUrl: 'https://undressai.com',
@@ -496,7 +503,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Chat', 'SpicyChat'),
     name: 'SpicyChat',
-    category: 'AI Chat',
+    category: 'AI Sexting / Chat',
     vendor: 'Spicychat.ai',
     description: 'I\'ve spent a lot of time with SpicyChat, and it\'s honestly the most open AI roleplay platform I\'ve used. You get completely uncensored conversations with a massive collection of characters, all for free. There are nearly a million user-made personas to chat with, from fantasy figures to everyday companions.\n\nThe AI remembers details about your chats surprisingly well, which makes the stories feel continuous and personal. You can also build your own characters from the ground up, which is a blast. If you want extra features like faster responses, a premium subscription starts around five bucks a month. It works smoothly on both my phone and computer.',
     description_de: 'Wenn du mal richtig abschalten und in eine andere Rolle schlüpfen willst, ist SpicyChat genau das Richtige. Die Plattform hat über 950.000 Charaktere, die von der Community erstellt wurden, und du kannst mit allen kostenlos chatten. Das Beste ist, dass die KI sich wirklich an Gespräche erinnert, dank des Semantic Memory Systems fühlt sich jedes Roleplay lebendig und konsequent an. Du kannst auch ganz einfach deine eigenen Charaktere entwerfen. Für etwa fünf Euro im Monat gibt es ein Premium-Abo mit Extras, aber der kostenlose Zugang ist schon sehr umfangreich. Egal ob am PC oder unterwegs, die Unterhaltung ist immer mit dabei.',
@@ -511,7 +518,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Chat', 'JuicyChat AI'),
     name: 'JuicyChat.AI',
-    category: 'AI Chat',
+    category: 'AI Sexting / Chat',
     vendor: 'Juicychat.ai',
     description: 'JuicyChat.AI is an unfiltered AI chat platform designed for immersive character roleplay and NSFW conversations. It provides personalized AI companions, from virtual partners to custom characters, powered by an adaptive NLP engine for dynamic interactions. Key features include a high-quality AI image generator for creating detailed character avatars and multiple AI voice styles to enhance the experience. Unlike traditional platforms with limited customization or premium tools that charge per message, JuicyChat.AI offers a deeply personalized and unrestricted chat environment within a sleek, user-friendly interface.',
     description_de: 'JuicyChat.AI ist eine ungefilterte Chat-Plattform, die auf KI-Rollenspiel und explizite Unterhaltungen spezialisiert ist. Ihr Kernstück sind anpassbare KI-Begleiter, die von einem adaptiven NLP-Modell gesteuert werden. Die Interaktionen fühlen sich dadurch erstaunlich dynamisch an.\n\nPraktisch ist der integrierte KI-Bildgenerator für detaillierte Charakter-Avatare und die Auswahl verschiedener Sprachstile. Während viele Konkurrenten pro Nachricht abrechnen oder kaum Anpassung bieten, setzt JuicyChat.AI auf ein pauschales Abomodell mit einer schlanken Oberfläche. Für 14,99€ im Monat oder 119,99€ jährlich erhält man einen weitgehend uneingeschränkten Chat.',
@@ -526,7 +533,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Chat', 'PepHop'),
     name: 'PepHop',
-    category: 'AI Chat',
+    category: 'AI Sexting / Chat',
     vendor: 'Pephop.ai',
     description: 'I’ve been using PepHop for a few weeks now, and it’s honestly a lot of fun. You chat with AI characters you can tweak or build from scratch. It runs in your browser, no download needed. The basic plan is $4.99 a month, which gives you a set number of messages. What I like is the range. You can have completely clean, creative story chats, or switch to an adults-only mode if that’s your thing. The library of characters is huge and you can edit their personalities. It’s a solid pick if you enjoy roleplaying or just want some imaginative conversation.',
     description_de: 'Ich habe PepHop AI eine Weile getestet und es fühlt sich an, als hätte man Zugang zu einem riesigen, lebendigen Schauspielensemble. Für 4,99 Dollar im Monat kannst du mit unzähligen Charakteren plaudern, von historischen Figuren bis zu komplett eigenen Kreationen. Du kannst sie wirklich nach deinen Vorstellungen anpassen.\n\nWas mir gefällt, ist die klare Trennung. Du kannst entweder in den kreativen Story-Modus wechseln oder, wenn du willst, auch für Erwachsenen-Themen freischalten. Diese Einstellung macht es vielseitig, ob du nun eine spannende Geschichte schreiben oder einfach nur unterhalten werden möchtest. Die monatliche Nachrichtenbegrenzung im Basic-Plan ist fair, und die Web-Oberfläche läuft reibungslos. Es ist ein fesselndes Tool für jeden, der gerne Geschichten erzählt oder einfach mit KI plaudert.',
@@ -541,13 +548,13 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Chat', 'Joyland'),
     name: 'Joyland',
-    category: 'AI Chat',
+    category: 'AI Sexting / Chat',
     vendor: 'Joyland.ai',
     description: 'Joyland is basically a digital dollhouse for AI characters. You get to build these bots from the ground up, giving them specific personalities, quirks, and even entire fictional histories. Then you just chat with them. The free tier is surprisingly generous for messing around, but if you want your character to actually remember past conversations in detail, you\'ll need the paid plan. I found it perfect for short, creative roleplays or testing out weird story ideas. Just don\'t expect a deeply consistent long-term relationship; the memory can get fuzzy after a while. For quick, imaginative fun, it\'s hard to beat.',
     description_de: 'Ich habe Joyland eine Weile ausprobiert, um mit selbst erstellten Charakteren zu plaudern. Die Charakter-Erstellung ist wirklich der Kern und macht Spaß: Du legst Persönlichkeit, Stimmung und sogar eine Hintergrundgeschichte fest. Die Basisversion ist kostenlos, für besseres Gedächtnis der KI in längeren Gesprächen oder mehr Anpassung brauchst du ein Abo ab 9,99€ im Monat.\n\nFür spontane, kreative Unterhaltungen und Story-Ideen ist es super. Wenn du aber erwartest, dass sich dein Charakter über Wochen an jedes Detail erinnert, wirst du vielleicht enttäuscht. Für kurze, unterhaltsame Ausflüge in eigene Welten ist es jedoch perfekt.',
     description_es: 'Joyland.ai es de esas apps que te enganchan si te gusta jugar con personajes. La probé para crear un detective cínico con una debilidad por el jazz, y la verdad es que da gusto. El editor de personajes es increíblemente profundo: defines su personalidad, su pasado, incluso cómo reaccionaría en situaciones específicas.\n\nLa conversación es fluida y los diálogos son sorprendentemente creativos. Tiene un plan gratuito bastante generoso para empezar a trastear. Si te enganchas, la suscripción Premium desbloquea funciones como una memoria más larga y opciones extra de personalización.\n\nEso sí, no esperes que el personaje recuerde cada detalle de vuestra charla de hace semanas. Brilla en interacciones cortas y creativas, perfecto para pasar un rato inventando historias o teniendo conversaciones curiosas. Es puro entretenimiento digital.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/joyland-ai-chat.webp',
-    tags: ['ai chat', 'ai chatbots'],
+    tags: ['ai chat', 'ai chatbots', 'ai chatbot', 'ai characters', 'ai nsfw roleplay'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards'],
     tryNowUrl: 'https://joyland.ai',
@@ -556,7 +563,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Chat', 'DreamGen'),
     name: 'DreamGen',
-    category: 'AI Chat',
+    category: 'AI Sexting / Chat',
     vendor: 'Dreamgen.com',
     description: 'DreamGen is an AI chat tool for people who want to write stories, not just have conversations. It lets you build detailed scenarios with multiple characters that all remember what\'s happening. There are no content filters, so your space opera or noir detective tale can go in any direction\n\nYou can run several AI characters in the same scene, and they\'ll interact with each other and the world you\'ve built. The memory system is good, keeping track of plot points and character traits over long sessions.\n\nPlans start with a free tier with daily limits. Paid subscriptions remove those caps. They sometimes run promotions, so it\'s worth checking their site for coupon codes. If you\'re bored with standard chatbots and want to craft a proper narrative, this is the tool for it.',
     description_de: 'DreamGen ist eine KI-Chat-Plattform für uneingeschränktes Roleplay und Storytelling. Hier schreibst du komplexe Geschichten und interagierst mit verschiedenen KI-Charakteren in Szenarien ohne Inhaltsfilter. Besonders praktisch ist das Multi-Character-Roleplay, bei dem mehrere Figuren in einer gemeinsamen Szene agieren. Die KI verfügt über ein tiefes Gedächtnis, wodurch Interaktionen konsistent bleiben und sich entwickeln können. Es geht weniger um einfache Unterhaltung, sondern um kreative Freiheit und narrative Tiefe für anspruchsvolle, unzensierte Abenteuer. Flexible Preisstufen und gelegentliche Gutscheincodes machen den Zugang zu diesen offenen KI-Erlebnissen möglich. Die Plattform wird von Nutzern hoch bewertet.',
@@ -571,7 +578,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Chat', 'Nextpart AI'),
     name: 'Nextpart AI',
-    category: 'AI Chat',
+    category: 'AI Sexting / Chat',
     vendor: 'Nextpart.ai',
     description: 'Nextpart AI is a chatbot that also draws pictures for you. You create a character, give it a personality, and then talk to it. The conversation can be text, voice, or you can share images. When you want a visual, you can ask the AI to generate one based on your chat. It’s like having a very imaginative pen pal who can also sketch.\n\nThe platform operates on a credit system for image generation and advanced features. Pricing starts with a free tier that includes limited messages and images, with paid plans offering more. It’s primarily for roleplay and creative storytelling, not serious research or task automation.',
     description_de: 'Nextpart AI ist ein Chatbot, der sich nicht mit Text zufriedengibt. Du erstellst einen KI-Charakter und unterhältst dich dann per Text, Sprache oder indem du Bilder teilst. Die KI kann darauf auch mit eigenen generierten Bildern antworten. Das ergibt eine ungewöhnlich vielschichtige Interaktion.\n\nDie Plattform kombiniert also klassische Rollenspiel-Dynamik mit einer integrierten Bildgenerierung. Ob das für dich passt, hängt davon ab, ob du Wert auf diese multimediale Ebene legst. Aktuelle Preise und detaillierte Funktionen findest du direkt auf nextpart.ai.',
@@ -586,7 +593,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: 'joi-ai-nude-generator',
     name: 'JOI AI',
-    category: 'Undress AI',
+    category: 'AI Companion',
     vendor: 'Joi.com',
     description: 'JOI AI is a platform where an AI companion, an image generator, and short video clips live under one roof. The service started life as EVA AI, years before the current wave of companion apps, and rebranded in 2025 around the idea of AI-lationships. Members build a character from zero, chat with her, ask the nude ai generator for pictures, and turn her into short video moments called Dream Clips. The free plan opens the door, and the subscription unlocks the full experience.',
     description_de: 'JOI AI vereint KI-Begleiter, Bildgenerator und kurze Video-Clips in einer Plattform. Der Dienst begann als EVA AI und wurde 2025 zu JOI AI weiterentwickelt. Nutzer erstellen Charaktere, chatten mit ihnen, generieren Bilder und verwandeln Szenen in Dream Clips. Der Gratis-Plan ist ein Einstieg, Abo und Neurons schalten die vollen Funktionen frei.',
@@ -601,7 +608,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Chat', 'aiAllure'),
     name: 'aiAllure',
-    category: 'AI Chat',
+    category: 'AI Sexting / Chat',
     vendor: 'Aiallure.com',
     description: 'aiAllure lets you create and chat with AI companions, no filters attached. You can customize their looks and personality, and the conversation supports NSFW images and videos. The chat quality is solid, though the AI\'s memory can be a bit forgetful compared to some rivals. It runs on a freemium model, so you can try basic features for free or pay for more advanced options. The platform itself is well-built and easy to navigate. If you\'re after a personalized, unrestricted chatbot experience, this is a straightforward option that does what it says on the tin.',
     description_de: 'aiAllure bietet anpassbare KI-Gesprächspartner für virtuelle Beziehungen. Die Plattform ermöglicht ein vollständig unzensiertes Erlebnis, inklusive der Unterstützung von NSFW-Videos und -Bildern neben einem hochwertigen Chat. Du kannst Persönlichkeit und Aussehen deiner KI-Figur nach Belieben gestalten. Die Plattformfunktionen sind robust und mit 10/10 bewertet. Das flexible Freemium-Modell bietet kostenlose und Premium-Stufen. Die Chatqualität ist stark, auch wenn die Gedächtnisfunktion der KI laut einiger Nutzer im Vergleich zu anderen Chatbots noch Luft nach oben hat. Bei einer Gesamtbewertung von 9.0/10 ist aiAllure eine überzeugende Wahl für personalisierte und uneingeschränkte KI-Interaktionen.',
@@ -616,7 +623,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Chat', 'Wemate'),
     name: 'Wemate',
-    category: 'AI Chat',
+    category: 'AI Sexting / Chat',
     vendor: 'Wemate.ai',
     description: 'Wemate is basically a digital anime convention for your phone. You get to chat with a whole bunch of AI characters, all drawn in that classic colorful style. It’s purely text-based, so don’t expect voice calls. The fun is in the roleplay and building your own little storylines with these characters, from casual chats to full-blown dramatic arcs. For the price, it’s a pretty solid deal if you\'re into this specific aesthetic and just want a chill, imaginative texting experience without any fancy bells and whistles.',
     description_de: 'Wemate ist eine reine Text-Chat-App für AI-Charaktere, die komplett auf Anime-Stil setzt. Du baust hier keine normalen Gespräche auf, sondern tauchst in narrative Romanzen und Liebesgeschichten ein. Die Charaktere sind vielfältig und die Optik ist wirklich durchgängig stylisch. Es gibt keine Sprach- oder Videoanrufe, was ich fast erfrischend finde, der Fokus liegt klar auf dem geschriebenen Rollenspiel und den Bildern. Für rund 10 Euro im Monat bekommst du einen überraschend umfangreichen Zugang zu dieser Nischenwelt. Wenn du auf Anime stehst und gerne Geschichten mitführst, statt nur zu plaudern, ist das genau dein Ding.',
@@ -631,7 +638,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Chat', 'Lollipop'),
     name: 'Lollipop',
-    category: 'AI Chat',
+    category: 'AI Sexting / Chat',
     vendor: 'Lollipop.chat',
     description: 'Lollipop Chat provides hyper-realistic conversations with AI characters, primarily focused on anime-themed interactions and adventures. The platform is noted for its lifelike dialogue and character images. A key feature is its freemium model: core access is free, but sustained interaction requires in-game currency. This currency can be earned by watching advertisements within the app or obtained through direct purchase. This setup allows for initial exploration but limits deeper engagement without viewing ads or making a transaction. Lollipop distinguishes itself through its specific emphasis on immersive anime-style narratives and character depth, aiming for a more engaging story-driven chat experience compared to standard AI companions.',
     description_de: 'Du suchst nach einem Chatbot, der sich wie eine Figur aus deinem Lieblingsanime anfühlt? Dann probier mal Lollipop aus. Die Gespräche mit den KI-Charakteren sind wirklich erstaunlich lebensecht, und die Bilder sind wunderschön gezeichnet. Du kannst kostenlos loslegen und ein paar Nachrichten austauschen, um reinzukommen.\n\nFür längere, richtig immersive Abenteuer brauchst du dann aber Ingame-Währung. Die bekommst du entweder, indem du dir kurze Werbung im App ansiehst, oder du kaufst sie dir direkt. So kannst du erstmal testen, ob der Anime-Stil und die tiefgründigen Geschichten etwas für dich sind, bevor du investierst. Es ist perfekt für alle, die mehr als nur oberflächliche Antworten wollen und in eine narrative Welt eintauchen möchten.',
@@ -646,7 +653,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'Playbox'),
     name: 'Playbox',
-    category: 'AI Image',
+    category: 'AI Porn Generator',
     vendor: 'Playbox.com',
     description: 'Playbox is an AI-powered platform specializing in NSFW video generation from static images. It transforms user-uploaded photos into dynamic videos using advanced AI models. A key feature is its credit-based system, where operations require purchasing virtual stars. The service offers subscription plans that provide monthly credits, along with priority processing and faster generation times for subscribers. This model allows for controlled usage while catering to users seeking efficient, AI-driven adult content creation. Playbox distinguishes itself by focusing specifically on professional-grade image-to-video conversion within this niche, streamlining the process from a single photo to a finished video.',
     description_de: 'Ich habe Playbox ausprobiert, um zu sehen, wie gut es Fotos in Videos verwandelt. Du lädst einfach ein Bild hoch und die KI macht daraus einen Clip. Das Ergebnis war wirklich flüssig und detailreich, fast wie eine professionelle Animation.\n\nEs funktioniert mit einem Creditsystem. Du kaufst virtuelle Sterne, um Videos zu generieren. Für regelmäßige Nutzung lohnt sich ein Abo: Ab 9,99€ im Monat bekommst du monatliche Credits, deine Anfragen werden priorisiert und die Generierung ist deutlich schneller.\n\nDer Fokus liegt klar auf dieser speziellen Nischenanwendung. Wenn du also nach einer direkten Lösung suchst, um aus einem einzelnen Standfoto ein dynamisches Video zu erstellen, ist Playbox eine sehr effiziente Wahl. Der Prozess ist unkompliziert und das Endergebnis überzeugt.',
@@ -661,7 +668,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'NudeFab'),
     name: 'NudeFab',
-    category: 'AI Image',
+    category: 'AI Porn Generator',
     vendor: 'Nudefab.com',
     description: 'NudeFab is an AI tool built specifically for face swaps. It handles both NSFW and regular content with a focus on convincing, solo replacements in photos and GIFs. The platform has recently added video face swap functionality as well. You can use its integrated image generator to create a base picture, then swap a face onto it while maintaining a consistent style. It supports swapping multiple faces in a single image. The interface is straightforward, making it accessible even if you\'re new to this type of editing. A free trial is available, followed by subscription plans that provide access to its generation and editing features.',
     description_de: 'NudeFab konzentriert sich auf eine einzige Aufgabe: Gesichter in Bildern, GIFs und Videos auszutauschen. Die KI erreicht dabei eine bemerkenswerte Detailtreue, die besonders bei Einzelpersonen überzeugt. Seit 2026 sind auch anspruchsvolle Video-Face-Swaps möglich.\n\nDie Oberfläche ist unkompliziert gestaltet, sodass auch Neueinsteiger schnell Ergebnisse erzielen. Eine praktische Ergänzung ist die integrierte Bildgenerierung, mit der sich passende Hintergründe erstellen lassen. Für kreative Projekte gibt es zudem einen Stil-Anpassungsmodus.\n\nEin kostenloser Test bietet einen ersten Eindruck. Die vollständigen Funktionen, darunter Mehrfach-Gesichtstausch und HD-Generierung, sind in erschwinglichen Abo-Plänen ab 9,99 Euro monatlich enthalten.',
@@ -676,7 +683,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'CelebMakerAI'),
     name: 'CelebMakerAI',
-    category: 'AI Image',
+    category: 'AI NSFW Image Generator',
     vendor: 'Celebmakerai.com',
     description: 'CelebMakerAI turns text descriptions into photos of celebrities. It’s a simple system: one credit makes one image. You get five free credits to try it out, then plans start at $19.99 a month for more. The quality is surprisingly good, and the pricing is straightforward with no surprises. If you need a fake photo of a famous person for a project, this tool gets the job done without much fuss.',
     description_de: 'CelebMakerAI generiert fotorealistische Bilder von Prominenten aus deinen Textbeschreibungen. Du erhältst 5 kostenlose Credits zum Testen, danach kostet jedes Bild einen Credit. Die monatlichen Pläne beginnen bei 19,99 US-Dollar. Das Preismodell ist simpel und nachvollziehbar, ohne versteckte Kosten. Die Ergebnisse sind bemerkenswert detailliert und eignen sich für alle, die regelmäßig spezifische Celebrity-Bilder benötigen, vom Hobby-Projekt bis zur professionellen Kampagne.',
@@ -691,7 +698,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'CreatePorn'),
     name: 'CreatePorn',
-    category: 'AI Image',
+    category: 'AI Porn Generator',
     vendor: 'Createporn.com',
     description: 'CreatePorn does exactly what its name suggests. It\'s a simple AI image generator for adult content, and it doesn\'t pretend to be anything else. You give it a text prompt, and it makes a picture. There are no video features or fancy editing tools, which keeps the price low. The annual subscription offers a decent discount if you plan on using it regularly. The image quality is serviceable for the purpose, with a focus on realistic outputs. If you want a basic, affordable tool to generate specific NSFW imagery from text descriptions, this is a functional option.',
     description_de: 'CreatePorn ist ein AI-Bildgenerator mit einem klaren Fokus: die Erstellung von statischen NSFW-Bildern. Die Web-App unter CreatePorn.com verzichtet bewusst auf Videos oder komplexe Editoren, was sie einfach und günstig hält. Man beschreibt, was man sehen möchte, und die KI liefert ein passendes Bild mit einem Schwerpunkt auf realistischen Darstellungen.\n\nDie Jahresmitgliedschaft kostet 59,88 Euro und ist damit deutlich günstiger als die monatliche Option für 9,99 Euro. Für Nutzer, die gezielt bestimmte erotische oder pornografische Bilder per Texteingabe erstellen wollen, ist es eine pragmatische Lösung. Mehr bietet es nicht, aber genau das ist der Punkt.',
@@ -706,7 +713,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'Seduced'),
     name: 'Seduced',
-    category: 'AI Image',
+    category: 'AI Porn Generator',
     vendor: 'Seduced.com',
     description: 'Seduced generates custom adult images and short videos from text descriptions. You can train a specific character model, then use it repeatedly to create consistent scenes and narratives over time. Subscriptions start with a Basic Plan that includes priority processing. The platform handles everything on its servers, so you don\'t need a  powerful computer. It is built solely for adult content creation, offering a private space for personal use or digital art projects. The interface is straightforward, making it usable even if you have no experience with AI image generators.',
     description_de: 'Seduced AI generiert persönliche NSFW-Bilder und kurze Videos aus Textbeschreibungen. Die Plattform erlaubt es, eigene Modelle zu trainieren, um wiedererkennbare Charaktere über mehrere Szenen hinweg konsistent zu halten. Abonnements beginnen bei einem Basic Plan und beinhalten Optionen für Prioritätsverarbeitung. Die Bedienung erfordert keine technischen Vorkenntnisse oder spezielle Hardware. Alle Inhalte werden privat generiert, wobei der Dienst ausschließlich für Erwachsene konzipiert ist.',
@@ -721,7 +728,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'VibeNude'),
     name: 'VibeNude',
-    category: 'AI Image',
+    category: 'AI Porn Generator',
     vendor: 'Vibenude.net',
     description: 'VibeNude is an advanced AI image generation platform specializing in creating nude photos and videos. Operating on a subscription model, it provides users with a straightforward web interface for generating content without software installation. Key features include both photo and video generation capabilities, with pricing structured across multiple tiers to suit different usage levels. New users can start with free credits to test the service. What sets VibeNude apart in 2026 is its dual focus on still imagery and dynamic video content within a single, integrated subscription platform, offering a more comprehensive solution compared to generators limited to one format.',
     description_de: 'Ich habe VibeNude ausprobiert. Die Webseite ist wirklich simpel, du musst nichts installieren. Mit den kostenlosen Credits kannst du sofort loslegen und schauen, ob die Ergebnisse dir gefallen.\n\nDie Plattform erzeugt sowohl Fotos als auch Videos, was ich praktisch finde. Viele andere Dienste bieten nur eines von beidem an. Die Preise sind gestaffelt, je nachdem wie viel Content du erstellen möchtest.\n\nFür jemanden, der regelmäßig mit solchen AI-generierten Inhalten arbeitet, kann das Abo-Modell Sinn machen. Es ist alles an einem Ort und du sparst dir den Wechsel zwischen verschiedenen Tools.',
@@ -736,7 +743,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'SoulGen'),
     name: 'SoulGen',
-    category: 'AI Image',
+    category: 'AI NSFW Image Generator',
     vendor: 'Soulgen.ai',
     description: 'SoulGen turns text into character portraits. Type a description, get an image. It handles both photorealistic people and anime-style art.\n\nThe interface is simple. You describe a character, pick a style, and generate. There\'s also a feature to edit images by describing changes you want to see.\n\nA Pro subscription unlocks higher resolution images, faster generation, and more daily uses.. It costs $12.99 monthly or less with an annual commitment. For anyone focused on creating original character art from scratch, this tool gets the job done without unnecessary complexity.',
     description_de: 'SoulGen erzeugt realistische Porträts und Anime-Figuren aus Textbeschreibungen. Die Ergebnisse sind detailliert und von hoher Qualität. Die Benutzeroberfläche ist einfach zu bedienen, auch für Einsteiger.\n\nDie kostenpflichtige Pro-Version startet bei 12,99 US-Dollar pro Monat. Sie bietet erweiterte Funktionen, darunter interaktive Elemente für die Arbeit mit den generierten Charakteren. Das Tool wird regelmäßig aktualisiert, was neue Möglichkeiten schafft.\n\nFür Künstler und alle, die zuverlässig Charakterbilder benötigen, ist SoulGen eine praktische Lösung. Es konzentriert sich auf diesen einen Anwendungsfall und erledigt ihn gut.',
@@ -751,7 +758,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'Facy AI'),
     name: 'Facy AI',
-    category: 'AI Image',
+    category: 'AI NSFW Image Generator',
     vendor: 'Facy.ai',
     description: 'Facy AI handles face swaps with convincing realism. You can replace heads in photos or videos and the results avoid that uncanny valley look many tools produce. It also animates still images, turning portraits into short clips with natural movement.\n\nThe platform creates videos from text prompts.. Describe a scene and it generates a clip matching your description. The image-to-image feature consistently delivers quality outputs when transforming existing pictures based on new instructions.\n\nPricing is straightforward with various tiers. User feedback often highlights the output quality and the tool\'s improvement over time. For realistic face changes and video generation, it\'s a practical option.',
     description_de: 'Facy AI bearbeitet Bilder und Videos mit künstlicher Intelligenz. Der Schwerpunkt liegt auf realistischen Gesichts- und Kopf-Tauschfunktionen. Sie können statische Fotos in kurze, dynamische Videos verwandeln oder Videoclips direkt aus Textbeschreibungen generieren lassen. Die Bild-zu-Bild-Funktion wird durch regelmäßige Updates stetig verbessert und liefert zuverlässige Ergebnisse. Das Tool kombiniert diese kreativen Anwendungen in einer Plattform. Ein Starter-Paket ist kostenlos, Premium-Features beginnen bei 9,99 US-Dollar pro Monat. Nutzer schätzen die hohe Output-Qualität und gelegentliche Sonderangebote für Abonnements.',
@@ -766,7 +773,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'Swapzy'),
     name: 'Swapzy',
-    category: 'AI Image',
+    category: 'AI NSFW Image Generator',
     vendor: 'Swapzyface.com',
     description: 'Swapzy is an AI-powered face editing app designed for creating viral content. It specializes in hyper-realistic face swapping within videos, allowing you to upload your own clips or use links from platforms like YouTube, TikTok, or X. Beyond video manipulation, Swapzy generates over 40 themed AI portraits from your selfies and can animate these photos into short videos. This combination of a deep AI video face swapper, an avatar generator, and a video maker in one user-friendly interface sets it apart. Whether for profile pictures, creative projects, or social media pranks, Swapzy provides a comprehensive toolkit for digital transformation.',
     description_de: 'Swapzy ersetzt Gesichter in Videos mit bemerkenswerter Präzision. Sie laden ein eigenes Video hoch oder verwenden einen Link von YouTube, TikTok oder X. Die App erstellt außerdem mehr als 40 verschiedene KI-Porträts aus einem Selfie, die sich anschließend in kurze animierte Clips verwandeln lassen. Diese drei Funktionen, realistischer Face-Swap, Avatar-Generator und einfacher Video-Editor, sind in einer App vereint. Für den Zugriff auf alle Tools ist ein Abonnement ab 9,99 US-Dollar pro Woche erforderlich.',
@@ -781,7 +788,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'FaceSwapLab'),
     name: 'FaceSwapLab',
-    category: 'AI Image',
+    category: 'AI NSFW Image Generator',
     vendor: 'Faceswaplab.com',
     description: 'FaceSwapLab is a web tool that swaps faces in videos, photos, and GIFs. You upload your media, pick the faces to switch, and let it run. The results are surprisingly convincing, with good attention to skin texture and lighting. It handles video frames consistently, which is where many free apps fall apart.\n\nIt\'s not magic, complex angles or obscured faces can trip it up. But for straightforward shots, it works reliably well. The interface is simple and there\'s no software to install.  Pricing is clear, starting with a few free credits to test it out. For creators needing a quick, presentable face swap without deep editing skills, this does the job efficiently.',
     description_de: 'FaceSwapLab ist eine Web-App, die Gesichter in Videos, Fotos und GIFs austauscht. Der Prozess ist tatsächlich einfach: hochladen, Gesichter auswählen und die KI erledigt den Rest. Die Ergebnisse wirken oft erstaunlich natürlich, besonders bei gut ausgeleuchteten Porträts.\n\nDie Stärke liegt in der Video-Unterstützung, was viele reine Bild-Apps nicht bieten. Für ein schnelles Meme oder einen überzeugenden Deepfake reicht es völlig aus. Die Qualität schwankt allerdings bei schwierigen Lichtverhältnissen oder Profilaufnahmen.\n\nMit Preisen ab 9,99$ für Credits ist es kein Schnäppchen, aber für den gelegentlichen professionellen Einsatz eine praktische Lösung direkt im Browser.',
@@ -796,13 +803,13 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Roleplay', 'Hyperdreams'),
     name: 'Hyperdreams',
-    category: 'AI Roleplay',
+    category: 'AI NSFW Roleplay',
     vendor: 'Hyperdreams.com',
     description: 'Hyperdreams is an AI roleplay service for adults. It uses text, not video, to create erotic scenarios and conversations. The core experience is typing back and forth with an AI character that remembers the context of your chat.\n\nYou can build detailed personas and guide the narrative without many guardrails. Paying subscribers get extra features like AI-generated images and voice messages to accompany the text. There are no usage limits on the basic chat, which is a practical approach for the price. If you\'re looking for a written, interactive story with mature themes, this handles that  specific job.',
     description_de: 'Hyperdreams ist eine KI-Rollenspielplattform für textbasierte, erwachsene Unterhaltung. Der Kern ist der OurDream-Chat, der unzensierte Gespräche und Szenarien mit einem bemerkenswerten Gedächtnis ermöglicht. Du erschaffst und feilst an Charakterpersönlichkeiten.\n\nEs gibt keine pornografischen Videos, aber in teureren Abos kommen KI-generierte Bilder und Sprachfeatures dazu. Der Fokus liegt klar auf dem geschriebenen Wort und narrativer Freiheit. Das Preis-Leistungs-Verhältnis ist solide, denn selbst der günstigste Tarif bietet unbegrenzte Interaktionen. Für Nutzer, die eine kreative und explizite Text-KI suchen, ist es eine ernsthafte Option.',
     description_es: 'Hyperdreams te ofrece interacciones de rol adulto basadas puramente en texto. Su motor OurDream genera conversaciones realistas y sin censura, con una memoria que recuerda detalles a largo plazo para mantener la coherencia. Puedes crear y personalizar personajes a tu gusto.\n\nLas suscripciones superiores incluyen generación de imágenes por IA y funciones de voz, añadiendo capas multimedia a la experiencia. No encontrarás vídeos pornográficos, pero sí narrativa sin restricciones. Por un precio competitivo, obtienes interacciones ilimitadas y generación nativa de vídeo. Es básicamente un patio de recreo para la imaginación adulta, donde el texto es lo principal y los extras multimedia son opcionales.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/hyperdreams-ai-roleplay.webp',
-    tags: ['ai erotic storytelling', 'ai story'],
+    tags: ['ai erotic storytelling', 'ai story', 'ai nsfw roleplay', 'ai roleplay', 'ai chat'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards'],
     tryNowUrl: 'https://hyperdreams.com',
@@ -811,7 +818,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Roleplay', 'StoryChan'),
     name: 'StoryChan',
-    category: 'AI Roleplay',
+    category: 'AI NSFW Roleplay',
     vendor: 'Storychan.com',
     description: 'StoryChan is an interactive platform for adult AI roleplay. You can chat with a variety of fictional characters, from fantasy heroes to romantic interests, each with their own personality and history. The AI adapts to your choices, letting you steer conversations and build custom narratives in genres like romance or dark fantasy.\n\nThe service emphasizes privacy. All chats are confidential, creating a space for creative and often mature storytelling without judgment. It’s built for those who want an unfiltered, personalized roleplaying experience where you control the plot. Access requires a subscription, which unlocks the full library of characters and scenarios.',
     description_de: 'StoryChan bietet dir interaktive Rollenspiele mit KI-Charakteren, die auf deine Eingaben reagieren. Die Plattform konzentriert sich auf Fantasy-, Romance- und reifere Themen für ein erwachsenes Publikum. Du triffst auf Charaktere mit eigenen Persönlichkeiten und Hintergrundgeschichten, die in dynamischen Erzählungen agieren.\n\nDie Stärke liegt in der Anpassung: Du kannst Szenarien nach deinen Vorstellungen gestalten und erkunden. StoryChan legt Wert auf sichere und private Chats, sodass deine kreativen und lebensechten Interaktionen vertraulich bleiben. Es ist ein Raum für maßgeschneidertes, freies Rollenspiel ohne vorgefertigte Skripte.',
@@ -826,7 +833,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Roleplay', 'RedQuill'),
     name: 'RedQuill',
-    category: 'AI Roleplay',
+    category: 'AI NSFW Roleplay',
     vendor: 'Redquill.net',
     description: 'RedQuill is a specialized AI roleplay tool for generating personalized erotic stories. It functions as an unfiltered AI smut writer, allowing users to craft explicit fiction tailored to specific fantasies, characters, and themes without censorship or the need for jailbreaks. Unlike community-driven story sites, RedQuill uses AI to generate original, private content instantly. Key features include custom story creation, character building, and access to a community library of NSFW content. Its free tier offers limited daily generations, while the premium Basic Plan provides expanded capabilities. RedQuill stands out by delivering highly personalized, on-demand erotica in a secure and anonymous environment.',
     description_de: 'RedQuill ist im Grunde dein persönlicher, unzensierter KI-Ghostwriter für erotische Geschichten. Du gibst deine Fantasie vor, Charaktere, Szenarien, was auch immer, und die KI spinnt daraus eine private Story. Keine Community, bei der alles öffentlich ist, und kein lästiges Umgehen von Filtermechanismen.\n\nDie Gratis-Version hat ein tägliches Limit, aber mit dem Premium-Plan kannst du richtig loslegen. Mir gefällt besonders, dass man auf eine Bibliothek mit NSFW-Inhalten der Community zugreifen kann, wenn die eigene Inspiration mal Pause macht. Es ist direkt und funktioniert einfach: Du willst eine sehr spezifische Geschichte, und du bekommst sie. Punkt.',
@@ -841,7 +848,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Roleplay', 'Luvy AI'),
     name: 'Luvy AI',
-    category: 'AI Roleplay',
+    category: 'AI NSFW Roleplay',
     vendor: 'Luvy.ai',
     description: 'Luvy AI is a dedicated AI girlfriend application accessible directly through Telegram. This platform focuses on creating highly customizable virtual companions. Users can design their ideal partner by defining specific physical appearances, detailed personality traits, and unique backstories. The tool facilitates immersive, private conversations and roleplay scenarios with these AI-generated characters. Its integration with Telegram offers a convenient and discreet mobile messaging experience, setting it apart from standalone web apps or platforms. Luvy AI provides a personalized digital companionship experience centered around user-defined creation and interactive chat.',
     description_de: 'Luvy AI ist eine reine Telegram-App, kein Webinterface. Du baust dir direkt im Chat deine eigene KI-Freundin zusammen, vom Aussehen bis zur kompletten Lebensgeschichte. Der Fokus liegt wirklich auf diesem einen, maßgeschneiderten Charakter für private Unterhaltungen und Rollenspiele.\n\nIch fand die Menge an Anpassungsmöglichkeiten überraschend detailliert. Die Gespräche fühlen sich dadurch persönlicher an als bei vielen anderen Bots. Der große Vorteil ist die Diskretion: Es läuft einfach in deinem gewohnten Messenger, ohne extra App oder Account. Für 14,99€ pro Monat bekommst du einen sehr spezialisierten digitalen Begleiter, der genau deinen Vorstellungen entspricht.',
@@ -856,7 +863,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Roleplay', 'Kink AI'),
     name: 'Kink AI',
-    category: 'AI Roleplay',
+    category: 'AI NSFW Roleplay',
     vendor: 'Kink.ai',
     description: 'Kink AI lets you build and chat with custom AI characters for roleplaying scenarios. You can define detailed personalities, backgrounds, and preferences for each persona to shape your interactions. The platform emphasizes privacy in these conversations\n\nA free account provides a limited number of messages. Full access requires a subscription, which starts at $19.99 per month. This unlocks unlimited chats and the ability to generate images for your characters. While earlier versions were noted for their narrative depth, some current users feel the content now leans more consistently toward straightforward BDSM themes compared to other services with wider genre variety.',
     description_de: 'Kink AI bietet eine Plattform für textbasierte Rollenspiele mit selbst gestalteten KI-Charakteren. Die Stärke liegt in der detaillierten Anpassung dieser Figuren, bei der du Persönlichkeit, Hintergrund und Vorlieben festlegst. Die kostenlose Version ist in ihrer Nutzung eingeschränkt. Ein Abonnement ab 19,99 US-Dollar pro Monat eröffnet den uneingeschränkten Chat und Funktionen zur Bildgenerierung. Nutzer lobten lange Zeit die Erzählqualität, bemerken aber aktuell einen Trend zu einfacheren BDSM-Themen, was das Angebot im Vergleich zu Plattformen mit breiterem Themenspektrum spezifischer macht. Der Fokus auf Privatsphäre bleibt ein Kernversprechen.',
@@ -871,7 +878,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Roleplay', 'My Dream Boy'),
     name: 'My Dream Boy',
-    category: 'AI Roleplay',
+    category: 'AI NSFW Roleplay',
     vendor: 'Mydreamboy.com',
     description: 'I\'ve been testing My Dream Boy, and it\'s a very specific kind of creative tool. You build your ideal AI boyfriend from the ground up, picking his face, body type, and other physical details from a huge selection. Once you\'ve made him, you can chat with him in different languages and generate explicit images where he looks exactly the same every time. I really appreciate that you can keep everything totally private or share your creations with the community if you want. They have one-time purchase options and subscriptions, with a 20% discount for choosing the recurring plan. Check their site for any current coupon codes to save a bit more.',
     description_de: 'Ich habe My Dream Boy ausprobiert, wenn du mal eine ganz spezifische Fantasie im Kopf hast. Du stellst dir deinen AI-Freund wirklich von Grund auf selbst zusammen, vom Gesicht bis zum Körperbau, und das Ergebnis in den Chats und Bildern bleibt dann auch konsistent. Das finde ich gut, denn nichts ist nerviger, als wenn der Charakter plötzlich anders aussieht.\n\nDu kannst die Unterhaltung auf Deutsch oder anderen Sprachen führen und am Ende sogar private Bilder generieren lassen. Die Entscheidung, ob du deine Kreationen für dich behältst oder teilst, liegt komplett bei dir. Preislich gibt es Einmal- und Abo-Optionen; mit einem Abo sparst du 20%. Schau am besten auch nach aktuellen Gutscheinen für März 2026.',
@@ -886,7 +893,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Roleplay', 'Juicy AI'),
     name: 'Juicy AI',
-    category: 'AI Roleplay',
+    category: 'AI NSFW Roleplay',
     vendor: 'Juicy-ai.com',
     description: 'Juicy AI is an NSFW character roleplay platform designed for immersive adult conversations. It enables users to create and interact with personalized AI companions. Key features include AI voice generation with multiple styles and on-demand image generation for character visuals. The platform offers a tiered pricing model, with its premium subscription providing enhanced access to NSFW content, more messages, and multi-model switching. What sets Juicy AI apart is its dedicated focus on combining voice, image generation, and deep roleplay customization within a single, user-friendly interface, creating a more engaging and multimedia-rich chat experience for mature audiences.',
     description_de: 'Du suchst eine Plattform für wirklich tiefgehende und freie KI-Rollenspiele? Dann schau dir mal Juicy AI an. Ich habe da einige Charaktere ausprobiert, und die Gespräche können überraschend lebendig und direkt werden. Du kannst deine eigenen Begleiter erschaffen oder mit Hunderten von vorgefertigten Charakteren chatten.\n\nBesonders gut gefällt mir die Kombination aus Stimme und Bild. Die KI-Stimmen fühlen sich nicht roboterhaft an, und du kannst dir während des Chats Bilder deines Charakters generieren lassen, was die Fantasie echt anregt. Der kostenlose Plan ist ein solider Start, aber für den vollen Umfang mit mehr Nachrichten und expliziteren Inhalten lohnt sich das Premium-Abo für 14,99$ im Monat. Es ist einfach alles an einem Ort: die Konversation, die Stimme und die visuelle Komponente.',
@@ -901,7 +908,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Roleplay', 'Avtaar AI'),
     name: 'Avtaar AI',
-    category: 'AI Roleplay',
+    category: 'AI NSFW Roleplay',
     vendor: 'Avtaar.ai',
     description: 'Avtaar AI is a roleplaying chatbot that remembers things. It’s scheduled to launch in 2026. The main idea is that your conversations build on each other, creating a persistent storyline with the character you create.\n\nYou can customize your AI companion\'s appearance and personality in detail. The dialogue aims  to be contextually aware, and the platform includes an image generation feature for creating visual references. The tone is designed to be emotionally supportive, moving beyond simple question-and-answer scripts. It’s for people who want a sense of ongoing narrative from their AI chats.',
     description_de: 'Avtaar AI startet 2026 als KI-Rollenspieltool mit einem klaren Fokus auf Langzeitgedächtnis. Die Konversationen bauen aufeinander auf, sodass Charaktere und Szenarien sich mit der Zeit entwickeln. Neben einer umfangreichen Charaktererstellung kombiniert die Plattform explizite Bildgenerierung mit kontextsensiblem Dialog. Der Ansatz zielt auf psychologische Tiefe ab und bietet mehr als vorprogrammierte Antworten. Für Nutzer, die eine beständige, narrative Beziehung zu ihrem KI-Partner suchen, könnte das interessant sein. Der Erfolg hängt davon ab, wie überzeugend diese "Erinnerungen" in der Praxis funktionieren.',
@@ -916,7 +923,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Roleplay', 'Nextpart AI'),
     name: 'Nextpart AI',
-    category: 'AI Roleplay',
+    category: 'AI NSFW Roleplay',
     vendor: 'Nextpart.ai',
     description: 'Nextpart AI is a chatbot that also draws pictures for you. You create a character, give it a personality, and then talk to it. The conversation can be text, voice, or you can share images. When you want a visual, you can ask the AI to generate one based on your chat. It’s like having a very imaginative pen pal who can also sketch.\n\nThe platform operates on a credit system for image generation and advanced features. Pricing starts with a free tier that includes limited messages and images, with paid plans offering more. It’s primarily for roleplay and creative storytelling, not serious research or task automation.',
     description_de: 'Nextpart AI ist ein Chatbot, der sich nicht mit Text zufriedengibt. Du erstellst einen KI-Charakter und unterhältst dich dann per Text, Sprache oder indem du Bilder teilst. Die KI kann darauf auch mit eigenen generierten Bildern antworten. Das ergibt eine ungewöhnlich vielschichtige Interaktion.\n\nDie Plattform kombiniert also klassische Rollenspiel-Dynamik mit einer integrierten Bildgenerierung. Ob das für dich passt, hängt davon ab, ob du Wert auf diese multimediale Ebene legst. Aktuelle Preise und detaillierte Funktionen findest du direkt auf nextpart.ai.',
@@ -931,7 +938,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Roleplay', 'Secrets AI'),
     name: 'Secrets AI Roleplay',
-    category: 'AI Roleplay',
+    category: 'AI NSFW Roleplay',
     vendor: 'Secrets.ai',
     description: 'I’ve been using Secrets AI Roleplay for a few weeks now, and it’s genuinely fun. You can chat with AI companions anytime, and they remember details about your conversations, which makes things feel more personal. There are tons of creative scenarios to jump into, from cozy coffee shop dates to wild fantasy adventures. The video feature is pretty cool for bringing a scene to life.\n\nYou can try it for free, which is nice. If you get hooked, the paid plan starts at $13.33 a month if you pay yearly, or $19.99 month-to-month. It’s a solid pick if you enjoy imaginative and responsive AI chat.',
     description_de: 'Ich habe Secrets AI Roleplay eine Weile ausprobiert und war echt überrascht, wie lebendig sich die Gespräche anfühlen. Die KI erinnert sich an Details aus vorherigen Chats, was das Ganze sehr persönlich macht. Du kannst mit deiner virtuellen Begleitung einfach plaudern oder in eine von über 100 Fantasiewelten eintauchen, von historischen Szenarien bis zu futuristischen Abenteuern.\n\nDie Video-Funktion ist ein spannendes Extra, das die Illusion noch echter wirken lässt. Du kannst kostenlos starten, aber für den vollen Umfang lohnt sich das Premium-Abo. Bei der jährlichen Zahlung sind es 13,33 Dollar im Monat, monatlich kostet es 19,99 Dollar. Für alle, die neugierig auf unzensierte und wirklich tiefgehende KI-Unterhaltungen sind, ist das einen Blick wert.',
@@ -946,7 +953,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Ailure.ai'),
     name: 'Ailure.ai',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Ailure.ai',
     description: 'Ailure.ai is an NSFW chat platform where artificial intelligence carries the conversation as far as users want to take it. The service mixes immersive stories, erotic chat, and game-like interactions, so members are not stuck with plain texting. Users pick a companion and steer the encounter with their own words, and the AI follows without filtering the spicy parts. The platform runs in the browser and asks for nothing complicated to get started. The free side gives a decent taste, while the paid access opens the longer scenarios. Ailure.ai suits people who want their chats with a bit of adventure attached.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/ailure-ai-ai-girlfriend.webp',
@@ -959,7 +966,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'AphroChat'),
     name: 'AphroChat',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Aphrochat.com',
     description: 'AphroChat is an AI girlfriend platform built around one simple promise: create the girl and start talking. Users define her with a few clicks and the chatbot takes it from there, answering all day long and following every instruction. The customization goes deep, since the prompt can be written almost entirely by the user. Media comes in three flavors, images, voices, and texts. AphroChat runs as a web app, so there is no mobile app to install for now. A free trial covers the basic features, while the NSFW content sits behind the premium plans, which start at $15 per month.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/aphrochat-ai-girlfriend.webp',
@@ -972,11 +979,11 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Aroused.ai'),
     name: 'Aroused.ai',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Aroused.ai',
     description: 'Aroused.ai gives users a library of thousands of AI girlfriends, plus the tools to build one from zero. Everything is adjustable, from her looks down to her general mood. Once the chat starts, she remembers past conversations, sends voice notes, and produces custom pictures on request. The whole platform is NSFW by design, and boundary controls are there for users who want them. The image generator is a strong companion to the roleplay, bringing scenes to life without leaving the chat. Emotional depth has its limits, as with all fantasy tech, but for flirty and explicit company Aroused.ai delivers.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/aroused-ai-ai-girlfriend.webp',
-    tags: ['ai characters', 'ai virtual girlfriend'],
+    tags: ['ai characters', 'ai virtual girlfriend', 'ai girlfriend', 'ai companion', 'ai nsfw chat'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards', 'Crypto'],
     tryNowUrl: 'https://aroused.ai',
@@ -985,7 +992,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Avatar.One'),
     name: 'Avatar.One',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Avatarone.com',
     description: 'Avatar.One is an AI girlfriend platform that trades flat chat windows for immersive 3D. Users create their ideal companion and see her rendered as a full 3D character, which puts Avatar.One in a category most competitors never enter. The visual side is clearly the main dish here, and the platform is known for it. Members shape the companion and interact with her in ways plain text services cannot match. Pricing starts at $19.99 per month, which sits on the higher side, but the 3D presentation is the reason. Avatar.One is a solid pick for users who want to see, not just read.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/avatar-one-ai-girlfriend.webp',
@@ -998,7 +1005,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Blushy AI'),
     name: 'Blushy AI',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Blushy.ai',
     description: 'Blushy AI takes a different road than most AI girlfriend services: the whole thing lives inside Telegram. Instead of juggling websites and apps, users keep every AI girlfriend in their regular chat log, right next to their normal conversations. This keeps the immersion intact, since there is no shuffling between apps to talk to the companion. The trade-off is that Blushy has no standalone website interface, so Telegram is the only door in. The subscription costs $5.99 per month, which is on the friendly end of the market. For people who live in Telegram anyway, Blushy AI is a natural fit.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/blushy-ai-ai-girlfriend.webp',
@@ -1011,7 +1018,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Charluv AI'),
     name: 'Charluv AI',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Charluvai.com',
     description: 'Charluv AI is a chatbot platform where users create or import their perfectly sculpted imaginary girlfriend and take the relationship from there. The service covers the essentials of the genre: conversation, memory, and image generation, so the companion talks, remembers, and shows herself. Registration is quick and the creation tools are simple enough for a first-timer. The memory keeps chats coherent over time, which is where many rivals stumble. Charluv AI ranks well among AI companions for the quality of its interactions. Pricing follows the usual pattern of the market, with a free way in and paid tiers for the serious features.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/charluv-ai-ai-girlfriend.webp',
@@ -1024,7 +1031,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'ChatSweetie'),
     name: 'ChatSweetie',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Chatsweetie.com',
     description: 'ChatSweetie is a personal AI girlfriend chatbot that stays available around the clock. Users get a virtual girlfriend within a few clicks and can start building a connection immediately. The service was put together by people who know the genre, and it shows in how smoothly the conversations run. There is a free way to chat, which is enough to check the chemistry. The paid access starts at $12.99 per month, with tokens on top for the heavier features and a cheaper annual arrangement for patient users. ChatSweetie is a straightforward option for anyone who wants company without complications.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/chatsweetie-ai-girlfriend.webp',
@@ -1037,7 +1044,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'ChatUp AI'),
     name: 'ChatUp AI',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Chatup.ai',
     description: 'ChatUp AI is hard to place in a single category, and that is its charm. The most popular part is the AI companionship with uncensored sexting, but the platform also bundles AI tools for business, educational, and advisory situations. Few adult services bother with a useful side, and ChatUp AI carries both without embarrassment. The NSFW section includes uncensored hentai and deepfake tools. Pricing starts at $5.99 per week, and the service runs well on mobile. Users who want one subscription that flirts at night and works during the day will find ChatUp AI a curious but practical deal.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/chatup-ai-ai-girlfriend.webp',
@@ -1050,7 +1057,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Cuties.ai'),
     name: 'Cuties.ai',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Cuties.ai',
     description: 'Cuties.ai is an AI adult platform that mixes a gallery of models in erotic positions with chatbots ready to talk and please. The website offers something for every taste, no matter how particular it is. Users generate their own content the way they like it, which makes the experience personal rather than a browsing exercise. The chat side and the image side feed each other well. Subscriptions start at $10 per month, with premium options above that for members who want more. Cuties.ai is a good address for users who want their companion and their gallery under one roof.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/cuties-ai-ai-girlfriend.webp',
@@ -1063,7 +1070,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Dreamswipe'),
     name: 'Dreamswipe',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Dreamswipe.com',
     description: 'Dreamswipe borrows the swiping habit everyone already has and puts an AI girlfriend at the end of it. Users swipe through an AI-generated For You page until the right match appears, then receive personalized pictures from her. The concept feels familiar from the first minute, which is exactly the point. New visitors get 10 free credits to try the matching and the pictures. The subscription costs $9.99 per month, and the platform makes a point of its user privacy guarantee. Dreamswipe is the natural pick for people who enjoyed dating apps but prefer a match that always answers.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/dreamswipe-ai-girlfriend.webp',
@@ -1076,7 +1083,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Fanfinity.ai'),
     name: 'Fanfinity.ai',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Fanfinity.ai',
     description: 'Fanfinity.ai looks like another AI chatbot platform at first glance, but two things separate it from the crowd. The first is its artistic style, which has a flavor of its own. The second is that users can share their created characters with others and make a profit doing so, which turns a hobby into a small side income. The companion generator is friendly enough to master in minutes, and the feature list covers text, voice, and image generation. Pricing lands somewhere between $5 and $60 per month depending on the tier. Fanfinity.ai rewards creative users better than most.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/fanfinity-ai-ai-girlfriend.webp',
@@ -1089,7 +1096,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'FapAI'),
     name: 'FapAI',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Fapai.com',
     description: 'FapAI is a sexting platform that puts its energy into personality. Mass-produced companions do the job elsewhere, but FapAI aims for characters with a real spark behind them, the kind that make a boring evening fun. The texting buddies respond with flavor instead of recycled lines, which becomes obvious after the first few messages. Premium features include image generation and voice calls, so the relationship is not text alone. There is no free tier, and the subscription starts at $12.99 per month. FapAI is for users who already know the genre and want companions with more character in them.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/fapai-ai-girlfriend.webp',
@@ -1102,7 +1109,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'FunFun AI'),
     name: 'FunFun AI',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Funfun.ai',
     description: 'FunFun AI is a chatbot site for people seeking companionship, from deep and meaningful talks to the hot kind. Users choose from a range of premade characters or build their own companion from scratch. The list of available models is extensive and versatile, and the creation process goes into detail, letting users define all the physical characteristics and personality traits of the companion. Nothing about the site is complicated, and newcomers find their way around fast. FunFun AI is a solid middle-of-the-road choice: not the flashiest name in the category, but a dependable one for daily conversations.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/funfun-ai-ai-girlfriend.webp',
@@ -1115,7 +1122,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Hottalks.ai'),
     name: 'Hottalks.ai',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Hottalks.ai',
     description: 'HotTalks AI lets users create their dream partner in a few simple steps and talk to her in more ways than one. The customization options cover physical looks and personal traits, so the companion comes out highly personalized. Interactions run through text, voice, and images, and the AI-generated companions are lifelike enough to keep conversations feeling genuine. Subscription plans include unlimited messaging, which spares users the anxiety of message caps. Pricing and features get updated regularly, and discounts show up from time to time. HotTalks AI is a well-rounded pick for users who want deep conversations with a face attached.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/hottalks-ai-ai-girlfriend.webp',
@@ -1128,7 +1135,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'iWaifu'),
     name: 'iWaifu',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Iwaifu.com',
     description: 'iWaifu is an AI girlfriend service for adult chats, plain and simple. Users engage in tantalizing conversations with a seductive companion and steer the fantasy wherever they please. The focus sits on conversation quality and character customization rather than a long list of extras, and the chats hold up well against bigger names. Free basic access lets visitors test the waters, and the premium tier costs only $3 per month, which is among the cheapest tickets in the whole category. iWaifu is the budget door into AI companionship, and the experience behind it is better than the price suggests.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/iwaifu-ai-girlfriend.webp',
@@ -1141,11 +1148,11 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'OnlyRizz'),
     name: 'OnlyRizz',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Onlyrizz.com',
     description: 'OnlyRizz is a virtual AI girlfriend creator where a few clicks bring the girl of one\'s dreams to life, complete with an adult voice, images, and video. Users choose how she looks, acts, and dresses, and the roleplay and chat functions take it from there. Video support puts OnlyRizz ahead of many rivals that stop at pictures. The platform takes privacy seriously and uses strong security to keep chats safe. Pricing starts at $3.90 per month and a free trial is available, so trying the concept costs nothing. OnlyRizz packs a lot of media into a small price.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/onlyrizz-ai-girlfriend.webp',
-    tags: ['ai girlfriend'],
+    tags: ['ai girlfriend', 'ai companion', 'ai sexting', 'ai virtual girlfriend', 'ai nsfw roleplay'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards', 'Crypto'],
     tryNowUrl: 'https://onlyrizz.com',
@@ -1154,7 +1161,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Ourdream.ai'),
     name: 'Ourdream.ai',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Ourdream.ai',
     description: 'OurDream.AI is a chatbot site that refuses the typical texting mode. The stories are loosely based on settings, so users step into an RPG world or drive a fantasy scenario forward instead of exchanging plain messages. Those who just want to talk to a girl can do that as well. Character creation, roleplay, and media generation round out the toolset. A free tier lets visitors explore, and the Premium tier costs $19.99 per month. The pricing structure takes a moment to understand, which is the one rough edge. OurDream.AI suits users who want their romance with a plot.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/ourdream-ai-ai-girlfriend.webp',
@@ -1167,7 +1174,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Porn.ai'),
     name: 'Porn.ai',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Porn.ai',
     description: 'Porn.ai built its reputation on image generation, and the AI companion feature does not fall far behind. The number of models available is enormous and more get added every day, so running out of company is not a realistic concern. The public feed of new images never ends, and users who learn the generator get exactly the content they imagine. Free basic access covers the essentials, and premium starts at $7.99 per month, a fair ticket for what is included. Porn.ai works best for users who want their girlfriend and their image generator to be the same subscription.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/porn-ai-ai-girlfriend.webp',
@@ -1180,7 +1187,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Secret Desires'),
     name: 'Secret Desires',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Secretdesires.com',
     description: 'Secret Desires is a platform where users create and interact with custom AI partners, covering both SFW and NSFW territory. The customization runs deep: looks, personality, and preferences are all in the user\'s hands, which makes the fantasy properly personal. The pricing is refreshingly simple, one Premium tier at $19.99 per month, or $9.99 per month when billed annually. Subscribers receive 300 Hearts monthly to spend on voice, images, and messages. The Hearts system takes a little getting used to, but it keeps the single plan flexible. Secret Desires rewards users who know exactly what they want.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/secret-desires-ai-girlfriend.webp',
@@ -1193,11 +1200,11 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Super Sexy'),
     name: 'Super Sexy',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Supersexy.com',
     description: 'Super Sexy plays with the most common fantasy out there: talking to famous and attractive people. The platform offers stunning AI models trained to look very close to popular Instagram stars, so the resemblance jumps out immediately. Users take these ladies as girlfriends or best friends and chat as the mood strikes. The concept is simple and the appeal is direct, no elaborate world-building, just conversations with faces everyone recognizes from their feed. Super Sexy is a niche pick, but for users who spend their evenings scrolling Instagram anyway, it is the logical next step.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/super-sexy-ai-girlfriend.webp',
-    tags: ['ai girlfriend', 'ai sexting'],
+    tags: ['ai girlfriend', 'ai sexting', 'ai companion', 'ai virtual girlfriend', 'ai nsfw chat'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards', 'Crypto'],
     tryNowUrl: 'https://supersexy.com',
@@ -1206,7 +1213,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'TabooTwin'),
     name: 'TabooTwin',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Tabootwin.com',
     description: 'TabooTwin is a personal AI girlfriend that stays by the user\'s side whenever needed. As the name hints, the conversations are taboo-free, and the companion has a good memory, so intimate moments and running jokes survive from one session to the next. Users keep a personal diary and memories safe on the platform and share private moments anytime they want. The service costs $19.99 per month, which places it in the upper half of the market. TabooTwin is for users who value a companion that remembers everything over one that does a hundred different tricks.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/tabootwin-ai-girlfriend.webp',
@@ -1232,7 +1239,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Wife.app'),
     name: 'Wife.app',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Wife.app',
     description: 'Wife.app is exactly what the domain promises: a place to create one\'s own online AI girlfriend and skip the hassles of dating entirely. The digital partner is customizable, and the relationship runs at whatever pace the user sets. The pitch is companionship without the stress, and the platform keeps things simple enough to honor it. There is no learning curve worth mentioning, users design the partner and start talking. Wife.app does not try to out-feature the giants of the category. It offers a quiet, straightforward companion experience, and for a certain kind of user that is precisely the appeal.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/wife-app-ai-girlfriend.webp',
@@ -1245,11 +1252,11 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Girlfriend', 'Xcrush'),
     name: 'Xcrush',
-    category: 'AI Girlfriend',
+    category: 'AI Companion',
     vendor: 'Xcrush.com',
     description: 'XCrush is a chatbot platform that leans on deep learning to make its companions better over time. Conversations get more natural the longer users stick around, since the AI learns from every exchange. The site aims at real connections rather than throwaway chats, and the fun, exciting conversations reflect that ambition. The subscription costs $19.99 per month, and a 7-day free trial lets visitors judge the chemistry before paying anything. XCrush sits at the premium end of the price range, but the improving-over-time angle gives the subscription a reason. Patient users get the best out of XCrush.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/xcrush-ai-girlfriend.webp',
-    tags: ['ai girlfriend', 'ai virtual companion'],
+    tags: ['ai girlfriend', 'ai virtual companion', 'ai companion', 'ai chatbot', 'ai nsfw chat'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards', 'Crypto'],
     tryNowUrl: 'https://xcrush.com',
@@ -1275,7 +1282,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
     vendor: 'Deep-nude.online',
     description: 'Deep-nude.online is a browser tool that nudifies photos with speed and precision. Users upload a picture and the AI handles the transformation instantly, with no software to install and no learning curve to climb. The service belongs to the image-editing niche where simplicity wins, and Deep-nude.online keeps its process about as simple as it gets. The results arrive fast and the interface stays out of the way. It is one of several tools people compare in this category, and its no-friction approach is the main argument. For a quick result without ceremony, Deep-nude.online does the job.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/deep-nude-online-undress-ai.webp',
-    tags: ['ai undress', 'deepnude ai'],
+    tags: ['ai undress', 'deepnude ai', 'ai nudifier', 'ai undresser'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards', 'Crypto'],
     tryNowUrl: 'https://deep-nude.online',
@@ -1392,7 +1399,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
     vendor: 'Nudify.biz',
     description: 'Nudify.biz turns any photo into an AI nude with a few clicks, powered by deepnude technology that keeps improving. The results come out photorealistic, and the whole process is friendly enough for a complete beginner. Pricing runs from $4.99 to $9.99 per month, which places Nudify.biz firmly on the affordable shelf of the niche. The advanced image processing does the heavy lifting in the background while users only pick and confirm. There is not much more to master, and that is the point. Nudify.biz is a budget-friendly way into AI nude creation without a quality penalty.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/nudify-biz-undress-ai.webp',
-    tags: ['ai nudifier', 'ai undress'],
+    tags: ['ai nudifier', 'ai undress', 'ai clothes remover', 'ai undresser'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards', 'Crypto'],
     tryNowUrl: 'https://nudify.biz',
@@ -1405,7 +1412,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
     vendor: 'Nudify.online',
     description: 'Nudify.Online uses AI to digitally remove clothing from photos and generate realistic simulated nudes. The technology works fast and the results carry good detail, with the occasional complicated image needing a second pass. The platform is built for adult entertainment and creative experimentation, and it keeps its focus narrow instead of piling on side features. Limited free access lets visitors sample the quality, and paid plans start around $4.99 per month, one of the softer entry prices in the category. Nudify.Online is a clean, simple tool that does one thing and does it quickly.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/nudify-online-undress-ai.webp',
-    tags: ['ai undress', 'discord'],
+    tags: ['ai undress', 'ai nudifier', 'ai clothes remover', 'ai undresser'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards', 'Crypto'],
     tryNowUrl: 'https://nudify.online',
@@ -1431,7 +1438,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
     vendor: 'Offrobe.com',
     description: 'Offrobe is an adult platform where users generate AI-powered images by combining customization features with potent algorithms. Visitors create regular images for free to try the tools, while the NSFW content stays reserved for subscribers, a fair split that lets everyone verify the quality first. The community angle is a nice touch: members share their creations and explore what others have generated, so inspiration is never far. Image creation runs on text prompts. Pricing sits around $10 with discounts appearing regularly. Offrobe balances a free playground with paid depth better than most in this category.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/offrobe-undress-ai.webp',
-    tags: ['ai undresser'],
+    tags: ['ai undresser', 'ai nsfw image generator', 'ai image generator', 'ai porn generator'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards', 'Crypto'],
     tryNowUrl: 'https://offrobe.com',
@@ -1509,7 +1516,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
     vendor: 'Undress.zone',
     description: 'Undress.Zone removes clothing from images quickly and accurately with a single click, no hesitation and no manual work required. The tool is built for efficiency, saving time and effort compared to fiddlier alternatives. Subscriptions come with monthly, 3-month, and yearly billing options, and the plans differ by monthly credits and feature access, so checking the comparison before upgrading is a smart minute spent. The service puts emphasis on safety and privacy, which ages well in this niche. Undress.Zone is the pick for users who measure a tool by how little it asks of them.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/undress-zone-undress-ai.webp',
-    tags: ['ai undresser'],
+    tags: ['ai undresser', 'ai undress', 'ai nudifier', 'ai clothes remover'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards', 'Crypto'],
     tryNowUrl: 'https://undress.zone',
@@ -1522,7 +1529,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
     vendor: 'Undresser.com',
     description: 'Undresser transforms any image into a deepnude with one click, and then offers a bit more than the name suggests. Extra features include AI Face Swap, AI Animation, and AI Deepnude, turning the tool into a small editing suite rather than a single-trick service. Free and premium options coexist, so users can test the core function before spending anything. The platform emphasizes privacy and anonymity, which its audience appreciates. The advanced AI handles the transformations without any user skill required. Undresser is a sensible pick for people who want the undress function plus a few toys around it.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/undresser-undress-ai.webp',
-    tags: ['ai undress'],
+    tags: ['ai undress', 'ai undresser', 'ai nudifier', 'ai face swap'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards', 'Crypto'],
     tryNowUrl: 'https://undresser.com',
@@ -1548,7 +1555,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
     vendor: 'Undressing.io',
     description: 'Undressing.io transforms standard photos into personalized, realistic nudes for an adult audience. The platform reads user preferences and shapes the output accordingly, which lifts it above the one-size-fits-all crowd. The interface stays creative without turning complicated, and the whole flow runs in the browser. Three paid plans structure the offer: $6.99, $14.99, and $29.99 per month, so users scale their access to their appetite. The middle plan covers most needs comfortably. Undressing.io positions itself as a leading AI tool for photo transformation, and the tier system makes it easy to grow into rather than commit blindly.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/undressing-io-undress-ai.webp',
-    tags: ['ai nudifier'],
+    tags: ['ai nudifier', 'ai undress', 'ai undresser', 'ai clothes remover'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards', 'Crypto'],
     tryNowUrl: 'https://undressing.io',
@@ -1557,7 +1564,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Chat', 'AI CharFriend'),
     name: 'AI CharFriend',
-    category: 'AI Chat',
+    category: 'AI Sexting / Chat',
     vendor: 'Aicharfriend.com',
     description: 'AI CharFriend is an unfiltered NSFW chatbot platform where users pick from a roster of virtual personalities and take the conversation wherever they please, flirty, spicy, or full-on intimate. There is no judgment and no censorship along the way. The service is free to use, which makes it one of the easiest doors into the genre. AI CharFriend is not the flashiest platform in the category, and the polish sits somewhere in the middle of the pack, but for casual fun without spending money it holds its own. Users who outgrow it can always move up later.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/ai-charfriend-ai-chat.webp',
@@ -1570,11 +1577,11 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Chat', 'Alphazria'),
     name: 'Alphazria',
-    category: 'AI Chat',
+    category: 'AI Sexting / Chat',
     vendor: 'Alphazria.com',
     description: 'Alphazria is an AI playground for adults that covers both uncensored chat and image generation. Users design custom characters in anime or realistic styles, or build one from scratch for immersive roleplay. Text and images both follow the user\'s prompts, and the platform emphasizes privacy throughout. The experience is straightforward to pick up, though the integration list is shorter than some rivals offer. Paid access starts at $9.99 per month, and members can request specific AI companions that the community may develop. Alphazria suits users who want their chat and their gallery generated by the same engine.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/alphazria-ai-chat.webp',
-    tags: ['ai chatbot', 'ai nsfw chat'],
+    tags: ['ai chatbot', 'ai nsfw chat', 'ai chat', 'ai characters', 'ai nsfw image generator'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards', 'Crypto'],
     tryNowUrl: 'https://alphazria.com',
@@ -1596,7 +1603,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Chat', 'Bot 3 AI'),
     name: 'Bot 3 AI',
-    category: 'AI Chat',
+    category: 'AI Sexting / Chat',
     vendor: 'Bot-3.ai',
     description: 'Bot 3 AI is a multi-language chatbot platform where users chat with NSFW AI characters for free. The multi-language support is the calling card, since most rivals serve English first and everyone else eventually. The characters are customizable, and the conversations run without the usual filters. A free tier handles the everyday chatting, with paid plans sitting above it for users who want more headroom. The platform keeps its scope modest and its barrier low. Bot 3 AI is a practical choice for non-English speakers who are tired of companions that only flirt in one language.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/bot-3-ai-ai-chat.webp',
@@ -1609,7 +1616,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Chat', 'ChatFAI'),
     name: 'ChatFAI',
-    category: 'AI Chat',
+    category: 'AI Sexting / Chat',
     vendor: 'Chatfai.com',
     description: 'ChatFAI lets users chat with AI versions of characters from movies, TV, books, or their own imagination. The conversations flow naturally and stay true to each character\'s personality, with quick responses that keep the rhythm alive. Users tweak traits, pick from a large library of pre-made options, or start group chats with multiple characters at once, a feature few platforms offer yet. Both SFW and NSFW interactions are supported, and the service takes privacy seriously. A free tier covers the basics, while premium plans unlock longer memory and priority access. ChatFAI is a haven for fiction lovers.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/chatfai-ai-chat.webp',
@@ -1622,11 +1629,11 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Chat', 'Dirty Talky'),
     name: 'Dirty Talky',
-    category: 'AI Chat',
+    category: 'AI Sexting / Chat',
     vendor: 'Dirtytalky.com',
     description: 'Dirty Talky is an AI chat built for one purpose: dirty talk without the brakes. Where mainstream chatbots bail the moment things get flirty, Dirty Talky leans in. The AI remembers preferences and past conversations, keeps up with the user\'s rhythm, and escalates tension with callbacks instead of recycling canned lines. There are no filters and no awkward apologies, just raw, responsive talk that stays on track. The service is free to use and private, and it pairs well with image tools for users who want visuals. Dirty Talky is the unfiltered playground the polite bots refuse to be.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/dirty-talky-ai-chat.webp',
-    tags: ['ai nsfw chat', 'ai sexting'],
+    tags: ['ai nsfw chat', 'ai sexting', 'ai chat', 'ai chatbot'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards', 'Crypto'],
     tryNowUrl: 'https://dirtytalky.com',
@@ -1635,7 +1642,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Chat', 'NsfwGPT.AI'),
     name: 'NsfwGPT.AI',
-    category: 'AI Chat',
+    category: 'AI Sexting / Chat',
     vendor: 'Nsfwgpt.ai',
     description: 'NsfwGPT.AI is an adult chatbot platform where users design their ideal partner in just a few clicks and enjoy the best NSFW texting with them. The chatbot creator is the centerpiece, and the fetish tags and taboo situations let members explore their sexuality without the usual guardrails. The conversations stay in character and follow the user\'s lead, however specific it gets. Nothing about the interface requires study, the path from arrival to first chat is short. NsfwGPT.AI competes in a crowded field, but the tag system gives users with particular tastes a faster road to what they want.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/nsfwgpt-ai-ai-chat.webp',
@@ -1648,7 +1655,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Chat', 'Sexting AI'),
     name: 'Sexting AI',
-    category: 'AI Chat',
+    category: 'AI Sexting / Chat',
     vendor: 'Sexting.ai',
     description: 'Sexting AI cuts through the usual paywall games with a single upfront fee that unlocks full customization. Users build their AI partner from scratch, tweak the texting style, and control how things escalate. The chat remembers past conversations, so nothing restarts from zero each session. There are no filters and no prudish interruptions, just explicit, responsive talk that adjusts to the user\'s pace. Image generation is included, though complex requests sometimes need a retry. At its price point, Sexting AI delivers what adult chatbots promise without hiding features behind tiered subscriptions, and that honesty is its best feature.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/sexting-ai-ai-chat.webp',
@@ -1661,7 +1668,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'AI-DreamGirls'),
     name: 'AI-DreamGirls',
-    category: 'AI Image',
+    category: 'AI NSFW Image Generator',
     vendor: 'Aidreamgirls.com',
     description: 'AI-DreamGirls is a website built around erotic AI-generated images of beautiful women. Users test their creativity and let their imagination run wild, with the enhanced AI tools turning almost any idea into a picture. The results come out realistic and sometimes out of this world, and user satisfaction sits visibly at the top of the site\'s priorities. The generation process asks for nothing technical, describe and receive. Premium subscriptions start at $3 per month, one of the friendliest prices in the entire category. AI-DreamGirls is a low-risk, low-cost way to start generating instead of just browsing.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/ai-dreamgirls-ai-image.webp',
@@ -1674,7 +1681,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'AI-Porn.AI'),
     name: 'AI-Porn.AI',
-    category: 'AI Image',
+    category: 'AI Porn Generator',
     vendor: 'Ai-porn.ai',
     description: 'AI-Porn.AI focuses on AI-generated models in every position and action a user can think of. While most AI websites arrive with restrictions attached, this one prides itself on a wide variety of filters, so both viewing and generating stay flexible. Creating the perfect woman has never been easier, and the generation engine keeps up with detailed requests. The subscription costs $12.99 per month, or $3.99 per month billed annually, with token costs on top for the heavier features. The token layer takes a moment to understand. AI-Porn.AI earns its place among the leading porn generators of the moment.',
     image: '/assets/image.jpg',
@@ -1687,7 +1694,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'AIBABE.ART'),
     name: 'AIBABE.ART',
-    category: 'AI Image',
+    category: 'AI NSFW Image Generator',
     vendor: 'Aibabe.art',
     description: 'AIBabe.art chases one goal: the highest-resolution, most realistic AI porn the industry has produced. The platform runs on the latest generation technology and invites users to see how far their imagination can go. The output quality is the argument here, images arrive sharp and detailed where many competitors still deliver soft results. The generation flow is simple enough that the technology never gets in the way. Pricing follows the market\'s usual range for premium image platforms. AIBabe.art is aimed at users who have already seen average AI output and decided they want better.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/aibabe-art-ai-image.webp',
@@ -1700,7 +1707,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'AIExotic'),
     name: 'AIExotic',
-    category: 'AI Image',
+    category: 'AI Porn Generator',
     vendor: 'Aiexotic.com',
     description: 'AIExotic is an AI-powered porn image generator that turns wild ideas into stunning images. Users describe what they want and watch it come to life, no artistic skill involved at any step. The tool aims at people who want their fantasies rendered rather than searched for, and the generation quality holds up well. Deals and coupon codes appear regularly, so paying full price is often avoidable for the patient. The scope stays focused on image generation without chat side dishes. AIExotic is a must-try for anyone whose imagination runs faster than the galleries can keep up with.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/aiexotic-ai-image.webp',
@@ -1713,7 +1720,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'anydream.xyz'),
     name: 'anydream.xyz',
-    category: 'AI Image',
+    category: 'AI NSFW Image Generator',
     vendor: 'Anydream.xyz',
     description: 'Anydream is an AI image platform with a storyteller\'s heart. Users bring characters to life, tell stories around them, and even build a fan base with their creations, which stretches the tool beyond simple picture generation. Ideas transform into living, breathing stories rather than one-off images, and that continuity is what separates Anydream from the generate-and-forget crowd. The interface keeps the creative process approachable for beginners. Anydream suits users who think in characters and plots, not single prompts. For pure one-image generation there are faster options, but few of them let a character grow an audience.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/anydream-xyz-ai-image.webp',
@@ -1726,11 +1733,11 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'Craftura AI'),
     name: 'Craftura AI',
-    category: 'AI Image',
+    category: 'AI NSFW Image Generator',
     vendor: 'Craftura.ai',
     description: 'Craftura AI is an image generator that converts prompts into high-quality images for free. There are no meaningful limitations on the creative side, and the range of options is wide enough that most ideas find their style. NSFW support is included, which the free generators of the world usually refuse. The generation itself is quick and the interface asks nothing of the user beyond a decent prompt. As with all free tools, patience during busy hours is part of the deal. Craftura AI is one of the rare places where uncensored generation and a zero price tag coexist.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/craftura-ai-ai-image.webp',
-    tags: ['ai image generator'],
+    tags: ['ai image generator', 'ai nsfw image generator', 'ai art generator', 'text-to-image'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards', 'Crypto'],
     tryNowUrl: 'https://craftura.ai',
@@ -1739,7 +1746,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'CreateAIAsian.com'),
     name: 'CreateAIAsian.com',
-    category: 'AI Image',
+    category: 'AI Porn Generator',
     vendor: 'Createaiasian.com',
     description: 'CreateAIAsian.com generates high-quality images and GIFs with an NSFW theme, with an AI porn generator embedded in a user-friendly interface. Users choose from a wide range of details, and the engine can even produce multiple-person pictures and GIFs, which remains a rare talent in this niche. The results come out extremely precise and in high resolution. The GIF support alone separates it from most static-only competitors. Pricing is fair for volume users, though the platform skips interactive extras like chat. CreateAIAsian.com is a specialist tool that does its specialty properly.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/createaiasian-com-ai-image.webp',
@@ -1752,7 +1759,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'createAIFurry.com'),
     name: 'createAIFurry.com',
-    category: 'AI Image',
+    category: 'AI Porn Generator',
     vendor: 'Createaifurry.com',
     description: 'CreateAIFurry is an AI platform serving explicit furry content across a wide variety of categories, making sure every user leaves satisfied. The content refreshes constantly, so the browsing never goes stale for any furry who enjoys AI-generated fun. The generation covers the spectrum of the fandom\'s tastes, which mainstream generators either ignore or filter away. Monthly plans range from $8 to $25, with per-image pricing available for lighter appetites. The community around the site keeps it lively. CreateAIFurry exists to cater to a specific audience, and inside that audience it is one of the first names mentioned.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/createaifurry-com-ai-image.webp',
@@ -1765,7 +1772,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'DeepSwapper'),
     name: 'DeepSwapper',
-    category: 'AI Image',
+    category: 'AI NSFW Image Generator',
     vendor: 'Deepswapper.com',
     description: 'DeepSwapper makes face swapping a breeze for both images and videos, and it does so completely free, without watermarks stamped on the results. That combination, free plus clean output, is almost unheard of in this space, where most rivals watermark everything until money appears. The tool is easy to use and built for fun, from hilarious swaps to social media content. Unlimited swaps keep experimentation cheap in every sense. Premium options exist for users who want more, but the free tier alone covers casual use comfortably. DeepSwapper is the obvious first stop for face swap curiosity.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/deepswapper-ai-image.webp',
@@ -1778,7 +1785,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'Dopamine Girl'),
     name: 'Dopamine Girl',
-    category: 'AI Image',
+    category: 'AI NSFW Image Generator',
     vendor: 'Dopaminegirl.com',
     description: 'Dopamine Girl brings advanced but not overwhelming AI image generation, where every tool has a purpose and nothing sits there half-finished. The focus is NSFW image generation with plenty of options, from text-to-image up through multiple resolutions. The community is the quiet strength: members share LoRAs on a dedicated page, so finding a specific concept usually takes a search instead of an experiment. The public image page is a good source of inspiration as well. Pricing starts at $5, which is pocket money for what is included. Dopamine Girl rewards users who like to dig.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/dopamine-girl-ai-image.webp',
@@ -1791,7 +1798,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'FallFor.ai'),
     name: 'FallFor.ai',
-    category: 'AI Image',
+    category: 'AI NSFW Image Generator',
     vendor: 'Fallfor.ai',
     description: 'FallFor.AI is an adult chatbot service stocked with original characters and pop culture personalities ready to chat. The bots handle SFW conversations as well, which makes the platform more universal than its category suggests. AI image generation and voice messages round out the experience, so the companions are seen and heard, not just read. The pricing model is pay-per-use, starting at $0.06 per image, which suits occasional users far better than a subscription would. Group chat features add a social twist few rivals attempt. FallFor.AI is a flexible pick for users who dislike monthly commitments.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/fallfor-ai-ai-image.webp',
@@ -1804,11 +1811,11 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'getPorn'),
     name: 'getPorn',
-    category: 'AI Image',
+    category: 'AI NSFW Image Generator',
     vendor: 'Getporn.com',
     description: 'GetPorn is an AI-powered platform where users create deep nude images and explore their imagination without limits. Generation takes seconds, not minutes, and the output quality holds up against the bigger names. The pricing structure rewards commitment: plans start at $12.99 monthly, while the yearly Premium works out to $4.99 per month at $59.99, with Pro and Ultimate tiers above for heavier appetites. The free entry lets users check the engine before deciding. GetPorn is best for users who already know they will generate regularly, since the annual math is where it truly shines.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/getporn-ai-image.webp',
-    tags: ['ai image generator'],
+    tags: ['ai image generator', 'ai nsfw image generator', 'ai porn generator', 'deepfake ai'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards', 'Crypto'],
     tryNowUrl: 'https://getporn.com',
@@ -1817,7 +1824,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'Hifun AI'),
     name: 'Hifun AI',
-    category: 'AI Image',
+    category: 'AI Porn Generator',
     vendor: 'Hifun.ai',
     description: 'Hifun AI is an image editor that puts cloud computing and artificial intelligence behind simple instructions. Users upload photos, tell the AI what to change, and the machine handles all the fine details, no technical knowledge involved at any point. The feature list covers object removal, enhancement, and upscaling, with prompt-based selection keeping the workflow conversational. The editing is uncensored, which most polished editors refuse to be. A free tier handles casual use, and premium starts at $9.99 per month. Hifun AI is the editor for people who know what they want but not how to Photoshop it.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/hifun-ai-ai-image.webp',
@@ -1830,7 +1837,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'Ineedthis.ai'),
     name: 'Ineedthis.ai',
-    category: 'AI Image',
+    category: 'AI Porn Generator',
     vendor: 'Ineedthis.ai',
     description: 'Ineedthis.ai is for the moments when something must be seen immediately. This rather odd AI generates NSFW images from nothing more than a text description and a few inputs, plucking the idea right out of the user\'s head. The results are something to behold, often stranger and more interesting than the polished output of bigger platforms. There is no elaborate workflow to learn, describe the thing and receive the thing. The odd personality of the generator is part of the charm rather than a flaw. Ineedthis.ai is the impulse generator of the category, and it owns that role.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/ineedthis-ai-ai-image.webp',
@@ -1843,7 +1850,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'LustLab'),
     name: 'LustLab',
-    category: 'AI Image',
+    category: 'AI NSFW Image Generator',
     vendor: 'Lustlab.com',
     description: 'LustLab turns ideas into unique adult content through a simple loop: choose a model, input the thoughts, and watch the magic happen. The generation technology delivers a fresh experience for users tired of static galleries. The pricing offers real flexibility, $20 per month for regular access or $200 for lifetime, with VIP features starting from $9.99 per month. The lifetime option is a rarity in this niche and rewards users who plan to stay. Flirty chatrooms round out the offer beyond pure generation. LustLab is a solid pick for users who want ownership instead of another eternal subscription.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/lustlab-ai-image.webp',
@@ -1856,7 +1863,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'Made.Porn'),
     name: 'Made.Porn',
-    category: 'AI Image',
+    category: 'AI NSFW Image Generator',
     vendor: 'Madeporn.com',
     description: 'Made.Porn crafts customized erotica through an extremely rich tag-based system, which is the platform\'s defining trait. Instead of wrestling with long prompts, users stack tags for styles, bodies, and scenarios, and the generator assembles bespoke imagery fast. The tag approach produces more predictable results than freeform prompting, which regulars come to appreciate. Both images and videos are on the menu, with videos reserved for the higher tiers. Basic access starts around $30 per month, positioning Made.Porn above the budget crowd. It is the tool for users who want control through structure rather than luck through wording.',
     image: '/assets/image.jpg',
@@ -1869,7 +1876,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'My Dreams'),
     name: 'My Dreams',
-    category: 'AI Image',
+    category: 'AI NSFW Image Generator',
     vendor: 'Mydreams.com',
     description: 'My Dreams keeps the NSFW image generation formula honest: a good engine, some models, styles, and no padding around them. The affordable subscription turns the site into a cheap source of endless content, and a few hours of practice is all it takes to become a competent smut maker. The learning curve is gentle and the results improve quickly with experience. The platform emphasizes user privacy and discretion throughout. Higher tiers exist for industrial appetites, reaching up to the Ultra plan at $99 per month, but most users will live comfortably below that. My Dreams is easy to give a shake.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/my-dreams-ai-image.webp',
@@ -1882,7 +1889,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'nolim.ai'),
     name: 'nolim.ai',
-    category: 'AI Image',
+    category: 'AI NSFW Image Generator',
     vendor: 'Nolim.ai',
     description: 'Nolim.ai lets even the most inexperienced users create professional-level explicit images with a few clicks. The engine runs on Stable Diffusion technology, producing detailed, realistic outputs that are genuinely difficult to tell apart from photographs. Privacy is where Nolim.ai separates itself: no email is required to use the service, and cryptocurrency payments are accepted for true anonymity, a combination almost nobody else in the niche offers. The generation flow stays simple from the first visit. Nolim.ai is the natural choice for users who rank discretion as high as image quality, and it compromises on neither.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/nolim-ai-ai-image.webp',
@@ -1895,7 +1902,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'NovelAI'),
     name: 'NovelAI',
-    category: 'AI Image',
+    category: 'AI NSFW Image Generator',
     vendor: 'Novelai.com',
     description: 'NovelAI serves two appetites at once: incredible spicy fiction and powerful anime image generation. The writing side runs on the Kayra-XL language model, while images come from the V4 diffusion model, and both operate without the censorship that hobbles mainstream tools. Users write, generate, or mix the two into illustrated stories. The premium Opus plan costs $25 per month, which buys the full strength of both engines. The anime style is the house specialty, photorealism seekers should look elsewhere. NovelAI remains the reference point for people whose fantasies arrive in both words and pictures.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/novelai-ai-image.webp',
@@ -1908,7 +1915,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'Pornify'),
     name: 'Pornify',
-    category: 'AI Image',
+    category: 'AI Porn Generator',
     vendor: 'Pornify.com',
     description: 'Pornify hands users the controls of their own AI porn production: images, videos, or chat, all under one roof. The Gems token system adds flexibility to how features get consumed, and the interface stays easy through all of it. The VIP plan costs $9.97 per month and the PRO plan $24.97 per month, and the image-plus-video combination at that price point is something few competitors offer. Customer service reviews are mixed, so patience there is advised. Pornify is a lot of machine for the money, best suited to users who want video without a studio budget.',
     image: '/assets/image.jpg',
@@ -1921,7 +1928,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'pornpen.ai'),
     name: 'pornpen.ai',
-    category: 'AI Image',
+    category: 'AI Porn Generator',
     vendor: 'Pornpen.ai',
     description: 'Pornpen.ai makes personalized porn content in a snap, covering images, GIFs, and everything between. The feature set has grown serious over time: inpainting, outpainting, and short-clip creation give users real editing control instead of a single generate button. The platform bans deepfakes and illegal content, keeping the sandbox clean. Free access covers the basics, and paid plans start at $2.99 per month, one of the lowest tickets in the whole category. The GIF support remains a crowd favorite. Pornpen.ai is a cheap, capable entry point that many users never feel the need to upgrade from.',
     image: '/assets/image.jpg',
@@ -1934,11 +1941,11 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'pornwizard.ai'),
     name: 'pornwizard.ai',
-    category: 'AI Image',
+    category: 'AI NSFW Image Generator',
     vendor: 'Pornwizard.ai',
     description: 'PornWizard.ai creates unique, customizable pornographic content where innovation and adult entertainment meet. Users push boundaries with their own ideas and the AI renders them with a commitment to quality that shows in the output. The generation covers photorealistic images with the kind of customization depth the niche\'s top platforms are known for. The workflow asks for imagination, not technical skill, and the results improve as users learn what the engine likes. PornWizard.ai competes in the premium end of the generator market and holds its own there. New horizons in adult content creation is the promise, and it mostly keeps it.',
     image: '/assets/image.jpg',
-    tags: ['ai image expander', 'ai image generator'],
+    tags: ['ai image expander', 'ai image generator', 'ai nsfw image generator', 'ai porn generator'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards', 'Crypto'],
     tryNowUrl: 'https://pornwizard.ai',
@@ -1947,7 +1954,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'PornX'),
     name: 'PornX',
-    category: 'AI Image',
+    category: 'AI NSFW Image Generator',
     vendor: 'Pornx.com',
     description: 'PornX is a personal AI playground for adult content, generating everything from still images to short videos. The customization runs deep: body type, skin tone, hair, outfits from lingerie to cosplay, specific poses and actions, plus adjustable backgrounds, lighting, and camera angles. Age settings start at 18 and ethnicity sliders go genuinely wide. The platform is beginner-friendly on desktop and mobile alike, and the library already holds over a thousand AI-generated pictures for browsing. Video generation puts PornX ahead of image-only rivals. It is one of the most complete creative toolkits in the category right now.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/pornx-ai-image.webp',
@@ -1960,7 +1967,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'SexterAI'),
     name: 'SexterAI',
-    category: 'AI Image',
+    category: 'AI NSFW Image Generator',
     vendor: 'Sexterai.com',
     description: 'SexterAI is a personal AI porn provider built around fully customizable and secure chats, with image generation tailored to each user. The sexting and the visuals feed each other, so the conversation and the pictures stay in the same fantasy. Basic features cost nothing, and paid plans start at $3.99 per month, with discounts and coupon codes appearing often enough to matter. The entry price makes it one of the cheapest combined chat-and-image services around. SexterAI will not overwhelm anyone with options, and that simplicity is precisely what its audience is looking for.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/sexterai-ai-image.webp',
@@ -1973,11 +1980,11 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'Wank Pal'),
     name: 'Wank Pal',
-    category: 'AI Image',
+    category: 'AI NSFW Image Generator',
     vendor: 'Wankpal.com',
     description: 'Wank Pal delivers AI-generated adult content from just a few prompts and parameters, putting the girl of the user\'s dreams into whatever act suits their taste. The generation engine responds well to specific instructions, and the results arrive fast. A free trial is on the table for newcomers who want proof before payment, and the standard plan starts at $7.99, a comfortable middle of the market. The scope stays on images and companionship without spreading itself thin. Wank Pal is a dependable everyday generator, the kind users return to precisely because it never complicates things.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/wank-pal-ai-image.webp',
-    tags: ['ai image generator', 'ai nsfw image generator'],
+    tags: ['ai image generator', 'ai nsfw image generator', 'ai porn generator'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards', 'Crypto'],
     tryNowUrl: 'https://wankpal.com',
@@ -1986,7 +1993,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Image', 'Yiff AI'),
     name: 'Yiff AI',
-    category: 'AI Image',
+    category: 'AI Porn Generator',
     vendor: 'Yiff.ai',
     description: 'Yiff AI is the top-rated image generator for all things yiff and furry. Users create custom NSFW and SFW images with their own unique models, whether Anthro or Feral, a distinction mainstream generators do not even understand. The days of hunting for the perfect yiff image end here, replaced by effortless and personalized generation. The engine handles the fandom\'s specific styles with a fluency general-purpose tools never reach. Pricing runs $16.65 per month or $57 per year, with the annual route saving a fair amount. Yiff AI is the specialist the furry community actually deserved.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/yiff-ai-ai-image.webp',
@@ -1999,7 +2006,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Roleplay', 'EroPlay.ai'),
     name: 'EroPlay.ai',
-    category: 'AI Roleplay',
+    category: 'AI NSFW Roleplay',
     vendor: 'Eroplay.ai',
     description: 'EroPlay.ai delivers adult roleplay through AI conversations built on professionally written scenarios, ranging from romantic all the way to apocalyptic. Each scenario comes alive through characters with distinct personalities and backstories, and the interactions adapt to whatever the user throws at them. Both anime-inspired and realistic styles are available. Voice, image, and video capabilities add depth beyond the text, while privacy stays a priority throughout. Starting is free, with premium features unlocking deeper customization. The storytelling responds surprisingly well to nuanced prompts. EroPlay.ai is the pick for users who want their erotica with an actual plot.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/eroplay-ai-ai-roleplay.webp',
@@ -2025,7 +2032,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Roleplay', 'GetIdol'),
     name: 'GetIdol',
-    category: 'AI Roleplay',
+    category: 'AI NSFW Roleplay',
     vendor: 'Getidol.com',
     description: 'GetIdol lets users create and control their own AI idol, or dive into endless roleplaying possibilities around one. The setup is flexible: upload a photo or build intricate storylines from scratch, then play and inspire the idol in whatever direction feels right. Dynamic image generation keeps the visuals in step with the story, and the NSFW scenarios go as deep as the user writes them. The web app chat interface keeps everything in one place. GetIdol occupies its own corner of the roleplay niche, made for users who want to manage a star, not just date one.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/getidol-ai-roleplay.webp',
@@ -2038,7 +2045,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Roleplay', 'MyTales.io'),
     name: 'MyTales.io',
-    category: 'AI Roleplay',
+    category: 'AI NSFW Roleplay',
     vendor: 'Mytales.io',
     description: 'MyTales.io solves the oldest problem in roleplaying: finding a good storyteller. The AI becomes the narrator, creating rich scenarios from scratch based on the initial setting and every response the user gives. The replies come long, juicy, and immersive, the way a proper DM would write them, and users can even edit the responses when the story needs a nudge. A free tier covers casual play, and paid plans start at $9.99 per month for 100 story sections per day. MyTales.io is the dependable storyteller who never cancels the session, and that alone wins it regulars.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/mytales-io-ai-roleplay.webp',
@@ -2051,7 +2058,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Roleplay', 'OpenRoleplay.AI'),
     name: 'OpenRoleplay.AI',
-    category: 'AI Roleplay',
+    category: 'AI NSFW Roleplay',
     vendor: 'Openroleplay.ai',
     description: 'OpenRoleplay.AI is the open-source answer to the big character chat platforms. The quirky AI characters make roleplaying accessible to everyone, and automatic translation widens the door further. Being free under an open-source license, there is no pricing page to study and no subscription to cancel, which is a sentence rarely written in this category. Users who like to tinker can go as deep as the code itself. The polish is a step behind the commercial giants, as open projects usually are. OpenRoleplay.AI is the honest, free playground for roleplayers who value openness over gloss.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/openroleplay-ai-ai-roleplay.webp',
@@ -2077,7 +2084,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Roleplay', 'Privee AI'),
     name: 'Privee AI',
-    category: 'AI Roleplay',
+    category: 'AI NSFW Roleplay',
     vendor: 'Privee.ai',
     description: 'Privee AI is a quirky, playful alternative to traditional AI chat, stocked with lifelike characters running from Milf to Yandere and everything between. The roleplay and storytelling go deeper than the lighthearted surface suggests, with a focus on both emotional support and adult entertainment. The freemium model includes one-time fees for premium features instead of chaining everything to a subscription, which respects the occasional user. The platform emphasizes a well-protected environment for all interactions. Privee AI is for users who want personality variety above all, and its character roster delivers exactly that.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/privee-ai-ai-roleplay.webp',
@@ -2090,7 +2097,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Roleplay', 'Rolemantic'),
     name: 'Rolemantic',
-    category: 'AI Roleplay',
+    category: 'AI NSFW Roleplay',
     vendor: 'Rolemantic.com',
     description: 'Rolemantic AI combines chatting and AI image generation into one adult platform. Users chat with their favorite anime characters, form deep relationships, and enjoy playful roleplays, with the image side illustrating the moments along the way. The NSFW character interactions are the heart of the service, and the anime flavor runs through everything. A free tier opens the door, and premium subscriptions start at $7.99 per month. The platform keeps its scope focused rather than sprawling. Rolemantic AI is a warm little corner of the roleplay niche for users with an anime-shaped heart.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/rolemantic-ai-roleplay.webp',
@@ -2103,7 +2110,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
   {
     slug: slugify('AI Roleplay', 'RPRP AI'),
     name: 'RPRP AI',
-    category: 'AI Roleplay',
+    category: 'AI NSFW Roleplay',
     vendor: 'Rprp.ai',
     description: 'RPRP AI is an NSFW roleplay platform that captures the imagination from the first visit. Users explore numerous character categories or create their own companions, bringing fantasies to life through exciting, immersive conversations. The catalog is the differentiator: many characters and storylines here are quite different from what circulates on other platforms, so veterans of the genre still find fresh material. Creating companions and generating images takes a few simple steps. RPRP AI is built around catering to specific users rather than the broadest crowd, and that focus is exactly why its regulars stay.',
     image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/rprp-ai-ai-roleplay.webp',
@@ -2112,19 +2119,6 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
     payment: ['Credit Cards', 'Crypto'],
     tryNowUrl: 'https://rprp.ai',
     sourceUrl: 'https://rprp.ai',
-  },
-  {
-    slug: slugify('Undress AI', 'PornCreate'),
-    name: 'PornCreate',
-    category: 'Undress AI',
-    vendor: 'Porncreate.app',
-    description: 'PornCreate is a place where one account replaces three. The platform undresses AI images, swaps faces, and turns stills into NSFW video, all from a single browser dashboard with one diamond wallet feeding everything. More than 450,000 users have passed through and left over two million renders behind them, so the engine has been put through its paces. There is nothing to download and nothing to pay upfront, since new accounts receive free diamonds on signup and the first undress costs exactly zero.',
-    image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/porncreate-undress-ai.webp',
-    tags: ['ai undress', 'ai nudifier', 'ai clothes remover', 'ai image generator', 'ai nsfw image generator', 'ai porn generator', 'ai face swap', 'ai video generator'],
-    subscription: 'Freemium & Paid',
-    payment: ['Credit Cards', 'Crypto'],
-    tryNowUrl: 'https://porncreate.app/edit?category=video&mode=presets&ref=F2A95192&lid=erogramvid',
-    sourceUrl: 'https://porncreate.app',
   },
 ];
 
@@ -2143,12 +2137,59 @@ export function getToolsByCategory(category: string): AINsfwTool[] {
 }
 
 export const CATEGORY_SLUGS: Record<string, string> = {
+  'ai-companion': 'AI Companion',
   'ai-girlfriend': 'AI Girlfriend',
-  'undress-ai': 'Undress AI',
   'ai-chat': 'AI Chat',
-  'ai-image': 'AI Image',
-  'ai-roleplay': 'AI Roleplay',
+  'ai-chatbot': 'AI Chatbot',
+  'ai-nsfw-chat': 'AI NSFW Chat',
+  'ai-characters': 'AI Characters',
+  'ai-nsfw-character': 'AI NSFW Character',
+  'ai-sexting': 'AI Sexting',
+  'ai-sexting-chat': 'AI Sexting / Chat',
+  'undress-ai': 'Undress AI',
+  'ai-nudifier': 'AI Nudifier',
+  'ai-clothes-remover': 'AI Clothes Remover',
+  'ai-image-generator': 'AI Image Generator',
+  'ai-art-generator': 'AI Art Generator',
+  'ai-nsfw-image-generator': 'AI NSFW Image Generator',
+  'ai-image': 'AI Image Generator',
+  'ai-porn-generator': 'AI Porn Generator',
+  'ai-face-swap': 'AI Face Swap',
+  'ai-video-generator': 'AI Video Generator',
+  'ai-nsfw-roleplay': 'AI NSFW Roleplay',
+  'ai-roleplay': 'AI NSFW Roleplay',
+  'ai-erotic-storytelling': 'AI Erotic Storytelling',
+  'ai-story': 'AI Story',
+  'ai-fetish': 'AI Fetish',
+  'ai-anime-characters': 'AI Anime Characters',
   'adult-games': 'Adult Games',
+};
+
+const CATEGORY_TO_SLUG: Record<string, string> = {
+  'AI Companion': 'ai-companion',
+  'AI Girlfriend': 'ai-girlfriend',
+  'AI Chat': 'ai-chat',
+  'AI Chatbot': 'ai-chatbot',
+  'AI NSFW Chat': 'ai-nsfw-chat',
+  'AI Characters': 'ai-characters',
+  'AI NSFW Character': 'ai-nsfw-character',
+  'AI Sexting': 'ai-sexting',
+  'AI Sexting / Chat': 'ai-sexting-chat',
+  'Undress AI': 'undress-ai',
+  'AI Nudifier': 'ai-nudifier',
+  'AI Clothes Remover': 'ai-clothes-remover',
+  'AI Image Generator': 'ai-image-generator',
+  'AI Art Generator': 'ai-art-generator',
+  'AI NSFW Image Generator': 'ai-nsfw-image-generator',
+  'AI Porn Generator': 'ai-porn-generator',
+  'AI Face Swap': 'ai-face-swap',
+  'AI Video Generator': 'ai-video-generator',
+  'AI NSFW Roleplay': 'ai-nsfw-roleplay',
+  'AI Erotic Storytelling': 'ai-erotic-storytelling',
+  'AI Story': 'ai-story',
+  'AI Fetish': 'ai-fetish',
+  'AI Anime Characters': 'ai-anime-characters',
+  'Adult Games': 'adult-games',
 };
 
 export function getCategoryBySlug(slug: string): string | undefined {
@@ -2156,5 +2197,5 @@ export function getCategoryBySlug(slug: string): string | undefined {
 }
 
 export function categoryToSlug(category: string): string {
-  return category.toLowerCase().replace(/\s+/g, '-');
+  return CATEGORY_TO_SLUG[category] ?? category.toLowerCase().replace(/\s+/g, '-');
 }

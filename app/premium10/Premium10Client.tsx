@@ -101,7 +101,7 @@ function VaultPreview({ items }: { items: VaultTeaserItem[] }) {
 
         <div className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none" style={{ background: 'linear-gradient(to bottom, transparent, #0f0d09)' }} />
       </div>
-      <p className="text-center text-[10px] mt-2 font-semibold" style={{ color: '#4a3820' }}>100+ exclusive groups · Updated daily</p>
+      <p className="text-center text-[10px] mt-2 font-semibold" style={{ color: '#4a3820' }}>4800 exclusive groups · Updated daily</p>
     </div>
   );
 }
@@ -291,7 +291,7 @@ export default function Premium10Client({ vaultTeaser = [] }: PremiumClientProps
             <h3 className="text-sm font-black text-white mb-1.5 flex items-center gap-2">
               <span>📚</span> INSTANT Unlock Premium Mega Lists
             </h3>
-            <p className="text-xs pl-6" style={{ color: G.goldText }}>Instant Access to our curated lists with <span className="font-bold" style={{ color: G.gold }}>100+ hand-picked Telegram groups.</span></p>
+            <p className="text-xs pl-6" style={{ color: G.goldText }}>Instant Access to our curated lists with <span className="font-bold" style={{ color: G.gold }}>4800+ hand-picked Telegram groups.</span></p>
           </div>
 
           {/* Scam Protection */}
