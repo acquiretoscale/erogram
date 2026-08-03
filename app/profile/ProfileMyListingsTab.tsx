@@ -705,6 +705,10 @@ function ListingRow({
   const boostExpiry = listing.boostExpiresAt ? new Date(listing.boostExpiresAt) : null;
   const isBoostActive = !!(listing.boosted && boostExpiry && boostExpiry > new Date());
   const daysLeft = boostDaysLeft(listing.boostExpiresAt);
+  const ownerLabel =
+    showOwner && 'ownerLabel' in listing
+      ? String((listing as ListingItem & { ownerLabel?: string }).ownerLabel ?? '')
+      : '';
 
   return (
     <li className="overflow-hidden px-3 py-3 sm:px-5 sm:py-4" style={{ backgroundColor: tokens.card }}>
@@ -727,9 +731,9 @@ function ListingRow({
                   </span>
                 )}
               </div>
-              {(listing.category || (showOwner && 'ownerLabel' in listing && listing.ownerLabel)) && (
+              {(listing.category || ownerLabel) && (
                 <p className="mt-0.5 truncate text-xs" style={{ color: tokens.muted }}>
-                  {[listing.category, showOwner && 'ownerLabel' in listing && listing.ownerLabel ? listing.ownerLabel : ''].filter(Boolean).join(' · ')}
+                  {[listing.category, ownerLabel].filter(Boolean).join(' · ')}
                 </p>
               )}
               {isBoostActive && (

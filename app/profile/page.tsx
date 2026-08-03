@@ -246,7 +246,7 @@ function ProfileThemedShell(props: any) {
     username, firstName, photoUrl, bio, memberSince, isPremium, premiumPlan, premiumSince, premiumExpiresAt,
     isAdmin, viewMode, viewBarOpen, deletingAccount, userData, tagOptions, aiOptions, activeTab, menuCollapsed, headerHeight,
     headerRef, effectivePremium, effectiveAdmin, selectTab, setMenuCollapsed, setViewBarOpen, setViewMode, handleLogout, handleDeleteAccount,
-    getRemainingDays, toast, setFirstName, setBio, setPhotoUrl, setUserData, currentUserId,
+    getRemainingDays, toast, router, setFirstName, setBio, setPhotoUrl, setUserData, currentUserId,
   } = props;
 
   const [isMobileNav, setIsMobileNav] = useState(() => {

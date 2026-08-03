@@ -415,6 +415,7 @@ export default function MyListingsClient() {
       paidBoostStars: null,
       contactTelegram: a.contactTelegram,
       contactEmail: a.contactEmail,
+      description: a.description || '',
       createdAt: a.createdAt,
     }));
     const merged = [...result.listings, ...ainsfwRows].sort(

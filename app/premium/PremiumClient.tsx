@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
-import type { PremiumPricing } from '@/lib/premiumPricing';
+import type { PremiumPricing, ValidPlan } from '@/lib/premiumPricing';
 import PremiumCompareBlock from '@/components/PremiumCompareBlock';
 
 function trackPremiumEvent(event: string, extra?: Record<string, string | null>) {
@@ -680,9 +680,9 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
             )}
 
             {paymentUrl && !isPremium && (() => {
-              const planKey = (selectedPlan || 'quarterly') as keyof typeof planDisplay;
+              const planKey = (selectedPlan || 'quarterly') as ValidPlan;
               const p = planDisplay[planKey] || planDisplay.quarterly;
-              const starsAmount = pricing[planKey as keyof PremiumPricing]?.starsAmount;
+              const starsAmount = pricing[planKey]?.starsAmount;
               const isCrypto = paymentMethodUsed === 'crypto';
               const payBtnBg = ORDER_GREEN;
               const payBtnShadow = '0 6px 18px rgba(22,163,74,0.4)';
