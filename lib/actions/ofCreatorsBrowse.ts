@@ -315,7 +315,7 @@ async function runAdvancedSearchCreators(
         _searchTier: 1,
       },
     },
-  ]);
+  ] as any[]);
 
   const rotated = rotateSearchResults(
     creators as any[],
@@ -379,7 +379,7 @@ export async function searchCreators(q: string, limit = 100, skip = 0) {
         _searchTier: 1,
       },
     },
-  ]);
+  ] as any[]);
 
   const resultCap = Math.min(Math.max(1, limit), SEARCH_POOL);
   const rotated = rotateSearchResults(

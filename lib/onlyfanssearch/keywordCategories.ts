@@ -192,7 +192,9 @@ export const OF_BASE_CATEGORY_PATTERNS: Record<string, readonly string[]> = {
 
 export type OfKeywordCategory = (typeof OF_KEYWORD_CATEGORIES)[number];
 
-const PATTERN_MAP = new Map(OF_KEYWORD_CATEGORIES.map((c) => [c.slug, [...c.patterns]]));
+const PATTERN_MAP = new Map<string, string[]>(
+  OF_KEYWORD_CATEGORIES.map((c) => [c.slug, [...c.patterns]]),
+);
 const BASE_PATTERN_MAP = new Map(Object.entries(OF_BASE_CATEGORY_PATTERNS));
 
 export function getKeywordCategoryPatterns(slug: string): string[] | undefined {

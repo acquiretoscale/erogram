@@ -86,7 +86,6 @@ const SYNONYMS: Record<string, string[]> = {
   thicc: ['thick', 'curvy', 'chubby', 'thicc'],
   thick: ['thick', 'curvy', 'chubby'],
   curvy: ['thick', 'curvy', 'chubby'],
-  chubby: ['thick', 'curvy', 'chubby'],
   inked: ['tattoo', 'inked', 'tattooed', 'tattoos'],
   tattooed: ['tattoo', 'inked', 'tattooed', 'tattoos'],
   tattoos: ['tattoo', 'inked', 'tattooed', 'tattoos'],

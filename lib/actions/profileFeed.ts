@@ -234,7 +234,7 @@ export async function getProfileMediaFeed(
     }
   }
 
-  const flat: Omit<ProfileFeedMediaItem, 'likeCount' | 'commentCount' | 'liked'>[] = [];
+  const flat: Omit<ProfileFeedMediaItem, 'likeCount' | 'commentCount' | 'liked' | 'comments'>[] = [];
   const seenMedia = new Set<string>();
 
   for (const c of picked) {
