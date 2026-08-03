@@ -11,7 +11,7 @@ const IPN_SECRET = process.env.NOWPAYMENTS_IPN_SECRET || '';
 const VALID_PLANS = new Set(['monthly', 'quarterly', 'yearly', 'lifetime']);
 const VALID_SUBMISSION_TIERS = new Set([
   'basic', 'instant', 'boost', 'startup', 'platinum',
-  'normal_listing', 'instant_approval', 'boost_week', 'boost_month',
+  'normal_listing', 'instant_approval', 'boost_week', 'boost_month', 'scale_month',
 ]);
 const ACTIVATE_ON = new Set(['finished', 'confirmed']);
 
@@ -93,7 +93,7 @@ async function handleSubmissionPayment(
   const normalizedTier: BoostPaymentType =
     tier === 'boost' ? 'boost_week' : tier === 'platinum' ? 'boost_month' : tier as BoostPaymentType;
 
-  if (!['normal_listing', 'instant_approval', 'boost_week', 'boost_month'].includes(normalizedTier)) {
+  if (!['normal_listing', 'instant_approval', 'boost_week', 'boost_month', 'scale_month'].includes(normalizedTier)) {
     return;
   }
 

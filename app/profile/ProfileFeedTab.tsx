@@ -204,6 +204,19 @@ function FeedPostCard({
       className="rounded-2xl border overflow-hidden mb-5 last:mb-0"
       style={{ borderColor: tokens.border, backgroundColor: tokens.card }}
     >
+      <div className="flex items-center gap-2 px-3 py-2.5 sm:px-4" style={{ borderBottom: `1px solid ${tokens.border}` }}>
+        <a
+          href={ofCreatorProfileUrl(item.creatorUsername)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="min-w-0 flex-1 no-underline transition-opacity hover:opacity-85"
+        >
+          <p className="truncate text-sm font-bold leading-tight" style={{ color: tokens.text }}>
+            @{item.creatorUsername}
+          </p>
+        </a>
+      </div>
+
       <div className="relative">
         {item.type === 'video' ? (
           <FeedVideoCard url={item.url} />

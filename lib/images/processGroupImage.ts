@@ -39,6 +39,18 @@ export async function processAndUploadGroupImage(buffer: Buffer, slug: string): 
   return uploadToR2(compressed, key, 'image/webp');
 }
 
+/** R2 object key: bots/{slug}-porn-telegram-bot.webp */
+export function botImageR2Key(slug: string): string {
+  const base = slugify(slug).slice(0, 80) || 'bot';
+  return `bots/${base}-porn-telegram-bot.webp`;
+}
+
+export async function processAndUploadBotImage(buffer: Buffer, slug: string): Promise<string> {
+  const compressed = await compressGroupImageBuffer(buffer);
+  const key = botImageR2Key(slug);
+  return uploadToR2(compressed, key, 'image/webp');
+}
+
 export function isGroupImageOptimized(url: string): boolean {
   if (!url || typeof url !== 'string') return false;
   return url.includes('-porn-telegram-group.webp');

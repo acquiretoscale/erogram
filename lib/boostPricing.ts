@@ -1,5 +1,7 @@
 export const STAR_RATE = 0.013;
-export const CRYPTO_DISCOUNT = 0.85; // 15% off full Stars USD equivalent
+
+export const SCALE_USD = 129;
+export const SCALE_STARS = Math.round(SCALE_USD / STAR_RATE);
 
 export type BoostEntityType = 'group' | 'bot';
 
@@ -13,20 +15,21 @@ export function starsToUsd(stars: number): number {
 }
 
 export function cryptoUsdFromStars(stars: number): number {
-  return Math.round(stars * STAR_RATE * CRYPTO_DISCOUNT * 100) / 100;
+  return starsToUsd(stars);
 }
 
 export function boostStars(entityType: BoostEntityType, duration: 'week' | 'month'): number {
   return BOOST_STARS[entityType][duration];
 }
 
-export type BoostPaymentType = 'normal_listing' | 'instant_approval' | 'boost_week' | 'boost_month';
+export type BoostPaymentType = 'normal_listing' | 'instant_approval' | 'boost_week' | 'boost_month' | 'scale_month';
 
 const STARS_BY_TYPE: Record<BoostPaymentType, number | null> = {
   normal_listing: 1000,
   instant_approval: 1500,
   boost_week: null,
   boost_month: null,
+  scale_month: SCALE_STARS,
 };
 
 export function buildBoostPaymentUpdate(
@@ -46,7 +49,9 @@ export function buildBoostPaymentUpdate(
       ? BOOST_STARS[entityType].week
       : type === 'boost_month'
         ? BOOST_STARS[entityType].month
-        : STARS_BY_TYPE[type]);
+        : type === 'scale_month'
+          ? SCALE_STARS
+          : STARS_BY_TYPE[type]);
 
   if (type === 'normal_listing') {
     update.paidBoost = true;
@@ -61,7 +66,7 @@ export function buildBoostPaymentUpdate(
     return update;
   }
 
-  if (type === 'boost_week' || type === 'boost_month') {
+  if (type === 'boost_week' || type === 'boost_month' || type === 'scale_month') {
     const days = type === 'boost_week' ? 7 : 30;
     const boostExpiry = new Date(boostBase);
     boostExpiry.setDate(boostExpiry.getDate() + days);

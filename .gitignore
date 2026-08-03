@@ -71,3 +71,8 @@ fix-languages.js
 fix-middleware.js
 canonical-translation-spec.md
 categories-by-section.txt
+
+# Agent scratch — lives on Desktop (ErogramPRO-scratch), never in repo
+tmp/
+ffmpeg2pass-*
+find_colombia_tmp.js

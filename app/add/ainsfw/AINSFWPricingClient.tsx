@@ -690,7 +690,7 @@ export default function AINSFWPricingClient() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const checkoutPrice = planCheckoutPrice(selectedPlan, couponResult);
-  const visitorStats = useLiveVisitorFeed(8000);
+  const visitorStats = useLiveVisitorFeed(60_000);
 
   useEffect(() => {
     try {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
@@ -145,6 +146,7 @@ interface AddClientProps {
 export default function AddClient({ categories, countries, defaultTab }: AddClientProps) {
   const { t } = useTranslation();
   const lp = useLocalePath();
+  const router = useRouter();
 
   const [tab, setTab] = useState<'group' | 'bot'>(defaultTab || 'group');
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
@@ -185,6 +187,12 @@ export default function AddClient({ categories, countries, defaultTab }: AddClie
   const [paidStars, setPaidStars] = useState(0);
   const [paidTierLabel, setPaidTierLabel] = useState('');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (step === 'free_done' || step === 'confirmed') {
+      router.push('/profile?tab=listings');
+    }
+  }, [step, router]);
 
   useEffect(() => {
     // Restore form data from sessionStorage if coming back from login
@@ -560,10 +568,10 @@ export default function AddClient({ categories, countries, defaultTab }: AddClie
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link
-            href="/my-listings"
+            href="/profile?tab=listings"
             className="px-7 py-3.5 rounded-full font-black text-white text-sm no-underline shadow-lg shadow-[#00AFF0]/30 bg-[#00AFF0] hover:bg-[#009dd9] transition-all"
           >
-            Go to My Campaigns →
+            Go to My Listings →
           </Link>
           <button
             onClick={resetForm}
@@ -589,7 +597,7 @@ export default function AddClient({ categories, countries, defaultTab }: AddClie
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link
-            href="/my-listings"
+            href="/profile?tab=listings"
             className="px-7 py-3.5 rounded-full font-black text-white text-sm no-underline shadow-lg shadow-[#00AFF0]/30 bg-[#00AFF0] hover:bg-[#009dd9] transition-all"
           >
             Go to My Listings →

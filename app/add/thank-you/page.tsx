@@ -179,6 +179,9 @@ function ThankYouContent() {
             </div>
 
             <div className="space-y-3">
+              <Link href="/profile?tab=listings" className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full font-black text-white text-sm transition-all hover:opacity-90" style={{ background: 'linear-gradient(135deg, #0088cc, #006699)' }}>
+                View My Listings
+              </Link>
               <Link href="/add" className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full font-black text-white text-sm transition-all hover:opacity-90" style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}>
                 + Add Another {entityLabel}
               </Link>

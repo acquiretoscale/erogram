@@ -3,7 +3,7 @@ import connectDB from '@/lib/db/mongodb';
 import { Group, SiteConfig } from '@/lib/models';
 import PremiumClient from './PremiumClient';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
-import { getPremiumPricing } from '@/lib/premiumPricing';
+import { getPremiumPricingForCheckout } from '@/lib/premiumPricing';
 
 const title = 'Upgrade to Premium | Erogram.pro';
 const description = 'Unlock the Erogram Private Vault — 4800+ hand-picked Telegram groups, unlimited bookmarks, custom folders, and early access to new features.';
@@ -56,6 +56,6 @@ async function getVaultTeaser() {
 }
 
 export default async function PremiumPage() {
-  const [vaultTeaser, pricing] = await Promise.all([getVaultTeaser(), getPremiumPricing()]);
+  const [vaultTeaser, pricing] = await Promise.all([getVaultTeaser(), getPremiumPricingForCheckout()]);
   return <PremiumClient vaultTeaser={vaultTeaser} pricing={pricing} />;
 }

@@ -21,6 +21,7 @@ import ProfileFeedTab from './ProfileFeedTab';
 import MyLikesTab from './MyLikesTab';
 import ThemeTab from './ThemeTab';
 import LeaderboardTab from './LeaderboardTab';
+import ProfileMyListingsTab from './ProfileMyListingsTab';
 import { ProfileThemeProvider, useProfileTheme } from './ProfileThemeContext';
 import { ProfileEyebrow, ProfileHeading } from './ProfileTypography';
 import {
@@ -35,7 +36,7 @@ import {
   profileConsoleShellClass,
 } from './profileTheme';
 
-type Tab = 'home' | 'feed' | 'saved' | 'likes' | 'subscription' | 'vault' | 'settings' | 'theme' | 'leaderboard';
+type Tab = 'home' | 'listings' | 'feed' | 'saved' | 'likes' | 'subscription' | 'vault' | 'settings' | 'theme' | 'leaderboard';
 
 function TelegramMenuIcon() {
   return (
@@ -87,13 +88,17 @@ function ProfileContent() {
   const pathname = usePathname();
   const tabParam = searchParams.get('tab');
   const initialTab: Tab = pathname === '/profile/leaderboard' ? 'leaderboard'
+    : tabParam === 'listings' ? 'listings'
     : tabParam === 'feed' ? 'feed'
     : tabParam === 'saved' ? 'saved'
     : tabParam === 'models' ? 'likes'
     : tabParam === 'likes' ? 'likes'
     : tabParam === 'subscription' ? 'subscription' : tabParam === 'vault' ? 'vault' : tabParam === 'settings' ? 'settings' : tabParam === 'theme' ? 'theme' : tabParam === 'leaderboard' ? 'leaderboard' : 'home';
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
-  const [menuCollapsed, setMenuCollapsed] = useState(false);
+  const [menuCollapsed, setMenuCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.matchMedia('(max-width: 639px)').matches;
+  });
   const [viewBarOpen, setViewBarOpen] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -125,7 +130,8 @@ function ProfileContent() {
       setActiveTab('leaderboard');
       return;
     }
-    if (tabParam === 'feed') setActiveTab('feed');
+    if (tabParam === 'listings') setActiveTab('listings');
+    else if (tabParam === 'feed') setActiveTab('feed');
     else if (tabParam === 'saved') setActiveTab('saved');
     else if (tabParam === 'models' || tabParam === 'likes') setActiveTab('likes');
     else if (tabParam === 'subscription') setActiveTab('subscription');
@@ -243,6 +249,24 @@ function ProfileThemedShell(props: any) {
     getRemainingDays, toast, setFirstName, setBio, setPhotoUrl, setUserData, currentUserId,
   } = props;
 
+  const [isMobileNav, setIsMobileNav] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 639px)').matches;
+  });
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)');
+    const sync = () => setIsMobileNav(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
+  const handleTabSelect = (tab: Tab) => {
+    selectTab(tab);
+    if (isMobileNav) setMenuCollapsed(true);
+  };
+
   const VIEW_MODES: { key: ViewMode; label: string; short: string }[] = [
     { key: 'admin', label: 'Admin', short: 'A' },
     { key: 'premium', label: 'Premium', short: 'P' },
@@ -251,6 +275,7 @@ function ProfileThemedShell(props: any) {
 
   const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: 'home', label: 'Main', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
+    { key: 'listings', label: 'My Listings', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg> },
     { key: 'vault', label: 'Premium TG Groups', icon: <TelegramMenuIcon /> },
     { key: 'feed', label: 'My Feed', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M10 8l6 4-6 4V8z"/></svg> },
     { key: 'likes', label: 'My Likes', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> },
@@ -260,7 +285,12 @@ function ProfileThemedShell(props: any) {
     { key: 'theme', label: 'Theme', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg> },
   ];
 
-  const sidebarMargin = menuCollapsed ? 'mr-[60px]' : 'mr-[220px]';
+  const sidebarMargin = isMobileNav
+    ? 'mr-[40px]'
+    : menuCollapsed
+      ? 'mr-[60px]'
+      : 'mr-[220px]';
+  const mobileMenuExpanded = isMobileNav && !menuCollapsed;
   const greeting = firstName ? `Welcome back, ${firstName}` : 'Welcome back';
   const cyber = theme === 'cyberpunk';
   const ph = theme === 'pornhub';
@@ -282,8 +312,20 @@ function ProfileThemedShell(props: any) {
         />
       </div>
 
+      {mobileMenuExpanded && (
+        <button
+          type="button"
+          aria-label="Close menu"
+          className="fixed inset-x-0 bottom-0 z-20 bg-black/50 sm:hidden"
+          style={{ top: headerHeight }}
+          onClick={() => setMenuCollapsed(true)}
+        />
+      )}
+
       <aside
-        className={`fixed right-0 z-30 flex flex-col overflow-hidden border-l transition-all duration-300 ease-in-out ${menuCollapsed ? 'w-[60px]' : 'w-[220px]'}`}
+        className={`fixed right-0 flex flex-col overflow-hidden border-l transition-all duration-300 ease-in-out ${
+          mobileMenuExpanded ? 'z-40 shadow-2xl' : 'z-30'
+        } ${menuCollapsed ? 'w-[40px] sm:w-[60px]' : isMobileNav ? 'w-[min(220px,78vw)]' : 'w-[220px]'}`}
         style={{
           top: headerHeight,
           height: `calc(100vh - ${headerHeight}px)`,
@@ -319,7 +361,7 @@ function ProfileThemedShell(props: any) {
                         type="button"
                         onClick={() => setViewMode(mode.key)}
                         title={mode.label}
-                        className={`rounded-full font-bold transition-all ${menuCollapsed ? 'h-7 w-7 text-[10px]' : 'px-2.5 py-1 text-[10px]'}`}
+                        className={`rounded-full font-bold transition-all ${menuCollapsed ? 'h-6 w-6 text-[9px] sm:h-7 sm:w-7 sm:text-[10px]' : 'px-2.5 py-1 text-[10px]'}`}
                         style={
                           viewMode === mode.key
                             ? { backgroundColor: tokens.accent, color: tokens.ink }
@@ -337,7 +379,7 @@ function ProfileThemedShell(props: any) {
                   onClick={() => setViewBarOpen(true)}
                   aria-label="Show view switcher"
                   title={`View as: ${viewMode} (click to expand)`}
-                  className={`w-full flex items-center h-9 transition-colors ${menuCollapsed ? 'justify-center px-0' : 'gap-2 px-3'}`}
+                  className={`flex w-full items-center transition-colors ${menuCollapsed ? 'h-8 justify-center px-0 sm:h-9' : 'h-9 gap-2 px-3'}`}
                   style={{ color: tokens.muted }}
                 >
                   <span
@@ -356,26 +398,26 @@ function ProfileThemedShell(props: any) {
               )}
             </div>
           )}
-          <div className={`flex items-center h-10 ${menuCollapsed ? 'justify-center px-0' : 'px-3 justify-end'}`}>
+          <div className={`flex items-center ${menuCollapsed ? 'h-8 justify-center px-0 sm:h-10' : 'h-10 px-3 justify-end'}`}>
             <button
               type="button"
               onClick={() => setMenuCollapsed((v: boolean) => !v)}
               aria-label={menuCollapsed ? 'Expand menu' : 'Collapse menu'}
-              className="flex h-7 w-7 items-center justify-center rounded-md transition-colors"
+              className="flex h-6 w-6 items-center justify-center rounded-md transition-colors sm:h-7 sm:w-7"
               style={{ color: tokens.muted }}
             >
               {menuCollapsed ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M15 18l-6-6 6-6" /></svg>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="sm:h-[14px] sm:w-[14px]"><path d="M15 18l-6-6 6-6" /></svg>
               ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="sm:h-[14px] sm:w-[14px]"><path d="M9 18l6-6-6-6" /></svg>
               )}
             </button>
           </div>
 
-          <div className={`${menuCollapsed ? 'px-2 pb-3 flex justify-center' : 'px-4 pb-4'}`}>
+          <div className={`${menuCollapsed ? 'hidden pb-2 sm:flex sm:justify-center sm:px-2 sm:pb-3' : 'px-4 pb-4'}`}>
             {photoUrl && (
               <div
-                className={`rounded-full overflow-hidden border-2 mx-auto ${menuCollapsed ? 'w-10 h-10' : 'w-16 h-16'}`}
+                className={`rounded-full overflow-hidden border-2 mx-auto ${menuCollapsed ? 'w-8 h-8 sm:w-10 sm:h-10' : 'w-16 h-16'}`}
                 style={{ borderColor: tokens.border }}
                 title={menuCollapsed ? greeting : undefined}
               >
@@ -396,7 +438,7 @@ function ProfileThemedShell(props: any) {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => selectTab('subscription')}
+                    onClick={() => router.push('/premium')}
                     className="inline-flex items-center gap-1 mt-2.5 px-2.5 py-1 rounded-full text-[9px] font-bold tracking-[0.18em] uppercase transition-all hover:brightness-110 active:scale-[0.98]"
                     style={PREMIUM_MEMBER_GOLD}
                   >
@@ -408,7 +450,7 @@ function ProfileThemedShell(props: any) {
           </div>
         </div>
 
-        <nav className="flex-1 min-h-0 overflow-y-auto py-3 px-2 space-y-0.5">
+        <nav className="flex-1 min-h-0 overflow-y-auto space-y-0.5 px-1 py-1.5 sm:px-2 sm:py-3">
           {TABS.map((tabItem) => {
             const active = activeTab === tabItem.key;
             const isVaultTab = tabItem.key === 'vault';
@@ -416,10 +458,10 @@ function ProfileThemedShell(props: any) {
               <button
                 key={tabItem.key}
                 type="button"
-                onClick={() => selectTab(tabItem.key)}
+                onClick={() => handleTabSelect(tabItem.key)}
                 title={menuCollapsed ? tabItem.label : undefined}
-                className={`relative w-full flex items-center h-9 rounded-md transition-all duration-150 ${
-                  menuCollapsed ? 'justify-center px-0' : 'gap-2.5 px-3'
+                className={`relative flex w-full items-center rounded-md transition-all duration-150 ${
+                  menuCollapsed ? 'h-8 justify-center px-0 sm:h-9' : 'h-9 gap-2.5 px-3'
                 } ${!isVaultTab && cyber && active ? 'profile-cyber-nav-active' : ''} ${!isVaultTab && ph && active ? 'profile-pornhub-nav-active' : ''} ${!isVaultTab && of && active ? 'profile-onlyfans-nav-active' : ''} ${!isVaultTab && tg && active ? 'profile-telegram-nav-active' : ''} ${!isVaultTab && er && active ? 'profile-erogram-nav-active' : ''} ${!isVaultTab && con && active ? 'profile-console-nav-active' : ''}`}
                 style={
                   isVaultTab
@@ -438,7 +480,7 @@ function ProfileThemedShell(props: any) {
                   if (!active) e.currentTarget.style.backgroundColor = '';
                 }}
               >
-                <span className="shrink-0">{tabItem.icon}</span>
+                <span className="shrink-0 scale-90 sm:scale-100">{tabItem.icon}</span>
                 {!menuCollapsed && (
                   <>
                     <span className={`text-[12px] font-bold truncate ${isVaultTab ? 'tracking-[0.06em] uppercase' : of ? 'profile-onlyfans-nav-label' : tg ? 'profile-telegram-nav-label' : er ? 'profile-erogram-nav-label' : con ? 'profile-console-nav-label' : 'tracking-[0.06em] uppercase'} ${cyber && !isVaultTab ? 'profile-cyber-nav-label' : ''} ${ph && !isVaultTab ? 'profile-pornhub-nav-label' : ''}`}>{tabItem.label}</span>
@@ -456,7 +498,7 @@ function ProfileThemedShell(props: any) {
       </aside>
 
       <main
-        className={`max-w-[1180px] mx-auto px-6 sm:px-8 pt-12 pb-16 transition-all duration-300 ease-in-out min-w-0 ${sidebarMargin}`}
+        className={`max-w-[1180px] mx-auto px-2 sm:px-8 pt-12 pb-16 transition-all duration-300 ease-in-out min-w-0 ${sidebarMargin}`}
       >
         <section className="pb-8">
           {of ? (
@@ -471,7 +513,7 @@ function ProfileThemedShell(props: any) {
         </section>
 
         <div
-          className={`${cyber ? 'profile-cyber-content-card rounded-2xl' : ph ? 'profile-pornhub-content-card rounded-2xl' : of ? 'profile-onlyfans-content-card rounded-2xl' : tg ? 'profile-telegram-content-card rounded-2xl' : er ? 'profile-erogram-content-card rounded-2xl' : con ? 'profile-console-content-card rounded-2xl' : profileCardClass} p-6 sm:p-8`}
+          className={`${cyber ? 'profile-cyber-content-card rounded-2xl' : ph ? 'profile-pornhub-content-card rounded-2xl' : of ? 'profile-onlyfans-content-card rounded-2xl' : tg ? 'profile-telegram-content-card rounded-2xl' : er ? 'profile-erogram-content-card rounded-2xl' : con ? 'profile-console-content-card rounded-2xl' : profileCardClass} px-2 py-3 sm:p-8 ${menuCollapsed && isMobileNav ? 'pr-0.5' : ''}`}
           style={themedShell ? undefined : { backgroundColor: tokens.card, borderColor: tokens.border, boxShadow: tokens.cardShadow }}
         >
           {activeTab === 'home' ? (
@@ -481,6 +523,10 @@ function ProfileThemedShell(props: any) {
               interests={userData.interests}
               onNavigate={selectTab}
             />
+          ) : activeTab === 'listings' ? (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+              <ProfileMyListingsTab username={username} isAdmin={isAdmin} />
+            </motion.div>
           ) : activeTab === 'feed' ? (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
               <ProfileFeedTab

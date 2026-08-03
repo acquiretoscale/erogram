@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
 import { User, PremiumEvent } from '@/lib/models';
 import { authenticateUser, MAX_PREMIUM_SLOTS } from '@/lib/auth';
-import { getPremiumPricing, getStarsRate, usdToStars, isValidPlan, getPlanConfig } from '@/lib/premiumPricing';
+import { getPremiumPricing, getStarsRate, isValidPlan, getPlanConfig, getInvoiceStarsAmount } from '@/lib/premiumPricing';
 
 const BOT_TOKEN = process.env.TELEGRAM_PAYMENT_BOT_TOKEN || '';
 
@@ -41,9 +41,7 @@ export async function POST(req: NextRequest) {
 
   const [pricing, rate] = await Promise.all([getPremiumPricing(), getStarsRate()]);
   const p = getPlanConfig(pricing, plan);
-  const starsAmount = (typeof p.starsAmount === 'number' && p.starsAmount > 0)
-    ? p.starsAmount
-    : usdToStars(p.priceUsd, rate);
+  const starsAmount = getInvoiceStarsAmount(p, rate);
 
   try {
     const payload = JSON.stringify({

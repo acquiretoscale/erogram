@@ -654,30 +654,14 @@ export default function SavedTab({
   }
 
   return (
-    <div>
-      {!isPremium && <PremiumCompareBlock className="mb-6" />}
+    <div className="min-w-0 max-w-full overflow-x-hidden -mx-2 px-0 sm:mx-0 sm:px-0">
+      {!isPremium && <PremiumCompareBlock className="mb-4 sm:mb-6" />}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-lg font-black tracking-wide" style={{ color: t.text }}>My Bookmarks</h2>
-          <p className="text-[11px]" style={{ color: t.textMuted }}>
-            {totalLikesCount} bookmarked{' '}
-            {!isPremium && (
-              <>
-                <span>(remaining: {freeBookmarksRemaining}/{FREE_BOOKMARK_LIMIT})</span>
-                <span className="mx-1 text-white/20">|</span>
-                <span>folders: {freeFoldersRemaining}/{FREE_FOLDER_LIMIT}</span>
-                <span className="mx-1 text-white/20">-</span>
-                <Link href="/premium" className="text-amber-400 hover:text-amber-300 underline underline-offset-2 font-semibold">
-                  Upgrade to Premium
-                </Link>
-                <span className="ml-1 text-white/40">for unlimited saves and folders</span>
-              </>
-            )}
-          </p>
-        </div>
-        <div className="flex items-center gap-1.5">
+      <div className="mb-3 sm:mb-4">
+        <div className="flex items-start justify-between gap-2">
+          <h2 className="min-w-0 text-base font-black tracking-wide sm:text-lg" style={{ color: t.text }}>My Bookmarks</h2>
+          <div className="flex shrink-0 items-center gap-1">
           {orderedItems.length > 0 && (
             <>
               {editMode && selectedKeys.size > 0 && (
@@ -750,13 +734,29 @@ export default function SavedTab({
               }}
             />
           )}
+          </div>
         </div>
+        <p className="mt-1 text-[10px] leading-relaxed sm:text-[11px]" style={{ color: t.textMuted }}>
+          {totalLikesCount} bookmarked{' '}
+          {!isPremium && (
+            <>
+              <span>(remaining: {freeBookmarksRemaining}/{FREE_BOOKMARK_LIMIT})</span>
+              <span className="mx-1 text-white/20">|</span>
+              <span>folders: {freeFoldersRemaining}/{FREE_FOLDER_LIMIT}</span>
+              <span className="mx-1 text-white/20">-</span>
+              <Link href="/premium" className="text-amber-400 hover:text-amber-300 underline underline-offset-2 font-semibold">
+                Upgrade
+              </Link>
+            </>
+          )}
+        </p>
       </div>
 
-      <div
-        className="inline-flex flex-wrap gap-0 mb-4 rounded-lg border overflow-hidden"
-        style={{ borderColor: t.pillBorder }}
-      >
+      <div className="mb-3 overflow-x-auto pb-0.5 scrollbar-hide sm:mb-4">
+        <div
+          className="inline-flex min-w-max gap-0 overflow-hidden rounded-lg border"
+          style={{ borderColor: t.pillBorder }}
+        >
         {TYPE_FILTERS.map((item) => {
           const active = typeFilter === item.key;
           const count = typeCounts[item.key];
@@ -765,7 +765,7 @@ export default function SavedTab({
               key={item.key}
               type="button"
               onClick={() => setTypeFilter(item.key)}
-              className="px-3 py-2 text-[10px] font-bold uppercase tracking-[0.08em] transition-colors border-r last:border-r-0"
+              className="px-2.5 py-2 text-[10px] font-bold uppercase tracking-[0.06em] transition-colors border-r last:border-r-0 sm:px-3 sm:tracking-[0.08em]"
               style={{
                 borderColor: t.pillBorder,
                 backgroundColor: active ? t.activeBg : t.pillBg,
@@ -776,6 +776,7 @@ export default function SavedTab({
             </button>
           );
         })}
+        </div>
       </div>
 
       {/* Info box — toggled by the (i) button */}
@@ -841,8 +842,8 @@ export default function SavedTab({
 
       {/* Folders — compact horizontal row */}
       {showFolders && (
-      <div className="mb-3">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-hide">
+      <div className="mb-2 sm:mb-3">
+        <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-hide">
           {/* All Saved */}
           <button
             onClick={() => setActiveFolder(null)}
@@ -1015,7 +1016,7 @@ export default function SavedTab({
         </div>
       ) : viewMode === 'list' ? (
         /* List View */
-        <div className="space-y-1.5">
+        <div className="space-y-1 sm:space-y-1.5">
           {bookmarks.filter((bk) => !bk.item).map((bk) => (
             <div
               key={bk._id}
@@ -1048,7 +1049,7 @@ export default function SavedTab({
               key={key}
               onDragEnter={() => handleDragEnter(idx)}
               onDragOver={(e) => e.preventDefault()}
-              className="group/card relative rounded-2xl overflow-hidden transition-all duration-300"
+              className="group/card relative overflow-hidden rounded-xl transition-all duration-300 sm:rounded-2xl"
               style={{
                 background: t.cardBg,
                 border: `1px solid ${selected ? '#ef4444' : t.cardBorder}`,
@@ -1058,73 +1059,75 @@ export default function SavedTab({
               onMouseLeave={e => { if (!editMode && !selected) (e.currentTarget as HTMLElement).style.border = `1px solid ${t.cardBorder}`; }}
             >
               <div className="absolute left-0 top-0 bottom-0 w-px" style={{ background: t.leftAccent }} />
-              <div className="flex items-center gap-3 px-3 py-2.5">
-                <div
-                  draggable
-                  onDragStart={(e) => handleDragStart(idx, e)}
-                  onDragEnd={handleDragEnd}
-                  className="shrink-0 cursor-grab active:cursor-grabbing touch-none p-1 -ml-1 opacity-40 group-hover/card:opacity-100 transition-opacity"
-                  style={{ color: t.textMuted }}
-                  title="Drag to reorder"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="M18 11V6a2 2 0 0 0-4 0" /><path d="M14 10V4a2 2 0 0 0-4 0v2" /><path d="M10 10.5V5a2 2 0 0 0-4 0v8" />
-                    <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.7-2.3" />
-                  </svg>
-                </div>
-                {editMode && (
-                  <button
-                    type="button"
-                    onClick={() => toggleSelected(key)}
-                    className="shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all"
-                    style={{
-                      borderColor: selected ? '#ef4444' : t.divider,
-                      backgroundColor: selected ? '#ef4444' : 'transparent',
-                    }}
-                    aria-label={selected ? 'Deselect' : 'Select'}
+              <div className="flex flex-col gap-1.5 px-1 py-2 sm:flex-row sm:gap-2 sm:px-2 sm:py-2.5">
+                <div className="flex min-w-0 items-start gap-2">
+                  <div
+                    draggable
+                    onDragStart={(e) => handleDragStart(idx, e)}
+                    onDragEnd={handleDragEnd}
+                    className="shrink-0 cursor-grab touch-none p-0.5 opacity-40 transition-opacity active:cursor-grabbing group-hover/card:opacity-100"
+                    style={{ color: t.textMuted }}
+                    title="Drag to reorder"
                   >
-                    {selected && (
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><path d="M5 13l4 4L19 7"/></svg>
-                    )}
-                  </button>
-                )}
-                <Link href={editMode ? '#' : item.href} onClick={editMode ? (e) => { e.preventDefault(); toggleSelected(key); } : undefined} className="shrink-0" {...(item.kind === 'creator' && !editMode ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
-                  <div className="w-12 h-12 rounded-xl overflow-hidden" style={{ border: `1px solid ${t.divider}` }}>
-                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M18 11V6a2 2 0 0 0-4 0" /><path d="M14 10V4a2 2 0 0 0-4 0v2" /><path d="M10 10.5V5a2 2 0 0 0-4 0v8" />
+                      <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.7-2.3" />
+                    </svg>
                   </div>
-                </Link>
-                <div className="flex-1 min-w-0">
-                  <Link href={editMode ? '#' : item.href} onClick={editMode ? (e) => e.preventDefault() : undefined} className={`block font-bold text-[14px] truncate leading-tight transition-colors ${isPremium ? 'hover:text-[#c9973a]' : 'hover:opacity-70'}`} style={{ color: t.text }} {...(item.kind === 'creator' && !editMode ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>{item.name}</Link>
-                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                    {item.categories.slice(0, 3).map((cat, i) => (
-                      <span key={i} className="text-[9px] font-black uppercase tracking-[0.12em] px-1.5 py-0.5 rounded" style={{ background: t.tagBg, border: `1px solid ${t.tagBorder}`, color: i === 0 ? t.accent : t.accentDim }}>{cat}</span>
-                    ))}
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase" style={{
-                      background: item.kind === 'bot' ? '#0088cc15' : item.kind === 'ainsfw' ? '#7C3AED15' : item.kind === 'creator' ? '#00AFF015' : `${t.accent}10`,
-                      color: item.kind === 'bot' ? '#4ab3f4' : item.kind === 'ainsfw' ? '#a78bfa' : item.kind === 'creator' ? '#00AFF0' : t.accentDim,
-                    }}>
-                      {kindLabel(item.kind)}
-                    </span>
-                    {item.priceLabel ? (
-                      <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase" style={{ background: '#00AFF015', color: '#00AFF0' }}>{item.priceLabel}</span>
-                    ) : null}
+                  {editMode && (
+                    <button
+                      type="button"
+                      onClick={() => toggleSelected(key)}
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all"
+                      style={{
+                        borderColor: selected ? '#ef4444' : t.divider,
+                        backgroundColor: selected ? '#ef4444' : 'transparent',
+                      }}
+                      aria-label={selected ? 'Deselect' : 'Select'}
+                    >
+                      {selected && (
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><path d="M5 13l4 4L19 7"/></svg>
+                      )}
+                    </button>
+                  )}
+                  <Link href={editMode ? '#' : item.href} onClick={editMode ? (e) => { e.preventDefault(); toggleSelected(key); } : undefined} className="shrink-0" {...(item.kind === 'creator' && !editMode ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+                    <div className="h-11 w-11 overflow-hidden rounded-xl sm:h-12 sm:w-12" style={{ border: `1px solid ${t.divider}` }}>
+                      <img src={item.image} alt={item.name} className="h-full w-full object-cover" referrerPolicy="no-referrer" onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
+                    </div>
+                  </Link>
+                  <div className="min-w-0 flex-1">
+                    <Link href={editMode ? '#' : item.href} onClick={editMode ? (e) => e.preventDefault() : undefined} className={`block truncate text-[13px] font-bold leading-tight transition-colors sm:text-[14px] ${isPremium ? 'hover:text-[#c9973a]' : 'hover:opacity-70'}`} style={{ color: t.text }} {...(item.kind === 'creator' && !editMode ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>{item.name}</Link>
+                    <div className="mt-1 flex flex-wrap items-center gap-1">
+                      {item.categories.slice(0, 3).map((cat, i) => (
+                        <span key={i} className="rounded px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.1em] sm:text-[9px] sm:tracking-[0.12em]" style={{ background: t.tagBg, border: `1px solid ${t.tagBorder}`, color: i === 0 ? t.accent : t.accentDim }}>{cat}</span>
+                      ))}
+                      <span className="rounded px-1.5 py-0.5 text-[8px] font-bold uppercase sm:text-[9px]" style={{
+                        background: item.kind === 'bot' ? '#0088cc15' : item.kind === 'ainsfw' ? '#7C3AED15' : item.kind === 'creator' ? '#00AFF015' : `${t.accent}10`,
+                        color: item.kind === 'bot' ? '#4ab3f4' : item.kind === 'ainsfw' ? '#a78bfa' : item.kind === 'creator' ? '#00AFF0' : t.accentDim,
+                      }}>
+                        {kindLabel(item.kind)}
+                      </span>
+                      {item.priceLabel ? (
+                        <span className="rounded px-1.5 py-0.5 text-[8px] font-bold uppercase sm:text-[9px]" style={{ background: '#00AFF015', color: '#00AFF0' }}>{item.priceLabel}</span>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
                 {!editMode && (
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-wrap items-center gap-1.5 pl-9 sm:pl-0">
                     {item.memberCount ? (
-                      <div className="text-right mr-1">
-                        <div className="text-[15px] font-black leading-none" style={{ color: t.accent }}>{formatNum(item.memberCount)}</div>
-                        <div className="text-[8px] font-bold uppercase tracking-widest" style={{ color: t.accentDim }}>subs</div>
+                      <div className="mr-0.5 text-right">
+                        <div className="text-[13px] font-black leading-none sm:text-[15px]" style={{ color: t.accent }}>{formatNum(item.memberCount)}</div>
+                        <div className="text-[7px] font-bold uppercase tracking-widest sm:text-[8px]" style={{ color: t.accentDim }}>subs</div>
                       </div>
                     ) : null}
-                    {item.memberCount ? <div className="w-px h-7" style={{ background: t.divider }} /> : null}
                     {item.telegramLink && (
-                      <a href={item.telegramLink} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide transition-all hover:scale-[1.04]" style={{ background: 'linear-gradient(135deg, #0088cc, #0077b5)', color: '#fff' }} title="Open in Telegram">
-                        Telegram
+                      <a href={item.telegramLink} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center rounded-lg px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide transition-all hover:scale-[1.04] sm:gap-1.5 sm:px-3 sm:text-[11px]" style={{ background: 'linear-gradient(135deg, #0088cc, #0077b5)', color: '#fff' }} title="Open in Telegram">
+                        <span className="sm:hidden">TG</span>
+                        <span className="hidden sm:inline">Telegram</span>
                       </a>
                     )}
-                    <Link href={item.href} className="px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide transition-all hover:scale-[1.04]" style={isPremium ? { background: 'linear-gradient(135deg, #c9973a, #a67c2e)', color: '#0d0c0a' } : { background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }} {...(item.kind === 'creator' ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+                    <Link href={item.href} className="rounded-lg px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide transition-all hover:scale-[1.04] sm:px-3 sm:text-[11px]" style={isPremium ? { background: 'linear-gradient(135deg, #c9973a, #a67c2e)', color: '#0d0c0a' } : { background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }} {...(item.kind === 'creator' ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
                       View
                     </Link>
                     {item.bookmark ? <ThreeDotMenu bk={item.bookmark} /> : null}

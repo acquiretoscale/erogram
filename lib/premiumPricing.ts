@@ -20,9 +20,9 @@ export interface PremiumPricing {
 
 const DEFAULTS: PremiumPricing = {
   monthly: { priceUsd: 8.99, starsAmount: 600, days: 30, label: 'Erogram VIP (1 Month)', description: '30-day unlimited access — Secret Vault, bookmarks & more' },
-  quarterly: { priceUsd: 9.97, starsAmount: 750, days: 90, label: 'Erogram VIP (3 Months)', description: '3-month unlimited access — Secret Vault, bookmarks & more' },
-  yearly: { priceUsd: 19.97, starsAmount: 1500, days: 365, label: 'Erogram VIP (1 Year)', description: '1-year unlimited access — Secret Vault, bookmarks & more' },
-  lifetime: { priceUsd: 97, starsAmount: 7300, days: 36500, label: 'Erogram VIP (Lifetime)', description: 'Lifetime unlimited access — Secret Vault, bookmarks & more' },
+  quarterly: { priceUsd: 9.97, starsAmount: 660, days: 90, label: 'Erogram VIP (3 Months)', description: '3-month unlimited access — Secret Vault, bookmarks & more' },
+  yearly: { priceUsd: 19.97, starsAmount: null, days: 365, label: 'Erogram VIP (1 Year)', description: '1-year unlimited access — Secret Vault, bookmarks & more' },
+  lifetime: { priceUsd: 97, starsAmount: null, days: 36500, label: 'Erogram VIP (Lifetime)', description: 'Lifetime unlimited access — Secret Vault, bookmarks & more' },
   offerBadge: '80% OFF',
   offerText: 'Launch price ends soon',
 };
@@ -47,7 +47,12 @@ export async function getPremiumPricing(): Promise<PremiumPricing> {
     if (doc) {
       const pick = (def: PlanConfig, raw: any): PlanConfig => ({
         priceUsd: raw?.priceUsd ?? def.priceUsd,
-        starsAmount: raw?.starsAmount ?? def.starsAmount,
+        starsAmount:
+          typeof raw?.starsAmount === 'number' && raw.starsAmount > 0
+            ? raw.starsAmount
+            : typeof def.starsAmount === 'number' && def.starsAmount > 0
+              ? def.starsAmount
+              : null,
         days: raw?.days ?? def.days,
         label: raw?.label ?? def.label,
         description: raw?.description ?? def.description,
@@ -80,6 +85,37 @@ export function isValidPlan(plan: string): plan is ValidPlan {
 
 export function getPlanConfig(pricing: PremiumPricing, plan: ValidPlan): PlanConfig {
   return pricing[plan];
+}
+
+/** Customer-facing: use stored stars when set, else derive from USD at live rate. */
+export function syncPlanStarsFromUsd(plan: PlanConfig, ratePerStar: number): PlanConfig {
+  const starsAmount =
+    typeof plan.starsAmount === 'number' && plan.starsAmount > 0
+      ? plan.starsAmount
+      : usdToStars(plan.priceUsd, ratePerStar);
+  return { ...plan, starsAmount };
+}
+
+export function syncPricingStarsFromUsd(pricing: PremiumPricing, ratePerStar: number): PremiumPricing {
+  return {
+    ...pricing,
+    monthly: syncPlanStarsFromUsd(pricing.monthly, ratePerStar),
+    quarterly: syncPlanStarsFromUsd(pricing.quarterly, ratePerStar),
+    yearly: syncPlanStarsFromUsd(pricing.yearly, ratePerStar),
+    lifetime: syncPlanStarsFromUsd(pricing.lifetime, ratePerStar),
+  };
+}
+
+export async function getPremiumPricingForCheckout(): Promise<PremiumPricing> {
+  const [pricing, rate] = await Promise.all([getPremiumPricing(), getStarsRate()]);
+  return syncPricingStarsFromUsd(pricing, rate);
+}
+
+export function getInvoiceStarsAmount(plan: PlanConfig, ratePerStar: number): number {
+  if (typeof plan.starsAmount === 'number' && plan.starsAmount > 0) {
+    return plan.starsAmount;
+  }
+  return usdToStars(plan.priceUsd, ratePerStar);
 }
 
 // Fetch live Stars-to-USD rate

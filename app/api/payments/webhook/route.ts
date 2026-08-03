@@ -5,9 +5,9 @@ import { recordCouponUsage } from '@/lib/actions/coupons';
 import { MAX_PREMIUM_SLOTS } from '@/lib/auth';
 import { notifyAdminsOfSale } from '@/lib/utils/notifyAdmins';
 import { getPremiumPricing } from '@/lib/premiumPricing';
-import { buildBoostPaymentUpdate } from '@/lib/boostPricing';
+import { buildBoostPaymentUpdate, SCALE_STARS } from '@/lib/boostPricing';
 
-const GROUP_SUBMISSION_TYPES = new Set(['normal_listing', 'instant_approval', 'boost_week', 'boost_month']);
+const GROUP_SUBMISSION_TYPES = new Set(['normal_listing', 'instant_approval', 'boost_week', 'boost_month', 'scale_month']);
 
 function logEvent(data: Record<string, any>) {
   PremiumEvent.create({ source: 'server', ...data }).catch(() => {});
@@ -129,8 +129,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ ok: true });
           }
 
-          const GROUP_STARS: Record<string, number> = { instant_approval: 600, boost_week: 2000, boost_month: 5000 };
-          const BOT_STARS: Record<string, number> = { normal_listing: 1000, instant_approval: 1500, boost_week: 3000, boost_month: 6000 };
+          const GROUP_STARS: Record<string, number> = { instant_approval: 600, boost_week: 2000, boost_month: 5000, scale_month: SCALE_STARS };
+          const BOT_STARS: Record<string, number> = { normal_listing: 1000, instant_approval: 1500, boost_week: 3000, boost_month: 6000, scale_month: SCALE_STARS };
           const STARS_AMOUNTS = payload.entityType === 'bot' ? BOT_STARS : GROUP_STARS;
 
           const updateFields = buildBoostPaymentUpdate(
@@ -162,6 +162,7 @@ export async function POST(req: NextRequest) {
             normal_listing: 'normal listing',
             boost_week: 'instant + boost 1 week',
             boost_month: 'instant + boost 1 month',
+            scale_month: 'scale 1 month',
             instant_approval: 'instant approval',
           };
           const typeLabel = boostLabels[payload.type] || payload.type;

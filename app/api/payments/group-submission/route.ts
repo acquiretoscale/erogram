@@ -3,14 +3,14 @@ import connectDB from '@/lib/db/mongodb';
 import { Group, Bot } from '@/lib/models';
 import { validateCoupon, recordCouponUsage } from '@/lib/actions/coupons';
 import { authenticateUser } from '@/lib/auth';
-import { buildBoostPaymentUpdate, cryptoUsdFromStars } from '@/lib/boostPricing';
+import { buildBoostPaymentUpdate, cryptoUsdFromStars, SCALE_STARS, SCALE_USD } from '@/lib/boostPricing';
 
 const BOT_TOKEN = process.env.TELEGRAM_PAYMENT_BOT_TOKEN || '';
 const NP_API_KEY = process.env.NOWPAYMENTS_API_KEY || '';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
 const NP_BASE = 'https://api.nowpayments.io/v1';
 
-export type SubmissionType = 'normal_listing' | 'instant_approval' | 'boost_week' | 'boost_month';
+export type SubmissionType = 'normal_listing' | 'instant_approval' | 'boost_week' | 'boost_month' | 'scale_month';
 export type EntityType = 'group' | 'bot';
 
 const GROUP_PLANS: Partial<Record<SubmissionType, { title: string; description: string; amount: number }>> = {
@@ -28,6 +28,11 @@ const GROUP_PLANS: Partial<Record<SubmissionType, { title: string; description: 
     title: 'Boost Extension (1 Month)',
     description: 'Boost in Top Groups for 30 days (40× more exposure)',
     amount: 5000,
+  },
+  scale_month: {
+    title: 'Scale (1 Month)',
+    description: 'Scale placement for 30 days (4× more exposure than Boost)',
+    amount: SCALE_STARS,
   },
 };
 
@@ -51,6 +56,11 @@ const BOT_PLANS: Record<SubmissionType, { title: string; description: string; am
     title: 'Boost Extension (1 Month)',
     description: 'Boost in Most Popular Bots for 30 days',
     amount: 6000,
+  },
+  scale_month: {
+    title: 'Scale (1 Month)',
+    description: 'Scale placement for 30 days (4× more exposure than Boost)',
+    amount: SCALE_STARS,
   },
 };
 
@@ -90,7 +100,7 @@ export async function POST(req: NextRequest) {
     if (!NP_API_KEY) {
       return NextResponse.json({ message: 'Crypto payments are not configured.' }, { status: 503 });
     }
-    if (type !== 'boost_week' && type !== 'boost_month') {
+    if (type !== 'boost_week' && type !== 'boost_month' && type !== 'scale_month') {
       return NextResponse.json({ message: 'Crypto is only available for boost renewals.' }, { status: 400 });
     }
 
@@ -98,11 +108,11 @@ export async function POST(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ message: 'Login required for crypto payment.' }, { status: 401 });
     }
-    if (entity.createdBy?.toString() !== user._id) {
+    if (entity.createdBy?.toString() !== user._id && !user.isAdmin) {
       return NextResponse.json({ message: 'You can only renew your own listings.' }, { status: 403 });
     }
 
-    const priceUsd = cryptoUsdFromStars(plan.amount);
+    const priceUsd = type === 'scale_month' ? SCALE_USD : cryptoUsdFromStars(plan.amount);
     const orderId = `sub__${entityType}__${groupId}__${type}__${Date.now()}`;
 
     try {
@@ -117,10 +127,10 @@ export async function POST(req: NextRequest) {
           price_currency: 'usd',
           pay_currency: 'usdttrc20',
           order_id: orderId,
-          order_description: `${plan.title} | ${entity.name || entityType} (15% crypto discount)`,
+          order_description: `${plan.title} | ${entity.name || entityType}`,
           ipn_callback_url: `${SITE_URL}/api/payments/nowpayments/webhook`,
-          success_url: `${SITE_URL}/my-listings?renewed=1`,
-          cancel_url: `${SITE_URL}/my-listings`,
+          success_url: `${SITE_URL}/profile?tab=listings&renewed=1`,
+          cancel_url: `${SITE_URL}/profile?tab=listings`,
         }),
       });
 

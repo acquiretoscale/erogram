@@ -12,7 +12,7 @@ interface StatsData {
   clickBreakdown?: ClickSource[];
 }
 
-const POLL_INTERVAL = 5_000;
+const POLL_INTERVAL = 60_000;
 
 function useCountUp(target: number, duration = 2000, start = false) {
   const [count, setCount] = useState(0);
