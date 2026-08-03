@@ -431,6 +431,7 @@ export async function getTop100CreatorSuggestions(
       redditUrl: '',
       patreonUrl: '',
       extraPhotos: [],
+      extraVideos: [],
       adminImported: false,
     }));
   } catch {

@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import type { BestFreeArticleCopy, BestFreeCreatorEntry } from '@/lib/onlyfans/bestFreeArticle/types';
+import type { BestFreeArticleCopy, BestFreeCreatorEntry as BestFreeCreatorEntryRow } from '@/lib/onlyfans/bestFreeArticle/types';
 import BestFreeCreatorEntry from './BestFreeCreatorEntry';
 
 type Props = {
-  ranking: BestFreeCreatorEntry[];
+  ranking: BestFreeCreatorEntryRow[];
   copy: BestFreeArticleCopy;
 };
 

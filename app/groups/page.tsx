@@ -197,7 +197,7 @@ async function getGroups(limit: number, isMobile: boolean = false, locale: strin
       paidBoost: group.paidBoost || false,
       paidBoostStars: group.paidBoostStars ?? null,
       boosted: group.boosted || false,
-      boostExpiresAt: group.boostExpiresAt ? new Date(group.boostExpiresAt).toISOString() : null,
+      boostExpiresAt: group.boostExpiresAt ? new Date(group.boostExpiresAt).toISOString() : undefined,
     }));
   } catch (error) {
     console.error('Error fetching groups:', error);

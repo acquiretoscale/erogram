@@ -180,7 +180,7 @@ export async function hubBrowseCreators(
 
   pipeline.push({ $limit: PROFILE_PREMIUM_SEARCH_POOL }, HUB_BROWSE_PROJECT);
 
-  const creators = await OnlyFansCreator.aggregate(pipeline);
+  const creators = await OnlyFansCreator.aggregate(pipeline as any[]);
   const rotated = rotateSearchResults(
     creators as any[],
     trimmed || nicheGroups.flat().join('+') || 'hub',

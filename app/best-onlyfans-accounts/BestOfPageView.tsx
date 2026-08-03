@@ -498,13 +498,6 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                   ? `${creator.username}-onlyfans`
                   : '';
               const cardRowClass = `relative z-10 flex flex-col sm:flex-row gap-0 sm:gap-5`;
-              const CardWrapper = isPromo ? 'div' : Link;
-              const cardWrapperProps = isPromo
-                ? { className: cardRowClass }
-                : {
-                    href: erogramHref,
-                    className: `${cardRowClass} cursor-pointer`,
-                  };
 
               return (
                 <li key={creator._id}>
@@ -537,7 +530,8 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                       </>
                     )}
 
-                    <CardWrapper {...cardWrapperProps}>
+                    {isPromo ? (
+                      <div className={cardRowClass}>
                       {/* Avatar */}
                       <div
                         className="relative flex-shrink-0 w-full sm:w-[11.5rem] h-52 sm:h-auto sm:min-h-[15rem] overflow-hidden sm:rounded-l-[1.35rem]"
@@ -670,7 +664,105 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                         </div>
 
                       </div>
-                    </CardWrapper>
+                      </div>
+                    ) : (
+                      <Link href={erogramHref} className={`${cardRowClass} cursor-pointer`}>
+                      {/* Avatar */}
+                      <div
+                        className="relative flex-shrink-0 w-full sm:w-[11.5rem] h-52 sm:h-auto sm:min-h-[15rem] overflow-hidden sm:rounded-l-[1.35rem]"
+                        style={{ backgroundColor: 'rgba(43,27,40,0.06)' }}
+                      >
+                        {creator.avatar ? (
+                          <img
+                            src={creator.avatar}
+                            alt={`${creator.name} ${label} OnlyFans, rank #${rank} on Erogram`}
+                            className="absolute inset-0 w-full h-full object-cover"
+                            loading={index < 4 ? 'eager' : 'lazy'}
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center text-4xl font-black" style={{ color: 'rgba(43,27,40,0.15)' }}>
+                            {creator.name.charAt(0)}
+                          </div>
+                        )}
+                        {badge && (
+                          <span
+                            className="absolute top-2.5 left-2.5 inline-flex flex-col items-center justify-center min-w-[2.75rem] px-2 py-1 rounded-lg text-center shadow-lg"
+                            style={{ background: badge.bg, color: badge.color, boxShadow: '0 6px 18px rgba(0,0,0,0.3)' }}
+                          >
+                            <span className="text-[7px] font-bold tracking-[0.22em] uppercase leading-none opacity-80">{dict.bestOnlyfans.rankLabel}</span>
+                            <span className="text-[1rem] font-black leading-none mt-0.5 tabular-nums">{badge.label}</span>
+                          </span>
+                        )}
+                        {creator.online && (
+                          <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide shadow-lg" style={{ backgroundColor: 'rgba(16,185,129,0.95)', color: '#fff' }}>
+                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> {dict.bestOnlyfans.liveLabel}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0 flex flex-col p-4 sm:py-5 sm:pr-5 sm:pl-0">
+                        <div>
+                          <h2 className="font-[family-name:var(--font-baloo)] font-extrabold text-[1.25rem] sm:text-[1.45rem] leading-tight tracking-tight flex items-center justify-between gap-3 min-w-0" style={{ color: textMain }}>
+                            <span className="truncate min-w-0 flex-1">{creator.name}</span>
+                            <span className="flex items-center gap-2 flex-shrink-0">
+                            {(creator.isFree || creator.price === 0) && (
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wide text-white" style={{ backgroundColor: '#22c55e' }}>
+                                {dict.bestOnlyfans.free}
+                              </span>
+                            )}
+                            </span>
+                          </h2>
+                          <p className="text-[12px] font-semibold mt-1" style={{ color: textMuted }}>
+                            @{creator.username}{creator.location ? ` · ${creator.location}` : ''}
+                          </p>
+                          {!(creator.isFree || creator.price === 0) && creator.price > 0 && (
+                            <span
+                              className="inline-flex mt-2 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wide"
+                              style={{ backgroundColor: 'rgba(43,27,40,0.08)', color: PLUM }}
+                            >
+                              ${creator.price}/mo
+                            </span>
+                          )}
+                          {creator.bio && (
+                            <p
+                              className="text-[11px] leading-snug line-clamp-4 mt-2"
+                              style={{ color: textMuted, opacity: 0.85 }}
+                            >
+                              {bioSnippet(creator.bio)}
+                            </p>
+                          )}
+                        </div>
+
+                        {stats.length > 0 ? (
+                          <div
+                            className="flex items-stretch gap-0 mt-4 rounded-xl border overflow-hidden"
+                            style={{ borderColor: statBorder, backgroundColor: 'rgba(43,27,40,0.02)' }}
+                          >
+                            {stats.slice(0, 4).map((s, i) => (
+                              <div
+                                key={s.label}
+                                className="flex-1 min-w-0 px-3 py-2.5 text-center"
+                                style={{ borderLeft: i > 0 ? `1px solid ${statBorder}` : undefined }}
+                              >
+                                <div className="text-[8px] font-bold tracking-[0.16em] uppercase truncate" style={{ color: textMuted }}>{dict.bestOnlyfans[`stats${s.label}`] || s.label}</div>
+                                <div className="text-[15px] font-extrabold tabular-nums mt-0.5 truncate" style={{ color: textMain }}>{s.value}</div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+
+                        <div className="mt-4 sm:mt-auto pt-1 flex flex-row items-stretch gap-2">
+                          <span
+                            className="inline-flex w-full sm:w-auto items-center justify-center rounded-xl font-black uppercase text-white px-6 py-3 text-[12px] tracking-[0.14em]"
+                            style={{ backgroundColor: OF_BLUE, boxShadow: '0 8px 22px rgba(0,175,240,0.35)' }}
+                          >
+                            Visit Profile
+                          </span>
+                        </div>
+                      </div>
+                      </Link>
+                    )}
                   </article>
                 </li>
               );

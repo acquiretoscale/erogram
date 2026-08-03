@@ -113,7 +113,9 @@ export function OnlyFansHubStats({ totalCreators }: { totalCreators: number }) {
 
 export function OnlyFansCategoryBrowser() {
   const lp = useLocalePath();
-  const [activeTab, setActiveTab] = useState(OF_CATEGORY_TABS[0].id);
+  const [activeTab, setActiveTab] = useState<(typeof OF_CATEGORY_TABS)[number]['id']>(
+    OF_CATEGORY_TABS[0].id,
+  );
 
   const tabs = useMemo(
     () =>
