@@ -8,7 +8,10 @@ export const USER_PLATFORMS = [
 
 export type UserPlatformId = (typeof USER_PLATFORMS)[number]['id'];
 
-export type InterestOption = { slug: string; name: string };
+export type InterestOption = { slug: string; name: string; count?: number };
+
+/** Hidden from profile category picker (junk bio hashtags). */
+export const PROFILE_CATEGORY_EXCLUDED_SLUGS = new Set(['like', 'of', 'big']);
 
 /** Always available on profile interests — categories + tag-only niches (even below tag index threshold). */
 export const PROFILE_TAG_SLUGS: readonly string[] = [

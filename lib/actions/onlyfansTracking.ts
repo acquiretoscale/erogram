@@ -48,12 +48,23 @@ export async function getExpiredOFAgencyTargets(): Promise<ExpiredOFAgencyTarget
   return result;
 }
 
-/** Shared write: one click → Campaign.clicks + CampaignClick. */
+/** Shared write: one click → Campaign.clicks + CampaignClick.
+ * Stamps the campaign's advertiserId + slot onto the click row so stats group
+ * without a per-row join. Uses findByIdAndUpdate's returned doc so we read the
+ * campaign once (not an extra query). */
 async function logCampaignClick(campaignId: any, placement: string) {
-  await Promise.all([
-    Campaign.findByIdAndUpdate(campaignId, { $inc: { clicks: 1 } }),
-    CampaignClick.create({ campaignId, clickedAt: new Date(), placement }),
-  ]);
+  const camp = await Campaign.findByIdAndUpdate(
+    campaignId,
+    { $inc: { clicks: 1 } },
+    { new: true, projection: { advertiserId: 1, slot: 1 } },
+  ).lean() as { advertiserId?: any; slot?: string } | null;
+  await CampaignClick.create({
+    campaignId,
+    clickedAt: new Date(),
+    placement,
+    advertiserId: camp?.advertiserId ?? null,
+    slot: camp?.slot ?? '',
+  });
 }
 
 /**

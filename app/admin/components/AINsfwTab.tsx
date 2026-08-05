@@ -12,6 +12,7 @@ import {
   type ToolStatsData,
   type AdminSubmission,
 } from '@/lib/actions/ainsfw';
+import { adminReallocateAinsfwToBot } from '@/lib/actions/adminReallocateAinsfwToBot';
 import Link from 'next/link';
 
 type SortKey = 'name' | 'category' | 'upvotes' | 'downvotes' | 'score' | 'reviews';
@@ -39,6 +40,7 @@ export default function AINsfwTab() {
   const [editSubStatus, setEditSubStatus] = useState('pending');
   const [editSubUnlisted, setEditSubUnlisted] = useState(false);
   const [subSaving, setSubSaving] = useState(false);
+  const [reallocatingId, setReallocatingId] = useState<string | null>(null);
   const [subPaymentFilter, setSubPaymentFilter] = useState<'all' | 'unpaid' | 'paid'>('all');
 
   const showToast = (msg: string) => {
@@ -123,6 +125,24 @@ export default function AINsfwTab() {
       showToast('Failed to update');
     } finally {
       setSubSaving(false);
+    }
+  };
+
+  const handleReallocateToBot = async (sub: AdminSubmission) => {
+    if (!confirm(`Move "${sub.name}" to Telegram Bots? Removes AINSFW listing. No redirect.`)) return;
+    setReallocatingId(sub._id);
+    try {
+      const result = await adminReallocateAinsfwToBot(sub._id, { featured: true });
+      if (!result.success) {
+        showToast(result.error || 'Failed');
+        return;
+      }
+      setSubs((prev) => prev.filter((s) => s._id !== sub._id));
+      showToast(`Moved to bot: /${result.botSlug}`);
+    } catch {
+      showToast('Failed to move to bot');
+    } finally {
+      setReallocatingId(null);
     }
   };
 
@@ -502,12 +522,22 @@ export default function AINsfwTab() {
                     </td>
                     <td className="px-4 py-3 text-white/40 text-[11px]">{new Date(sub.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
-                      <button
-                        onClick={() => openEditSub(sub)}
-                        className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-500/20 transition-all"
-                      >
-                        Edit
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => openEditSub(sub)}
+                          className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-500/20 transition-all"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleReallocateToBot(sub)}
+                          disabled={reallocatingId === sub._id}
+                          className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-sky-600/20 text-sky-400 hover:bg-sky-600/30 border border-sky-500/20 transition-all disabled:opacity-50"
+                          title="Telegram bot submitted on wrong form — move to Bots"
+                        >
+                          {reallocatingId === sub._id ? '…' : '→ Bot'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

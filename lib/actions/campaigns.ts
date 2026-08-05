@@ -1605,10 +1605,18 @@ const IMPRESSION_TRACKING_PAUSED = true;
 export async function trackClick(campaignId: string, placement?: string) {
   try {
     await connectDB();
-    await Campaign.findByIdAndUpdate(campaignId, { $inc: { clicks: 1 } });
+    // Read advertiserId+slot from the same update we already do, then stamp them on
+    // the click row so stats group by stored fields instead of joining to Campaign.
+    const camp = await Campaign.findByIdAndUpdate(
+      campaignId,
+      { $inc: { clicks: 1 } },
+      { new: true, projection: { advertiserId: 1, slot: 1 } },
+    ).lean() as { advertiserId?: unknown; slot?: string } | null;
     await CampaignClick.create({
       campaignId,
       clickedAt: new Date(),
+      advertiserId: camp?.advertiserId ?? null,
+      slot: camp?.slot ?? '',
       ...(placement ? { placement } : {}),
     });
   } catch {
@@ -1841,15 +1849,11 @@ export async function getClicksByAdvertiser(token: string) {
   const [by7d, by30d] = await Promise.all([
     CampaignClick.aggregate([
       { $match: { campaignId: { $in: campaignIds }, clickedAt: { $gte: last7d } } },
-      { $lookup: { from: 'campaigns', localField: 'campaignId', foreignField: '_id', as: 'camp' } },
-      { $unwind: '$camp' },
-      { $group: { _id: '$camp.advertiserId', clicks: { $sum: 1 } } },
+      { $group: { _id: '$advertiserId', clicks: { $sum: 1 } } },
     ]).then((r: { _id: any; clicks: number }[]) => new Map<string, number>(r.filter((x) => x._id).map((x) => [String(x._id), x.clicks] as [string, number]))),
     CampaignClick.aggregate([
       { $match: { campaignId: { $in: campaignIds }, clickedAt: { $gte: last30d } } },
-      { $lookup: { from: 'campaigns', localField: 'campaignId', foreignField: '_id', as: 'camp' } },
-      { $unwind: '$camp' },
-      { $group: { _id: '$camp.advertiserId', clicks: { $sum: 1 } } },
+      { $group: { _id: '$advertiserId', clicks: { $sum: 1 } } },
     ]).then((r: { _id: any; clicks: number }[]) => new Map<string, number>(r.filter((x) => x._id).map((x) => [String(x._id), x.clicks] as [string, number]))),
   ]);
   const byAdv = new Map<string, { totalClicks: number; last7Days: number; last30Days: number }>();
@@ -2116,30 +2120,23 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
     ]),
     CampaignClick.aggregate([
       { $match: dateMatch },
-      { $lookup: { from: 'campaigns', localField: 'campaignId', foreignField: '_id', as: 'camp' } },
-      { $unwind: '$camp' },
-      { $group: { _id: '$camp.advertiserId', clicks: { $sum: 1 } } },
+      { $group: { _id: '$advertiserId', clicks: { $sum: 1 } } },
     ]),
     CampaignClick.aggregate([
       { $match: { campaignId: { $in: campaignIds }, clickedAt: { $gte: last7d } } },
-      { $lookup: { from: 'campaigns', localField: 'campaignId', foreignField: '_id', as: 'camp' } },
-      { $unwind: '$camp' },
-      { $group: { _id: '$camp.advertiserId', clicks: { $sum: 1 } } },
+      { $group: { _id: '$advertiserId', clicks: { $sum: 1 } } },
     ]),
     CampaignClick.aggregate([
       { $match: { campaignId: { $in: campaignIds }, clickedAt: { $gte: last30d } } },
-      { $lookup: { from: 'campaigns', localField: 'campaignId', foreignField: '_id', as: 'camp' } },
-      { $unwind: '$camp' },
-      { $group: { _id: '$camp.advertiserId', clicks: { $sum: 1 } } },
+      { $group: { _id: '$advertiserId', clicks: { $sum: 1 } } },
     ]),
     CampaignClick.aggregate([
       { $match: dateMatch },
-      { $lookup: { from: 'campaigns', localField: 'campaignId', foreignField: '_id', as: 'camp' } },
-      { $unwind: '$camp' },
       // Group by the REAL placement the click was tagged with (top-groups-1, top-bots-2,
-      // ainsfw-featured, best-of, group-sidebar, article CTA…), falling back to the campaign
+      // ainsfw-featured, best-of, group-sidebar, article CTA…), falling back to the stored
       // slot when a click has no placement (older rows). Normalized to friendly buckets in JS.
-      { $group: { _id: { placement: '$placement', slot: '$camp.slot' }, clicks: { $sum: 1 } } },
+      // slot is denormalized on the click row now, so no campaign join is needed.
+      { $group: { _id: { placement: '$placement', slot: '$slot' }, clicks: { $sum: 1 } } },
     ]),
   ]);
 
@@ -2168,14 +2165,13 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
   {
     const byDayByAdv = await CampaignClick.aggregate([
       { $match: { campaignId: { $in: campaignIds }, clickedAt: { $gte: rangeStart, $lte: rangeEnd } } },
-      { $lookup: { from: 'campaigns', localField: 'campaignId', foreignField: '_id', as: 'camp' } },
-      { $unwind: '$camp' },
-      { $group: { _id: { date: { $dateToString: { format: '%Y-%m-%d', date: '$clickedAt' } }, advertiserId: '$camp.advertiserId' }, clicks: { $sum: 1 } } },
+      { $group: { _id: { date: { $dateToString: { format: '%Y-%m-%d', date: '$clickedAt' } }, advertiserId: '$advertiserId' }, clicks: { $sum: 1 } } },
       { $sort: { '_id.date': 1 } },
     ]);
     const byDate = new Map<string, { advertiserId: string; clicks: number }[]>();
     for (const r of byDayByAdv as any[]) {
       const date = r._id.date as string;
+      if (!r._id.advertiserId) continue; // clicks with no advertiser (e.g. pre-backfill) don't attribute
       if (!byDate.has(date)) byDate.set(date, []);
       byDate.get(date)!.push({ advertiserId: r._id.advertiserId.toString(), clicks: r.clicks });
     }
@@ -2194,9 +2190,7 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
   {
     const daySlotRows = await CampaignClick.aggregate([
       { $match: matchInRange },
-      { $lookup: { from: 'campaigns', localField: 'campaignId', foreignField: '_id', as: 'camp' } },
-      { $unwind: '$camp' },
-      { $group: { _id: { date: { $dateToString: { format: '%Y-%m-%d', date: '$clickedAt' } }, slot: '$camp.slot' }, clicks: { $sum: 1 } } },
+      { $group: { _id: { date: { $dateToString: { format: '%Y-%m-%d', date: '$clickedAt' } }, slot: '$slot' }, clicks: { $sum: 1 } } },
       { $sort: { '_id.date': 1 } },
     ]);
     const daySlotMap = new Map<string, Record<string, number>>();
@@ -2241,12 +2235,11 @@ export async function getDashboardStats(token: string, filters: DashboardFilters
   {
     const slotByAdv = await CampaignClick.aggregate([
       { $match: dateMatch },
-      { $lookup: { from: 'campaigns', localField: 'campaignId', foreignField: '_id', as: 'camp' } },
-      { $unwind: '$camp' },
-      { $group: { _id: { advertiserId: '$camp.advertiserId', slot: '$camp.slot' }, clicks: { $sum: 1 } } },
+      { $group: { _id: { advertiserId: '$advertiserId', slot: '$slot' }, clicks: { $sum: 1 } } },
     ]);
     const map = new Map<string, { slot: string; clicks: number }[]>();
     for (const r of slotByAdv as any[]) {
+      if (!r._id.advertiserId) continue; // unattributed clicks (pre-backfill) skipped
       const aid = r._id.advertiserId.toString();
       if (!map.has(aid)) map.set(aid, []);
       map.get(aid)!.push({ slot: r._id.slot, clicks: r.clicks });

@@ -1,14 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import Script from 'next/script';
-import axios from 'axios';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import ErogramDiscoveryBanner from '@/components/ErogramDiscoveryBanner';
-import { Search, Bookmark, Rocket, Shield, LogIn, ArrowLeft } from 'lucide-react';
+import AuthMethods from '@/components/auth/AuthMethods';
+import AuthJoinBenefits from '@/components/auth/AuthJoinBenefits';
+import AuthSocialProof from '@/components/auth/AuthSocialProof';
+import { AuthAvatarBackground, AuthCard, AuthTabToggle } from '@/components/auth/AuthPageShell';
+import { ArrowLeft } from 'lucide-react';
 
 const AINSFW_ACCENT = '#22c55e';
 
@@ -25,12 +27,25 @@ function readRedirectParam(searchParams: URLSearchParams): string | null {
   return null;
 }
 
+function AuthError({ message }: { message: string }) {
+  if (!message) return null;
+  return (
+    <div className="mb-2 p-2 rounded-lg bg-red-500/15 border border-red-500/35 text-red-300 text-xs">
+      {message}
+    </div>
+  );
+}
+
 export default function JoinClient({
   avatars,
   initialRedirect = null,
+  totalUsers = 0,
+  userAvatars = [],
 }: {
   avatars: string[];
   initialRedirect?: string | null;
+  totalUsers?: number;
+  userAvatars?: string[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -62,264 +77,109 @@ export default function JoinClient({
     }
   }, [router, searchParams, initialRedirect]);
 
-  useEffect(() => {
-    (window as any).onTelegramAuth = async function(user: any) {
-      if (!user || !user.id || !user.hash) return;
-
-      try {
-        const res = await axios.post('/api/auth/telegram', user);
-        if (!res.data?.token) return;
-
-        localStorage.setItem('token', res.data.token);
-        localStorage.setItem('username', res.data.username);
-        localStorage.setItem('isAdmin', res.data.isAdmin);
-        localStorage.setItem('firstName', res.data.firstName);
-        localStorage.setItem('photoUrl', res.data.photoUrl);
-
-        const rd = getRedirectPath();
-        sessionStorage.removeItem('joinRedirect');
-
-        if (res.data.isAdmin === 'true' || res.data.isAdmin === true) {
-          router.push('/admin');
-        } else if (res.data.isNewUser) {
-          router.push('/profile');
-        } else {
-          router.push(rd);
-        }
-      } catch (err: any) {
-        console.error('Telegram login error:', err);
-        setError(err.response?.data?.message || 'Login failed');
-      }
-    };
-  }, [router, redirect]);
-
   const googleHref = `/api/auth/google?state=${encodeURIComponent(`redirect:${redirect}`)}`;
   const isAinsfwTheme =
     redirect.includes('ainsfw') || (initialRedirect?.includes('ainsfw') ?? false);
 
+  const handleAuthSuccess = useCallback((data: {
+    token: string;
+    username: string;
+    isAdmin: boolean | string;
+    firstName?: string | null;
+    photoUrl?: string | null;
+    isNewUser?: boolean;
+  }) => {
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('username', data.username);
+    localStorage.setItem('isAdmin', String(data.isAdmin));
+    if (data.firstName) localStorage.setItem('firstName', data.firstName);
+    else localStorage.removeItem('firstName');
+    if (data.photoUrl) localStorage.setItem('photoUrl', data.photoUrl);
+    else localStorage.removeItem('photoUrl');
+
+    const rd = getRedirectPath();
+    sessionStorage.removeItem('joinRedirect');
+
+    if (data.isAdmin === 'true' || data.isAdmin === true) router.push('/admin');
+    else if (data.isNewUser) router.push('/profile');
+    else router.push(rd);
+  }, [router]);
+
   return (
     <div className={`min-h-screen flex flex-col ${isAinsfwTheme ? 'ainsfw-page bg-black' : 'bg-[#060d17]'}`}>
       <Navbar accent={isAinsfwTheme ? AINSFW_ACCENT : undefined} variant={isAinsfwTheme ? undefined : 'onlyfans'} />
-      <main className="flex-1 flex items-center justify-center px-4 sm:px-6 py-24 relative overflow-hidden">
-      {/* Mosaic background */}
-      {avatars.length > 0 && (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(10, 1fr)',
-              gap: '2px',
-              position: 'absolute',
-              inset: 0,
-            }}
+
+      <main className="flex-1 flex items-center justify-center px-4 sm:px-6 pt-[100px] sm:pt-[108px] pb-16 relative overflow-hidden">
+        <AuthAvatarBackground avatars={avatars} isAinsfwTheme={isAinsfwTheme} />
+
+        <div className={`relative z-10 w-[70%] sm:w-full mx-auto ${tab === 'join' ? 'max-w-3xl' : 'max-w-md'}`}>
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="flex items-center gap-1.5 text-white/40 hover:text-white/70 text-sm font-medium mb-4 transition-colors"
           >
-            {avatars.map((src, i) => (
-              <div
-                key={i}
-                style={{ position: 'relative', aspectRatio: '1 / 1', overflow: 'hidden' }}
-              >
-                <img
-                  src={src}
-                  alt=""
-                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                  loading={i < 20 ? 'eager' : 'lazy'}
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-            ))}
-          </div>
-          <div className={`absolute inset-0 ${isAinsfwTheme ? 'bg-black/80' : 'bg-[#0a1525]/80'}`} />
-          <div
-            className="absolute inset-0"
-            style={{
-              background: isAinsfwTheme
-                ? 'radial-gradient(ellipse at center, transparent 10%, #000 75%)'
-                : 'radial-gradient(ellipse at center, transparent 10%, #060d17 75%)',
-            }}
-          />
-        </div>
-      )}
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </button>
 
-      {/* Fallback subtle glow when no avatars */}
-      {avatars.length === 0 && (
-        <div className="absolute inset-0 pointer-events-none">
-          {isAinsfwTheme ? (
-            <>
-              <div className="absolute top-1/3 left-1/4 w-[500px] h-[500px] bg-black rounded-full blur-[200px] opacity-[0.35]" />
-              <div className="absolute bottom-1/4 right-1/3 w-[400px] h-[400px] bg-black rounded-full blur-[180px] opacity-[0.25]" />
-            </>
-          ) : (
-            <>
-              <div className="absolute top-1/3 left-1/4 w-[500px] h-[500px] bg-[#00AFF0] rounded-full blur-[200px] opacity-[0.06]" />
-              <div className="absolute bottom-1/4 right-1/3 w-[400px] h-[400px] bg-[#00D4FF] rounded-full blur-[180px] opacity-[0.04]" />
-            </>
-          )}
-        </div>
-      )}
+          <AuthCard isAinsfwTheme={isAinsfwTheme} wide={tab === 'join'}>
+            <AuthSocialProof totalUsers={totalUsers} avatars={userAvatars} isAinsfwTheme={isAinsfwTheme} />
+            <AuthTabToggle tab={tab} setTab={setTab} isAinsfwTheme={isAinsfwTheme} />
 
-      <div className="relative z-10 w-full max-w-md mx-auto">
-        <button
-          onClick={() => router.back()}
-          className="flex items-center gap-1.5 text-white/40 hover:text-white/70 text-sm font-medium mb-4 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back
-        </button>
+            <div className="mb-3">
+              <h1 className="text-lg sm:text-xl font-black text-gray-900 leading-tight">
+                {tab === 'join' ? 'Create a free account' : 'Welcome back'}
+              </h1>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {tab === 'join'
+                  ? 'Be part of the fastest-growing adult community'
+                  : 'Sign in to access your saved profiles'}
+              </p>
+            </div>
 
-        <div
-          className={
-            isAinsfwTheme
-              ? 'rounded-3xl border border-[#22c55e]/20 bg-[#0a1f12] p-8 sm:p-10 shadow-2xl shadow-black/60'
-              : 'rounded-3xl border border-[#1e4a7a]/60 bg-[#0c1e35] backdrop-blur-xl p-8 sm:p-10 shadow-2xl shadow-black/60'
-          }
-          style={
-            isAinsfwTheme
-              ? { boxShadow: '0 0 0 1px rgba(34,197,94,0.1), 0 24px 60px rgba(0,0,0,0.6)' }
-              : { boxShadow: '0 0 0 1px rgba(0,175,240,0.08), 0 24px 60px rgba(0,0,0,0.6)' }
-          }
-        >
-          {/* Toggle */}
-          <div
-            className={
-              isAinsfwTheme
-                ? 'flex items-center rounded-xl bg-[#04140c] border border-[#22c55e]/20 p-1 mb-7'
-                : 'flex items-center rounded-xl bg-[#0F274C] border border-[#1e4a7a]/60 p-1 mb-7'
-            }
-          >
-            {([
-              { id: 'join' as Tab, label: 'Create Account' },
-              { id: 'signin' as Tab, label: 'Sign In' },
-            ]).map(({ id, label }) => (
-              <button
-                key={id}
-                onClick={() => setTab(id)}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${
-                  tab === id
-                    ? isAinsfwTheme
-                      ? 'bg-[#22c55e] text-black shadow-lg shadow-[#22c55e]/25'
-                      : 'bg-[#00AFF0] text-white shadow-lg shadow-[#00AFF0]/25'
-                    : 'text-white/40 hover:text-white/60'
-                }`}
-              >
-                {id === 'signin' && <LogIn className="w-3.5 h-3.5" />}
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {/* Header */}
-          <div className="text-center mb-7">
-            <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight mb-1.5">
-              {tab === 'join' ? 'Create a free account' : 'Welcome back'}
-            </h1>
-            <p className="text-sm text-white/35">
-              {tab === 'join'
-                ? 'Join thousands of users on Erogram'
-                : 'Sign in to access your saved profiles'}
-            </p>
-          </div>
-
-          {/* Value props — only on join tab */}
-          {tab === 'join' && (
-            <div className="space-y-2.5 mb-7">
-              {[
-                { icon: Search, text: 'Browse thousands of profiles by niche' },
-                { icon: Bookmark, text: 'Bookmark and save your favourites' },
-                { icon: Rocket, text: 'Unlock the full Erogram experience' },
-                { icon: Shield, text: 'Unlock beta features' },
-              ].map(({ icon: Icon, text }) => (
-                <div
-                  key={text}
-                  className={
-                    isAinsfwTheme
-                      ? 'flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[#04140c]/80 border border-[#22c55e]/15'
-                      : 'flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[#0F274C]/80 border border-[#1e4a7a]/50'
-                  }
-                >
-                  <div
-                    className={
-                      isAinsfwTheme
-                        ? 'flex-shrink-0 w-8 h-8 rounded-lg bg-[#22c55e]/10 flex items-center justify-center'
-                        : 'flex-shrink-0 w-8 h-8 rounded-lg bg-[#00AFF0]/10 flex items-center justify-center'
-                    }
-                  >
-                    <Icon className={`w-4 h-4 ${isAinsfwTheme ? 'text-[#22c55e]' : 'text-[#00AFF0]'}`} />
-                  </div>
-                  <span className="text-sm text-white/70 font-medium">{text}</span>
+            {tab === 'join' ? (
+              <div className="grid grid-cols-1 md:grid-cols-[1fr,0.9fr] gap-3 md:gap-4 md:items-start">
+                <div>
+                  <AuthError message={error} />
+                  <AuthMethods
+                    tab={tab}
+                    googleHref={googleHref}
+                    isAinsfwTheme={isAinsfwTheme}
+                    onAuthSuccess={handleAuthSuccess}
+                    onError={setError}
+                  />
                 </div>
-              ))}
-            </div>
-          )}
+                <AuthJoinBenefits isAinsfwTheme={isAinsfwTheme} />
+              </div>
+            ) : (
+              <>
+                <AuthError message={error} />
+                <AuthMethods
+                  tab={tab}
+                  googleHref={googleHref}
+                  isAinsfwTheme={isAinsfwTheme}
+                  onAuthSuccess={handleAuthSuccess}
+                  onError={setError}
+                />
+              </>
+            )}
 
-          {error && (
-            <div className="mb-4 p-3 rounded-xl bg-red-500/15 border border-red-500/40 text-red-300 text-sm">
-              {error}
-            </div>
-          )}
+            <p className="mt-3 text-center text-[10px] text-black/40 leading-relaxed">
+              By continuing, you agree to our{' '}
+              <Link href="/terms" className={isAinsfwTheme ? 'text-[#16a34a] hover:underline' : 'text-[#0088c2] hover:underline'}>Terms</Link>
+              {' & '}
+              <Link href="/privacy" className={isAinsfwTheme ? 'text-[#16a34a] hover:underline' : 'text-[#0088c2] hover:underline'}>Privacy Policy</Link>
+            </p>
 
-          <div className="flex flex-col gap-3">
-          {/* Google button */}
-          <a
-            href={googleHref}
-            className="flex items-center justify-center gap-3 w-full px-6 py-3.5 rounded-xl bg-white text-gray-900 font-bold text-sm hover:bg-gray-100 transition-all shadow-lg shadow-white/10 hover:shadow-white/20"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-            </svg>
-            {tab === 'join' ? 'Continue with Google' : 'Sign in with Google'}
-          </a>
-          <div
-            className={
-              isAinsfwTheme
-                ? 'flex justify-center items-center min-h-[60px] rounded-xl bg-[#04140c]/80 border border-[#22c55e]/15 p-4'
-                : 'flex justify-center items-center min-h-[60px] rounded-xl bg-[#0F274C]/80 border border-[#1e4a7a]/50 p-4'
-            }
-            id="telegram-login-container"
-          />
-          </div>
-
-          <p className="mt-6 text-center text-[11px] text-white/25">
-            By continuing, you agree to our{' '}
-            <Link href="/terms" className={isAinsfwTheme ? 'text-[#22c55e]/50 hover:text-[#22c55e]' : 'text-[#00AFF0]/50 hover:text-[#00AFF0]'}>Terms</Link>{' & '}
-            <Link href="/privacy" className={isAinsfwTheme ? 'text-[#22c55e]/50 hover:text-[#22c55e]' : 'text-[#00AFF0]/50 hover:text-[#00AFF0]'}>Privacy Policy</Link>
-          </p>
-
-          {isAinsfwTheme && (
-            <div className="mt-6 -mx-4 sm:-mx-6 [&>div]:!mb-0">
-              <ErogramDiscoveryBanner embedded edgeFade="corners" />
-            </div>
-          )}
+            {isAinsfwTheme && (
+              <div className="mt-3 -mx-1 sm:-mx-2 [&>div]:!mb-0">
+                <ErogramDiscoveryBanner embedded edgeFade="corners" />
+              </div>
+            )}
+          </AuthCard>
         </div>
-      </div>
-
-      <Script
-        id="telegram-login"
-        strategy="lazyOnload"
-        dangerouslySetInnerHTML={{
-          __html: `
-            (function() {
-              const container = document.getElementById('telegram-login-container');
-              if (!container) return;
-
-              const script = document.createElement('script');
-              script.src = 'https://telegram.org/js/telegram-widget.js?22';
-              script.async = true;
-              script.setAttribute('data-telegram-login', 'erogramvipbot');
-              script.setAttribute('data-size', 'large');
-              script.setAttribute('data-userpic', 'false');
-              script.setAttribute('data-onauth', 'onTelegramAuth(user)');
-              script.setAttribute('data-request-access', 'write');
-
-              container.innerHTML = '';
-              container.appendChild(script);
-            })();
-          `,
-        }}
-      />
       </main>
+
       <Footer />
     </div>
   );

@@ -72,3 +72,23 @@ export const AINSFW_CATEGORIES: AINsfwCategory[] = [
 
 export const ALL_PAYMENT_OPTIONS = ['Credit Cards', 'Crypto', 'PayPal'] as const;
 export type PaymentOption = typeof ALL_PAYMENT_OPTIONS[number];
+
+export type PricingModel = 'All' | 'Free' | 'Paid' | 'Freemium';
+
+export const PRICING_MODEL_OPTIONS: PricingModel[] = ['All', 'Free', 'Paid', 'Freemium'];
+
+export type AinsfwSortOption = 'default' | 'top-upvotes';
+
+export const AINSFW_SORT_OPTIONS: { value: AinsfwSortOption; label: string }[] = [
+  { value: 'default', label: 'Default' },
+  { value: 'top-upvotes', label: 'Top upvotes' },
+];
+
+export function toolMatchesPricingModel(subscription: string, model: PricingModel): boolean {
+  if (model === 'All') return true;
+  const sub = subscription.toLowerCase();
+  if (model === 'Freemium') return sub.includes('freemium');
+  if (model === 'Paid') return sub.includes('paid');
+  if (model === 'Free') return sub.includes('free') && !sub.includes('freemium');
+  return true;
+}

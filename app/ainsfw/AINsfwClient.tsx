@@ -9,10 +9,11 @@ import Footer from '@/components/Footer';
 import ToolCard from './ToolCard';
 import AdvertCard from '../groups/AdvertCard';
 import type { FeedCampaign } from '../groups/types';
-import type { AINsfwTool, AINsfwCategory, PaymentOption } from './types';
-import { AINSFW_CATEGORIES, ALL_PAYMENT_OPTIONS } from './types';
+import type { AINsfwTool, AINsfwCategory, AinsfwSortOption, PaymentOption, PricingModel } from './types';
+import { toolMatchesPricingModel } from './types';
 import { useTranslation } from '@/lib/i18n';
 import { renderAinsfwGuideText } from '@/lib/ainsfw/internalLinks';
+import { RECENT_DISPLAY_LIMIT } from './recentCategoryTools';
 import type { ToolStatsData } from '@/lib/actions/ainsfw';
 import type { AuthorProfile } from '@/lib/actions/authors';
 import { AINSFW_PAGE_SIZE } from './constants';
@@ -21,6 +22,18 @@ import AinsfwHeaderActions from '@/components/AinsfwHeaderActions';
 import { CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import TopAINsfwBlock, { loadAllScores } from './TopAINsfwBlock';
 import RecentAdditionsBlock from './RecentAdditionsBlock';
+import AinsfwToolsFilterBar from './AinsfwToolsFilterBar';
+import { categoryToSlug } from './data';
+import type { AINsfwToolCategory } from './types';
+
+const HERO_CATEGORY_LINKS: AINsfwToolCategory[] = [
+  'AI Companion',
+  'Undress AI',
+  'AI NSFW Image Generator',
+  'AI NSFW Roleplay',
+  'AI Sexting / Chat',
+  'AI Porn Generator',
+];
 
 interface AINsfwClientProps {
   tools: AINsfwTool[];
@@ -39,6 +52,7 @@ interface AINsfwClientProps {
   guideAuthor?: AuthorProfile;
   recentTools?: AINsfwTool[];
   verifiedSlugs?: string[];
+  featuredHubSlugs?: string[];
 }
 
 function GuideEditorNote({ author }: { author: AuthorProfile }) {
@@ -77,16 +91,6 @@ function GuideParagraph({ text }: { text: string }) {
   return <p>{renderAinsfwGuideText(text)}</p>;
 }
 
-const CATEGORY_ACTIVE = Object.fromEntries(
-  AINSFW_CATEGORIES.map((c) => [c, c === 'All' ? 'bg-white text-black' : 'bg-[#22c55e] text-black']),
-) as Record<AINsfwCategory, string>;
-
-const PAYMENT_ICON: Record<string, string> = {
-  'Credit Cards': '💳',
-  'Crypto': '₿',
-  'PayPal': 'P',
-};
-
 function ainsfwPageHref(page: number): string {
   return page <= 1 ? '/ainsfw' : `/ainsfw/page/${page}`;
 }
@@ -95,10 +99,16 @@ function getScore(slug: string, scores: Record<string, number>): number {
   return scores[slug] ?? 0;
 }
 
-export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boostFeaturedSlugs = [], featuredCampaignMap = {}, topBannerCampaigns = [], topAdCampaigns = [], feedCampaigns = [], paginationCurrentPage = 1, paginationTotalPages = 1, pageSize = AINSFW_PAGE_SIZE, guideAuthor, recentTools = [], verifiedSlugs = [] }: AINsfwClientProps) {
+function getUpvotes(slug: string, allStats?: Record<string, ToolStatsData>): number {
+  return allStats?.[slug]?.upvotes ?? 0;
+}
+
+export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boostFeaturedSlugs = [], featuredCampaignMap = {}, topBannerCampaigns = [], topAdCampaigns = [], feedCampaigns = [], paginationCurrentPage = 1, paginationTotalPages = 1, pageSize = AINSFW_PAGE_SIZE, guideAuthor, recentTools = [], verifiedSlugs = [], featuredHubSlugs = [] }: AINsfwClientProps) {
   const verifiedSet = new Set(verifiedSlugs);
   const [activeCategory, setActiveCategory] = useState<AINsfwCategory>('All');
+  const [activePricing, setActivePricing] = useState<PricingModel>('All');
   const [activePayment, setActivePayment] = useState<PaymentOption | 'All'>('All');
+  const [activeSort, setActiveSort] = useState<AinsfwSortOption>('default');
   const [search, setSearch] = useState('');
   const [scores, setScores] = useState<Record<string, number>>(() => loadAllScores(allStats));
   const { t } = useTranslation();
@@ -139,12 +149,26 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
       );
     })
     .filter((t) => activeCategory === 'All' || t.category === activeCategory)
+    .filter((t) => toolMatchesPricingModel(t.subscription, activePricing))
     .filter((t) => activePayment === 'All' || t.payment.includes(activePayment))
     .slice()
-    .sort((a, b) => getScore(b.slug, scores) - getScore(a.slug, scores));
+    .sort((a, b) => {
+      if (activeSort === 'top-upvotes') {
+        return getUpvotes(b.slug, allStats) - getUpvotes(a.slug, allStats);
+      }
+      return getScore(b.slug, scores) - getScore(a.slug, scores);
+    });
 
   const isDefaultBrowse =
-    activeCategory === 'All' && activePayment === 'All' && !search.trim();
+    activeCategory === 'All' && activePricing === 'All' && activePayment === 'All' && activeSort === 'default' && !search.trim();
+
+  const clearFilters = useCallback(() => {
+    setActiveCategory('All');
+    setActivePricing('All');
+    setActivePayment('All');
+    setActiveSort('default');
+    setSearch('');
+  }, []);
 
   const displayed = isDefaultBrowse
     ? filtered.slice((paginationCurrentPage - 1) * pageSize, paginationCurrentPage * pageSize)
@@ -192,26 +216,17 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
               href="/best-ai-nsfw-tools"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#22c55e] text-black text-xs font-black uppercase tracking-wide hover:bg-[#4ade80] transition-colors"
             >
-              Top 10 Rankings
+              TOP 10 Rankings
             </Link>
-            <Link
-              href="/best-ai-nsfw-tools/ai-girlfriend"
-              className="inline-flex items-center px-3 py-1.5 rounded-full bg-[#0a1f12] text-white/70 border border-[#22c55e]/20 hover:border-[#22c55e]/50 hover:text-white text-xs font-bold transition-all"
-            >
-              AI Girlfriend
-            </Link>
-            <Link
-              href="/best-ai-nsfw-tools/undress-ai"
-              className="inline-flex items-center px-3 py-1.5 rounded-full bg-[#0a1f12] text-white/70 border border-[#22c55e]/20 hover:border-[#22c55e]/50 hover:text-white text-xs font-bold transition-all"
-            >
-              Undress AI
-            </Link>
-            <Link
-              href="/best-ai-nsfw-tools/ai-porn-generator"
-              className="inline-flex items-center px-3 py-1.5 rounded-full bg-[#0a1f12] text-white/70 border border-[#22c55e]/20 hover:border-[#22c55e]/50 hover:text-white text-xs font-bold transition-all"
-            >
-              AI Porn Generator
-            </Link>
+            {HERO_CATEGORY_LINKS.map((category) => (
+              <Link
+                key={category}
+                href={`/ainsfw/${categoryToSlug(category)}`}
+                className="inline-flex items-center px-3 py-1.5 rounded-full bg-[#0a1f12] text-white/70 border border-[#22c55e]/20 hover:border-[#22c55e]/50 hover:text-white text-xs font-bold transition-all"
+              >
+                {category}
+              </Link>
+            ))}
           </div>
         </motion.div>
 
@@ -219,76 +234,33 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
           <LazyClickableVideoAd maxWidth={672} />
         </div>
 
-        {/* Compact, centered filter bar: category pills + accepted payment + search (right). */}
-        <div id="ainsfw-tools" className="mb-6 sm:mb-8 scroll-mt-24">
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            {/* Category pills */}
-            {AINSFW_CATEGORIES.map((cat) => {
-              const isActive = activeCategory === cat;
-              const label = cat === 'All' ? 'View All' : cat;
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCategory(cat)}
-                  aria-pressed={isActive}
-                  className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
-                    isActive
-                      ? 'bg-[#22c55e] text-black border-[#22c55e]'
-                      : 'bg-[#0a1f12] text-white/70 border-[#22c55e]/20 hover:border-[#22c55e]/50 hover:text-white'
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-
-            {/* Accepted payment filter */}
-            <div className="relative">
-              <select
-                value={activePayment}
-                onChange={(e) => setActivePayment(e.target.value as PaymentOption | 'All')}
-                aria-label="Accepted payment"
-                className="pl-3 pr-7 py-1.5 rounded-full bg-[#0a1f12] border border-[#22c55e]/20 text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#22c55e]/50 focus:border-[#22c55e]/40 transition-all appearance-none cursor-pointer"
-              >
-                <option value="All" className="bg-[#0a1f12]">Accepted Payment</option>
-                {ALL_PAYMENT_OPTIONS.map((pay) => (
-                  <option key={pay} value={pay} className="bg-[#0a1f12]">{pay}</option>
-                ))}
-              </select>
-              <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-white/40 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
-            </div>
-
-            {/* Search — right side, white background, compact */}
-            <div className="relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search…"
-                aria-label="Search AI NSFW tools"
-                className="w-44 pl-8 pr-7 py-1.5 rounded-full bg-white border border-[#22c55e]/20 text-black text-xs placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#22c55e]/50 focus:border-[#22c55e]/40 transition-all"
-              />
-              {search && (
-                <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black transition-colors">
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
         <div>
           {/* Main Content — full width now that the sidebar is gone */}
           <div className="min-w-0">
             {/* Top AI NSFW Block — hidden when a search or category filter is active */}
-            {activeCategory === 'All' && activePayment === 'All' && !search.trim() && (
-              <TopAINsfwBlock tools={tools} allStats={allStats} scores={scores} featuredSlugs={featuredSlugs} boostFeaturedSlugs={boostFeaturedSlugs} featuredCampaignMap={featuredCampaignMap} topAdCampaigns={liveTopAds} onVoteChange={handleVoteChange} verifiedSlugs={verifiedSlugs} />
+            {isDefaultBrowse && (
+              <TopAINsfwBlock tools={tools} featuredHubSlugs={featuredHubSlugs} allStats={allStats} featuredCampaignMap={featuredCampaignMap} onVoteChange={handleVoteChange} verifiedSlugs={verifiedSlugs} />
             )}
 
-            {activeCategory === 'All' && activePayment === 'All' && !search.trim() && paginationCurrentPage === 1 && recentTools.length > 0 && (
-              <RecentAdditionsBlock tools={recentTools} allStats={allStats} shuffle displayCount={4} verifiedSlugs={verifiedSlugs} />
+            {isDefaultBrowse && paginationCurrentPage === 1 && recentTools.length > 0 && (
+              <RecentAdditionsBlock tools={recentTools} allStats={allStats} shuffle displayCount={RECENT_DISPLAY_LIMIT} verifiedSlugs={verifiedSlugs} />
             )}
+
+            <div id="ainsfw-tools" className="scroll-mt-24">
+              <AinsfwToolsFilterBar
+                activeCategory={activeCategory}
+                activePricing={activePricing}
+                activePayment={activePayment}
+                activeSort={activeSort}
+                search={search}
+                onCategoryChange={setActiveCategory}
+                onPricingChange={setActivePricing}
+                onPaymentChange={setActivePayment}
+                onSortChange={setActiveSort}
+                onSearchChange={setSearch}
+                onClear={clearFilters}
+              />
+            </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {(() => {
@@ -308,12 +280,14 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
                     adIdx++;
                   }
                   if (i > 0 && i % 8 === 0 && featuredTools.length > 0) {
-                    const ft = featuredTools[featuredIdx % featuredTools.length];
-                    if (!displayedSet.has(ft.slug) || featuredSlugs.includes(ft.slug)) {
+                    for (let attempt = 0; attempt < featuredTools.length; attempt++) {
+                      const ft = featuredTools[featuredIdx % featuredTools.length];
+                      featuredIdx++;
+                      if (displayedSet.has(ft.slug)) continue;
                       items.push(
                         <ToolCard key={`featured-${i}-${ft.slug}`} tool={ft} index={i} initialStats={allStats?.[ft.slug]} onVoteChange={handleVoteChange} featured campaignId={featuredCampaignMap[ft.slug]} verified={verifiedSet.has(ft.slug)} />
                       );
-                      featuredIdx++;
+                      break;
                     }
                   }
                   items.push(

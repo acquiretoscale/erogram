@@ -242,6 +242,8 @@ function useLiveVisitorFeed(pollMs = 5000) {
   const [countries, setCountries] = useState<string[]>([]);
 
   useEffect(() => {
+    // One-time cleanup of the retired sticky-floor keys that pinned the counter to stale values.
+    try { localStorage.removeItem('ero_group_clicks_v2'); localStorage.removeItem('ero_ad_clicks_30d'); } catch {}
     const fetchStats = () => {
       fetch('/api/advertise-stats', { cache: 'no-store' })
         .then((r) => r.json())
@@ -249,7 +251,10 @@ function useLiveVisitorFeed(pollMs = 5000) {
           if (typeof d.totalViews === 'number') setViews(d.totalViews);
           if (typeof d.activeVisitors === 'number') setLiveNow(d.activeVisitors);
           if (typeof d.last30dClientClicks === 'number') {
-            setLast30dAdClicks((prev) => (prev == null ? d.last30dClientClicks : Math.max(prev, d.last30dClientClicks)));
+            // Group clicks are cumulative and only ever grow, so we show the real value
+            // straight from the API. No localStorage flooring — that pinned the counter to
+            // stale values and made it look stuck.
+            setLast30dAdClicks(d.last30dClientClicks);
           }
           if (Array.isArray(d.lastVisitorCountries)) {
             setCountries(
@@ -554,12 +559,12 @@ const STARTUP_FEATURES: PlanFeature[] = [
 const A_LA_CARTE_ADDONS = [
   {
     title: 'Editorial Article',
-    price: '$300',
+    price: '$200',
     description: 'SEO & conversion-optimized editorial article (2,000–3,000 words).',
   },
   {
     title: 'Telegram Boost',
-    price: '$400',
+    price: '$300',
     description: '30-day promotion across our NSFW Telegram network (9 groups, 40,000+ subscribers), with 3 sponsored posts per week.',
   },
   {
@@ -1112,7 +1117,7 @@ export default function AINSFWPricingClient() {
             <div className="px-6 pb-6 pt-4 flex flex-col flex-1">
             <div className="mb-3">
               <span className="text-5xl sm:text-4xl font-black text-black">$49</span>
-              <span className="text-lg sm:text-base font-bold text-black/40 ml-2">· One-time payment</span>
+              <p className="text-xs sm:text-sm font-bold text-black/40 mt-1">One-time payment</p>
             </div>
             <p className="text-base sm:text-sm text-black/55 leading-relaxed mb-4">
               Perfect for getting your AI tool indexed, discoverable, and visible to thousands of high-intent users.
@@ -1144,7 +1149,7 @@ export default function AINSFWPricingClient() {
             </div>
           </div>
 
-          {/* BOOST · $197 */}
+          {/* BOOST · $147 */}
           <div
             className="relative flex flex-col bg-white overflow-hidden"
             style={{ border: `3px solid ${ACCENT}`, boxShadow: `6px 6px 0px ${ACCENT}`, color: '#000' }}
@@ -1157,7 +1162,8 @@ export default function AINSFWPricingClient() {
             </div>
             <div className="px-6 pb-6 pt-4 flex flex-col flex-1">
             <div className="mb-3">
-              <span className="text-5xl sm:text-4xl font-black text-black">$197</span>
+              <span className="text-5xl sm:text-4xl font-black text-black">$147</span>
+              <p className="text-xs sm:text-sm font-bold text-black/40 mt-1">One-time payment</p>
             </div>
             <p className="text-base sm:text-sm text-black/55 leading-relaxed mb-4">
               Everything in Basic, plus premium placement that drives significantly more clicks.
@@ -1183,12 +1189,12 @@ export default function AINSFWPricingClient() {
                 ? { background: CTA_DARK, color: '#000', border: BORDER, boxShadow: 'none', transform: 'translate(2px,2px)' }
                 : { background: CTA, color: '#000', border: BORDER, boxShadow: SHADOW }}
             >
-              {selectedPlan === 'boost' ? '✓ Selected · scroll down' : 'Boost My Tool · $197'}
+              {selectedPlan === 'boost' ? '✓ Selected · scroll down' : 'Boost My Tool · $147'}
             </button>
             </div>
           </div>
 
-          {/* SCALE · $497 */}
+          {/* SCALE · $297 */}
           <div className="relative flex flex-col bg-white overflow-hidden" style={{ border: BORDER, boxShadow: SHADOW_LG, color: '#000' }}>
             <div className="px-6 py-4" style={{ background: PLAN_HEADER_BG }}>
               <p className="font-black uppercase leading-none tracking-tight text-[1.5rem] sm:text-[1.625rem] text-white">
@@ -1198,7 +1204,8 @@ export default function AINSFWPricingClient() {
             </div>
             <div className="px-6 pb-6 pt-4 flex flex-col flex-1">
             <div className="mb-3">
-              <span className="text-5xl sm:text-4xl font-black text-black">$497</span>
+              <span className="text-5xl sm:text-4xl font-black text-black">$297</span>
+              <p className="text-xs sm:text-sm font-bold text-black/40 mt-1">One-time payment</p>
             </div>
             <p className="text-base sm:text-sm text-black/55 leading-relaxed mb-2">
               Dominate your category and sub-categories and become the brand users see and use first.
@@ -1227,7 +1234,7 @@ export default function AINSFWPricingClient() {
                 ? { background: CTA_DARK, color: '#000', border: BORDER, boxShadow: 'none', transform: 'translate(2px,2px)' }
                 : { background: CTA, color: '#000', border: BORDER, boxShadow: SHADOW }}
             >
-              {selectedPlan === 'startup' ? '✓ Selected · scroll down' : 'Get Scale · $497'}
+              {selectedPlan === 'startup' ? '✓ Selected · scroll down' : 'Get Scale · $297'}
             </button>
             </div>
           </div>

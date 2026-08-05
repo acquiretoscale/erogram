@@ -245,7 +245,7 @@ export async function getAdminOverview(token: string) {
     });
   }
 
-  const cryptoPrices: Record<string, number> = { basic: 49, boost: 197, platinum: 297, featured_creator: 97 };
+  const cryptoPrices: Record<string, number> = { basic: 49, boost: 147, startup: 297, platinum: 297, featured_creator: 97 };
   for (const ev of allCryptoSubmissionEvents as any[]) {
     const tier = ev.tier || 'basic';
     const isFeatured = ev.event === 'featured_creator_payment_success';

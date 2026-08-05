@@ -1,18 +1,21 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import connectDB from '@/lib/db/mongodb';
-import { getToolBySlug, getToolsByCategory, AI_NSFW_TOOLS, toolSlug, invertToolSlug, getCategoryBySlug, CATEGORY_SLUGS, categoryToSlug } from '@/app/ainsfw/data';
+import { getToolBySlug, getToolsByCategory, AI_NSFW_TOOLS, toolSlug, invertToolSlug, getCategoryBySlug, CATEGORY_SLUGS, categoryToSlug, getLegacyToolSlugRedirect } from '@/app/ainsfw/data';
 import CategoryClient from '@/app/ainsfw/[slug]/CategoryClient';
 import { getBlogArticlesByCategory } from '@/lib/actions/blog';
 import type { BlogCard } from '@/lib/actions/blog';
 import { AINsfwSubmission } from '@/lib/models';
 import type { AINsfwTool } from '@/app/ainsfw/types';
 import ToolDetailClient from '@/app/ainsfw/[slug]/ToolDetailClient';
-import { getFullReview, getVerifiedPaidSlugs } from '@/app/ainsfw/fullReviews';
+import { getFullReview, getVerifiedSlugs, isPaidClientTool } from '@/app/ainsfw/fullReviews';
+import { getListingBlocks } from '@/app/ainsfw/listingBlocks';
 import { getToolStats, getAllToolStats, getApprovedSubmissions } from '@/lib/actions/ainsfw';
+import { getFeaturedHubSlugs } from '@/lib/ainsfw/featuredHub';
 import { pickRecentCategoryTools } from '@/app/ainsfw/recentCategoryTools';
 import { getAuthorBySlug } from '@/lib/actions/authors';
-import { getAinsfwMetaDescription } from '@/lib/ainsfw/metaDescriptions';
+import { getAinsfwCategoryMeta, getAinsfwMetaDescription, getAinsfwMetaTitle } from '@/lib/ainsfw/metaDescriptions';
+import { pickTagHashtagAlt } from '@/lib/ainsfw/imageAlt';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 // Pre-built at deploy (generateStaticParams below) + background refresh every
@@ -21,19 +24,60 @@ export const revalidate = 300;
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
 
+function submissionSlugCandidates(slug: string): string[] {
+  const out = new Set<string>([slug]);
+  const legacy = getLegacyToolSlugRedirect(slug);
+  if (legacy) out.add(legacy);
+  const alt = invertToolSlug(slug);
+  if (alt) out.add(alt);
+  return [...out];
+}
+
+function mapSubmissionToTool(d: {
+  slug?: string;
+  name: string;
+  category: string;
+  vendor?: string;
+  description?: string;
+  image?: string;
+  tags?: string[];
+  subscription?: string;
+  payment?: string[];
+  tryNowUrl?: string;
+  websiteUrl?: string;
+}): AINsfwTool {
+  return {
+    slug: d.slug || toolSlug(d.category, d.name),
+    name: d.name,
+    category: d.category,
+    vendor: d.vendor || d.name,
+    description: d.description || '',
+    image: d.image || '/assets/image.jpg',
+    tags: d.tags || [],
+    subscription: d.subscription || '',
+    payment: d.payment || [],
+    tryNowUrl: d.tryNowUrl || d.websiteUrl || '',
+    sourceUrl: d.websiteUrl,
+  };
+}
+
 async function getSubmissionTool(slug: string): Promise<AINsfwTool | null> {
   try {
     await connectDB();
-    const alt = invertToolSlug(slug);
-    const slugQuery = alt && alt !== slug ? { $in: [slug, alt] } : slug;
-    const d = await AINsfwSubmission.findOne({ slug: slugQuery, status: 'approved', paymentStatus: 'paid' }).lean() as any;
+    const candidates = submissionSlugCandidates(slug);
+    const paidFilter = { status: 'approved', paymentStatus: 'paid', unlisted: { $ne: true } };
+
+    let d = await AINsfwSubmission.findOne({ slug: { $in: candidates }, ...paidFilter }).lean() as any;
+    if (!d) {
+      const all = await AINsfwSubmission.find(paidFilter).lean() as any[];
+      d = all.find((row) => {
+        const stored = row.slug || toolSlug(row.category, row.name);
+        const computed = toolSlug(row.category, row.name);
+        return candidates.includes(stored) || candidates.includes(computed) || candidates.includes(row.slug);
+      }) ?? null;
+    }
     if (!d) return null;
-    return {
-      slug: toolSlug(d.category, d.name), name: d.name, category: d.category, vendor: d.vendor || d.name,
-      description: d.description, image: d.image || '/assets/image.jpg', tags: d.tags || [],
-      subscription: d.subscription || '', payment: d.payment || [],
-      tryNowUrl: d.tryNowUrl || d.websiteUrl, sourceUrl: d.websiteUrl,
-    };
+    return mapSubmissionToTool(d);
   } catch { return null; }
 }
 
@@ -53,8 +97,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // Category page
   const category = getCategoryBySlug(slug);
   if (category) {
-    const title = `Best ${category} Tools 2026 — Erogram`;
-    const description = `Browse the top ${category} tools reviewed and ranked by Erogram. Find the best ${category.toLowerCase()} options with real user ratings.`;
+    const customCatMeta = getAinsfwCategoryMeta(slug);
+    const title = customCatMeta?.title ?? `Best ${category} Tools 2026 — Erogram`;
+    const description = customCatMeta?.en ?? `Browse the top ${category} tools reviewed and ranked by Erogram. Find the best ${category.toLowerCase()} options with real user ratings.`;
     const url = `${BASE_URL}/ainsfw/${slug}`;
     return {
       title,
@@ -74,10 +119,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const toolPageUrl = `${BASE_URL}/ainsfw/${aiTool.slug}`;
     const toolImgUrl = aiTool.image.startsWith('http') ? aiTool.image : `${BASE_URL}${aiTool.image}`;
 
-    // Title can stay constructed or come from DB for submissions.
-    const title = `${aiTool.name} Review — Best ${aiTool.category} Tool 2026`;
+    const customTitle = getAinsfwMetaTitle(aiTool.slug);
+    const title = customTitle ?? `${aiTool.name} Review — Best ${aiTool.category} Tool 2026`;
 
-    // Description from master list (injected via meta-lab)
     const masterDesc = getAinsfwMetaDescription(aiTool.slug);
     const toolDesc = masterDesc || (aiTool.description ? aiTool.description.slice(0, 157) + (aiTool.description.length > 157 ? '...' : '') : '');
 
@@ -93,7 +137,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         url: toolPageUrl,
         type: 'website',
         image: toolImgUrl,
-        imageAlt: `${aiTool.name} NSFW AI ${aiTool.category}`,
+        imageAlt: pickTagHashtagAlt(aiTool.tags, 0),
       }),
     };
   }
@@ -116,17 +160,23 @@ export default async function AINsfwToolPage({ params }: PageProps) {
       getAllToolStats(tools.map((t) => t.slug)),
       getApprovedSubmissions(staticSlugs),
     ]);
-    const categoryToolsBySlug = new Map([
-      ...tools.map((t) => [t.slug, t] as const),
-      ...paidSubmissions.filter((t) => t.category === category).map((t) => [t.slug, t] as const),
+    const catalogToolsBySlug = new Map([
+      ...AI_NSFW_TOOLS.map((t) => [t.slug, t] as const),
+      ...paidSubmissions.map((t) => [t.slug, t] as const),
     ]);
     const recentTools = pickRecentCategoryTools(
       category,
-      categoryToolsBySlug,
+      catalogToolsBySlug,
       paidSubmissions as Array<(typeof paidSubmissions)[number] & { createdAt?: string }>,
     );
     const recentStats = await getAllToolStats(recentTools.map((t) => t.slug));
-    const verifiedSlugs = getVerifiedPaidSlugs(paidSubmissions.map((t) => t.slug));
+    const verifiedSlugs = getVerifiedSlugs(paidSubmissions.map((t) => t.slug));
+    const featuredHubSlugs = getFeaturedHubSlugs();
+    const featuredCatalogTools = [
+      ...AI_NSFW_TOOLS,
+      ...paidSubmissions.filter((t) => !staticSlugs.has(t.slug)),
+    ];
+    const featuredHubStats = await getAllToolStats(featuredHubSlugs);
     return (
       <CategoryClient
         category={category}
@@ -134,6 +184,9 @@ export default async function AINsfwToolPage({ params }: PageProps) {
         allStats={allStats}
         recentTools={recentTools}
         recentStats={recentStats}
+        featuredHubSlugs={featuredHubSlugs}
+        featuredCatalogTools={featuredCatalogTools}
+        featuredHubStats={featuredHubStats}
         verifiedSlugs={verifiedSlugs}
       />
     );
@@ -150,25 +203,38 @@ export default async function AINsfwToolPage({ params }: PageProps) {
     permanentRedirect(`/ainsfw/${aiTool.slug}`);
   }
 
-  const categoryTools = getToolsByCategory(aiTool.category).filter((t) => t.slug !== aiTool.slug);
+  const staticSlugs = new Set(AI_NSFW_TOOLS.map((t) => t.slug));
+  const paidSubmissions = await getApprovedSubmissions(staticSlugs);
 
   const fullReview = getFullReview(aiTool.slug);
-  const showVerified = !!submissionTool && !!fullReview;
+  const isPaidClientListing = isPaidClientTool(aiTool.slug) || !!submissionTool;
+  const showVerified = isPaidClientListing;
   const reviewAuthor = fullReview ? await getAuthorBySlug('eros') : undefined;
+  const listingBlocksRaw = getListingBlocks(aiTool.slug);
+  const showListingBlocks = !!listingBlocksRaw && (
+    !!fullReview || isPaidClientTool(aiTool.slug) || !!submissionTool
+  );
+  const listingBlocks = showListingBlocks ? listingBlocksRaw : undefined;
 
-  const [catStats, toolStats, aiArticles] = await Promise.all([
-    getAllToolStats(categoryTools.map(t => t.slug)),
+  const [toolStats, aiArticles] = await Promise.all([
     getToolStats(aiTool.slug),
     getBlogArticlesByCategory('ai-nsfw', 4),
   ]);
 
+  const featuredHubSlugs = getFeaturedHubSlugs();
+  const featuredToolsBySlug = new Map([
+    ...AI_NSFW_TOOLS.map((t) => [t.slug, t] as const),
+    ...paidSubmissions.map((t) => [t.slug, t] as const),
+  ]);
+  const featuredHubToolsRaw = featuredHubSlugs
+    .map((s) => featuredToolsBySlug.get(s))
+    .filter(Boolean) as AINsfwTool[];
+  const featuredHubStats = await getAllToolStats(featuredHubSlugs);
+  const verifiedSlugs = getVerifiedSlugs(paidSubmissions.map((t) => t.slug));
+
   const { mergeToolContent } = await import('@/lib/ainsfw/toolContent');
   const displayTool = mergeToolContent(aiTool, toolStats);
-
-  const sortByUpvotes = (list: any[], stats: Record<string, any>) =>
-    [...list].sort((a, b) => ((stats[b.slug]?.upvotes || 0) - (stats[a.slug]?.upvotes || 0)));
-
-  const alternatives = sortByUpvotes(categoryTools, catStats).slice(0, 6);
+  const featuredHubTools = featuredHubToolsRaw.map((t) => mergeToolContent(t, featuredHubStats[t.slug]));
 
   const toolPageUrl = `${BASE_URL}/ainsfw/${displayTool.slug}`;
   const toolImgUrl = displayTool.image.startsWith('http') ? displayTool.image : `${BASE_URL}${displayTool.image}`;
@@ -222,9 +288,13 @@ export default async function AINsfwToolPage({ params }: PageProps) {
         fullReview={fullReview}
         showVerified={showVerified}
         reviewAuthor={reviewAuthor}
-        alternatives={alternatives}
         aiArticles={aiArticles}
         initialStats={toolStats}
+        listingBlocks={listingBlocks}
+        featuredHubSlugs={featuredHubSlugs}
+        featuredHubTools={featuredHubTools}
+        featuredHubStats={featuredHubStats}
+        verifiedSlugs={verifiedSlugs}
       />
     </>
   );

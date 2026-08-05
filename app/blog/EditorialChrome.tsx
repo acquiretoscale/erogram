@@ -415,9 +415,18 @@ function MastheadUserMenu({ accent, auth, lp }: { accent: string; auth: Masthead
 
   if (!username) {
     return (
-      <Link href={lp('/login')} className="text-[11px] font-bold tracking-[0.14em] uppercase text-white border border-white/25 hover:border-white/60 hover:bg-white/[0.06] px-4 py-2 rounded-[5px] transition-colors">
-        Login
-      </Link>
+      <div className="flex items-center gap-2">
+        <Link href={lp('/login')} className="text-[11px] font-bold tracking-[0.14em] uppercase text-white border border-white/25 hover:border-white/60 hover:bg-white/[0.06] px-4 py-2 rounded-[5px] transition-colors">
+          Login
+        </Link>
+        <Link
+          href={lp('/login?mode=join')}
+          className="text-[11px] font-bold tracking-[0.14em] uppercase text-white px-4 py-2 rounded-[5px] transition-opacity hover:opacity-85"
+          style={{ background: accent }}
+        >
+          Join
+        </Link>
+      </div>
     );
   }
 
@@ -699,9 +708,14 @@ function MobileUserMenu({ open, auth, lp, onClose }: { open: boolean; auth: Mast
             </div>
           </div>
         ) : (
-          <Link href={lp('/login')} onClick={onClose} className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#161412] border border-white/10 text-[14px] font-bold text-white hover:bg-white/[0.06] transition-colors">
-            Login
-          </Link>
+          <div className="grid grid-cols-2 gap-2">
+            <Link href={lp('/login')} onClick={onClose} className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#161412] border border-white/10 text-[14px] font-bold text-white hover:bg-white/[0.06] transition-colors">
+              Login
+            </Link>
+            <Link href={lp('/login?mode=join')} onClick={onClose} className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white text-[14px] font-bold text-black hover:opacity-90 transition-opacity">
+              Join
+            </Link>
+          </div>
         )}
       </div>
     </motion.div>
@@ -962,7 +976,7 @@ export function EditorialFooter() {
         </div>
 
         {/* 4 columns */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10 mb-8 pb-8 border-b border-white/[0.08]">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-8 sm:gap-x-8 sm:gap-y-10 mb-8 pb-8 border-b border-white/[0.08]">
           <FooterCol label="Explore">
             <FooterLink href={lp('/best-telegram-groups')}>Telegram Groups</FooterLink>
             <FooterLink href={lp('/bots')}>Telegram Bots</FooterLink>

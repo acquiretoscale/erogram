@@ -11,7 +11,8 @@ import { getAllToolStats, getFeaturedTools, getBoostFeaturedSlugs, getApprovedSu
 import { getActiveCampaigns, getPlacementFeedCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
 import { getAuthorBySlug } from '@/lib/actions/authors';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
-import { getVerifiedPaidSlugs } from '@/app/ainsfw/fullReviews';
+import { getVerifiedSlugs } from '@/app/ainsfw/fullReviews';
+import { getFeaturedHubSlugs } from '@/lib/ainsfw/featuredHub';
 
 const BASE_URL = CANONICAL_BASE;
 
@@ -70,7 +71,8 @@ export async function AINsfwPageView({ page = 1 }: { page?: number }) {
         .map((t) => mergeToolContent(t, allStats[t.slug]))
     : [];
   const featuredSlugs = featuredInfos.map(f => f.slug);
-  const verifiedSlugs = getVerifiedPaidSlugs(paidSubmissions.map((t) => t.slug));
+  const featuredHubSlugs = getFeaturedHubSlugs();
+  const verifiedSlugs = getVerifiedSlugs(paidSubmissions.map((t) => t.slug));
   const featuredCampaignMap: Record<string, string> = {};
   for (const f of featuredInfos) {
     if (f.campaignId) featuredCampaignMap[f.slug] = f.campaignId;
@@ -137,7 +139,7 @@ export async function AINsfwPageView({ page = 1 }: { page?: number }) {
           <Link key={p} href={`/ainsfw/page/${p}`}>{`AI NSFW page ${p}`}</Link>
         ))}
       </nav>
-      <AINsfwClient tools={displayTools} allStats={allStats} featuredSlugs={featuredSlugs} boostFeaturedSlugs={boostFeaturedSlugs} featuredCampaignMap={featuredCampaignMap} topBannerCampaigns={topBannerCampaigns} topAdCampaigns={topAdCampaigns} feedCampaigns={feedCampaigns} paginationCurrentPage={currentPage} paginationTotalPages={paginationTotalPages} pageSize={AINSFW_PAGE_SIZE} guideAuthor={guideAuthor} recentTools={recentTools} verifiedSlugs={verifiedSlugs} />
+      <AINsfwClient tools={displayTools} allStats={allStats} featuredSlugs={featuredSlugs} boostFeaturedSlugs={boostFeaturedSlugs} featuredCampaignMap={featuredCampaignMap} topBannerCampaigns={topBannerCampaigns} topAdCampaigns={topAdCampaigns} feedCampaigns={feedCampaigns} paginationCurrentPage={currentPage} paginationTotalPages={paginationTotalPages} pageSize={AINSFW_PAGE_SIZE} guideAuthor={guideAuthor} recentTools={recentTools} verifiedSlugs={verifiedSlugs} featuredHubSlugs={featuredHubSlugs} />
     </>
   );
 }

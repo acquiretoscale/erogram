@@ -75,10 +75,20 @@ export async function trackArticleClick(slug: string, url?: string, type?: 'link
     const clickType = type === 'cta' ? 'cta' : 'link';
     const placement = `article:${slug}:${clickType}${url ? `:${url}` : ''}`;
 
-    await Promise.all([
-      Campaign.findByIdAndUpdate(campaignId, { $inc: { clicks: 1 } }),
-      CampaignClick.create({ campaignId, clickedAt: new Date(), placement }),
+    const [camp] = await Promise.all([
+      Campaign.findByIdAndUpdate(
+        campaignId,
+        { $inc: { clicks: 1 } },
+        { new: true, projection: { advertiserId: 1, slot: 1 } },
+      ).lean() as Promise<{ advertiserId?: unknown; slot?: string } | null>,
     ]);
+    await CampaignClick.create({
+      campaignId,
+      clickedAt: new Date(),
+      placement,
+      advertiserId: camp?.advertiserId ?? null,
+      slot: camp?.slot ?? 'article-link',
+    });
   } catch {
     // Silently fail
   }

@@ -20,9 +20,9 @@ export interface AuthorProfile {
 const DEFAULT_AUTHORS: AuthorProfile[] = [
   {
     slug: 'eros',
-    name: 'Enzo Delacroix',
-    role: 'Chief Editor',
-    bio: "Enzo Delacroix is Erogram's Chief Editor, covering AI companionship, adult tech, and the creator economy. Reporting from inside the industry since 2023, he tracks what's actually working — not what's hyped.",
+    name: 'Tom Beckett',
+    role: 'Senior Editor',
+    bio: 'Tom has written about adult tech for over a decade, from cam platforms to subscription sites to whatever this current wave turns out to be. He has watched enough hype cycles to know which features stick around.',
     avatar: '/assets/blog/authors/eros.webp',
     socials: { x: '', telegram: '', instagram: '', website: '' },
   },

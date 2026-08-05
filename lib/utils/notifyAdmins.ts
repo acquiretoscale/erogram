@@ -34,7 +34,7 @@ export interface SaleNotificationPayload {
 
 export interface NewUserNotificationPayload {
   username: string;
-  provider: 'google' | 'telegram';
+  provider: 'google' | 'telegram' | 'email';
 }
 
 async function sendPushToAdmins(notification: object) {
@@ -76,7 +76,8 @@ export async function notifyAdminsOfSale(payload: SaleNotificationPayload) {
     bot_boost_week: 'Bot Boost 1 Week (3000★)',
     bot_boost_month: 'Bot Boost 1 Month (6000★)',
     ainsfw_basic: 'AI NSFW Basic ($49)',
-    ainsfw_boost: 'AI NSFW Boost ($197)',
+    ainsfw_boost: 'AI NSFW Boost ($147)',
+    ainsfw_startup: 'AI NSFW Scale ($297)',
     ainsfw_platinum: 'AI NSFW Platinum ($297)',
     featured_creator: 'Featured Creator ($97)',
   };
@@ -100,7 +101,8 @@ export async function notifyAdminsOfSale(payload: SaleNotificationPayload) {
 }
 
 export async function notifyAdminsOfNewUser(payload: NewUserNotificationPayload) {
-  const providerLabel = payload.provider === 'google' ? '📧 Google' : '✈️ Telegram';
+  const providerLabel =
+    payload.provider === 'google' ? '📧 Google' : payload.provider === 'telegram' ? '✈️ Telegram' : '✉️ Email';
   const body = `@${payload.username} · ${providerLabel}`;
 
   await sendTelegramDM(`👤 <b>New User!</b>\n${body}`);

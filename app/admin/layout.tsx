@@ -35,8 +35,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       const res = await axios.get('/api/auth/me', {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (!res.data.isAdmin) {
+        localStorage.removeItem('isAdmin');
+        setIsAuthenticated(false);
+        setIsLoading(false);
+        return;
+      }
       if (res.data.username) localStorage.setItem('username', res.data.username);
-      if (res.data.isAdmin) localStorage.setItem('isAdmin', 'true');
+      localStorage.setItem('isAdmin', 'true');
       setIsAuthenticated(true);
       setIsLoading(false);
     } catch {

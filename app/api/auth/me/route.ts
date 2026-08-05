@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
       id: user._id,
       username: user.username,
       email: user.email,
+      emailVerified: u.email ? !!u.emailVerified : true,
       firstName: u.firstName || null,
       bio: u.bio || null,
       photoUrl: u.photoUrl || null,

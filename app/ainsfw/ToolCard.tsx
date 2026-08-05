@@ -8,7 +8,13 @@ import { voteOnTool, unvoteOnTool, submitReview } from '@/lib/actions/ainsfw';
 import type { ToolReviewData } from '@/lib/actions/ainsfw';
 import type { ToolStatsData } from '@/lib/actions/ainsfw';
 import { trackClick, trackImpression } from '@/lib/actions/campaigns';
+import { pickTagHashtagAlt } from '@/lib/ainsfw/imageAlt';
+import { AINSFW_GALLERY } from '@/app/ainsfw/galleryMap';
+import { AINSFW_TOOL_PREVIEW_VIDEOS } from '@/lib/ainsfw/toolPreviewVideos';
+import { requestHubVideoPlay, releaseHubVideoPlay } from '@/lib/ainsfw/hubVideoPlayManager';
 import VerifiedBadge, { AINSFW_VERIFIED_TOOLTIP } from '@/components/VerifiedBadge';
+import AinsfwVideoListingBadge from '@/components/ainsfw/AinsfwVideoListingBadge';
+import { ainsfwCtaButtonClass } from '@/lib/ainsfw/ctaButton';
 
 // PAUSED (2026-07-24, owner order) — see AdvertCard.tsx. Flip to false to resume.
 const IMPRESSION_TRACKING_PAUSED = true;
@@ -35,16 +41,9 @@ const CATEGORY_BADGE: Record<string, string> = {
   'Adult Games': 'bg-purple-800 text-white',
 };
 
-const CATEGORY_BTN: Record<string, string> = {
-  'AI Companion': 'bg-yellow-400 hover:bg-yellow-300 text-black',
-  'Undress AI': 'bg-yellow-400 hover:bg-yellow-300 text-black',
-  'AI Sexting / Chat': 'bg-yellow-400 hover:bg-yellow-300 text-black',
-  'AI NSFW Image Generator': 'bg-yellow-400 hover:bg-yellow-300 text-black',
-  'AI Porn Generator': 'bg-yellow-400 hover:bg-yellow-300 text-black',
-  'AI NSFW Roleplay': 'bg-yellow-400 hover:bg-yellow-300 text-black',
-};
-
 function getBookmarkKey(slug: string) { return `ainsfw_bookmark_${slug}`; }
+
+const VERIFIED_NAME_BADGE_CLS = 'w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0';
 
 /** Cap a description to N words (default 18) so card previews stay short + uniform. */
 function capWords(text: string, max = 18): string {
@@ -54,21 +53,125 @@ function capWords(text: string, max = 18): string {
   return words.slice(0, max).join(' ') + '…';
 }
 
-export default function ToolCard({ tool, index, initialStats, onVoteChange, featured, campaignId, primaryImageAlt, verified = false, light = false }: ToolCardProps) {
-  const mainImageAlt = primaryImageAlt ?? `${tool.name} NSFW AI ${tool.category} tool`;
-  const galleryImageAlt = (idx: number) =>
-    idx === 0 ? mainImageAlt : `${tool.name} NSFW AI ${tool.category} screenshot ${idx}`;
+/** Lazy hub-card video (same activate/play pattern as LazyClickableVideoAd). */
+function ToolCardPreviewVideo({
+  slug,
+  mp4,
+  poster,
+  alt,
+  title,
+  eager = false,
+}: {
+  slug: string;
+  mp4: string;
+  poster?: string;
+  alt: string;
+  title: string;
+  eager?: boolean;
+}) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const activatedRef = useRef(false);
+  const [src, setSrc] = useState<string | null>(null);
+  const [playing, setPlaying] = useState(false);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    let cancelled = false;
+
+    const activate = () => {
+      if (cancelled || activatedRef.current) return;
+      activatedRef.current = true;
+      setSrc(mp4);
+    };
+
+    const io = new IntersectionObserver(
+      (entries) => { if (entries.some((e) => e.isIntersecting)) activate(); },
+      { rootMargin: '240px' },
+    );
+    io.observe(el);
+    el.addEventListener('mouseenter', activate, { once: true });
+
+    return () => {
+      cancelled = true;
+      io.disconnect();
+      releaseHubVideoPlay(slug);
+    };
+  }, [mp4, slug]);
+
+  useEffect(() => {
+    if (!src || !videoRef.current) return;
+    const v = videoRef.current;
+    const play = () => {
+      requestHubVideoPlay(slug, v);
+      v.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+    };
+    play();
+    if (v.readyState < 2) v.addEventListener('loadeddata', play, { once: true });
+    return () => {
+      v.pause();
+      releaseHubVideoPlay(slug);
+    };
+  }, [src, slug]);
+
+  return (
+    <div ref={wrapRef} data-ainsfw-hub-video={slug} className="relative w-full h-full overflow-hidden bg-black">
+      {poster ? (
+        <img
+          src={poster}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-75 saturate-125 pointer-events-none"
+        />
+      ) : null}
+      {poster && !playing ? (
+        <img
+          src={poster}
+          alt={alt}
+          title={title}
+          className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+          loading={eager ? 'eager' : 'lazy'}
+          decoding="async"
+        />
+      ) : null}
+      <video
+        ref={videoRef}
+        {...(src ? { src } : {})}
+        poster={poster}
+        muted
+        loop
+        playsInline
+        autoPlay
+        preload="none"
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+        style={{ opacity: playing ? 1 : 0, transition: 'opacity 300ms' }}
+      />
+    </div>
+  );
+}
+
+export default function ToolCard({ tool, index, initialStats, onVoteChange, featured, campaignId, verified = false, light = false }: ToolCardProps) {
+  const imageHoverTitle = `${tool.name} - ${tool.category}`;
+  const galleryImageAlt = (idx: number) => pickTagHashtagAlt(tool.tags, idx);
   const placeholder = '/assets/image.jpg';
   const mainImg = tool.image && (tool.image.startsWith('https://') || tool.image.startsWith('/'))
     ? tool.image : placeholder;
+  const previewVideo = AINSFW_TOOL_PREVIEW_VIDEOS[tool.slug];
+  const curatedGallery = AINSFW_GALLERY[tool.slug] ?? [];
+  const hasCuratedGallery = curatedGallery.length > 0;
+  const hasLogo = mainImg !== placeholder;
 
   const [isInView, setIsInView] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Gallery carousel
-  const [gallery, setGallery] = useState<string[]>([mainImg]);
+  // Gallery carousel — curated R2 previews only (no auto-scrape)
+  const [gallery] = useState<string[]>(() =>
+    hasCuratedGallery ? curatedGallery : [mainImg],
+  );
   const [slideIdx, setSlideIdx] = useState(0);
-  const [galleryFetched, setGalleryFetched] = useState(false);
   const touchStartX = useRef(0);
 
   const [votes, setVotes] = useState({ up: initialStats?.upvotes ?? 0, down: initialStats?.downvotes ?? 0 });
@@ -114,19 +217,38 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
     if (featured && campaignId) trackClick(campaignId, 'ainsfw-featured');
   }, [featured, campaignId]);
 
-  // Fetch gallery when card enters viewport
-  useEffect(() => {
-    if (!isInView || galleryFetched) return;
-    setGalleryFetched(true);
-    fetch(`/api/ainsfw/images?slug=${encodeURIComponent(tool.slug)}&name=${encodeURIComponent(tool.name)}&vendor=${encodeURIComponent(tool.vendor)}`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.images?.length) {
-          setGallery([mainImg, ...d.images.filter((img: string) => img !== mainImg)].slice(0, 7));
-        }
-      })
-      .catch(() => {});
-  }, [isInView, galleryFetched, tool.slug, tool.name, tool.vendor, mainImg]);
+  const renderCardMedia = (opts: { eager?: boolean; imgClassName?: string }) => {
+    if (!isInView) return null;
+    return (
+      <img
+        key={currentSrc}
+        src={currentSrc}
+        alt={galleryImageAlt(slideIdx)}
+        title={imageHoverTitle}
+        className={opts.imgClassName ?? 'w-full h-full object-cover transition-opacity duration-300'}
+        loading={index < 8 ? 'eager' : 'lazy'}
+        onError={(e) => { (e.target as HTMLImageElement).src = placeholder; }}
+      />
+    );
+  };
+
+  const isVideoCard = !!previewVideo;
+  const hubPreviewVideo = previewVideo ? (
+    <ToolCardPreviewVideo
+      slug={tool.slug}
+      mp4={previewVideo.mp4}
+      poster={previewVideo.poster}
+      alt={galleryImageAlt(0)}
+      title={imageHoverTitle}
+      eager={index < 8}
+    />
+  ) : null;
+  const videoCardGradient = isVideoCard ? (
+    <div
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-[4] h-[68%] bg-gradient-to-t from-black/80 via-black/40 to-transparent"
+      aria-hidden
+    />
+  ) : null;
 
   const goSlide = useCallback((dir: 1 | -1, e?: React.MouseEvent) => {
     e?.preventDefault();
@@ -204,30 +326,76 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
 
   const score = votes.up - votes.down;
   const badge = CATEGORY_BADGE[tool.category] || 'bg-gray-700 text-white';
-  const btnCls = CATEGORY_BTN[tool.category] || 'bg-gray-700 hover:bg-gray-600 text-white';
+  const btnCls = ainsfwCtaButtonClass('card');
   const avgRating = reviews.length > 0
     ? Math.round(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) : 0;
   const currentSrc = gallery[slideIdx] || mainImg;
 
+  const showLogoBadge = hasLogo && (isVideoCard || hasCuratedGallery);
+  const slideCountRight = showLogoBadge && !isVideoCard ? 'right-[4.5rem]' : 'right-10';
+  const logoBadgeEl = showLogoBadge ? (
+    <AinsfwVideoListingBadge
+      src={mainImg}
+      alt={`${tool.name} logo`}
+      title={imageHoverTitle}
+      className="w-5 h-5 sm:w-6 sm:h-6"
+    />
+  ) : null;
+  const galleryLogoOverlay = !isVideoCard && logoBadgeEl ? (
+    <div className="absolute top-1.5 right-1.5 z-30 pointer-events-none">
+      {logoBadgeEl}
+    </div>
+  ) : null;
+  const videoNicheOverlay = isVideoCard ? (
+    <div className={`absolute left-1.5 z-30 pointer-events-none max-w-[55%]${featured ? ' top-9' : ' top-1.5'}`}>
+      <span className={`${badge} text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider border border-black/20 shadow-lg truncate block`}>
+        {tool.category}
+      </span>
+    </div>
+  ) : null;
+  const videoLogoOverlay = isVideoCard && logoBadgeEl ? (
+    <div className="absolute top-1.5 right-1.5 z-30 pointer-events-none">
+      {logoBadgeEl}
+    </div>
+  ) : null;
+
   const cardShell = light
-    ? 'bg-white rounded-xl overflow-hidden h-full flex flex-col border border-black/10 hover:border-[#22c55e]/50 shadow-sm transition-all duration-150 group'
-    : 'bg-[#111] rounded-xl overflow-hidden h-full flex flex-col border border-white/10 hover:border-[#22c55e]/50 transition-all duration-150 group';
-  const imageShell = light ? 'relative w-full h-32 sm:h-36 overflow-hidden bg-gray-100 shrink-0' : 'relative w-full h-32 sm:h-36 overflow-hidden bg-[#0a0a0a] shrink-0';
-  const titleCls = light ? 'text-xs sm:text-sm font-black text-gray-900 mb-0.5 leading-tight truncate group-hover:text-[#22c55e] transition-colors flex items-center gap-1 min-w-0' : 'text-xs sm:text-sm font-black text-white mb-0.5 leading-tight truncate group-hover:text-[#22c55e] transition-colors flex items-center gap-1 min-w-0';
-  const vendorCls = light ? 'text-[9px] sm:text-[10px] text-gray-500 mb-1 truncate' : 'text-[9px] sm:text-[10px] text-white/50 mb-1 truncate';
-  const descCls = light ? 'text-gray-600 text-[10px] sm:text-xs line-clamp-2 leading-relaxed flex-grow mb-2' : 'text-white/70 text-[10px] sm:text-xs line-clamp-2 leading-relaxed flex-grow mb-2';
+    ? 'relative bg-white rounded-xl overflow-hidden h-full flex flex-col border border-black/10 hover:border-[#22c55e]/50 shadow-sm transition-all duration-150 group'
+    : 'relative bg-[#111] rounded-xl overflow-hidden h-full flex flex-col border border-white/10 hover:border-[#22c55e]/50 transition-all duration-150 group';
+  const imageShell = light ? 'relative w-full h-[154px] sm:h-[173px] overflow-hidden bg-gray-100 shrink-0' : 'relative w-full h-[154px] sm:h-[173px] overflow-hidden bg-[#0a0a0a] shrink-0';
+  const titleCls = light
+    ? 'text-xs sm:text-sm font-black text-gray-900 mb-0.5 leading-tight truncate group-hover:text-[#22c55e] transition-colors flex items-center gap-1 min-w-0'
+    : 'text-xs sm:text-sm font-black text-white mb-0.5 leading-tight truncate group-hover:text-[#22c55e] transition-colors flex items-center gap-1 min-w-0';
+  const descCls = light
+    ? 'text-gray-600 text-[10px] sm:text-xs line-clamp-2 leading-relaxed flex-grow mb-2'
+    : 'text-white/70 text-[10px] sm:text-xs line-clamp-2 leading-relaxed flex-grow mb-2';
   const reviewCountCls = light ? 'text-[9px] text-gray-500' : 'text-[9px] text-white/50';
-  const dividerCls = light ? 'flex items-center justify-between pt-1.5 border-t border-black/10 mb-2' : 'flex items-center justify-between pt-1.5 border-t border-white/10 mb-2';
+  const dividerCls = light
+    ? 'flex items-center justify-between gap-2 pt-1.5 border-t border-black/10 mb-2'
+    : 'flex items-center justify-between gap-2 pt-1.5 border-t border-white/10 mb-2';
   const voteIdleCls = light ? 'bg-gray-100 text-gray-500' : 'bg-white/10 text-white/50';
   const scoreNeutralCls = light ? 'bg-gray-100 text-gray-400' : 'bg-white/5 text-white/30';
   const starEmptyCls = light ? 'text-gray-200' : 'text-white/20';
+
+  const inlineReviews = reviews.length > 0 ? (
+    <div className="flex items-center gap-1 shrink-0 ml-auto pl-2">
+      <div className="flex">
+        {[1, 2, 3, 4, 5].map((s) => (
+          <svg key={s} className={`w-2.5 h-2.5 ${s <= avgRating ? 'text-[#22c55e]' : starEmptyCls}`} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+        ))}
+      </div>
+      <span className={reviewCountCls}>({reviews.length})</span>
+    </div>
+  ) : null;
 
   /* ─── FEATURED: completely different dark premium card ─── */
   if (featured) {
     return (
       <>
         <motion.div
-          initial={{ opacity: 0, y: 40 }}
+          initial={false}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: index * 0.04 }}
           className="h-full"
@@ -235,89 +403,71 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
           <Link href={`/ainsfw/${tool.slug}`} className="block h-full" onClick={handleFeaturedClick}>
             <div
               ref={cardRef}
-              className="group h-full rounded-xl overflow-hidden bg-[#0a0a0a] border border-white/10 hover:border-[#22c55e]/40 transition-all flex flex-col"
+              className="group relative h-full rounded-xl overflow-hidden border border-white/10 hover:border-[#22c55e]/40 transition-all flex flex-col bg-[#0a0a0a]"
             >
-              {/* Image */}
-              <div
-                className="relative w-full h-32 sm:h-36 overflow-hidden bg-[#0a0a0a] shrink-0"
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
-              >
-                {isInView && (
-                  <img
-                    key={currentSrc}
-                    src={currentSrc}
-                    alt={galleryImageAlt(slideIdx)}
-                    className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
-                    loading={index < 8 ? 'eager' : 'lazy'}
-                    onError={(e) => { (e.target as HTMLImageElement).src = placeholder; }}
-                  />
-                )}
-
-                {gallery.length > 1 && (
+              <div className="relative w-full h-[154px] sm:h-[173px] overflow-hidden bg-[#0a0a0a] shrink-0">
+                {isVideoCard ? hubPreviewVideo : (
                   <>
-                    <button onClick={(e) => goSlide(-1, e)} className="absolute left-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80">‹</button>
-                    <button onClick={(e) => goSlide(1, e)} className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80">›</button>
+                    <div
+                      className="relative w-full h-full"
+                      onTouchStart={handleTouchStart}
+                      onTouchEnd={handleTouchEnd}
+                    >
+                      {renderCardMedia({ imgClassName: 'w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out' })}
+
+                      {gallery.length > 1 && (
+                        <>
+                          <button onClick={(e) => goSlide(-1, e)} className="absolute left-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80">‹</button>
+                          <button onClick={(e) => goSlide(1, e)} className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80">›</button>
+                        </>
+                      )}
+
+                      {gallery.length > 1 && (
+                        <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1">
+                          {gallery.map((_, i) => (
+                            <button key={i} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSlideIdx(i); }} className={`w-1.5 h-1.5 rounded-full transition-all ${i === slideIdx ? 'bg-white scale-125' : 'bg-white/30'}`} />
+                          ))}
+                        </div>
+                      )}
+
+                      {gallery.length > 1 && (
+                        <div className={`absolute top-1.5 ${slideCountRight} z-20 bg-black/50 text-white text-[8px] font-bold px-1.5 py-0.5 rounded`}>
+                          {slideIdx + 1}/{gallery.length}
+                        </div>
+                      )}
+
+                      {galleryLogoOverlay}
+                    </div>
                   </>
-                )}
-
-                {gallery.length > 1 && (
-                  <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1">
-                    {gallery.map((_, i) => (
-                      <button key={i} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSlideIdx(i); }} className={`w-1.5 h-1.5 rounded-full transition-all ${i === slideIdx ? 'bg-white scale-125' : 'bg-white/30'}`} />
-                    ))}
-                  </div>
-                )}
-
-                {/* Featured badge */}
-                <div className="absolute top-1.5 left-1.5 z-10">
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#22c55e] text-black text-[9px] font-black uppercase tracking-widest">
-                    <svg className="w-2 h-2" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3a2 2 0 01-2 2H7a2 2 0 01-2-2v-1h14v1z"/></svg>
-                    Featured
-                  </span>
-                </div>
-
-                {/* Bookmark */}
-                <button
-                  onClick={handleBookmark}
-                  title={bookmarked ? 'Remove bookmark' : 'Save'}
-                  className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center transition-all hover:scale-110 hover:bg-black/60"
-                >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill={bookmarked ? '#f43f5e' : 'none'} stroke={bookmarked ? '#f43f5e' : '#fff'} strokeWidth="2">
-                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                  </svg>
-                </button>
-
-                {gallery.length > 1 && (
-                  <div className="absolute top-1.5 right-10 bg-black/50 text-white text-[8px] font-bold px-1.5 py-0.5 rounded">
-                    {slideIdx + 1}/{gallery.length}
-                  </div>
                 )}
               </div>
 
-              {/* Body */}
-              <div className="p-2.5 sm:p-3 flex-grow flex flex-col">
+              {videoCardGradient}
+
+              <div className="absolute top-1.5 left-1.5 z-20 flex flex-col gap-1 items-start">
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#22c55e] text-black text-[9px] font-black uppercase tracking-widest">
+                  <svg className="w-2 h-2" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3a2 2 0 01-2 2H7a2 2 0 01-2-2v-1h14v1z"/></svg>
+                  Featured
+                </span>
+              </div>
+
+              {videoNicheOverlay}
+              {videoLogoOverlay}
+
+              <div className="p-2.5 sm:p-3 flex flex-col flex-grow relative z-[5]">
                 <h3 className="text-xs sm:text-sm font-black text-white mb-0.5 leading-tight truncate group-hover:text-[#FF8C3A] transition-colors flex items-center gap-1 min-w-0">
                   <span className="truncate">{tool.name}</span>
-                  {verified && <VerifiedBadge className="w-3.5 h-3.5" tooltip={AINSFW_VERIFIED_TOOLTIP} />}
+                  {verified && <VerifiedBadge className={VERIFIED_NAME_BADGE_CLS} tooltip={AINSFW_VERIFIED_TOOLTIP} />}
                 </h3>
-                <p className="text-[9px] sm:text-[10px] text-[#7BAEFF] mb-1 truncate">{tool.vendor}</p>
 
                 {/* Description — hard-capped to ~18 words (string-level) + 2-line clamp for a tidy, uniform preview */}
                 <p className="text-white/70 text-[10px] sm:text-xs line-clamp-2 leading-relaxed flex-grow mb-2">
                   {capWords(tool.description)}
                 </p>
 
-                {reviews.length > 0 && (
-                  <div className="flex items-center gap-1 mb-1.5">
-                    <div className="flex">{[1,2,3,4,5].map((s) => (<svg key={s} className={`w-2.5 h-2.5 ${s <= avgRating ? 'text-[#22c55e]' : 'text-white/20'}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>))}</div>
-                    <span className="text-[9px] text-white/50">({reviews.length})</span>
-                  </div>
-                )}
-
-                {/* Votes row */}
-                <div className="flex items-center justify-between pt-1.5 border-t border-white/[0.08] mb-2">
-                  <div className="flex items-center gap-1">
+                {/* Votes + reviews row */}
+                <div className="flex items-center justify-between pt-1.5 border-t border-white/[0.08] mb-2 gap-2">
+                  <div className="flex items-center gap-1 shrink-0">
                     <button
                       onClick={(e) => handleVote(e, 'up')}
                       title="Upvote"
@@ -348,11 +498,27 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                       <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20l-8-8h16z"/></svg>
                     </button>
                   </div>
+                  {inlineReviews}
                 </div>
 
-                {/* CTA */}
-                <div className="bg-yellow-400 hover:bg-yellow-300 text-black text-[10px] sm:text-xs font-black uppercase tracking-[1px] text-center py-1.5 rounded-lg transition-colors cursor-pointer">
-                  TRY NOW →
+                {/* CTA + bookmark */}
+                <div className="flex items-center gap-2">
+                  <div className={`${btnCls} cursor-pointer flex-1 text-center`}>
+                    TRY NOW →
+                  </div>
+                  <button
+                    onClick={handleBookmark}
+                    title={bookmarked ? 'Remove bookmark' : 'Save'}
+                    className={`shrink-0 w-9 h-9 rounded-lg border flex items-center justify-center transition-all ${
+                      bookmarked
+                        ? 'bg-[#f43f5e]/15 border-[#f43f5e]/40 text-[#f43f5e]'
+                        : 'bg-white/[0.06] border-white/10 text-white/60 hover:text-white hover:border-white/25'
+                    }`}
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill={bookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                    </svg>
+                  </button>
                 </div>
               </div>
             </div>
@@ -371,19 +537,19 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                 {[1,2,3,4,5].map((s) => (<button key={s} onClick={() => setReviewRating(s)} className={`text-2xl leading-none transition-transform hover:scale-125 ${s <= reviewRating ? 'text-yellow-400' : 'text-gray-200 hover:text-yellow-300'}`}>★</button>))}
                 <span className="ml-1 text-sm font-bold text-white/50 self-center">{reviewRating}/5</span>
               </div>
-              <textarea value={reviewText} onChange={(e) => setReviewText(e.target.value)} placeholder={`Share your experience with ${tool.name}...`} rows={3} className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 resize-none focus:outline-none focus:ring-2 focus:ring-[#22c55e]/40 mb-4" />
+              <textarea value={reviewText} onChange={(e) => setReviewText(e.target.value)} placeholder={`Share your experience with ${tool.name}...`} rows={4} className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-3 py-3 text-base text-white placeholder-white/30 resize-none focus:outline-none focus:ring-2 focus:ring-[#22c55e]/40 mb-4" />
               {reviews.length > 0 && (
-                <div className="mb-4 space-y-2 max-h-36 overflow-y-auto">
-                  <p className="text-xs font-bold text-white/50 uppercase tracking-wide mb-1">Previous reviews</p>
+                <div className="mb-4 space-y-3 max-h-48 overflow-y-auto">
+                  <p className="text-sm font-bold text-white/60 uppercase tracking-wide mb-1">Previous reviews</p>
                   {reviews.slice(0, 5).map((r, i) => (
-                    <div key={i} className="bg-white/[0.04] rounded-lg px-3 py-2 border border-white/10">
-                      <div className="flex items-center gap-2 mb-0.5"><div className="flex">{[1,2,3,4,5].map((s) => (<svg key={s} className={`w-3 h-3 ${s <= r.rating ? 'text-[#22c55e]' : 'text-white/30'}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>))}</div><span className="text-white/40 text-[10px]">{r.createdAt}</span></div>
-                      <p className="text-white/70 text-xs line-clamp-2">{r.text}</p>
+                    <div key={i} className="bg-white/[0.04] rounded-lg px-3 py-3 border border-white/10">
+                      <div className="flex items-center gap-2 mb-1"><div className="flex">{[1,2,3,4,5].map((s) => (<svg key={s} className={`w-3.5 h-3.5 ${s <= r.rating ? 'text-[#22c55e]' : 'text-white/30'}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>))}</div><span className="text-white/40 text-xs">{r.createdAt}</span></div>
+                      <p className="text-white/85 text-base leading-relaxed">{r.text}</p>
                     </div>
                   ))}
                 </div>
               )}
-              <button onClick={handleReviewSubmit} disabled={!reviewText.trim() || reviewSubmitted} className="w-full py-2.5 rounded-xl font-black text-sm bg-[#22c55e] text-black active:bg-[#16a34a] transition-all disabled:opacity-40">{reviewSubmitted ? '✓ Submitted!' : 'Submit Review'}</button>
+              <button onClick={handleReviewSubmit} disabled={!reviewText.trim() || reviewSubmitted} className="w-full py-3 rounded-xl font-black text-base bg-[#22c55e] text-black active:bg-[#16a34a] transition-all disabled:opacity-40">{reviewSubmitted ? '✓ Submitted!' : 'Submit Review'}</button>
               {reviewError && <p className={`text-xs mt-2 text-center ${reviewSubmitted ? 'text-[#22c55e]' : 'text-red-400'}`}>{reviewError}</p>}
             </motion.div>
           </div>
@@ -396,7 +562,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
   return (
     <>
       <motion.div
-        initial={{ opacity: 0, y: 40 }}
+        initial={false}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: index * 0.04 }}
         className="h-full"
@@ -406,31 +572,21 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
             ref={cardRef}
             className={cardShell}
           >
-            {/* Image carousel */}
             <div
               className={imageShell}
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
+              onTouchStart={isVideoCard ? undefined : handleTouchStart}
+              onTouchEnd={isVideoCard ? undefined : handleTouchEnd}
             >
-              {isInView && (
-                <img
-                  key={currentSrc}
-                  src={currentSrc}
-                  alt={galleryImageAlt(slideIdx)}
-                  className="w-full h-full object-cover transition-opacity duration-300"
-                  loading={index < 8 ? 'eager' : 'lazy'}
-                  onError={(e) => { (e.target as HTMLImageElement).src = placeholder; }}
-                />
-              )}
+              {isVideoCard ? hubPreviewVideo : renderCardMedia({})}
 
-              {gallery.length > 1 && (
+              {!isVideoCard && gallery.length > 1 && (
                 <>
                   <button onClick={(e) => goSlide(-1, e)} className="absolute left-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80">‹</button>
                   <button onClick={(e) => goSlide(1, e)} className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80">›</button>
                 </>
               )}
 
-              {gallery.length > 1 && (
+              {!isVideoCard && gallery.length > 1 && (
                 <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1">
                   {gallery.map((_, i) => (
                     <button key={i} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSlideIdx(i); }} className={`w-1.5 h-1.5 rounded-full transition-all ${i === slideIdx ? 'bg-white scale-125' : 'bg-white/30'}`} />
@@ -438,38 +594,35 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                 </div>
               )}
 
-              <div className="absolute top-1.5 left-1.5">
-                <span className={`${badge} text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider border border-black/20`}>{tool.category}</span>
-              </div>
-
-              <button onClick={handleBookmark} title={bookmarked ? 'Remove bookmark' : 'Save'} className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center transition-all hover:scale-110 hover:bg-black/70">
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill={bookmarked ? '#f43f5e' : 'none'} stroke={bookmarked ? '#f43f5e' : '#fff'} strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-              </button>
-
-              {gallery.length > 1 && (
-                <div className="absolute top-1.5 right-10 bg-black/60 text-white text-[8px] font-bold px-1.5 py-0.5 rounded">{slideIdx + 1}/{gallery.length}</div>
+              {!isVideoCard && gallery.length > 1 && (
+                <div className={`absolute top-1.5 ${slideCountRight} z-20 bg-black/60 text-white text-[8px] font-bold px-1.5 py-0.5 rounded`}>{slideIdx + 1}/{gallery.length}</div>
               )}
+
+              {galleryLogoOverlay}
             </div>
 
+            {videoCardGradient}
+
+            {videoNicheOverlay}
+            {videoLogoOverlay}
+
+            {!isVideoCard && (
+            <div className="absolute top-1.5 left-1.5 z-20 flex flex-col gap-1 items-start">
+              <span className={`${badge} text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider border border-black/20`}>{tool.category}</span>
+            </div>
+            )}
+
             {/* Body */}
-            <div className="p-2.5 sm:p-3 flex-grow flex flex-col">
+            <div className="p-2.5 sm:p-3 flex flex-col flex-grow relative z-[5]">
               <h3 className={titleCls}>
                 <span className="truncate">{tool.name}</span>
-                {verified && <VerifiedBadge className="w-3.5 h-3.5" tooltip={AINSFW_VERIFIED_TOOLTIP} />}
+                {verified && <VerifiedBadge className={VERIFIED_NAME_BADGE_CLS} tooltip={AINSFW_VERIFIED_TOOLTIP} />}
               </h3>
-              <p className={vendorCls}>{tool.vendor}</p>
 
               <p className={descCls}>{capWords(tool.description)}</p>
 
-              {reviews.length > 0 && (
-                <div className="flex items-center gap-1 mb-1.5">
-                  <div className="flex">{[1,2,3,4,5].map((s) => (<svg key={s} className={`w-2.5 h-2.5 ${s <= avgRating ? 'text-[#22c55e]' : starEmptyCls}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>))}</div>
-                  <span className={reviewCountCls}>({reviews.length})</span>
-                </div>
-              )}
-
               <div className={dividerCls}>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 shrink-0">
                   <button onClick={(e) => handleVote(e, 'up')} title="Upvote" className={`flex items-center justify-center w-6 h-6 rounded text-[10px] font-bold transition-all ${userVote === 'up' ? 'bg-green-500 text-white' : `${voteIdleCls} hover:bg-green-500/20 hover:text-green-600`}`}>
                     <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l8 8H4z"/></svg>
                   </button>
@@ -480,10 +633,28 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                     <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20l-8-8h16z"/></svg>
                   </button>
                 </div>
+                {inlineReviews}
               </div>
 
-              <div className={`${btnCls} text-[10px] sm:text-xs font-black uppercase tracking-[1px] text-center py-1.5 rounded transition-all cursor-pointer`}>
-                TRY NOW →
+              <div className="flex items-center gap-2">
+                <div className={`${btnCls} cursor-pointer flex-1 text-center`}>
+                  TRY NOW →
+                </div>
+                <button
+                  onClick={handleBookmark}
+                  title={bookmarked ? 'Remove bookmark' : 'Save'}
+                  className={`shrink-0 w-9 h-9 rounded-lg border flex items-center justify-center transition-all ${
+                    bookmarked
+                      ? 'bg-[#f43f5e]/15 border-[#f43f5e]/40 text-[#f43f5e]'
+                      : light
+                        ? 'bg-gray-100 border-gray-200 text-gray-500 hover:text-gray-800 hover:border-gray-300'
+                        : 'bg-white/[0.06] border-white/10 text-white/60 hover:text-white hover:border-white/25'
+                  }`}
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill={bookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
@@ -501,19 +672,19 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
               {[1,2,3,4,5].map((s) => (<button key={s} onClick={() => setReviewRating(s)} className={`text-2xl leading-none transition-transform hover:scale-125 ${s <= reviewRating ? 'text-yellow-400' : 'text-gray-200 hover:text-yellow-300'}`}>★</button>))}
               <span className="ml-1 text-sm font-bold text-white/50 self-center">{reviewRating}/5</span>
             </div>
-              <textarea value={reviewText} onChange={(e) => setReviewText(e.target.value)} placeholder={`Share your experience with ${tool.name}...`} rows={3} className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 resize-none focus:outline-none focus:ring-2 focus:ring-[#22c55e]/40 mb-4" />
+              <textarea value={reviewText} onChange={(e) => setReviewText(e.target.value)} placeholder={`Share your experience with ${tool.name}...`} rows={4} className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-3 py-3 text-base text-white placeholder-white/30 resize-none focus:outline-none focus:ring-2 focus:ring-[#22c55e]/40 mb-4" />
             {reviews.length > 0 && (
-              <div className="mb-4 space-y-2 max-h-36 overflow-y-auto">
-                <p className="text-xs font-bold text-white/50 uppercase tracking-wide mb-1">Previous reviews</p>
+              <div className="mb-4 space-y-3 max-h-48 overflow-y-auto">
+                <p className="text-sm font-bold text-white/60 uppercase tracking-wide mb-1">Previous reviews</p>
                 {reviews.slice(0, 5).map((r, i) => (
-                    <div key={i} className="bg-white/[0.04] rounded-lg px-3 py-2 border border-white/10">
-                      <div className="flex items-center gap-2 mb-0.5"><div className="flex">{[1,2,3,4,5].map((s) => (<svg key={s} className={`w-3 h-3 ${s <= r.rating ? 'text-[#22c55e]' : 'text-white/30'}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>))}</div><span className="text-white/40 text-[10px]">{r.createdAt}</span></div>
-                      <p className="text-white/70 text-xs line-clamp-2">{r.text}</p>
+                    <div key={i} className="bg-white/[0.04] rounded-lg px-3 py-3 border border-white/10">
+                      <div className="flex items-center gap-2 mb-1"><div className="flex">{[1,2,3,4,5].map((s) => (<svg key={s} className={`w-3.5 h-3.5 ${s <= r.rating ? 'text-[#22c55e]' : 'text-white/30'}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>))}</div><span className="text-white/40 text-xs">{r.createdAt}</span></div>
+                      <p className="text-white/85 text-base leading-relaxed">{r.text}</p>
                     </div>
                 ))}
               </div>
             )}
-            <button onClick={handleReviewSubmit} disabled={!reviewText.trim() || reviewSubmitted} className="w-full py-2.5 rounded-xl font-black text-sm bg-[#22c55e] text-black active:bg-[#16a34a] transition-all disabled:opacity-40">{reviewSubmitted ? '✓ Submitted!' : 'Submit Review'}</button>
+            <button onClick={handleReviewSubmit} disabled={!reviewText.trim() || reviewSubmitted} className="w-full py-3 rounded-xl font-black text-base bg-[#22c55e] text-black active:bg-[#16a34a] transition-all disabled:opacity-40">{reviewSubmitted ? '✓ Submitted!' : 'Submit Review'}</button>
             {reviewError && <p className={`text-xs mt-2 text-center ${reviewSubmitted ? 'text-[#22c55e]' : 'text-red-400'}`}>{reviewError}</p>}
           </motion.div>
         </div>

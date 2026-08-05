@@ -80,9 +80,10 @@ export async function getLeads(token: string): Promise<{ leads: Lead[]; error?: 
       if (created > a.lastActivity) a.lastActivity = created;
       const expiry = r.boostExpiresAt ? new Date(r.boostExpiresAt).getTime() : 0;
       if ((r.boosted && expiry > now) || r.featured) a.hasActiveBoost = a.hasActiveBoost || (r.boosted && expiry > now);
-      // Revenue: Telegram-stars listings store paidBoostStars; AI NSFW boost = $197
+      // Revenue: Telegram-stars listings store paidBoostStars; AI NSFW tiers = planPrices
       if (kind === 'ainsfw') {
-        if (r.submissionTier === 'boost' && r.paymentStatus === 'paid') a.paidUsd += 197;
+        if (r.submissionTier === 'boost' && r.paymentStatus === 'paid') a.paidUsd += 147;
+        else if (r.submissionTier === 'startup' && r.paymentStatus === 'paid') a.paidUsd += 297;
         else if (r.submissionTier === 'basic' && r.paymentStatus === 'paid') a.paidUsd += 49;
       } else if (r.paidBoostStars) {
         a.paidStars += r.paidBoostStars;

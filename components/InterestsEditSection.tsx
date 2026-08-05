@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { USER_PLATFORMS, type InterestOption } from '@/lib/userInterests';
 import { getProfileInterestOptions, updateUserInterests } from '@/lib/actions/userProfile';
 
@@ -21,6 +21,22 @@ interface InterestsEditSectionProps {
 
 function toggle(list: string[], value: string) {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
+}
+
+const CATEGORY_INITIAL_VISIBLE = 15;
+const CATEGORY_MAX_VISIBLE = 40;
+
+function visibleCategoryOptions(
+  options: InterestOption[],
+  selected: string[],
+  showAll: boolean,
+): InterestOption[] {
+  const pool = options.slice(0, CATEGORY_MAX_VISIBLE);
+  if (showAll) return pool;
+  const top = pool.slice(0, CATEGORY_INITIAL_VISIBLE);
+  const topSlugs = new Set(top.map((item) => item.slug));
+  const selectedExtra = pool.filter((item) => selected.includes(item.slug) && !topSlugs.has(item.slug));
+  return [...top, ...selectedExtra];
 }
 
 export default function InterestsEditSection({
@@ -44,6 +60,7 @@ export default function InterestsEditSection({
   const [tagOptions, setTagOptions] = useState<InterestOption[]>(tagOptionsProp || []);
   const [aiOptions, setAiOptions] = useState<InterestOption[]>(aiOptionsProp || []);
   const [loadingOptions, setLoadingOptions] = useState(!tagOptionsProp?.length);
+  const [showAllCategories, setShowAllCategories] = useState(false);
 
   useEffect(() => {
     setPlatforms(preferredPlatforms);
@@ -76,6 +93,12 @@ export default function InterestsEditSection({
 
   const showOfTg = platforms.includes('onlyfans') || platforms.includes('telegram');
   const showAi = platforms.includes('ai');
+
+  const visibleTagOptions = useMemo(
+    () => visibleCategoryOptions(tagOptions, ofCats, showAllCategories),
+    [tagOptions, ofCats, showAllCategories],
+  );
+  const canExpandCategories = tagOptions.length > CATEGORY_INITIAL_VISIBLE;
 
   const dirty =
     JSON.stringify([...platforms].sort()) !== JSON.stringify([...preferredPlatforms].sort()) ||
@@ -179,19 +202,31 @@ export default function InterestsEditSection({
           {loadingOptions ? (
             <p className="text-[11px]" style={{ color: c?.muted }}>Loading categories...</p>
           ) : (
-            <div className="flex flex-wrap gap-1.5 max-h-80 overflow-y-auto pr-1">
-              {tagOptions.map((item) => (
+            <>
+              <div className={`flex flex-wrap gap-1.5 ${showAllCategories ? 'max-h-80 overflow-y-auto pr-1' : ''}`}>
+                {visibleTagOptions.map((item) => (
+                  <button
+                    key={item.slug}
+                    type="button"
+                    onClick={() => setOfCats((prev) => toggle(prev, item.slug))}
+                    className={pill(ofCats.includes(item.slug))}
+                    style={pillStyle(ofCats.includes(item.slug))}
+                  >
+                    {item.name}
+                  </button>
+                ))}
+              </div>
+              {canExpandCategories && (
                 <button
-                  key={item.slug}
                   type="button"
-                  onClick={() => setOfCats((prev) => toggle(prev, item.slug))}
-                  className={pill(ofCats.includes(item.slug))}
-                  style={pillStyle(ofCats.includes(item.slug))}
+                  onClick={() => setShowAllCategories((prev) => !prev)}
+                  className="mt-2 text-[11px] font-semibold transition-opacity hover:opacity-70"
+                  style={{ color: c?.text ?? '#00aff0' }}
                 >
-                  {item.name}
+                  {showAllCategories ? 'Show less' : 'View all'}
                 </button>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       )}

@@ -71,7 +71,7 @@ async function mapCards(rows: any[]): Promise<BlogCard[]> {
   const counts = await getArticleCommentCounts(rows.map((a) => a.slug).filter(Boolean));
   return rows.map((a) => {
     const au = bySlug.get(a.authorSlug || 'eros') || bySlug.get('eros');
-    return toCard(a, au?.name || 'Enzo Delacroix', au?.avatar || '', counts[a.slug] || 0);
+    return toCard(a, au?.name || 'Tom Beckett', au?.avatar || '', counts[a.slug] || 0);
   });
 }
 

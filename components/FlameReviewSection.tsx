@@ -232,27 +232,42 @@ export default function FlameReviewSection({
       )}
 
       {reviews.length > 0 && (
-        <div className="px-5 pb-4 space-y-2">
+        <div className="px-4 sm:px-5 pb-4 space-y-3">
           {reviews.map((r, i) => (
-            <div key={`${r.authorName}-${r.createdAt}-${i}`} className="rounded-xl px-4 py-3 bg-white shadow-sm flex gap-3">
-              <div className="w-16 h-16 rounded-full shrink-0 overflow-hidden bg-gradient-to-br from-[#ff6b00] to-[#ff3d00] flex items-center justify-center text-white text-lg font-black">
-                {r.authorAvatar ? (
-                  <img src={r.authorAvatar} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                ) : (
-                  (r.authorName || 'A').charAt(0).toUpperCase()
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                  <span className="text-sm font-bold text-gray-800">{r.authorName || 'Member'}</span>
-                  <div className="flex gap-0.5 ml-1">
-                    {Array.from({ length: 5 }).map((_, idx) => (
-                      <span key={idx} className="text-[11px]">{idx < r.rating ? '🔥' : '○'}</span>
-                    ))}
-                  </div>
-                  <span className="text-[10px] text-gray-400 ml-auto">{r.createdAt}</span>
+            <div key={`${r.authorName}-${r.createdAt}-${i}`} className="rounded-xl px-4 py-4 sm:px-5 sm:py-4 bg-white shadow-sm">
+              <div className="flex gap-3 items-start">
+                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full shrink-0 overflow-hidden bg-gradient-to-br from-[#ff6b00] to-[#ff3d00] flex items-center justify-center text-white text-base font-black">
+                  {r.authorAvatar ? (
+                    <img
+                      src={r.authorAvatar}
+                      alt=""
+                      width={48}
+                      height={48}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    (r.authorName || 'A').charAt(0).toUpperCase()
+                  )}
                 </div>
-                {r.text && <p className="text-sm text-gray-600 leading-relaxed">{r.text}</p>}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <span className="text-base font-bold text-gray-900">{r.authorName || 'Member'}</span>
+                    <div className="flex gap-0.5">
+                      {Array.from({ length: 5 }).map((_, idx) => (
+                        <span key={idx} className="text-sm leading-none">{idx < r.rating ? '🔥' : '○'}</span>
+                      ))}
+                    </div>
+                    <span className="text-xs text-gray-500 sm:ml-auto">{r.createdAt}</span>
+                  </div>
+                  {r.text ? (
+                    <p className="text-base sm:text-[17px] leading-[1.65] text-gray-800 break-words">
+                      {r.text}
+                    </p>
+                  ) : null}
+                </div>
               </div>
             </div>
           ))}
@@ -386,8 +401,8 @@ export default function FlameReviewSection({
                     value={reviewForm.content}
                     onChange={(e) => setReviewForm((f) => ({ ...f, content: e.target.value }))}
                     maxLength={1000}
-                    rows={3}
-                    className="w-full rounded-lg px-3 py-2 text-sm text-white placeholder:text-orange-200/30 outline-none resize-none"
+                    rows={4}
+                    className="w-full rounded-lg px-3 py-3 text-base leading-relaxed text-white placeholder:text-orange-200/30 outline-none resize-none"
                     style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,120,40,0.35)' }}
                     onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(255,140,40,0.8)'; }}
                     onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,120,40,0.35)'; }}

@@ -10,6 +10,7 @@ import SavedTab from './SavedTab';
 import VaultTab from './VaultTab';
 import PremiumCompareBlock from '@/components/PremiumCompareBlock';
 import ProfileHomeSetupSteps from './ProfileHomeSetupSteps';
+import { profileHomeSetupComplete } from '@/lib/profileHomeSetup';
 import AvatarPicker from '@/components/AvatarPicker';
 import ProfileEditSection from '@/components/ProfileEditSection';
 import InterestsEditSection from '@/components/InterestsEditSection';
@@ -101,6 +102,10 @@ function ProfileContent() {
   });
   const [viewBarOpen, setViewBarOpen] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [emailUnverified, setEmailUnverified] = useState(false);
+  const [emailVerifiedSuccess, setEmailVerifiedSuccess] = useState(false);
+  const [resendSending, setResendSending] = useState(false);
+  const [resendSent, setResendSent] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const [headerHeight, setHeaderHeight] = useState(82);
   const router = useRouter();
@@ -153,8 +158,26 @@ function ProfileContent() {
 
   useEffect(() => {
     if (!mounted) return;
+    const justVerified =
+      searchParams.get('emailVerified') === '1' ||
+      sessionStorage.getItem('erogram:emailVerifiedJustNow') === '1';
+    if (!justVerified) return;
+
+    setEmailUnverified(false);
+    setEmailVerifiedSuccess(true);
+    if (searchParams.get('emailVerified') === '1') {
+      router.replace('/profile', { scroll: false });
+    }
+  }, [mounted, searchParams, router]);
+
+  useEffect(() => {
+    if (!mounted) return;
     const token = localStorage.getItem('token');
-    if (!token) { router.push('/login'); return; }
+    if (!token) {
+      const pendingVerify = sessionStorage.getItem('erogram:emailVerifiedJustNow') === '1';
+      router.push(pendingVerify ? '/login?redirect=/profile' : '/login');
+      return;
+    }
 
     setUsername(localStorage.getItem('username'));
     setFirstName(localStorage.getItem('firstName'));
@@ -174,6 +197,8 @@ function ProfileContent() {
         if (data.photoUrl) setPhotoUrl(data.photoUrl);
         if (data.createdAt) setMemberSince(data.createdAt);
         setBio(data.bio || null);
+        if (data.emailVerified) setEmailUnverified(false);
+        else setEmailUnverified(!!data.email && !data.emailVerified);
         setUserData({
           firstName: data.firstName || null,
           photoUrl: data.photoUrl || null,
@@ -230,6 +255,27 @@ function ProfileContent() {
     return diff <= 0 ? 0 : Math.ceil(diff / 86400000);
   };
 
+  const handleResendVerification = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    setResendSending(true);
+    try {
+      const { resendVerificationEmail } = await import('@/lib/actions/verifyEmail');
+      await resendVerificationEmail(token);
+      setResendSent(true);
+    } finally {
+      setResendSending(false);
+    }
+  };
+
+  const handleDismissEmailVerifiedSuccess = () => {
+    setEmailVerifiedSuccess(false);
+    sessionStorage.removeItem('erogram:emailVerifiedJustNow');
+    if (currentUserId) {
+      localStorage.setItem(`erogram:verifiedBannerClosed:${currentUserId}`, '1');
+    }
+  };
+
   if (!mounted) return null;
 
   return <ProfileThemedShell {...{
@@ -237,6 +283,7 @@ function ProfileContent() {
     isAdmin, viewMode, viewBarOpen, deletingAccount, userData, tagOptions, aiOptions, activeTab, menuCollapsed, headerHeight,
     headerRef, effectivePremium, effectiveAdmin, selectTab, setMenuCollapsed, setViewBarOpen, setViewMode, handleLogout, handleDeleteAccount,
     getRemainingDays, toast, router, setFirstName, setBio, setPhotoUrl, setUserData, currentUserId,
+    emailUnverified, emailVerifiedSuccess, handleDismissEmailVerifiedSuccess, resendSending, resendSent, handleResendVerification,
   }} />;
 }
 
@@ -247,6 +294,7 @@ function ProfileThemedShell(props: any) {
     isAdmin, viewMode, viewBarOpen, deletingAccount, userData, tagOptions, aiOptions, activeTab, menuCollapsed, headerHeight,
     headerRef, effectivePremium, effectiveAdmin, selectTab, setMenuCollapsed, setViewBarOpen, setViewMode, handleLogout, handleDeleteAccount,
     getRemainingDays, toast, router, setFirstName, setBio, setPhotoUrl, setUserData, currentUserId,
+    emailUnverified, emailVerifiedSuccess, handleDismissEmailVerifiedSuccess, resendSending, resendSent, handleResendVerification,
   } = props;
 
   const [isMobileNav, setIsMobileNav] = useState(() => {
@@ -292,6 +340,9 @@ function ProfileThemedShell(props: any) {
       : 'mr-[220px]';
   const mobileMenuExpanded = isMobileNav && !menuCollapsed;
   const greeting = firstName ? `Welcome back, ${firstName}` : 'Welcome back';
+  const activeTabLabel = activeTab === 'leaderboard'
+    ? 'Leaderboard'
+    : TABS.find((t) => t.key === activeTab)?.label ?? 'My Profile';
   const cyber = theme === 'cyberpunk';
   const ph = theme === 'pornhub';
   const of = theme === 'onlyfans';
@@ -311,6 +362,39 @@ function ProfileThemedShell(props: any) {
           accent={ph ? '#FF9000' : of ? '#00AFF0' : tg ? '#2AABEE' : er ? '#991b1b' : con ? '#ff5e2a' : undefined}
         />
       </div>
+
+      {emailVerifiedSuccess && (
+        <div className="bg-[#16a34a] text-white border-b border-[#15803d]">
+          <div className="max-w-[1280px] mx-auto px-4 sm:px-8 py-2.5 flex items-center justify-center gap-3 text-[12px] sm:text-sm font-semibold">
+            <span>You&apos;re all set. Your email is verified.</span>
+            <button
+              type="button"
+              onClick={handleDismissEmailVerifiedSuccess}
+              className="rounded-md border border-white/30 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide hover:bg-white/10 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {emailUnverified && !emailVerifiedSuccess && (
+        <div className="bg-[#00AFF0] text-white border-b border-[#0099d6]">
+          <div className="max-w-[1280px] mx-auto px-4 sm:px-8 py-2.5 flex items-center justify-center gap-3 flex-wrap text-[12px] sm:text-sm font-semibold">
+            <span>{resendSent ? 'Verification email sent. Check your inbox.' : 'Verify your email for the full experience.'}</span>
+            {!resendSent && (
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                disabled={resendSending}
+                className="underline hover:no-underline disabled:opacity-60"
+              >
+                {resendSending ? 'Sending…' : 'Resend email'}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {mobileMenuExpanded && (
         <button
@@ -500,16 +584,24 @@ function ProfileThemedShell(props: any) {
       <main
         className={`max-w-[1180px] mx-auto px-2 sm:px-8 pt-12 pb-16 transition-all duration-300 ease-in-out min-w-0 ${sidebarMargin}`}
       >
-        <section className="pb-8">
-          {of ? (
-            <ProfileHeading size="hero" accent="Profile">My</ProfileHeading>
-          ) : er ? (
-            <ProfileHeading size="hero" accent="PROFILE">MY</ProfileHeading>
-          ) : con ? (
-            <ProfileHeading size="hero" accent="Profile">My</ProfileHeading>
-          ) : (
-            <ProfileHeading size="hero" accent="PROFILE.">MY</ProfileHeading>
-          )}
+        <section className="pb-4">
+          <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] font-semibold mb-3 sm:mb-4">
+            <Link href="/" className="transition-opacity hover:opacity-70" style={{ color: tokens.muted }}>
+              Home
+            </Link>
+            <span aria-hidden style={{ color: tokens.muted, opacity: 0.45 }}>/</span>
+            {activeTab === 'home' ? (
+              <span style={{ color: tokens.text }}>My Profile</span>
+            ) : (
+              <>
+                <Link href="/profile" className="transition-opacity hover:opacity-70" style={{ color: tokens.muted }}>
+                  My Profile
+                </Link>
+                <span aria-hidden style={{ color: tokens.muted, opacity: 0.45 }}>/</span>
+                <span style={{ color: tokens.text }}>{activeTabLabel}</span>
+              </>
+            )}
+          </nav>
         </section>
 
         <div
@@ -521,7 +613,25 @@ function ProfileThemedShell(props: any) {
               isPremium={effectivePremium}
               photoUrl={photoUrl}
               interests={userData.interests}
+              preferredPlatforms={userData.preferredPlatforms}
+              aiInterests={userData.aiInterests}
+              tagOptions={tagOptions}
+              aiOptions={aiOptions}
+              themeMode={theme}
               onNavigate={selectTab}
+              onAvatarSaved={(url) => { setPhotoUrl(url); toast('Avatar saved', 'success'); }}
+              onAvatarError={(msg) => toast(msg, 'error')}
+              onInterestsSaved={(data) => {
+                setUserData((prev: UserData) => ({
+                  ...prev,
+                  preferredPlatforms: data.preferredPlatforms,
+                  interests: data.interests,
+                  aiInterests: data.aiInterests,
+                  interestedInAI: data.preferredPlatforms.includes('ai'),
+                }));
+                toast('Interests saved', 'success');
+              }}
+              onInterestsError={(msg) => toast(msg, 'error')}
             />
           ) : activeTab === 'listings' ? (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
@@ -627,12 +737,30 @@ function HomeTab({
   isPremium,
   photoUrl,
   interests,
+  preferredPlatforms,
+  aiInterests,
+  tagOptions,
+  aiOptions,
+  themeMode,
   onNavigate,
+  onAvatarSaved,
+  onAvatarError,
+  onInterestsSaved,
+  onInterestsError,
 }: {
   isPremium: boolean;
   photoUrl: string | null;
   interests: string[];
+  preferredPlatforms: string[];
+  aiInterests: string[];
+  tagOptions: InterestOption[];
+  aiOptions: InterestOption[];
+  themeMode: import('./profileTheme').ProfileThemeId;
   onNavigate: (tab: Tab) => void;
+  onAvatarSaved: (url: string) => void;
+  onAvatarError: (msg: string) => void;
+  onInterestsSaved: (data: { preferredPlatforms: string[]; interests: string[]; aiInterests: string[] }) => void;
+  onInterestsError: (msg: string) => void;
 }) {
   const { tokens } = useProfileTheme();
   const [savedCreators, setSavedCreators] = useState<any[]>([]);
@@ -716,13 +844,47 @@ function HomeTab({
     return String(n);
   };
 
+  const setupComplete = profileHomeSetupComplete(photoUrl, interests);
+  const homeQuickLinks: { tab: Tab; label: string }[] = [
+    { tab: 'feed', label: 'My Feed' },
+    { tab: 'likes', label: 'My Likes' },
+    { tab: 'saved', label: 'My Bookmarks' },
+    { tab: 'listings', label: 'My Listings' },
+  ];
+
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
       <ProfileHomeSetupSteps
         photoUrl={photoUrl}
         interests={interests}
+        preferredPlatforms={preferredPlatforms}
+        aiInterests={aiInterests}
+        tagOptions={tagOptions}
+        aiOptions={aiOptions}
+        themeMode={themeMode}
         onNavigate={onNavigate}
+        onAvatarSaved={onAvatarSaved}
+        onAvatarError={onAvatarError}
+        onInterestsSaved={onInterestsSaved}
+        onInterestsError={onInterestsError}
       />
+
+      {setupComplete && (
+        <section className="mb-8 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
+          {homeQuickLinks.map((link) => (
+            <button
+              key={link.tab}
+              type="button"
+              onClick={() => onNavigate(link.tab)}
+              className="w-full min-w-0 rounded-lg border-2 border-[#111] bg-white px-1.5 py-2.5 sm:px-2.5 sm:py-3 text-center whitespace-nowrap shadow-[2px_2px_0_0_#111] sm:shadow-[3px_3px_0_0_#111] transition-all duration-150 hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_0_#111] sm:hover:shadow-[4px_4px_0_0_#111] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0_0_#111]"
+            >
+              <span className="block text-[10px] sm:text-[12px] font-black uppercase tracking-tight leading-none text-[#111]">
+                {link.label}
+              </span>
+            </button>
+          ))}
+        </section>
+      )}
 
       {!isPremium && <PremiumCompareBlock className="mb-10" />}
 

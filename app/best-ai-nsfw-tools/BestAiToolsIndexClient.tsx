@@ -9,7 +9,6 @@ import { BEST_AI_NSFW_TOOLS_HUB } from '@/lib/bestAiNsfwTools/pages';
 type HubPage = {
   slug: string;
   label: string;
-  count: number;
 };
 
 type Props = {
@@ -91,7 +90,6 @@ export default function BestAiToolsIndexClient({
                 <p className="text-sm text-white/45">
                   {top10Label.replace('{category}', page.label)}
                 </p>
-                <p className="text-xs text-white/30 mt-3">{page.count} tools ranked</p>
               </Link>
             </motion.div>
           ))}

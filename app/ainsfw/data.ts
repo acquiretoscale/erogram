@@ -12,7 +12,16 @@ const LEGACY_CAT_PREFIXES = [
 /** Old slug → canonical slug (301 on tool pages). */
 const LEGACY_TOOL_SLUGS: Record<string, string> = {
   'joi-ai-ai-chat': 'joi-ai-nude-generator',
+  'unlaced-ai-companion': 'ai-girlfriend-unlaced',
+  'unlaced-ai-girlfriend': 'ai-girlfriend-unlaced',
+  'dreamyporn-ai-ai-porn-generator': 'undress-ai-dreamyporn-ai',
+  'xmodelsai-ai-companion': 'ai-girlfriend-xmodelsai',
+  'porncreate-ai-porn-generator': 'porncreate-undress-ai',
 };
+
+export function getLegacyToolSlugRedirect(slug: string): string | null {
+  return LEGACY_TOOL_SLUGS[slug] ?? null;
+}
 
 export function toolSlug(category: string, name: string): string {
   const cat = category.toLowerCase().replace(/\s+/g, '-');
@@ -154,6 +163,19 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
     payment: ['Credit Cards'],
     tryNowUrl: 'https://nastia.ai',
     sourceUrl: 'https://nastia.ai',
+  },
+  {
+    slug: slugify('AI Girlfriend', 'Candy AI'),
+    name: 'Candy AI',
+    category: 'AI Companion',
+    vendor: 'Candy.ai',
+    description: 'Candy.ai is a platform where users engage with virtual companions through immersive and personalized chats. The service lets visitors dive into intricate dialogues and role-plays with AI-driven characters, each with distinct personalities and backgrounds. Users can browse a gallery of premade companions or create their own, shaping appearance, personality, and conversational style.\n\nThe platform supports chat, voice calls, pseudo-video calls, and NSFW image and video generation. Subscriptions include unlimited messaging with a token allowance for premium features like custom images and longer videos. Candy.ai receives regular updates, including character generation, memory improvements, and live-action interaction features.',
+    image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/candy-ai-ai-girlfriend.webp',
+    tags: ['ai girlfriend', 'ai companion', 'ai nsfw chat', 'ai sexting', 'ai virtual girlfriend', 'ai chat'],
+    subscription: 'Freemium & Paid',
+    payment: ['Credit Cards'],
+    tryNowUrl: 'https://go.cm-trk6.com/aff_c?offer_id=11291&aff_id=93961&url_id=0&aff_sub=top-banner&aff_sub5=banner&source=Erogram',
+    sourceUrl: 'https://go.cm-trk6.com/aff_c?offer_id=11291&aff_id=93961&url_id=0&aff_sub=top-banner&aff_sub5=banner&source=Erogram',
   },
   {
     slug: slugify('AI Girlfriend', 'GirlfriendGPT'),
@@ -377,8 +399,21 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
     tags: ['ai clothes changer', 'ai clothes remover', 'ai nudifier', 'ai undress'],
     subscription: 'Paid & Freemium',
     payment: ['Crypto', 'PayPal'],
-    tryNowUrl: 'https://clothoff.net',
-    sourceUrl: 'https://clothoff.net',
+    tryNowUrl: 'https://clothoff.app/r/erogrampro26',
+    sourceUrl: 'https://clothoff.app/r/erogrampro26',
+  },
+  {
+    slug: slugify('Undress AI', 'Nudiva'),
+    name: 'Nudiva',
+    category: 'Undress AI',
+    vendor: 'Nudiva.app',
+    description: 'Nudiva is an online undress AI that removes clothing from photos and turns still images into short nude videos. Users upload a photo, pick a preset pose or scene, and receive the result in seconds. Nudiva runs on VIP coins with one-time payments and no subscription, and it is reachable through the website, a mobile app, and a Telegram bot. New users get free coins to test the tool before buying. Pricing starts at $2 for 38 coins, and larger packs bring the price per generation down. The platform runs on the same backend as Clothoff, so the pose library and costume categories will feel familiar to anyone who has used that tool.',
+    image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/nudiva-undress-ai.webp',
+    tags: ['ai clothes remover', 'ai nudifier', 'ai undress', 'ai undresser', 'ai video generator'],
+    subscription: 'Paid & Freemium',
+    payment: ['Credit Cards', 'Crypto'],
+    tryNowUrl: 'https://nudiva.app/r/erogrampro26',
+    sourceUrl: 'https://nudiva.app/r/erogrampro26',
   },
   {
     slug: slugify('Undress AI', 'Nudify AI'),
@@ -711,6 +746,19 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
     sourceUrl: 'https://createporn.com',
   },
   {
+    slug: slugify('AI Image', 'Genesis Porn'),
+    name: 'Genesis Porn',
+    category: 'AI Porn Generator',
+    vendor: 'Genesisporn.net',
+    description: 'Genesis Porn is an AI porn generator that creates NSFW images and videos from text prompts and button presets. Users describe a scene or click through options for body type, pose, clothing, and explicit action, then generate and download the result in seconds. Genesis Porn also converts photos into video and hosts a community gallery where members can browse and copy other users\' settings with a repeat button. The platform runs on VIP coins with one-time payments and no subscription, and publishing popular content earns coins back. Free browsing is open to everyone, and paid packs start at $2. It works on desktop, mobile, and dedicated Android and iOS apps.',
+    image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/genesis-porn-ai-image.webp',
+    tags: ['ai image generator', 'ai nsfw image generator', 'ai porn generator', 'ai video generator', 'text-to-image'],
+    subscription: 'Freemium & Paid',
+    payment: ['Credit Cards', 'Crypto'],
+    tryNowUrl: 'https://genesisporn.net/r/erogramprogen',
+    sourceUrl: 'https://genesisporn.net/r/erogramprogen',
+  },
+  {
     slug: slugify('AI Image', 'Seduced'),
     name: 'Seduced',
     category: 'AI Porn Generator',
@@ -801,21 +849,6 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
     sourceUrl: 'https://faceswaplab.com',
   },
   {
-    slug: slugify('AI Roleplay', 'Hyperdreams'),
-    name: 'Hyperdreams',
-    category: 'AI NSFW Roleplay',
-    vendor: 'Hyperdreams.com',
-    description: 'Hyperdreams is an AI roleplay service for adults. It uses text, not video, to create erotic scenarios and conversations. The core experience is typing back and forth with an AI character that remembers the context of your chat.\n\nYou can build detailed personas and guide the narrative without many guardrails. Paying subscribers get extra features like AI-generated images and voice messages to accompany the text. There are no usage limits on the basic chat, which is a practical approach for the price. If you\'re looking for a written, interactive story with mature themes, this handles that  specific job.',
-    description_de: 'Hyperdreams ist eine KI-Rollenspielplattform für textbasierte, erwachsene Unterhaltung. Der Kern ist der OurDream-Chat, der unzensierte Gespräche und Szenarien mit einem bemerkenswerten Gedächtnis ermöglicht. Du erschaffst und feilst an Charakterpersönlichkeiten.\n\nEs gibt keine pornografischen Videos, aber in teureren Abos kommen KI-generierte Bilder und Sprachfeatures dazu. Der Fokus liegt klar auf dem geschriebenen Wort und narrativer Freiheit. Das Preis-Leistungs-Verhältnis ist solide, denn selbst der günstigste Tarif bietet unbegrenzte Interaktionen. Für Nutzer, die eine kreative und explizite Text-KI suchen, ist es eine ernsthafte Option.',
-    description_es: 'Hyperdreams te ofrece interacciones de rol adulto basadas puramente en texto. Su motor OurDream genera conversaciones realistas y sin censura, con una memoria que recuerda detalles a largo plazo para mantener la coherencia. Puedes crear y personalizar personajes a tu gusto.\n\nLas suscripciones superiores incluyen generación de imágenes por IA y funciones de voz, añadiendo capas multimedia a la experiencia. No encontrarás vídeos pornográficos, pero sí narrativa sin restricciones. Por un precio competitivo, obtienes interacciones ilimitadas y generación nativa de vídeo. Es básicamente un patio de recreo para la imaginación adulta, donde el texto es lo principal y los extras multimedia son opcionales.',
-    image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/hyperdreams-ai-roleplay.webp',
-    tags: ['ai erotic storytelling', 'ai story', 'ai nsfw roleplay', 'ai roleplay', 'ai chat'],
-    subscription: 'Freemium & Paid',
-    payment: ['Credit Cards'],
-    tryNowUrl: 'https://hyperdreams.com',
-    sourceUrl: 'https://hyperdreams.com',
-  },
-  {
     slug: slugify('AI Roleplay', 'StoryChan'),
     name: 'StoryChan',
     category: 'AI NSFW Roleplay',
@@ -876,21 +909,6 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
     sourceUrl: 'https://kink.ai',
   },
   {
-    slug: slugify('AI Roleplay', 'My Dream Boy'),
-    name: 'My Dream Boy',
-    category: 'AI NSFW Roleplay',
-    vendor: 'Mydreamboy.com',
-    description: 'I\'ve been testing My Dream Boy, and it\'s a very specific kind of creative tool. You build your ideal AI boyfriend from the ground up, picking his face, body type, and other physical details from a huge selection. Once you\'ve made him, you can chat with him in different languages and generate explicit images where he looks exactly the same every time. I really appreciate that you can keep everything totally private or share your creations with the community if you want. They have one-time purchase options and subscriptions, with a 20% discount for choosing the recurring plan. Check their site for any current coupon codes to save a bit more.',
-    description_de: 'Ich habe My Dream Boy ausprobiert, wenn du mal eine ganz spezifische Fantasie im Kopf hast. Du stellst dir deinen AI-Freund wirklich von Grund auf selbst zusammen, vom Gesicht bis zum Körperbau, und das Ergebnis in den Chats und Bildern bleibt dann auch konsistent. Das finde ich gut, denn nichts ist nerviger, als wenn der Charakter plötzlich anders aussieht.\n\nDu kannst die Unterhaltung auf Deutsch oder anderen Sprachen führen und am Ende sogar private Bilder generieren lassen. Die Entscheidung, ob du deine Kreationen für dich behältst oder teilst, liegt komplett bei dir. Preislich gibt es Einmal- und Abo-Optionen; mit einem Abo sparst du 20%. Schau am besten auch nach aktuellen Gutscheinen für März 2026.',
-    description_es: 'Imagina poder crear desde cero el chico de tus sueños. Eso es lo que ofrece My Dream Boy, una plataforma donde tú decides exactamente cómo se ve tu novio AI. Escoges su rostro, tipo de cuerpo y hasta los detalles más íntimos de una biblioteca enorme.\n\nLo mejor es que luego puedes chatear con él en varios idiomas y generar imágenes íntimas donde su apariencia nunca cambia, lo cual es bastante raro en este tipo de herramientas. Tienes control total sobre la privacidad: puedes guardar tus creaciones para ti o compartirlas con la comunidad.\n\nTienen planes de pago único y suscripción, con un 20% de descuento si eliges la facturación recurrente. Si estás buscando algo ahora, hay cupones verificados con ofertas especiales para marzo del 2026. Es una experiencia muy personal y detallada si buscas contenido enfocado en hombres.',
-    image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/my-dream-boy-ai-roleplay.webp',
-    tags: ['ai boyfriend', 'ai dreamboy generator', 'ai nsfw roleplay', 'ai roleplay', 'ai virtual relationship'],
-    subscription: 'Free Trial & Paid',
-    payment: ['Credit Cards'],
-    tryNowUrl: 'https://mydreamboy.com',
-    sourceUrl: 'https://mydreamboy.com',
-  },
-  {
     slug: slugify('AI Roleplay', 'Juicy AI'),
     name: 'Juicy AI',
     category: 'AI NSFW Roleplay',
@@ -904,21 +922,6 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
     payment: ['PayPal'],
     tryNowUrl: 'https://juicy-ai.com',
     sourceUrl: 'https://juicy-ai.com',
-  },
-  {
-    slug: slugify('AI Roleplay', 'Avtaar AI'),
-    name: 'Avtaar AI',
-    category: 'AI NSFW Roleplay',
-    vendor: 'Avtaar.ai',
-    description: 'Avtaar AI is a roleplaying chatbot that remembers things. It’s scheduled to launch in 2026. The main idea is that your conversations build on each other, creating a persistent storyline with the character you create.\n\nYou can customize your AI companion\'s appearance and personality in detail. The dialogue aims  to be contextually aware, and the platform includes an image generation feature for creating visual references. The tone is designed to be emotionally supportive, moving beyond simple question-and-answer scripts. It’s for people who want a sense of ongoing narrative from their AI chats.',
-    description_de: 'Avtaar AI startet 2026 als KI-Rollenspieltool mit einem klaren Fokus auf Langzeitgedächtnis. Die Konversationen bauen aufeinander auf, sodass Charaktere und Szenarien sich mit der Zeit entwickeln. Neben einer umfangreichen Charaktererstellung kombiniert die Plattform explizite Bildgenerierung mit kontextsensiblem Dialog. Der Ansatz zielt auf psychologische Tiefe ab und bietet mehr als vorprogrammierte Antworten. Für Nutzer, die eine beständige, narrative Beziehung zu ihrem KI-Partner suchen, könnte das interessant sein. Der Erfolg hängt davon ab, wie überzeugend diese "Erinnerungen" in der Praxis funktionieren.',
-    description_es: 'Avtaar AI llega en 2026 con una premisa clara: ser algo más que un chatbot. Este sistema de rol construye conversaciones que recuerdan, evolucionando con cada interacción para crear una conexión que se siente genuina. Su personalidad y el contexto de los escenarios se adaptan a tus respuestas, creando una narrativa continua.\n\nLa herramienta ofrece una personalización extensa de personajes y combina diálogo matizado con la capacidad de generar imágenes explícitas. El resultado es una experiencia orientada a la profundidad psicológica y la compañía, alejándose de las respuestas predefinidas. Si buscas un rol donde la inteligencia artificial demuestre cierta perspicacia emocional, este es el planteamiento.',
-    image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/avtaar-ai-ai-roleplay.webp',
-    tags: ['ai boyfriend', 'ai companion', 'ai girlfriend', 'ai virtual relationship'],
-    subscription: 'Freemium & Paid',
-    payment: ['Credit Cards'],
-    tryNowUrl: 'https://avtaar.ai',
-    sourceUrl: 'https://avtaar.ai',
   },
   {
     slug: slugify('AI Roleplay', 'Nextpart AI'),

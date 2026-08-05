@@ -20,7 +20,7 @@ export const AINSFW_FULL_REVIEWS: Record<string, AINsfwFullReview> = {
     ],
     sections: [
       {
-        heading: "GirlfriendGPT Review",
+        heading: "GirlfriendGPT Overview",
         body: "GirlfriendGPT is a clean and welcoming platform, even for people who never touched an AI companion before. Visitors receive 50 free messages per day, which is more than enough to see if the chemistry is there. The serious features, images, voice, and full NSFW conversations, are kept behind the subscription, as expected. Everything happens in the browser, since a mobile app is nowhere to be found for now. Chats stay private and accounts can remain anonymous.",
       },
       {
@@ -55,7 +55,7 @@ export const AINSFW_FULL_REVIEWS: Record<string, AINsfwFullReview> = {
     ],
     sections: [
       {
-        heading: "JOI AI Review",
+        heading: "JOI AI Overview",
         body: "JOI AI is a polished platform, and the polish has a simple explanation: the product has been iterating for years under the EVA AI name while most competitors were built in a weekend. Conversations keep their tone over hours instead of collapsing into generic replies after ten minutes. Characters stay consistent, which sounds basic and is anything but in this category. The free plan is a genuine way to test the chemistry before spending anything. Everything happens in the browser and on mobile, and accounts can stay anonymous.",
       },
       {
@@ -99,7 +99,7 @@ export const AINSFW_FULL_REVIEWS: Record<string, AINsfwFullReview> = {
     ],
     sections: [
       {
-        heading: "Free Nudifier Review",
+        heading: "Free Nudifier Overview",
         body: "The tool does one thing very well and then quietly points to a full studio for anyone who wants more. The free entry is genuinely free and genuinely useful, and the upgrade path is there without nagging on every screen. The branding is a little confusing, since the site calls the premium platform Mixvid while the checkout runs under a related name, and that is worth a mention but not a dealbreaker.",
       },
       {
@@ -113,10 +113,186 @@ export const AINSFW_FULL_REVIEWS: Record<string, AINsfwFullReview> = {
       { name: "Fastundress", slug: "fastundress-undress-ai" },
     ],
   },
+  "nudiva-undress-ai": {
+    shortDescription: "Nudiva is an online undress AI that removes clothing from photos and turns still images into short nude videos. Users upload a photo, pick a preset pose or scene, and receive the result in seconds. Nudiva runs on VIP coins with one-time payments and no subscription, and it is reachable through the website, a mobile app, and a Telegram bot. New users get free coins to test the tool before buying. Pricing starts at $2 for 38 coins, and larger packs bring the price per generation down. The platform runs on the same backend as Clothoff, so the pose library and costume categories will feel familiar to anyone who has used that tool.",
+    featureHighlights: [
+      {
+        title: "What Nudiva Does",
+        body: "The core function of Nudiva is straightforward. It takes a clothed photo and produces an undressed version of it. The AI reads the clothing regions in the image and fills those areas with generated skin that tries to match the original lighting, shadows, and body shape. On top of the basic undress, Nudiva offers a menu of poses and scenes, so the output can be a plain nude or a specific pose pulled from the preset library. The tool also converts a single still image into a short video with light motion, which is a feature many undress tools still do not offer.\n\nNudiva keeps the number of decisions low. The user is not asked to write a prompt or tune sliders for every render. Body type, breast size, butt shape, and posture can be adjusted, but the defaults are designed to work with one or two clicks. This is a deliberate trade. Nudiva gives up fine manual control in exchange for a result that lands fast and needs no skill to produce.",
+      },
+      {
+        title: "How Nudiva Works",
+        body: "Using Nudiva follows the same short path every time. The user opens the website or the Telegram bot, uploads a photo, picks a mode or costume, and starts the generation. For best results the source photo should be well lit and front facing, since busy backgrounds and odd angles tend to lower the quality of the output. Once processing finishes, the image or video downloads to the device.\n\nThe Telegram route is worth calling out. Many users prefer it because it needs no account and works inside an app they already use. The web version covers the same features and adds the video generator and the larger customization menu. Both share the same coin balance, so a user can move between them without buying twice.",
+      },
+      {
+        title: "Image Quality",
+        body: "Nudiva produces realistic results quickly, and for a tool built around speed the quality holds up. Skin tones and body contours usually match the source photo, and the poses from the preset library come out cleanly when the input image is a good one. There are limits. On complex photos the skin tone can drift slightly, and heavy costumes occasionally look AI generated on close inspection. These are the normal rough edges of automated undress tools rather than flaws unique to Nudiva. For quick, one shot results the output is good, and for users who want to test many photos fast the speed matters more than pixel perfect accuracy.",
+      },
+    ],
+    sections: [
+      {
+        heading: "Nudiva Overview",
+        body: "Nudiva is an undress AI that removes clothing from uploaded photos and generates short nude videos from static images. The tool is built around speed and simplicity. A user uploads a photo, selects a preset, and the result comes back in seconds. There is no long setup, no manual brush work, and no editing timeline. Nudiva serves a reported 200,000 daily users and runs across three access points, a website, a mobile app, and a Telegram bot, which makes it one of the easier undress tools to reach from a phone. It shares its backend with Clothoff, so the pose menus and costume categories are the same, just wrapped in a lighter interface.",
+      },
+      {
+        heading: "Pricing and VIP Coins",
+        body: "Nudiva does not use monthly subscriptions. It runs on VIP coins bought once and spent as needed. New users receive free coins, enough to test the tool and see the first result before paying anything. Paid packs start at $2 for 38 coins, and the price per coin drops as the pack grows, with the largest bundles offering the best value for heavy users. Each generation costs a set number of coins, so a single pack can cover a fair run of images.\n\nBeyond the coin packs, Nudiva has a PRO status that adds a top up bonus and moves the user ahead in the processing queue. Free generations sit in a standard queue and come out at medium quality, while paid tiers unlock HD output, watermark removal, and faster turnaround. Payment is handled with cards and crypto, and there are no automatic renewals, so the account is never charged in the background.",
+      },
+      {
+        heading: "Privacy",
+        body: "Nudiva states that it does not store uploaded images on its servers and that generations are processed and then discarded. The platform also lets users delete their generations at any time, and it notes that content is held for a limited window before removal. As with any tool in this category, the claims come from the platform itself rather than an outside audit, so users who care deeply about privacy should weigh that. The one time payment model and the no account Telegram option do reduce how much personal data the service needs in the first place.",
+      },
+      {
+        heading: "Where Nudiva Falls Short",
+        body: "Nudiva is not a full editor. There is no brush tool, no retouching, and no way to fix a specific detail after the fact. The output is what the preset produces, and if it is not right the fix is to regenerate rather than to edit. The Telegram side can put users in a wait queue at busy times. Free output is capped at medium quality, so the better renders require paying. None of these are dealbreakers for the audience Nudiva targets, but they matter for anyone expecting granular control.",
+      },
+      {
+        heading: "Who Nudiva Is For",
+        body: "Nudiva fits users who want a fast, low friction undress tool and do not need to hand tune every image. It works well for people who prefer working from a phone through Telegram, and for those who like paying once instead of committing to a subscription. Content creators and hobbyists who run a lot of quick experiments will get the most out of the coin model and the speed.",
+      },
+      {
+        heading: "Final Verdict",
+        body: "Nudiva does one job and does it quickly. It removes clothing from photos, adds a set of poses, and even animates a still into a short clip, all through a simple interface reachable on web, app, and Telegram. The coin based one time pricing is fair, the free trial lets users see results before spending, and the shared Clothoff backend brings a proven pose library. It is not the tool for anyone who wants deep manual editing, but for immediate, no fuss undress results at a low entry price, Nudiva is a solid pick.",
+      },
+    ],
+    alternatives: [
+      { name: "Clothoff", slug: "clothoff-undress-ai" },
+      { name: "Nudify AI", slug: "nudify-ai-undress-ai" },
+      { name: "Free Nudifier", slug: "free-nudifier-undress-ai" },
+    ],
+  },
+  "genesis-porn-ai-image": {
+    shortDescription: "Genesis Porn is an AI porn generator that creates NSFW images and videos from text prompts and button presets. Users describe a scene or click through options for body type, pose, clothing, and explicit action, then generate and download the result in seconds. Genesis Porn also converts photos into video and hosts a community gallery where members can browse and copy other users' settings with a repeat button. The platform runs on VIP coins with one-time payments and no subscription, and publishing popular content earns coins back. Free browsing is open to everyone, and paid packs start at $2. It works on desktop, mobile, and dedicated Android and iOS apps.",
+    featureHighlights: [
+      {
+        title: "What Genesis Porn Does",
+        body: "Genesis Porn creates adult images and videos from a mix of text and preset controls. The main generator handles photorealistic content across different ethnicities, body types, and styles, all kept within adult fictional ranges. There is also a separate mode for animated and hentai style scenes with exaggerated proportions. The idea behind Genesis Porn is that most users do not want to write a 300 word prompt to get a good result. Instead, the interface gives big obvious buttons for the details that matter, so a user can set fully nude, legs spread, oiled skin, and a specific pose with a few clicks.\n\nThe customization runs deep. Body proportions cover slim, athletic, and thick builds. Skin tones span different races, hair styles and colors are selectable, and facial expressions range from a soft smile to an orgasm face or ahegao. Clothing options move from full dress to partial undress to complete nudity, and camera angle, lighting, and explicit action all get their own controls.",
+      },
+      {
+        title: "The Community Gallery and Repeat Button",
+        body: "The community gallery is one of the features that sets Genesis Porn apart from single user generators. It holds hundreds of images and clips made by other members, and browsing it is free. The gallery works as both inspiration and a shortcut. Each item carries a repeat button, which copies the full workflow behind it, model, pose, clothing, angle, and prompt, straight into the user's own generator. Instead of guessing what produced a good result, a user can repeat it and change a single detail to make a variation. This turns the whole community into a shared library of settings, which is a genuinely useful design and something most competitors lack.\n\nPublishing original work earns VIP coins based on views and likes. That gives active users a way to keep generating without buying more packs, and it keeps the gallery filled with fresh content.",
+      },
+      {
+        title: "Video Generation",
+        body: "Genesis Porn does not stop at still images. Its video generator animates a scene with motion that includes realistic physics, so tits bounce, hair swings, and hips move during the action. Video costs more coins than images, around 25 per clip against roughly 6 per image, which reflects the heavier processing. The same customization carries over, so a character built in still form can then ride, squirt, or perform an act in motion. The clips are not long productions, but they run long enough to be worth the coins and look smooth for AI video. Users can choose short loops or longer scenes depending on their coin budget.",
+      },
+    ],
+    sections: [
+      {
+        heading: "Genesis Porn Overview",
+        body: "Genesis Porn is an AI porn generator that turns text prompts and button presets into NSFW images and videos. The platform is built for people who want to design a specific scene rather than accept whatever a generic model spits out. Users pick a base model, click through controls for body type, pose, clothing, lighting, and explicit action, and generate the result in seconds. Genesis Porn also produces video from the same setup and runs a large community gallery where members share their creations and copy each other's settings. It works on desktop and mobile and has dedicated Android and iOS apps.",
+      },
+      {
+        heading: "How Genesis Porn Works",
+        body: "The workflow on Genesis Porn is simple to pick up. A user creates a quick account, then either jumps into the generator or browses the community gallery for ideas. In the generator, the user picks a base model and works through the buttons and sliders to shape the scene. A supporting text prompt is optional, but the presets carry most of the weight. Once the settings are in place, the user hits generate and spends coins. Images come back fast, and videos take longer but return motion that matches the scene that was set up.\n\nAfter a generation lands, it can be downloaded, tweaked, or published to the community feed. Publishing is part of the loop, since it earns coins that go back toward more generations.",
+      },
+      {
+        heading: "Pricing and VIP Coins",
+        body: "Genesis Porn runs on a coin system rather than a monthly subscription. Browsing the community gallery is free, but creating content requires VIP coins. Small packs start around $2 to $3 and cover several generations, and larger bundles bring better value per dollar. The balance of six coins per image and twenty five per video keeps the economy reasonable, and because publishing popular content earns coins back, dedicated users can keep generating with little further spending after the first purchase. Payment uses standard methods with cards and crypto, and there are no automatic renewals, so the account is only charged when the user chooses to buy.\n\nThere is a free tier that offers limited generations to test the tool, but there is no unlimited free generation. Premium access unlocks faster processing, higher quality output, longer videos, and watermark free downloads.",
+      },
+      {
+        heading: "Privacy and Content Rules",
+        body: "Genesis Porn states that prompts, uploads, and generated content are processed securely and then automatically deleted from active servers after completion. Content rules restrict everything to consenting fictional adults, and the moderation system blocks attempts to create illegal, abusive, or non consensual material, with account bans as the penalty. As with any AI porn tool, users who upload photos of real people take on serious legal and ethical risk, and the platform's rules exist to keep the service on fictional characters only.",
+      },
+      {
+        heading: "Where Genesis Porn Falls Short",
+        body: "The main limitation of Genesis Porn is that there is no true unlimited free generation. Free browsing is generous, but making content always costs coins. Video eats coins faster than images, so heavy video users will spend more. Results also depend on using the presets well, since off combinations can still produce the usual AI mistakes. These are minor points against a tool that gives this much control at this price.",
+      },
+      {
+        heading: "Who Genesis Porn Is For",
+        body: "Genesis Porn suits users who want to design their own adult content with precise control rather than consume premade material. The button driven interface makes it approachable for newcomers, while the depth of options rewards users who learn which combinations work. The community gallery and repeat feature add value for anyone who likes iterating on other people's setups, and the earning system fits users who plan to publish.",
+      },
+      {
+        heading: "Final Verdict",
+        body: "Genesis Porn combines deep one click customization, a strong community gallery with a repeat button, an earning system, and capable video generation into one package. The output looks professional when the presets are used well, the coin pricing is affordable with a real path to earning coins back, and the one time payment model avoids subscription traps. It is not for anyone who expects unlimited free generation, but for users who want to build specific scenes quickly and cheaply, Genesis Porn is a strong choice.",
+      },
+    ],
+    alternatives: [
+      { name: "CreatePorn", slug: "createporn-ai-image" },
+      { name: "Seduced", slug: "seduced-ai-image" },
+      { name: "PornCreate", slug: "porncreate-undress-ai" },
+    ],
+  },
+  "lovescape-ai-girlfriend": {
+    shortDescription: "Lovescape is an AI companion platform that keeps images, voice, and video inside the conversation instead of splitting them across separate tools. Users create a character or pick one from a community library of roughly 350,000 profiles, then chat, request photos, and generate short clips without leaving the thread. The platform is operated by Warmtech Ltd, a registered company based in Limassol, Cyprus, which is more than most tools in this category can claim. Lovescape is free to start, and the paid tiers pair a subscription with a monthly allowance of chips for generating media. Everything runs in the browser, on desktop and phone alike, with nothing to install.",
+    featureHighlights: [
+      {
+        title: "What Lovescape Does",
+        body: "Lovescape builds one product out of three things most platforms keep apart. The chat holds a persistent character that remembers earlier sessions. The image generator produces photorealistic or anime output on demand, and the request can be made mid conversation rather than in a separate tab. The video tool animates a character into a short clip with sound. Reviewers who tested nine competing apps placed Lovescape first on image generation, and the reason is visible in the output: skin, lighting, hands, and micro expressions hold together better than the category average.\n\nThe second thing Lovescape does, and no major competitor does it in the same structured way, is progression. The relationship moves through tiers, and each tier opens new topics, scenes, and scenarios. It is gamified, and it does not feel cheap. Reviewers who spent days on the platform described it as watching a connection unfold rather than clicking through a menu.",
+      },
+      {
+        title: "How Lovescape Works",
+        body: "The path is short. A user signs up, browses the character library or opens the creation editor, and starts chatting. The editor covers face, body, clothing style, voice, personality, and the meeting scenario, plus a backstory field that accepts up to 6,000 words. That backstory field is the richest in the sector, and it is also where most of the quality comes from. Users who write a real backstory get a real character, and the ones who skip it are leaving the best part of the tool on the table.\n\nMedia generation happens through a guided workflow rather than a blank prompt box. The video screen asks for an image or video input, a character, an action, and a custom prompt, with advanced settings available and the chip cost shown before the render starts. Voice messages are generated on request and drop straight into the chat flow. They average around 38 seconds, and testers who ran the platform for weeks reported consistently natural intonation across the six indexed languages.",
+      },
+      {
+        title: "Image and Video Quality",
+        body: "Image generation runs three named engines, Seedream 5.0-Lite, SDXL, and Flux, with Grok Imagine added later. Naming the engines is unusual in this category, where most operators ship one model and refuse to say which. On the same romantic portrait prompts, the rendering comes back more cinematic than the direct competition, and Lovescape is one of the few products in the segment that genuinely delivers 4K on adult output.\n\nVideo runs on Lovescape Unbound, a proprietary engine with native sound at 720p to 1080p. Clips are short, five to ten seconds, with motion that holds together better than most. The tone stays closer to cinematic intimacy than to hardcore, which is a product decision and part of what gives Lovescape its own identity. Busy compositions occasionally need a second attempt, which is normal for generated video and costs only a few chips.",
+      },
+    ],
+    sections: [
+      {
+        heading: "Lovescape Overview",
+        body: "Lovescape is an AI companion platform that keeps images, voice, and video inside the conversation instead of splitting them across separate tools. Users create a character or pick one from a community library of roughly 350,000 profiles, then chat, request photos, and generate short clips without leaving the thread. The platform is operated by Warmtech Ltd, a registered company based in Limassol, Cyprus, which is more than most tools in this category can claim. Lovescape is free to start, and the paid tiers pair a subscription with a monthly allowance of chips for generating media. Everything runs in the browser, on desktop and phone alike, with nothing to install.",
+      },
+      {
+        heading: "Pricing and Chips",
+        body: "Lovescape is free to start. The free tier allows browsing, a run of messages, and a few generations, which is enough to see the interface and test the chemistry before spending anything.\n\nPremium is priced per day at checkout. One month works out near $19.50, three months near $12.60, and twelve months at $0.26 per day billed $95.88 per year, which lands close to $7.99 per month. Promotional windows push the yearly effective rate down toward $5.99, and the discount holds across renewals rather than evaporating after the first cycle. Premium includes chat, images, videos, hot roleplays, voice messages, NSFW mode, and 600 chips per month, plus downloads and face swap. Creative Pro is the tier above, billed $299.88 per year at the twelve month rate, and it adds 3,000 monthly chips, a creator badge, and 30% referral earnings instead of 15%.\n\nChips fuel generation, and how far they go depends on how much a user creates. Premium covers everyday chat with regular images and the occasional video comfortably. Users who generate all day will want Creative Pro or a top up, which is the honest arrangement for a platform where the media is doing real work. Payment is discreet, the billing descriptor reads as the operating company rather than the brand, and cancellation is handled from account settings in a few clicks.",
+      },
+      {
+        heading: "Where Lovescape Falls Short",
+        body: "There is no native mobile app, so Lovescape lives in the browser. The mobile web build is well optimized and covers the full feature set, but users who prefer an app icon will not find one, and the reason is store policy on adult content rather than anything Lovescape chose. The free tier is designed as a taster, so judging the full experience means going Premium. And the platform rewards effort: a well written character and a specific prompt come back better than a rushed one, which suits users who enjoy building and asks a little more of those who do not.",
+      },
+      {
+        heading: "Who Lovescape Is For",
+        body: "Lovescape fits users for whom visuals and voice carry the experience. It suits people who want a companion that develops over weeks rather than one that resets every session, and anyone who would rather pick from a large community library than start from a blank page. The creator side is a genuine differentiator: characters can be published, shared, and monetized at up to 30% revenue share, with an active Discord running weekly contests that hand out free chips. Users who commit to the yearly plan get the best value in the category by a wide margin.",
+      },
+      {
+        heading: "Final Verdict",
+        body: "Lovescape picked its battles and won them. Image generation is the strongest in the segment, voice sits near the top, the relationship progression system has no real equivalent anywhere else, and the yearly rate near $6 to $8 per month is one of the cheapest credible entries on the market. Add a registered operator, native only content generation, and a creator program that pays real money, and the package holds up against anything in the category. For anyone who wants an AI companion that looks convincing, sounds convincing, and grows over time instead of starting over every session, Lovescape is the first door worth knocking on.",
+      },
+    ],
+    alternatives: [
+      { name: "Candy AI", slug: "candy-ai-ai-girlfriend" },
+      { name: "GirlfriendGPT", slug: "girlfriendgpt-ai-girlfriend" },
+      { name: "JOI AI", slug: "joi-ai-nude-generator" },
+    ],
+  },
 };
 
 export function getFullReview(slug: string): AINsfwFullReview | undefined {
   return AINSFW_FULL_REVIEWS[slug];
+}
+
+/**
+ * Paid Erogram clients (direct pay or portal pay). VERIFIED = PAID.
+ * Add every new paying client here with goLive — single source of truth for badge + recent pool.
+ */
+export const AINSFW_PAID_CLIENTS = [
+  { slug: 'clothoff-undress-ai', goLive: '2026-08-05T00:00:00.000Z' },
+  { slug: 'nudiva-undress-ai', goLive: '2026-08-05T00:00:00.000Z' },
+  { slug: 'genesis-porn-ai-image', goLive: '2026-08-05T00:00:00.000Z' },
+  { slug: 'ai-girlfriend-unlaced', goLive: '2026-07-20T00:00:00.000Z' },
+  { slug: 'ai-girlfriend-xmodelsai', goLive: '2026-07-20T00:00:00.000Z' },
+  { slug: 'porncreate-undress-ai', goLive: '2026-06-15T00:00:00.000Z' },
+  { slug: 'undress-ai-dreamyporn-ai', goLive: '2026-06-15T00:00:00.000Z' },
+  { slug: 'free-nudifier-undress-ai', goLive: '2026-06-01T00:00:00.000Z' },
+  { slug: 'candy-ai-ai-girlfriend', goLive: '2026-05-01T00:00:00.000Z' },
+  { slug: 'lovescape-ai-girlfriend', goLive: '2026-05-01T00:00:00.000Z' },
+  { slug: 'joi-ai-nude-generator', goLive: '2026-04-15T00:00:00.000Z' },
+  { slug: 'girlfriendgpt-ai-girlfriend', goLive: '2026-04-01T00:00:00.000Z' },
+] as const;
+
+export const AINSFW_PAID_CLIENT_SLUGS = AINSFW_PAID_CLIENTS.map((c) => c.slug);
+
+/** @deprecated use AINSFW_PAID_CLIENT_SLUGS */
+export const AINSFW_VERIFIED_CATALOG_SLUGS = AINSFW_PAID_CLIENT_SLUGS;
+
+export function isPaidClientTool(slug: string): boolean {
+  return (AINSFW_PAID_CLIENT_SLUGS as readonly string[]).includes(slug);
+}
+
+export function isVerifiedTool(slug: string): boolean {
+  return isPaidClientTool(slug);
 }
 
 /** Paid submission slugs that have an editorial full review (verified badge). */
@@ -126,4 +302,13 @@ export function getVerifiedPaidSlugs(paidSlugs: Iterable<string>): string[] {
     if (AINSFW_FULL_REVIEWS[slug]) out.push(slug);
   }
   return out;
+}
+
+/** All tool slugs that should show the verified badge on cards and detail pages. VERIFIED = PAID. */
+export function getVerifiedSlugs(paidSubmissionSlugs?: Iterable<string>): string[] {
+  const out = new Set<string>(AINSFW_PAID_CLIENT_SLUGS);
+  if (paidSubmissionSlugs) {
+    for (const slug of paidSubmissionSlugs) out.add(slug);
+  }
+  return [...out];
 }

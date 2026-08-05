@@ -28,6 +28,7 @@ import {
     Target,
     Mail,
     MessageSquare,
+    Send,
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -58,6 +59,7 @@ const tabs: TabItem[] = [
     { href: '/admin/users',            name: 'Users',           icon: User },
     { href: '/admin/leads',            name: 'Leads',           icon: Target },
     { href: '/admin/newsletter',       name: 'Newsletter',      icon: Mail },
+    { href: '/admin/email',            name: 'Email',           icon: Send },
     { href: '/admin/paid-campaigns',   name: 'Paid Campaigns',  icon: Megaphone },
     { href: '/admin/coupons',          name: 'Coupons',         icon: Star },
     { href: '/admin/settings',         name: 'Settings',        icon: Settings },

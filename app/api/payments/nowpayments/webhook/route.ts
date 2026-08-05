@@ -5,6 +5,8 @@ import { User, Group, Bot, AINsfwSubmission, OnlyFansCreator, PremiumEvent } fro
 import { notifyAdminsOfSale } from '@/lib/utils/notifyAdmins';
 import { getPremiumPricing } from '@/lib/premiumPricing';
 import { buildBoostPaymentUpdate, type BoostPaymentType } from '@/lib/boostPricing';
+import { fulfillAINSFWListingPayment } from '@/lib/actions/ainsfwPayment';
+import type { AINSFWPlan } from '@/lib/ainsfw/planPrices';
 
 const IPN_SECRET = process.env.NOWPAYMENTS_IPN_SECRET || '';
 
@@ -69,20 +71,17 @@ async function handleSubmissionPayment(
   }
 
   if (entityType === 'ainsfw') {
-    if (entity.paymentId === String(paymentId) && entity.paymentStatus === 'paid') {
+    const plan = tier as AINSFWPlan;
+    if (!['basic', 'boost', 'startup'].includes(plan)) return;
+
+    const fulfilled = await fulfillAINSFWListingPayment(entityId, plan, String(paymentId));
+    if (!fulfilled) {
+      console.error('NowPayments submission webhook: ainsfw not found', entityId);
       return;
     }
-    await Model.findByIdAndUpdate(entityId, {
-      status: 'approved',
-      paymentStatus: 'paid',
-      paymentId: String(paymentId),
-    });
-    if (entity.featured || entity.submissionTier === 'boost') {
-      const { adminSetFeatured } = await import('@/lib/actions/ainsfw');
-      await adminSetFeatured(entity.slug, true);
-    }
+
     logEvent({ event: 'submission_payment_success', entityType, entityId, tier, paymentId, paymentMethod: 'crypto' });
-    notifyAdminsOfSale({ plan: `${entityType}_${tier}`, method: 'crypto', username: entity.name || 'Unknown' }).catch(() => {});
+    notifyAdminsOfSale({ plan: `${entityType}_${tier}`, method: 'crypto', username: fulfilled.name || 'Unknown' }).catch(() => {});
     return;
   }
 

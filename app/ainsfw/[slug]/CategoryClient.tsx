@@ -1,11 +1,13 @@
 'use client';
 
+import { useCallback } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import ToolCard from '@/app/ainsfw/ToolCard';
 import RecentAdditionsBlock from '@/app/ainsfw/RecentAdditionsBlock';
+import TopAINsfwBlock from '@/app/ainsfw/TopAINsfwBlock';
 import type { AINsfwTool } from '@/app/ainsfw/types';
 import type { ToolStatsData } from '@/lib/actions/ainsfw';
 import AinsfwHeaderActions from '@/components/AinsfwHeaderActions';
@@ -18,6 +20,9 @@ interface Props {
   allStats: Record<string, ToolStatsData>;
   recentTools: AINsfwTool[];
   recentStats: Record<string, ToolStatsData>;
+  featuredHubSlugs: string[];
+  featuredCatalogTools: AINsfwTool[];
+  featuredHubStats: Record<string, ToolStatsData>;
   verifiedSlugs?: string[];
 }
 
@@ -37,9 +42,13 @@ export default function CategoryClient({
   allStats,
   recentTools,
   recentStats,
+  featuredHubSlugs,
+  featuredCatalogTools,
+  featuredHubStats,
   verifiedSlugs = [],
 }: Props) {
   const desc = CATEGORY_DESC[category] || `Browse the best ${category} tools — reviewed and ranked by Erogram.`;
+  const handleFeaturedVoteChange = useCallback((_slug: string, _score: number) => {}, []);
 
   return (
     <div className="ainsfw-page ainsfw-bg min-h-screen text-white">
@@ -71,23 +80,21 @@ export default function CategoryClient({
           transition={{ duration: 0.5 }}
           className="text-center mb-10"
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/30 text-[#22c55e] text-xs font-bold uppercase tracking-[2px] mb-4">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse" />
-            {tools.length} Tools Reviewed
-          </div>
           <h1 className="ainsfw-hero-title text-[36px] sm:text-[52px] md:text-[64px] mb-4">
             Best {category} Tools
           </h1>
-          <p className="text-white/50 text-sm sm:text-base max-w-xl mx-auto leading-relaxed mb-6">
+          <p className="text-white/50 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
             {desc}
           </p>
-          <Link
-            href="/ainsfw"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#22c55e] hover:text-white transition-colors border border-[#22c55e]/30 hover:border-[#22c55e]/60 rounded-full px-4 py-1.5"
-          >
-            ← View All AI NSFW Tools
-          </Link>
         </motion.div>
+
+        <TopAINsfwBlock
+          tools={featuredCatalogTools}
+          featuredHubSlugs={featuredHubSlugs}
+          allStats={featuredHubStats}
+          onVoteChange={handleFeaturedVoteChange}
+          verifiedSlugs={verifiedSlugs}
+        />
 
         <RecentAdditionsBlock tools={recentTools} allStats={recentStats} verifiedSlugs={verifiedSlugs} />
 

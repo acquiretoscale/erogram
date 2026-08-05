@@ -39,7 +39,7 @@ export default async function BestAiToolsIndexPage() {
     slug: page.slug,
     label: page.label,
     count: getToolsForBestAiPage(page).length,
-  })).filter((page) => page.count > 0);
+  })).filter((page) => page.count > 0).map(({ slug, label }) => ({ slug, label }));
 
   return (
     <BestAiToolsIndexClient

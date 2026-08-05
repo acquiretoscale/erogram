@@ -442,56 +442,108 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   //   Tier 2/3/4 → main grid (positions after 2, 8, 12 groups).
 
   // ── Top Groups spot allocation — AGNOSTIC ROTATING AD NETWORK ──
-  // BRAIN LAW (versatile-slots / ad-vision): whatever I assign to a Top Groups spot SHOWS in
-  // that spot and ROTATES with every other ad assigned to the same spot. Boosted ads get MORE
-  // visibility (weighted), not exclusivity. Same rule for spots 1/2/3/4. The named placements
-  // Each Top Groups spot is claimed ONLY by ads whose named placement is the matching top-groups-N.
-  // We match on the stamped `placement` (authoritative) — NOT the raw tierSlot, because legacy
-  // tierSlots 6/11 are shared with Top Bots, which would otherwise leak top-bots-* ads into Top Groups.
+  // Paid boosted groups + assigned ads rotate together per spot (same law as Top Bots).
+  // Boosted groups get BOOST_WEIGHT entries in the draw; swap pass guarantees every active
+  // paid boost appears when a slot is available.
   const SPOT_PLACEMENT: Record<number, string> = { 0: 'top-groups-1', 1: 'top-groups-2', 2: 'top-groups-3', 3: 'top-groups-4' };
   // tierSlot of each spot's row (so we exclude the right feed row from the grid below).
   const SPOT_TIERSLOT: Record<number, number> = { 0: 6, 1: 1, 2: 11, 3: 5 };
 
-  const topSpotCampaigns = useMemo(() => {
-    const picks: Record<number, FeedCampaign | null> = { 0: null, 1: null, 2: null, 3: null };
-    // An ad assigned to several spots must appear in only ONE at a time — never the same ad
-    // duplicated across spots simultaneously. We track ad ids already placed and exclude them.
-    const usedIds = new Set<string>();
+  // Top Groups: paid boosted groups + assigned ads rotate together per spot (same law as Top Bots).
+  type TopGroupsSpot = { kind: 'ad'; campaign: FeedCampaign } | { kind: 'group'; group: Group };
+  const topSpotPicks = useMemo(() => {
+    const empty = { 0: null, 1: null, 2: null, 3: null } as Record<number, TopGroupsSpot | null>;
+    if (topGroupsLoading || topGroups.length === 0) return empty;
 
-    // Weighted rotation: a boosted ad gets several entries in the draw so it appears more often,
-    // but non-boosted ads assigned to the same spot still rotate in. Per page load.
-    const pickForSlot = (spotPlacement: string, tierSlot: number): FeedCampaign | null => {
-      const pool = feedCampaigns.filter(
-        (c) => c.tierSlot === tierSlot && c.placement === spotPlacement && !usedIds.has(c._id),
-      );
-      if (pool.length === 0) return null;
-      const draw: FeedCampaign[] = [];
-      for (const c of pool) {
-        const weight = c.priority === 'boost' ? BOOST_WEIGHT : 1;
-        for (let i = 0; i < weight; i++) draw.push(c);
+    const picks: Record<number, TopGroupsSpot | null> = { 0: null, 1: null, 2: null, 3: null };
+    const usedKeys = new Set<string>();
+    const boostedArr = topGroups.filter((g) => g.boosted);
+    const nonBoosted = topGroups.filter((g) => !g.boosted);
+    const manualBySpot: Record<number, Group | undefined> = {
+      0: nonBoosted.find((g) => g.topGroupSlot === 1),
+      1: nonBoosted.find((g) => g.topGroupSlot === 2),
+    };
+    const pinIds = new Set([manualBySpot[0]?._id, manualBySpot[1]?._id].filter(Boolean));
+
+    const pickForSlot = (spot: number): TopGroupsSpot | null => {
+      const tierSlot = SPOT_TIERSLOT[spot];
+      const placement = SPOT_PLACEMENT[spot];
+      const adPool = isTelegram
+        ? []
+        : feedCampaigns.filter(
+            (c) => c.tierSlot === tierSlot && c.placement === placement && !usedKeys.has(`ad:${c._id}`),
+          );
+      const boostedPool = boostedArr.filter((g) => !usedKeys.has(`group:${g._id}`));
+
+      type DrawEntry = TopGroupsSpot & { weight: number };
+      const draw: DrawEntry[] = [];
+      for (const c of adPool) {
+        draw.push({
+          kind: 'ad',
+          campaign: c,
+          weight: c.priority === 'boost' ? BOOST_WEIGHT : 1,
+        });
       }
-      return draw[Math.floor(Math.random() * draw.length)];
+      for (const g of boostedPool) {
+        draw.push({ kind: 'group', group: g, weight: BOOST_WEIGHT });
+      }
+
+      if (draw.length === 0) {
+        const pin = manualBySpot[spot];
+        if (pin && !usedKeys.has(`group:${pin._id}`)) {
+          usedKeys.add(`group:${pin._id}`);
+          return { kind: 'group', group: pin };
+        }
+        const fillerQueue = nonBoosted.filter(
+          (g) => !pinIds.has(g._id) && g.topGroupSlot !== 1 && g.topGroupSlot !== 2,
+        );
+        const available = fillerQueue.filter((g) => !usedKeys.has(`group:${g._id}`));
+        if (available.length === 0) return null;
+        const g = available[Math.floor(Math.random() * available.length)];
+        usedKeys.add(`group:${g._id}`);
+        return { kind: 'group', group: g };
+      }
+
+      const expanded: TopGroupsSpot[] = [];
+      for (const entry of draw) {
+        for (let i = 0; i < entry.weight; i++) {
+          expanded.push(
+            entry.kind === 'ad'
+              ? { kind: 'ad', campaign: entry.campaign }
+              : { kind: 'group', group: entry.group },
+          );
+        }
+      }
+      const pick = expanded[Math.floor(Math.random() * expanded.length)];
+      usedKeys.add(pick.kind === 'ad' ? `ad:${pick.campaign._id}` : `group:${pick.group._id}`);
+      return pick;
     };
 
     for (let spot = 0; spot < 4; spot++) {
-      const pick = pickForSlot(SPOT_PLACEMENT[spot], SPOT_TIERSLOT[spot]);
-      if (pick) {
-        picks[spot] = pick;
-        usedIds.add(pick._id);
-      }
+      picks[spot] = pickForSlot(spot);
     }
+
+    // Paid boosts must always appear when slots allow — swap out ads if the draw missed any.
+    for (const g of boostedArr) {
+      const placed = Object.values(picks).some((p) => p?.kind === 'group' && p.group._id === g._id);
+      if (placed) continue;
+      const adSpot = [0, 1, 2, 3].find((s) => picks[s]?.kind === 'ad');
+      if (adSpot == null) break;
+      picks[adSpot] = { kind: 'group', group: g };
+    }
+
     return picks;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feedCampaigns]);
+  }, [feedCampaigns, topGroups, topGroupsLoading, isTelegram]);
 
   const gridCampaigns = useMemo(() => {
     // Exclude only the exact slot ROWS consumed by Top Groups, not every row sharing that _id.
     // A multi-placement ad assigned to BOTH Top Groups and in-feed (tier 2/3/4) keeps its
     // in-feed copies so it still renders down the feed. We match _id + tierSlot of the picks.
     const usedKeys = new Set(
-      Object.values(topSpotCampaigns)
-        .filter(Boolean)
-        .map((c) => `${c!._id}-${c!.tierSlot}`),
+      Object.values(topSpotPicks)
+        .filter((p): p is Extract<TopGroupsSpot, { kind: 'ad' }> => p?.kind === 'ad')
+        .map((p) => `${p.campaign._id}-${p.campaign.tierSlot}`),
     );
     return feedCampaigns.filter((c) => {
       if (usedKeys.has(`${c._id}-${c.tierSlot}`)) return false;
@@ -499,7 +551,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
       if (c.placement) return isGroupsInFeedPlacement(c.placement);
       return c.tierSlot != null && c.tierSlot >= 2 && c.tierSlot <= 4;
     });
-  }, [feedCampaigns, topSpotCampaigns]);
+  }, [feedCampaigns, topSpotPicks]);
 
   return (
     <div className="min-h-screen bg-[#0d1117]">
@@ -757,7 +809,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
           <div className="w-full min-w-0">
             <div className="relative">
               {/* Top Groups — hidden during search or when a filter is active */}
-              {!debouncedSearchQuery && selectedCategory === (initialCountry || 'All') && selectedCountry === 'All' && topGroups.length > 0 && (
+              {!topGroupsLoading && !debouncedSearchQuery && selectedCategory === (initialCountry || 'All') && selectedCountry === 'All' && topGroups.length > 0 && (
                 <div className="mb-5 relative rounded-2xl overflow-hidden bg-white">
                   <div className="relative p-3 sm:p-4">
                       {/* Header */}
@@ -768,31 +820,13 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 rounded-2xl p-3 sm:p-4" style={{ background: 'linear-gradient(180deg, #0d1117 0%, #0a0e16 100%)' }}>
                       {(() => {
-                        // PRIORITY (ad-network wins): for each of the 4 spots,
-                        //   assigned ad campaign  >  manual pin  >  boosted group  >  organic
-                        // An ASSIGNED ad ALWAYS takes its spot — nothing overrides a paid ad placement.
-                        const nonBoosted = topGroups.filter((g: any) => !g.boosted);
-                        const boostedArr = topGroups.filter((g: any) => g.boosted);
-                        const manualBySpot: Record<number, Group | undefined> = {
-                          0: nonBoosted.find((g: any) => g.topGroupSlot === 1),
-                          1: nonBoosted.find((g: any) => g.topGroupSlot === 2),
-                        };
-                        // Rotating ad per spot (Spot1=tier6, Spot2=tier1, Spot3=tier11, Spot4=tier5).
-                        // Any spot with no assigned ad falls back to manual pin → organic below.
-                        const campBySpot: Record<number, FeedCampaign | null> = {
-                          0: !isTelegram ? topSpotCampaigns[0] : null,
-                          1: !isTelegram ? topSpotCampaigns[1] : null,
-                          2: !isTelegram ? topSpotCampaigns[2] : null,
-                          3: !isTelegram ? topSpotCampaigns[3] : null,
-                        };
-
                         const renderGroupCard = (g: Group, idx: number) => {
                           const tgLink = g.isAdvertisement && g.advertisementUrl
                             ? g.advertisementUrl
                             : g.telegramLink || undefined;
                           return (
                             <GroupCard
-                              key={`top-${g._id}`}
+                              key={`top-${g._id}-${idx}`}
                               group={g}
                               isIndex={idx}
                               onOpenReviewModal={openReviewModal}
@@ -804,41 +838,22 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                           );
                         };
 
-                        // Organic fillers (boosted first, then the rest), used only for spots NO ad claims
-                        // and that have no manual pin. Pinned groups are excluded so they don't double-show.
-                        const pinIds = new Set([manualBySpot[0]?._id, manualBySpot[1]?._id].filter(Boolean));
-                        const fillerQueue: Group[] = [
-                          ...boostedArr.filter((g: any) => !pinIds.has(g._id)),
-                          ...nonBoosted.filter((g: any) => !pinIds.has(g._id) && g.topGroupSlot !== 1 && g.topGroupSlot !== 2),
-                        ];
-                        const usedOrganic = new Set<string>();
-
                         const spots: React.ReactNode[] = [];
                         for (let spot = 0; spot < 4; spot++) {
-                          const camp = campBySpot[spot];
-                          if (camp) {
-                            // Assigned ad ALWAYS wins this spot.
+                          const pick = topSpotPicks[spot];
+                          if (!pick) continue;
+                          if (pick.kind === 'ad') {
                             spots.push(
                               <AdvertCard
-                                key={`spot-${spot}-${camp._id}`}
-                                campaign={camp}
+                                key={`spot-${spot}-${pick.campaign._id}`}
+                                campaign={pick.campaign}
                                 isIndex={spot}
                                 shouldPreload={true}
                                 onVisible={undefined}
-                              />
+                              />,
                             );
-                            continue;
-                          }
-                          // No ad → manual pin for this spot, else random organic from 14-day top-20 pool.
-                          const pin = manualBySpot[spot];
-                          if (pin) {
-                            spots.push(renderGroupCard(pin, spot));
                           } else {
-                            const available = fillerQueue.filter((g) => !usedOrganic.has(g._id));
-                            if (available.length === 0) continue;
-                            const g = available[Math.floor(Math.random() * available.length)];
-                            usedOrganic.add(g._id);
-                            spots.push(renderGroupCard(g, spot));
+                            spots.push(renderGroupCard(pick.group, spot));
                           }
                         }
 

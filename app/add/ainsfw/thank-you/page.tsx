@@ -8,8 +8,8 @@ function ThankYouContent() {
   const params = useSearchParams();
   const plan = params.get('plan');
   const slug = params.get('slug');
-  const isBoost = plan === 'boost';
-  const liveUrl = slug ? `/ainsfw` : '/ainsfw';
+  const isFeaturedPlan = plan === 'boost' || plan === 'startup';
+  const liveUrl = slug ? `/ainsfw/${slug}` : '/ainsfw';
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
@@ -19,10 +19,10 @@ function ThankYouContent() {
         </div>
 
         <h1 className="text-3xl font-black text-white mb-3">
-          {isBoost ? 'You\'re Live!' : 'Payment Confirmed!'}
+          {isFeaturedPlan ? 'You\'re Live!' : 'Payment Confirmed!'}
         </h1>
 
-        {isBoost ? (
+        {isFeaturedPlan ? (
           <>
             <p className="text-white/50 text-base leading-relaxed mb-4">
               Your AI tool has been <strong className="text-emerald-400">instantly approved</strong> and is now
@@ -54,7 +54,7 @@ function ThankYouContent() {
             href="/ainsfw"
             className="px-6 py-3 rounded-xl bg-white/10 text-white font-bold text-sm hover:bg-white/15 transition-colors"
           >
-            {isBoost ? 'See Your Live Listing' : 'Browse AI NSFW Tools'}
+            {isFeaturedPlan ? 'See Your Live Listing' : 'Browse AI NSFW Tools'}
           </Link>
           <Link
             href="/"

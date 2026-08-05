@@ -2,7 +2,7 @@ export interface OfCategoryMetaSet { en: string; de?: string; es?: string; pt?: 
 
 export const META_DESCRIPTIONS: Record<string, OfCategoryMetaSet> = {
   "asian": {
-    en: "Petite, mysterious, and absolutely ravenous. Discover the top 10 Asian OnlyFans models who will satisfy every craving you have.",
+    en: "Asian OnlyFans models, ranked. Petite, exotic and completely unfiltered, our top 10 Asian creators deliver exactly what you came for. See them on EROgram.",
     de: "Geheimnisvoll, zart und unglaublich wild. Unsere Top 10 Asian Models auf EROgram zeigen dir die sinnliche Seite des Ostens. Ein Klick genügt!",
     es: "Las asiáticas más finas y fogosas del OnlyFans. Nuestro top 10 te trae caras dulces y cuerpos que quitan el sueño. Puro placer.",
     pt: "As asiáticas mais lindas e ousadas do OnlyFans estão aqui. Nosso top 10 seleciona as gostosas que vão te surpreender. Dá uma espiada na EROgram.",
@@ -38,7 +38,7 @@ export const META_DESCRIPTIONS: Record<string, OfCategoryMetaSet> = {
     pt: "As ruivas mais fogosas e irresistíveis do OnlyFans tão no nosso top 10. Cabelo de fogo e atitude que te queima. Só na EROgram. Click e se aqueça!",
   },
   "goth": {
-    en: "Dark souls with sinful bodies. Our top 10 goth OnlyFans models bring black lace, pale skin, and raw desire. Enter the shadows and get hooked!",
+    en: "Goth OnlyFans models with black lace and pale skin. Our top 10 dark alt creators are ranked and waiting. Step into the shadows on EROgram.",
     de: "Dunkel, düster und verdammt sexy! Die 10 besten Goth OnlyFans Models 2026 zeigen dir ihre wilde Seite. Nur auf EROgram in der Top-10-Liste.",
     es: "Chicas góticas oscuras y sensuales te esperan. Encuentra las 10 mejores modelos goth de OnlyFans. Un mundo de misterio y placer te llama.",
     pt: "As góticas mais sombrias e sensuais do OnlyFans estão aqui. Pele branca, tatuagens e muito mistério. O top 10 que vai te hipnotizar. EROgram te mostra!",
@@ -50,7 +50,7 @@ export const META_DESCRIPTIONS: Record<string, OfCategoryMetaSet> = {
     pt: "Corpos pequenos e tesão gigante. As 10 melhores modelos petite do OnlyFans estão aqui. Na EROgram cada uma delas te espera com muito calor. Confere!",
   },
   "big-ass": {
-    en: "Craving curves that don't quit? Our top 10 big ass OnlyFans models on EROgram will make you drool. Click for the roundest booties online.",
+    en: "Big ass OnlyFans models you actually want. Our top 10 is all curves, all real, all updated for 2026. Click through for the roundest on EROgram.",
     de: "Bock auf pralle Kurven und den besten Blick von hinten? EROgram zeigt dir die 10 heißesten Big Ass OnlyFans Models 2026. Klick und staune!",
     es: "¿Te gustan los culazos bien grandes y redondos? Descubre en EROgram las 10 modelos Big Ass de OnlyFans que te harán babear.",
     pt: "Bunda grande é seu fraco? Então confira as 10 modelos mais empinadas e poderosas do OnlyFans. Na EROgram você descobre esse top quentíssimo!",
@@ -74,7 +74,7 @@ export const META_DESCRIPTIONS: Record<string, OfCategoryMetaSet> = {
     pt: "Latina é fogo puro, e a EROgram reuniu as 10 mais gostosas do OnlyFans. Rebolado, curvas e um sotaque que derrete. Vem ver esse top quente!",
   },
   "ahegao": {
-    en: "Want faces that scream pure pleasure? Dive into our top 10 ahegao OnlyFans models. These girls take ecstasy to a whole new level. Don't blink.",
+    en: "Ahegao OnlyFans models who take it to the extreme. Our top 10 is pure overload, ranked for 2026. See every face on EROgram.",
     de: "Ahegao-Fans aufgepasst! EROgram präsentiert die 10 verrücktesten Ahegao OnlyFans Models 2026. Versaut, wild und absolut unvergesslich. Klick jetzt!",
     es: "Caritas de placer bien exageradas que te vuelven loco. Descubre las 10 modelos Ahegao más hot de OnlyFans en EROgram ya mismo.",
     pt: "Cara de tesão, olhar perdido e língua pra fora. As 10 modelos ahegao mais intensas do OnlyFans tão na EROgram. Você vai querer ver cada uma!",
@@ -86,13 +86,13 @@ export const META_DESCRIPTIONS: Record<string, OfCategoryMetaSet> = {
     pt: "Beleza alternativa e rebeldia sem limites. As 10 modelos alt mais ousadas do OnlyFans tão te esperando na EROgram. Vem ver!",
   },
   "cosplay": {
-    en: "Your favorite characters stripped bare. The top 10 cosplay OnlyFans models on EROgram dress up to undress down. Click to see them in action!",
+    en: "Cosplay OnlyFans models who go all the way. Anime, gaming and comic characters brought to life by our top 10. See them in costume on EROgram.",
     de: "Deine Lieblingsfiguren werden lebendig. Die 10 besten Cosplay OnlyFans Models 2026 auf EROgram verwandeln Fantasie in heiße Realität. Klick jetzt!",
     es: "Tus personajes favoritos cobran vida. Las 10 mejores modelos cosplay de OnlyFans te llevan al otro nivel. No te pierdas este top en EROgram.",
     pt: "Personagens dos seus sonhos ganham vida. As 10 melhores modelos cosplay do OnlyFans estão aqui. Na EROgram a fantasia te leva longe. Clica e vê!",
   },
   "streamer": {
-    en: "Love gaming girls with a wild side? The top 10 streamer OnlyFans models blend play and pleasure. Check out the list and level up your fantasies!",
+    en: "Streamer OnlyFans models who left Twitch behind. Our top 10 gaming girls play and then go uncensored. Meet them on EROgram.",
     de: "Gaming, Glamour und heiße Sessions. Die 10 besten Streamer OnlyFans Models warten auf dich. Bist du bereit für den Next Level?",
     es: "Tus streamers favoritas ahora en OnlyFans. Las 10 mejores modelos que también juegan y te prenden. Descúbrelas en EROgram.",
     pt: "As gatinhas que arrasam na Twitch agora tão no OnlyFans. Veja as 10 melhores streamers que vão do game ao sexo sem censura. Descubra na EROgram!",
@@ -116,7 +116,7 @@ export const META_DESCRIPTIONS: Record<string, OfCategoryMetaSet> = {
     pt: "Química de verdade entre mulheres. Descubra as 10 melhores modelos lésbicas do OnlyFans, com cenas intensas e apaixonantes.",
   },
   "tattoo": {
-    en: "Ink on skin and fire in their eyes. Our top 10 tattoo OnlyFans models bring art to life in the naughtiest ways. Click to see the masterpieces!",
+    en: "Tattoo OnlyFans models covered head to toe. Our top 10 inked creators turn skin into art. See the full sleeves and more on EROgram.",
     de: "Tattoos, die Geschichten erzählen und Körper, die brennen. Entdecke die 10 besten Tattoo OnlyFans Models 2026. Wilde Kunst und heiße Haut warten auf dich bei EROgram!",
     es: "Arte sobre la piel, curvas y tinta. El top 10 de modelos tatuadas más hot de OnlyFans lo encuentras solo en EROgram.",
     pt: "As tatuadas mais gostosas do OnlyFans estão aqui. Corpos desenhados e atitude que te prende. Confira o top 10 na EROgram agora!",

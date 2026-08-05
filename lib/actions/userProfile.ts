@@ -12,7 +12,7 @@ import {
   publicAvatarUrl,
 } from '@/lib/images/processUserAvatar';
 import { PRESET_AVATAR_COUNT, presetAvatarIdFromUrl } from '@/lib/userAvatars';
-import { PROFILE_TAG_SLUGS, sanitizeUserInterests, type InterestOption } from '@/lib/userInterests';
+import { PROFILE_TAG_SLUGS, PROFILE_CATEGORY_EXCLUDED_SLUGS, sanitizeUserInterests, type InterestOption } from '@/lib/userInterests';
 import { getTagIndex } from '@/lib/actions/tags';
 import { AI_NSFW_TOOLS, categoryToSlug, getCategoryBySlug } from '@/app/ainsfw/data';
 import { getAllTagDefinitions, getTagDefinition, type TagDefinition } from '@/lib/tags/registry';
@@ -23,6 +23,7 @@ import { Bot, OnlyFansCreator } from '@/lib/models';
 import { PROFILE_THEMES, type ProfileThemeId, isFreeProfileTheme } from '@/app/profile/profileTheme';
 
 const MIN_INTEREST_CONTENT = 20;
+const PROFILE_CATEGORY_POOL_SIZE = 40;
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
@@ -193,17 +194,30 @@ async function loadProfileInterestOptions(): Promise<{
   tagSlugs: Set<string>;
   aiSlugs: Set<string>;
 }> {
-  const tags = await getTagIndex('en', MIN_INTEREST_CONTENT);
-  const bySlug = new Map(tags.map((t) => [t.slug, { slug: t.slug, name: t.label }]));
+  const indexedTags = await getTagIndex('en', 0);
+  const countBySlug = new Map(indexedTags.map((t) => [t.slug, t.total]));
+
+  const bySlug = new Map<string, InterestOption & { count: number }>();
+  for (const t of indexedTags) {
+    bySlug.set(t.slug, { slug: t.slug, name: t.label, count: t.total });
+  }
   for (const def of getAllTagDefinitions()) {
-    if (!bySlug.has(def.slug)) bySlug.set(def.slug, { slug: def.slug, name: def.label });
+    if (!bySlug.has(def.slug)) {
+      bySlug.set(def.slug, { slug: def.slug, name: def.label, count: countBySlug.get(def.slug) ?? 0 });
+    }
   }
   for (const slug of PROFILE_TAG_SLUGS) {
     if (bySlug.has(slug)) continue;
     const def = getTagDefinition(slug);
-    if (def) bySlug.set(slug, { slug, name: def.label });
+    if (def) bySlug.set(slug, { slug, name: def.label, count: countBySlug.get(slug) ?? 0 });
   }
-  const tagInterests = [...bySlug.values()].sort((a, b) => a.name.localeCompare(b.name));
+
+  const allTagInterests = [...bySlug.values()];
+  const tagInterests = [...allTagInterests]
+    .filter((t) => !PROFILE_CATEGORY_EXCLUDED_SLUGS.has(t.slug))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+    .slice(0, PROFILE_CATEGORY_POOL_SIZE)
+    .map(({ slug, name, count }) => ({ slug, name, count }));
 
   const counts = new Map<string, number>();
   for (const tool of AI_NSFW_TOOLS) {
@@ -220,7 +234,7 @@ async function loadProfileInterestOptions(): Promise<{
   return {
     tagInterests,
     aiInterests,
-    tagSlugs: new Set(tagInterests.map((t) => t.slug)),
+    tagSlugs: new Set(allTagInterests.map((t) => t.slug)),
     aiSlugs: new Set(aiInterests.map((t) => t.slug)),
   };
 }

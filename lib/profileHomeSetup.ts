@@ -26,9 +26,5 @@ export function profileHomeSetupComplete(
   photoUrl: string | null | undefined,
   interests: string[],
 ): boolean {
-  return (
-    hasChosenProfileAvatar(photoUrl) &&
-    hasCustomizedFeedCategories(interests) &&
-    hasExploredProfileFeed()
-  );
+  return hasChosenProfileAvatar(photoUrl) && hasCustomizedFeedCategories(interests);
 }

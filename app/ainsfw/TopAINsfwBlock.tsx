@@ -1,13 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import ToolCard from './ToolCard';
-import AdvertCard from '../groups/AdvertCard';
-import type { FeedCampaign } from '../groups/types';
 import type { AINsfwTool } from './types';
 import type { ToolStatsData } from '@/lib/actions/ainsfw';
-import { getPlacementFeedCampaigns } from '@/lib/actions/campaigns';
-import { useTranslation } from '@/lib/i18n';
 
 export function loadAllScores(allStats?: Record<string, ToolStatsData>): Record<string, number> {
   const map: Record<string, number> = {};
@@ -21,101 +17,69 @@ export function loadAllScores(allStats?: Record<string, ToolStatsData>): Record<
 
 interface TopAINsfwBlockProps {
   tools: AINsfwTool[];
+  featuredHubSlugs: string[];
   allStats?: Record<string, ToolStatsData>;
-  scores: Record<string, number>;
-  featuredSlugs: string[];
-  boostFeaturedSlugs: string[];
-  featuredCampaignMap: Record<string, string>;
-  topAdCampaigns: FeedCampaign[];
+  featuredCampaignMap?: Record<string, string>;
   onVoteChange: (slug: string, score: number) => void;
   verifiedSlugs?: string[];
 }
 
 export default function TopAINsfwBlock({
   tools,
+  featuredHubSlugs,
   allStats,
-  scores,
-  featuredSlugs,
-  boostFeaturedSlugs,
-  featuredCampaignMap,
-  topAdCampaigns,
+  featuredCampaignMap = {},
   onVoteChange,
   verifiedSlugs = [],
 }: TopAINsfwBlockProps) {
   const verifiedSet = new Set(verifiedSlugs);
-  const { t } = useTranslation();
-  const [liveTopAds, setLiveTopAds] = useState<FeedCampaign[]>(topAdCampaigns);
 
-  useEffect(() => {
-    getPlacementFeedCampaigns('ainsfw-featured', 4)
-      .catch(() => [] as FeedCampaign[])
-      .then((topAds) => {
-        if (topAds.length > 0) setLiveTopAds(topAds as FeedCampaign[]);
-      });
-  }, []);
-
-  const featuredSet = new Set(featuredSlugs);
-  const boostSet = new Set(boostFeaturedSlugs);
-
-  const scoreSorted = [...tools]
-    .filter((tool) => (scores[tool.slug] ?? 0) > 0)
-    .sort((a, b) => (scores[b.slug] ?? 0) - (scores[a.slug] ?? 0));
-
-  const boostFeatured = boostFeaturedSlugs
-    .map((slug) => tools.find((tool) => tool.slug === slug))
+  const bySlug = new Map(tools.map((tool) => [tool.slug, tool]));
+  const featuredTools = featuredHubSlugs
+    .map((slug) => bySlug.get(slug))
     .filter(Boolean) as AINsfwTool[];
-  const otherFeatured = tools.filter((t) => featuredSet.has(t.slug) && !boostSet.has(t.slug));
-  const nonFeaturedByScore = scoreSorted.filter((t) => !featuredSet.has(t.slug));
 
-  const seenAdIds = new Set<string>();
-  const ads = liveTopAds.filter((c) => (seenAdIds.has(c._id) ? false : (seenAdIds.add(c._id), true)));
+  const displayTools =
+    featuredTools.length >= 4
+      ? featuredTools.slice(0, 4)
+      : featuredTools.length >= 2
+        ? featuredTools.slice(0, 2)
+        : [];
 
-  const GRID = 4;
-  type Cell = { kind: 'tool'; tool: AINsfwTool } | { kind: 'ad'; campaign: FeedCampaign };
-  const cells: Cell[] = [];
-  for (const tool of boostFeatured) {
-    if (cells.length >= GRID) break;
-    cells.push({ kind: 'tool', tool });
-  }
-  for (const tool of [...otherFeatured, ...nonFeaturedByScore]) {
-    if (cells.length >= GRID) break;
-    cells.push({ kind: 'tool', tool });
-  }
-  for (const campaign of ads) {
-    if (cells.length >= GRID) break;
-    cells.push({ kind: 'ad', campaign });
-  }
+  if (displayTools.length !== 2 && displayTools.length !== 4) return null;
 
-  if (cells.length === 0) return null;
+  const gridCols =
+    displayTools.length === 4
+      ? 'grid grid-cols-2 lg:grid-cols-4 gap-3'
+      : 'grid grid-cols-2 gap-3 max-w-xl mx-auto w-full';
 
   return (
     <section className="mb-10 sm:mb-14">
       <div className="bg-white rounded-2xl border border-black/10 p-4 sm:p-5">
-        <div className="flex items-center justify-between mb-4 sm:mb-5">
-          <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-black">{t('ainsfw.topTitle')}</h2>
-          <span className="text-[10px] sm:text-xs font-black bg-[#22c55e] text-black rounded px-2 py-0.5">
-            {t('ainsfw.topBadge')}
-          </span>
+        <div className="mb-4 sm:mb-5 flex items-center justify-between gap-3">
+          <h2 className="inline-block px-2.5 py-1 rounded-lg bg-[#22c55e] text-black text-sm sm:text-base font-black uppercase tracking-wider">
+            Featured on Erogram
+          </h2>
+          <Link
+            href="/add/ainsfw"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center h-9 sm:h-10 shrink-0 rounded-md px-3 sm:px-4 bg-rose-700 hover:bg-rose-800 active:bg-rose-900 text-white text-[9px] sm:text-[10px] font-black uppercase tracking-tight whitespace-nowrap transition-colors"
+          >
+            GET FEATURED
+          </Link>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {cells.map((cell, i) =>
-            cell.kind === 'ad' ? (
-              <div key={`ainsfw-ad-${cell.campaign._id}`} className="h-full rounded-xl overflow-hidden bg-[#0a0a0a] border border-white/10 [&>*]:h-full">
-                <AdvertCard campaign={cell.campaign} isIndex={i} placementOverride="ainsfw-featured" />
-              </div>
-            ) : (
-              <ToolCard
-                key={cell.tool.slug}
-                tool={cell.tool}
-                index={i}
-                initialStats={allStats?.[cell.tool.slug]}
-                onVoteChange={onVoteChange}
-                featured={featuredSet.has(cell.tool.slug)}
-                campaignId={featuredCampaignMap[cell.tool.slug]}
-                verified={verifiedSet.has(cell.tool.slug)}
-              />
-            ),
-          )}
+        <div className={gridCols}>
+          {displayTools.map((tool, i) => (
+            <ToolCard
+              key={tool.slug}
+              tool={tool}
+              index={i}
+              initialStats={allStats?.[tool.slug]}
+              onVoteChange={onVoteChange}
+              verified={verifiedSet.has(tool.slug)}
+            />
+          ))}
         </div>
       </div>
     </section>

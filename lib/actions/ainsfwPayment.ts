@@ -14,8 +14,8 @@ const NP_BASE = 'https://api.nowpayments.io/v1';
 
 const PLAN_DESCRIPTIONS: Record<AINSFWPlan, string> = {
   basic: 'Basic AI NSFW Listing — Get Seen — $49',
-  boost: 'Boost AI NSFW Listing — Get More Visibility — $197',
-  startup: 'Startup AI NSFW Listing — Own Your Category — $497',
+  boost: 'Boost AI NSFW Listing — Get More Visibility — $147',
+  startup: 'Startup AI NSFW Listing — Own Your Category — $297',
 };
 
 export interface AINSFWFormData {
@@ -69,6 +69,60 @@ function buildTags(formData: AINSFWFormData): string[] {
     .split(',')
     .map((t) => t.trim().toLowerCase())
     .filter(Boolean);
+}
+
+function isFeaturedPlan(plan: AINSFWPlan): boolean {
+  return plan === 'boost' || plan === 'startup';
+}
+
+/** Activate a paid AI NSFW submission after crypto confirms (webhook) or free coupon. */
+export async function fulfillAINSFWListingPayment(
+  submissionId: string,
+  plan: AINSFWPlan,
+  paymentId: string,
+  options?: { status?: 'approved' | 'pending' },
+): Promise<{ slug: string; name: string } | null> {
+  await connectDB();
+  const submission = await AINsfwSubmission.findById(submissionId).lean() as {
+    slug: string;
+    name: string;
+    paymentStatus?: string;
+    paymentId?: string | null;
+  } | null;
+  if (!submission) return null;
+
+  if (submission.paymentStatus === 'paid') {
+    return { slug: submission.slug, name: submission.name };
+  }
+
+  const featured = isFeaturedPlan(plan);
+  const now = new Date();
+  const oneMonthLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const status = options?.status ?? 'approved';
+
+  await AINsfwSubmission.updateOne(
+    { _id: submissionId },
+    {
+      $set: {
+        paymentStatus: 'paid',
+        status,
+        unlisted: false,
+        featured,
+        featuredExpiresAt: featured ? oneMonthLater : null,
+        boosted: featured,
+        boostExpiresAt: featured ? oneMonthLater : null,
+        submissionTier: plan,
+        paymentId: String(paymentId),
+      },
+    },
+  );
+
+  if (featured) {
+    const { adminSetFeatured } = await import('@/lib/actions/ainsfw');
+    await adminSetFeatured(submission.slug, true);
+  }
+
+  return { slug: submission.slug, name: submission.name };
 }
 
 /** Save listing draft before checkout — kept even if payment never completes. */
@@ -194,30 +248,13 @@ export async function checkoutAINSFWListing(
     finalPrice = Math.round((couponValidation.discountedStars ?? starsEquiv) * 0.013 * 100) / 100;
   }
 
-  const isFeatured = plan === 'boost' || plan === 'startup';
-
   if (finalPrice <= 0 && couponValidation) {
-    const now = new Date();
-    const oneMonthLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-    await AINsfwSubmission.updateOne(
-      { _id: submission._id },
-      {
-        $set: {
-          paymentStatus: 'paid',
-          status: isFeatured ? 'approved' : 'pending',
-          unlisted: false,
-          featured: isFeatured,
-          featuredExpiresAt: isFeatured ? oneMonthLater : null,
-          boosted: isFeatured,
-          boostExpiresAt: isFeatured ? oneMonthLater : null,
-          submissionTier: plan,
-        },
-      },
+    await fulfillAINSFWListingPayment(
+      submission._id.toString(),
+      plan,
+      `coupon__${couponCode}__${Date.now()}`,
+      { status: isFeaturedPlan(plan) ? 'approved' : 'pending' },
     );
-    if (isFeatured) {
-      const { adminSetFeatured } = await import('@/lib/actions/ainsfw');
-      await adminSetFeatured(submission.slug, true);
-    }
     await recordCouponUsage(couponValidation.couponId, {
       service: 'ainsfw',
       entityId: submission._id.toString(),

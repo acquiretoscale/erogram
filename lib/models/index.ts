@@ -14,6 +14,9 @@ export const userSchema = new Schema(
     username: { type: String, required: true, unique: true },
     email: { type: String, sparse: true, default: undefined },
     password: { type: String },
+    emailVerified: { type: Boolean, default: false },
+    emailVerifyToken: { type: String, default: null },
+    emailVerifyTokenExpires: { type: Date, default: null },
     telegramId: { type: Number, unique: true, sparse: true },
     telegramUsername: { type: String, default: null },
     firstName: { type: String, default: null },
@@ -616,11 +619,19 @@ export const campaignClickSchema = new Schema(
     campaignId: { type: Schema.Types.ObjectId, ref: 'Campaign', required: true },
     clickedAt: { type: Date, required: true, default: Date.now },
     placement: { type: String, default: '' },
+    // Denormalized at click time so stats group directly instead of joining every
+    // click row back to Campaign. advertiserId/slot are the campaign's values as of
+    // the click; historical rows before this field existed are filled by the backfill.
+    advertiserId: { type: Schema.Types.ObjectId, ref: 'Advertiser', default: null },
+    slot: { type: String, default: '' },
   },
   { timestamps: true }
 );
 campaignClickSchema.index({ clickedAt: 1 });
 campaignClickSchema.index({ campaignId: 1, clickedAt: 1 });
+// Serves the dashboard's range-by-advertiser and range-by-slot groupings without a join.
+campaignClickSchema.index({ clickedAt: 1, advertiserId: 1 });
+campaignClickSchema.index({ clickedAt: 1, slot: 1 });
 
 // CampaignImpressionDaily: daily aggregated impression counts for period-specific CTR
 export const campaignImpressionDailySchema = new Schema(

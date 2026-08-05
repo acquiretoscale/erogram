@@ -4,6 +4,7 @@ import connectDB from '@/lib/db/mongodb';
 import { User } from '@/lib/models';
 import { notifyAdminsOfNewUser } from '@/lib/utils/notifyAdmins';
 import { geoUpdateFields } from '@/lib/utils/geo';
+import { randomPresetAvatarUrl } from '@/lib/userAvatars';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -96,9 +97,10 @@ export async function GET(req: NextRequest) {
           user = await User.create({
             username,
             email: email || undefined,
+            emailVerified: !!email,
             googleId,
             firstName: name,
-            photoUrl: picture,
+            photoUrl: picture || randomPresetAvatarUrl(),
             ...geo,
           });
           isNewUser = true;
@@ -109,7 +111,7 @@ export async function GET(req: NextRequest) {
               username,
               googleId,
               firstName: name,
-              photoUrl: picture,
+              photoUrl: picture || randomPresetAvatarUrl(),
               ...geo,
             });
             isNewUser = true;
