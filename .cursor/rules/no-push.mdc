@@ -9,9 +9,12 @@ alwaysApply: true
 
 **NEVER run `git push` or any command that pushes to remote** unless the user explicitly says one of:
 - "push"
+- "push live"
 - "push it"
 - "now push"
 - or any other clear direct instruction to push
+
+**When owner orders push:** see `push-live-marble.mdc` — **push `main` only**. Feature branches are NOT live.
 
 ## What you CAN do without asking
 

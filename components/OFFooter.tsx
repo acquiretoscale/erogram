@@ -91,7 +91,7 @@ export default function OFFooter() {
                 </Link>
               </li>
               <li>
-                <Link href={lp('/advertise')} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
+                <Link href={lp('/promo')} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
                   {t('ofSearch.advertiseWithUs')}
                 </Link>
               </li>

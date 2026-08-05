@@ -2,23 +2,23 @@
 
 import { useEffect, useState } from 'react';
 
-const NAVY = '#0a1628';
-const ACCENT = '#60a5fa';
-const STAT_BG = 'linear-gradient(180deg, rgba(96,165,250,0.06) 0%, rgba(255,255,255,0.02) 100%)';
-const HEADER_BG = 'linear-gradient(160deg, #0a1628 0%, #122640 55%, #1e3a5f 100%)';
+const ACCENT = '#22c55e';
+const SURFACE = '#0a1f12';
+const HEADER_BG = 'linear-gradient(160deg, #04140c 0%, #0a2e1a 60%, #064e3b 100%)';
+const STAT_BG = 'linear-gradient(180deg, rgba(34,197,94,0.06) 0%, rgba(255,255,255,0.02) 100%)';
 
 type StatDef =
   | { id: string; label: string; type: 'text'; text: string; live?: boolean }
   | { id: string; label: string; type: 'count'; target: number; format: (n: number) => string; live?: boolean };
 
-function buildStatDefs(aiNsfwCount: number, groupsAndBotsCount: number): StatDef[] {
+function buildStatDefs(aiNsfwCount: number, groupsAndBotsCount: number, totalUsers: number): StatDef[] {
   return [
     { id: 'growth', label: 'Month-over-Month Google Growth', type: 'count', target: 40, format: (n) => `${Math.round(n)}%+` },
-    { id: 'visits', label: 'Monthly Visits', type: 'count', target: 800, format: (n) => `${Math.round(n)}K+` },
+    { id: 'visits', label: 'Monthly Visits', type: 'count', target: 180, format: (n) => `${Math.round(n)}K+` },
     { id: 'tier1', label: 'US, UK, DE, NL, AU, CA & IT', type: 'text', text: 'Tier 1' },
-    { id: 'premium', label: 'Premium Subscribers', type: 'count', target: 11, format: (n) => `${Math.round(n)}K+` },
+    { id: 'users', label: 'EROgram users', type: 'count', target: totalUsers, format: (n) => Math.round(n).toLocaleString('en-US'), live: true },
     { id: 'telegram', label: 'Subscribers across our Telegram network', type: 'count', target: 30, format: (n) => `${Math.round(n)}K+` },
-    { id: 'creators', label: 'Listed Content Creators', type: 'count', target: 180, format: (n) => `${Math.round(n)}K+` },
+    { id: 'creators', label: 'Listed Content Creators', type: 'count', target: 1.8, format: (n) => `${n.toFixed(1)}M+` },
     { id: 'ainsfw', label: 'AI NSFW Tools Listed', type: 'count', target: aiNsfwCount, format: (n) => `${Math.round(n).toLocaleString()}+`, live: true },
     { id: 'groups', label: 'Adult Groups & Bots', type: 'count', target: groupsAndBotsCount, format: (n) => `${Math.round(n).toLocaleString()}+`, live: true },
   ];
@@ -61,8 +61,8 @@ function CountStatValue({
   const value = useCountUp(target, active);
   return (
     <span
-      className="font-[family-name:var(--font-baloo)] font-extrabold text-[1.05rem] sm:text-[1.15rem] leading-none tabular-nums shrink-0 w-[4.25rem] sm:w-[4.75rem]"
-      style={{ color: live ? ACCENT : '#F7F4EC' }}
+      className="font-black text-[1.05rem] sm:text-[1.15rem] leading-none tabular-nums shrink-0 min-w-[4.25rem] sm:min-w-[4.75rem]"
+      style={{ color: live ? ACCENT : '#fff' }}
     >
       {active ? format(value) : '—'}
     </span>
@@ -73,7 +73,7 @@ function StatValue({ stat, active }: { stat: StatDef; active: boolean }) {
   if (stat.type === 'text') {
     return (
       <span
-        className={`font-[family-name:var(--font-baloo)] font-extrabold text-[1.05rem] sm:text-[1.15rem] leading-none text-[#F7F4EC] shrink-0 w-[4.25rem] sm:w-[4.75rem] transition-opacity duration-500 ${active ? 'opacity-100' : 'opacity-0'}`}
+        className={`font-black text-[1.05rem] sm:text-[1.15rem] leading-none text-white shrink-0 w-[4.25rem] sm:w-[4.75rem] transition-opacity duration-500 ${active ? 'opacity-100' : 'opacity-0'}`}
       >
         {stat.text}
       </span>
@@ -90,11 +90,13 @@ function StatSkeleton() {
 export default function PartnershipStats({
   aiNsfwCount,
   groupsAndBotsCount,
+  totalUsers,
 }: {
   aiNsfwCount: number;
   groupsAndBotsCount: number;
+  totalUsers: number;
 }) {
-  const stats = buildStatDefs(aiNsfwCount, groupsAndBotsCount);
+  const stats = buildStatDefs(aiNsfwCount, groupsAndBotsCount, totalUsers);
   const [active, setActive] = useState(false);
 
   useEffect(() => {
@@ -104,17 +106,17 @@ export default function PartnershipStats({
 
   return (
     <section
-      className="mb-6 overflow-hidden rounded-xl border shadow-[0_16px_40px_-20px_rgba(10,22,40,0.55)]"
-      style={{ backgroundColor: NAVY, borderColor: 'rgba(147,197,253,0.18)' }}
+      className="mb-6 overflow-hidden rounded-2xl border border-[#22c55e]/15 shadow-[0_16px_40px_-20px_rgba(0,0,0,0.55)]"
+      style={{ backgroundColor: SURFACE }}
     >
       <div
-        className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-2.5 sm:px-5 border-b border-white/10"
+        className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-2.5 sm:px-5 border-b border-[#22c55e]/15"
         style={{ background: HEADER_BG }}
       >
         <span className="text-[9px] font-bold tracking-[0.28em] uppercase" style={{ color: ACCENT }}>
           Reach
         </span>
-        <h2 className="font-[family-name:var(--font-baloo)] font-extrabold text-[1rem] sm:text-[1.1rem] leading-none tracking-tight text-white">
+        <h2 className="font-black text-[1rem] sm:text-[1.1rem] leading-none tracking-tight text-white">
           EROGRAM in Numbers
         </h2>
       </div>
@@ -126,7 +128,7 @@ export default function PartnershipStats({
             className="flex items-center gap-2.5 px-3 py-2 sm:px-4 border-b border-white/[0.06] sm:[&:nth-child(odd)]:border-r sm:[&:nth-child(odd)]:border-white/[0.06]"
             style={{
               background: stat.live
-                ? 'linear-gradient(90deg, rgba(96,165,250,0.14) 0%, rgba(255,255,255,0.02) 70%)'
+                ? 'linear-gradient(90deg, rgba(34,197,94,0.14) 0%, rgba(255,255,255,0.02) 70%)'
                 : STAT_BG,
             }}
           >

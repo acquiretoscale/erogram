@@ -14,6 +14,7 @@ import { validateCoupon } from '@/lib/actions/coupons';
 import TrustedByLeaders from '@/app/advertise/TrustedByLeaders';
 import PromoAudienceProof from '@/app/promo/PromoAudienceProof';
 import InFeedAdFormatComparison from './InFeedAdFormatComparison';
+import PartnershipStats from '@/app/partnership/PartnershipStats';
 
 function planCheckoutPrice(plan: AINSFWPlan | null, couponResult: { valid?: boolean; discountedStars?: number } | null): number {
   if (couponResult?.valid && couponResult.discountedStars != null) {
@@ -62,7 +63,9 @@ const SUBMIT_FAQ: { q: string; a: ReactNode }[] = [
       <>
         <p>We receive dozens of requests daily to list AI tools for free in exchange for high affiliate commissions. Unfortunately, we don&apos;t offer commission-based listings.</p>
         <p className="mt-3">To keep EROGRAM fair and accessible to everyone, we&apos;ve intentionally priced our Basic plan as low as possible so great projects of all sizes can get listed.</p>
-        <p className="mt-3">If you&apos;re looking for a free option, we also offer free standard listings for eligible AI tools that display a small &quot;Featured on EROGRAM&quot; badge on their website&apos;s Footer or sidebar. All submissions are subject to editorial review.</p>
+        <p className="mt-3">If you&apos;re looking for a free option, we also offer free standard listings for eligible AI tools that display a small{' '}
+          <Link href="/partnership" className="text-[#4ade80] hover:underline">&quot;Featured on EROGRAM&quot; badge</Link>
+          {' '}on their website&apos;s Footer or sidebar. All submissions are subject to editorial review.</p>
       </>
     ),
   },
@@ -172,7 +175,9 @@ const SUBMIT_FAQ: { q: string; a: ReactNode }[] = [
     a: (
       <>
         <p>Yes.</p>
-        <p className="mt-3">Eligible AI tools can receive a free permanent listing by displaying a small &quot;Featured on EROGRAM&quot; badge on their website that links back to EROGRAM.</p>
+        <p className="mt-3">Eligible AI tools can receive a free permanent listing by displaying a small{' '}
+          <Link href="/partnership" className="text-[#4ade80] hover:underline">&quot;Featured on EROGRAM&quot; badge</Link>
+          {' '}on their website that links back to EROGRAM.</p>
         <p className="mt-3">This helps support our platform while giving your project long-term visibility at no cost. All free submissions are manually reviewed before approval.</p>
         <p className="mt-3">Free listings include a standard listing only. Featured placements, editorial reviews, homepage promotion, and premium advertising are available exclusively through our paid plans.</p>
       </>
@@ -423,38 +428,18 @@ function CompactHeroStats({
   );
 }
 
-function MobileSubmitStickyBar({
-  liveNow,
-  events,
-  onSubmit,
-}: {
-  liveNow: number | null;
-  events: VisitorEvent[];
-  onSubmit: () => void;
-}) {
+function MobileSubmitStickyBar({ onSubmit }: { onSubmit: () => void }) {
   return (
     <div
       className="fixed bottom-0 inset-x-0 z-40 md:hidden border-t border-[#22c55e]/30"
       style={{ background: 'linear-gradient(160deg, #04140c 0%, #0a2e1a 60%, #064e3b 100%)' }}
     >
-      <div className="flex items-center gap-2 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <div className="flex items-center px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse shrink-0" />
-            <p className="text-[9px] font-bold uppercase tracking-wide text-white/55 leading-tight">
-              People browsing Erogram right now
-            </p>
-          </div>
-          <div className="flex items-center gap-1 mt-0.5 min-h-[1.25rem]">
-            {events.length > 0 && <LiveVisitorFlags events={events.slice(0, 5)} size="sm" />}
-            <span className="text-sm font-black tabular-nums text-white leading-none">
-              {liveNow != null ? liveNow.toLocaleString() : '—'}
-            </span>
-          </div>
+          <GetListedPricingButton onClick={onSubmit} size="compact">
+            Submit
+          </GetListedPricingButton>
         </div>
-        <GetListedPricingButton onClick={onSubmit} size="compact">
-          Submit
-        </GetListedPricingButton>
       </div>
     </div>
   );
@@ -539,6 +524,7 @@ const BOOST_FEATURES: PlanFeature[] = [
 
 const STARTUP_FEATURES: PlanFeature[] = [
   { text: 'Verified badge to make your listing stand out.' },
+  { text: 'Video Cover for your listing (Get 10X more clicks)' },
   { text: 'Listing + Editorial Review (1,000+ words)' },
   { text: 'SEO & conversion-optimized listing' },
   {
@@ -565,7 +551,7 @@ const A_LA_CARTE_ADDONS = [
   {
     title: 'Telegram Boost',
     price: '$300',
-    description: '30-day promotion across our NSFW Telegram network (9 groups, 40,000+ subscribers), with 3 sponsored posts per week.',
+    description: '30-day promotion across our NSFW Telegram network (9 groups, 30,000+ subscribers), with 3 sponsored posts per week.',
   },
   {
     title: 'Pinned Telegram Posts',
@@ -673,7 +659,15 @@ type SubmitAutosave = {
   formStep: 'edit' | 'preview';
 };
 
-export default function AINSFWPricingClient() {
+export default function AINSFWPricingClient({
+  aiNsfwCount,
+  groupsAndBotsCount,
+  totalUsers,
+}: {
+  aiNsfwCount: number;
+  groupsAndBotsCount: number;
+  totalUsers: number;
+}) {
   const [username, setUsername] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<AINSFWPlan | null>(null);
   const [form, setForm] = useState<AINSFWFormData>({ ...emptyForm });
@@ -971,6 +965,12 @@ export default function AINSFWPricingClient() {
         <div className="mb-10 flex flex-col gap-8 sm:gap-10">
           <CompactHeroStats views={visitorStats.views} last30dAdClicks={visitorStats.last30dAdClicks} />
 
+          <PartnershipStats
+            aiNsfwCount={aiNsfwCount}
+            groupsAndBotsCount={groupsAndBotsCount}
+            totalUsers={totalUsers}
+          />
+
           <motion.h1
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1004,6 +1004,12 @@ export default function AINSFWPricingClient() {
                   <span className="shrink-0" style={{ color: ACCENT }}><Check /></span>
                   <span className="text-lg sm:text-xl text-white/70 leading-relaxed">
                     Reach <strong className="text-white">180,000+ Monthly Visitors</strong> Ready to Buy.
+                  </span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="shrink-0" style={{ color: ACCENT }}><Check /></span>
+                  <span className="text-lg sm:text-xl text-white/70 leading-relaxed">
+                    <strong className="text-white">1.8M+ content creators</strong>
                   </span>
                 </li>
                 <li className="flex items-start gap-3">
@@ -1408,6 +1414,9 @@ export default function AINSFWPricingClient() {
 
               {formStep === 'edit' && (
               <>
+              <p className="text-sm sm:text-base text-white/60 leading-relaxed -mt-1 mb-1">
+                All the details can be updated later from your listing management page.
+              </p>
               {/* Tool Name */}
               <div>
                 <label className="block text-sm sm:text-xs font-black uppercase tracking-widest text-[#4ade80] mb-1.5">Tool Name *</label>
@@ -1735,11 +1744,7 @@ export default function AINSFWPricingClient() {
 
       </main>
 
-      <MobileSubmitStickyBar
-        liveNow={visitorStats.liveNow}
-        events={visitorStats.events}
-        onSubmit={scrollToPricing}
-      />
+      <MobileSubmitStickyBar onSubmit={scrollToPricing} />
 
       <ErogramDevilGirlFooter variant="mascot-blended" />
       <Footer />

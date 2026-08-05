@@ -37,7 +37,8 @@ function getBackToTopTheme(pathname: string): BackToTopTheme {
     p.startsWith('/add/ainsfw') ||
     p.startsWith('/best-ai-nsfw-tools') ||
     p.startsWith('/promo') ||
-    p.startsWith('/advertise')
+    p.startsWith('/advertise') ||
+    p.startsWith('/promo')
   ) {
     return {
       bg: '#22c55e',

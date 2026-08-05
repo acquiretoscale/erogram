@@ -1,23 +1,17 @@
 'use client';
 
-import { useState } from 'react';
-import Image from 'next/image';
-import { EditorialMasthead, EditorialFooter } from '@/app/blog/EditorialChrome';
-import ErogramDevilGirlFooter from '@/components/ErogramDevilGirlFooter';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
+import ErogramDiscoveryBanner from '@/components/ErogramDiscoveryBanner';
 import PartnershipStats from './PartnershipStats';
 import { CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-const CREAM = '#F7F4EC';
-const NAVY = '#0a1628';
-const NAVY_LIGHT = '#1a2d4a';
-const PLUM = '#2B1B28';
-const INK = '#FDFDFD';
-const BODY = 'rgba(247,244,236,0.78)';
-const BODY_ON_LIGHT = '#4a4048';
-const BORDER = 'rgba(43,27,40,0.12)';
-const CARD_BG = 'linear-gradient(165deg, #152238 0%, #0a1628 100%)';
-const CARD_BORDER = 'rgba(147,197,253,0.14)';
-const ACCENT = '#60a5fa';
+const CTA = '#facc15';
+const BORDER = '3px solid #000000';
+const SHADOW = '4px 4px 0px #000000';
 
 /** Horizontal banner badges — native 1024×347 at 160px wide. */
 const BANNER_BADGE_WIDTH = 160;
@@ -33,7 +27,7 @@ const BADGES = [
     src: '/assets/featured-on-erogram-badge-black.png',
     width: BANNER_BADGE_WIDTH,
     height: BANNER_BADGE_HEIGHT,
-    previewBg: CREAM,
+    previewBg: '#ffffff',
   },
   {
     id: 'blue',
@@ -41,7 +35,7 @@ const BADGES = [
     src: '/assets/featured-on-erogram-badge-blue.png',
     width: BANNER_BADGE_WIDTH,
     height: BANNER_BADGE_HEIGHT,
-    previewBg: CREAM,
+    previewBg: '#ffffff',
   },
   {
     id: 'icon-light',
@@ -49,7 +43,7 @@ const BADGES = [
     src: '/assets/featured-on-erogram-badge-icon-light.png',
     width: ICON_BADGE_SIZE,
     height: ICON_BADGE_SIZE,
-    previewBg: CREAM,
+    previewBg: '#ffffff',
   },
   {
     id: 'icon-dark',
@@ -57,7 +51,7 @@ const BADGES = [
     src: '/assets/featured-on-erogram-badge-icon-dark.png',
     width: ICON_BADGE_SIZE,
     height: ICON_BADGE_SIZE,
-    previewBg: CREAM,
+    previewBg: '#1a1a1a',
   },
 ] as const;
 
@@ -69,7 +63,7 @@ function buildEmbedCode(src: string, width: number, height: number) {
 }
 
 const BENEFITS = [
-  'Permanent BOOST listing in the EROGRAM directory (regular price: $197).',
+  'Permanent BOOST listing in the EROGRAM directory (regular price: $147).',
   "Dofollow backlink to strengthen your website's authority.",
   'Additional mentions across guides, rankings, and category pages whenever relevant.',
   'Exposure to a growing audience actively searching for premium adult products and services.',
@@ -98,18 +92,11 @@ function SectionCard({
   className?: string;
 }) {
   return (
-    <section
-      className={`rounded-2xl border p-6 sm:p-8 shadow-[0_24px_60px_-24px_rgba(43,27,40,0.45)] ${className}`}
-      style={{ background: CARD_BG, borderColor: CARD_BORDER, color: CREAM }}
-    >
+    <section className={`bg-[#0a1f12] rounded-2xl border border-[#22c55e]/15 p-5 sm:p-7 mb-6 ${className}`}>
       {eyebrow && (
-        <div className="text-[10px] font-bold tracking-[0.3em] uppercase mb-3" style={{ color: ACCENT }}>
-          {eyebrow}
-        </div>
+        <p className="text-[10px] font-bold tracking-[0.32em] uppercase text-[#22c55e] mb-4">{eyebrow}</p>
       )}
-      <h2 className="font-[family-name:var(--font-baloo)] font-extrabold text-[1.65rem] sm:text-[2rem] leading-tight tracking-tight mb-5" style={{ color: CREAM }}>
-        {title}
-      </h2>
+      <h2 className="text-2xl sm:text-3xl font-black text-white mb-5">{title}</h2>
       {children}
     </section>
   );
@@ -150,8 +137,8 @@ function BadgeBlock({
   }
 
   return (
-    <div className="rounded-xl border overflow-hidden flex flex-col min-w-0 h-full" style={{ borderColor: BORDER, backgroundColor: CREAM }}>
-      <p className="text-[8px] sm:text-[9px] font-bold uppercase tracking-[0.2em] px-2 py-1.5 border-b truncate" style={{ color: PLUM, borderColor: BORDER }}>
+    <div className="rounded-xl border border-[#22c55e]/15 overflow-hidden flex flex-col min-w-0 h-full bg-[#04140c]">
+      <p className="text-[8px] sm:text-[9px] font-bold uppercase tracking-[0.2em] px-2 py-1.5 border-b border-[#22c55e]/15 text-[#22c55e] truncate">
         {label}
       </p>
       <div className="flex justify-center items-center py-2 px-1.5" style={{ backgroundColor: previewBg }}>
@@ -165,17 +152,14 @@ function BadgeBlock({
         />
       </div>
       <div className="p-2 flex flex-col gap-1.5 flex-1">
-        <pre
-          className="text-[7px] sm:text-[8px] leading-snug overflow-x-auto whitespace-pre-wrap break-all rounded-lg p-2 font-mono max-h-[64px] overflow-y-auto"
-          style={{ color: BODY_ON_LIGHT, backgroundColor: INK, border: `1px solid ${BORDER}` }}
-        >
+        <pre className="text-[7px] sm:text-[8px] leading-snug overflow-x-auto whitespace-pre-wrap break-all rounded-lg p-2 font-mono max-h-[64px] overflow-y-auto text-white/55 bg-black/30 border border-[#22c55e]/10">
           {embedCode}
         </pre>
         <button
           type="button"
           onClick={handleCopy}
-          className="w-full inline-flex items-center justify-center text-[8px] sm:text-[9px] font-bold tracking-[0.18em] uppercase rounded-full px-2 py-1.5 transition-opacity hover:opacity-90"
-          style={{ color: CREAM, backgroundColor: NAVY }}
+          className="w-full inline-flex items-center justify-center text-[8px] sm:text-[9px] font-black tracking-[0.18em] uppercase px-2 py-1.5 transition-all hover:brightness-105 active:translate-x-[1px] active:translate-y-[1px]"
+          style={{ color: '#000', background: CTA, border: BORDER, boxShadow: SHADOW }}
         >
           {copied ? 'Copied!' : 'Copy code'}
         </button>
@@ -187,70 +171,75 @@ function BadgeBlock({
 export default function PartnershipClient({
   aiNsfwCount,
   groupsAndBotsCount,
+  totalUsers,
 }: {
   aiNsfwCount: number;
   groupsAndBotsCount: number;
+  totalUsers: number;
 }) {
+  const [username, setUsername] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedUsername = localStorage.getItem('username');
+      if (storedUsername) setUsername(storedUsername);
+    }
+  }, []);
+
   return (
-    <div className="min-h-screen font-[family-name:var(--font-baloo)]" style={{ backgroundColor: CREAM, color: PLUM }}>
-      <EditorialMasthead />
+    <div className="ainsfw-page ainsfw-bg min-h-screen text-white">
+      <Navbar username={username} setUsername={setUsername} />
 
-      <main className="max-w-[900px] mx-auto px-6 sm:px-8">
-        <section className="pt-6 pb-6">
-          <div
-            className="w-full overflow-hidden rounded-2xl border bg-black"
-            style={{ borderColor: BORDER, boxShadow: '0 30px 80px -30px rgba(43,27,40,0.2)' }}
-          >
-            <Image
-              src="/assets/erogram-discovery-hub-banner.webp"
-              alt="EROGRAM Adult Entertainment Discovery Hub"
-              width={1024}
-              height={225}
-              priority
-              className="w-full h-auto block"
-            />
-          </div>
-        </section>
+      <div className="relative z-10 px-4 sm:px-6 py-3 sm:py-3.5 border-b border-[#22c55e]/15 bg-[#04140c]/80 backdrop-blur-xl mt-24 sm:mt-28">
+        <div className="max-w-6xl mx-auto flex items-center text-xs text-gray-500 gap-1.5">
+          <Link href="/" className="hover:text-white transition-colors shrink-0">Home</Link>
+          <span className="shrink-0">/</span>
+          <span className="text-white font-semibold truncate">EROgram Badge</span>
+        </div>
+      </div>
 
-        <section
-          className="pt-6 pb-8 rounded-2xl border px-6 sm:px-8 py-7 sm:py-8 mb-2"
-          style={{ background: CARD_BG, borderColor: CARD_BORDER, boxShadow: '0 24px 60px -24px rgba(43,27,40,0.45)' }}
+      <main className="max-w-6xl mx-auto px-5 sm:px-8 lg:px-12 pt-8 sm:pt-10 pb-8">
+        <ErogramDiscoveryBanner embedded edgeFade="corners" />
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-8 sm:mb-10"
         >
-          <div className="text-[10px] font-bold tracking-[0.32em] uppercase mb-3" style={{ color: ACCENT }}>
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/30 text-[#22c55e] text-xs font-bold uppercase tracking-[2px] mb-5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse" />
             Partnership Program
           </div>
-          <h1 className="font-[family-name:var(--font-baloo)] font-extrabold text-[2.6rem] sm:text-[3.4rem] leading-[0.98] tracking-tight mb-6" style={{ color: CREAM }}>
+          <h1 className="ainsfw-hero-title text-[44px] sm:text-[64px] md:text-[76px] mb-4">
             EROgram Badge.
           </h1>
-          <p className="text-[16px] sm:text-[17px] leading-[1.75] max-w-2xl" style={{ color: BODY }}>
+          <p className="text-white/50 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
             Display a small Featured on EROGRAM badge on your website and unlock free exposure across one of the fastest-growing adult discovery platforms.
           </p>
-        </section>
+        </motion.div>
 
-        <PartnershipStats aiNsfwCount={aiNsfwCount} groupsAndBotsCount={groupsAndBotsCount} />
+        <PartnershipStats aiNsfwCount={aiNsfwCount} groupsAndBotsCount={groupsAndBotsCount} totalUsers={totalUsers} />
 
-        <SectionCard eyebrow="Benefits" title="What You Get" className="mb-6">
+        <SectionCard eyebrow="Benefits" title="What You Get">
           <ul className="space-y-3">
             {BENEFITS.map((item) => (
-              <li key={item} className="flex items-start gap-3 text-[15px] leading-[1.65]" style={{ color: BODY }}>
-                <span className="mt-[7px] shrink-0 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ACCENT }} />
+              <li key={item} className="flex items-start gap-3 text-[15px] leading-[1.65] text-white/70">
+                <span className="mt-[7px] shrink-0 w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
                 <span>{item}</span>
               </li>
             ))}
           </ul>
         </SectionCard>
 
-        <SectionCard eyebrow="Open to" title="Who Can Apply?" className="mb-6">
-          <p className="text-[15px] leading-[1.7] mb-5" style={{ color: BODY }}>
+        <SectionCard eyebrow="Open to" title="Who Can Apply?">
+          <p className="text-[15px] leading-[1.7] mb-5 text-white/70">
             This program is open to businesses across the adult digital ecosystem, including:
           </p>
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3">
             {APPLICANTS.map((item) => (
-              <li key={item} className="flex items-start gap-2.5 text-[14px] sm:text-[15px] leading-snug" style={{ color: BODY }}>
-                <span
-                  className="mt-0.5 shrink-0 flex h-5 w-5 items-center justify-center rounded-full"
-                  style={{ backgroundColor: 'rgba(96,165,250,0.18)', color: ACCENT }}
-                >
+              <li key={item} className="flex items-start gap-2.5 text-[14px] sm:text-[15px] leading-snug text-white/70">
+                <span className="mt-0.5 shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-[#22c55e]/15 text-[#22c55e]">
                   <CheckIcon />
                 </span>
                 <span>{item}</span>
@@ -259,19 +248,16 @@ export default function PartnershipClient({
           </ul>
         </SectionCard>
 
-        <SectionCard eyebrow="Get started" title="How to Apply" className="mb-6">
-          <p className="text-[15px] leading-[1.75] mb-8" style={{ color: BODY }}>
+        <SectionCard eyebrow="Get started" title="How to Apply">
+          <p className="text-[15px] leading-[1.75] mb-8 text-white/70">
             Choose one of the Featured on EROGRAM badges below and add the embedded code to your footer, sidebar, or Partners page (recommended for larger websites). Once it&apos;s live, send us an email at{' '}
-            <a href="mailto:isabella@erogram.biz" className="font-semibold underline underline-offset-2 transition-opacity hover:opacity-70" style={{ color: ACCENT }}>
+            <a href="mailto:isabella@erogram.biz" className="font-semibold text-[#4ade80] underline underline-offset-2 transition-opacity hover:opacity-70">
               isabella@erogram.biz
             </a>
             . If approved, we&apos;ll happily return the favor with your free listing or editorial coverage.
           </p>
 
-          <div
-            className="overflow-x-auto -mx-1 px-1 pb-1 rounded-xl p-3 sm:p-4"
-            style={{ backgroundColor: CREAM, border: `1px solid ${BORDER}` }}
-          >
+          <div className="overflow-x-auto -mx-1 px-1 pb-1 rounded-xl p-3 sm:p-4 bg-[#04140c] border border-[#22c55e]/15">
             <div className="grid grid-cols-4 gap-2 sm:gap-3 min-w-[720px]">
               {BADGES.map((badge) => (
                 <BadgeBlock key={badge.id} {...badge} />
@@ -280,24 +266,15 @@ export default function PartnershipClient({
           </div>
         </SectionCard>
 
-        <section
-          className="rounded-2xl border px-6 py-5 sm:px-8 sm:py-6 mb-16 sm:mb-20"
-          style={{ background: CARD_BG, borderColor: CARD_BORDER, boxShadow: '0 24px 60px -24px rgba(43,27,40,0.45)' }}
-        >
-          <h2 className="font-[family-name:var(--font-baloo)] font-extrabold text-[1.15rem] sm:text-[1.25rem] mb-2" style={{ color: CREAM }}>
-            Eligibility
-          </h2>
-          <p className="text-[14px] sm:text-[15px] leading-[1.7]" style={{ color: BODY }}>
+        <section className="bg-[#0a1f12] rounded-2xl border border-[#22c55e]/15 p-5 sm:p-7 mb-16 sm:mb-20">
+          <h2 className="text-xl sm:text-2xl font-black text-white mb-2">Eligibility</h2>
+          <p className="text-[14px] sm:text-[15px] leading-[1.7] text-white/70">
             We reserve the right to decline any application that we believe could negatively impact the EROGRAM brand or our users.
           </p>
         </section>
       </main>
 
-      <ErogramDevilGirlFooter variant="mascot-blended" className="px-0" fadeColor={CREAM} softBlend fullWidth />
-
-      <div style={{ background: 'linear-gradient(to bottom, #3d2538 0%, #2B1B28 100%)' }}>
-        <EditorialFooter />
-      </div>
+      <Footer />
     </div>
   );
 }

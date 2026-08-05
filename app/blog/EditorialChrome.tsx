@@ -206,7 +206,7 @@ function LiveVisitorBar() {
         .catch(() => {});
     };
     fetchCount();
-    const id = setInterval(fetchCount, 300_000);
+    const id = setInterval(fetchCount, 5_000);
     return () => clearInterval(id);
   }, []);
 
@@ -995,10 +995,10 @@ export function EditorialFooter() {
           </FooterCol>
 
           <FooterCol label="COMPANY">
-            <FooterLink href={lp('/advertise')}>Advertise with us</FooterLink>
+            <FooterLink href={lp('/promo')}>Advertise with us</FooterLink>
+            <FooterLink href={lp('/partnership')}>Get EROgram Badge</FooterLink>
             <FooterLink href={lp('/about')}>About</FooterLink>
             <FooterLink href={lp('/contact')}>Contact</FooterLink>
-            <FooterLink href={lp('/partnership')}>EROgram Badge</FooterLink>
           </FooterCol>
 
           <FooterCol label="Trust &amp; Legal">

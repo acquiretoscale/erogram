@@ -182,7 +182,7 @@ export default function LazyClickableVideoAd({
 
       {sponsored && (
         <Link
-          href="/advertise"
+          href="/promo"
           className="absolute bottom-2 right-3 z-10 text-[9px] font-medium text-white/40 hover:text-white/60 transition-colors drop-shadow-sm"
         >
           Sponsored

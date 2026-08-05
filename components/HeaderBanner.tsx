@@ -70,7 +70,7 @@ export default function HeaderBanner({ campaigns = [], className = '', placement
             />
           </a>
           <a
-            href="/advertise"
+            href="/promo"
             className="absolute bottom-1 right-1.5 text-[9px] font-medium text-white/40 hover:text-white/60 transition-colors drop-shadow-sm"
           >
             Sponsored
