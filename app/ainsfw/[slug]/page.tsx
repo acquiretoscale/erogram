@@ -6,7 +6,7 @@ import CategoryClient from '@/app/ainsfw/[slug]/CategoryClient';
 import { getBlogArticlesByCategory } from '@/lib/actions/blog';
 import type { BlogCard } from '@/lib/actions/blog';
 import { AINsfwSubmission } from '@/lib/models';
-import type { AINsfwTool } from '@/app/ainsfw/types';
+import type { AINsfwTool, AINsfwToolCategory } from '@/app/ainsfw/types';
 import ToolDetailClient from '@/app/ainsfw/[slug]/ToolDetailClient';
 import { getFullReview, getVerifiedSlugs, isPaidClientTool } from '@/app/ainsfw/fullReviews';
 import { getListingBlocks } from '@/app/ainsfw/listingBlocks';
@@ -49,7 +49,7 @@ function mapSubmissionToTool(d: {
   return {
     slug: d.slug || toolSlug(d.category, d.name),
     name: d.name,
-    category: d.category,
+    category: d.category as AINsfwToolCategory,
     vendor: d.vendor || d.name,
     description: d.description || '',
     image: d.image || '/assets/image.jpg',
@@ -57,7 +57,7 @@ function mapSubmissionToTool(d: {
     subscription: d.subscription || '',
     payment: d.payment || [],
     tryNowUrl: d.tryNowUrl || d.websiteUrl || '',
-    sourceUrl: d.websiteUrl,
+    sourceUrl: d.websiteUrl || '',
   };
 }
 
