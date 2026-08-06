@@ -575,10 +575,10 @@ function CreatorPromoSquare() {
         window.cancelIdleCallback(id);
       };
     }
-    const t = window.setTimeout(run, 1200);
+    const t = setTimeout(run, 1200);
     return () => {
       cancelled = true;
-      window.clearTimeout(t);
+      clearTimeout(t);
     };
   }, []);
 
@@ -1131,10 +1131,10 @@ export default function CreatorProfileClient({
         window.cancelIdleCallback(id);
       };
     }
-    const t = window.setTimeout(run, 800);
+    const t = setTimeout(run, 800);
     return () => {
       cancelled = true;
-      window.clearTimeout(t);
+      clearTimeout(t);
     };
   }, [creator.slug]);
 
