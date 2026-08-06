@@ -103,10 +103,16 @@ export async function generateCreatorProfileMetadata(
         ? creator.avatar
         : undefined;
 
+  // Index ONLY explicit publicPage profiles. All other creator URLs (~11K) stay noindex.
+  const isPublicIndexable = creator.publicPage === true;
+
   return {
     title: titleTemplates[locale] || titleTemplates.en,
     description: desc,
     keywords: `${name} OnlyFans, @${username} OnlyFans, ${primaryCat} OnlyFans creator, OnlyFans profile, ${creator.categories.join(', ')}, best OnlyFans 2026`,
+    robots: isPublicIndexable
+      ? { index: true, follow: true }
+      : { index: false, follow: false },
     other: { rating: 'adult' },
     alternates: { canonical: pageUrl },
     ...buildSocialMeta({

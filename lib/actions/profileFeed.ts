@@ -576,3 +576,62 @@ export async function getCreatorMediaEngagement(
     }),
   };
 }
+
+export async function getBatchMediaEngagement(
+  token: string | null,
+  items: { creatorId: string; type: 'photo' | 'video'; url: string }[],
+): Promise<{ ok: boolean; items: CreatorMediaEngagement[] }> {
+  const valid = items.filter((i) => i.creatorId && i.url?.startsWith('http'));
+  if (!valid.length) return { ok: true, items: [] };
+
+  await connectDB();
+  const userId = token ? await getUserIdFromToken(token) : null;
+  const mediaKeys = valid.map((i) => mediaKeyFor(i.creatorId, i.type, i.url));
+
+  const [likeCounts, userLikes, commentCounts, commentRows] = await Promise.all([
+    ProfileFeedLike.aggregate([
+      { $match: { mediaKey: { $in: mediaKeys } } },
+      { $group: { _id: '$mediaKey', count: { $sum: 1 } } },
+    ]),
+    userId
+      ? ProfileFeedLike.find({ mediaKey: { $in: mediaKeys }, userId }).select('mediaKey').lean()
+      : Promise.resolve([]),
+    ProfileFeedComment.aggregate([
+      { $match: { mediaKey: { $in: mediaKeys }, status: 'approved' } },
+      { $group: { _id: '$mediaKey', count: { $sum: 1 } } },
+    ]),
+    ProfileFeedComment.find({ mediaKey: { $in: mediaKeys }, status: 'approved', author: { $ne: null } })
+      .sort({ createdAt: 1 })
+      .limit(mediaKeys.length * COMMENTS_PER_POST)
+      .lean(),
+  ]);
+
+  const likeMap = new Map(likeCounts.map((r: any) => [r._id, r.count]));
+  const commentMap = new Map(commentCounts.map((r: any) => [r._id, r.count]));
+  const likedSet = new Set((userLikes as any[]).map((r) => r.mediaKey));
+
+  const commentsByKey = new Map<string, ProfileFeedCommentItem[]>();
+  for (const row of commentRows as any[]) {
+    const key = row.mediaKey as string;
+    const list = commentsByKey.get(key) || [];
+    if (list.length >= COMMENTS_PER_POST) continue;
+    list.push(mapCommentRow(row));
+    commentsByKey.set(key, list);
+  }
+
+  return {
+    ok: true,
+    items: valid.map((item) => {
+      const mediaKey = mediaKeyFor(item.creatorId, item.type, item.url);
+      return {
+        mediaKey,
+        type: item.type,
+        url: item.url,
+        likeCount: likeMap.get(mediaKey) || 0,
+        commentCount: commentMap.get(mediaKey) || 0,
+        liked: likedSet.has(mediaKey),
+        comments: commentsByKey.get(mediaKey) || [],
+      };
+    }),
+  };
+}

@@ -2,6 +2,9 @@
 
 import jwt from 'jsonwebtoken';
 import { sendMail, escapeHtml } from '@/lib/email/sendMail';
+import connectDB from '@/lib/db/mongodb';
+import { EmailTemplate } from '@/lib/models';
+import { EMAIL_TEMPLATES, EMAIL_TEMPLATE_IDS, getEmailTemplateCopy, isEmailTemplateId } from '@/lib/email/templates';
 
 const JWT_SECRET = process.env.JWT_SECRET || '';
 
@@ -39,6 +42,49 @@ export async function getEmailConfigStatus(token: string): Promise<EmailConfigSt
   if (!from) missing.push('MAIL_FROM');
 
   return { configured: missing.length === 0, host, port, user, from, missing };
+}
+
+export interface EmailTemplateRow {
+  id: string;
+  label: string;
+  subject: string;
+  body: string;
+  vars: string[];
+}
+
+export async function getEmailTemplates(token: string): Promise<EmailTemplateRow[] | { error: string }> {
+  if (!verifyAdmin(token)) return { error: 'Unauthorized' };
+
+  const rows: EmailTemplateRow[] = [];
+  for (const id of EMAIL_TEMPLATE_IDS) {
+    const copy = await getEmailTemplateCopy(id);
+    rows.push({
+      id,
+      label: EMAIL_TEMPLATES[id].label,
+      subject: copy.subject,
+      body: copy.body,
+      vars: [...EMAIL_TEMPLATES[id].vars],
+    });
+  }
+  return rows;
+}
+
+export async function saveEmailTemplate(
+  token: string,
+  id: string,
+  subject: string,
+  body: string,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!verifyAdmin(token)) return { ok: false, error: 'Unauthorized' };
+  if (!isEmailTemplateId(id)) return { ok: false, error: 'Unknown template.' };
+
+  await connectDB();
+  await EmailTemplate.findOneAndUpdate(
+    { templateId: id },
+    { $set: { subject: subject ?? '', body: body ?? '' } },
+    { upsert: true },
+  );
+  return { ok: true };
 }
 
 export async function sendTestEmail(

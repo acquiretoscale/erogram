@@ -118,7 +118,7 @@ export const groupSchema = new Schema(
     featuredAt: { type: Date, default: null },
     boosted: { type: Boolean, default: false },
     boostExpiresAt: { type: Date, default: null },
-    boostDuration: { type: String, enum: ['1d', '7d', '14d', '30d', 'lifetime', null], default: null },
+    boostDuration: { type: String, enum: ['1d', '7d', '10d', '14d', '30d', 'lifetime', null], default: null },
     paidBoost: { type: Boolean, default: false },
     paidBoostStars: { type: Number, default: null },
     lastPaymentChargeId: { type: String, default: null },
@@ -1426,3 +1426,12 @@ couponUsageSchema.index({ couponId: 1 });
 couponUsageSchema.index({ userId: 1 });
 
 export const CouponUsage = models.CouponUsage || model('CouponUsage', couponUsageSchema);
+
+// EmailTemplate — admin-editable subject/body for automatic emails (approvals, renewals)
+const emailTemplateSchema = new Schema({
+  templateId: { type: String, required: true, unique: true },
+  subject: { type: String, default: '' },
+  body: { type: String, default: '' },
+}, { timestamps: true });
+
+export const EmailTemplate = models.EmailTemplate || model('EmailTemplate', emailTemplateSchema);

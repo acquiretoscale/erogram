@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import { User } from '@/lib/models';
 import { sendMail } from '@/lib/email/sendMail';
+import { renderEmailTemplate } from '@/lib/email/templates';
 import { CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
@@ -17,23 +18,6 @@ function getUserIdFromToken(token: string): string | null {
   } catch {
     return null;
   }
-}
-
-function verificationEmailHtml(link: string) {
-  return `
-    <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;">
-      <h2 style="color:#111;margin:0 0 12px;">Confirm your email</h2>
-      <p style="color:#444;font-size:14px;line-height:1.5;">
-        Tap the button below to verify your email address on Erogram.
-      </p>
-      <a href="${link}" style="display:inline-block;margin:16px 0;padding:12px 24px;background:#00AFF0;color:#fff;text-decoration:none;font-weight:bold;border-radius:8px;">
-        Verify email
-      </a>
-      <p style="color:#888;font-size:12px;">
-        This link expires in 24 hours. If you didn't create an Erogram account, ignore this email.
-      </p>
-    </div>
-  `;
 }
 
 export async function sendVerificationEmail(userId: string): Promise<{ ok: boolean; error?: string }> {
@@ -49,13 +33,15 @@ export async function sendVerificationEmail(userId: string): Promise<{ ok: boole
   await user.save();
 
   const link = `${CANONICAL_BASE}/verify-email?token=${rawToken}`;
-  const result = await sendMail({
+  const rendered = await renderEmailTemplate('email-verify', { verifyUrl: link });
+  if (!rendered) return { ok: false, error: 'Verification email template is empty' };
+
+  return sendMail({
     to: user.email,
-    subject: 'Confirm your Erogram email',
-    html: verificationEmailHtml(link),
-    text: `Verify your email: ${link}`,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
   });
-  return result;
 }
 
 export async function resendVerificationEmail(authToken: string): Promise<{ ok: boolean; error?: string }> {

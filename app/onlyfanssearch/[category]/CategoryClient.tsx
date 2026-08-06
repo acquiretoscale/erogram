@@ -15,7 +15,7 @@ import {
 import { OF_SEARCH_TOKENS, ofSearchNavProps } from '@/app/onlyfanssearch/ofSearchTokens';
 import { trackCreatorClick, trackTrendingClick } from '@/lib/actions/onlyfansTracking';
 import { getTrendingCreators } from '@/lib/actions/publicData';
-import { browseCreators, deleteCreatorBySlug } from '@/lib/actions/ofCreatorsBrowse';
+import { browseCreators, browseCategoryCreators, deleteCreatorBySlug } from '@/lib/actions/ofCreatorsBrowse';
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
 import type { FeedCampaign } from '@/app/groups/types';
 import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
@@ -242,6 +242,9 @@ export default function CategoryClient({ creators: initialCreators, category, la
   const [afterCategoryCreators, setAfterCategoryCreators] = useState<Creator[]>([]);
   const [afterCategoryLoading, setAfterCategoryLoading] = useState(false);
   const [afterCategoryHasMore, setAfterCategoryHasMore] = useState(true);
+  const [categoryHasMore, setCategoryHasMore] = useState(initialCreators.length >= 12);
+  const [categoryLoading, setCategoryLoading] = useState(false);
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setResultsView(loadOfSearchResultsView());
@@ -323,6 +326,27 @@ export default function CategoryClient({ creators: initialCreators, category, la
     return list;
   }, [creators]);
 
+  const loadMoreCategory = useCallback(async () => {
+    if (categoryLoading || !categoryHasMore) return;
+    setCategoryLoading(true);
+
+    try {
+      const res = await browseCategoryCreators(category, creators.length, 12);
+      if (res.creators.length) {
+        setCreators((prev) => {
+          const existingIds = new Set(prev.map((c) => c._id));
+          const fresh = (res.creators as unknown as Creator[]).filter((c) => !existingIds.has(c._id));
+          return fresh.length ? [...prev, ...fresh] : prev;
+        });
+      }
+      setCategoryHasMore(res.hasMore);
+    } catch (e) {
+      console.error('Failed to load more category creators:', e);
+    } finally {
+      setCategoryLoading(false);
+    }
+  }, [categoryLoading, categoryHasMore, category, creators.length]);
+
   const loadMoreAfterCategory = useCallback(async () => {
     if (afterCategoryLoading || !afterCategoryHasMore) return;
     setAfterCategoryLoading(true);
@@ -350,19 +374,32 @@ export default function CategoryClient({ creators: initialCreators, category, la
   }, [afterCategoryLoading, afterCategoryHasMore, creators, afterCategoryCreators]);
 
   useEffect(() => {
-    const handleScroll = () => {
-      if (
-        window.innerHeight + window.scrollY >= document.body.offsetHeight - 800 &&
-        !afterCategoryLoading &&
-        afterCategoryHasMore
-      ) {
-        loadMoreAfterCategory();
-      }
-    };
+    const el = loadMoreSentinelRef.current;
+    if (!el) return;
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [loadMoreAfterCategory, afterCategoryLoading, afterCategoryHasMore]);
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        if (categoryHasMore && !categoryLoading) {
+          void loadMoreCategory();
+        } else if (afterCategoryHasMore && !afterCategoryLoading) {
+          void loadMoreAfterCategory();
+        }
+      },
+      { rootMargin: '320px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [
+    categoryHasMore,
+    categoryLoading,
+    loadMoreCategory,
+    afterCategoryHasMore,
+    afterCategoryLoading,
+    loadMoreAfterCategory,
+    creators.length,
+    afterCategoryCreators.length,
+  ]);
 
   return (
     <div className="min-h-screen bg-[#111111] text-[#f5f5f5]">
@@ -622,7 +659,9 @@ export default function CategoryClient({ creators: initialCreators, category, la
                 </motion.div>
               ))}
 
-              {afterCategoryLoading &&
+              <div ref={loadMoreSentinelRef} className="h-1 w-full" aria-hidden />
+
+              {(categoryLoading || afterCategoryLoading) &&
                 Array.from({ length: 10 }, (_, i) => (
                   <div key={`skeleton-${i}`} className="rounded-2xl bg-white overflow-hidden shadow-md animate-pulse">
                     <div className="aspect-[3/4] bg-gray-200" />

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Check, Crown } from 'lucide-react';
 import { useLocalePath, useTranslation } from '@/lib/i18n/client';
-import type { ProfilePremiumPriceFilter } from '@/lib/actions/ofCreatorsBrowse';
+import type { ProfilePremiumPriceFilter } from '@/lib/actions/ofCreatorsBrowse.shared';
 import { getHeroFilterSilos, type BrowseFilterItem } from '@/app/onlyfanssearch/onlyfansBrowseFilterData';
 
 function TickBox({ checked }: { checked: boolean }) {

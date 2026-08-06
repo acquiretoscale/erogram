@@ -1,15 +1,13 @@
 import { Metadata } from 'next';
 import { notFound, redirect, permanentRedirect } from 'next/navigation';
-import connectDB from '@/lib/db/mongodb';
-import { OnlyFansCreator } from '@/lib/models';
 import CategoryClient from '@/app/onlyfanssearch/[category]/CategoryClient';
 import { OF_CATEGORY_SLUGS, OF_CATEGORY_MAP, ofCategoryUrl } from '@/app/onlyfanssearch/constants';
 import { getLocale } from '@/lib/i18n/server';
 import { categoryOfMeta } from '@/app/onlyfanssearch/ofMeta';
 import { getKeywordPlacementCampaigns } from '@/lib/actions/campaigns';
+import { browseCategoryCreators } from '@/lib/actions/ofCreatorsBrowse';
 import { bestOfSlugFromPublicPath } from '@/lib/bestOfPageContent/hottestUrls';
 import BestOfPageView, { buildBestOfMetadata } from '@/app/best-onlyfans-accounts/BestOfPageView';
-import { buildSlugCreatorMatch } from '@/lib/tags/creatorMatch';
 import { isReservedOnlyfanssearchSegment, ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
 import { COMBO_BEST_OF_MAP } from '@/lib/onlyfans/categoryComboPills';
 import {
@@ -99,29 +97,8 @@ export default async function OnlyFansSlugPage({ params }: PageProps) {
     notFound();
   }
 
-  await connectDB();
-
-  const baseMatch = buildSlugCreatorMatch(rawSlug);
-
-  // Stable ranked list — same top creators on every crawl (clicks → likes → _id
-  // as a deterministic tiebreak). Mirrors the curated-list approach that keeps
-  // /best-telegram-groups ranking. Client default sort is also clicks-desc, so
-  // server HTML and first client render agree (no reshuffle on hydration).
-  const creators = await OnlyFansCreator.find(baseMatch)
-    .sort({ clicks: -1, likesCount: -1, _id: 1 })
-    .limit(200)
-    .select('name username slug avatar header bio subscriberCount likesCount photosCount videosCount price isFree isVerified url clicks')
-    .lean();
-
-  const seen = new Set<string>();
-  const serialized = (creators as any[])
-    .map(serializeCreator)
-    .filter((c) => {
-      const key = c.username.toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+  const { creators: pageCreators } = await browseCategoryCreators(rawSlug, 0, 12);
+  const serialized = (pageCreators as any[]).map(serializeCreator);
 
   // Unified Ad Network: keyword-targeted of-cat campaigns for this category.
   // onlyfans-creator ads → the paid featured strip (route straight to OnlyFans);

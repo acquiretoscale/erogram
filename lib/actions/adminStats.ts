@@ -92,7 +92,7 @@ export async function getLatestSale(token: string, since: number) {
 
   const [saleEvent, newUser] = await Promise.all([
     PremiumEvent.findOne({
-      event: { $in: ['payment_success', 'crypto_payment_success'] },
+      event: { $in: ['payment_success', 'crypto_payment_success', 'submission_payment_success', 'featured_creator_payment_success'] },
       createdAt: { $gt: sinceDate },
     }).sort({ createdAt: -1 }).lean() as any,
 
@@ -102,10 +102,24 @@ export async function getLatestSale(token: string, since: number) {
     }).sort({ createdAt: -1 }).lean() as any,
   ]);
 
+  const salePlan = saleEvent
+    ? (saleEvent.plan
+      || (saleEvent.entityType && saleEvent.tier ? `${saleEvent.entityType}_${saleEvent.tier}` : null)
+      || (saleEvent.event === 'featured_creator_payment_success' ? 'featured_creator' : null))
+    : null;
+  const saleMethod = saleEvent
+    ? (saleEvent.paymentMethod
+      || (saleEvent.event === 'crypto_payment_success'
+        || saleEvent.event === 'submission_payment_success'
+        || saleEvent.event === 'featured_creator_payment_success'
+        ? 'crypto'
+        : 'stars'))
+    : null;
+
   return {
     sale: saleEvent ? {
-      plan: saleEvent.plan,
-      method: saleEvent.paymentMethod || (saleEvent.event === 'crypto_payment_success' ? 'crypto' : 'stars'),
+      plan: salePlan,
+      method: saleMethod,
       username: saleEvent.username || null,
       at: saleEvent.createdAt,
     } : null,
@@ -131,7 +145,7 @@ export async function getAdminNotifications(token: string) {
     Report.find({ status: 'pending' }).sort({ createdAt: -1 }).limit(20).select('reason createdAt groupDetails').lean(),
     Group.find({ status: 'pending' }).sort({ createdAt: -1 }).limit(20).select('name createdAt createdByUsername').lean(),
     User.find({ createdAt: { $gte: since48h } }).sort({ createdAt: -1 }).limit(20).select('username firstName premium createdAt country').lean(),
-    PremiumEvent.find({ event: { $in: ['payment_success', 'crypto_payment_success'] }, createdAt: { $gte: since7d } }).sort({ createdAt: -1 }).limit(20).select('plan paymentMethod createdAt userId').populate('userId', 'username firstName').lean(),
+    PremiumEvent.find({ event: { $in: ['payment_success', 'crypto_payment_success', 'submission_payment_success', 'featured_creator_payment_success'] }, createdAt: { $gte: since7d } }).sort({ createdAt: -1 }).limit(20).select('plan paymentMethod createdAt userId entityType tier paymentMethod').populate('userId', 'username firstName').lean(),
     Bot.find({ createdAt: { $gte: since48h }, status: { $ne: 'pending' } }).sort({ createdAt: -1 }).limit(20).select('name createdAt paidBoost').lean(),
   ]);
 
@@ -156,7 +170,9 @@ export async function getAdminNotifications(token: string) {
   for (const sale of recentSales as any[]) {
     const buyer = sale.userId as any;
     const name = buyer?.firstName || buyer?.username || 'Unknown';
-    notifs.push({ id: `sale-${sale._id}`, type: 'new_sale', title: `New ${sale.plan || 'premium'} subscription`, subtitle: `by ${name} via ${sale.paymentMethod || 'stars'}`, href: '/admin/premium', color: '#10b981', icon: 'star', createdAt: sale.createdAt, urgent: false });
+    const saleLabel = sale.plan
+      || (sale.entityType && sale.tier ? `${sale.entityType} ${sale.tier}` : 'premium');
+    notifs.push({ id: `sale-${sale._id}`, type: 'new_sale', title: `New ${saleLabel} sale`, subtitle: sale.entityType ? `${saleLabel} via ${sale.paymentMethod || 'crypto'}` : `by ${name} via ${sale.paymentMethod || 'stars'}`, href: '/admin/premium', color: '#10b981', icon: 'star', createdAt: sale.createdAt, urgent: false });
   }
   for (const u of recentUsers as any[]) {
     const userName = u.firstName || u.username || 'Anonymous';

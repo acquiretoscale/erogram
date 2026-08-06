@@ -251,7 +251,7 @@ export async function getCreatorByUsername(username: string): Promise<CreatorPro
   }
 }
 
-const RELATED_SELECT = 'name username slug avatar header categories subscriberCount likesCount photosCount videosCount price isFree isVerified url location';
+const RELATED_SELECT = 'name username slug avatar avatarThumbC50 avatarThumbC144 header categories subscriberCount likesCount photosCount videosCount price isFree isVerified url location';
 
 function mapRelatedCreator(c: any): CreatorProfile {
   return {
@@ -261,8 +261,8 @@ function mapRelatedCreator(c: any): CreatorProfile {
     slug: c.slug || '',
     bio: '',
     avatar: c.avatar || '',
-    avatarThumbC50: '',
-    avatarThumbC144: '',
+    avatarThumbC50: c.avatarThumbC50 || '',
+    avatarThumbC144: c.avatarThumbC144 || '',
     header: c.header || '',
     categories: c.categories || [],
     subscriberCount: c.subscriberCount || 0,

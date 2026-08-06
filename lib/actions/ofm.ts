@@ -3,6 +3,9 @@
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import { User, OnlyFansCreator, TrendingOFCreator, TrendingClickDaily, TrendingErogram, Campaign } from '@/lib/models';
+import { sendMail } from '@/lib/email/sendMail';
+import { renderEmailTemplate } from '@/lib/email/templates';
+import { CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -315,9 +318,35 @@ export async function updateOFMPendingCreatorStatus(
 ) {
   if (!(await authenticateAdmin(token))) throw new Error('Unauthorized');
   await connectDB();
-  const doc = await OnlyFansCreator.findByIdAndUpdate(id, { $set: { submissionStatus: status } }, { new: true }).lean();
+  const previous = await OnlyFansCreator.findById(id).select('submissionStatus').lean() as any;
+  const doc = await OnlyFansCreator.findByIdAndUpdate(id, { $set: { submissionStatus: status } }, { new: true }).lean() as any;
   if (!doc) throw new Error('Not found');
+
+  if (status === 'approved' && previous?.submissionStatus !== 'approved') {
+    await sendCreatorApprovedEmail(doc);
+  }
+
   return { success: true };
+}
+
+/** Fire-and-forget: a mail problem must never block an approval. */
+async function sendCreatorApprovedEmail(creator: any): Promise<void> {
+  try {
+    if (!creator.submittedBy) return;
+    const submitter = await User.findById(creator.submittedBy).select('email').lean() as any;
+    const to = (submitter?.email || '').trim();
+    if (!to) return;
+
+    const rendered = await renderEmailTemplate('creator-approved', {
+      creatorName: creator.name || creator.username || '',
+      profileUrl: `${CANONICAL_BASE}/onlyfanssearch/${creator.username || ''}`,
+    });
+    if (!rendered) return;
+
+    await sendMail({ to, subject: rendered.subject, html: rendered.html, text: rendered.text });
+  } catch (e) {
+    console.error('[email] creator-approved failed:', e);
+  }
 }
 
 export async function editOFMPendingCreator(

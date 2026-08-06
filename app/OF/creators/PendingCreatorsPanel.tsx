@@ -300,6 +300,16 @@ export default function PendingCreatorsPanel() {
                       </td>
                       <td className="px-4 py-3 sticky right-0 bg-[#0c1116]">
                         <div className="flex flex-col gap-1.5 min-w-[120px]">
+                          {c.username && (
+                            <a
+                              href={ofCreatorProfileUrl(c.username)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-1.5 rounded-lg bg-[#00AFF0]/15 hover:bg-[#00AFF0]/25 border border-[#00AFF0]/30 text-[#00AFF0] text-xs font-bold transition text-center"
+                            >
+                              View on Erogram
+                            </a>
+                          )}
                           {c.submissionStatus !== 'approved' && (
                             <button
                               type="button"

@@ -1,43 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import connectDB from '@/lib/db/mongodb';
-import { User, Group, Bot, AINsfwSubmission, OnlyFansCreator, PremiumEvent } from '@/lib/models';
-import { notifyAdminsOfSale } from '@/lib/utils/notifyAdmins';
-import { getPremiumPricing } from '@/lib/premiumPricing';
-import { buildBoostPaymentUpdate, type BoostPaymentType } from '@/lib/boostPricing';
-import { fulfillAINSFWListingPayment } from '@/lib/actions/ainsfwPayment';
-import type { AINSFWPlan } from '@/lib/ainsfw/planPrices';
+import { fulfillNowPayment, logCryptoEvent } from '@/lib/actions/nowpaymentsFulfill';
+import { notifyAdminsOfCryptoWebhookFailure } from '@/lib/utils/notifyAdmins';
 
 const IPN_SECRET = process.env.NOWPAYMENTS_IPN_SECRET || '';
 
-const VALID_PLANS = new Set(['monthly', 'quarterly', 'yearly', 'lifetime']);
-const VALID_SUBMISSION_TIERS = new Set([
-  'basic', 'instant', 'boost', 'startup', 'platinum',
-  'normal_listing', 'instant_approval', 'boost_week', 'boost_month', 'scale_month',
-]);
-const ACTIVATE_ON = new Set(['finished', 'confirmed']);
-
-function logEvent(data: Record<string, any>) {
-  PremiumEvent.create({ source: 'server', ...data }).catch(() => {});
-}
-
-// NowPayments sorts keys recursively (including nested objects) before signing.
-// A flat Object.keys().sort() fails on any nested payload — this caused valid
-// signatures to be rejected and payments to be silently dropped.
-function sortObjectDeep(obj: any): any {
+function sortObjectDeep(obj: unknown): unknown {
   if (Array.isArray(obj)) return obj.map(sortObjectDeep);
   if (obj && typeof obj === 'object') {
-    return Object.keys(obj)
+    return Object.keys(obj as Record<string, unknown>)
       .sort()
-      .reduce((acc: Record<string, any>, key) => {
-        acc[key] = sortObjectDeep(obj[key]);
+      .reduce((acc: Record<string, unknown>, key) => {
+        acc[key] = sortObjectDeep((obj as Record<string, unknown>)[key]);
         return acc;
       }, {});
   }
   return obj;
 }
 
-function verifySignature(body: Record<string, any>, sigHeader: string | null): boolean {
+function verifySignature(body: Record<string, unknown>, sigHeader: string | null): boolean {
   if (!sigHeader || !IPN_SECRET) return false;
   const sorted = JSON.stringify(sortObjectDeep(body));
   const expected = crypto.createHmac('sha512', IPN_SECRET).update(sorted).digest('hex');
@@ -48,232 +29,79 @@ function verifySignature(body: Record<string, any>, sigHeader: string | null): b
   }
 }
 
-// ─── Handle listing submission payments (groups, bots, AI NSFW) ───
-
-async function handleSubmissionPayment(
-  entityType: string,
-  entityId: string,
-  tier: string,
-  paymentId: string,
-) {
-  if (!VALID_SUBMISSION_TIERS.has(tier)) return;
-
-  let Model: any;
-  if (entityType === 'group') Model = Group;
-  else if (entityType === 'bot') Model = Bot;
-  else if (entityType === 'ainsfw') Model = AINsfwSubmission;
-  else return;
-
-  const entity = await Model.findById(entityId);
-  if (!entity) {
-    console.error(`NowPayments submission webhook: ${entityType} not found`, entityId);
-    return;
-  }
-
-  if (entityType === 'ainsfw') {
-    const plan = tier as AINSFWPlan;
-    if (!['basic', 'boost', 'startup'].includes(plan)) return;
-
-    const fulfilled = await fulfillAINSFWListingPayment(entityId, plan, String(paymentId));
-    if (!fulfilled) {
-      console.error('NowPayments submission webhook: ainsfw not found', entityId);
-      return;
-    }
-
-    logEvent({ event: 'submission_payment_success', entityType, entityId, tier, paymentId, paymentMethod: 'crypto' });
-    notifyAdminsOfSale({ plan: `${entityType}_${tier}`, method: 'crypto', username: fulfilled.name || 'Unknown' }).catch(() => {});
-    return;
-  }
-
-  if (paymentId && entity.lastPaymentChargeId === String(paymentId)) {
-    return;
-  }
-
-  const normalizedTier: BoostPaymentType =
-    tier === 'boost' ? 'boost_week' : tier === 'platinum' ? 'boost_month' : tier as BoostPaymentType;
-
-  if (!['normal_listing', 'instant_approval', 'boost_week', 'boost_month', 'scale_month'].includes(normalizedTier)) {
-    return;
-  }
-
-  const update = buildBoostPaymentUpdate(
-    entity,
-    normalizedTier,
-    entityType as 'group' | 'bot',
-    { lastPaymentChargeId: String(paymentId) },
-  );
-
-  await Model.findByIdAndUpdate(entityId, { $set: update });
-
-  logEvent({
-    event: 'submission_payment_success',
-    entityType,
-    entityId,
-    tier: normalizedTier,
-    paymentId,
-    paymentMethod: 'crypto',
-  });
-
-  notifyAdminsOfSale({
-    plan: `${entityType}_${normalizedTier}`,
-    method: 'crypto',
-    username: entity.name || 'Unknown',
-  }).catch(() => {});
-}
-
-// ─── Handle featured creator payments (self-serve $197 boosted listing) ───
-
-async function handleFeaturedCreatorPayment(creatorId: string, paymentId: string) {
-  const creator = await OnlyFansCreator.findById(creatorId);
-  if (!creator) {
-    console.error('NowPayments featured webhook: creator not found', creatorId);
-    return;
-  }
-
-  if (creator.featuredPaymentId === String(paymentId)) return;
-
-  const now = new Date();
-  const expiresAt = new Date(now);
-  expiresAt.setDate(expiresAt.getDate() + 7);
-
-  await OnlyFansCreator.findByIdAndUpdate(creatorId, {
-    featured: true,
-    featuredAt: now,
-    featuredExpiresAt: expiresAt,
-    featuredPaymentId: String(paymentId),
-  });
-
-  logEvent({
-    event: 'featured_creator_payment_success',
-    entityType: 'onlyfans_creator',
-    entityId: creatorId,
-    paymentId,
-    paymentMethod: 'crypto',
-  });
-
-  notifyAdminsOfSale({
-    plan: 'featured_creator',
-    method: 'crypto',
-    username: creator.name || creator.username || 'Unknown',
-  }).catch(() => {});
-}
-
-// ─── Main webhook handler ───
-
 export async function POST(req: NextRequest) {
   if (!IPN_SECRET) {
     console.error('NOWPAYMENTS_IPN_SECRET not set — rejecting webhook');
     return NextResponse.json({ ok: false }, { status: 503 });
   }
 
-  let body: Record<string, any>;
+  let body: Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
 
-  // Log EVERY incoming call before signature check — so dropped payments are never invisible again.
-  logEvent({
-    event: 'crypto_webhook_received',
-    orderId: body?.order_id,
-    paymentId: body?.payment_id,
-    status: body?.payment_status,
-  });
+  const orderId = String(body.order_id ?? '');
+  const paymentId = String(body.payment_id ?? '');
+  const paymentStatus = String(body.payment_status ?? '');
+
+  try {
+    await logCryptoEvent({
+      event: 'crypto_webhook_received',
+      orderId,
+      paymentId,
+      status: paymentStatus,
+    });
+  } catch (logErr) {
+    console.error('NowPayments webhook: failed to log received event', logErr);
+    await notifyAdminsOfCryptoWebhookFailure(
+      `Could not log webhook to DB\norder: ${orderId}\npayment: ${paymentId}\nstatus: ${paymentStatus}`,
+    );
+  }
 
   const sig = req.headers.get('x-nowpayments-sig');
   if (!verifySignature(body, sig)) {
-    console.error('NowPayments webhook: invalid signature', { orderId: body?.order_id, paymentId: body?.payment_id });
-    logEvent({ event: 'crypto_webhook_bad_signature', orderId: body?.order_id, paymentId: body?.payment_id });
+    console.error('NowPayments webhook: invalid signature', { orderId, paymentId });
+    try {
+      await logCryptoEvent({ event: 'crypto_webhook_bad_signature', orderId, paymentId });
+    } catch { /* alert below */ }
+    await notifyAdminsOfCryptoWebhookFailure(`Bad signature\norder: ${orderId}\npayment: ${paymentId}`);
     return NextResponse.json({ ok: false }, { status: 403 });
   }
 
-  const { payment_status, order_id, payment_id, actually_paid_at_fiat, price_amount } = body;
-
-  logEvent({ event: `crypto_webhook_${payment_status}`, orderId: order_id, paymentId: payment_id });
-
-  if (!ACTIVATE_ON.has(payment_status)) {
-    return NextResponse.json({ ok: true });
+  try {
+    await logCryptoEvent({
+      event: `crypto_webhook_${paymentStatus}`,
+      orderId,
+      paymentId,
+    });
+  } catch {
+    /* non-fatal */
   }
 
-  // Guard: compare fiat-to-fiat only (actually_paid is crypto units — never compare to USD price_amount)
-  const paidFiat = actually_paid_at_fiat != null ? Number(actually_paid_at_fiat) : NaN;
-  const expectedFiat = price_amount != null ? Number(price_amount) : NaN;
-  if (Number.isFinite(paidFiat) && paidFiat > 0 && Number.isFinite(expectedFiat) && expectedFiat > 0) {
-    if (paidFiat < expectedFiat * 0.95) {
-      logEvent({ event: 'crypto_partial_payment', orderId: order_id, actually_paid_at_fiat: paidFiat, price_amount: expectedFiat });
-      return NextResponse.json({ ok: true });
-    }
-  }
-
-  const parts = (order_id || '').split('__');
-  if (parts.length < 2) {
-    console.error('NowPayments webhook: malformed order_id', order_id);
+  if (paymentStatus !== 'finished' && paymentStatus !== 'confirmed') {
     return NextResponse.json({ ok: true });
   }
 
   try {
-    await connectDB();
-
-    // ─── Featured creator payments: order_id = featured__creatorId__ts ───
-    if (parts[0] === 'featured' && parts.length >= 3) {
-      const creatorId = parts[1];
-      await handleFeaturedCreatorPayment(creatorId, payment_id);
-      return NextResponse.json({ ok: true });
-    }
-
-    // ─── Submission payments: order_id = sub__entityType__entityId__tier__ts ───
-    if (parts[0] === 'sub' && parts.length >= 4) {
-      const [, entityType, entityId, tier] = parts;
-      await handleSubmissionPayment(entityType, entityId, tier, payment_id);
-      return NextResponse.json({ ok: true });
-    }
-
-    // ─── Premium subscription payments: order_id = userId__plan__ts ───
-    const [userId, plan] = parts;
-    if (!VALID_PLANS.has(plan)) {
-      console.error('NowPayments webhook: invalid plan in order_id', plan);
-      return NextResponse.json({ ok: true });
-    }
-
-    const user = await User.findById(userId).lean() as any;
-    if (!user) {
-      console.error('NowPayments webhook: user not found', userId);
-      return NextResponse.json({ ok: true });
-    }
-
-    if (user.lastPaymentChargeId === String(payment_id)) {
-      return NextResponse.json({ ok: true });
-    }
-
-    const now = new Date();
-    const update: Record<string, any> = {
-      premium: true,
-      premiumPlan: plan,
-      premiumSince: now,
-      paymentMethod: 'crypto',
-      lastPaymentChargeId: String(payment_id),
-    };
-
-    if (plan === 'lifetime') {
-      update.premiumExpiresAt = null;
-    } else {
-      const pricing = await getPremiumPricing();
-      const planConfig = plan === 'yearly' ? pricing.yearly : plan === 'quarterly' ? pricing.quarterly : pricing.monthly;
-      const planDays = planConfig.days;
-      const exp = new Date(now);
-      exp.setDate(exp.getDate() + planDays);
-      update.premiumExpiresAt = exp;
-    }
-
-    await User.findByIdAndUpdate(userId, update);
-    logEvent({ event: 'crypto_payment_success', userId, plan, paymentId: payment_id, paymentMethod: 'crypto' });
-
-    const userDoc = await User.findById(userId).lean() as any;
-    notifyAdminsOfSale({ plan, method: 'crypto', username: userDoc?.username }).catch(() => {});
+    await fulfillNowPayment({
+      payment_status: paymentStatus,
+      order_id: orderId,
+      payment_id: paymentId,
+      actually_paid_at_fiat: body.actually_paid_at_fiat as number | string | undefined,
+      price_amount: body.price_amount as number | string | undefined,
+    });
+    return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error('NowPayments webhook processing error:', err);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('NowPayments webhook fulfillment error:', { orderId, paymentId, msg });
+    try {
+      await logCryptoEvent({ event: 'crypto_webhook_fulfill_failed', orderId, paymentId, error: msg });
+    } catch { /* */ }
+    await notifyAdminsOfCryptoWebhookFailure(
+      `Fulfillment FAILED — NowPayments will retry\norder: ${orderId}\npayment: ${paymentId}\nerror: ${msg}`,
+    );
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
-
-  return NextResponse.json({ ok: true });
 }

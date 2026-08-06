@@ -11,7 +11,11 @@ import {
   expandSearchQuery,
   rotateSearchResults,
 } from '@/lib/tags/ofSearchMatch';
-import { buildNicheMatchClause, creatorQualityFilter } from '@/lib/tags/creatorMatch';
+import { buildNicheMatchClause, buildSlugCreatorMatch, creatorQualityFilter } from '@/lib/tags/creatorMatch';
+import {
+  OF_RESULTS_PAGE_SIZE,
+  type ProfilePremiumSearchFilters,
+} from '@/lib/actions/ofCreatorsBrowse.shared';
 
 function buildR2AvatarMatch() {
   const raw = process.env.R2_PUBLIC_URL || '';
@@ -79,21 +83,6 @@ const MAX_TOTAL = 1000;
 const SEARCH_POOL = 100;
 /** Premium profile search — deeper pool, per-user rotation. */
 const PROFILE_PREMIUM_SEARCH_POOL = 400;
-
-export type ProfilePremiumPriceFilter = 'all' | 'free' | 'paid';
-
-export interface ProfilePremiumSearchFilters {
-  price?: ProfilePremiumPriceFilter;
-  minMedia?: number;
-  minPrice?: number;
-  maxPrice?: number;
-  hasInstagram?: boolean;
-  /** Recently added to Erogram (createdAt), not OF join date */
-  joinWithinDays?: number;
-  /** Each inner array = OR within silo; outer = AND across silos */
-  nicheGroups?: string[][];
-}
-
 async function stripNonPremiumFilters(
   filters: ProfilePremiumSearchFilters,
   token?: string,
@@ -121,12 +110,61 @@ const HUB_BROWSE_PROJECT = {
   },
 };
 
+/** Paginated category browse for /onlyfanssearch/{slug} — stable clicks ranking. */
+export async function browseCategoryCreators(
+  categorySlug: string,
+  offset = 0,
+  limit = OF_RESULTS_PAGE_SIZE,
+) {
+  await connectDB();
+
+  const skip = Math.max(0, offset);
+  const pageSize = Math.min(Math.max(1, limit), 48);
+  const baseMatch = buildSlugCreatorMatch(categorySlug);
+
+  const rows = await OnlyFansCreator.find(baseMatch)
+    .sort({ clicks: -1, likesCount: -1, _id: 1 })
+    .skip(skip)
+    .limit(pageSize + 1)
+    .select(
+      'name username slug avatar header bio subscriberCount likesCount photosCount videosCount price isFree isVerified url clicks',
+    )
+    .lean();
+
+  const seen = new Set<string>();
+  const creators: Record<string, unknown>[] = [];
+  for (const raw of rows as Record<string, unknown>[]) {
+    const username = String(raw.username || '').toLowerCase();
+    if (!username || seen.has(username)) continue;
+    seen.add(username);
+    creators.push({
+      ...raw,
+      _id: String(raw._id),
+      bio: String(raw.bio || '').slice(0, 200),
+    });
+    if (creators.length > pageSize) break;
+  }
+
+  const hasMore = creators.length > pageSize;
+  const page = creators.slice(0, pageSize);
+
+  return {
+    ok: true as const,
+    creators: page,
+    hasMore,
+    nextOffset: skip + page.length,
+  };
+}
+
 /** Filtered hub browse for /onlyfans hero — niches + price + premium toggles, optional text query. */
 export async function hubBrowseCreators(
   filters: ProfilePremiumSearchFilters & { query?: string },
   rotateSeed = 'default',
   token?: string,
+  pagination: { offset?: number; limit?: number } = {},
 ) {
+  const offset = Math.max(0, pagination.offset ?? 0);
+  const limit = Math.min(Math.max(1, pagination.limit ?? OF_RESULTS_PAGE_SIZE), 48);
   await connectDB();
 
   const effectiveFilters = await stripNonPremiumFilters(filters, token);
@@ -153,7 +191,7 @@ export async function hubBrowseCreators(
       const searchMatch = buildBrowseQualityMatch(buildSearchOrClauses(plan));
       match = { $and: [match, searchMatch] };
     } else {
-      return { ok: true as const, creators: [] as any[] };
+      return { ok: true as const, creators: [] as any[], hasMore: false, nextOffset: 0 };
     }
   }
 
@@ -182,14 +220,18 @@ export async function hubBrowseCreators(
   const rotated = rotateSearchResults(
     creators as any[],
     trimmed || nicheGroups.flat().join('+') || 'hub',
-    0,
-    PROFILE_PREMIUM_SEARCH_POOL,
+    offset,
+    limit + 1,
     `hub-browse:${rotateSeed}:${JSON.stringify(effectiveFilters)}`,
   );
+  const hasMore = rotated.length > limit;
+  const page = rotated.slice(0, limit);
 
   return {
     ok: true as const,
-    creators: rotated.map(({ _searchTier, ...c }: any) => ({ ...c, _id: c._id.toString() })),
+    creators: page.map(({ _searchTier, ...c }: any) => ({ ...c, _id: c._id.toString() })),
+    hasMore,
+    nextOffset: offset + page.length,
   };
 }
 
@@ -278,14 +320,17 @@ async function runAdvancedSearchCreators(
   rotateSeed: string,
   filters: ProfilePremiumSearchFilters,
   rotateKey: string,
+  pagination: { offset?: number; limit?: number } = {},
 ) {
+  const offset = Math.max(0, pagination.offset ?? 0);
+  const limit = Math.min(Math.max(1, pagination.limit ?? OF_RESULTS_PAGE_SIZE), 48);
   const trimmed = q.trim();
-  if (!trimmed) return { ok: true as const, creators: [] as any[] };
+  if (!trimmed) return { ok: true as const, creators: [] as any[], hasMore: false, nextOffset: 0 };
 
   await connectDB();
 
   const plan = expandSearchQuery(trimmed);
-  if (!plan) return { ok: true as const, creators: [] as any[] };
+  if (!plan) return { ok: true as const, creators: [] as any[], hasMore: false, nextOffset: 0 };
 
   const match = buildBrowseQualityMatch(buildSearchOrClauses(plan));
   const filterStages = buildPremiumFilterStages(filters);
@@ -318,14 +363,18 @@ async function runAdvancedSearchCreators(
   const rotated = rotateSearchResults(
     creators as any[],
     plan.normalized,
-    0,
-    PROFILE_PREMIUM_SEARCH_POOL,
+    offset,
+    limit + 1,
     `${rotateKey}:${rotateSeed}:${JSON.stringify(filters)}`,
   );
+  const hasMore = rotated.length > limit;
+  const page = rotated.slice(0, limit);
 
   return {
     ok: true as const,
-    creators: rotated.map(({ _searchTier, ...c }: any) => ({ ...c, _id: c._id.toString() })),
+    creators: page.map(({ _searchTier, ...c }: any) => ({ ...c, _id: c._id.toString() })),
+    hasMore,
+    nextOffset: offset + page.length,
   };
 }
 
@@ -335,9 +384,10 @@ export async function advancedSearchCreators(
   rotateSeed = 'default',
   filters: ProfilePremiumSearchFilters = {},
   token?: string,
+  pagination: { offset?: number; limit?: number } = {},
 ) {
   const effectiveFilters = await stripNonPremiumFilters(filters, token);
-  return runAdvancedSearchCreators(q, rotateSeed, effectiveFilters, 'of-search');
+  return runAdvancedSearchCreators(q, rotateSeed, effectiveFilters, 'of-search', pagination);
 }
 
 export async function profilePremiumSearchCreators(
@@ -345,11 +395,12 @@ export async function profilePremiumSearchCreators(
   q: string,
   rotateSeed = 'default',
   filters: ProfilePremiumSearchFilters = {},
+  pagination: { offset?: number; limit?: number } = {},
 ) {
   const userId = await requirePremiumUserId(token);
-  if (!userId) return { ok: false as const, message: 'Premium required', creators: [] };
+  if (!userId) return { ok: false as const, message: 'Premium required', creators: [], hasMore: false, nextOffset: 0 };
 
-  return runAdvancedSearchCreators(q, rotateSeed, filters, userId);
+  return runAdvancedSearchCreators(q, rotateSeed, filters, userId, pagination);
 }
 
 export async function searchCreators(q: string, limit = 100, skip = 0) {

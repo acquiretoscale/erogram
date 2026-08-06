@@ -1,10 +1,23 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getEmailConfigStatus, sendTestEmail, type EmailConfigStatus } from '@/lib/actions/adminEmail';
+import {
+  getEmailConfigStatus,
+  getEmailTemplates,
+  saveEmailTemplate,
+  sendTestEmail,
+  type EmailConfigStatus,
+  type EmailTemplateRow,
+} from '@/lib/actions/adminEmail';
 
 export default function EmailTab() {
   const [status, setStatus] = useState<EmailConfigStatus | null>(null);
+  const [templates, setTemplates] = useState<EmailTemplateRow[]>([]);
+  const [selectedId, setSelectedId] = useState('');
+  const [tplSubject, setTplSubject] = useState('');
+  const [tplBody, setTplBody] = useState('');
+  const [savingTpl, setSavingTpl] = useState(false);
+  const [tplSaved, setTplSaved] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -21,7 +34,44 @@ export default function EmailTab() {
       else setStatus(r);
       setLoading(false);
     });
+    getEmailTemplates(token).then((r) => {
+      if (!Array.isArray(r)) return;
+      setTemplates(r);
+      if (r[0]) {
+        setSelectedId(r[0].id);
+        setTplSubject(r[0].subject);
+        setTplBody(r[0].body);
+      }
+    });
   }, []);
+
+  const selected = templates.find((t) => t.id === selectedId) || null;
+
+  const pickTemplate = (id: string) => {
+    const t = templates.find((x) => x.id === id);
+    if (!t) return;
+    setSelectedId(id);
+    setTplSubject(t.subject);
+    setTplBody(t.body);
+    setTplSaved('');
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!selectedId) return;
+    setSavingTpl(true);
+    setTplSaved('');
+    const token = localStorage.getItem('token') || '';
+    const r = await saveEmailTemplate(token, selectedId, tplSubject, tplBody);
+    if (r.ok) {
+      setTemplates((prev) =>
+        prev.map((t) => (t.id === selectedId ? { ...t, subject: tplSubject, body: tplBody } : t)),
+      );
+      setTplSaved('Saved');
+    } else {
+      setTplSaved(r.error || 'Save failed');
+    }
+    setSavingTpl(false);
+  };
 
   const handleSend = async () => {
     setSending(true);
@@ -61,6 +111,68 @@ export default function EmailTab() {
           <p className="mt-3 text-[11px] text-amber-300">Missing in .env.local: {status.missing.join(', ')}</p>
         )}
       </div>
+
+      {templates.length > 0 && (
+        <div className="rounded-xl bg-white/[0.04] border border-white/10 p-4 mb-6">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <h2 className="text-sm font-black text-white">Automatic emails</h2>
+            <span
+              className={`text-[10px] font-black uppercase tracking-wide px-2 py-1 rounded-full ${
+                tplSubject.trim() && tplBody.trim()
+                  ? 'text-emerald-400 bg-emerald-500/15'
+                  : 'text-amber-400 bg-amber-500/15'
+              }`}
+            >
+              {tplSubject.trim() && tplBody.trim() ? 'Active' : 'Nothing will send'}
+            </span>
+          </div>
+
+          <select
+            value={selectedId}
+            onChange={(e) => pickTemplate(e.target.value)}
+            className="w-full px-3 py-2 mb-3 rounded-lg bg-white/[0.05] border border-white/10 text-white text-xs focus:outline-none focus:border-[#c0392f]/40"
+          >
+            {templates.map((t) => (
+              <option key={t.id} value={t.id} className="bg-[#151515]">{t.label}</option>
+            ))}
+          </select>
+
+          <div className="space-y-2.5">
+            <input
+              value={tplSubject}
+              onChange={(e) => setTplSubject(e.target.value)}
+              placeholder="Subject"
+              className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-white placeholder-gray-500 text-xs focus:outline-none focus:border-[#c0392f]/40"
+            />
+            <textarea
+              value={tplBody}
+              onChange={(e) => setTplBody(e.target.value)}
+              placeholder="Message"
+              rows={14}
+              className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-white placeholder-gray-500 text-xs focus:outline-none focus:border-[#c0392f]/40 resize-y font-mono leading-relaxed"
+            />
+            {!!selected?.vars.length && (
+              <p className="text-[11px] text-gray-500">
+                Placeholders: {selected.vars.map((v) => `{{${v}}}`).join('  ')}
+              </p>
+            )}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleSaveTemplate}
+                disabled={savingTpl}
+                className="px-4 py-2 rounded-lg text-xs font-bold bg-[#c0392f] text-white hover:bg-[#a83227] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                {savingTpl ? 'Saving…' : 'Save template'}
+              </button>
+              {tplSaved && (
+                <span className={`text-xs font-semibold ${tplSaved === 'Saved' ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {tplSaved}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="rounded-xl bg-white/[0.04] border border-white/10 p-4">
         <h2 className="text-sm font-black text-white mb-3">Send a test email</h2>

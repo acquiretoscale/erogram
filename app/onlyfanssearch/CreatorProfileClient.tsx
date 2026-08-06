@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import dynamic from 'next/dynamic';
 import {
   Heart, Image as ImageIcon, Video, Users,
   ExternalLink, ChevronRight, DollarSign, Clock,
@@ -26,10 +26,43 @@ import { useTranslation, useLocalePath } from '@/lib/i18n/client';
 import { getCreatorProfileCategories } from '@/lib/tags/creatorProfileTags';
 import { bestOfBlogSlug } from '@/app/best-onlyfans-accounts/bestOfPages';
 import { getCreatorBio } from '@/app/onlyfanssearch/creatorBios';
-import CreatorMediaFeed from '@/app/onlyfanssearch/CreatorMediaFeed';
 import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
-import ProfileOFPremiumSearch from '@/app/profile/ProfileOFPremiumSearch';
 import { OF_SEARCH_TOKENS, ofSearchNavProps } from '@/app/onlyfanssearch/ofSearchTokens';
+
+const ProfileOFPremiumSearch = dynamic(() => import('@/app/profile/ProfileOFPremiumSearch'), {
+  ssr: false,
+  loading: () => <div className="h-11 rounded-lg bg-white/[0.04] animate-pulse" aria-hidden />,
+});
+
+const CreatorMediaFeed = dynamic(() => import('@/app/onlyfanssearch/CreatorMediaFeed'), {
+  loading: () => <div className="h-48 rounded-2xl bg-white/[0.03] animate-pulse mb-6" aria-hidden />,
+});
+
+function useIsLgUp() {
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      const mq = window.matchMedia('(min-width: 1024px)');
+      mq.addEventListener('change', onStoreChange);
+      return () => mq.removeEventListener('change', onStoreChange);
+    },
+    () => window.matchMedia('(min-width: 1024px)').matches,
+    () => false,
+  );
+}
+
+function relatedAvatarSrc(creator: CreatorProfile) {
+  return creator.avatarThumbC144 || creator.avatarThumbC50 || creator.avatar || '';
+}
+
+let advertiseStatsPromise: Promise<{ totalViews?: number; activeVisitors?: number } | null> | null = null;
+function loadAdvertiseStats() {
+  if (!advertiseStatsPromise) {
+    advertiseStatsPromise = fetch('/api/advertise-stats', { cache: 'force-cache' })
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null);
+  }
+  return advertiseStatsPromise;
+}
 
 function formatCount(n: number) {
   if (!n) return '—';
@@ -526,18 +559,27 @@ function CreatorPromoSquare() {
 
   useEffect(() => {
     setRedirect(window.location.pathname || '/onlyfanssearch');
-    const loadStats = () => {
-      fetch('/api/advertise-stats', { cache: 'no-store' })
-        .then((r) => r.json())
-        .then((d) => {
-          if (typeof d.totalViews === 'number') setTotalViews(d.totalViews);
-          if (typeof d.activeVisitors === 'number') setLiveNow(d.activeVisitors);
-        })
-        .catch(() => {});
+    let cancelled = false;
+    const apply = (d: { totalViews?: number; activeVisitors?: number } | null) => {
+      if (cancelled || !d) return;
+      if (typeof d.totalViews === 'number') setTotalViews(d.totalViews);
+      if (typeof d.activeVisitors === 'number') setLiveNow(d.activeVisitors);
     };
-    loadStats();
-    const id = setInterval(loadStats, 300_000);
-    return () => clearInterval(id);
+    const run = () => {
+      loadAdvertiseStats().then(apply);
+    };
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(run, { timeout: 2500 });
+      return () => {
+        cancelled = true;
+        window.cancelIdleCallback(id);
+      };
+    }
+    const t = window.setTimeout(run, 1200);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
   }, []);
 
   const joinHref = `/join-erogram?redirect=${encodeURIComponent(redirect)}`;
@@ -614,6 +656,7 @@ function RelatedSidebarCard({ creator, publicOnlyfansPath = false, compact = fal
   const { t } = useTranslation();
   const lp = useLocalePath();
   const profileHref = lp(ofCreatorProfileUrl(creator.username));
+  const thumb = relatedAvatarSrc(creator);
 
   if (card) {
     return (
@@ -623,12 +666,15 @@ function RelatedSidebarCard({ creator, publicOnlyfansPath = false, compact = fal
         className="group block rounded-xl border border-white/[0.08] bg-white/[0.03] hover:border-[#00AFF0]/35 hover:bg-[#00AFF0]/10 transition-all overflow-hidden"
       >
         <div className="aspect-[3/4] w-full overflow-hidden bg-[#0d1e2a]">
-          {creator.avatar ? (
+          {thumb ? (
             <img
-              src={creator.avatar}
+              src={thumb}
               alt={`${creator.name} OnlyFans profile`}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
+              decoding="async"
+              width={240}
+              height={320}
               referrerPolicy="no-referrer"
             />
           ) : (
@@ -654,12 +700,15 @@ function RelatedSidebarCard({ creator, publicOnlyfansPath = false, compact = fal
       }`}
     >
       <div className={`rounded-lg overflow-hidden shrink-0 bg-[#0d1e2a] ring-1 ring-white/10 ${compact ? 'w-10 h-10' : 'w-14 h-14 rounded-xl'}`}>
-        {creator.avatar ? (
+        {thumb ? (
           <img
-            src={creator.avatar}
+            src={thumb}
             alt={`${creator.name} OnlyFans profile`}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             loading="lazy"
+            decoding="async"
+            width={compact ? 40 : 56}
+            height={compact ? 40 : 56}
             referrerPolicy="no-referrer"
           />
         ) : (
@@ -691,6 +740,7 @@ function ProfileRightRail({
   savedCreatorIds,
   onToggleSave,
   loginRedirect,
+  includeHeavy = true,
 }: {
   creatorName: string;
   username: string;
@@ -702,14 +752,16 @@ function ProfileRightRail({
   savedCreatorIds: Set<string>;
   onToggleSave: (creatorId: string) => void;
   loginRedirect: string;
+  includeHeavy?: boolean;
 }) {
   const lp = useLocalePath();
   const firstName = creatorName.split(' ')[0] || creatorName;
 
   return (
     <div className="space-y-3">
-      <CreatorPromoSquare />
+      {includeHeavy && <CreatorPromoSquare />}
 
+      {includeHeavy && (
       <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-2.5">
         <ProfileOFPremiumSearch
           tokens={OF_SEARCH_TOKENS}
@@ -727,6 +779,7 @@ function ProfileRightRail({
           {...ofSearchNavProps(lp)}
         />
       </div>
+      )}
 
       <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 space-y-3">
       {items.length > 0 && (
@@ -763,6 +816,7 @@ export default function CreatorProfileClient({
   const router = useRouter();
   const { t } = useTranslation();
   const lp = useLocalePath();
+  const isLgUp = useIsLgUp();
   const profileCategories = getCreatorProfileCategories(
     creator.categories,
     creator.location,
@@ -1062,7 +1116,26 @@ export default function CreatorProfileClient({
   const [flameKey, setFlameKey] = useState(0);
 
   useEffect(() => {
-    getCreatorReviews(creator.slug).then((data) => setFlameReviews(data.reviews)).catch(() => {});
+    let cancelled = false;
+    const run = () => {
+      getCreatorReviews(creator.slug)
+        .then((data) => {
+          if (!cancelled) setFlameReviews(data.reviews);
+        })
+        .catch(() => {});
+    };
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(run, { timeout: 3000 });
+      return () => {
+        cancelled = true;
+        window.cancelIdleCallback(id);
+      };
+    }
+    const t = window.setTimeout(run, 800);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
   }, [creator.slug]);
 
   const refreshFlameReviews = async () => {
@@ -1218,6 +1291,11 @@ export default function CreatorProfileClient({
             src={creator.header}
             alt={`${creator.name} OnlyFans banner`}
             className="absolute inset-0 w-full h-full object-cover"
+            width={1600}
+            height={500}
+            sizes="100vw"
+            fetchPriority="high"
+            decoding="async"
             referrerPolicy="no-referrer"
             onError={() => setHeaderError(true)}
           />
@@ -1249,6 +1327,7 @@ export default function CreatorProfileClient({
               savedCreatorIds={savedIds}
               onToggleSave={handleToggleSaveById}
               loginRedirect={lp(ofCreatorProfileUrl(creator.username))}
+              includeHeavy={isLgUp}
             />
           </aside>
 
@@ -1264,6 +1343,11 @@ export default function CreatorProfileClient({
                     src={creator.avatar}
                     alt={`${creator.name} OnlyFans`}
                     className="w-full h-full object-cover"
+                    width={288}
+                    height={288}
+                    sizes="(max-width: 640px) 224px, 288px"
+                    fetchPriority={hasHeader ? 'auto' : 'high'}
+                    decoding="async"
                     referrerPolicy="no-referrer"
                     onError={() => setAvatarError(true)}
                   />
@@ -1860,6 +1944,7 @@ export default function CreatorProfileClient({
             savedCreatorIds={savedIds}
             onToggleSave={handleToggleSaveById}
             loginRedirect={lp(ofCreatorProfileUrl(creator.username))}
+            includeHeavy={!isLgUp}
           />
         </div>
 

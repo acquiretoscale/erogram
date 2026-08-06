@@ -2,13 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bookmark, ExternalLink, MapPin, Search, SlidersHorizontal } from 'lucide-react';
+import { Bookmark, CircleUser, ExternalLink, Heart, MapPin, Search, SlidersHorizontal } from 'lucide-react';
+import {
+  OF_RESULTS_PAGE_SIZE,
+  type ProfilePremiumPriceFilter,
+} from '@/lib/actions/ofCreatorsBrowse.shared';
 import {
   profilePremiumSearchCreators,
   advancedSearchCreators,
   hubBrowseCreators,
   getTopClickedOnlyfansCreators,
-  type ProfilePremiumPriceFilter,
 } from '@/lib/actions/ofCreatorsBrowse';
 import { getNearMeCreators } from '@/lib/actions/userProfile';
 import { getNearMeCreatorsPublic, getNearMeByPlaceSlug, getVisitorNearMeLocation } from '@/lib/actions/nearMeCreators';
@@ -26,6 +29,12 @@ import {
 } from './profileGridDensity';
 import OnlyFansHeroFilterPanel from '@/app/onlyfanssearch/OnlyFansHeroFilterPanel';
 import { ofCreatorProfileUrl, onlyFansExternalUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import CreatorMediaEngagement from '@/components/CreatorMediaEngagement';
+import {
+  getBatchMediaEngagement,
+  toggleProfileFeedLike,
+  type CreatorMediaEngagement as FeedMediaEngagement,
+} from '@/lib/actions/profileFeed';
 
 function readCountryCookie(): string | undefined {
   if (typeof document === 'undefined') return undefined;
@@ -62,6 +71,18 @@ function bioSnippet(bio?: string, max = 72): string {
 
 function isFreeCreator(creator: { isFree?: boolean; price?: number }) {
   return Boolean(creator.isFree || creator.price === 0);
+}
+
+function OnlyFansIcon({ size = 11 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className="shrink-0" aria-hidden>
+      <path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z" />
+    </svg>
+  );
+}
+
+function creatorFeedMediaKey(creatorId: string, avatar: string) {
+  return `${creatorId}:photo:${avatar}`;
 }
 
 interface ProfileOFPremiumSearchProps {
@@ -396,7 +417,12 @@ export default function ProfileOFPremiumSearch({
   const [nearMeHasMore, setNearMeHasMore] = useState(false);
   const [freeOnlyHasMore, setFreeOnlyHasMore] = useState(false);
   const [bestModelsHasMore, setBestModelsHasMore] = useState(false);
+  const [browseHasMore, setBrowseHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const browseOffsetRef = useRef(0);
+  const browseSeedRef = useRef('default');
+  const [feedEngagementMap, setFeedEngagementMap] = useState<Map<string, FeedMediaEngagement>>(new Map());
+  const [userPhotoUrl, setUserPhotoUrl] = useState<string | null>(null);
 
   useEffect(() => {
     onActiveChange?.(searched || nearMeActive);
@@ -596,6 +622,118 @@ export default function ProfileOFPremiumSearch({
     }
   }, [nearMePage, freeAccess, loadingMore, nearMeHasMore, loading, rawResults, nearMePlaceSlug]);
 
+  const loadMoreBrowse = useCallback(async () => {
+    if (loadingMore || !browseHasMore || loading) return;
+    setLoadingMore(true);
+    try {
+      const trimmed = query.trim();
+      const pagination = { offset: browseOffsetRef.current, limit: OF_RESULTS_PAGE_SIZE };
+
+      if (isHero && minimalFilters) {
+        const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') || undefined : undefined;
+        const res = await hubBrowseCreators(
+          {
+            nicheGroups: selectedCategory ? [[selectedCategory]] : [],
+            price: priceFilter,
+            hasInstagram: canUsePremiumFilters && instagramOnly ? true : undefined,
+            joinWithinDays: canUsePremiumFilters && joinWithinDays > 0 ? joinWithinDays : undefined,
+            query: trimmed || undefined,
+          },
+          browseSeedRef.current,
+          token,
+          pagination,
+        );
+        if (res.creators.length) {
+          setRawResults((prev) => {
+            const seen = new Set(prev.map((c) => c._id));
+            const fresh = (res.creators as CreatorResult[]).filter((c) => !seen.has(c._id));
+            return fresh.length ? [...prev, ...fresh] : prev;
+          });
+        }
+        browseOffsetRef.current = res.nextOffset;
+        setBrowseHasMore(res.hasMore);
+        return;
+      }
+
+      if (!trimmed) {
+        setBrowseHasMore(false);
+        return;
+      }
+
+      if (freeAccess) {
+        const token = localStorage.getItem('token') || undefined;
+        const res = await advancedSearchCreators(
+          trimmed,
+          browseSeedRef.current,
+          {
+            hasInstagram: canUsePremiumFilters && instagramOnly ? true : undefined,
+            joinWithinDays: canUsePremiumFilters && joinWithinDays > 0 ? joinWithinDays : undefined,
+          },
+          token,
+          pagination,
+        );
+        if (!res.ok) {
+          setBrowseHasMore(false);
+          return;
+        }
+        if (res.creators.length) {
+          setRawResults((prev) => {
+            const seen = new Set(prev.map((c) => c._id));
+            const fresh = (res.creators as CreatorResult[]).filter((c) => !seen.has(c._id));
+            return fresh.length ? [...prev, ...fresh] : prev;
+          });
+        }
+        browseOffsetRef.current = res.nextOffset;
+        setBrowseHasMore(res.hasMore);
+        return;
+      }
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setBrowseHasMore(false);
+        return;
+      }
+      const res = await profilePremiumSearchCreators(
+        token,
+        trimmed,
+        browseSeedRef.current,
+        {
+          hasInstagram: instagramOnly,
+          joinWithinDays: joinWithinDays > 0 ? joinWithinDays : undefined,
+        },
+        pagination,
+      );
+      if (!res.ok) {
+        setBrowseHasMore(false);
+        return;
+      }
+      if (res.creators.length) {
+        setRawResults((prev) => {
+          const seen = new Set(prev.map((c) => c._id));
+          const fresh = (res.creators as CreatorResult[]).filter((c) => !seen.has(c._id));
+          return fresh.length ? [...prev, ...fresh] : prev;
+        });
+      }
+      browseOffsetRef.current = res.nextOffset;
+      setBrowseHasMore(res.hasMore);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [
+    loadingMore,
+    browseHasMore,
+    loading,
+    isHero,
+    minimalFilters,
+    query,
+    selectedCategory,
+    priceFilter,
+    canUsePremiumFilters,
+    instagramOnly,
+    joinWithinDays,
+    freeAccess,
+  ]);
+
   useEffect(() => {
     if (!nearMePage || !nearMeHasMore || loadingMore) return;
     const el = loadMoreRef.current;
@@ -639,6 +777,21 @@ export default function ProfileOFPremiumSearch({
   }, [bestModelsPage, bestModelsHasMore, loadingMore, loadMoreBestModels, rawResults.length]);
 
   useEffect(() => {
+    if (!browseHasMore || loadingMore || loading) return;
+    if (nearMePage || freeOnlyPage || bestModelsPage) return;
+    const el = loadMoreRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMoreBrowse();
+      },
+      { rootMargin: '320px' },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [browseHasMore, loadingMore, loading, loadMoreBrowse, rawResults.length, nearMePage, freeOnlyPage, bestModelsPage]);
+
+  useEffect(() => {
     if (!freeOnlyPage || !canUse) return;
     runFreeOnly();
   }, [freeOnlyPage, canUse, runFreeOnly, freeCategorySlug]);
@@ -674,6 +827,9 @@ export default function ProfileOFPremiumSearch({
     setLoading(true);
     setNearMeActive(false);
     setNearMeAreaLabel('');
+    setBrowseHasMore(false);
+    browseOffsetRef.current = 0;
+    browseSeedRef.current = freshSeed || String(Date.now());
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') || undefined : undefined;
     try {
       const res = await hubBrowseCreators(
@@ -684,11 +840,14 @@ export default function ProfileOFPremiumSearch({
           joinWithinDays: canUsePremiumFilters && joinWithinDays > 0 ? joinWithinDays : undefined,
           query: trimmed || undefined,
         },
-        freshSeed || String(Date.now()),
+        browseSeedRef.current,
         token,
+        { offset: 0, limit: OF_RESULTS_PAGE_SIZE },
       );
       if (gen !== searchGen.current) return;
       setRawResults(res.creators as CreatorResult[]);
+      browseOffsetRef.current = res.nextOffset;
+      setBrowseHasMore(res.hasMore);
       setSearched(true);
       if (trimmed) loadFeedFeatured(trimmed);
       else if (paidFeatured.length) setFeedFeatured(paidFeatured);
@@ -716,16 +875,21 @@ export default function ProfileOFPremiumSearch({
     setLoading(true);
     setNearMeActive(false);
     setNearMeAreaLabel('');
+    setBrowseHasMore(false);
+    browseOffsetRef.current = 0;
+    browseSeedRef.current = freshSeed || String(Date.now());
     try {
       if (freeAccess) {
         const token = localStorage.getItem('token') || undefined;
-        const res = await advancedSearchCreators(trimmed, freshSeed || 'default', {
+        const res = await advancedSearchCreators(trimmed, browseSeedRef.current, {
           hasInstagram: canUsePremiumFilters && instagramOnly ? true : undefined,
           joinWithinDays: canUsePremiumFilters && joinWithinDays > 0 ? joinWithinDays : undefined,
-        }, token);
+        }, token, { offset: 0, limit: OF_RESULTS_PAGE_SIZE });
         if (gen !== searchGen.current) return;
         if (!res.ok) return;
         setRawResults(res.creators as CreatorResult[]);
+        browseOffsetRef.current = res.nextOffset;
+        setBrowseHasMore(res.hasMore);
         setSearched(true);
         return;
       }
@@ -733,13 +897,15 @@ export default function ProfileOFPremiumSearch({
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const res = await profilePremiumSearchCreators(token, trimmed, freshSeed || 'default', {
+      const res = await profilePremiumSearchCreators(token, trimmed, browseSeedRef.current, {
         hasInstagram: instagramOnly,
         joinWithinDays: joinWithinDays > 0 ? joinWithinDays : undefined,
-      });
+      }, { offset: 0, limit: OF_RESULTS_PAGE_SIZE });
       if (gen !== searchGen.current) return;
       if (!res.ok) return;
       setRawResults(res.creators as CreatorResult[]);
+      browseOffsetRef.current = res.nextOffset;
+      setBrowseHasMore(res.hasMore);
       setSearched(true);
     } finally {
       if (gen === searchGen.current) setLoading(false);
@@ -797,6 +963,97 @@ export default function ProfileOFPremiumSearch({
     return list;
   }, [rawResults, priceFilter, minMedia, minPrice, maxPrice, likesSort, instagramOnly, joinWithinDays, isHero, minimalFilters]);
 
+  useEffect(() => {
+    try {
+      setUserPhotoUrl(localStorage.getItem('photoUrl'));
+    } catch {
+      setUserPhotoUrl(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (resultsView !== 'feed' || results.length === 0) {
+      setFeedEngagementMap(new Map());
+      return;
+    }
+    const items = results
+      .filter((c) => c.avatar?.startsWith('http'))
+      .map((c) => ({ creatorId: c._id, type: 'photo' as const, url: c.avatar }));
+    if (!items.length) return;
+    const token = localStorage.getItem('token');
+    getBatchMediaEngagement(token, items)
+      .then((res) => {
+        if (!res.ok) return;
+        setFeedEngagementMap((prev) => {
+          const next = new Map(prev);
+          for (const row of res.items) next.set(row.mediaKey, row);
+          return next;
+        });
+      })
+      .catch(() => {});
+  }, [results, resultsView]);
+
+  const handleFeedLike = useCallback(async (creator: CreatorResult) => {
+    if (!creator.avatar?.startsWith('http')) return;
+    const mediaKey = creatorFeedMediaKey(creator._id, creator.avatar);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.open(
+        `/join-erogram?redirect=${encodeURIComponent(window.location.pathname)}`,
+        '_blank',
+        'noopener,noreferrer',
+      );
+      return;
+    }
+    const current =
+      feedEngagementMap.get(mediaKey) ||
+      ({
+        mediaKey,
+        type: 'photo',
+        url: creator.avatar,
+        likeCount: 0,
+        commentCount: 0,
+        liked: false,
+        comments: [],
+      } satisfies FeedMediaEngagement);
+    setFeedEngagementMap((prev) => {
+      const next = new Map(prev);
+      next.set(mediaKey, {
+        ...current,
+        liked: !current.liked,
+        likeCount: current.liked ? Math.max(0, current.likeCount - 1) : current.likeCount + 1,
+      });
+      return next;
+    });
+    const res = await toggleProfileFeedLike(token, mediaKey, creator._id);
+    if (!res.ok) {
+      setFeedEngagementMap((prev) => {
+        const next = new Map(prev);
+        next.set(mediaKey, current);
+        return next;
+      });
+      return;
+    }
+    setFeedEngagementMap((prev) => {
+      const next = new Map(prev);
+      next.set(mediaKey, { ...current, liked: res.liked, likeCount: res.likeCount });
+      return next;
+    });
+  }, [feedEngagementMap]);
+
+  const engagementTokens = useMemo(
+    () => ({
+      border: tokens.border,
+      text: tokens.text,
+      muted: tokens.muted,
+      accent: tokens.accent,
+      ink: tokens.ink,
+      hover: tokens.hover,
+      fieldBg: tokens.hover,
+    }),
+    [tokens],
+  );
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = query.trim();
@@ -832,6 +1089,8 @@ export default function ProfileOFPremiumSearch({
     setNearMeAreaLabel('');
     setRawResults([]);
     setSearched(false);
+    setBrowseHasMore(false);
+    browseOffsetRef.current = 0;
   }, []);
 
   const selectCategory = useCallback(
@@ -1437,6 +1696,20 @@ export default function ProfileOFPremiumSearch({
                 results.forEach((creator, i) => {
                   const erogramUrl = ofCreatorProfileUrl(creator.username || creator.slug);
                   const onlyfansUrl = onlyFansExternalUrl(creator.username || creator.slug, creator.url);
+                  const feedMediaKey = creator.avatar?.startsWith('http')
+                    ? creatorFeedMediaKey(creator._id, creator.avatar)
+                    : '';
+                  const engagement = feedMediaKey
+                    ? feedEngagementMap.get(feedMediaKey) || {
+                        mediaKey: feedMediaKey,
+                        type: 'photo' as const,
+                        url: creator.avatar,
+                        likeCount: 0,
+                        commentCount: 0,
+                        liked: false,
+                        comments: [],
+                      }
+                    : null;
                   nodes.push(
                     <div
                       key={creator._id}
@@ -1486,9 +1759,99 @@ export default function ProfileOFPremiumSearch({
                           }}
                         />
                       </div>
-                      <div className={`${isFeed ? 'p-3' : 'p-2.5'} flex flex-col flex-1`}>
-                        {!isFeed && (
-                          <>
+                      {isFeed ? (
+                        <>
+                          {creator.bio && (
+                            <p
+                              className="text-[10px] leading-snug line-clamp-3 px-3 pt-2"
+                              style={{ color: tokens.muted, opacity: 0.75 }}
+                            >
+                              {bioSnippet(creator.bio, 140)}
+                            </p>
+                          )}
+                          <div
+                            className="px-3 py-2.5 flex items-center justify-between gap-3"
+                            style={{ borderTop: creator.bio ? undefined : `1px solid ${tokens.border}` }}
+                          >
+                            <div className="flex flex-row gap-2 flex-1 min-w-0">
+                              <a
+                                href={`/go/${creator.username}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center justify-center w-9 h-9 rounded-xl shrink-0 transition-all hover:opacity-95"
+                                style={{
+                                  color: '#ffffff',
+                                  backgroundColor: '#00AFF0',
+                                  boxShadow: '0 4px 14px rgba(0,175,240,0.35)',
+                                }}
+                                aria-label="Visit Profile"
+                              >
+                                <OnlyFansIcon size={16} />
+                              </a>
+                              <a
+                                href={erogramUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center justify-center w-9 h-9 rounded-xl shrink-0 transition-all hover:opacity-95"
+                                style={{
+                                  color: '#111827',
+                                  backgroundColor: '#ffffff',
+                                  border: '1px solid rgba(0,0,0,0.14)',
+                                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                                }}
+                                aria-label="Visit Erogram profile"
+                              >
+                                <CircleUser size={18} strokeWidth={2} />
+                              </a>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => void handleFeedLike(creator)}
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-opacity hover:opacity-80"
+                                style={{
+                                  color: engagement?.liked ? tokens.accent : tokens.text,
+                                  backgroundColor: engagement?.liked ? `${tokens.accent}22` : tokens.hover,
+                                }}
+                              >
+                                <Heart size={15} fill={engagement?.liked ? 'currentColor' : 'none'} />
+                                {(engagement?.likeCount || 0) > 0 ? engagement?.likeCount : 'Like'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onToggleSave(creator._id)}
+                                className="p-1.5 rounded-lg transition-opacity hover:opacity-80"
+                                style={{
+                                  color: savedCreatorIds.has(creator._id) ? tokens.accent : tokens.muted,
+                                  backgroundColor: tokens.hover,
+                                }}
+                                aria-label={savedCreatorIds.has(creator._id) ? t('ofSearch.removeSaved') : t('ofSearch.saveCreator')}
+                              >
+                                <Bookmark size={15} fill={savedCreatorIds.has(creator._id) ? 'currentColor' : 'none'} />
+                              </button>
+                            </div>
+                          </div>
+                          {engagement && (
+                            <div className="px-3 pb-3 pt-0">
+                              <CreatorMediaEngagement
+                                creatorId={creator._id}
+                                mediaType="photo"
+                                url={creator.avatar}
+                                mediaKey={engagement.mediaKey}
+                                likeCount={engagement.likeCount}
+                                liked={engagement.liked}
+                                commentCount={engagement.commentCount}
+                                comments={engagement.comments}
+                                showLikeButton={false}
+                                userPhotoUrl={userPhotoUrl}
+                                tokens={engagementTokens}
+                              />
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                      <div className="p-2.5 flex flex-col flex-1">
                             <div className="flex items-center justify-between gap-3 min-w-0">
                               <p className="text-sm font-bold truncate min-w-0 flex-1" style={{ color: tokens.text }}>
                                 {creator.name || creator.username}
@@ -1506,17 +1869,15 @@ export default function ProfileOFPremiumSearch({
                             <p className="text-[11px] truncate mt-0.5" style={{ color: tokens.muted }}>
                               @{creator.username}
                             </p>
-                          </>
-                        )}
                         {creator.bio && (
                           <p
-                            className={`text-[10px] leading-snug mt-1 ${isFeed ? 'line-clamp-3' : 'line-clamp-2'}`}
+                            className="text-[10px] leading-snug mt-1 line-clamp-2"
                             style={{ color: tokens.muted, opacity: 0.75 }}
                           >
-                            {bioSnippet(creator.bio, isFeed ? 140 : 72)}
+                            {bioSnippet(creator.bio, 72)}
                           </p>
                         )}
-                        <div className={`flex items-center gap-1.5 mt-auto ${isFeed ? 'pt-3' : 'pt-2.5'}`}>
+                        <div className="flex items-center gap-1.5 mt-auto pt-2.5">
                           <a
                             href={erogramUrl}
                             target="_blank"
@@ -1552,6 +1913,8 @@ export default function ProfileOFPremiumSearch({
                       >
                         <Bookmark size={14} fill={savedCreatorIds.has(creator._id) ? 'currentColor' : 'none'} />
                       </button>
+                        </>
+                      )}
                     </div>,
                   );
 
@@ -1564,7 +1927,7 @@ export default function ProfileOFPremiumSearch({
               })()}
             </div>
           ) : null}
-          {(nearMePage && nearMeHasMore) || (freeOnlyPage && freeOnlyHasMore) || (bestModelsPage && bestModelsHasMore) ? (
+          {(nearMePage && nearMeHasMore) || (freeOnlyPage && freeOnlyHasMore) || (bestModelsPage && bestModelsHasMore) || browseHasMore ? (
             !loading && (
             <div ref={loadMoreRef} className={`${heroGridWrap} mt-4 min-h-6 ${resultsView === 'feed' ? 'max-w-lg mx-auto w-full' : ''}`} aria-hidden>
               {loadingMore && (

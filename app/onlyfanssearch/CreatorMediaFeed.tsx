@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
 import { Camera, Film, ImageIcon, Loader2, Play, Trash2, Upload } from 'lucide-react';
 import {
   canManageCreatorMedia,
@@ -97,12 +96,14 @@ export default function CreatorMediaFeed({
 }) {
   const photoInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const feedRootRef = useRef<HTMLElement>(null);
   const [canManage, setCanManage] = useState(isAdmin);
   const [uploadKind, setUploadKind] = useState<'photo' | 'video' | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState('');
   const [engagementMap, setEngagementMap] = useState<Map<string, MediaEngagement>>(new Map());
   const [userPhotoUrl, setUserPhotoUrl] = useState<string | null>(null);
+  const [engagementReady, setEngagementReady] = useState(false);
 
   useEffect(() => {
     if (isAdmin) {
@@ -137,7 +138,27 @@ export default function CreatorMediaFeed({
   }, []);
 
   useEffect(() => {
-    if (!creatorId) return;
+    const el = feedRootRef.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setEngagementReady(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setEngagementReady(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: '200px 0px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!engagementReady || !creatorId) return;
     const mediaItems = [
       ...profilePhotos.map((p) => ({ type: 'photo' as const, url: p.url })),
       ...feedItems.map((f) => ({ type: f.type, url: f.url })),
@@ -153,7 +174,7 @@ export default function CreatorMediaFeed({
         setEngagementMap(new Map(res.items.map((row) => [row.mediaKey, row])));
       })
       .catch(() => {});
-  }, [creatorId, profilePhotos, feedItems]);
+  }, [engagementReady, creatorId, profilePhotos, feedItems]);
 
   const engagementFor = (type: 'photo' | 'video', url: string) => {
     const mediaKey = `${creatorId}:${type}:${url}`;
@@ -249,7 +270,7 @@ export default function CreatorMediaFeed({
   if (!showFeed) return null;
 
   return (
-    <section className="mb-8">
+    <section ref={feedRootRef} className="mb-8">
       <div className="flex items-center justify-between gap-3 mb-4">
         <h2 className="text-base font-black text-white flex items-center gap-2">
           <ImageIcon className="w-5 h-5 text-[#00AFF0]" />
@@ -359,6 +380,9 @@ export default function CreatorMediaFeed({
                   alt={`${creatorName} ${item.label.toLowerCase()} photo`}
                   className={`w-full object-cover block ${item.label === 'Cover' ? 'aspect-[16/9]' : 'aspect-square'}`}
                   loading="lazy"
+                  decoding="async"
+                  width={item.label === 'Cover' ? 960 : 640}
+                  height={item.label === 'Cover' ? 540 : 640}
                 />
                 <div className="px-3 py-2 flex items-center gap-2 border-t border-white/10 bg-white/[0.03]">
                   <Camera className="w-3.5 h-3.5 text-[#00AFF0]" />
@@ -393,14 +417,11 @@ export default function CreatorMediaFeed({
         ) : null
       ) : (
         <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
-          {feedItems.map((item, i) => {
+          {feedItems.map((item) => {
             const engagement = engagementFor(item.type, item.url);
             return (
-            <motion.article
+            <article
               key={item.id}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, delay: Math.min(i * 0.04, 0.35) }}
               className="break-inside-avoid mb-4 group relative rounded-2xl border border-white/10 bg-[#0a1520] overflow-hidden"
             >
               {canManage && (
@@ -425,6 +446,9 @@ export default function CreatorMediaFeed({
                     alt={`${creatorName} feed photo`}
                     className="w-full h-auto block"
                     loading="lazy"
+                    decoding="async"
+                    width={640}
+                    height={800}
                   />
                 </button>
               ) : (
@@ -452,7 +476,7 @@ export default function CreatorMediaFeed({
                   userPhotoUrl={userPhotoUrl}
                 />
               </div>
-            </motion.article>
+            </article>
           )})}
         </div>
       )}

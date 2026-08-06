@@ -80,10 +80,10 @@ export async function getAdminOverview(token: string) {
     PremiumEvent.find({ event: { $in: ['payment_success', 'crypto_payment_success'] } })
       .sort({ createdAt: -1 }).select('userId plan paymentMethod createdAt').lean(),
     Group.find({ paidBoost: true }).sort({ createdAt: -1 })
-      .select('name paidBoostStars createdBy createdByUsername createdAt')
+      .select('name paidBoostStars createdBy createdByUsername createdAt featuredAt lastPaymentChargeId')
       .populate('createdBy', 'username firstName country city photoUrl telegramUsername').lean(),
     Bot.find({ paidBoost: true }).sort({ createdAt: -1 })
-      .select('name paidBoostStars createdBy createdByUsername createdAt')
+      .select('name paidBoostStars createdBy createdByUsername createdAt featuredAt lastPaymentChargeId')
       .populate('createdBy', 'username firstName country city photoUrl telegramUsername').lean(),
     PremiumEvent.find({ event: { $in: ['submission_payment_success', 'featured_creator_payment_success'] } })
       .sort({ createdAt: -1 }).lean(),
@@ -223,13 +223,18 @@ export async function getAdminOverview(token: string) {
     });
   }
 
+  // Numeric NowPayments payment ids = crypto. Stars charge ids start with "stx".
+  const isCryptoCharge = (id: unknown) => typeof id === 'string' && /^[0-9]+$/.test(id);
+
   for (const g of allPaidGroups as any[]) {
     const starsAmt = g.paidBoostStars || 0;
     const buyer = g.createdBy || {};
+    const method = isCryptoCharge(g.lastPaymentChargeId) ? 'crypto' : 'stars';
+    const saleAt = g.featuredAt || g.createdAt;
     sales.push({
       _id: g._id.toString(), type: 'group_boost', label: g.name || 'Group', plan: null,
-      paymentMethod: 'stars', stars: starsAmt, usd: starsAmt * rate,
-      createdAt: new Date(g.createdAt).toISOString(),
+      paymentMethod: method, stars: starsAmt, usd: starsAmt * rate,
+      createdAt: new Date(saleAt).toISOString(),
       buyer: { username: buyer.username || g.createdByUsername || 'Unknown', firstName: buyer.firstName || null, country: buyer.country || null, city: buyer.city || null, photoUrl: buyer.photoUrl || null, telegramUsername: buyer.telegramUsername || null },
     });
   }
@@ -237,20 +242,26 @@ export async function getAdminOverview(token: string) {
   for (const b of allPaidBots as any[]) {
     const starsAmt = b.paidBoostStars || 0;
     const buyer = b.createdBy || {};
+    const method = isCryptoCharge(b.lastPaymentChargeId) ? 'crypto' : 'stars';
+    const saleAt = b.featuredAt || b.createdAt;
     sales.push({
       _id: b._id.toString(), type: 'bot_boost', label: b.name || 'Bot', plan: null,
-      paymentMethod: 'stars', stars: starsAmt, usd: starsAmt * rate,
-      createdAt: new Date(b.createdAt).toISOString(),
+      paymentMethod: method, stars: starsAmt, usd: starsAmt * rate,
+      createdAt: new Date(saleAt).toISOString(),
       buyer: { username: buyer.username || b.createdByUsername || 'Unknown', firstName: buyer.firstName || null, country: buyer.country || null, city: buyer.city || null, photoUrl: buyer.photoUrl || null, telegramUsername: buyer.telegramUsername || null },
     });
   }
 
-  const cryptoPrices: Record<string, number> = { basic: 49, boost: 147, startup: 297, platinum: 297, featured_creator: 97 };
+  // Crypto listing events: AI NSFW + featured creator only.
+  // Group/bot crypto boosts are already counted above via paidBoost docs (lastPaymentChargeId).
+  const cryptoPrices: Record<string, number> = { basic: 49, boost: 147, startup: 297, platinum: 297, featured_creator: 197 };
   for (const ev of allCryptoSubmissionEvents as any[]) {
-    const tier = ev.tier || 'basic';
     const isFeatured = ev.event === 'featured_creator_payment_success';
+    const entityType = ev.entityType || '';
+    if (!isFeatured && entityType !== 'ainsfw') continue;
+    const tier = ev.tier || 'basic';
     const label = isFeatured ? 'Featured Creator' : `AI NSFW ${tier}`;
-    const usd = isFeatured ? 97 : (cryptoPrices[tier] || 49);
+    const usd = isFeatured ? 197 : (cryptoPrices[tier] || 49);
     sales.push({
       _id: ev._id.toString(), type: 'ainsfw_listing', label, plan: isFeatured ? 'featured_creator' : tier,
       paymentMethod: 'crypto', stars: 0, usd,

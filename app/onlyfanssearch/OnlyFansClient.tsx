@@ -49,27 +49,6 @@ const POPULAR_ONLYFANS_CATEGORIES = [
   { label: 'Squirt', slug: 'squirt' },
 ] as const;
 
-/**
- * Featured-creator image that rotates the creator's split-test ALBUM (avatar + uploads, minus
- * paused) CLIENT-SIDE — picks one after mount so it varies per view and isn't frozen by ISR cache.
- * Falls back to the single avatar when there's no album.
- */
-function RotatingImg({ album, albumIdx, fallback, alt, className, onPick }: { album?: string[]; albumIdx?: number[]; fallback: string; alt: string; className: string; onPick?: (stableIdx: number) => void }) {
-  const pool = (album && album.length > 0) ? album : (fallback ? [fallback] : []);
-  const [idx, setIdx] = useState(0);
-  const [err, setErr] = useState(false);
-  useEffect(() => {
-    const p = pool.length > 1 ? Math.floor(Math.random() * pool.length) : 0;
-    setIdx(p);
-    // Report the STABLE album index of the shown image so the click can attribute it (split test).
-    if (onPick) onPick(albumIdx?.[p] ?? p);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  const src = pool[idx] || fallback;
-  if (!src || err) return null;
-  return <img src={src} alt={alt} className={className} loading="lazy" referrerPolicy="no-referrer" onError={() => setErr(true)} />;
-}
-
 interface Creator {
   _id: string;
   name: string;
@@ -125,6 +104,15 @@ function mergeFeaturedLists(paid: any[], rail: any[]) {
     out.push(c);
   }
   return out;
+}
+
+function featuredCoverSrc(tc: { album?: string[]; avatar?: string }) {
+  const album = tc.album?.find((url) => typeof url === 'string' && url.startsWith('http'));
+  return album || tc.avatar || '';
+}
+
+function pickFeaturedBlock(list: any[]) {
+  return [...list].sort(() => Math.random() - 0.5).slice(0, 4);
 }
 
 function isCreatorLiveNow(start: number, end: number): boolean {
@@ -551,10 +539,13 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
   const [allFeatured, setAllFeatured] = useState<any[]>([]);
   // Which stable album image each featured card is currently showing → for split-test click attribution.
   const shownVariantRef = useRef<Record<string, number>>({});
+  const paidFeaturedRef = useRef(paidFeatured);
+  const featuredLockedRef = useRef(false);
   const [blockFeatured, setBlockFeatured] = useState<any[]>([]);
   const ofSearchPlacement = (idx: number) => (idx >= 0 ? `of-search-featured:v${idx}` : 'of-search-featured');
   const clickFeaturedCreator = useCallback((tc: any) => {
-    const variant = shownVariantRef.current[tc._id] ?? -1;
+    const variant = tc.albumIdx?.[0] ?? 0;
+    shownVariantRef.current[tc._id] = variant;
     if (tc.isPaidCampaign && tc.campaignId) trackCampaignClick(tc.campaignId, ofSearchPlacement(variant));
     else trackTrendingClick(tc._id, variant);
     window.open(`/go/${tc.username}`, '_blank', 'noopener');
@@ -574,24 +565,26 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
   }, []);
 
   useEffect(() => {
+    if (featuredLockedRef.current) return;
+
+    const lockFeatured = (merged: any[]) => {
+      if (featuredLockedRef.current || merged.length === 0) return;
+      featuredLockedRef.current = true;
+      setAllFeatured(merged);
+      setBlockFeatured(pickFeaturedBlock(merged));
+    };
+
     getTrendingCreators()
-      .then(data => {
-        if (Array.isArray(data)) {
-          const merged = mergeFeaturedLists(paidFeatured, data);
-          setAllFeatured(merged);
-          setBlockFeatured([...merged].sort(() => Math.random() - 0.5).slice(0, 4));
-        } else if (paidFeatured.length) {
-          setAllFeatured([...paidFeatured]);
-          setBlockFeatured([...paidFeatured].sort(() => Math.random() - 0.5).slice(0, 4));
-        }
+      .then((data) => {
+        const merged = Array.isArray(data)
+          ? mergeFeaturedLists(paidFeaturedRef.current, data)
+          : [...paidFeaturedRef.current];
+        lockFeatured(merged);
       })
       .catch(() => {
-        if (paidFeatured.length) {
-          setAllFeatured([...paidFeatured]);
-          setBlockFeatured([...paidFeatured].sort(() => Math.random() - 0.5).slice(0, 4));
-        }
+        lockFeatured([...paidFeaturedRef.current]);
       });
-  }, [paidFeatured]);
+  }, []);
 
   const handleToggleSave = useCallback(async (creatorId: string) => {
     const token = localStorage.getItem('token');
@@ -730,10 +723,22 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                     <a href="/submit" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-lg bg-white/[0.08] border border-white/[0.10] text-white/70 text-[10px] sm:text-xs font-black uppercase tracking-wider hover:bg-[#00AFF0]/15 hover:border-[#00AFF0]/30 hover:text-[#00AFF0] transition-colors">Submit Your Creator</a>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5">
-                    {blockFeatured.map((tc) => (
+                    {blockFeatured.map((tc) => {
+                      const cover = featuredCoverSrc(tc);
+                      return (
                       <button key={`feat-${tc._id}`} type="button" onClick={() => clickFeaturedCreator(tc)} className="group w-full text-left rounded-2xl overflow-hidden bg-white ring-[2px] ring-[#00AFF0]/30 hover:ring-[#00AFF0] shadow-[0_8px_28px_-8px_rgba(0,175,240,0.25)] hover:shadow-[0_12px_36px_-6px_rgba(0,175,240,0.35)] hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none">
                         <div className="relative aspect-[3/4] bg-[#f0f8ff]">
-                          {tc.avatar ? <RotatingImg album={tc.album} albumIdx={tc.albumIdx} onPick={(v) => { shownVariantRef.current[tc._id] = v; }} fallback={tc.avatar} alt={`${tc.name} OnlyFans`} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" /> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#00AFF0] bg-[#f0f8ff]">{tc.name.charAt(0)}</div>}
+                          {cover ? (
+                            <img
+                              src={cover}
+                              alt={`${tc.name} OnlyFans`}
+                              className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
+                              loading="lazy"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#00AFF0] bg-[#f0f8ff]">{tc.name.charAt(0)}</div>
+                          )}
                           <FeaturedLiveBadge liveHourStart={tc.liveHourStart} liveHourEnd={tc.liveHourEnd} />
                         </div>
                         <div className="px-3 pt-2.5 sm:px-4 sm:pt-3">
@@ -754,7 +759,8 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                         </div>
                         <div className="px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3"><div className={FEATURED_CTA}>{t('ofSearch.viewProfile')}</div></div>
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                   </div>
                 </div>

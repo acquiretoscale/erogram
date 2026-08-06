@@ -30,6 +30,8 @@ export interface SaleNotificationPayload {
   plan: string;
   method: 'stars' | 'crypto';
   username?: string;
+  /** USD amount shown in push/Telegram (crypto sales). */
+  usd?: number;
 }
 
 export interface NewUserNotificationPayload {
@@ -69,23 +71,29 @@ export async function notifyAdminsOfSale(payload: SaleNotificationPayload) {
     quarterly: 'Premium 3 Months',
     yearly: 'Premium Yearly',
     lifetime: 'Premium Lifetime',
-    group_instant_approval: 'Group Instant Approval (1000★)',
-    group_boost_week: 'Group Boost 1 Week (3000★)',
-    group_boost_month: 'Group Boost 1 Month (6000★)',
-    bot_instant_approval: 'Bot Instant Approval (1000★)',
-    bot_boost_week: 'Bot Boost 1 Week (3000★)',
-    bot_boost_month: 'Bot Boost 1 Month (6000★)',
-    ainsfw_basic: 'AI NSFW Basic ($49)',
-    ainsfw_boost: 'AI NSFW Boost ($147)',
-    ainsfw_startup: 'AI NSFW Scale ($297)',
-    ainsfw_platinum: 'AI NSFW Platinum ($297)',
-    featured_creator: 'Featured Creator ($97)',
+    group_instant_approval: 'Group Instant Approval',
+    group_boost_week: 'Group Boost 1 Week',
+    group_boost_month: 'Group Boost 1 Month',
+    group_scale_month: 'Group Scale 1 Month',
+    bot_instant_approval: 'Bot Instant Approval',
+    bot_boost_week: 'Bot Boost 1 Week',
+    bot_boost_month: 'Bot Boost 1 Month',
+    bot_scale_month: 'Bot Scale 1 Month',
+    ainsfw_basic: 'AI NSFW Basic',
+    ainsfw_boost: 'AI NSFW Boost',
+    ainsfw_startup: 'AI NSFW Scale',
+    ainsfw_platinum: 'AI NSFW Platinum',
+    featured_creator: 'Featured Creator',
   };
   const planLabel = PLAN_LABELS[payload.plan] || payload.plan;
   const methodLabel = payload.method === 'stars' ? '⭐ Stars' : '₿ Crypto';
   const userLabel = payload.username ? `@${payload.username}` : 'Anonymous';
+  const usdLabel =
+    typeof payload.usd === 'number' && payload.usd > 0
+      ? ` · $${payload.usd % 1 === 0 ? payload.usd : payload.usd.toFixed(2)}`
+      : '';
 
-  const body = `${planLabel} · ${methodLabel} · ${userLabel}`;
+  const body = `${planLabel}${usdLabel} · ${methodLabel} · ${userLabel}`;
 
   await Promise.allSettled([
     sendPushToAdmins({
@@ -98,6 +106,11 @@ export async function notifyAdminsOfSale(payload: SaleNotificationPayload) {
     }),
     sendTelegramDM(`💰 <b>New Sale!</b>\n${body}`),
   ]);
+}
+
+/** Telegram-only — works even when MongoDB is down. */
+export async function notifyAdminsOfCryptoWebhookFailure(message: string) {
+  await sendTelegramDM(`🚨 <b>Crypto payment alert</b>\n${message}`);
 }
 
 export async function notifyAdminsOfNewUser(payload: NewUserNotificationPayload) {
