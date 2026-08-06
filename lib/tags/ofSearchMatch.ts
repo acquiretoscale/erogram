@@ -125,10 +125,6 @@ const SYNONYMS: Record<string, string[]> = {
   joi: ['ahegao', 'blowjob', 'joi'],
 };
 
-const MAX_CATEGORIES = 4;
-const NOT_SPAM_TAGGED = {
-  $expr: { $lte: [{ $size: { $ifNull: ['$categories', []] } }, MAX_CATEGORIES] },
-};
 
 export interface SearchPlan {
   normalized: string;
@@ -190,7 +186,7 @@ export function buildSearchOrClauses(plan: SearchPlan): Record<string, unknown>[
     ...locationOr,
     { bio: regex },
     { location: regex },
-    { $and: [{ categories: { $in: plan.categoryRegexes } }, NOT_SPAM_TAGGED] },
+    { categories: { $in: plan.categoryRegexes } },
   ];
   if (noSpacesRegex) {
     nameOr.push({ username: noSpacesRegex });

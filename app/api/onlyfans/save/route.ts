@@ -23,13 +23,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { creatorId } = await req.json();
+  const { creatorId, likeMediaKey } = await req.json();
   if (!creatorId) {
     return NextResponse.json({ error: 'creatorId is required' }, { status: 400 });
   }
 
   try {
-    await addUserSavedOnlyFansCreator(authUser._id.toString(), creatorId);
+    await addUserSavedOnlyFansCreator(authUser._id.toString(), creatorId, {
+      likeMediaKey: typeof likeMediaKey === 'string' ? likeMediaKey : undefined,
+    });
   } catch (e: any) {
     if (e.message === 'Creator not found') {
       return NextResponse.json({ error: 'Creator not found' }, { status: 404 });

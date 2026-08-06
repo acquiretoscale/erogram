@@ -476,7 +476,7 @@ export async function canManageCreatorProfile(token: string, slug: string): Prom
   }
 }
 
-export async function getMyCreatorProfile(token: string): Promise<{ slug: string; username: string } | null> {
+export async function getMyCreatorProfile(token: string): Promise<{ slug: string; username: string; name: string; avatar: string } | null> {
   if (!token) return null;
   let userId: string;
   try {
@@ -489,10 +489,15 @@ export async function getMyCreatorProfile(token: string): Promise<{ slug: string
 
   await connectDB();
   const creator = await OnlyFansCreator.findOne({ submittedBy: userId, deleted: { $ne: true } })
-    .select('slug username')
-    .lean() as { slug?: string; username?: string } | null;
+    .select('slug username name avatar')
+    .lean() as { slug?: string; username?: string; name?: string; avatar?: string } | null;
   if (!creator?.slug) return null;
-  return { slug: creator.slug, username: creator.username || creator.slug };
+  return {
+    slug: creator.slug,
+    username: creator.username || creator.slug,
+    name: creator.name || creator.username || creator.slug,
+    avatar: creator.avatar || '',
+  };
 }
 
 const OWNER_EDITABLE_FIELDS = new Set([

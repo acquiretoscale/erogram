@@ -1,16 +1,20 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
+import { OF_CATEGORIES, OF_CATEGORY_MAP } from '@/app/onlyfanssearch/constants';
 import {
   getOFMCreators,
   deleteOFMCreator,
-  updateOFMCreator,
-  getOFMTrending,
-  createOFMTrendingSlot,
 } from '@/lib/actions/ofm';
+import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
 import { importOFMCreator } from '@/lib/actions/ofmAdmin';
-import { assignCreatorToUncut } from '@/lib/actions/blogFeatured';
+import { importCreatorToOFMAgency } from '@/lib/actions/ofClients';
+import { PROMOTE_OF_CREATOR_PLACEMENTS } from '@/lib/adPlacements';
+import PendingCreatorsPanel from '@/app/OF/creators/PendingCreatorsPanel';
+import { getCreatorRankingPages } from '@/lib/tags/creatorMatch';
+import { getCreatorProfileCategories } from '@/lib/tags/creatorProfileTags';
+import { extractBioHashtagSlugs } from '@/lib/tags/bioHashtags';
+import { getTagDefinition } from '@/lib/tags/registry';
 
 type Creator = {
   _id: string;
@@ -20,6 +24,7 @@ type Creator = {
   categories: string[];
   avatar: string;
   bio: string;
+  location: string;
   subscriberCount: number;
   likesCount: number;
   price: number;
@@ -29,19 +34,54 @@ type Creator = {
   scrapedAt: string;
 };
 
-type EditState = Partial<Creator> & { _id?: string };
+function labelForGoldSlug(slug: string): string {
+  return OF_CATEGORY_MAP.get(slug)?.name || getTagDefinition(slug)?.label || slug.replace(/-/g, ' ');
+}
 
-type TrendingSlot = { _id: string; position: number; name: string; username: string } | null;
+/** Stored categories + ALL bio hashtags + keyword scan + ranking pages — full admin gold view. */
+function getAdminGoldTags(c: Creator): { slug: string; label: string }[] {
+  const ranking = getCreatorRankingPages(c).map((p) => ({ slug: p.slug, label: p.label }));
+  const merged = getCreatorProfileCategories(
+    c.categories || [],
+    c.location || '',
+    c.bio || '',
+    ranking,
+    c,
+  );
+  const seen = new Set(merged.map((t) => t.slug));
+  for (const tag of extractBioHashtagSlugs(c.bio || '')) {
+    if (seen.has(tag)) continue;
+    seen.add(tag);
+    merged.push({ slug: tag, label: labelForGoldSlug(tag) });
+  }
+  return merged;
+}
+
+function formatLikes(n: number) {
+  if (!n) return '—';
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+  return n.toLocaleString();
+}
 
 const SORT_OPTIONS = [
   { value: 'scrapedAt', label: 'Scraped At' },
-  { value: 'subscriberCount', label: 'Subscribers' },
   { value: 'likesCount', label: 'Likes' },
-  { value: 'price', label: 'Price' },
   { value: 'name', label: 'Name' },
 ];
 
+const ACCOUNT_SIZE_OPTIONS = [
+  { value: '', label: 'All account sizes' },
+  { value: 'under-10k', label: 'Under 10K likes' },
+  { value: '10k-50k', label: '10K - 50K likes' },
+  { value: '50k-100k', label: '50K - 100K likes' },
+  { value: '100k-500k', label: '100K - 500K likes' },
+  { value: '500k-1m', label: '500K - 1M likes' },
+  { value: '1m-plus', label: '1M+ likes' },
+];
+
 export default function CreatorsPage() {
+  const [view, setView] = useState<'all' | 'pending'>('all');
   const [creators, setCreators] = useState<Creator[]>([]);
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
@@ -50,15 +90,12 @@ export default function CreatorsPage() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
   const [isFree, setIsFree] = useState('');
+  const [accountSize, setAccountSize] = useState('');
   const [sortBy, setSortBy] = useState('scrapedAt');
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
-  const [editCreator, setEditCreator] = useState<EditState | null>(null);
-  const [editLoading, setEditLoading] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
-  const [featuredSlots, setFeaturedSlots] = useState<TrendingSlot[]>([null, null, null, null]);
-  const [sendToFeatured, setSendToFeatured] = useState<Creator | null>(null);
-  const [sendingSlot, setSendingSlot] = useState<number | null>(null);
+  const [promotingId, setPromotingId] = useState<string | null>(null);
   const [importInput, setImportInput] = useState('');
   const [importing, setImporting] = useState(false);
 
@@ -67,58 +104,20 @@ export default function CreatorsPage() {
     setTimeout(() => setToast(''), 3000);
   };
 
-  const loadFeaturedSlots = useCallback(async () => {
+  const handlePromote = async (creator: Creator) => {
+    setPromotingId(creator._id);
     const token = localStorage.getItem('token') || '';
     try {
-      const data = await getOFMTrending(token);
-      const mapped: TrendingSlot[] = [null, null, null, null];
-      if (Array.isArray(data)) {
-        for (const s of data) {
-          if (s.position >= 1 && s.position <= 4) mapped[s.position - 1] = s;
-        }
-      }
-      setFeaturedSlots(mapped);
-    } catch { /* silent */ }
-  }, []);
-
-  const handleSendToSlot = async (creator: Creator, position: number) => {
-    setSendingSlot(position);
-    const token = localStorage.getItem('token') || '';
-    try {
-      await createOFMTrendingSlot(token, {
-        name: creator.name,
+      const res = await importCreatorToOFMAgency(token, {
         username: creator.username,
-        avatar: creator.avatar,
-        url: creator.url,
-        bio: creator.bio,
+        clientId: 'ofm-creators',
         categories: creator.categories,
-        position,
-        active: true,
+        defaultPlacements: PROMOTE_OF_CREATOR_PLACEMENTS,
       });
-      showToast(`${creator.name} added to Featured Spot #${position}`);
-      setSendToFeatured(null);
-      loadFeaturedSlots();
-    } catch {
-      showToast('Failed to add to Featured');
-    } finally {
-      setSendingSlot(null);
-    }
-  };
-
-  const handleAssignSpotlight = async (creator: Creator) => {
-    if (!confirm(`Make ${creator.name} the EROGRAM SPOTLIGHT Creator of the Month?`)) return;
-    const token = localStorage.getItem('token') || '';
-    try {
-      await assignCreatorToUncut(token, {
-        name: creator.name,
-        username: creator.username,
-        avatar: creator.avatar,
-        url: creator.url,
-        bio: creator.bio,
-      });
-      showToast(`${creator.name} set as SPOTLIGHT cover ★`);
+      window.location.href = `/ofm/${res.agencySlug}/${res.creator.slug}`;
     } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : 'Failed to set SPOTLIGHT');
+      showToast(err instanceof Error ? err.message : 'Promote failed');
+      setPromotingId(null);
     }
   };
 
@@ -152,6 +151,7 @@ export default function CreatorsPage() {
         ...(search && { search }),
         ...(category && { category }),
         ...(isFree && { isFree }),
+        ...(accountSize && { accountSize }),
       });
       setCreators(data.creators || []);
       setTotal(data.total || 0);
@@ -162,9 +162,9 @@ export default function CreatorsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, category, isFree, sortBy, sortDir]);
+  }, [page, search, category, isFree, accountSize, sortBy, sortDir]);
 
-  useEffect(() => { load(1); loadFeaturedSlots(); }, [search, category, isFree, sortBy, sortDir]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(1); }, [search, category, isFree, accountSize, sortBy, sortDir]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -177,24 +177,6 @@ export default function CreatorsPage() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Delete failed';
       showToast(message);
-    }
-  };
-
-  const handleSave = async () => {
-    if (!editCreator?._id) return;
-    setEditLoading(true);
-    const token = localStorage.getItem('token') || '';
-    const { _id, ...patch } = editCreator;
-    try {
-      await updateOFMCreator(token, _id, patch);
-      showToast('Creator updated');
-      setEditCreator(null);
-      load(page);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to save';
-      showToast(message);
-    } finally {
-      setEditLoading(false);
     }
   };
 
@@ -211,13 +193,39 @@ export default function CreatorsPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-black text-white">Creators</h1>
-          <p className="text-white/40 text-sm mt-0.5">{total.toLocaleString()} total in database</p>
+          <p className="text-white/40 text-sm mt-0.5">
+            {view === 'all' ? `${total.toLocaleString()} total in database` : 'User submissions queue'}
+          </p>
         </div>
-        <a href="/OF/import" className="px-3.5 py-1.5 bg-white/[0.06] border border-white/10 rounded-xl text-white/50 text-xs font-semibold hover:bg-white/10 transition">
-          Advanced Import →
-        </a>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex rounded-xl border border-white/10 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setView('all')}
+              className={`px-3.5 py-1.5 text-xs font-bold transition ${view === 'all' ? 'bg-[#00AFF0] text-white' : 'bg-white/[0.04] text-white/50 hover:text-white'}`}
+            >
+              All Creators
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('pending')}
+              className={`px-3.5 py-1.5 text-xs font-bold transition ${view === 'pending' ? 'bg-[#00AFF0] text-white' : 'bg-white/[0.04] text-white/50 hover:text-white'}`}
+            >
+              Pending / Submitted
+            </button>
+          </div>
+          {view === 'all' && (
+            <a href="/OF/import" className="px-3.5 py-1.5 bg-white/[0.06] border border-white/10 rounded-xl text-white/50 text-xs font-semibold hover:bg-white/10 transition">
+              Advanced Import →
+            </a>
+          )}
+        </div>
       </div>
 
+      {view === 'pending' ? (
+        <PendingCreatorsPanel />
+      ) : (
+        <>
       {/* Quick import */}
       <div className="bg-[#00AFF0]/[0.04] border border-[#00AFF0]/15 rounded-2xl p-4 flex flex-wrap gap-3 items-center">
         <div className="flex-1 min-w-[200px] relative">
@@ -278,6 +286,13 @@ export default function CreatorsPage() {
           <option value="false">Paid only</option>
         </select>
         <select
+          value={accountSize}
+          onChange={(e) => setAccountSize(e.target.value)}
+          className="px-3 py-2 bg-white/[0.05] border border-white/10 rounded-xl text-white/70 text-sm outline-none focus:border-[#00AFF0]/40 transition"
+        >
+          {ACCOUNT_SIZE_OPTIONS.map(o => <option key={o.value || 'all'} value={o.value}>{o.label}</option>)}
+        </select>
+        <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
           className="px-3 py-2 bg-white/[0.05] border border-white/10 rounded-xl text-white/70 text-sm outline-none focus:border-[#00AFF0]/40 transition"
@@ -305,45 +320,51 @@ export default function CreatorsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/[0.06]">
-                  {['Creator', 'Categories', 'Subs', 'Price', 'Scraped', 'Actions'].map(h => (
+                  {['Creator', 'Likes', 'Tag categories', 'Scraped', 'Actions'].map(h => (
                     <th key={h} className={`px-4 py-3 text-left text-[11px] font-bold text-white/30 uppercase tracking-wider whitespace-nowrap${h === 'Actions' ? ' sticky right-0 bg-[#0c1116]' : ''}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {creators.map((c) => (
+                {creators.map((c) => {
+                  const goldTags = getAdminGoldTags(c);
+                  return (
                   <tr key={c._id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition">
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex items-center gap-4 min-w-0">
                         {c.avatar ? (
-                          <img src={c.avatar} alt={c.name} className="w-14 h-14 rounded-full object-cover bg-white/5 flex-shrink-0" />
+                          <img src={c.avatar} alt={c.name} className="w-56 h-56 rounded-2xl object-cover bg-white/5 flex-shrink-0" />
                         ) : (
-                          <div className="w-14 h-14 rounded-full bg-[#00AFF0]/10 border border-[#00AFF0]/20 flex items-center justify-center text-[#00AFF0] text-base font-bold flex-shrink-0">
+                          <div className="w-56 h-56 rounded-2xl bg-[#00AFF0]/10 border border-[#00AFF0]/20 flex items-center justify-center text-[#00AFF0] text-4xl font-bold flex-shrink-0">
                             {c.name.charAt(0)}
                           </div>
                         )}
                         <div className="min-w-0">
-                          <div className="font-semibold text-white truncate max-w-[140px]">{c.name}</div>
-                          <div className="text-[11px] text-white/30">@{c.username}</div>
+                          <div className="font-semibold text-white text-base">{c.name}</div>
+                          <div className="text-sm text-white/30 mt-0.5">@{c.username}</div>
+                          {c.isVerified && <span className="text-[#00AFF0] text-xs mt-1 inline-block">✓ Verified</span>}
                         </div>
-                        {c.isVerified && <span className="text-[#00AFF0] text-[10px]">✓</span>}
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1 max-w-[150px]">
-                        {c.categories.slice(0, 3).map(cat => (
-                          <span key={cat} className="px-1.5 py-0.5 bg-[#00AFF0]/10 text-[#00AFF0] text-[10px] rounded-md capitalize">{cat}</span>
-                        ))}
-                        {c.categories.length > 3 && <span className="text-[10px] text-white/20">+{c.categories.length - 3}</span>}
-                      </div>
+                    <td className="px-4 py-3 align-top whitespace-nowrap">
+                      <span className="text-sm font-bold text-white/80">{formatLikes(c.likesCount)}</span>
                     </td>
-                    <td className="px-4 py-3 text-white/60 whitespace-nowrap">{c.subscriberCount > 0 ? c.subscriberCount.toLocaleString() : '—'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {c.isFree ? (
-                        <span className="text-emerald-400 text-[11px] font-bold">Free</span>
-                      ) : (
-                        <span className="text-amber-400 text-[11px] font-bold">${c.price}</span>
-                      )}
+                    <td className="px-4 py-3 align-top">
+                      <div className="flex flex-wrap items-center gap-1.5 max-w-3xl">
+                        {goldTags.length === 0 ? (
+                          <span className="text-white/20 text-xs">—</span>
+                        ) : (
+                          goldTags.map((tag) => (
+                            <span
+                              key={tag.slug}
+                              title={tag.slug}
+                              className="px-2 py-0.5 rounded-md text-[11px] font-semibold capitalize border border-amber-400/35 bg-gradient-to-br from-amber-500/20 to-yellow-600/10 text-amber-200 shadow-[0_0_12px_-4px_rgba(251,191,36,0.35)]"
+                            >
+                              {tag.label}
+                            </span>
+                          ))
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-white/30 text-[11px] whitespace-nowrap">
                       {c.scrapedAt ? new Date(c.scrapedAt).toLocaleDateString() : '—'}
@@ -351,21 +372,13 @@ export default function CreatorsPage() {
                     <td className="px-4 py-3 sticky right-0 bg-[#0c1116]">
                       <div className="flex items-center gap-1.5">
                         <button
-                          onClick={() => handleAssignSpotlight(c)}
-                          className="px-3 py-2 rounded-lg text-xs font-black tracking-wider transition hover:brightness-110 shadow-sm"
-                          style={{ background: 'linear-gradient(90deg,#e8c873,#cba24f)', color: '#0a0807' }}
-                          title="Set as EROGRAM SPOTLIGHT Creator of the Month"
+                          type="button"
+                          onClick={() => handlePromote(c)}
+                          disabled={promotingId === c._id}
+                          className="px-3 py-2 rounded-lg text-xs font-black tracking-wider bg-[#00AFF0] hover:bg-[#009dd9] text-white transition disabled:opacity-50 disabled:cursor-wait"
+                          title="Promote and open OFM management"
                         >
-                          ★ SPOTLIGHT
-                        </button>
-                        <button
-                          onClick={() => { setSendToFeatured(c); loadFeaturedSlots(); }}
-                          className="p-1.5 text-white/30 hover:text-[#00AFF0] hover:bg-[#00AFF0]/10 rounded-lg transition"
-                          title="Send to Featured"
-                        >
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>
-                          </svg>
+                          {promotingId === c._id ? '…' : 'PROMOTE'}
                         </button>
                         <a
                           href={c.url}
@@ -378,15 +391,15 @@ export default function CreatorsPage() {
                             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
                           </svg>
                         </a>
-                        <button
-                          onClick={() => setEditCreator(c)}
+                        <a
+                          href={`${ofCreatorProfileUrl(c.username)}?edit=1`}
                           className="p-1.5 text-white/30 hover:text-white hover:bg-white/10 rounded-lg transition"
-                          title="Edit"
+                          title="Edit on Erogram"
                         >
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                           </svg>
-                        </button>
+                        </a>
                         <button
                           onClick={() => setDeleteId(c._id)}
                           className="p-1.5 text-white/30 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition"
@@ -399,7 +412,8 @@ export default function CreatorsPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -416,66 +430,6 @@ export default function CreatorsPage() {
           <button onClick={() => load(page + 1)} disabled={page >= pages} className="px-3 py-1.5 bg-white/[0.05] border border-white/10 rounded-lg text-white/50 text-sm hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition">
             Next →
           </button>
-        </div>
-      )}
-
-      {/* Send to Featured modal */}
-      {sendToFeatured && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-[#0e1419] border border-white/10 rounded-2xl p-6 w-full max-w-sm">
-            <div className="flex items-center gap-3 mb-4">
-              {sendToFeatured.avatar ? (
-                <img src={sendToFeatured.avatar} alt={sendToFeatured.name} className="w-10 h-10 rounded-xl object-cover bg-white/5 flex-shrink-0" />
-              ) : (
-                <div className="w-10 h-10 rounded-xl bg-[#00AFF0]/10 flex items-center justify-center text-[#00AFF0] font-black flex-shrink-0">
-                  {sendToFeatured.name.charAt(0)}
-                </div>
-              )}
-              <div>
-                <div className="text-white font-bold text-sm">{sendToFeatured.name}</div>
-                <div className="text-[#00AFF0] text-xs">@{sendToFeatured.username}</div>
-              </div>
-            </div>
-            <p className="text-white/50 text-xs mb-4">Pick a Featured spot. Occupied slots will be replaced.</p>
-            <div className="grid grid-cols-2 gap-2">
-              {([1, 2, 3, 4] as const).map((pos) => {
-                const occupant = featuredSlots[pos - 1];
-                const isBusy = sendingSlot === pos;
-                return (
-                  <button
-                    key={pos}
-                    onClick={() => handleSendToSlot(sendToFeatured, pos)}
-                    disabled={sendingSlot !== null}
-                    className={`relative flex flex-col items-start gap-1 p-3 rounded-xl border text-left transition disabled:opacity-50 ${
-                      occupant
-                        ? 'bg-amber-500/[0.06] border-amber-500/20 hover:bg-amber-500/[0.12]'
-                        : 'bg-[#00AFF0]/[0.06] border-[#00AFF0]/20 hover:bg-[#00AFF0]/[0.12]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <span className={`text-xs font-black ${occupant ? 'text-amber-400' : 'text-[#00AFF0]'}`}>
-                        Slot #{pos}
-                      </span>
-                      {isBusy && (
-                        <span className="inline-block w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                      )}
-                    </div>
-                    {occupant ? (
-                      <span className="text-[10px] text-amber-400/70 truncate w-full">⚠ Replaces: {occupant.name}</span>
-                    ) : (
-                      <span className="text-[10px] text-[#00AFF0]/60">Empty — set now</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            <button
-              onClick={() => setSendToFeatured(null)}
-              className="w-full mt-4 py-2 bg-white/[0.05] border border-white/10 rounded-xl text-white/40 text-sm hover:bg-white/10 transition"
-            >
-              Cancel
-            </button>
-          </div>
         </div>
       )}
 
@@ -497,77 +451,9 @@ export default function CreatorsPage() {
         </div>
       )}
 
-      {/* Edit modal */}
-      {editCreator && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-[#0e1419] border border-white/10 rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h3 className="text-white font-bold text-lg mb-5">Edit Creator</h3>
-            <div className="space-y-4">
-              {(['name', 'username', 'url', 'bio', 'avatar'] as const).map(field => (
-                <div key={field}>
-                  <label className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-1.5 capitalize">{field}</label>
-                  {field === 'bio' ? (
-                    <textarea
-                      rows={3}
-                      value={(editCreator as any)[field] || ''}
-                      onChange={(e) => setEditCreator({ ...editCreator, [field]: e.target.value })}
-                      className="w-full px-3 py-2 bg-white/[0.05] border border-white/10 rounded-xl text-white text-sm outline-none focus:border-[#00AFF0]/40 transition resize-none"
-                    />
-                  ) : (
-                    <input
-                      type="text"
-                      value={(editCreator as any)[field] || ''}
-                      onChange={(e) => setEditCreator({ ...editCreator, [field]: e.target.value })}
-                      className="w-full px-3 py-2 bg-white/[0.05] border border-white/10 rounded-xl text-white text-sm outline-none focus:border-[#00AFF0]/40 transition"
-                    />
-                  )}
-                </div>
-              ))}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-1.5">Price ($)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={editCreator.price ?? 0}
-                    onChange={(e) => setEditCreator({ ...editCreator, price: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 bg-white/[0.05] border border-white/10 rounded-xl text-white text-sm outline-none focus:border-[#00AFF0]/40 transition"
-                  />
-                </div>
-                <div className="flex flex-col gap-2 justify-end pb-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={editCreator.isFree ?? false}
-                      onChange={(e) => setEditCreator({ ...editCreator, isFree: e.target.checked })}
-                      className="accent-[#00AFF0]"
-                    />
-                    <span className="text-sm text-white/60">Free account</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={editCreator.isVerified ?? false}
-                      onChange={(e) => setEditCreator({ ...editCreator, isVerified: e.target.checked })}
-                      className="accent-[#00AFF0]"
-                    />
-                    <span className="text-sm text-white/60">Verified</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => setEditCreator(null)} className="flex-1 py-2.5 bg-white/[0.06] border border-white/10 rounded-xl text-white/60 text-sm font-semibold hover:bg-white/10 transition">
-                Cancel
-              </button>
-              <button onClick={handleSave} disabled={editLoading} className="flex-1 py-2.5 bg-[#00AFF0] hover:bg-[#009dd9] rounded-xl text-white text-sm font-bold transition disabled:opacity-50">
-                {editLoading ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-          </div>
-        </div>
+        </>
       )}
+
     </div>
   );
 }

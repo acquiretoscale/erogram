@@ -8,7 +8,7 @@ import { useLocale, useLocalePath, usePublicPathname } from '@/lib/i18n/client';
 import { LOCALES, LOCALE_FLAGS, LOCALE_NAMES, switchLocalePath, type Locale } from '@/lib/i18n';
 import { getMyListingsSummary } from '@/lib/actions/myListings';
 import { getMyAINSFWSummary } from '@/lib/actions/myAINSFWListings';
-import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
+import { OF_CATEGORY_MAP, OF_SEARCH_HUB_CATEGORY_SLUGS } from '@/app/onlyfanssearch/constants';
 import { getCampaignPlacement } from '@/lib/actions/publicData';
 import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
 import { RtaBadge } from '@/components/AgeGate';
@@ -125,21 +125,35 @@ const ADD_ITEMS = [
   },
 ];
 
-const OF_NAV_ITEMS = [
-  { label: 'Search', href: '/onlyfanssearch' },
-  { label: 'Categories', href: '/onlyfanssearch/categories' },
-];
+/** Original OF nav dropdown — 28 hub categories only (matches pre-expansion OF_CATEGORIES). */
+const OF_NAV_MENU_CATEGORIES = OF_SEARCH_HUB_CATEGORY_SLUGS.flatMap((slug) => {
+  const cat = OF_CATEGORY_MAP.get(slug);
+  return cat ? [cat] : [];
+});
 
-function OnlyfansNav() {
+function OFsearchNav() {
   const lp = useLocalePath();
   const pathname = usePathname() || '';
   const [open, setOpen] = useState(false);
-  const isActive = pathname.includes('/onlyfanssearch');
+  const ref = useRef<HTMLDivElement>(null);
+  const isActive = pathname.includes('/onlyfanssearch') || pathname.includes('/best-onlyfans-accounts');
   const mainHref = lp('/onlyfanssearch');
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const t = setTimeout(() => document.addEventListener('mousedown', handler, true), 80);
+    return () => { clearTimeout(t); document.removeEventListener('mousedown', handler, true); };
+  }, [open]);
 
   return (
     <div
       className="relative shrink-0 flex items-center"
+      ref={ref}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
@@ -155,6 +169,7 @@ function OnlyfansNav() {
         type="button"
         aria-label="OnlyFans menu"
         aria-expanded={open}
+        aria-haspopup="menu"
         onClick={() => setOpen((v) => !v)}
         className={`ml-0.5 p-1 rounded-md text-white/50 hover:text-white hover:bg-white/[0.06] transition-colors ${open ? 'text-white' : ''}`}
       >
@@ -163,24 +178,64 @@ function OnlyfansNav() {
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.97 }}
+            initial={{ opacity: 0, y: -8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.97 }}
-            transition={{ duration: 0.18, ease: 'easeOut' }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            transition={{ duration: 0.16, ease: 'easeOut' }}
             style={{ transformOrigin: 'top left' }}
-            className="absolute left-0 top-full pt-2 w-[200px] z-50"
+            className="absolute left-0 top-full pt-2 w-[340px] z-50"
           >
-            <div className="bg-[#161412] border border-white/10 rounded-xl shadow-2xl overflow-hidden p-1.5">
-              {OF_NAV_ITEMS.map((it) => (
+            <div className="bg-white border border-black/10 rounded-2xl shadow-2xl overflow-hidden">
+              <Link
+                href={mainHref}
+                onClick={() => setOpen(false)}
+                className="flex items-center justify-between px-4 py-3.5 border-b border-black/[0.06] hover:bg-[#00AFF0]/[0.05] group transition-colors"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" fill="none" stroke="#00AFF0" strokeWidth="3" />
+                    <circle cx="12" cy="12" r="3.4" fill="#0089c7" />
+                  </svg>
+                  <span className="font-extrabold text-[15px] leading-tight">
+                    <span className="text-[#0f0c0a]">Only</span><span className="text-[#00AFF0]">Fans</span>
+                    <span className="block text-[10px] font-bold text-[#8a8178] tracking-wide">Search 1.8M+ Creators</span>
+                  </span>
+                </span>
+                <span className="text-[#00AFF0] text-[18px] transition-transform group-hover:translate-x-0.5">→</span>
+              </Link>
+
+              <div className="px-3.5 pt-3 pb-1.5 flex items-center justify-between">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#9a928a]">Best OnlyFans Accounts</span>
+                <Link href={lp('/best-onlyfans-accounts')} className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#00AFF0] hover:text-[#0089c7] transition-colors">All →</Link>
+              </div>
+              <div className="grid grid-cols-3 gap-px px-2 pb-2">
+                {OF_NAV_MENU_CATEGORIES.map((cat) => (
+                  <Link
+                    key={cat.slug}
+                    href={lp(`/best-onlyfans-accounts/${cat.slug}`)}
+                    className="px-2 py-1.5 rounded-lg text-[11px] font-semibold text-[#4a443d] hover:text-[#00AFF0] hover:bg-[#00AFF0]/[0.06] transition-colors truncate"
+                  >
+                    {cat.name}
+                  </Link>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 px-3 py-3 border-t border-[#00AFF0]/15 bg-[#e8f7fd]">
                 <Link
-                  key={it.href}
-                  href={lp(it.href)}
+                  href={lp('/onlyfanssearch/categories')}
                   onClick={() => setOpen(false)}
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-[13px] font-semibold text-[#cfc9c2] hover:text-white hover:bg-white/[0.05] transition-colors"
+                  className="px-2 py-2.5 rounded-lg text-[12px] font-bold text-[#0f0c0a] bg-white border border-[#00AFF0]/20 hover:border-[#00AFF0]/50 hover:text-[#00AFF0] transition-colors text-center"
                 >
-                  {it.label}
+                  Categories
                 </Link>
-              ))}
+                <Link
+                  href={lp('/submit')}
+                  onClick={() => setOpen(false)}
+                  className="px-2 py-2.5 rounded-lg text-[12px] font-bold text-white bg-[#00AFF0] hover:bg-[#009AD6] transition-colors text-center"
+                >
+                  Submit your Creator
+                </Link>
+              </div>
             </div>
           </motion.div>
         )}
@@ -586,7 +641,7 @@ function MobileNavMenu({ open, lp, onClose, trendingLight = false }: { open: boo
           {ofOpen && (
             <div className="px-3 pb-2 pt-0.5">
               <div className="grid grid-cols-3 gap-1.5">
-                {OF_CATEGORIES.map((cat) => (
+                {OF_NAV_MENU_CATEGORIES.map((cat) => (
                   <Link key={cat.slug} href={`/onlyfanssearch/top-10-${cat.slug}-onlyfans-models`} onClick={onClose} className="text-center px-1.5 py-1.5 rounded-lg border border-[#00AFF0]/25 bg-[#00AFF0]/[0.06] text-[11px] font-semibold text-[#38c0f5] hover:bg-[#00AFF0] hover:text-white transition-colors truncate">{cat.name}</Link>
                 ))}
               </div>
@@ -732,6 +787,7 @@ function accentForPath(pathname: string): string {
   if (
     p === '/onlyfanssearch' ||
     p.startsWith('/onlyfanssearch/') ||
+    p.startsWith('/best-onlyfans-accounts') ||
     p.endsWith('-onlyfans')
   ) {
     return '#00AFF0';
@@ -804,7 +860,7 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
               )}
             </Link>
           ))}
-          <OnlyfansNav />
+          <OFsearchNav />
           <Link href={lp('/tags')} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-[0.18em] uppercase text-white hover:text-white/80 transition-colors">
             Tags
           </Link>

@@ -17,6 +17,8 @@ export const userSchema = new Schema(
     emailVerified: { type: Boolean, default: false },
     emailVerifyToken: { type: String, default: null },
     emailVerifyTokenExpires: { type: Date, default: null },
+    passwordResetToken: { type: String, default: null },
+    passwordResetTokenExpires: { type: Date, default: null },
     telegramId: { type: Number, unique: true, sparse: true },
     telegramUsername: { type: String, default: null },
     firstName: { type: String, default: null },
@@ -50,6 +52,8 @@ export const userSchema = new Schema(
     savedCreators: [{ type: Schema.Types.ObjectId, ref: 'OnlyFansCreator' }],
     /** Unified My Likes order keys: "group:id", "bot:id", "onlyfans:id", "ainsfw:slug" */
     savedLikesOrder: { type: [String], default: [] },
+    /** My Likes media grid order — ProfileFeedLike mediaKey strings */
+    likedMediaOrder: { type: [String], default: [] },
     interests: { type: [String], default: [] },
     aiInterests: { type: [String], default: [] },
     preferredPlatforms: { type: [String], default: [] },
@@ -855,7 +859,7 @@ const newsletterSubscriberSchema = new Schema(
 // Export models
 export const NewsletterSubscriber = models.NewsletterSubscriber || model('NewsletterSubscriber', newsletterSubscriberSchema);
 export const Vote = models.Vote || model('Vote', voteSchema);
-export const User = models.User || model('User', userSchema);
+export const User = freshModel('User', userSchema);
 export const Group = freshModel('Group', groupSchema);
 export const Bot = freshModel('Bot', botSchema);
 export const Post = models.Post || model('Post', postSchema);
@@ -995,6 +999,10 @@ export const onlyFansCreatorSchema = new Schema(
     submittedByUser: { type: Boolean, default: false },
     submittedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
     submittedByUsername: { type: String, default: '' },
+    submitterType: { type: String, enum: ['creator', 'agency'], default: 'creator' },
+    lookingForAgency: { type: Boolean, default: null },
+    submitContactMethod: { type: String, enum: ['telegram', 'whatsapp', null], default: null },
+    submitContactValue: { type: String, default: '' },
     submissionStatus: { type: String, enum: ['approved', 'pending', 'rejected'], default: 'approved' },
     deleted: { type: Boolean, default: false },
     deletedAt: { type: Date, default: null },

@@ -6,7 +6,6 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
 import Navbar from '@/components/Navbar';
-import LazyClickableVideoAd from '@/components/LazyClickableVideoAd';
 import BotCardSkeleton from './BotCardSkeleton';
 import BotsEditorialSeo from './BotsEditorialSeo';
 import AdvertCard from '../groups/AdvertCard';
@@ -450,10 +449,6 @@ export default function BotsClient({ initialBots, initialTopBots = [], initialAd
             {t('bots.heroSubtitle', 'Discover the best NSFW Telegram bots — curated, verified and updated daily.')}
           </p>
         </motion.div>
-
-        <div className="w-full mb-6">
-          <LazyClickableVideoAd maxWidth={672} />
-        </div>
 
         {/* Filter bar — same framework as AI NSFW: compact, centered, inline */}
         <div className="mb-6 sm:mb-8 flex flex-wrap items-center justify-center gap-2">

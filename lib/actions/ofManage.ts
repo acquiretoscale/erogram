@@ -226,7 +226,7 @@ export async function getOFMModelDetail(token: string, agencySlug: string, model
     agencyName = 'Individual Creators';
     creators = await TrendingOFCreator.find(
       { ofClientId: null, linkedCampaignId: { $ne: null } },
-      'name username avatar url active liveHourStart liveHourEnd liveOnly pausedImageUrls splitTestStartedAt linkedCampaignId',
+      'name username avatar url bio active liveHourStart liveHourEnd liveOnly pausedImageUrls splitTestStartedAt linkedCampaignId',
     ).lean();
   } else {
     const clients = await OFClient.find({}, 'name').lean();
@@ -235,7 +235,7 @@ export async function getOFMModelDetail(token: string, agencySlug: string, model
     agencyName = client.name;
     creators = await TrendingOFCreator.find(
       { ofClientId: client._id },
-      'name username avatar url active liveHourStart liveHourEnd liveOnly pausedImageUrls splitTestStartedAt linkedCampaignId',
+      'name username avatar url bio active liveHourStart liveHourEnd liveOnly pausedImageUrls splitTestStartedAt linkedCampaignId',
     ).lean();
   }
 
@@ -296,6 +296,7 @@ export async function getOFMModelDetail(token: string, agencySlug: string, model
       slug: slugify(cr.username || cr.name),
       avatar: cr.avatar || '',
       url: cr.url || '',
+      bio: cr.bio || '',
       active: cr.active,
       liveOnly: cr.liveOnly ?? false,
       liveHourStart: cr.liveHourStart ?? -1,

@@ -450,7 +450,7 @@ export async function createOFMAgency(
 /** Scrape/import a creator and attach to an agency (or OFM Creators free bucket). */
 export async function importCreatorToOFMAgency(
   token: string,
-  data: { username: string; clientId?: string; categories?: string[] },
+  data: { username: string; clientId?: string; categories?: string[]; defaultPlacements?: string[] },
 ) {
   if (!(await authenticateAdmin(token))) throw new Error('Unauthorized');
 
@@ -512,7 +512,9 @@ export async function importCreatorToOFMAgency(
   let syncWarning: string | null = imported.warning || null;
   try {
     const { syncTrendingToCampaign } = await import('@/lib/actions/ofSync');
-    const sync = await syncTrendingToCampaign(slot._id.toString());
+    const sync = await syncTrendingToCampaign(slot._id.toString(), {
+      initialPlacements: data.defaultPlacements,
+    });
     if (!sync.ok) syncWarning = sync.note || syncWarning;
   } catch {
     syncWarning = syncWarning || 'Ad sync failed — check /admin/ad-network';

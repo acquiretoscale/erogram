@@ -183,6 +183,18 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // Legacy OF creator URLs: /{username}-onlyfans → /onlyfanssearch/{username}
+  {
+    const legacyOf = pathname.match(/^(\/(?:de|es|pt))?\/([^/]+)-onlyfans\/?$/);
+    if (legacyOf) {
+      const localePrefix = legacyOf[1] || '';
+      const username = legacyOf[2];
+      const url = request.nextUrl.clone();
+      url.pathname = `${localePrefix}/onlyfanssearch/${username}`;
+      return NextResponse.redirect(url, 301);
+    }
+  }
+
   // ── Best Telegram Groups slug normalization ────────────────────────────────
   // Old category URLs used spaces / %20 (e.g. /best-telegram-groups/big%20ass,
   // /best-telegram-groups/goth%20&%20alt). 301 them to the hyphenated canonical

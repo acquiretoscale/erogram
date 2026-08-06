@@ -92,12 +92,22 @@ interface Folder {
 
 import { getProfileTabColors, isProfileThemedMode, type ProfileThemeId } from './profileTheme';
 import { useProfileTheme } from './ProfileThemeContext';
-import { getSavedLikesOrder, saveSavedLikesOrder } from '@/lib/actions/userProfile';
+import { getSavedLikesOrder, saveSavedLikesOrder, saveOnlyFansCreatorFromLink, getBookmarkCreatorLikeStatus, toggleBookmarkCreatorLikes } from '@/lib/actions/userProfile';
+
+function normalizeBookmarkOrderKey(k: string): string {
+  if (k.startsWith('creator:')) return `onlyfans:${k.slice('creator:'.length)}`;
+  return k;
+}
+
+function bookmarkOrderKey(item: BookmarkedUnified): string {
+  return item.kind === 'creator' ? `onlyfans:${item.id}` : `${item.kind}:${item.id}`;
+}
 
 function applyLikesOrder(items: BookmarkedUnified[], order: string[]): BookmarkedUnified[] {
-  const map = new Map(items.map((i) => [`${i.kind}:${i.id}`, i]));
+  const map = new Map(items.map((i) => [bookmarkOrderKey(i), i]));
   const out: BookmarkedUnified[] = [];
-  for (const k of order) {
+  for (const raw of order) {
+    const k = normalizeBookmarkOrderKey(raw);
     const item = map.get(k);
     if (item) {
       out.push(item);
@@ -105,7 +115,7 @@ function applyLikesOrder(items: BookmarkedUnified[], order: string[]): Bookmarke
     }
   }
   for (const item of items) {
-    const k = `${item.kind}:${item.id}`;
+    const k = bookmarkOrderKey(item);
     if (map.has(k)) out.push(item);
   }
   return out;
@@ -191,6 +201,10 @@ export default function SavedTab({
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [deletingSelected, setDeletingSelected] = useState(false);
   const [likesOrder, setLikesOrder] = useState<string[]>([]);
+  const [creatorLinkInput, setCreatorLinkInput] = useState('');
+  const [savingCreatorLink, setSavingCreatorLink] = useState(false);
+  const [likedCreatorIds, setLikedCreatorIds] = useState<Set<string>>(new Set());
+  const [togglingCreatorLikeId, setTogglingCreatorLikeId] = useState<string | null>(null);
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
 
@@ -212,7 +226,20 @@ export default function SavedTab({
       setFolders(flRes.data);
       setAllBookmarks(allRes ? allRes.data : bkRes.data);
       setSavedCreators(Array.isArray(creatorsRes?.creators) ? creatorsRes.creators : []);
-      setLikesOrder(Array.isArray(orderRes) ? orderRes : []);
+      setLikesOrder(Array.isArray(orderRes) ? orderRes.map(normalizeBookmarkOrderKey) : []);
+      const creators = Array.isArray(creatorsRes?.creators) ? creatorsRes.creators : [];
+      if (token && creators.length) {
+        const likeRes = await getBookmarkCreatorLikeStatus(token, creators.map((c: SavedCreator) => c._id));
+        if (likeRes.ok) {
+          setLikedCreatorIds(new Set(
+            Object.entries(likeRes.likedByCreatorId)
+              .filter(([, liked]) => liked)
+              .map(([id]) => id),
+          ));
+        }
+      } else {
+        setLikedCreatorIds(new Set());
+      }
     } catch {
       toast('Failed to load saved items', 'error');
     }
@@ -233,7 +260,7 @@ export default function SavedTab({
   };
 
   const itemKey = (item: BookmarkedUnified) => `${item.kind}-${item.id}`;
-  const orderKey = (item: BookmarkedUnified) => `${item.kind}:${item.id}`;
+  const orderKey = bookmarkOrderKey;
 
   const kindLabel = dragKindLabel;
   const kindBadgeBg = dragKindBadgeBg;
@@ -275,7 +302,8 @@ export default function SavedTab({
         }
       }
       exitEditMode();
-      const nextOrder = likesOrder.filter((k) => !selectedKeys.has(k));
+      const selectedOrderKeys = new Set(toDelete.map(orderKey));
+      const nextOrder = likesOrder.filter((k) => !selectedOrderKeys.has(normalizeBookmarkOrderKey(k)));
       setLikesOrder(nextOrder);
       if (token) await saveSavedLikesOrder(token, nextOrder);
       toast(`Removed ${toDelete.length} item${toDelete.length === 1 ? '' : 's'}`, 'success');
@@ -440,6 +468,59 @@ export default function SavedTab({
     const merged = mergeReorderedKeys(likesOrder, visibleKeys, newVisibleOrderKeys);
     setLikesOrder(merged);
     await saveSavedLikesOrder(token, merged);
+  };
+
+  const handleSaveCreatorLink = async () => {
+    const trimmed = creatorLinkInput.trim();
+    if (!trimmed || !token) return;
+    setSavingCreatorLink(true);
+    try {
+      const res = await saveOnlyFansCreatorFromLink(token, trimmed);
+      if (!res.ok) {
+        toast(res.message || 'Could not save creator', 'error');
+        return;
+      }
+      setCreatorLinkInput('');
+      await loadData();
+      toast('Saved', 'success');
+    } catch {
+      toast('Could not save creator', 'error');
+    } finally {
+      setSavingCreatorLink(false);
+    }
+  };
+
+  const handleToggleCreatorLike = async (creatorId: string) => {
+    if (!token || togglingCreatorLikeId) return;
+    const wasLiked = likedCreatorIds.has(creatorId);
+    setTogglingCreatorLikeId(creatorId);
+    setLikedCreatorIds((prev) => {
+      const next = new Set(prev);
+      if (wasLiked) next.delete(creatorId);
+      else next.add(creatorId);
+      return next;
+    });
+    try {
+      const res = await toggleBookmarkCreatorLikes(token, creatorId);
+      if (!res.ok) throw new Error(res.message || 'Like failed');
+      setLikedCreatorIds((prev) => {
+        const next = new Set(prev);
+        if (res.liked) next.add(creatorId);
+        else next.delete(creatorId);
+        return next;
+      });
+      toast(res.liked ? 'Added to likes' : 'Removed from likes', 'success');
+    } catch {
+      setLikedCreatorIds((prev) => {
+        const next = new Set(prev);
+        if (wasLiked) next.add(creatorId);
+        else next.delete(creatorId);
+        return next;
+      });
+      toast('Could not update like', 'error');
+    } finally {
+      setTogglingCreatorLikeId(null);
+    }
   };
 
   const handleDragStart = (idx: number, e?: React.DragEvent) => {
@@ -751,6 +832,32 @@ export default function SavedTab({
           )}
         </p>
       </div>
+
+      {!activeFolder && (
+        <div className="mb-3 flex flex-col gap-2 sm:mb-4 sm:flex-row sm:items-center">
+          <input
+            type="text"
+            value={creatorLinkInput}
+            onChange={(e) => setCreatorLinkInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !savingCreatorLink) void handleSaveCreatorLink();
+            }}
+            placeholder="e.g. SophieRaiin or onlyfans.com/sophieraiin"
+            className="min-w-0 flex-1 rounded-lg px-3 py-2 text-[12px] outline-none sm:text-[13px]"
+            style={{ background: t.pillBg, border: `1px solid ${t.pillBorder}`, color: t.text }}
+            disabled={savingCreatorLink}
+          />
+          <button
+            type="button"
+            onClick={() => void handleSaveCreatorLink()}
+            disabled={savingCreatorLink || !creatorLinkInput.trim()}
+            className="shrink-0 rounded-lg px-4 py-2 text-[10px] font-black uppercase tracking-wide transition-all disabled:opacity-50 sm:text-[11px]"
+            style={{ background: t.viewBtnBg, color: t.viewBtnTxt }}
+          >
+            Save creator
+          </button>
+        </div>
+      )}
 
       <div className="mb-3 overflow-x-auto pb-0.5 scrollbar-hide sm:mb-4">
         <div
@@ -1127,6 +1234,25 @@ export default function SavedTab({
                         <span className="hidden sm:inline">Telegram</span>
                       </a>
                     )}
+                    {item.kind === 'creator' && item.creatorId && (
+                      <button
+                        type="button"
+                        onClick={() => void handleToggleCreatorLike(item.creatorId!)}
+                        disabled={togglingCreatorLikeId === item.creatorId}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg transition-all hover:scale-[1.04] disabled:opacity-50"
+                        style={{
+                          background: likedCreatorIds.has(item.creatorId) ? '#ef444422' : 'rgba(255,255,255,0.06)',
+                          border: `1px solid ${likedCreatorIds.has(item.creatorId) ? '#ef444466' : 'rgba(255,255,255,0.12)'}`,
+                          color: likedCreatorIds.has(item.creatorId) ? '#ef4444' : t.accentDim,
+                        }}
+                        aria-label={likedCreatorIds.has(item.creatorId) ? 'Remove from likes' : 'Add to likes'}
+                        title={likedCreatorIds.has(item.creatorId) ? 'Remove from likes' : 'Add to likes'}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill={likedCreatorIds.has(item.creatorId) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                        </svg>
+                      </button>
+                    )}
                     <Link href={item.href} className="rounded-lg px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide transition-all hover:scale-[1.04] sm:px-3 sm:text-[11px]" style={isPremium ? { background: 'linear-gradient(135deg, #c9973a, #a67c2e)', color: '#0d0c0a' } : { background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }} {...(item.kind === 'creator' ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
                       View
                     </Link>
@@ -1247,6 +1373,29 @@ export default function SavedTab({
                     onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }}
                   />
                 </Link>
+                {item.kind === 'creator' && item.creatorId && !editMode && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      void handleToggleCreatorLike(item.creatorId!);
+                    }}
+                    disabled={togglingCreatorLikeId === item.creatorId}
+                    className="absolute top-2 left-2 z-[3] flex h-7 w-7 items-center justify-center rounded-full transition-all disabled:opacity-50"
+                    style={{
+                      background: likedCreatorIds.has(item.creatorId) ? '#ef4444' : 'rgba(0,0,0,0.55)',
+                      color: likedCreatorIds.has(item.creatorId) ? '#fff' : '#fff',
+                      border: `1px solid ${likedCreatorIds.has(item.creatorId) ? '#ef4444' : 'rgba(255,255,255,0.25)'}`,
+                    }}
+                    aria-label={likedCreatorIds.has(item.creatorId) ? 'Remove from likes' : 'Add to likes'}
+                    title={likedCreatorIds.has(item.creatorId) ? 'Remove from likes' : 'Add to likes'}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill={likedCreatorIds.has(item.creatorId) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                    </svg>
+                  </button>
+                )}
                 <span
                   className="absolute bottom-2 right-2 z-[2] pointer-events-none text-[9px] font-bold tracking-[0.14em] uppercase px-2 py-0.5 rounded-full"
                   style={{ backgroundColor: kindBadgeBg(item.kind), color: '#fff' }}

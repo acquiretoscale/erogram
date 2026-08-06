@@ -896,6 +896,45 @@ export async function getKeywordPlacementCampaigns(placement: string, categorySl
   });
 }
 
+function mapOfCampaignsToFeaturedCreators(campaigns: any[]) {
+  return (campaigns || [])
+    .filter((c) => c.adType === 'onlyfans-creator' && (c.creative || c.ofUsername))
+    .map((c) => ({
+      _id: c._id,
+      campaignId: c._id,
+      name: c.name || c.ofUsername || '',
+      username: c.ofUsername || '',
+      avatar: (c.ofAlbum && c.ofAlbum[0]) || c.creative || '',
+      album: c.ofAlbum || [],
+      albumIdx: c.ofAlbumIdx || [],
+      url: c.destinationUrl || '',
+      bio: c.description || c.ofBio || '',
+      likesCount: c.ofLikesCount || 0,
+      liveHourStart: c.ofLiveHourStart ?? -1,
+      liveHourEnd: c.ofLiveHourEnd ?? -1,
+      isPaidCampaign: true,
+    }));
+}
+
+/** Paid OF creators for hub search results — keyword of-cat matches first, then of-search-featured pool. */
+export async function getSearchResultFeaturedCampaigns(query = '', max = 8) {
+  const trimmed = (query || '').trim();
+  const [keywordRaw, generalRaw] = await Promise.all([
+    trimmed ? getKeywordPlacementCampaigns('of-cat', trimmed, max) : Promise.resolve([]),
+    getPlacementFeedCampaigns('of-search-featured', max),
+  ]);
+  const seen = new Set<string>();
+  const out: any[] = [];
+  for (const c of mapOfCampaignsToFeaturedCreators([...(keywordRaw as any[]), ...(generalRaw as any[])])) {
+    const u = (c.username || '').toLowerCase();
+    if (!u || seen.has(u)) continue;
+    seen.add(u);
+    out.push(c);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
 /**
  * Admin: per-campaign click counts for Today / last 7d / last 30d.
  * One aggregation over the last 30 days of CampaignClick. Lifetime lives on Campaign.clicks already.

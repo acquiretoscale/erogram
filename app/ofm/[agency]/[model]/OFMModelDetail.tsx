@@ -22,6 +22,7 @@ interface Detail {
     username: string;
     slug: string;
     avatar: string;
+    bio: string;
     url: string;
     active: boolean;
     liveOnly: boolean;
@@ -185,6 +186,11 @@ export default function OFMModelDetail({ agencySlug, modelSlug }: { agencySlug: 
 
         <OFMModelAdPanel
           creatorId={m._id}
+          username={m.username}
+          name={m.name}
+          avatar={m.avatar}
+          url={m.url}
+          bio={m.bio}
           campaign={data.campaign}
           token={tok()}
           onSaved={reload}

@@ -1,4 +1,4 @@
-// Auto-generated best-of page registry — 136 pages (countries, US states, niches).
+// Auto-generated best-of page registry — 148 pages (countries, US states, niches).
 // Regenerate: node scripts/generate-best-of-pages.js
 
 export type BestOfPageType = "niche" | "country" | "state";
@@ -573,9 +573,21 @@ export const BEST_OF_PAGES: BestOfPage[] = [
     "patterns": [
       "moroccan",
       "morocco",
-      "maroc"
+      "maroc",
+      "casablanca"
     ],
     "count": 125
+  },
+  {
+    "slug": "muslim",
+    "label": "Muslim",
+    "type": "niche",
+    "match": "keyword",
+    "patterns": [
+      "muslim",
+      "muslimah"
+    ],
+    "count": 8
   },
   {
     "slug": "influencer",
@@ -752,15 +764,17 @@ export const BEST_OF_PAGES: BestOfPage[] = [
     "type": "state",
     "match": "keyword",
     "patterns": [
-      "\\bcalifornia\\b",
-      "\\blos angeles\\b",
-      "\\bsan francisco\\b",
-      "\\bsan diego\\b",
-      ", ca\\b",
-      "\\bhollywood\\b",
-      "\\bsocal\\b"
+      "california",
+      "los angeles",
+      "san francisco",
+      "san diego",
+      "hollywood",
+      "socal",
+      "sacramento",
+      "san jose",
+      "orange county"
     ],
-    "count": 86
+    "count": 73
   },
   {
     "slug": "australian",
@@ -815,14 +829,15 @@ export const BEST_OF_PAGES: BestOfPage[] = [
     "type": "state",
     "match": "keyword",
     "patterns": [
-      "\\bflorida\\b",
-      "\\bmiami\\b",
-      "\\borlando\\b",
-      "\\btampa\\b",
-      ", fl\\b",
-      "\\bsouth beach\\b"
+      "florida",
+      "miami",
+      "orlando",
+      "tampa",
+      "south beach",
+      "jacksonville",
+      "fort lauderdale"
     ],
-    "count": 80
+    "count": 75
   },
   {
     "slug": "goth-girl",
@@ -898,6 +913,18 @@ export const BEST_OF_PAGES: BestOfPage[] = [
       "heels"
     ],
     "count": 65
+  },
+  {
+    "slug": "hijabi",
+    "label": "Hijabi",
+    "type": "niche",
+    "match": "keyword",
+    "patterns": [
+      "hijab",
+      "hijabi",
+      "hijabis"
+    ],
+    "count": 9
   },
   {
     "slug": "japanese",
@@ -1038,13 +1065,14 @@ export const BEST_OF_PAGES: BestOfPage[] = [
     "type": "state",
     "match": "keyword",
     "patterns": [
-      "\\btexas\\b",
-      "\\bhouston\\b",
-      "\\bdallas\\b",
-      "\\baustin\\b",
-      ", tx\\b"
+      "texas",
+      "houston",
+      "dallas",
+      "austin",
+      "san antonio",
+      "fort worth"
     ],
-    "count": 47
+    "count": 56
   },
   {
     "slug": "thai",
@@ -1099,12 +1127,13 @@ export const BEST_OF_PAGES: BestOfPage[] = [
     "type": "state",
     "match": "keyword",
     "patterns": [
-      "\\bnevada\\b",
-      "\\blas vegas\\b",
-      "\\bvegas\\b",
-      ", nv\\b"
+      "nevada",
+      "las vegas",
+      "vegas",
+      "reno",
+      "henderson"
     ],
-    "count": 43
+    "count": 82
   },
   {
     "slug": "lingerie",
@@ -1143,9 +1172,43 @@ export const BEST_OF_PAGES: BestOfPage[] = [
       "arab",
       "arabic",
       "arabian",
-      "middle eastern"
+      "arabe",
+      "middle eastern",
+      "saudi",
+      "emirati",
+      "uae",
+      "dubai",
+      "qatar",
+      "kuwait",
+      "bahrain",
+      "oman",
+      "lebanon",
+      "lebanese",
+      "syria",
+      "syrian",
+      "palestine",
+      "palestinian",
+      "jordan",
+      "jordanian",
+      "iraq",
+      "iraqi",
+      "egypt",
+      "egyptian",
+      "yemen",
+      "yemeni",
+      "morocco",
+      "moroccan",
+      "algeria",
+      "algerian",
+      "tunisia",
+      "tunisian",
+      "libya",
+      "libyan",
+      "gulf",
+      "maroc",
+      "casablanca"
     ],
-    "count": 37
+    "count": 174
   },
   {
     "slug": "chinese",
@@ -1217,12 +1280,12 @@ export const BEST_OF_PAGES: BestOfPage[] = [
     "type": "state",
     "match": "keyword",
     "patterns": [
-      "\\bgeorgia,\\b",
-      "\\bgeorgia usa\\b",
-      "\\batlanta\\b",
-      ", ga\\b"
+      "atlanta",
+      "georgia usa",
+      "savannah",
+      "augusta georgia"
     ],
-    "count": 25
+    "count": 76
   },
   {
     "slug": "college-girl",
@@ -1252,13 +1315,15 @@ export const BEST_OF_PAGES: BestOfPage[] = [
     "type": "state",
     "match": "keyword",
     "patterns": [
-      "\\bnew york\\b",
-      "\\bnyc\\b",
-      "\\bmanhattan\\b",
-      "\\bbrooklyn\\b",
-      ", ny\\b"
+      "new york",
+      "nyc",
+      "manhattan",
+      "brooklyn",
+      "queens",
+      "bronx",
+      "long island"
     ],
-    "count": 23
+    "count": 33
   },
   {
     "slug": "ukrainian",
@@ -1309,11 +1374,11 @@ export const BEST_OF_PAGES: BestOfPage[] = [
     "type": "state",
     "match": "keyword",
     "patterns": [
-      "\\bmichigan\\b",
-      "\\bdetroit\\b",
-      ", mi\\b"
+      "michigan",
+      "detroit",
+      "grand rapids"
     ],
-    "count": 20
+    "count": 13
   },
   {
     "slug": "massachusetts",
@@ -1321,11 +1386,10 @@ export const BEST_OF_PAGES: BestOfPage[] = [
     "type": "state",
     "match": "keyword",
     "patterns": [
-      "\\bmassachusetts\\b",
-      "\\bboston\\b",
-      ", ma\\b"
+      "massachusetts",
+      "boston"
     ],
-    "count": 19
+    "count": 11
   },
   {
     "slug": "south-korean",
@@ -1404,11 +1468,11 @@ export const BEST_OF_PAGES: BestOfPage[] = [
     "type": "state",
     "match": "keyword",
     "patterns": [
-      "\\bcolorado\\b",
-      "\\bdenver\\b",
-      ", co\\b"
+      "colorado",
+      "denver",
+      "colorado springs"
     ],
-    "count": 15
+    "count": 14
   },
   {
     "slug": "peruvian",
@@ -1494,11 +1558,10 @@ export const BEST_OF_PAGES: BestOfPage[] = [
     "type": "state",
     "match": "keyword",
     "patterns": [
-      "\\billinois\\b",
-      "\\bchicago\\b",
-      ", il\\b"
+      "illinois",
+      "chicago"
     ],
-    "count": 11
+    "count": 15
   },
   {
     "slug": "puerto-rican",
@@ -1517,12 +1580,12 @@ export const BEST_OF_PAGES: BestOfPage[] = [
     "type": "state",
     "match": "keyword",
     "patterns": [
-      "\\bnorth carolina\\b",
-      "\\bcharlotte\\b",
-      "\\braleigh\\b",
-      ", nc\\b"
+      "north carolina",
+      "charlotte",
+      "raleigh",
+      "durham"
     ],
-    "count": 10
+    "count": 6
   },
   {
     "slug": "arizona",
@@ -1530,11 +1593,13 @@ export const BEST_OF_PAGES: BestOfPage[] = [
     "type": "state",
     "match": "keyword",
     "patterns": [
-      "\\barizona\\b",
-      "\\bphoenix\\b",
-      ", az\\b"
+      "arizona",
+      "phoenix",
+      "scottsdale",
+      "tucson",
+      "tempe"
     ],
-    "count": 10
+    "count": 13
   },
   {
     "slug": "girlfriend",
@@ -1546,7 +1611,7 @@ export const BEST_OF_PAGES: BestOfPage[] = [
       "gfe",
       "girlfriend experience"
     ],
-    "count": 0
+    "count": 282
   },
   {
     "slug": "toys",
@@ -1559,7 +1624,7 @@ export const BEST_OF_PAGES: BestOfPage[] = [
       "vibrator",
       "sex toy"
     ],
-    "count": 0
+    "count": 345
   },
   {
     "slug": "instagram",
@@ -1571,7 +1636,7 @@ export const BEST_OF_PAGES: BestOfPage[] = [
       "insta model",
       "ig model"
     ],
-    "count": 0
+    "count": 214
   },
   {
     "slug": "korean",
@@ -1583,29 +1648,7 @@ export const BEST_OF_PAGES: BestOfPage[] = [
       "korea",
       "seoul korea"
     ],
-    "count": 0
-  },
-  {
-    "slug": "asexual",
-    "label": "Asexual",
-    "type": "niche",
-    "match": "keyword",
-    "patterns": [
-      "asexual",
-      " ace "
-    ],
-    "count": 0
-  },
-  {
-    "slug": "bulgarian",
-    "label": "Bulgarian",
-    "type": "country",
-    "match": "keyword",
-    "patterns": [
-      "bulgarian",
-      "bulgaria"
-    ],
-    "count": 0
+    "count": 16
   },
   {
     "slug": "caucasian",
@@ -1616,7 +1659,7 @@ export const BEST_OF_PAGES: BestOfPage[] = [
       "caucasian",
       "white girl"
     ],
-    "count": 0
+    "count": 6
   },
   {
     "slug": "couple-lesbian",
@@ -1627,7 +1670,7 @@ export const BEST_OF_PAGES: BestOfPage[] = [
       "lesbian couple",
       "girl on girl couple"
     ],
-    "count": 0
+    "count": 9
   },
   {
     "slug": "couple-straight",
@@ -1636,20 +1679,13 @@ export const BEST_OF_PAGES: BestOfPage[] = [
     "match": "keyword",
     "patterns": [
       "straight couple",
-      "boy girl couple"
+      "boy girl couple",
+      "boy/girl couple",
+      "b/g couple",
+      "with my boyfriend",
+      "with my husband"
     ],
-    "count": 0
-  },
-  {
-    "slug": "croatian",
-    "label": "Croatian",
-    "type": "country",
-    "match": "keyword",
-    "patterns": [
-      "croatian",
-      "croatia"
-    ],
-    "count": 0
+    "count": 2
   },
   {
     "slug": "ecuadorian",
@@ -1660,18 +1696,7 @@ export const BEST_OF_PAGES: BestOfPage[] = [
       "ecuadorian",
       "ecuador"
     ],
-    "count": 0
-  },
-  {
-    "slug": "malaysian",
-    "label": "Malaysian",
-    "type": "country",
-    "match": "keyword",
-    "patterns": [
-      "malaysian",
-      "malaysia"
-    ],
-    "count": 0
+    "count": 3
   },
   {
     "slug": "public-sex",
@@ -1683,7 +1708,7 @@ export const BEST_OF_PAGES: BestOfPage[] = [
       "public play",
       "outdoor sex"
     ],
-    "count": 0
+    "count": 7
   },
   {
     "slug": "shower-sex",
@@ -1692,9 +1717,13 @@ export const BEST_OF_PAGES: BestOfPage[] = [
     "match": "keyword",
     "patterns": [
       "shower sex",
-      "shower play"
+      "shower play",
+      "shower content",
+      "shower show",
+      "shower video",
+      "shower fun"
     ],
-    "count": 0
+    "count": 10
   },
   {
     "slug": "singaporean",
@@ -1705,18 +1734,7 @@ export const BEST_OF_PAGES: BestOfPage[] = [
       "singaporean",
       "singapore"
     ],
-    "count": 0
-  },
-  {
-    "slug": "slovak",
-    "label": "Slovak",
-    "type": "country",
-    "match": "keyword",
-    "patterns": [
-      "slovak",
-      "slovakia"
-    ],
-    "count": 0
+    "count": 5
   },
   {
     "slug": "step-fantasy",
@@ -1729,7 +1747,7 @@ export const BEST_OF_PAGES: BestOfPage[] = [
       "step sister",
       "stepdaughter"
     ],
-    "count": 0
+    "count": 21
   }
 ];
 

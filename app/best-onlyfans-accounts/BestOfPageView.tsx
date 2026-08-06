@@ -1,7 +1,6 @@
 import React from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { CircleUser } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { EditorialMasthead, EditorialFooter } from '@/app/blog/EditorialChrome';
 import { BEST_OF_PAGE_MAP, BEST_OF_PAGES, type BestOfPage } from '@/app/best-onlyfans-accounts/bestOfPages';
@@ -511,18 +510,6 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                   >
                     {!isPromo && <BestOfDeleteButton slug={deleteSlug} />}
                     {isPromo && (
-                      <span
-                        className="absolute top-3 right-3 z-20 inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-[7px] sm:text-[8px] font-black uppercase tracking-[0.14em] shadow-md"
-                        style={{
-                          background: 'linear-gradient(135deg,#f5d061,#c9920a)',
-                          color: '#3d2e00',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.22)',
-                        }}
-                      >
-                        {dict.bestOnlyfans.featuredBadge}
-                      </span>
-                    )}
-                    {isPromo && (
                       <>
                         <div className="pointer-events-none absolute -top-28 -right-20 h-56 w-56 rounded-full bg-[#00AFF0]/20 blur-3xl" />
                         <div className="pointer-events-none absolute -bottom-24 -left-16 h-48 w-48 rounded-full bg-[#00D4FF]/12 blur-3xl" />
@@ -570,15 +557,10 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
 
                       {/* Body */}
                       <div className="flex-1 min-w-0 flex flex-col p-4 sm:py-5 sm:pr-5 sm:pl-0">
-                        <div className={isPromo ? 'pr-24 sm:pr-36' : undefined}>
+                        <div className={isPromo ? 'pr-0' : undefined}>
                           <h2 className="font-[family-name:var(--font-baloo)] font-extrabold text-[1.25rem] sm:text-[1.45rem] leading-tight tracking-tight flex items-center justify-between gap-3 min-w-0" style={{ color: textMain }}>
                             <span className="truncate min-w-0 flex-1">{creator.name}</span>
                             <span className="flex items-center gap-2 flex-shrink-0">
-                            {isPromo && (
-                              <svg className="w-4 h-4 sm:w-[1.1rem] sm:h-[1.1rem] shrink-0" viewBox="0 0 24 24" fill="#1D9BF0" aria-label="Verified">
-                                <path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z" />
-                              </svg>
-                            )}
                             {!isPromo && (creator.isFree || creator.price === 0) && (
                               <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wide text-white" style={{ backgroundColor: '#22c55e' }}>
                                 {dict.bestOnlyfans.free}
@@ -625,48 +607,25 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                           </div>
                         ) : null}
 
-                        <div className="mt-4 sm:mt-auto pt-1 flex flex-row items-stretch gap-2">
+                        <div className="mt-4 sm:mt-auto pt-1">
                           {isPromo ? (
-                            <>
                               <a
                                 href={creator.username ? `/go/${creator.username}` : '#'}
                                 target="_blank"
-                                rel="noopener"
-                                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl font-black uppercase text-white px-8 py-4 text-[16px] tracking-[0.14em] transition-opacity hover:opacity-95"
+                                rel="noopener noreferrer"
+                                className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl font-black uppercase text-white px-8 py-4 text-[16px] tracking-[0.14em] transition-opacity hover:opacity-95"
                                 style={{ backgroundColor: OF_BLUE, boxShadow: '0 8px 22px rgba(0,175,240,0.35)' }}
                               >
                                 <OnlyFansIcon size={18} />
                                 {dict.bestOnlyfans.visitProfile}
                               </a>
-                              <Link
-                                href={erogramHref}
-                                title={dict.bestOnlyfans.visitErogramProfile}
-                                aria-label={dict.bestOnlyfans.visitErogramProfile}
-                                className="inline-flex flex-shrink-0 w-14 sm:w-[3.5rem] items-center justify-center rounded-xl transition-all hover:scale-[1.03] active:scale-[0.98]"
-                                style={{
-                                  backgroundColor: '#F0EBE3',
-                                  border: '1px solid rgba(43,27,40,0.14)',
-                                  boxShadow: '0 4px 14px rgba(43,27,40,0.14)',
-                                  color: PLUM,
-                                }}
-                              >
-                                <CircleUser size={26} strokeWidth={1.85} />
-                              </Link>
-                            </>
-                          ) : (
-                          <span
-                            className="inline-flex w-full sm:w-auto items-center justify-center rounded-xl font-black uppercase text-white px-6 py-3 text-[12px] tracking-[0.14em]"
-                            style={{ backgroundColor: OF_BLUE, boxShadow: '0 8px 22px rgba(0,175,240,0.35)' }}
-                          >
-                            Visit Profile
-                          </span>
-                          )}
+                          ) : null}
                         </div>
 
                       </div>
                       </div>
                     ) : (
-                      <Link href={erogramHref} className={`${cardRowClass} cursor-pointer`}>
+                      <Link href={erogramHref} target="_blank" rel="noopener noreferrer" className={`${cardRowClass} cursor-pointer no-underline`}>
                       {/* Avatar */}
                       <div
                         className="relative flex-shrink-0 w-full sm:w-[11.5rem] h-52 sm:h-auto sm:min-h-[15rem] overflow-hidden sm:rounded-l-[1.35rem]"

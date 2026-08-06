@@ -4,14 +4,18 @@ import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
 import { motion } from 'framer-motion';
-import { Heart, Trash2, Crown, Star, User } from 'lucide-react';
+import { Heart, Trash2, Crown, User } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import ProfileOFPremiumSearch from '@/app/profile/ProfileOFPremiumSearch';
+import { OfSearchResultsViewToggle } from '@/app/profile/ProfileGridDensityToggle';
+import {
+  loadOfSearchResultsView,
+  type OfSearchResultsView,
+} from '@/app/profile/profileGridDensity';
 import { OF_SEARCH_TOKENS, ofSearchNavProps } from '@/app/onlyfanssearch/ofSearchTokens';
 import { trackCreatorClick, trackTrendingClick } from '@/lib/actions/onlyfansTracking';
 import { getTrendingCreators } from '@/lib/actions/publicData';
 import { browseCreators, deleteCreatorBySlug } from '@/lib/actions/ofCreatorsBrowse';
-import { getOFMTrending, createOFMTrendingSlot } from '@/lib/actions/ofm';
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
 import type { FeedCampaign } from '@/app/groups/types';
 import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
@@ -40,6 +44,35 @@ function formatCount(n: number) {
   return `${n}K`;
 }
 
+function isCreatorLiveNow(start: number, end: number): boolean {
+  if (start < 0 || end < 0) return false;
+  const gmtHour = new Date().getUTCHours();
+  if (start <= end) return gmtHour >= start && gmtHour < end;
+  return gmtHour >= start || gmtHour < end;
+}
+
+const CREATOR_VIEW_PROFILE_BTN =
+  'flex-1 flex items-center justify-center gap-2 py-2 sm:py-2.5 rounded-xl bg-[#0084BD] text-white text-[12px] sm:text-sm font-black text-center shadow-lg border border-[#0084BD] group-hover:bg-[#0070A3] transition-colors no-underline';
+
+const CREATOR_PROFILE_ICON_BTN =
+  'flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl bg-[#0084BD] text-white shadow-lg border border-[#0084BD] hover:bg-[#0070A3] transition-colors';
+
+const FEATURED_CTA =
+  'w-full py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-[13px] sm:text-sm font-bold text-center shadow-sm group-hover:shadow-md group-hover:from-[#009ADB] group-hover:to-[#00BFE8] transition-all';
+
+function FeaturedLiveBadge({ liveHourStart, liveHourEnd }: { liveHourStart?: number; liveHourEnd?: number }) {
+  if (!isCreatorLiveNow(liveHourStart ?? -1, liveHourEnd ?? -1)) return null;
+  return (
+    <div className="absolute top-2 left-2 z-10 inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/55 backdrop-blur-sm">
+      <span className="relative flex h-2 w-2">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+      </span>
+      <span className="text-[10px] font-black text-white uppercase tracking-wider">Live</span>
+    </div>
+  );
+}
+
 interface Creator {
   _id: string;
   name: string;
@@ -62,13 +95,11 @@ interface Creator {
 }
 
 
-function CategoryCreatorCard({ creator, onTrack, onSave, onDelete, onSendToTrending, onSendToFeatured, savedIds, isAdmin }: {
+function CategoryCreatorCard({ creator, onTrack, onSave, onDelete, savedIds, isAdmin }: {
   creator: Creator;
   onTrack: (slug: string) => void;
   onSave: (id: string) => void;
   onDelete: (slug: string) => void;
-  onSendToTrending?: (creator: Creator) => void;
-  onSendToFeatured?: (creator: Creator) => void;
   savedIds: Set<string>;
   isAdmin: boolean;
 }) {
@@ -128,7 +159,7 @@ function CategoryCreatorCard({ creator, onTrack, onSave, onDelete, onSendToTrend
               {creator.name}
             </h3>
             <span className={`flex-shrink-0 px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wide ${
-              creator.isFree ? 'bg-emerald-400 text-white' : 'bg-[#00AFF0] text-white'
+              creator.isFree ? 'bg-emerald-400 text-white' : 'bg-[#0084BD] text-white'
             }`}>
               {creator.isFree ? t('ofSearch.free') : `$${creator.price.toFixed(0)}`}
             </span>
@@ -148,13 +179,13 @@ function CategoryCreatorCard({ creator, onTrack, onSave, onDelete, onSendToTrend
               target="_blank"
               rel="noopener"
               onClick={handleViewProfileClick}
-              className="flex-1 flex items-center justify-center gap-2 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-[13px] sm:text-sm font-bold text-center shadow-sm group-hover:shadow-md group-hover:from-[#009ADB] group-hover:to-[#00BFE8] transition-all no-underline"
+              className={CREATOR_VIEW_PROFILE_BTN}
             >
               {t('ofSearch.viewProfile')}
             </a>
             <button
               onClick={handleErogramProfile}
-              className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white shadow-sm group-hover:shadow-md group-hover:from-[#009ADB] group-hover:to-[#00BFE8] transition-all"
+              className={CREATOR_PROFILE_ICON_BTN}
               title="View on Erogram"
             >
               <User size={16} />
@@ -172,21 +203,7 @@ function CategoryCreatorCard({ creator, onTrack, onSave, onDelete, onSendToTrend
         <Heart size={18} className={isSaved ? 'text-white' : 'text-white/80'} fill={isSaved ? 'currentColor' : 'none'} />
       </button>
       {isAdmin && (
-        <div className="absolute top-3 left-3 z-10 flex gap-1.5">
-          <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSendToFeatured?.(creator); }}
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-[#FF6A00]/80 hover:bg-[#FF6A00] text-white backdrop-blur-sm transition-all"
-            title="Add as Featured (paid client)"
-          >
-            <Crown size={13} fill="currentColor" />
-          </button>
-          <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSendToTrending?.(creator); }}
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-amber-500/80 hover:bg-amber-500 text-white backdrop-blur-sm transition-all"
-            title="Add as Trending (free pick)"
-          >
-            <Star size={13} fill="currentColor" />
-          </button>
+        <div className="absolute top-3 left-3 z-10">
           <button
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (confirm(`Delete ${creator.name}?`)) onDelete(creator.slug); }}
             className="w-7 h-7 flex items-center justify-center rounded-full bg-red-500/80 hover:bg-red-500 text-white backdrop-blur-sm transition-all"
@@ -220,12 +237,14 @@ export default function CategoryClient({ creators: initialCreators, category, la
   // Build the of-cat placement tag with the shown image's stable index.
   const ofCatPlacement = (idx: number) => (idx >= 0 ? `of-cat:v${idx}` : 'of-cat');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [resultsView, setResultsView] = useState<OfSearchResultsView>('grid');
 
   const [afterCategoryCreators, setAfterCategoryCreators] = useState<Creator[]>([]);
   const [afterCategoryLoading, setAfterCategoryLoading] = useState(false);
   const [afterCategoryHasMore, setAfterCategoryHasMore] = useState(true);
 
   useEffect(() => {
+    setResultsView(loadOfSearchResultsView());
     setIsAdmin(localStorage.getItem('isAdmin') === 'true');
 
     const token = localStorage.getItem('token');
@@ -295,74 +314,6 @@ export default function CategoryClient({ creators: initialCreators, category, la
       setAfterCategoryCreators((prev) => prev.filter((c) => c.slug !== slug));
     } catch (e: any) {
       alert(`Delete failed: ${e.message}`);
-    }
-  };
-
-  const [trendingToast, setTrendingToast] = useState('');
-
-  const handleSendToTrending = async (creator: Creator) => {
-    const token = localStorage.getItem('token');
-    if (!token) { setTrendingToast('Login required'); setTimeout(() => setTrendingToast(''), 3000); return; }
-    try {
-      const slots = await getOFMTrending(token);
-      const occupied = new Set<number>();
-      if (Array.isArray(slots)) {
-        for (const s of slots as any[]) occupied.add(s.position);
-      }
-      let targetSlot = 0;
-      for (let i = 1; i <= 12; i++) {
-        if (!occupied.has(i)) { targetSlot = i; break; }
-      }
-      if (targetSlot === 0) targetSlot = 1;
-      await createOFMTrendingSlot(token, {
-        name: creator.name,
-        username: creator.username,
-        avatar: creator.avatar,
-        url: creator.url,
-        bio: '',
-        categories: creator.categories || [],
-        position: targetSlot,
-        active: true,
-        isStarPick: true,
-      });
-      setTrendingToast(`✓ ${creator.name} added to Trending`);
-      setTimeout(() => setTrendingToast(''), 3000);
-    } catch (e: any) {
-      setTrendingToast(`Failed: ${e.message || 'Unknown error'}`);
-      setTimeout(() => setTrendingToast(''), 3000);
-    }
-  };
-
-  const handleSendToFeatured = async (creator: Creator) => {
-    const token = localStorage.getItem('token');
-    if (!token) { setTrendingToast('Login required'); setTimeout(() => setTrendingToast(''), 3000); return; }
-    try {
-      const slots = await getOFMTrending(token);
-      const occupied = new Set<number>();
-      if (Array.isArray(slots)) {
-        for (const s of slots as any[]) occupied.add(s.position);
-      }
-      let targetSlot = 0;
-      for (let i = 1; i <= 12; i++) {
-        if (!occupied.has(i)) { targetSlot = i; break; }
-      }
-      if (targetSlot === 0) targetSlot = 1;
-      await createOFMTrendingSlot(token, {
-        name: creator.name,
-        username: creator.username,
-        avatar: creator.avatar,
-        url: creator.url,
-        bio: '',
-        categories: creator.categories || [],
-        position: targetSlot,
-        active: true,
-        isStarPick: false,
-      });
-      setTrendingToast(`👑 ${creator.name} added as Featured`);
-      setTimeout(() => setTrendingToast(''), 3000);
-    } catch (e: any) {
-      setTrendingToast(`Failed: ${e.message || 'Unknown error'}`);
-      setTimeout(() => setTrendingToast(''), 3000);
     }
   };
 
@@ -475,13 +426,29 @@ export default function CategoryClient({ creators: initialCreators, category, la
 
         {/* Results Grid */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {sorted.length > 0 && (
+            <div className="flex justify-center mb-4">
+              <OfSearchResultsViewToggle
+                value={resultsView}
+                onChange={setResultsView}
+                tokens={{
+                  pillBorder: 'rgba(255,255,255,0.12)',
+                  pillBg: 'rgba(255,255,255,0.06)',
+                  viewBtnBg: '#00AFF0',
+                  viewBtnTxt: '#000000',
+                  accentDim: 'rgba(255,255,255,0.45)',
+                }}
+              />
+            </div>
+          )}
           {sorted.length === 0 && allTrending.length === 0 ? (
             <div className="text-center py-20">
               <p className="text-white/30 text-lg">{t('ofSearch.noCreatorsInCategory')}</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+            <div className={resultsView === 'feed' ? 'flex flex-col gap-4 sm:gap-5 max-w-lg mx-auto w-full' : 'grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5'}>
               {(() => {
+                const isFeedView = resultsView === 'feed';
                 // Real-estate rules (owner spec):
                 //  • FIRST slot is ALWAYS a featured OF creator (paid of-cat campaign first, then niche rail).
                 //  • A featured OF creator every 8 results, so featured stay visible while scrolling.
@@ -515,9 +482,9 @@ export default function CategoryClient({ creators: initialCreators, category, la
                           else if (tc._id) trackTrendingClick(tc._id, vIdx);
                           window.open(`/go/${tc.username}`, '_blank', 'noopener');
                         }}
-                        className="group w-full text-left rounded-2xl overflow-hidden bg-gradient-to-br from-[#0B1D3A] via-[#122B53] to-[#1A3F73] shadow-[0_14px_36px_-12px_rgba(6,16,36,0.9)] hover:shadow-[0_18px_44px_-10px_rgba(10,27,58,0.95)] ring-[3px] ring-[#FF6A00] hover:ring-[#FF8C3A] transition-all duration-300 cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-[#C7DAFF]/50"
+                        className="group w-full text-left rounded-2xl overflow-hidden bg-white ring-[2px] ring-[#00AFF0]/30 hover:ring-[#00AFF0] shadow-[0_8px_28px_-8px_rgba(0,175,240,0.25)] hover:shadow-[0_12px_36px_-6px_rgba(0,175,240,0.35)] hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none"
                       >
-                        <div className="relative aspect-[3/4] bg-[#0F274C] ring-1 ring-inset ring-[#9FC3FF]/30">
+                        <div className="relative aspect-[3/4] bg-[#f0f8ff]">
                           {tc.avatar ? (
                             <RotatingImg
                               album={tc.album}
@@ -528,25 +495,21 @@ export default function CategoryClient({ creators: initialCreators, category, la
                               className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
                             />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-[#C7DAFF] bg-[#0F274C]">
+                            <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#00AFF0] bg-[#f0f8ff]">
                               {tc.name.charAt(0)}
                             </div>
                           )}
-                          <div className="absolute top-2 left-2 z-10">
-                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#EAF1FF] text-[#1F4076] text-[9px] font-black uppercase tracking-widest shadow-md ring-1 ring-white/70">
-                              <Crown size={8} fill="currentColor" className="text-[#1F4076]" />
-                              {t('ofSearch.featured')}
-                            </span>
-                          </div>
+                          <FeaturedLiveBadge liveHourStart={tc.liveHourStart} liveHourEnd={tc.liveHourEnd} />
                         </div>
-                        <div className="px-2.5 pt-2 sm:px-4 sm:pt-3">
-                          <h3 className="font-bold text-[13px] sm:text-[15px] text-white truncate leading-tight drop-shadow-sm">
-                            {tc.name}
-                          </h3>
-                          <p className="text-[11px] sm:text-[13px] text-[#BFD7FF] font-semibold mt-0.5">@{tc.username}</p>
+                        <div className="px-3 pt-2.5 sm:px-4 sm:pt-3">
+                          <h3 className="font-bold text-[13px] sm:text-[15px] text-gray-900 truncate leading-tight">{tc.name}</h3>
+                          <p className="text-[11px] sm:text-[13px] text-[#00AFF0] font-semibold mt-0.5">@{tc.username}</p>
+                          {(tc.likesCount > 0) && (
+                            <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5">{formatCount(tc.likesCount)} {t('ofSearch.likes')}</p>
+                          )}
                         </div>
-                        <div className="px-2.5 pb-2.5 pt-2 sm:px-4 sm:pb-4 sm:pt-3">
-                          <div className="w-full py-2 sm:py-2.5 rounded-xl bg-[#FF6A00] text-white text-[13px] sm:text-sm font-black text-center border border-[#FFC08A] shadow-[0_8px_18px_-8px_rgba(255,106,0,0.95)] hover:bg-[#FF7A1A] hover:border-[#FFD0A8] transition-all">
+                        <div className="px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3">
+                          <div className={FEATURED_CTA}>
                             {t('ofSearch.viewProfile')}
                           </div>
                         </div>
@@ -564,13 +527,13 @@ export default function CategoryClient({ creators: initialCreators, category, la
                   const four = Array.from({ length: take }, (_, k) => allTrending[(featIdx + k) % allTrending.length]);
                   featIdx += take;
                   return (
-                    <div key={`adblock-${blockNum}`} className="col-span-2 lg:col-span-4">
+                    <div key={`adblock-${blockNum}`} className={isFeedView ? 'w-full' : 'col-span-2 lg:col-span-4'}>
                       <div className="rounded-2xl border border-[#00AFF0]/20 bg-white p-4 sm:p-6 shadow-[0_24px_60px_-18px_rgba(0,175,240,0.15)]">
                         <div className="flex items-center gap-2 mb-4">
                           <Crown size={14} className="text-[#00AFF0]" fill="currentColor" />
                           <h2 className="text-sm sm:text-base font-black text-gray-900">Featured <span className="text-[#00AFF0]">OnlyFans Creators</span></h2>
                         </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5">
+                        <div className={isFeedView ? 'flex flex-col gap-3' : 'grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5'}>
                           {four.map((tc, k) => (
                             <button
                               key={`ofcat-${blockNum}-${tc._id || tc.username}-${k}`}
@@ -589,6 +552,7 @@ export default function CategoryClient({ creators: initialCreators, category, la
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#00AFF0] bg-[#f0f8ff]">{tc.name.charAt(0)}</div>
                                 )}
+                                <FeaturedLiveBadge liveHourStart={tc.liveHourStart} liveHourEnd={tc.liveHourEnd} />
                               </div>
                               <div className="px-3 pt-2.5 sm:px-4 sm:pt-3">
                                 <h3 className="font-bold text-[13px] sm:text-[15px] text-gray-900 truncate leading-tight">{tc.name}</h3>
@@ -597,7 +561,7 @@ export default function CategoryClient({ creators: initialCreators, category, la
                                   <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5">{formatCount(tc.likesCount)} {t('ofSearch.likes')}</p>
                                 )}
                               </div>
-                              <div className="px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3"><div className="w-full py-2 sm:py-2.5 rounded-xl bg-[#00AFF0] text-white text-[12px] sm:text-sm font-black text-center shadow-lg border border-[#00AFF0] group-hover:bg-[#009AD6] transition-colors">{t('ofSearch.viewProfile')}</div></div>
+                              <div className="px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3"><div className={FEATURED_CTA}>{t('ofSearch.viewProfile')}</div></div>
                             </button>
                           ))}
                         </div>
@@ -627,7 +591,7 @@ export default function CategoryClient({ creators: initialCreators, category, la
 
                   // Full-width block: once we've passed the threshold AND we're on a clean 4-cell row.
                   const threshold = BLOCK_FIRST_AT + blocksShown * AD_BLOCK_EVERY;
-                  if (cellCount >= threshold && cellCount % 4 === 0) {
+                  if (cellCount >= threshold && (isFeedView || cellCount % 4 === 0)) {
                     const block = renderAdBlock(blocksShown);
                     if (block) { items.push(block); blocksShown++; }
                   }
@@ -639,7 +603,7 @@ export default function CategoryClient({ creators: initialCreators, category, la
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.25, delay: Math.min(i * 0.012, 0.25) }}
                     >
-                      <CategoryCreatorCard creator={creator} onTrack={trackClick} onSave={handleToggleSave} onDelete={handleDelete} onSendToTrending={handleSendToTrending} onSendToFeatured={handleSendToFeatured} savedIds={savedIds} isAdmin={isAdmin} />
+                      <CategoryCreatorCard creator={creator} onTrack={trackClick} onSave={handleToggleSave} onDelete={handleDelete} savedIds={savedIds} isAdmin={isAdmin} />
                     </motion.div>
                   );
                 });
@@ -654,7 +618,7 @@ export default function CategoryClient({ creators: initialCreators, category, la
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.25, delay: Math.min(i * 0.015, 0.3) }}
                 >
-                  <CategoryCreatorCard creator={creator} onTrack={trackClick} onSave={handleToggleSave} onDelete={handleDelete} onSendToTrending={handleSendToTrending} onSendToFeatured={handleSendToFeatured} savedIds={savedIds} isAdmin={isAdmin} />
+                  <CategoryCreatorCard creator={creator} onTrack={trackClick} onSave={handleToggleSave} onDelete={handleDelete} savedIds={savedIds} isAdmin={isAdmin} />
                 </motion.div>
               ))}
 
@@ -681,12 +645,6 @@ export default function CategoryClient({ creators: initialCreators, category, la
         </section>
 
       </main>
-
-      {trendingToast && (
-        <div className="fixed bottom-6 left-6 z-50 px-5 py-3 bg-[#1a2a30] border border-[#00AFF0]/30 text-[#00AFF0] text-sm font-semibold rounded-xl shadow-xl animate-in fade-in slide-in-from-bottom-3">
-          {trendingToast}
-        </div>
-      )}
     </div>
   );
 }

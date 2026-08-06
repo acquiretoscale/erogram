@@ -242,7 +242,7 @@ export default function BestEditorialSeo({ locale }: Props) {
         if you want to stack price, category, and location filters. Try{' '}
         <Link href={lp('/onlyfanssearch/near-me')} className={link}>Near Me</Link>{' '}
         if proximity matters.{' '}
-        <Link href={lp('/join-erogram?redirect=/best')} className={link}>Make the free account</Link>{' '}
+        <Link href={lp('/join-erogram?redirect=/best-onlyfans-accounts')} className={link}>Make the free account</Link>{' '}
         if you want to keep any of it.
       </p>
       <p className="mb-10">

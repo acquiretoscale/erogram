@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
-import LazyClickableVideoAd from '@/components/LazyClickableVideoAd';
 import Footer from '@/components/Footer';
 import ToolCard from './ToolCard';
 import AdvertCard from '../groups/AdvertCard';
@@ -229,10 +228,6 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
             ))}
           </div>
         </motion.div>
-
-        <div className="w-full mb-6">
-          <LazyClickableVideoAd maxWidth={672} />
-        </div>
 
         <div>
           {/* Main Content — full width now that the sidebar is gone */}

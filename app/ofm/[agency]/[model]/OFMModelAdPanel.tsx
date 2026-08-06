@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { PLACEMENTS, AD_KEYWORDS, canonicalKeyword, type PlacementDef } from '@/lib/adPlacements';
 import { updateOFMModelCampaign } from '@/lib/actions/ofManage';
+import { assignCreatorToUncut } from '@/lib/actions/blogFeatured';
+import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
 
 export interface OFMCampaign {
   _id: string;
@@ -49,11 +51,21 @@ function fmtDate(iso: string | null) {
 
 export default function OFMModelAdPanel({
   creatorId,
+  username,
+  name,
+  avatar,
+  url,
+  bio,
   campaign,
   token,
   onSaved,
 }: {
   creatorId: string;
+  username: string;
+  name: string;
+  avatar: string;
+  url: string;
+  bio: string;
   campaign: OFMCampaign | null;
   token: string;
   onSaved: () => void | Promise<void>;
@@ -65,6 +77,7 @@ export default function OFMModelAdPanel({
   const [draftBlockFormat, setDraftBlockFormat] = useState<'banner' | 'card'>('card');
   const [saving, setSaving] = useState(false);
   const [acting, setActing] = useState(false);
+  const [spotlighting, setSpotlighting] = useState(false);
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
@@ -97,6 +110,43 @@ export default function OFMModelAdPanel({
     setMsg(text);
     setTimeout(() => setMsg(''), 2500);
   };
+
+  const setSpotlight = async () => {
+    if (!confirm(`Make ${name} the EROGRAM SPOTLIGHT Creator of the Month?`)) return;
+    setSpotlighting(true);
+    try {
+      await assignCreatorToUncut(token, { name, username, avatar, url, bio });
+      flash('SPOTLIGHT cover set');
+    } catch (e) {
+      flash((e as Error).message || 'SPOTLIGHT failed');
+    } finally {
+      setSpotlighting(false);
+    }
+  };
+
+  const profileLinks = (
+    <div className="flex flex-wrap items-center gap-2">
+      {username && (
+        <a
+          href={ofCreatorProfileUrl(username)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs font-bold text-[#00AFF0] hover:text-[#00C4FF] transition"
+        >
+          Erogram profile ↗
+        </a>
+      )}
+      <button
+        type="button"
+        onClick={setSpotlight}
+        disabled={spotlighting}
+        className="px-2.5 py-1 rounded-lg text-[10px] font-black tracking-wider transition hover:brightness-110 disabled:opacity-50"
+        style={{ background: 'linear-gradient(90deg,#e8c873,#cba24f)', color: '#0a0807' }}
+      >
+        {spotlighting ? '…' : '★ SPOTLIGHT'}
+      </button>
+    </div>
+  );
 
   const savePlacements = async () => {
     if (!campaign) return;
@@ -153,7 +203,10 @@ export default function OFMModelAdPanel({
   if (!campaign) {
     return (
       <div className="bg-[#0e1018] border border-white/[0.06] rounded-2xl p-5">
-        <h2 className="text-sm font-black uppercase tracking-wider text-white/50 mb-2">Ad traffic</h2>
+        <div className="flex flex-wrap items-center gap-2 justify-between mb-2">
+          <h2 className="text-sm font-black uppercase tracking-wider text-white/50">Ad traffic</h2>
+          {profileLinks}
+        </div>
         <p className="text-sm text-white/40">No linked ad campaign for this model yet.</p>
       </div>
     );
@@ -165,7 +218,10 @@ export default function OFMModelAdPanel({
     <div className="bg-[#0e1018] border border-white/[0.06] rounded-2xl p-5 space-y-4">
       <div className="flex flex-wrap items-center gap-2 justify-between">
         <h2 className="text-sm font-black uppercase tracking-wider text-white/50">Ad traffic</h2>
-        {msg && <span className="text-xs font-bold text-[#00AFF0]">{msg}</span>}
+        <div className="flex flex-wrap items-center gap-3">
+          {profileLinks}
+          {msg && <span className="text-xs font-bold text-[#00AFF0]">{msg}</span>}
+        </div>
       </div>
       <p className="text-[11px] text-white/35">Manage placements and caps here. Changes sync to the ad network automatically.</p>
 

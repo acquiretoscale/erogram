@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bookmark, CircleUser, Heart, Play, RefreshCw } from 'lucide-react';
+import { Bookmark, CircleUser, Heart, Play, RefreshCw, X } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import {
   getProfileMediaFeed,
@@ -16,12 +16,60 @@ import ProfileCategoryPills from './ProfileCategoryPills';
 import {
   markProfileFeedExplored,
 } from '@/lib/profileHomeSetup';
+import { getToolBySlug } from '@/app/ainsfw/data';
+import { trackAinsfwToolClick } from '@/lib/actions/ainsfw';
+import { ainsfwCtaButtonClass } from '@/lib/ainsfw/ctaButton';
 
 function OnlyFansIcon({ size = 11 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className="shrink-0" aria-hidden>
       <path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z" />
     </svg>
+  );
+}
+
+function AinsfwFeedVisitButtons({ toolSlug }: { toolSlug: string }) {
+  const iconBtn =
+    'inline-flex items-center justify-center w-9 h-9 rounded-xl shrink-0 transition-all hover:opacity-95 active:scale-[0.96]';
+  const tool = getToolBySlug(toolSlug);
+  const visitUrl = tool?.tryNowUrl;
+
+  const handleTry = () => {
+    if (!visitUrl) return;
+    void trackAinsfwToolClick(toolSlug);
+    window.open(visitUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  return (
+    <div className="flex flex-row gap-2 flex-1 min-w-0">
+      {visitUrl ? (
+        <button
+          type="button"
+          onClick={handleTry}
+          className={ainsfwCtaButtonClass('card', 'min-w-[8.75rem] flex-1 px-4 py-2 text-[10px] sm:text-[11px] whitespace-nowrap')}
+          aria-label="TRY FOR FREE"
+          title="TRY FOR FREE"
+        >
+          TRY FOR FREE
+        </button>
+      ) : null}
+      <a
+        href={`/ainsfw/${toolSlug}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="View tool page"
+        title="View tool page"
+        className={iconBtn}
+        style={{
+          color: '#111827',
+          backgroundColor: '#ffffff',
+          border: '1px solid rgba(0,0,0,0.14)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+        }}
+      >
+        <CircleUser size={18} strokeWidth={2} />
+      </a>
+    </div>
   );
 }
 
@@ -65,7 +113,7 @@ function FeedVisitButtons({ username }: { username: string }) {
   );
 }
 
-function FeedLazyImage({ url }: { url: string }) {
+function FeedLazyImage({ url, onZoom }: { url: string; onZoom?: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [src, setSrc] = useState<string | null>(null);
 
@@ -88,14 +136,32 @@ function FeedLazyImage({ url }: { url: string }) {
   return (
     <div ref={ref} className="bg-black min-h-[240px] flex items-center justify-center">
       {src ? (
-        <img
-          src={src}
-          alt=""
-          className="w-full max-h-[72vh] object-contain mx-auto block"
-          loading="lazy"
-          decoding="async"
-          referrerPolicy="no-referrer"
-        />
+        onZoom ? (
+          <button
+            type="button"
+            onClick={onZoom}
+            className="w-full min-h-[240px] flex items-center justify-center cursor-zoom-in"
+            aria-label="View full size"
+          >
+            <img
+              src={src}
+              alt=""
+              className="w-full max-h-[72vh] object-contain mx-auto block pointer-events-none"
+              loading="lazy"
+              decoding="async"
+              referrerPolicy="no-referrer"
+            />
+          </button>
+        ) : (
+          <img
+            src={src}
+            alt=""
+            className="w-full max-h-[72vh] object-contain mx-auto block"
+            loading="lazy"
+            decoding="async"
+            referrerPolicy="no-referrer"
+          />
+        )
       ) : (
         <div
           className="w-full aspect-[4/5] max-h-[72vh] animate-pulse mx-auto"
@@ -188,6 +254,7 @@ function FeedPostCard({
   saved,
   onLike,
   onSave,
+  onZoomPhoto,
   tokens,
   userPhotoUrl,
 }: {
@@ -195,9 +262,11 @@ function FeedPostCard({
   saved: boolean;
   onLike: () => void;
   onSave: () => void;
+  onZoomPhoto?: (url: string) => void;
   tokens: { border: string; card: string; text: string; muted: string; accent: string; ink: string; hover: string };
   userPhotoUrl: string | null;
 }) {
+  const isAinsfw = item.source === 'ainsfw';
 
   return (
     <article
@@ -205,23 +274,44 @@ function FeedPostCard({
       style={{ borderColor: tokens.border, backgroundColor: tokens.card }}
     >
       <div className="flex items-center gap-2 px-3 py-2.5 sm:px-4" style={{ borderBottom: `1px solid ${tokens.border}` }}>
-        <a
-          href={ofCreatorProfileUrl(item.creatorUsername)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="min-w-0 flex-1 no-underline transition-opacity hover:opacity-85"
-        >
-          <p className="truncate text-sm font-bold leading-tight" style={{ color: tokens.text }}>
-            @{item.creatorUsername}
-          </p>
-        </a>
+        {isAinsfw ? (
+          <a
+            href={`/ainsfw/${item.toolSlug || item.creatorUsername}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="min-w-0 flex-1 flex items-center gap-2 no-underline transition-opacity hover:opacity-85"
+          >
+            {item.brandLogo ? (
+              <img
+                src={item.brandLogo}
+                alt=""
+                className="w-8 h-8 rounded-lg object-cover shrink-0 border"
+                style={{ borderColor: tokens.border }}
+              />
+            ) : null}
+            <p className="truncate text-sm font-bold leading-tight" style={{ color: tokens.text }}>
+              {item.creatorName}
+            </p>
+          </a>
+        ) : (
+          <a
+            href={ofCreatorProfileUrl(item.creatorUsername)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="min-w-0 flex-1 no-underline transition-opacity hover:opacity-85"
+          >
+            <p className="truncate text-sm font-bold leading-tight" style={{ color: tokens.text }}>
+              @{item.creatorUsername}
+            </p>
+          </a>
+        )}
       </div>
 
       <div className="relative">
         {item.type === 'video' ? (
           <FeedVideoCard url={item.url} />
         ) : (
-          <FeedLazyImage url={item.url} />
+          <FeedLazyImage url={item.url} onZoom={onZoomPhoto ? () => onZoomPhoto(item.url) : undefined} />
         )}
         <div className="absolute bottom-2 left-2 right-2 pointer-events-none">
           <ProfileCategoryPills
@@ -235,7 +325,13 @@ function FeedPostCard({
       </div>
 
       <div className="px-3 sm:px-4 py-2.5 flex items-center justify-between gap-3">
-        <FeedVisitButtons username={item.creatorUsername} />
+        {isAinsfw ? (
+          <AinsfwFeedVisitButtons
+            toolSlug={item.toolSlug || item.creatorUsername}
+          />
+        ) : (
+          <FeedVisitButtons username={item.creatorUsername} />
+        )}
         <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
@@ -249,18 +345,20 @@ function FeedPostCard({
             <Heart size={15} fill={item.liked ? 'currentColor' : 'none'} />
             {item.likeCount > 0 ? item.likeCount : 'Like'}
           </button>
-          <button
-            type="button"
-            onClick={onSave}
-            className="p-1.5 rounded-lg transition-opacity hover:opacity-80"
-            style={{
-              color: saved ? tokens.accent : tokens.muted,
-              backgroundColor: tokens.hover,
-            }}
-            aria-label={saved ? 'Remove from saved' : 'Save creator'}
-          >
-            <Bookmark size={15} fill={saved ? 'currentColor' : 'none'} />
-          </button>
+          {!isAinsfw && (
+            <button
+              type="button"
+              onClick={onSave}
+              className="p-1.5 rounded-lg transition-opacity hover:opacity-80"
+              style={{
+                color: saved ? tokens.accent : tokens.muted,
+                backgroundColor: tokens.hover,
+              }}
+              aria-label={saved ? 'Remove from saved' : 'Save creator'}
+            >
+              <Bookmark size={15} fill={saved ? 'currentColor' : 'none'} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -294,11 +392,11 @@ function FeedPostCard({
 export default function ProfileFeedTab({
   interests,
   preferredPlatforms,
-  onNavigateSettings,
+  onNavigatePreferences,
 }: {
   interests: string[];
   preferredPlatforms: string[];
-  onNavigateSettings: () => void;
+  onNavigatePreferences: () => void;
 }) {
   const { tokens } = useProfileTheme();
   const { toast } = useToast();
@@ -309,16 +407,24 @@ export default function ProfileFeedTab({
   const [hasMore, setHasMore] = useState(false);
   const [needsInterests, setNeedsInterests] = useState(false);
   const [userPhotoUrl, setUserPhotoUrl] = useState<string | null>(null);
+  const [zoomPhotoUrl, setZoomPhotoUrl] = useState<string | null>(null);
   const feedSeedRef = useRef('initial');
   const offsetRef = useRef(0);
   const loadingRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const hasOfInterests = interests.length > 0;
-
   useEffect(() => {
     markProfileFeedExplored();
   }, []);
+
+  useEffect(() => {
+    if (!zoomPhotoUrl) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setZoomPhotoUrl(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [zoomPhotoUrl]);
 
   useEffect(() => {
     try {
@@ -337,7 +443,7 @@ export default function ProfileFeedTab({
       .catch(() => {});
   }, []);
 
-  const handleToggleSave = async (creatorId: string) => {
+  const handleToggleSave = async (creatorId: string, likeMediaKey?: string) => {
     const token = localStorage.getItem('token');
     if (!token) return;
     const alreadySaved = savedCreatorIds.has(creatorId);
@@ -351,7 +457,11 @@ export default function ProfileFeedTab({
       const res = await fetch('/api/onlyfans/save', {
         method: alreadySaved ? 'DELETE' : 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ creatorId }),
+        body: JSON.stringify(
+          alreadySaved
+            ? { creatorId }
+            : { creatorId, likeMediaKey: likeMediaKey || undefined },
+        ),
       });
       if (!res.ok) throw new Error('Save failed');
       toast(alreadySaved ? 'Removed from saved' : 'Saved', 'success');
@@ -386,11 +496,14 @@ export default function ProfileFeedTab({
       });
       if (res.needsInterests) {
         setNeedsInterests(true);
+      } else {
+        setNeedsInterests(false);
+      }
+      if (mode === 'reset' && res.needsInterests && res.items.length === 0) {
         setItems([]);
         setHasMore(false);
         return;
       }
-      setNeedsInterests(false);
       if (mode === 'reset') {
         setItems(res.items);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -411,12 +524,8 @@ export default function ProfileFeedTab({
   }, []);
 
   useEffect(() => {
-    if (hasOfInterests) void fetchFeedPage('reset');
-    else {
-      setLoading(false);
-      setNeedsInterests(true);
-    }
-  }, [hasOfInterests, fetchFeedPage]);
+    void fetchFeedPage('reset');
+  }, [fetchFeedPage]);
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -470,7 +579,7 @@ export default function ProfileFeedTab({
         <ProfileHeading size="md" as="h3" className="!mt-0">
           My Feed
         </ProfileHeading>
-        {hasOfInterests && (items.length > 0 || loading) && (
+        {items.length > 0 || loading ? (
           <button
             type="button"
             onClick={() => void fetchFeedPage('reset')}
@@ -481,8 +590,27 @@ export default function ProfileFeedTab({
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             Refresh
           </button>
-        )}
+        ) : null}
       </div>
+
+      {needsInterests && items.length > 0 && (
+        <div
+          className="rounded-xl border px-4 py-3 mb-5 text-center"
+          style={{ borderColor: tokens.border, backgroundColor: tokens.hover }}
+        >
+          <p className="text-xs mb-2" style={{ color: tokens.muted }}>
+            Add OnlyFans interests in My PREFERENCES to mix creator posts into your feed.
+          </p>
+          <button
+            type="button"
+            onClick={onNavigatePreferences}
+            className="text-[10px] font-bold tracking-[0.18em] uppercase px-4 py-2 rounded-full border transition-opacity hover:opacity-90"
+            style={{ borderColor: tokens.border, color: tokens.text, backgroundColor: tokens.card }}
+          >
+            My PREFERENCES
+          </button>
+        </div>
+      )}
 
       {loading && items.length === 0 ? (
         <div className="space-y-5">
@@ -497,21 +625,21 @@ export default function ProfileFeedTab({
             </div>
           ))}
         </div>
-      ) : needsInterests ? (
+      ) : needsInterests && items.length === 0 ? (
         <div
           className="rounded-2xl border px-5 py-8 text-center"
           style={{ borderColor: tokens.border, backgroundColor: tokens.hover }}
         >
           <p className="text-sm mb-4" style={{ color: tokens.muted }}>
-            Add OnlyFans interests in Settings to personalize your feed.
+            Add OnlyFans interests in My PREFERENCES to personalize your feed.
           </p>
           <button
             type="button"
-            onClick={onNavigateSettings}
+            onClick={onNavigatePreferences}
             className="text-[11px] font-bold tracking-[0.2em] uppercase px-5 py-2.5 rounded-full border transition-opacity hover:opacity-90"
             style={{ borderColor: tokens.border, color: tokens.text, backgroundColor: tokens.card }}
           >
-            Settings
+            My PREFERENCES
           </button>
         </div>
       ) : items.length === 0 ? (
@@ -526,7 +654,10 @@ export default function ProfileFeedTab({
               item={item}
               saved={savedCreatorIds.has(item.creatorId)}
               onLike={() => handleLike(item)}
-              onSave={() => handleToggleSave(item.creatorId)}
+              onSave={() => {
+                if (item.source !== 'ainsfw') handleToggleSave(item.creatorId, item.mediaKey);
+              }}
+              onZoomPhoto={setZoomPhotoUrl}
               tokens={tokens}
               userPhotoUrl={userPhotoUrl}
             />
@@ -537,6 +668,32 @@ export default function ProfileFeedTab({
               <RefreshCw size={18} className="animate-spin" style={{ color: tokens.muted }} />
             </div>
           )}
+        </div>
+      )}
+
+      {zoomPhotoUrl && (
+        <div
+          className="fixed inset-0 z-50 overflow-auto flex items-center justify-center bg-black/90 backdrop-blur-sm cursor-zoom-out p-4"
+          onClick={() => setZoomPhotoUrl(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setZoomPhotoUrl(null)}
+            className="fixed top-4 right-4 z-[51] p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+            aria-label="Close"
+          >
+            <X size={22} />
+          </button>
+          <img
+            src={zoomPhotoUrl}
+            alt=""
+            className="object-contain rounded-lg shadow-2xl"
+            style={{
+              width: 'min(180vw, 72rem)',
+              maxHeight: '90vh',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </section>

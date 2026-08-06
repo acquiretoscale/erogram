@@ -140,6 +140,8 @@ export default async function OnlyFansSlugPage({ params }: PageProps) {
       url: c.destinationUrl || '',
       bio: c.description || '',
       likesCount: c.ofLikesCount || 0,
+      liveHourStart: c.ofLiveHourStart ?? -1,
+      liveHourEnd: c.ofLiveHourEnd ?? -1,
       isPaidCampaign: true,
     }));
 

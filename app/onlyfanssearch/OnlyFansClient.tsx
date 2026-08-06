@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Search, Bookmark, Crown, Trash2, X, Heart, Clock, TrendingUp, User, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { Search, Bookmark, Crown, Trash2, X, Heart, Clock, TrendingUp, User } from 'lucide-react';
 import { OF_CATEGORY_MAP, OF_SEARCH_HUB_CATEGORY_SLUGS } from './constants';
 import { bestOfBlogSlug, getTopBestOfByType, BEST_OF_PAGE_MAP, type BestOfPage } from '@/app/best-onlyfans-accounts/bestOfPages';
 import Navbar from '@/components/Navbar';
@@ -107,7 +107,6 @@ interface Props {
   initialCreators: Creator[];
   totalCreators: number;
   initialQuery?: string;
-  recentlyAdded?: Creator[];
   topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string; bannerDevice?: 'all' | 'mobile' | 'desktop' }>;
   trendingOnErogram?: TrendingCreatorItem[];
   paidFeatured?: any[];
@@ -135,15 +134,34 @@ function isCreatorLiveNow(start: number, end: number): boolean {
   return gmtHour >= start || gmtHour < end;
 }
 
+function FeaturedLiveBadge({ liveHourStart, liveHourEnd }: { liveHourStart?: number; liveHourEnd?: number }) {
+  if (!isCreatorLiveNow(liveHourStart ?? -1, liveHourEnd ?? -1)) return null;
+  return (
+    <div className="absolute top-2 left-2 z-10 inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/55 backdrop-blur-sm">
+      <span className="relative flex h-2 w-2">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+      </span>
+      <span className="text-[10px] font-black text-white uppercase tracking-wider">Live</span>
+    </div>
+  );
+}
+
+const CREATOR_VIEW_PROFILE_BTN =
+  'flex-1 flex items-center justify-center gap-2 py-2 sm:py-2.5 rounded-xl bg-[#0084BD] text-white text-[12px] sm:text-sm font-black text-center shadow-lg border border-[#0084BD] group-hover:bg-[#0070A3] transition-colors no-underline';
+
+const CREATOR_PROFILE_ICON_BTN =
+  'flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl bg-[#0084BD] text-white shadow-lg border border-[#0084BD] hover:bg-[#0070A3] transition-colors';
+
+const FEATURED_CTA =
+  'w-full py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-[13px] sm:text-sm font-bold text-center shadow-sm group-hover:shadow-md group-hover:from-[#009ADB] group-hover:to-[#00BFE8] transition-all';
+
 function formatCount(n: number) {
   if (!n) return '';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
   return `${n}K`;
 }
-
-const RECENT_CAROUSEL_SIZE = 4;
-const RECENT_CAROUSEL_MAX = 20;
 
 function PreviewMosaic({ avatars }: { avatars: string[] }) {
   const pics = avatars.slice(0, 4);
@@ -382,7 +400,7 @@ function CreatorCard({
                 {creator.name}
               </h3>
               <span className={`flex-shrink-0 px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wide ${
-                creator.isFree ? 'bg-emerald-400 text-white' : 'bg-[#00AFF0] text-white'
+                creator.isFree ? 'bg-emerald-400 text-white' : 'bg-[#0084BD] text-white'
               }`}>
                 {creator.isFree ? t('ofSearch.free') : `$${(creator.price ?? 0).toFixed(0)}`}
               </span>
@@ -412,13 +430,13 @@ function CreatorCard({
               target="_blank"
               rel="noopener"
               onClick={handleViewProfileClick}
-              className="flex-1 flex items-center justify-center gap-2 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-[13px] sm:text-sm font-bold text-center shadow-sm group-hover:shadow-md group-hover:from-[#009ADB] group-hover:to-[#00BFE8] transition-all no-underline"
+              className={CREATOR_VIEW_PROFILE_BTN}
             >
               {t('ofSearch.viewProfile')}
             </a>
             <button
               onClick={handleErogramProfile}
-              className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white shadow-sm group-hover:shadow-md group-hover:from-[#009ADB] group-hover:to-[#00BFE8] transition-all"
+              className={CREATOR_PROFILE_ICON_BTN}
               title="View on Erogram"
             >
               <User size={16} />
@@ -521,7 +539,7 @@ function CreatorPostModal({ creator, onClose }: { creator: Creator; onClose: () 
   );
 }
 
-export default function OnlyFansClient({ initialCreators, totalCreators, initialQuery = '', recentlyAdded = [], topBannerCampaigns = [], trendingOnErogram = [], paidFeatured = [], visitorCountryCode = '', top10PreviewAvatars = {}, bestAccountsPreviewAvatars = {} }: Props) {
+export default function OnlyFansClient({ initialCreators, totalCreators, initialQuery = '', topBannerCampaigns = [], trendingOnErogram = [], paidFeatured = [], visitorCountryCode = '', top10PreviewAvatars = {}, bestAccountsPreviewAvatars = {} }: Props) {
   const { t } = useTranslation();
   const lp = useLocalePath();
   const [creators, setCreators] = useState<Creator[]>(initialCreators);
@@ -534,13 +552,6 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
   // Which stable album image each featured card is currently showing → for split-test click attribution.
   const shownVariantRef = useRef<Record<string, number>>({});
   const [blockFeatured, setBlockFeatured] = useState<any[]>([]);
-  const [recentPage, setRecentPage] = useState(0);
-  const recentPool = recentlyAdded.slice(0, RECENT_CAROUSEL_MAX);
-  const recentMaxPage = Math.max(0, Math.ceil(recentPool.length / RECENT_CAROUSEL_SIZE) - 1);
-  const visibleRecent = recentPool.slice(
-    recentPage * RECENT_CAROUSEL_SIZE,
-    recentPage * RECENT_CAROUSEL_SIZE + RECENT_CAROUSEL_SIZE,
-  );
   const ofSearchPlacement = (idx: number) => (idx >= 0 ? `of-search-featured:v${idx}` : 'of-search-featured');
   const clickFeaturedCreator = useCallback((tc: any) => {
     const variant = shownVariantRef.current[tc._id] ?? -1;
@@ -673,6 +684,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
               onToggleSave={handleToggleSave}
               loginRedirect={lp('/onlyfanssearch')}
               initialVisitorCountry={visitorCountryCode}
+              paidFeatured={paidFeatured}
               {...ofSearchNavProps(lp)}
             />
             {!searchActive && (
@@ -722,17 +734,10 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                       <button key={`feat-${tc._id}`} type="button" onClick={() => clickFeaturedCreator(tc)} className="group w-full text-left rounded-2xl overflow-hidden bg-white ring-[2px] ring-[#00AFF0]/30 hover:ring-[#00AFF0] shadow-[0_8px_28px_-8px_rgba(0,175,240,0.25)] hover:shadow-[0_12px_36px_-6px_rgba(0,175,240,0.35)] hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none">
                         <div className="relative aspect-[3/4] bg-[#f0f8ff]">
                           {tc.avatar ? <RotatingImg album={tc.album} albumIdx={tc.albumIdx} onPick={(v) => { shownVariantRef.current[tc._id] = v; }} fallback={tc.avatar} alt={`${tc.name} OnlyFans`} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" /> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#00AFF0] bg-[#f0f8ff]">{tc.name.charAt(0)}</div>}
+                          <FeaturedLiveBadge liveHourStart={tc.liveHourStart} liveHourEnd={tc.liveHourEnd} />
                         </div>
                         <div className="px-3 pt-2.5 sm:px-4 sm:pt-3">
-                          <div className="flex items-center gap-1.5">
-                            <h3 className="font-bold text-[13px] sm:text-[15px] text-gray-900 truncate leading-tight">{tc.name}</h3>
-                            {isCreatorLiveNow(tc.liveHourStart ?? -1, tc.liveHourEnd ?? -1) && (
-                              <span className="inline-flex items-center gap-1 shrink-0">
-                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-[pulse_2s_ease-in-out_infinite]" />
-                                <span className="text-[9px] font-bold text-emerald-400 uppercase">Live</span>
-                              </span>
-                            )}
-                          </div>
+                          <h3 className="font-bold text-[13px] sm:text-[15px] text-gray-900 truncate leading-tight">{tc.name}</h3>
                           <p className="text-[11px] sm:text-[13px] text-[#00AFF0] font-semibold mt-0.5">@{tc.username}</p>
                           {(tc.likesCount > 0) && (
                             <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5">{formatCount(tc.likesCount)} {t('ofSearch.likes')}</p>
@@ -747,62 +752,10 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                             </div>
                           )}
                         </div>
-                        <div className="px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3"><div className="w-full py-2 sm:py-2.5 rounded-xl bg-[#00AFF0] text-white text-[12px] sm:text-sm font-black text-center shadow-lg border border-[#00AFF0] group-hover:bg-[#009AD6] transition-colors">{t('ofSearch.viewProfile')}</div></div>
+                        <div className="px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3"><div className={FEATURED_CTA}>{t('ofSearch.viewProfile')}</div></div>
                       </button>
                     ))}
                   </div>
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {recentPool.length > 0 && (
-              <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 sm:pb-10">
-                <div className="relative overflow-hidden rounded-2xl border border-[#00AFF0]/20 bg-gradient-to-br from-[#061018] via-[#0a1c2e] to-[#0d2844] shadow-[0_20px_50px_-12px_rgba(0,175,240,0.18),inset_0_1px_0_0_rgba(255,255,255,0.06)] p-4 sm:p-6">
-                  <div className="pointer-events-none absolute -top-28 -right-20 h-56 w-56 rounded-full bg-[#00AFF0]/20 blur-3xl" />
-                  <div className="pointer-events-none absolute -bottom-24 -left-16 h-48 w-48 rounded-full bg-[#00D4FF]/12 blur-3xl" />
-                  <div className="relative">
-                    <div className="flex items-center justify-between gap-3 mb-4">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Sparkles size={14} className="text-[#00AFF0] shrink-0" />
-                        <h2 className="text-sm sm:text-base font-black text-white truncate">
-                          New creators on <span className="text-[#00AFF0]">EROgram</span>
-                        </h2>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setRecentPage((p) => Math.max(0, p - 1))}
-                          disabled={recentPage <= 0}
-                          aria-label="Previous creators"
-                          className="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-white/[0.08] border border-white/[0.10] text-white/70 hover:bg-[#00AFF0]/15 hover:border-[#00AFF0]/30 hover:text-[#00AFF0] transition-colors disabled:opacity-30 disabled:pointer-events-none"
-                        >
-                          <ChevronLeft size={18} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setRecentPage((p) => Math.min(recentMaxPage, p + 1))}
-                          disabled={recentPage >= recentMaxPage}
-                          aria-label="Next creators"
-                          className="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-white/[0.08] border border-white/[0.10] text-white/70 hover:bg-[#00AFF0]/15 hover:border-[#00AFF0]/30 hover:text-[#00AFF0] transition-colors disabled:opacity-30 disabled:pointer-events-none"
-                        >
-                          <ChevronRight size={18} />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5">
-                      {visibleRecent.map((creator) => (
-                        <CreatorCard
-                          key={`recent-${creator._id}`}
-                          creator={creator}
-                          onClickTrack={trackClick}
-                          isAdmin={isAdmin}
-                          onDelete={handleDelete}
-                          isSaved={savedIds.has(creator._id)}
-                          onToggleSave={handleToggleSave}
-                        />
-                      ))}
-                    </div>
                   </div>
                 </div>
               </section>

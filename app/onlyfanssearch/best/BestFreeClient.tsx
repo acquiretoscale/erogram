@@ -25,6 +25,7 @@ interface BestFreeClientProps {
   pageTitle?: string;
   articleRanking?: BestFreeCreatorEntry[];
   articleCopy?: BestFreeArticleCopy;
+  paidFeatured?: any[];
 }
 
 export default function BestFreeClient({
@@ -35,6 +36,7 @@ export default function BestFreeClient({
   pageTitle,
   articleRanking = [],
   articleCopy,
+  paidFeatured = [],
 }: BestFreeClientProps) {
   const lp = useLocalePath();
   const { t } = useTranslation();
@@ -124,6 +126,7 @@ export default function BestFreeClient({
               searchHubHref={lp('/onlyfanssearch')}
               savedCreatorIds={savedIds}
               onToggleSave={handleToggleSave}
+              paidFeatured={paidFeatured}
               {...ofSearchNavProps(lp)}
             />
 

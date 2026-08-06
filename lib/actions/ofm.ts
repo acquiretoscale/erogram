@@ -49,6 +49,7 @@ export async function getOFMCreators(
     search?: string;
     category?: string;
     isFree?: string;
+    accountSize?: string;
     sortBy?: string;
     sortDir?: string;
   } = {},
@@ -61,6 +62,7 @@ export async function getOFMCreators(
   const search = params.search || '';
   const category = params.category || '';
   const isFree = params.isFree;
+  const accountSize = params.accountSize || '';
   const sortBy = params.sortBy || 'scrapedAt';
   const sortDir = params.sortDir === 'asc' ? 1 : -1;
 
@@ -74,6 +76,21 @@ export async function getOFMCreators(
   if (category) query.categories = category;
   if (isFree === 'true') query.isFree = true;
   if (isFree === 'false') query.isFree = false;
+
+  const likesRanges: Record<string, { min?: number; max?: number }> = {
+    'under-10k': { max: 9_999 },
+    '10k-50k': { min: 10_000, max: 49_999 },
+    '50k-100k': { min: 50_000, max: 99_999 },
+    '100k-500k': { min: 100_000, max: 499_999 },
+    '500k-1m': { min: 500_000, max: 999_999 },
+    '1m-plus': { min: 1_000_000 },
+  };
+  const likesRange = likesRanges[accountSize];
+  if (likesRange) {
+    query.likesCount = {};
+    if (likesRange.min != null) query.likesCount.$gte = likesRange.min;
+    if (likesRange.max != null) query.likesCount.$lte = likesRange.max;
+  }
 
   const validSortFields = ['scrapedAt', 'subscriberCount', 'likesCount', 'price', 'createdAt', 'name'];
   const sortField = validSortFields.includes(sortBy) ? sortBy : 'scrapedAt';
@@ -235,6 +252,89 @@ export async function deleteOFMCreator(token: string, id: string) {
 
   const result = await OnlyFansCreator.findByIdAndDelete(id);
   if (!result) throw new Error('Not found');
+  return { success: true };
+}
+
+// ---------------------------------------------------------------------------
+// Creators — pending / user submissions
+// ---------------------------------------------------------------------------
+
+export async function getOFMPendingCreators(token: string) {
+  if (!(await authenticateAdmin(token))) throw new Error('Unauthorized');
+  await connectDB();
+
+  const docs = await OnlyFansCreator.find({
+    deleted: { $ne: true },
+    $or: [{ submissionStatus: 'pending' }, { submittedByUser: true }],
+  })
+    .sort({ createdAt: -1 })
+    .select(
+      'name username slug avatar header bio categories location price url extraPhotos submissionStatus submittedBy submittedByUsername submitterType telegramUrl instagramUrl twitterUrl tiktokUrl website createdAt',
+    )
+    .lean();
+
+  const userIds = [
+    ...new Set(
+      docs
+        .map((d: any) => d.submittedBy?.toString())
+        .filter(Boolean) as string[],
+    ),
+  ];
+
+  const users = userIds.length
+    ? await User.find({ _id: { $in: userIds } }).select('email username telegramUsername').lean()
+    : [];
+
+  const userMap = new Map(
+    users.map((u: any) => [
+      u._id.toString(),
+      u,
+    ]),
+  );
+
+  return JSON.parse(
+    JSON.stringify(
+      docs.map((d: any) => {
+        const submitter = d.submittedBy ? userMap.get(d.submittedBy.toString()) : null;
+        return {
+          ...d,
+          _id: d._id.toString(),
+          submitterEmail: submitter?.email || '',
+          submitterTelegram: submitter?.telegramUsername || '',
+          submitterAccount: submitter?.username || d.submittedByUsername || '',
+        };
+      }),
+    ),
+  );
+}
+
+export async function updateOFMPendingCreatorStatus(
+  token: string,
+  id: string,
+  status: 'approved' | 'rejected' | 'pending',
+) {
+  if (!(await authenticateAdmin(token))) throw new Error('Unauthorized');
+  await connectDB();
+  const doc = await OnlyFansCreator.findByIdAndUpdate(id, { $set: { submissionStatus: status } }, { new: true }).lean();
+  if (!doc) throw new Error('Not found');
+  return { success: true };
+}
+
+export async function editOFMPendingCreator(
+  token: string,
+  id: string,
+  data: { name?: string; bio?: string; avatar?: string; categories?: string[] },
+) {
+  if (!(await authenticateAdmin(token))) throw new Error('Unauthorized');
+  await connectDB();
+  const update: Record<string, string | string[]> = {};
+  if (data.name !== undefined) update.name = data.name;
+  if (data.bio !== undefined) update.bio = data.bio;
+  if (data.avatar !== undefined) update.avatar = data.avatar;
+  if (data.categories !== undefined) update.categories = data.categories;
+  if (Object.keys(update).length === 0) return { success: true };
+  const doc = await OnlyFansCreator.findByIdAndUpdate(id, { $set: update }, { new: true }).lean();
+  if (!doc) throw new Error('Not found');
   return { success: true };
 }
 

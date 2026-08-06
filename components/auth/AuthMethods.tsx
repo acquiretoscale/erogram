@@ -5,8 +5,10 @@ import axios from 'axios';
 import { Eye, EyeOff } from 'lucide-react';
 import { registerWithEmail } from '@/lib/actions/authRegister';
 import { loginWithEmail } from '@/lib/actions/authLogin';
+import { requestPasswordReset } from '@/lib/actions/passwordReset';
 
 type Tab = 'join' | 'signin';
+type SignInHelp = null | 'password';
 
 function PasswordInput({
   value,
@@ -82,6 +84,9 @@ export default function AuthMethods({
   const [updatesOptIn, setUpdatesOptIn] = useState(true);
   const [loading, setLoading] = useState(false);
   const [telegramReady, setTelegramReady] = useState(false);
+  const [signInHelp, setSignInHelp] = useState<SignInHelp>(null);
+  const [helpValue, setHelpValue] = useState('');
+  const [helpMessage, setHelpMessage] = useState('');
 
   const inputClass = isAinsfwTheme
     ? 'w-full px-3 py-2 rounded-lg bg-black/[0.03] border border-black/15 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-[#22c55e]'
@@ -114,6 +119,9 @@ export default function AuthMethods({
   useEffect(() => {
     if (tab !== 'signin') {
       setTelegramReady(false);
+      setSignInHelp(null);
+      setHelpValue('');
+      setHelpMessage('');
       return;
     }
     const t = setTimeout(() => setTelegramReady(true), 50);
@@ -135,6 +143,27 @@ export default function AuthMethods({
     script.setAttribute('data-request-access', 'write');
     container.appendChild(script);
   }, [tab, telegramReady]);
+
+  const handleHelpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    onError('');
+    setHelpMessage('');
+    setLoading(true);
+    try {
+      const res = await requestPasswordReset(helpValue);
+      if (!res.ok) {
+        onError(res.message);
+        return;
+      }
+      setHelpMessage(res.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const linkClass = isAinsfwTheme
+    ? 'text-[#16a34a] hover:underline'
+    : 'text-[#0088c2] hover:underline';
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,6 +247,41 @@ export default function AuthMethods({
             Google
           </a>
         </>
+      ) : signInHelp ? (
+        <>
+          <form onSubmit={handleHelpSubmit} className="flex flex-col gap-2">
+            <p className="text-xs text-black/55 leading-snug">
+              Enter your email and we will send a link to create a new password.
+            </p>
+            <input
+              type="email"
+              autoComplete="email"
+              required
+              placeholder="Email"
+              value={helpValue}
+              onChange={(e) => setHelpValue(e.target.value)}
+              className={inputClass}
+            />
+            <button type="submit" disabled={loading} className={btnClass}>
+              {loading ? 'Please wait…' : 'Send reset link'}
+            </button>
+          </form>
+          {helpMessage ? (
+            <p className="text-xs text-green-700 leading-snug">{helpMessage}</p>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => {
+              setSignInHelp(null);
+              setHelpValue('');
+              setHelpMessage('');
+              onError('');
+            }}
+            className={`text-xs font-semibold ${linkClass}`}
+          >
+            Back to sign in
+          </button>
+        </>
       ) : (
         <>
           <form onSubmit={handleEmailSubmit} className="flex flex-col gap-2">
@@ -237,6 +301,11 @@ export default function AuthMethods({
               autoComplete="current-password"
               inputClass={inputClass}
             />
+            <div className="text-[11px] font-semibold">
+              <button type="button" onClick={() => { setSignInHelp('password'); onError(''); setHelpMessage(''); }} className={linkClass}>
+                Forgot password?
+              </button>
+            </div>
             <button type="submit" disabled={loading} className={btnClass}>
               {loading ? 'Please wait…' : 'Sign in'}
             </button>

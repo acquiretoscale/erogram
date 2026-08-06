@@ -14,16 +14,47 @@ export function buildR2AvatarMatch() {
   }
 }
 
+/** Strip legacy registry PCRE snippets (e.g. "\\bcalifornia\\b") down to plain keywords. */
+function normalizeKeywordPattern(p: string): string {
+  return p.replace(/^\\b/, '').replace(/\\b$/, '').trim();
+}
+
 function buildKeywordRegex(patterns: string[]) {
   const parts = patterns.map((p) => {
-    if (p.includes('\\b') || p.includes('\\')) return p;
-    const esc = p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const plain = normalizeKeywordPattern(p);
+    if (!plain) return null;
+    // Preserve intentional interior spacing (e.g. " bi ").
+    if (plain.startsWith(' ') || plain.endsWith(' ')) {
+      const esc = plain.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return esc;
+    }
+    const esc = plain.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     return `\\b${esc}\\b`;
-  });
+  }).filter(Boolean) as string[];
   return new RegExp(`(${parts.join('|')})`, 'i');
 }
 
-const MAX_CATEGORIES = 4;
+/** Bio-only keyword pages (no name/username/category matching). */
+const BIO_ONLY_BEST_OF_SLUGS = new Set([
+  'girlfriend',
+  'toys',
+  'instagram',
+  'korean',
+  'caucasian',
+  'couple-lesbian',
+  'couple-straight',
+  'ecuadorian',
+  'public-sex',
+  'shower-sex',
+  'singaporean',
+  'step-fantasy',
+]);
+
+function keywordMatchFields(page: BestOfPage): Array<'bio' | 'location' | 'categories' | 'name' | 'username'> {
+  if (BIO_ONLY_BEST_OF_SLUGS.has(page.slug)) return ['bio'];
+  if (page.type === 'state') return ['bio', 'location'];
+  return ['bio', 'categories', 'name', 'username', 'location'];
+}
 
 /** Related category slugs — browse/search returns creators tagged with any slug in the group.
  *  Display counts: use buildCategoryDisplayCounts() — never raw single-tag queries. */
@@ -65,7 +96,6 @@ export const creatorQualityFilter = {
   avatar: buildR2AvatarMatch(),
   gender: 'female',
   deleted: { $ne: true },
-  $expr: { $lte: [{ $size: { $ifNull: ['$categories', []] } }, MAX_CATEGORIES] },
   ...whaleBrowseLikesFilter,
 };
 
@@ -77,45 +107,44 @@ export function buildBestOfCreatorMatch(page: BestOfPage): Record<string, unknow
     return base;
   }
 
+  if (page.match === 'combo' && page.categorySlugs?.length === 2) {
+    return buildComboCreatorMatch(page.categorySlugs[0], page.categorySlugs[1]);
+  }
+
   if (page.patterns?.length) {
     const regex = buildKeywordRegex(page.patterns);
-    base.$or = [
-      { bio: regex },
-      { categories: regex },
-      { name: regex },
-      { username: regex },
-      { location: regex },
-    ];
+    const fields = keywordMatchFields(page);
+    const or = fields.map((field) => ({ [field]: regex }));
+    base.$or = or;
   }
 
   return base;
 }
 
-function keywordFieldsMatch(patterns: string[], creator: RankingMatchFields): boolean {
+function keywordFieldsMatch(patterns: string[], creator: RankingMatchFields, page?: BestOfPage): boolean {
   const regex = buildKeywordRegex(patterns);
   const cats = creator.categories ?? [];
-  return (
-    regex.test(creator.bio ?? '') ||
-    cats.some((c) => regex.test(c)) ||
-    regex.test(creator.name ?? '') ||
-    regex.test(creator.username ?? '') ||
-    regex.test(creator.location ?? '')
-  );
+  const fields = page ? keywordMatchFields(page) : ['bio', 'categories', 'name', 'username', 'location'];
+  return fields.some((field) => {
+    if (field === 'categories') return cats.some((c) => regex.test(c));
+    return regex.test((creator as Record<string, string | undefined>)[field] ?? '');
+  });
 }
 
 export function buildSlugCreatorMatch(slug: string): Record<string, unknown> {
   const keywordPatterns = getKeywordCategoryPatterns(slug);
   if (keywordPatterns?.length) {
     const regex = buildKeywordRegex(keywordPatterns);
+    const orClause: Record<string, unknown>[] = [
+      { bio: regex },
+      { categories: regex },
+      { name: regex },
+      { username: regex },
+      { location: regex },
+    ];
     return {
       ...creatorQualityFilter,
-      $or: [
-        { bio: regex },
-        { categories: regex },
-        { name: regex },
-        { username: regex },
-        { location: regex },
-      ],
+      $or: orClause,
     };
   }
 
@@ -142,14 +171,9 @@ export function buildNicheMatchClause(slug: string): Record<string, unknown> {
 
   if (page?.match === 'keyword' && page.patterns?.length) {
     const regex = buildKeywordRegex(page.patterns);
+    const fields = keywordMatchFields(page);
     return {
-      $or: [
-        { bio: regex },
-        { categories: regex },
-        { name: regex },
-        { username: regex },
-        { location: regex },
-      ],
+      $or: fields.map((field) => ({ [field]: regex })),
     };
   }
 
@@ -180,14 +204,7 @@ function matchesNiche(slug: string, creator: RankingMatchFields): boolean {
   const cats = creator.categories ?? [];
 
   if (page?.match === 'keyword' && page.patterns?.length) {
-    const regex = buildKeywordRegex(page.patterns);
-    return (
-      regex.test(creator.bio ?? '') ||
-      cats.some((c) => regex.test(c)) ||
-      regex.test(creator.name ?? '') ||
-      regex.test(creator.username ?? '') ||
-      regex.test(creator.location ?? '')
-    );
+    return keywordFieldsMatch(page.patterns, creator, page);
   }
 
   const expanded = expandCategorySlug(page?.categorySlug ?? slug);
@@ -200,9 +217,6 @@ function matchesNiche(slug: string, creator: RankingMatchFields): boolean {
  * the ranking pages themselves compute. A creator can be on many pages.
  */
 export function getCreatorRankingPages(creator: RankingMatchFields): BestOfPage[] {
-  // Same scraper-spam guard the ranking queries apply.
-  if ((creator.categories?.length ?? 0) > MAX_CATEGORIES) return [];
-
   return BEST_OF_PAGES.filter((page) => {
     if (page.match === 'combo' && page.categorySlugs?.length === 2) {
       return matchesNiche(page.categorySlugs[0], creator) && matchesNiche(page.categorySlugs[1], creator);

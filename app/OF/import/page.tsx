@@ -291,8 +291,10 @@ function BulkImportSection() {
       setBulkResults([...results]);
 
       try {
+        const token = localStorage.getItem('token') || '';
         const res = await fetch('/api/onlyfans/scrape', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ category: 'bulk-import', usernames: batch, maxItems: batch.length, source: 'admin' }),
         });
         const data = await res.json();

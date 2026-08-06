@@ -12,10 +12,9 @@ import {
   publicAvatarUrl,
 } from '@/lib/images/processUserAvatar';
 import { PRESET_AVATAR_COUNT, presetAvatarIdFromUrl } from '@/lib/userAvatars';
-import { PROFILE_TAG_SLUGS, PROFILE_CATEGORY_EXCLUDED_SLUGS, sanitizeUserInterests, type InterestOption } from '@/lib/userInterests';
-import { getTagIndex } from '@/lib/actions/tags';
+import { PROFILE_OF_INTEREST_SLUGS, profileOfInterestLabel, sanitizeUserInterests, type InterestOption } from '@/lib/userInterests';
 import { AI_NSFW_TOOLS, categoryToSlug, getCategoryBySlug } from '@/app/ainsfw/data';
-import { getAllTagDefinitions, getTagDefinition, type TagDefinition } from '@/lib/tags/registry';
+import { getTagDefinition, type TagDefinition } from '@/lib/tags/registry';
 import { buildInterestsCreatorMatch, rotateFeedResults } from '@/lib/tags/ofSearchMatch';
 import { getCreatorFeedCategories } from '@/lib/tags/creatorProfileTags';
 import { fetchNearMeCreatorsTiered, type NearMeCreatorItem } from '@/lib/actions/nearMeCreators';
@@ -23,7 +22,6 @@ import { Bot, OnlyFansCreator } from '@/lib/models';
 import { PROFILE_THEMES, type ProfileThemeId, isFreeProfileTheme } from '@/app/profile/profileTheme';
 
 const MIN_INTEREST_CONTENT = 20;
-const PROFILE_CATEGORY_POOL_SIZE = 40;
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
@@ -190,52 +188,16 @@ export async function updateUserProfile(
 
 async function loadProfileInterestOptions(): Promise<{
   tagInterests: InterestOption[];
-  aiInterests: InterestOption[];
   tagSlugs: Set<string>;
-  aiSlugs: Set<string>;
 }> {
-  const indexedTags = await getTagIndex('en', 0);
-  const countBySlug = new Map(indexedTags.map((t) => [t.slug, t.total]));
-
-  const bySlug = new Map<string, InterestOption & { count: number }>();
-  for (const t of indexedTags) {
-    bySlug.set(t.slug, { slug: t.slug, name: t.label, count: t.total });
-  }
-  for (const def of getAllTagDefinitions()) {
-    if (!bySlug.has(def.slug)) {
-      bySlug.set(def.slug, { slug: def.slug, name: def.label, count: countBySlug.get(def.slug) ?? 0 });
-    }
-  }
-  for (const slug of PROFILE_TAG_SLUGS) {
-    if (bySlug.has(slug)) continue;
-    const def = getTagDefinition(slug);
-    if (def) bySlug.set(slug, { slug, name: def.label, count: countBySlug.get(slug) ?? 0 });
-  }
-
-  const allTagInterests = [...bySlug.values()];
-  const tagInterests = [...allTagInterests]
-    .filter((t) => !PROFILE_CATEGORY_EXCLUDED_SLUGS.has(t.slug))
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
-    .slice(0, PROFILE_CATEGORY_POOL_SIZE)
-    .map(({ slug, name, count }) => ({ slug, name, count }));
-
-  const counts = new Map<string, number>();
-  for (const tool of AI_NSFW_TOOLS) {
-    counts.set(tool.category, (counts.get(tool.category) || 0) + 1);
-  }
-  const aiInterests: InterestOption[] = [];
-  for (const [category, count] of counts) {
-    if (count >= MIN_INTEREST_CONTENT) {
-      aiInterests.push({ slug: categoryToSlug(category), name: category });
-    }
-  }
-  aiInterests.sort((a, b) => a.name.localeCompare(b.name));
+  const tagInterests: InterestOption[] = PROFILE_OF_INTEREST_SLUGS.map((slug) => ({
+    slug,
+    name: profileOfInterestLabel(slug),
+  }));
 
   return {
     tagInterests,
-    aiInterests,
-    tagSlugs: new Set(allTagInterests.map((t) => t.slug)),
-    aiSlugs: new Set(aiInterests.map((t) => t.slug)),
+    tagSlugs: new Set(PROFILE_OF_INTEREST_SLUGS),
   };
 }
 
@@ -243,7 +205,7 @@ export async function getProfileInterestOptions() {
   const options = await loadProfileInterestOptions();
   return {
     tagInterests: options.tagInterests,
-    aiInterests: options.aiInterests,
+    aiInterests: [] as InterestOption[],
   };
 }
 
@@ -261,7 +223,6 @@ export async function updateUserInterests(
   const allowed = await loadProfileInterestOptions();
   const cleaned = sanitizeUserInterests(data, {
     tagSlugs: allowed.tagSlugs,
-    aiSlugs: allowed.aiSlugs,
   });
 
   await connectDB();
@@ -270,7 +231,7 @@ export async function updateUserInterests(
       preferredPlatforms: cleaned.preferredPlatforms,
       interests: cleaned.interests,
       aiInterests: cleaned.aiInterests,
-      interestedInAI: cleaned.preferredPlatforms.includes('ai'),
+      interestedInAI: false,
     },
   });
 
@@ -550,7 +511,51 @@ export async function getSavedLikesOrder(token: string): Promise<string[]> {
   if (!userId) return [];
   await connectDB();
   const user = await User.findById(userId).select('savedLikesOrder').lean() as { savedLikesOrder?: string[] } | null;
-  return Array.isArray(user?.savedLikesOrder) ? user.savedLikesOrder : [];
+  const order = Array.isArray(user?.savedLikesOrder) ? user.savedLikesOrder : [];
+  return order.map((k) => (k.startsWith('creator:') ? `onlyfans:${k.slice('creator:'.length)}` : k));
+}
+
+export async function saveOnlyFansCreatorFromLink(token: string, input: string) {
+  const userId = await getUserIdFromToken(token);
+  if (!userId) return { ok: false as const, message: 'Unauthorized' };
+
+  try {
+    const { saveOnlyFansCreatorByUsernameInput } = await import('@/lib/onlyfansCreatorSaveDb');
+    const { creatorId } = await saveOnlyFansCreatorByUsernameInput(userId, input);
+    return { ok: true as const, creatorId };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Save failed';
+    if (message === 'Creator not found' || message === 'Invalid username or link') {
+      return { ok: false as const, message };
+    }
+    throw e;
+  }
+}
+
+export async function getBookmarkCreatorLikeStatus(token: string, creatorIds: string[]) {
+  const userId = await getUserIdFromToken(token);
+  if (!userId) return { ok: false as const, likedByCreatorId: {} as Record<string, boolean> };
+
+  const { getCreatorDualPhotoLikeStatus } = await import('@/lib/onlyfansCreatorSaveDb');
+  const likedByCreatorId = await getCreatorDualPhotoLikeStatus(userId, creatorIds);
+  return { ok: true as const, likedByCreatorId };
+}
+
+export async function toggleBookmarkCreatorLikes(token: string, creatorId: string) {
+  const userId = await getUserIdFromToken(token);
+  if (!userId) return { ok: false as const, message: 'Unauthorized' };
+
+  try {
+    const { toggleCreatorDualPhotoLikes } = await import('@/lib/onlyfansCreatorSaveDb');
+    const { liked } = await toggleCreatorDualPhotoLikes(userId, creatorId);
+    return { ok: true as const, liked };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Like failed';
+    if (message === 'Creator not found') {
+      return { ok: false as const, message };
+    }
+    throw e;
+  }
 }
 
 export async function saveSavedLikesOrder(token: string, order: string[]) {
@@ -559,8 +564,8 @@ export async function saveSavedLikesOrder(token: string, order: string[]) {
 
   const clean = order.filter((k) => typeof k === 'string' && /^[a-z]+:.+/.test(k));
   const creatorIds = clean
-    .filter((k) => k.startsWith('onlyfans:'))
-    .map((k) => k.slice('onlyfans:'.length))
+    .filter((k) => k.startsWith('onlyfans:') || k.startsWith('creator:'))
+    .map((k) => (k.startsWith('onlyfans:') ? k.slice('onlyfans:'.length) : k.slice('creator:'.length)))
     .filter((id) => mongoose.Types.ObjectId.isValid(id));
 
   await connectDB();

@@ -27,6 +27,14 @@ export function ofCreatorProfileUrl(usernameOrSlug: string): string {
   return `/onlyfanssearch/${name}`;
 }
 
+/** OnlyFans.com outbound URL — ignore legacy Erogram /{user}-onlyfans values stored in DB. */
+export function onlyFansExternalUrl(usernameOrSlug: string, storedUrl?: string): string {
+  const raw = (storedUrl || '').trim();
+  if (/^https?:\/\/(www\.)?onlyfans\.com\//i.test(raw)) return raw;
+  const name = normalizeCreatorProfileSegment(usernameOrSlug);
+  return `https://onlyfans.com/${name}`;
+}
+
 /** Static /profile/* routes — not creator usernames. */
 const RESERVED_PROFILE_SEGMENTS = new Set(['leaderboard']);
 

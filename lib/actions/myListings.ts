@@ -3,10 +3,11 @@
 import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 import path from 'path';
 import { mkdir, writeFile } from 'fs/promises';
 import connectDB from '@/lib/db/mongodb';
-import { Group, Bot, User } from '@/lib/models';
+import { Group, Bot, User, OnlyFansCreator } from '@/lib/models';
 import { getR2PublicUrl, isR2Configured } from '@/lib/r2';
 import { BOOST_STARS, cryptoUsdFromStars } from '@/lib/boostPricing';
 import {
@@ -18,6 +19,11 @@ import { slugify } from '@/lib/utils/slugify';
 import { LOCALES } from '@/lib/i18n/config';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
+
+function toUserObjectId(userId: string) {
+  if (!mongoose.Types.ObjectId.isValid(userId)) return null;
+  return new mongoose.Types.ObjectId(userId);
+}
 
 function resolveImage(stored: string | undefined): string {
   const placeholder = '/assets/placeholder-no-image.png';
@@ -54,7 +60,7 @@ async function authenticateAdminToken(token: string) {
 
 export interface ListingItem {
   _id: string;
-  type: 'group' | 'bot' | 'ainsfw';
+  type: 'group' | 'bot' | 'ainsfw' | 'onlyfans';
   name: string;
   slug: string;
   image: string;
@@ -81,15 +87,20 @@ export async function getMyListings(token: string): Promise<{ listings: ListingI
 
     await connectDB();
 
-    const userId = decoded.id;
+    const userObjectId = toUserObjectId(decoded.id);
+    if (!userObjectId) return { listings: [], error: 'Invalid token' };
 
-    const [groups, bots] = await Promise.all([
-      Group.find({ createdBy: userId, status: { $ne: 'deleted' } })
+    const [groups, bots, creators] = await Promise.all([
+      Group.find({ createdBy: userObjectId, status: { $ne: 'deleted' } })
         .select('name slug image telegramLink description status category views clickCount boosted boostExpiresAt boostDuration paidBoost paidBoostStars contactTelegram contactEmail createdAt')
         .sort({ createdAt: -1 })
         .lean(),
-      Bot.find({ createdBy: userId, status: { $ne: 'deleted' } })
+      Bot.find({ createdBy: userObjectId, status: { $ne: 'deleted' } })
         .select('name slug image telegramLink description status category views clickCount boosted boostExpiresAt boostDuration paidBoost paidBoostStars contactTelegram contactEmail createdAt')
+        .sort({ createdAt: -1 })
+        .lean(),
+      OnlyFansCreator.find({ submittedBy: userObjectId, deleted: { $ne: true } })
+        .select('name username slug avatar submissionStatus categories clicks createdAt featured featuredExpiresAt')
         .sort({ createdAt: -1 })
         .lean(),
     ]);
@@ -137,6 +148,31 @@ export async function getMyListings(token: string): Promise<{ listings: ListingI
         description: b.description || '',
         createdAt: b.createdAt?.toISOString?.() || new Date().toISOString(),
       })),
+      ...(creators as any[]).map((c) => {
+        const featuredExpiry = c.featuredExpiresAt ? new Date(c.featuredExpiresAt) : null;
+        const featuredActive = !!(c.featured && featuredExpiry && featuredExpiry > new Date());
+        return {
+        _id: c._id.toString(),
+        type: 'onlyfans' as const,
+        name: c.name || c.username || '',
+        slug: c.slug || c.username || '',
+        image: resolveImage(c.avatar),
+        telegramLink: '',
+        status: c.submissionStatus || 'approved',
+        category: Array.isArray(c.categories) && c.categories[0] ? String(c.categories[0]) : 'OnlyFans',
+        views: c.clicks || 0,
+        clickCount: c.clicks || 0,
+        boosted: featuredActive,
+        boostExpiresAt: featuredExpiry ? featuredExpiry.toISOString() : null,
+        boostDuration: featuredActive ? '7d' : null,
+        paidBoost: featuredActive,
+        paidBoostStars: null,
+        contactTelegram: '',
+        contactEmail: '',
+        description: '',
+        createdAt: c.createdAt?.toISOString?.() || new Date().toISOString(),
+      };
+      }),
     ];
 
     listings.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -157,18 +193,20 @@ export async function getMyListingsSummary(token: string): Promise<{
     if (!decoded?.id) return { hasListings: false, inReviewCount: 0, hasPaidCampaign: false };
 
     await connectDB();
-    const userId = decoded.id;
+    const userObjectId = toUserObjectId(decoded.id);
+    if (!userObjectId) return { hasListings: false, inReviewCount: 0, hasPaidCampaign: false };
     const now = new Date();
 
-    const reviewFilter = { createdBy: userId, status: 'pending', paidBoost: { $ne: true } };
+    const reviewFilter = { createdBy: userObjectId, status: 'pending', paidBoost: { $ne: true } };
     const paidFilter = {
-      createdBy: userId,
+      createdBy: userObjectId,
       $or: [{ paidBoost: true }, { boostExpiresAt: { $gt: now } }],
     };
 
-    const [gTotal, bTotal, gReview, bReview, gPaid, bPaid] = await Promise.all([
-      Group.countDocuments({ createdBy: userId, status: { $ne: 'deleted' } }),
-      Bot.countDocuments({ createdBy: userId, status: { $ne: 'deleted' } }),
+    const [gTotal, bTotal, cTotal, gReview, bReview, gPaid, bPaid] = await Promise.all([
+      Group.countDocuments({ createdBy: userObjectId, status: { $ne: 'deleted' } }),
+      Bot.countDocuments({ createdBy: userObjectId, status: { $ne: 'deleted' } }),
+      OnlyFansCreator.countDocuments({ submittedBy: userObjectId, deleted: { $ne: true } }),
       Group.countDocuments(reviewFilter),
       Bot.countDocuments(reviewFilter),
       Group.countDocuments(paidFilter),
@@ -176,7 +214,7 @@ export async function getMyListingsSummary(token: string): Promise<{
     ]);
 
     return {
-      hasListings: gTotal + bTotal > 0,
+      hasListings: gTotal + bTotal + cTotal > 0,
       inReviewCount: gReview + bReview,
       hasPaidCampaign: gPaid + bPaid > 0,
     };

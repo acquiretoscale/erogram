@@ -1,32 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
-import { OnlyFansCreator, SearchQuery } from '@/lib/models';
+import { OnlyFansCreator } from '@/lib/models';
 
 const MAX_TOTAL = 1000;
-const SCRAPE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
-
-const KNOWN_TERMS = new Set([
-  'asian', 'blonde', 'teen', 'milf', 'amateur', 'redhead', 'goth',
-  'petite', 'big ass', 'big-ass', 'big boobs', 'big-boobs',
-  'brunette', 'latina', 'ahegao', 'alt',
-  'cosplay', 'fitness', 'tattoo', 'curvy', 'ebony',
-  'feet', 'lingerie', 'thick', 'twerk', 'squirt',
-  'streamer', 'piercing',
-  'france', 'germany', 'spain', 'italy', 'uk', 'usa', 'brazil',
-  'colombia', 'mexico', 'argentina', 'japan', 'philippines', 'australia',
-  'canada', 'russia', 'ukraine', 'poland', 'romania', 'czech', 'netherlands',
-  // common aliases — resolved to canonical category via SYNONYMS map
-  'big booty', 'big-booty', 'booty', 'ass', 'butt',
-  'big tits', 'big-tits', 'busty', 'boobs', 'tits',
-  'thicc', 'pawg', 'babe', 'hot', 'sexy',
-  'inked', 'tattooed', 'tattoos',
-  'fit', 'gym', 'athletic',
-  'gamer', 'gaming', 'e-girl', 'egirl',
-  'emo', 'punk', 'grunge', 'alternative',
-  'red hair', 'ginger',
-  'small', 'tiny', 'skinny', 'slim',
-  'chubby', 'bbw', 'plus size', 'plus-size',
-]);
 
 // Maps user search terms to canonical category names stored in the DB
 const SYNONYMS: Record<string, string[]> = {
@@ -74,8 +50,7 @@ const SYNONYMS: Record<string, string[]> = {
 /**
  * GET /api/onlyfans/creators/search?q=query&limit=40&skip=0
  *
- * Paginated DB search. Returns a batch of creators + real total count.
- * First page (skip=0) also returns `shouldScrape` flag for background scraping.
+ * Paginated DB search. Returns a batch of creators + total count.
  */
 export async function GET(req: NextRequest) {
   try {
@@ -85,7 +60,7 @@ export async function GET(req: NextRequest) {
     const skip = Math.max(0, parseInt(searchParams.get('skip') || '0', 10));
 
     if (!q) {
-      return NextResponse.json({ creators: [], total: 0, shouldScrape: false });
+      return NextResponse.json({ creators: [], total: 0 });
     }
 
     await connectDB();
@@ -147,58 +122,12 @@ export async function GET(req: NextRequest) {
 
     const total = creators.length;
 
-    // Only compute shouldScrape on the first page
-    let shouldScrape = false;
-    if (skip === 0) {
-      const allWordsKnown = KNOWN_TERMS.has(normalized) ||
-        (words.length > 1 && words.every((w) => KNOWN_TERMS.has(w)));
-      const skipScrape = total > 0 && allWordsKnown;
-      if (!skipScrape) {
-        shouldScrape = await logAndCheckScrapeNeeded(normalized, q);
-      }
-    }
-
     return NextResponse.json({
       creators: creators.map((c: any) => ({ ...c, _id: c._id.toString() })),
       total,
-      shouldScrape,
-      scrapeQuery: shouldScrape ? normalized : undefined,
     });
   } catch (error: any) {
     console.error('Search error:', error);
-    return NextResponse.json({ error: error.message, shouldScrape: false }, { status: 500 });
-  }
-}
-
-/**
- * Logs the search query and checks whether a scrape is needed.
- * Does NOT fire the scrape — the client handles that.
- */
-async function logAndCheckScrapeNeeded(normalized: string, originalQuery: string): Promise<boolean> {
-  try {
-    const existing = await SearchQuery.findOneAndUpdate(
-      { queryNormalized: normalized },
-      {
-        $inc: { searchCount: 1 },
-        $set: { lastSearchedAt: new Date(), query: originalQuery },
-        $setOnInsert: { queryNormalized: normalized, scraped: false, scrapeStatus: 'pending', resultsCount: 0 },
-      },
-      { upsert: true, new: true },
-    );
-
-    if (existing.scrapeStatus === 'scraping') return false;
-
-    // Only skip if last successful scrape was recent
-    if (existing.scrapeStatus === 'done' && existing.scrapedAt) {
-      const age = Date.now() - new Date(existing.scrapedAt).getTime();
-      if (age < SCRAPE_COOLDOWN_MS) return false;
-    }
-
-    // Mark as scraping so concurrent requests don't double-fire
-    await SearchQuery.updateOne({ _id: existing._id }, { $set: { scrapeStatus: 'scraping' } });
-    return true;
-  } catch (e) {
-    console.error('logAndCheckScrapeNeeded error:', e);
-    return false;
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

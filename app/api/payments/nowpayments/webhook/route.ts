@@ -121,7 +121,7 @@ async function handleSubmissionPayment(
   }).catch(() => {});
 }
 
-// ─── Handle featured creator payments (self-serve $97 featured listing) ───
+// ─── Handle featured creator payments (self-serve $197 boosted listing) ───
 
 async function handleFeaturedCreatorPayment(creatorId: string, paymentId: string) {
   const creator = await OnlyFansCreator.findById(creatorId);
@@ -134,7 +134,7 @@ async function handleFeaturedCreatorPayment(creatorId: string, paymentId: string
 
   const now = new Date();
   const expiresAt = new Date(now);
-  expiresAt.setDate(expiresAt.getDate() + 30);
+  expiresAt.setDate(expiresAt.getDate() + 7);
 
   await OnlyFansCreator.findByIdAndUpdate(creatorId, {
     featured: true,
@@ -188,7 +188,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false }, { status: 403 });
   }
 
-  const { payment_status, order_id, payment_id, actually_paid, price_amount } = body;
+  const { payment_status, order_id, payment_id, actually_paid_at_fiat, price_amount } = body;
 
   logEvent({ event: `crypto_webhook_${payment_status}`, orderId: order_id, paymentId: payment_id });
 
@@ -196,10 +196,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // Guard: ensure user actually paid at least the expected amount
-  if (actually_paid !== undefined && price_amount !== undefined) {
-    if (Number(actually_paid) < Number(price_amount) * 0.95) {
-      logEvent({ event: 'crypto_partial_payment', orderId: order_id, actually_paid, price_amount });
+  // Guard: compare fiat-to-fiat only (actually_paid is crypto units — never compare to USD price_amount)
+  const paidFiat = actually_paid_at_fiat != null ? Number(actually_paid_at_fiat) : NaN;
+  const expectedFiat = price_amount != null ? Number(price_amount) : NaN;
+  if (Number.isFinite(paidFiat) && paidFiat > 0 && Number.isFinite(expectedFiat) && expectedFiat > 0) {
+    if (paidFiat < expectedFiat * 0.95) {
+      logEvent({ event: 'crypto_partial_payment', orderId: order_id, actually_paid_at_fiat: paidFiat, price_amount: expectedFiat });
       return NextResponse.json({ ok: true });
     }
   }

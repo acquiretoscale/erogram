@@ -124,7 +124,10 @@ export async function syncCampaignToTrending(campaignId: string): Promise<OFSync
  * Mirror an OFadmin featured slot → an Ad Network campaign, so it shows in the network too.
  * Called after createOFMTrendingSlot / updateOFMTrending.
  */
-export async function syncTrendingToCampaign(trendingId: string): Promise<OFSyncResult> {
+export async function syncTrendingToCampaign(
+  trendingId: string,
+  opts?: { initialPlacements?: string[] },
+): Promise<OFSyncResult> {
   try {
     await connectDB();
     const slot = await TrendingOFCreator.findById(trendingId);
@@ -147,6 +150,11 @@ export async function syncTrendingToCampaign(trendingId: string): Promise<OFSync
       if (slot.url) camp.destinationUrl = slot.url;
       camp.status = status === 'running' ? 'active' : 'paused';
       if (!camp.ofTrendingId) camp.ofTrendingId = slot._id;
+      // Bird-eye PROMOTE: always reset to the minimal placement set + empty keywords.
+      if (opts?.initialPlacements?.length) {
+        camp.placements = opts.initialPlacements;
+        camp.targetKeywords = [];
+      }
       await camp.save();
       if (!slot.linkedCampaignId) { slot.linkedCampaignId = camp._id; await slot.save(); }
       return { ok: true, status, trendingId, filledSlot: slot.position, note: 'campaign updated' };
@@ -157,6 +165,9 @@ export async function syncTrendingToCampaign(trendingId: string): Promise<OFSync
     // live across the whole network immediately (Top Groups / In-Feed / Top Bots / AI NSFW /
     // Spotlight / Top-10 / OF category) — unifying "add to OF featured" with the Ad Network.
     const { DEFAULT_OF_CREATOR_PLACEMENTS } = await import('@/lib/adPlacements');
+    const placements = opts?.initialPlacements?.length
+      ? opts.initialPlacements
+      : DEFAULT_OF_CREATOR_PLACEMENTS;
     const advertiserId = await getOFSystemAdvertiserId();
     const created = await Campaign.create({
       advertiserId,
@@ -173,7 +184,8 @@ export async function syncTrendingToCampaign(trendingId: string): Promise<OFSync
       feedTier: 1,
       tierSlot: 2,
       position: 2,
-      placements: DEFAULT_OF_CREATOR_PLACEMENTS,
+      placements,
+      targetKeywords: [],
       buttonText: 'View Profile',
       ofTrendingId: slot._id,
     });

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bookmark, MapPin, Search, SlidersHorizontal, User } from 'lucide-react';
+import { Bookmark, ExternalLink, MapPin, Search, SlidersHorizontal } from 'lucide-react';
 import {
   profilePremiumSearchCreators,
   advancedSearchCreators,
@@ -13,19 +13,19 @@ import {
 import { getNearMeCreators } from '@/lib/actions/userProfile';
 import { getNearMeCreatorsPublic, getNearMeByPlaceSlug, getVisitorNearMeLocation } from '@/lib/actions/nearMeCreators';
 import { getFreeOnlyfansCreators } from '@/lib/actions/freeOnlyfansCreators';
+import { getSearchResultFeaturedCampaigns, trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
 import { countryCodeToFlag, parseCity } from '@/lib/utils/geo';
 import { nearMeAreaLabel as formatNearMeAreaLabel } from '@/lib/tags/nearMeMatch';
 import { useTranslation } from '@/lib/i18n/client';
-import ProfileGridDensityToggle from './ProfileGridDensityToggle';
+import { OfSearchResultsViewToggle } from './ProfileGridDensityToggle';
 import { ProfileHeading } from './ProfileTypography';
 import type { ProfileThemeTokens } from './profileTheme';
 import {
-  loadProfileGridDensity,
-  profileGridClass,
-  profileGridGapClass,
-  type ProfileGridDensity,
+  loadOfSearchResultsView,
+  type OfSearchResultsView,
 } from './profileGridDensity';
 import OnlyFansHeroFilterPanel from '@/app/onlyfanssearch/OnlyFansHeroFilterPanel';
+import { ofCreatorProfileUrl, onlyFansExternalUrl } from '@/lib/onlyfanssearch/creatorUrls';
 
 function readCountryCookie(): string | undefined {
   if (typeof document === 'undefined') return undefined;
@@ -50,6 +50,7 @@ interface CreatorResult {
   joinDate?: string;
   createdAt?: string;
   bio?: string;
+  url?: string;
 }
 
 function bioSnippet(bio?: string, max = 72): string {
@@ -114,13 +115,52 @@ interface ProfileOFPremiumSearchProps {
   compactInline?: boolean;
   /** Narrow rail/card: 2-col nav grid, tighter input (profile sidebar) */
   compactBlock?: boolean;
+  /** Hub search feed — paid featured OF creators (of-search-featured + keyword of-cat) */
+  paidFeatured?: any[];
 }
 
 const MEDIA_THRESHOLDS = [0, 20, 50, 100, 500];
 const JOIN_WITHIN_DAYS = [0, 30, 90, 365] as const;
+const SEARCH_FEED_FEATURED_EVERY = 5;
+const EMPTY_PAID_FEATURED: any[] = [];
+const MOSAIC_RESULTS_GRID = 'grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5';
+
+function searchFeedPlacement(idx: number) {
+  return idx >= 0 ? `of-search-featured:v${idx}` : 'of-search-featured';
+}
+
+function formatFeaturedLikes(n: number) {
+  if (!n) return '';
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+  return `${n}`;
+}
+
+function isCreatorLiveNow(start: number, end: number): boolean {
+  if (start < 0 || end < 0) return false;
+  const gmtHour = new Date().getUTCHours();
+  if (start <= end) return gmtHour >= start && gmtHour < end;
+  return gmtHour >= start || gmtHour < end;
+}
+
+function FeaturedLiveBadge({ liveHourStart, liveHourEnd }: { liveHourStart?: number; liveHourEnd?: number }) {
+  if (!isCreatorLiveNow(liveHourStart ?? -1, liveHourEnd ?? -1)) return null;
+  return (
+    <div className="absolute top-2 left-2 z-10 inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/55 backdrop-blur-sm">
+      <span className="relative flex h-2 w-2">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+      </span>
+      <span className="text-[10px] font-black text-white uppercase tracking-wider">Live</span>
+    </div>
+  );
+}
 
 const HERO_OF_BTN =
   'inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-3.5 rounded-xl border-2 border-[#0099db] font-black text-[11px] sm:text-[12px] uppercase tracking-wide text-white bg-[#00AFF0] shadow-[4px_4px_0_0_#0099db] hover:bg-[#0099db] hover:shadow-[2px_2px_0_0_#0099db] hover:translate-x-[2px] hover:translate-y-[2px] active:shadow-none active:translate-x-[4px] active:translate-y-[4px] transition-all whitespace-nowrap';
+
+const CREATOR_PROFILE_ICON_BTN =
+  'shrink-0 w-9 h-9 rounded-xl bg-[#0084BD] text-white flex items-center justify-center shadow-lg border border-[#0084BD] hover:bg-[#0070A3] transition-colors';
 
 const HERO_NEO_BLUE_BTN =
   'inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-3.5 rounded-xl border-[2.5px] border-black font-black text-[11px] sm:text-[12px] uppercase tracking-wide text-white bg-[#005a8c] shadow-[4px_4px_0_0_#000] hover:bg-[#006da8] hover:shadow-[2px_2px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] active:shadow-none active:translate-x-[4px] active:translate-y-[4px] transition-all whitespace-nowrap';
@@ -209,7 +249,32 @@ function OfButtonLoader() {
   );
 }
 
-function OfResultsSkeleton({ count, hero, hoverBg }: { count: number; hero?: boolean; hoverBg?: string }) {
+function OfResultsSkeleton({ count, hero, hoverBg, feed }: { count: number; hero?: boolean; hoverBg?: string; feed?: boolean }) {
+  if (feed) {
+    return (
+      <>
+        {Array.from({ length: count }, (_, i) => (
+          <div
+            key={i}
+            className="w-full max-w-lg mx-auto rounded-2xl overflow-hidden border border-[#00AFF0]/20 bg-[#00AFF0]/[0.07] animate-pulse"
+          >
+            <div className="flex items-center gap-2.5 px-3 py-2.5">
+              <div className="w-9 h-9 rounded-full bg-[#00AFF0]/20" />
+              <div className="flex-1 space-y-1">
+                <div className="h-3 w-24 rounded bg-[#00AFF0]/20" />
+                <div className="h-2.5 w-16 rounded bg-[#00AFF0]/15" />
+              </div>
+            </div>
+            <div className="aspect-[4/5] bg-[#00AFF0]/10" />
+            <div className="p-3 space-y-2">
+              <div className="h-2.5 w-full rounded bg-[#00AFF0]/15" />
+              <div className="h-9 rounded-xl bg-[#00AFF0]/20" />
+            </div>
+          </div>
+        ))}
+      </>
+    );
+  }
   if (hero) {
     return (
       <>
@@ -274,6 +339,7 @@ export default function ProfileOFPremiumSearch({
   hideResults = false,
   compactInline = false,
   compactBlock = false,
+  paidFeatured = EMPTY_PAID_FEATURED,
 }: ProfileOFPremiumSearchProps) {
   const { t } = useTranslation();
   const router = useRouter();
@@ -305,7 +371,12 @@ export default function ProfileOFPremiumSearch({
   const [rawResults, setRawResults] = useState<CreatorResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
-  const [gridDensity, setGridDensity] = useState<ProfileGridDensity>(() => loadProfileGridDensity());
+  const [resultsView, setResultsView] = useState<OfSearchResultsView>('grid');
+
+  useEffect(() => {
+    setResultsView(loadOfSearchResultsView());
+  }, []);
+
   const [nearMeActive, setNearMeActive] = useState(false);
   const [nearMeAreaLabel, setNearMeAreaLabel] = useState('');
   const [visitorCountry, setVisitorCountry] = useState(
@@ -317,6 +388,9 @@ export default function ProfileOFPremiumSearch({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const searchGen = useRef(0);
+  const runSearchRef = useRef<(freshSeed?: string, qOverride?: string) => Promise<void>>(async () => {});
+  const shownVariantRef = useRef<Record<string, number>>({});
+  const [feedFeatured, setFeedFeatured] = useState<any[]>(paidFeatured);
   const resultsRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [nearMeHasMore, setNearMeHasMore] = useState(false);
@@ -327,6 +401,19 @@ export default function ProfileOFPremiumSearch({
   useEffect(() => {
     onActiveChange?.(searched || nearMeActive);
   }, [searched, nearMeActive, onActiveChange]);
+
+  useEffect(() => {
+    if (paidFeatured.length) setFeedFeatured(paidFeatured);
+  }, [paidFeatured]);
+
+  const loadFeedFeatured = useCallback(async (q: string) => {
+    try {
+      const list = await getSearchResultFeaturedCampaigns(q, 8);
+      setFeedFeatured(list.length ? list : paidFeatured);
+    } catch {
+      setFeedFeatured(paidFeatured);
+    }
+  }, [paidFeatured]);
 
   useEffect(() => {
     if (!isHero || !minimalFilters) return;
@@ -387,6 +474,7 @@ export default function ProfileOFPremiumSearch({
       setNearMeAreaLabel(res.areaLabel || '');
       setNearMeHasMore(!!('hasMore' in res && res.hasMore));
       setSearched(true);
+      void loadFeedFeatured('near me');
       requestAnimationFrame(() => {
         resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
@@ -396,7 +484,7 @@ export default function ProfileOFPremiumSearch({
     } finally {
       if (gen === searchGen.current) setLoading(false);
     }
-  }, [canUse, freeAccess, openLogin, nearMePage, nearMePlaceSlug]);
+  }, [canUse, freeAccess, openLogin, nearMePage, nearMePlaceSlug, loadFeedFeatured]);
 
   const runFreeOnly = useCallback(async () => {
     if (!canUse || !freeAccess) return;
@@ -413,12 +501,13 @@ export default function ProfileOFPremiumSearch({
       setRawResults(res.creators as CreatorResult[]);
       setFreeOnlyHasMore(!!res.hasMore);
       setSearched(true);
+      void loadFeedFeatured(freeCategorySlug || 'free');
     } catch {
       setSearched(false);
     } finally {
       if (gen === searchGen.current) setLoading(false);
     }
-  }, [canUse, freeAccess, freeCategorySlug]);
+  }, [canUse, freeAccess, freeCategorySlug, loadFeedFeatured]);
 
   const loadMoreFreeOnly = useCallback(async () => {
     if (!freeOnlyPage || !freeAccess || loadingMore || !freeOnlyHasMore || loading) return;
@@ -454,12 +543,13 @@ export default function ProfileOFPremiumSearch({
       setRawResults(res.creators as CreatorResult[]);
       setBestModelsHasMore(!!res.hasMore);
       setSearched(true);
+      void loadFeedFeatured('best');
     } catch {
       setSearched(false);
     } finally {
       if (gen === searchGen.current) setLoading(false);
     }
-  }, [canUse, freeAccess]);
+  }, [canUse, freeAccess, loadFeedFeatured]);
 
   const loadMoreBestModels = useCallback(async () => {
     if (!bestModelsPage || !freeAccess || loadingMore || !bestModelsHasMore || loading) return;
@@ -575,8 +665,8 @@ export default function ProfileOFPremiumSearch({
       (canUsePremiumFilters && joinWithinDays > 0);
 
     if (!trimmed && !hasFilters) {
-      setRawResults([]);
-      setSearched(false);
+      setRawResults((prev) => (prev.length === 0 ? prev : []));
+      setSearched((prev) => (prev ? false : prev));
       return;
     }
 
@@ -600,6 +690,8 @@ export default function ProfileOFPremiumSearch({
       if (gen !== searchGen.current) return;
       setRawResults(res.creators as CreatorResult[]);
       setSearched(true);
+      if (trimmed) loadFeedFeatured(trimmed);
+      else if (paidFeatured.length) setFeedFeatured(paidFeatured);
       if (category) {
         requestAnimationFrame(() => {
           resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -608,7 +700,7 @@ export default function ProfileOFPremiumSearch({
     } finally {
       if (gen === searchGen.current) setLoading(false);
     }
-  }, [canUse, canUsePremiumFilters, query, selectedCategory, priceFilter, instagramOnly, joinWithinDays]);
+  }, [canUse, canUsePremiumFilters, query, selectedCategory, priceFilter, instagramOnly, joinWithinDays, loadFeedFeatured, paidFeatured]);
 
   const runSearch = useCallback(async (freshSeed?: string, qOverride?: string) => {
     if (isHero && minimalFilters) {
@@ -654,8 +746,12 @@ export default function ProfileOFPremiumSearch({
     }
   }, [query, canUse, canUsePremiumFilters, freeAccess, instagramOnly, joinWithinDays, isHero, minimalFilters, runHubBrowse]);
 
+  const runHubBrowseRef = useRef(runHubBrowse);
+  runHubBrowseRef.current = runHubBrowse;
+  runSearchRef.current = runSearch;
+
   useEffect(() => {
-    if (!isHero || !minimalFilters || !canUse) return;
+    if (!isHero || !minimalFilters || !canUse || hideResults) return;
 
     const hasFilters =
       !!selectedCategory ||
@@ -666,11 +762,11 @@ export default function ProfileOFPremiumSearch({
     if (!hasFilters) return;
 
     const timer = setTimeout(() => {
-      runHubBrowse(String(Date.now()));
+      runHubBrowseRef.current(String(Date.now()));
     }, 120);
 
     return () => clearTimeout(timer);
-  }, [isHero, minimalFilters, canUse, canUsePremiumFilters, priceFilter, instagramOnly, joinWithinDays, runHubBrowse]);
+  }, [hideResults, isHero, minimalFilters, canUse, canUsePremiumFilters, priceFilter, instagramOnly, joinWithinDays, selectedCategory]);
 
   useEffect(() => {
     if (!canUse) return;
@@ -678,15 +774,15 @@ export default function ProfileOFPremiumSearch({
 
     if (!trimmedQ) {
       if (isHero && minimalFilters) {
-        setRawResults([]);
-        setSearched(false);
-        setSelectedCategory(null);
+        setRawResults((prev) => (prev.length === 0 ? prev : []));
+        setSearched((prev) => (prev ? false : prev));
+        setSelectedCategory((prev) => (prev === null ? prev : null));
       }
       return;
     }
     setQuery(initialQuery);
-    runSearch(String(Date.now()), trimmedQ);
-  }, [initialQuery, canUse, runSearch, isHero, minimalFilters]);
+    runSearchRef.current(String(Date.now()), trimmedQ);
+  }, [initialQuery, canUse, isHero, minimalFilters]);
 
   const results = useMemo(() => {
     let list =
@@ -781,10 +877,10 @@ export default function ProfileOFPremiumSearch({
   }, [priceFilter, minPrice, maxPrice, minMedia, likesSort, instagramOnly, joinWithinDays, selectedCategory, nearMeActive, minimalFilters]);
 
   const toolbar = canUse ? (
-    <div className={`flex items-center gap-2 ${isHero ? 'justify-center mb-3' : 'mt-3'}`}>
-      <ProfileGridDensityToggle
-        value={gridDensity}
-        onChange={setGridDensity}
+    <div className={`flex items-center gap-2 flex-wrap ${isHero ? 'justify-center mb-3' : 'mt-3'}`}>
+      <OfSearchResultsViewToggle
+        value={resultsView}
+        onChange={setResultsView}
         tokens={{
           pillBorder: tokens.border,
           pillBg: tokens.hover,
@@ -793,17 +889,6 @@ export default function ProfileOFPremiumSearch({
           accentDim: tokens.muted,
         }}
       />
-      {searched && results.length > 0 && (
-        <button
-          type="button"
-          onClick={() => runSearch(String(Date.now()))}
-          disabled={loading}
-          className="text-[11px] font-semibold tracking-[0.18em] uppercase transition-opacity hover:opacity-80 disabled:opacity-50"
-          style={{ color: tokens.text }}
-        >
-          {t('ofSearch.shuffleProfiles')}
-        </button>
-      )}
     </div>
   ) : null;
 
@@ -1151,7 +1236,7 @@ export default function ProfileOFPremiumSearch({
                       bestModelsPage ? 'ring-2 ring-[#00AFF0] ring-offset-2 ring-offset-[#111111]' : ''
                     }`}
                   >
-                    <span className="truncate">{isCompactBlock ? 'Models' : 'onlyfans Models'}</span>
+                    <span className="truncate">{isCompactBlock ? 'BEST' : 'BEST MODELS'}</span>
                   </a>
                 ) : null}
                 {bestFreeHref ? (
@@ -1256,6 +1341,7 @@ export default function ProfileOFPremiumSearch({
 
           {!hideResults && (
           <div ref={resultsRef}>
+          {!hideResults && (loading || results.length > 0 || searched) && isHero && toolbar}
           {searched && query.trim() && (
             <h2
               className={`font-black tracking-tight leading-tight mb-5 sm:mb-6 ${
@@ -1269,11 +1355,12 @@ export default function ProfileOFPremiumSearch({
             </h2>
           )}
           {loading ? (
-            <div className={`grid ${profileGridClass(gridDensity)} ${profileGridGapClass(gridDensity)} ${heroGridWrap}`}>
+            <div className={resultsView === 'feed' ? 'flex flex-col gap-4 max-w-lg mx-auto w-full' : `${MOSAIC_RESULTS_GRID} ${heroGridWrap}`}>
               <OfResultsSkeleton
-                count={isHero ? 12 : 8}
+                count={resultsView === 'feed' ? 4 : isHero ? 12 : 8}
                 hero={isHero && minimalFilters}
                 hoverBg={tokens.hover}
+                feed={resultsView === 'feed'}
               />
             </div>
           ) : searched && results.length === 0 ? (
@@ -1283,97 +1370,206 @@ export default function ProfileOFPremiumSearch({
                 : `${t('ofSearch.noCreatorsFound')} "${query.trim()}"`}
             </p>
           ) : results.length > 0 ? (
-            <div className={`grid ${profileGridClass(gridDensity)} ${profileGridGapClass(gridDensity)} ${heroGridWrap}`}>
-              {results.map((creator) => {
-                const profileUrl = `/${creator.username}-onlyfans`;
-                return (
-                <div
-                  key={creator._id}
-                  className="group rounded-xl overflow-hidden border transition-all hover:opacity-95 relative flex flex-col"
-                  style={{ borderColor: tokens.border, backgroundColor: tokens.card }}
-                >
-                  <div className="aspect-[3/4] overflow-hidden relative">
-                    <img
-                      src={creator.avatar}
-                      alt=""
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      loading="lazy"
-                      referrerPolicy="no-referrer"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png';
+            <div className={resultsView === 'feed' ? 'flex flex-col gap-4 sm:gap-5 max-w-lg mx-auto w-full' : `${MOSAIC_RESULTS_GRID} ${heroGridWrap}`}>
+              {(() => {
+                const isFeed = resultsView === 'feed';
+                const injectFeatured =
+                  isHero &&
+                  minimalFilters &&
+                  feedFeatured.length > 0 &&
+                  (!!query.trim() || freeOnlyPage || bestModelsPage || nearMePage || nearMeActive);
+                let featIdx = 0;
+                const nodes: React.ReactNode[] = [];
+
+                const renderFeatured = (slotKey: string) => {
+                  const tc = feedFeatured[featIdx % feedFeatured.length];
+                  featIdx += 1;
+                  const img = (tc.album && tc.album[0]) || tc.avatar;
+                  return (
+                    <button
+                      key={slotKey}
+                      type="button"
+                      onClick={() => {
+                        const vIdx = shownVariantRef.current[tc._id] ?? -1;
+                        if (tc.isPaidCampaign && tc.campaignId) {
+                          trackCampaignClick(tc.campaignId, searchFeedPlacement(vIdx));
+                        }
+                        window.open(`/go/${tc.username}`, '_blank', 'noopener,noreferrer');
                       }}
-                    />
-                  </div>
-                  <div className="p-2.5 flex flex-col flex-1">
-                    <div className="flex items-center justify-between gap-3 min-w-0">
-                      <p className="text-sm font-bold truncate min-w-0 flex-1" style={{ color: tokens.text }}>
-                        {creator.name || creator.username}
-                      </p>
-                      {isFreeCreator(creator) && (
-                        <span className="flex-shrink-0 ml-auto px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wide text-white" style={{ backgroundColor: '#22c55e' }}>
-                          FREE
-                        </span>
+                      className={`group w-full text-left rounded-2xl overflow-hidden bg-white border-2 border-[#00AFF0] shadow-[0_8px_28px_-8px_rgba(0,175,240,0.25)] hover:shadow-[0_12px_36px_-6px_rgba(0,175,240,0.35)] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer focus:outline-none ${isFeed ? 'max-w-lg mx-auto' : ''}`}
+                    >
+                      <div className={`relative bg-[#f0f8ff] ${isFeed ? 'aspect-[4/5]' : 'aspect-[3/4]'}`}>
+                        {img ? (
+                          <img
+                            src={img}
+                            alt={`${tc.name} OnlyFans`}
+                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-[#00AFF0] bg-[#f0f8ff]">
+                            {(tc.name || tc.username || '?').charAt(0)}
+                          </div>
+                        )}
+                        <FeaturedLiveBadge liveHourStart={tc.liveHourStart} liveHourEnd={tc.liveHourEnd} />
+                      </div>
+                      <div className="px-3 pt-2.5 pb-3 sm:px-4 sm:pt-3 sm:pb-4 bg-white">
+                        <p className="font-bold text-[13px] sm:text-[15px] text-gray-900 truncate">{tc.name}</p>
+                        <p className="text-[11px] sm:text-[13px] text-[#00AFF0] font-semibold mt-0.5">@{tc.username}</p>
+                        {tc.likesCount > 0 && (
+                          <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5">
+                            {formatFeaturedLikes(tc.likesCount)} {t('ofSearch.likes')}
+                          </p>
+                        )}
+                        <div className="w-full py-2 sm:py-2.5 mt-2 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-[13px] sm:text-sm font-bold text-center shadow-sm group-hover:shadow-md group-hover:from-[#009ADB] group-hover:to-[#00BFE8] transition-all">
+                          {t('ofSearch.viewProfile')}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                };
+
+                if (injectFeatured) {
+                  nodes.push(renderFeatured('featured-first'));
+                }
+
+                results.forEach((creator, i) => {
+                  const erogramUrl = ofCreatorProfileUrl(creator.username || creator.slug);
+                  const onlyfansUrl = onlyFansExternalUrl(creator.username || creator.slug, creator.url);
+                  nodes.push(
+                    <div
+                      key={creator._id}
+                      className={`group rounded-xl overflow-hidden border transition-all hover:opacity-95 relative flex flex-col ${isFeed ? 'w-full max-w-lg mx-auto rounded-2xl' : ''}`}
+                      style={{ borderColor: tokens.border, backgroundColor: tokens.card }}
+                    >
+                      {isFeed && (
+                        <div className="flex items-center gap-2.5 px-3 py-2.5" style={{ borderBottom: `1px solid ${tokens.border}` }}>
+                          <img
+                            src={creator.avatar}
+                            alt=""
+                            className="w-9 h-9 rounded-full object-cover shrink-0"
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png';
+                            }}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-bold truncate" style={{ color: tokens.text }}>
+                              {creator.name || creator.username}
+                            </p>
+                            <p className="text-[11px] truncate" style={{ color: tokens.muted }}>
+                              @{creator.username}
+                            </p>
+                          </div>
+                          {isFreeCreator(creator) ? (
+                            <span className="flex-shrink-0 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wide text-white" style={{ backgroundColor: '#22c55e' }}>
+                              FREE
+                            </span>
+                          ) : creator.price ? (
+                            <span className="flex-shrink-0 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wide text-white bg-[#0084BD]">
+                              ${creator.price}
+                            </span>
+                          ) : null}
+                        </div>
                       )}
-                    </div>
-                    <p className="text-[11px] truncate mt-0.5" style={{ color: tokens.muted }}>
-                      @{creator.username}
-                      {!isFreeCreator(creator) && creator.price ? ` · $${creator.price}` : ''}
-                    </p>
-                    {creator.bio && (
-                      <p
-                        className="text-[10px] leading-snug line-clamp-2 mt-1"
-                        style={{ color: tokens.muted, opacity: 0.75 }}
+                      <div className={`${isFeed ? 'aspect-[4/5]' : 'aspect-[3/4]'} overflow-hidden relative`}>
+                        <img
+                          src={creator.avatar}
+                          alt=""
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png';
+                          }}
+                        />
+                      </div>
+                      <div className={`${isFeed ? 'p-3' : 'p-2.5'} flex flex-col flex-1`}>
+                        {!isFeed && (
+                          <>
+                            <div className="flex items-center justify-between gap-3 min-w-0">
+                              <p className="text-sm font-bold truncate min-w-0 flex-1" style={{ color: tokens.text }}>
+                                {creator.name || creator.username}
+                              </p>
+                              {isFreeCreator(creator) ? (
+                                <span className="flex-shrink-0 ml-auto px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wide text-white" style={{ backgroundColor: '#22c55e' }}>
+                                  FREE
+                                </span>
+                              ) : creator.price ? (
+                                <span className="flex-shrink-0 ml-auto px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wide text-white bg-[#0084BD]">
+                                  ${creator.price}
+                                </span>
+                              ) : null}
+                            </div>
+                            <p className="text-[11px] truncate mt-0.5" style={{ color: tokens.muted }}>
+                              @{creator.username}
+                            </p>
+                          </>
+                        )}
+                        {creator.bio && (
+                          <p
+                            className={`text-[10px] leading-snug mt-1 ${isFeed ? 'line-clamp-3' : 'line-clamp-2'}`}
+                            style={{ color: tokens.muted, opacity: 0.75 }}
+                          >
+                            {bioSnippet(creator.bio, isFeed ? 140 : 72)}
+                          </p>
+                        )}
+                        <div className={`flex items-center gap-1.5 mt-auto ${isFeed ? 'pt-3' : 'pt-2.5'}`}>
+                          <a
+                            href={erogramUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 py-2 rounded-xl bg-[#0084BD] text-white text-[12px] sm:text-sm font-black text-center shadow-lg border border-[#0084BD] hover:bg-[#0070A3] transition-colors"
+                          >
+                            {t('ofSearch.viewProfile')}
+                          </a>
+                          <a
+                            href={onlyfansUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={CREATOR_PROFILE_ICON_BTN}
+                            aria-label="Open OnlyFans"
+                          >
+                            <ExternalLink size={16} strokeWidth={2} />
+                          </a>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onToggleSave(creator._id);
+                        }}
+                        className={`absolute top-2 right-2 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all backdrop-blur-sm ${
+                          savedCreatorIds.has(creator._id)
+                            ? 'bg-[#00AFF0] text-white shadow-lg'
+                            : 'bg-black/40 text-white/70 hover:bg-black/60 hover:text-white'
+                        }`}
+                        title={savedCreatorIds.has(creator._id) ? t('ofSearch.removeSaved') : t('ofSearch.saveCreator')}
                       >
-                        {bioSnippet(creator.bio)}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-1.5 mt-auto pt-2.5">
-                      <a
-                        href={profileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 py-2 rounded-lg bg-[#00AFF0] text-white text-[11px] font-bold text-center hover:opacity-90 transition-opacity"
-                      >
-                        {t('ofSearch.viewProfile')}
-                      </a>
-                      <a
-                        href={profileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="shrink-0 w-9 h-9 rounded-lg bg-[#00AFF0] text-white flex items-center justify-center hover:opacity-90 transition-opacity"
-                        aria-label={t('ofSearch.viewProfile')}
-                      >
-                        <User size={16} strokeWidth={2} />
-                      </a>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onToggleSave(creator._id);
-                    }}
-                    className={`absolute top-2 right-2 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all backdrop-blur-sm ${
-                      savedCreatorIds.has(creator._id)
-                        ? 'bg-[#00AFF0] text-white shadow-lg'
-                        : 'bg-black/40 text-white/70 hover:bg-black/60 hover:text-white'
-                    }`}
-                    title={savedCreatorIds.has(creator._id) ? t('ofSearch.removeSaved') : t('ofSearch.saveCreator')}
-                  >
-                    <Bookmark size={14} fill={savedCreatorIds.has(creator._id) ? 'currentColor' : 'none'} />
-                  </button>
-                </div>
-              );
-              })}
+                        <Bookmark size={14} fill={savedCreatorIds.has(creator._id) ? 'currentColor' : 'none'} />
+                      </button>
+                    </div>,
+                  );
+
+                  if (injectFeatured && (i + 1) % SEARCH_FEED_FEATURED_EVERY === 0) {
+                    nodes.push(renderFeatured(`search-feat-${i}`));
+                  }
+                });
+
+                return nodes;
+              })()}
             </div>
           ) : null}
           {(nearMePage && nearMeHasMore) || (freeOnlyPage && freeOnlyHasMore) || (bestModelsPage && bestModelsHasMore) ? (
             !loading && (
-            <div ref={loadMoreRef} className={`${heroGridWrap} mt-4 min-h-6`} aria-hidden>
+            <div ref={loadMoreRef} className={`${heroGridWrap} mt-4 min-h-6 ${resultsView === 'feed' ? 'max-w-lg mx-auto w-full' : ''}`} aria-hidden>
               {loadingMore && (
-                <div className={`grid ${profileGridClass(gridDensity)} ${profileGridGapClass(gridDensity)}`}>
-                  <OfResultsSkeleton count={4} hero={isHero && minimalFilters} hoverBg={tokens.hover} />
+                <div className={resultsView === 'feed' ? 'flex flex-col gap-4' : MOSAIC_RESULTS_GRID}>
+                  <OfResultsSkeleton count={4} hero={isHero && minimalFilters} hoverBg={tokens.hover} feed={resultsView === 'feed'} />
                 </div>
               )}
             </div>

@@ -118,6 +118,8 @@ const COUNTRY_FLAGS: Record<string, string> = {
   malaysian: '🇲🇾',
   singaporean: '🇸🇬',
   moroccan: '🇲🇦',
+  hijabi: '🧕',
+  muslim: '🌙',
   turkish: '🇹🇷',
   arab: '🌙',
   persian: '🇮🇷',
@@ -165,7 +167,7 @@ const COUNTRY_REGIONS = [
   {
     id: 'mena',
     label: 'MENA & Africa',
-    slugs: ['moroccan', 'turkish', 'arab', 'persian'],
+    slugs: ['moroccan', 'turkish', 'arab', 'persian', 'hijabi', 'muslim'],
   },
   {
     id: 'oceania',

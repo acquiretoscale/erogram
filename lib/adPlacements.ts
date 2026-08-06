@@ -139,8 +139,10 @@ export const DEFAULT_OF_CREATOR_PLACEMENTS: string[] = [
   'best-of', 'of-cat',
 ];
 
+/** Bird-eye PROMOTE → OFM: Top-10 best-of + OF category pages only. Owner picks keywords in OFM. */
+export const PROMOTE_OF_CREATOR_PLACEMENTS: string[] = ['best-of', 'of-cat'];
+
 /**
- * RESERVED placements — defined for the roadmap, NOT wired yet.
  * Keyword-targetable: e.g. promote a MILF OF creator on the MILF best-groups page.
  * These are intentionally inert until their surfaces are built (later phase).
  */

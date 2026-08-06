@@ -6,8 +6,6 @@
 import type { BestOfPage } from '@/app/best-onlyfans-accounts/bestOfPages';
 import { BEST_OF_PAGE_MAP } from '@/app/best-onlyfans-accounts/bestOfPages';
 import { OF_CATEGORY_MAP } from '@/app/onlyfanssearch/constants';
-import connectDB from '@/lib/db/mongodb';
-import { OnlyFansCreator } from '@/lib/models';
 import { buildComboCreatorMatch } from '@/lib/tags/creatorMatch';
 
 export const MIN_COMBO_CREATORS = 30;
@@ -251,6 +249,8 @@ function modifierKnown(slug: string): boolean {
 }
 
 async function countComboCreators(parentSlug: string, modifierSlug: string): Promise<number> {
+  const connectDB = (await import('@/lib/db/mongodb')).default;
+  const { OnlyFansCreator } = await import('@/lib/models');
   await connectDB();
   return OnlyFansCreator.countDocuments(buildComboCreatorMatch(parentSlug, modifierSlug));
 }

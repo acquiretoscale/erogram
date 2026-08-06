@@ -1,6 +1,6 @@
 export type ProfileGridDensity = 1 | 2 | 3;
 
-export type LikesGridDensity = 3 | 6;
+export type LikesGridDensity = 2 | 3 | 6;
 
 export const PROFILE_GRID_DENSITY_KEY = 'profile_grid_density';
 export const LIKES_GRID_DENSITY_KEY = 'profile_likes_grid_density';
@@ -17,7 +17,7 @@ export function loadLikesGridDensity(): LikesGridDensity {
   if (typeof window === 'undefined') return 6;
   const raw = localStorage.getItem(LIKES_GRID_DENSITY_KEY);
   const n = Number(raw);
-  if (n === 3 || n === 6) return n;
+  if (n === 2 || n === 3 || n === 6) return n;
   if (n === 9) return 6;
   return 6;
 }
@@ -37,6 +37,7 @@ export function profileGridClass(density: ProfileGridDensity): string {
 }
 
 export function likesGridClass(density: LikesGridDensity): string {
+  if (density === 2) return 'grid-cols-2';
   if (density === 3) return 'grid-cols-3';
   return 'grid-cols-3 sm:grid-cols-6';
 }
@@ -54,3 +55,17 @@ export const PROFILE_GRID_DENSITY_SPECS: Record<ProfileGridDensity, { mobile: nu
   2: { mobile: 2, desktop: 6 },
   3: { mobile: 4, desktop: 8 },
 };
+
+export type OfSearchResultsView = 'grid' | 'feed';
+
+export const OF_SEARCH_RESULTS_VIEW_KEY = 'of_search_results_view';
+
+export function loadOfSearchResultsView(): OfSearchResultsView {
+  if (typeof window === 'undefined') return 'grid';
+  const raw = localStorage.getItem(OF_SEARCH_RESULTS_VIEW_KEY);
+  return raw === 'feed' ? 'feed' : 'grid';
+}
+
+export function saveOfSearchResultsView(view: OfSearchResultsView) {
+  localStorage.setItem(OF_SEARCH_RESULTS_VIEW_KEY, view);
+}

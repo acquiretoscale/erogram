@@ -1,10 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Heart, Play, X } from 'lucide-react';
 import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
 import {
   getProfileLikedMedia,
+  saveLikedMediaOrder,
   toggleProfileFeedLike,
   type ProfileLikedMediaItem,
 } from '@/lib/actions/profileFeed';
@@ -22,8 +23,8 @@ import {
 
 function LikesGridIcon({ cols, color }: { cols: LikesGridDensity; color: string }) {
   const rows = 2;
-  const gap = cols === 3 ? 2.2 : 1.2;
-  const cell = cols === 3 ? 5.2 : 2.6;
+  const gap = cols === 6 ? 1.2 : cols === 3 ? 2.2 : 1.8;
+  const cell = cols === 6 ? 2.6 : cols === 3 ? 5.2 : 4;
   const w = cols * cell + (cols - 1) * gap;
   const h = rows * cell + (rows - 1) * gap;
   const cells: { x: number; y: number }[] = [];
@@ -41,12 +42,16 @@ function LikesGridIcon({ cols, color }: { cols: LikesGridDensity; color: string 
           y={cellPos.y}
           width={cell}
           height={cell}
-          rx={cols === 3 ? 0.8 : 0.4}
+          rx={cols === 6 ? 0.4 : 0.8}
           fill={color}
         />
       ))}
     </svg>
   );
+}
+
+function densityLabel(density: LikesGridDensity) {
+  return `${density} per row`;
 }
 
 export default function MyLikesTab({
@@ -61,15 +66,29 @@ export default function MyLikesTab({
   const [loading, setLoading] = useState(true);
   const [gridDensity, setGridDensity] = useState<LikesGridDensity>(() => loadLikesGridDensity());
   const [zoomItem, setZoomItem] = useState<ProfileLikedMediaItem | null>(null);
+  const dragItem = useRef<number | null>(null);
+  const dragOverItem = useRef<number | null>(null);
 
   useEffect(() => {
     if (!zoomItem) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setZoomItem(null);
+      if (e.key === 'Escape') {
+        setZoomItem(null);
+        return;
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        const idx = mediaItems.findIndex((m) => m.mediaKey === zoomItem.mediaKey);
+        if (idx < 0) return;
+        const nextIdx = e.key === 'ArrowLeft' ? idx - 1 : idx + 1;
+        if (nextIdx >= 0 && nextIdx < mediaItems.length) {
+          setZoomItem(mediaItems[nextIdx]);
+        }
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [zoomItem]);
+  }, [zoomItem, mediaItems]);
 
   const loadData = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -87,16 +106,51 @@ export default function MyLikesTab({
     loadData();
   }, [loadData]);
 
+  const persistOrder = async (nextItems: ProfileLikedMediaItem[]) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    setMediaItems(nextItems);
+    const res = await saveLikedMediaOrder(token, nextItems.map((item) => item.mediaKey));
+    if (!res.ok) toast('Could not save order', 'error');
+  };
+
+  const handleDragStart = (idx: number, e?: React.DragEvent) => {
+    dragItem.current = idx;
+    dragOverItem.current = idx;
+    if (e?.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(idx));
+    }
+  };
+
+  const handleDragEnter = (idx: number) => {
+    dragOverItem.current = idx;
+  };
+
+  const handleDragEnd = () => {
+    const from = dragItem.current;
+    const to = dragOverItem.current;
+    dragItem.current = null;
+    dragOverItem.current = null;
+    if (from === null || to === null || from === to) return;
+    const copy = [...mediaItems];
+    const [removed] = copy.splice(from, 1);
+    copy.splice(to, 0, removed);
+    void persistOrder(copy);
+  };
+
   const handleUnlikeMedia = async (item: ProfileLikedMediaItem) => {
     const token = localStorage.getItem('token');
     if (!token) return;
-    setMediaItems((prev) => prev.filter((m) => m.mediaKey !== item.mediaKey));
+    const nextItems = mediaItems.filter((m) => m.mediaKey !== item.mediaKey);
+    setMediaItems(nextItems);
     const res = await toggleProfileFeedLike(token, item.mediaKey, item.creatorId);
     if (!res.ok) {
       setMediaItems((prev) => [...prev, item]);
       toast('Could not remove like', 'error');
       return;
     }
+    await saveLikedMediaOrder(token, nextItems.map((m) => m.mediaKey));
     toast('Removed from likes', 'success');
   };
 
@@ -112,7 +166,7 @@ export default function MyLikesTab({
         </div>
         {mediaItems.length > 0 && (
           <div className="flex rounded-lg overflow-hidden" style={{ border: `1px solid ${tokens.border}` }}>
-            {([3, 6] as LikesGridDensity[]).map((density) => {
+            {([2, 3, 6] as LikesGridDensity[]).map((density) => {
               const active = gridDensity === density;
               const iconColor = active ? tokens.ink : tokens.muted;
               return (
@@ -127,8 +181,8 @@ export default function MyLikesTab({
                   style={{
                     background: active ? tokens.accent : tokens.hover,
                   }}
-                  title={density === 3 ? '3 per row' : '6 per row'}
-                  aria-label={density === 3 ? '3 per row' : '6 per row'}
+                  title={densityLabel(density)}
+                  aria-label={densityLabel(density)}
                 >
                   <LikesGridIcon cols={density} color={iconColor} />
                 </button>
@@ -152,10 +206,15 @@ export default function MyLikesTab({
         </div>
       ) : (
         <div className={`grid ${likesGridClass(gridDensity)} ${likesGridGapClass(gridDensity)}`}>
-          {mediaItems.map((item) => (
+          {mediaItems.map((item, idx) => (
             <article
               key={item.mediaKey}
-              className="rounded-2xl border overflow-hidden group"
+              draggable
+              onDragStart={(e) => handleDragStart(idx, e)}
+              onDragEnter={() => handleDragEnter(idx)}
+              onDragEnd={handleDragEnd}
+              onDragOver={(e) => e.preventDefault()}
+              className="rounded-2xl border overflow-hidden group cursor-grab active:cursor-grabbing"
               style={{ borderColor: tokens.border, backgroundColor: tokens.card }}
             >
               <div className="relative aspect-[3/4] bg-black">
@@ -182,6 +241,16 @@ export default function MyLikesTab({
                     <img src={item.url} alt="" className="w-full h-full object-cover pointer-events-none" loading="lazy" />
                   )}
                 </button>
+                <div
+                  className="absolute bottom-2 left-2 z-10 flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide opacity-0 transition-opacity group-hover:opacity-100 pointer-events-none"
+                  style={{ backgroundColor: 'rgba(0,0,0,0.55)', color: 'rgba(255,255,255,0.92)' }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M18 11V6a2 2 0 0 0-4 0" /><path d="M14 10V4a2 2 0 0 0-4 0v2" /><path d="M10 10.5V5a2 2 0 0 0-4 0v8" />
+                    <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.7-2.3" />
+                  </svg>
+                  Drag
+                </div>
                 <button
                   type="button"
                   onClick={(e) => {

@@ -23,6 +23,7 @@ import MyLikesTab from './MyLikesTab';
 import ThemeTab from './ThemeTab';
 import LeaderboardTab from './LeaderboardTab';
 import ProfileMyListingsTab from './ProfileMyListingsTab';
+import ProfileMyListingsPreview from './ProfileMyListingsPreview';
 import { ProfileThemeProvider, useProfileTheme } from './ProfileThemeContext';
 import { ProfileEyebrow, ProfileHeading } from './ProfileTypography';
 import {
@@ -37,7 +38,7 @@ import {
   profileConsoleShellClass,
 } from './profileTheme';
 
-type Tab = 'home' | 'listings' | 'feed' | 'saved' | 'likes' | 'subscription' | 'vault' | 'settings' | 'theme' | 'leaderboard';
+type Tab = 'home' | 'listings' | 'feed' | 'saved' | 'likes' | 'subscription' | 'vault' | 'preferences' | 'settings' | 'theme' | 'leaderboard';
 
 function TelegramMenuIcon() {
   return (
@@ -94,7 +95,7 @@ function ProfileContent() {
     : tabParam === 'saved' ? 'saved'
     : tabParam === 'models' ? 'likes'
     : tabParam === 'likes' ? 'likes'
-    : tabParam === 'subscription' ? 'subscription' : tabParam === 'vault' ? 'vault' : tabParam === 'settings' ? 'settings' : tabParam === 'theme' ? 'theme' : tabParam === 'leaderboard' ? 'leaderboard' : 'home';
+    : tabParam === 'subscription' ? 'subscription' : tabParam === 'vault' ? 'vault' : tabParam === 'preferences' ? 'preferences' : tabParam === 'settings' ? 'settings' : tabParam === 'theme' ? 'theme' : tabParam === 'leaderboard' ? 'leaderboard' : 'home';
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [menuCollapsed, setMenuCollapsed] = useState(() => {
     if (typeof window === 'undefined') return true;
@@ -141,6 +142,7 @@ function ProfileContent() {
     else if (tabParam === 'models' || tabParam === 'likes') setActiveTab('likes');
     else if (tabParam === 'subscription') setActiveTab('subscription');
     else if (tabParam === 'vault') setActiveTab('vault');
+    else if (tabParam === 'preferences') setActiveTab('preferences');
     else if (tabParam === 'settings') setActiveTab('settings');
     else if (tabParam === 'theme') setActiveTab('theme');
     else if (tabParam === 'leaderboard') setActiveTab('leaderboard');
@@ -289,6 +291,7 @@ function ProfileContent() {
 
 function ProfileThemedShell(props: any) {
   const { theme, tokens } = useProfileTheme();
+  const searchParams = useSearchParams();
   const {
     username, firstName, photoUrl, bio, memberSince, isPremium, premiumPlan, premiumSince, premiumExpiresAt,
     isAdmin, viewMode, viewBarOpen, deletingAccount, userData, tagOptions, aiOptions, activeTab, menuCollapsed, headerHeight,
@@ -296,6 +299,7 @@ function ProfileThemedShell(props: any) {
     getRemainingDays, toast, router, setFirstName, setBio, setPhotoUrl, setUserData, currentUserId,
     emailUnverified, emailVerifiedSuccess, handleDismissEmailVerifiedSuccess, resendSending, resendSent, handleResendVerification,
   } = props;
+  const creatorLiveHighlight = searchParams.get('creatorLive') === '1';
 
   const [isMobileNav, setIsMobileNav] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -326,6 +330,7 @@ function ProfileThemedShell(props: any) {
     { key: 'listings', label: 'My Listings', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg> },
     { key: 'vault', label: 'Premium TG Groups', icon: <TelegramMenuIcon /> },
     { key: 'feed', label: 'My Feed', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M10 8l6 4-6 4V8z"/></svg> },
+    { key: 'preferences', label: 'My Preferences', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" /><line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" /><line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" /><line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="17" y1="16" x2="23" y2="16" /></svg> },
     { key: 'likes', label: 'My Likes', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> },
     { key: 'saved', label: 'My Bookmarks', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg> },
     { key: 'subscription', label: 'My Subscription', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg> },
@@ -618,6 +623,7 @@ function ProfileThemedShell(props: any) {
               tagOptions={tagOptions}
               aiOptions={aiOptions}
               themeMode={theme}
+              creatorLiveHighlight={creatorLiveHighlight}
               onNavigate={selectTab}
               onAvatarSaved={(url) => { setPhotoUrl(url); toast('Avatar saved', 'success'); }}
               onAvatarError={(msg) => toast(msg, 'error')}
@@ -642,7 +648,7 @@ function ProfileThemedShell(props: any) {
               <ProfileFeedTab
                 interests={userData.interests}
                 preferredPlatforms={userData.preferredPlatforms}
-                onNavigateSettings={() => selectTab('settings')}
+                onNavigatePreferences={() => selectTab('preferences')}
               />
             </motion.div>
           ) : activeTab === 'saved' ? (
@@ -679,6 +685,23 @@ function ProfileThemedShell(props: any) {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
               <LeaderboardTab currentUserId={currentUserId} />
             </motion.div>
+          ) : activeTab === 'preferences' ? (
+            <PreferencesTab
+              interests={userData.interests}
+              tagOptions={tagOptions}
+              themeMode={theme}
+              onInterestsSaved={(data) => {
+                setUserData((prev: UserData) => ({
+                  ...prev,
+                  preferredPlatforms: data.preferredPlatforms,
+                  interests: data.interests,
+                  aiInterests: data.aiInterests,
+                  interestedInAI: false,
+                }));
+                toast('Interests saved', 'success');
+              }}
+              onInterestsError={(msg) => toast(msg, 'error')}
+            />
           ) : activeTab === 'settings' ? (
             <SettingsTab
               username={username}
@@ -701,22 +724,6 @@ function ProfileThemedShell(props: any) {
                 toast('Profile saved', 'success');
               }}
               onProfileError={(msg) => toast(msg, 'error')}
-              preferredPlatforms={userData.preferredPlatforms}
-              interests={userData.interests}
-              aiInterests={userData.aiInterests}
-              tagOptions={tagOptions}
-              aiOptions={aiOptions}
-              onInterestsSaved={(data) => {
-                setUserData((prev: UserData) => ({
-                  ...prev,
-                  preferredPlatforms: data.preferredPlatforms,
-                  interests: data.interests,
-                  aiInterests: data.aiInterests,
-                  interestedInAI: data.preferredPlatforms.includes('ai'),
-                }));
-                toast('Interests saved', 'success');
-              }}
-              onInterestsError={(msg) => toast(msg, 'error')}
             />
           ) : null}
         </div>
@@ -742,6 +749,7 @@ function HomeTab({
   tagOptions,
   aiOptions,
   themeMode,
+  creatorLiveHighlight = false,
   onNavigate,
   onAvatarSaved,
   onAvatarError,
@@ -756,6 +764,7 @@ function HomeTab({
   tagOptions: InterestOption[];
   aiOptions: InterestOption[];
   themeMode: import('./profileTheme').ProfileThemeId;
+  creatorLiveHighlight?: boolean;
   onNavigate: (tab: Tab) => void;
   onAvatarSaved: (url: string) => void;
   onAvatarError: (msg: string) => void;
@@ -854,6 +863,7 @@ function HomeTab({
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+      <ProfileMyListingsPreview highlight={creatorLiveHighlight} onManageListings={() => onNavigate('listings')} />
       <ProfileHomeSetupSteps
         photoUrl={photoUrl}
         interests={interests}
@@ -1122,6 +1132,52 @@ function SubscriptionTab({
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+   PREFERENCES TAB — Feed category picks
+   ═══════════════════════════════════════════════════════════════════ */
+
+function PreferencesTab({
+  interests,
+  tagOptions,
+  onInterestsSaved,
+  onInterestsError,
+  themeMode,
+}: {
+  interests: string[];
+  tagOptions: InterestOption[];
+  onInterestsSaved: (data: { preferredPlatforms: string[]; interests: string[]; aiInterests: string[] }) => void;
+  onInterestsError: (msg: string) => void;
+  themeMode: import('./profileTheme').ProfileThemeId;
+}) {
+  const { tokens } = useProfileTheme();
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+      <div className="mb-6">
+        <ProfileEyebrow>OnlyFans</ProfileEyebrow>
+        <ProfileHeading size="xl" as="h2" className="!mt-0">
+          My Preferences
+        </ProfileHeading>
+        <p className="text-sm mt-2 max-w-2xl" style={{ color: tokens.muted }}>
+          The more specific you are, the hotter your FEED gets.
+        </p>
+      </div>
+      <InterestsEditSection
+        themeMode={themeMode}
+        embedded
+        minimumCategories={3}
+        preferredPlatforms={['onlyfans']}
+        interests={interests}
+        aiInterests={[]}
+        tagOptions={tagOptions}
+        aiOptions={[]}
+        onSaved={onInterestsSaved}
+        onError={onInterestsError}
+      />
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    SETTINGS TAB — Account, premium info, logout, support
    ═══════════════════════════════════════════════════════════════════ */
 
@@ -1129,7 +1185,6 @@ function SettingsTab({
   username, firstName, bio, memberSince, photoUrl, isPremium, isAdmin, viewMode,
   deletingAccount, onLogout, onDeleteAccount, onAvatarSaved, onAvatarError,
   onProfileSaved, onProfileError,
-  preferredPlatforms, interests, aiInterests, tagOptions, aiOptions, onInterestsSaved, onInterestsError,
   themeMode,
 }: {
   username: string | null; firstName: string | null; bio: string | null; memberSince: string | null;
@@ -1139,13 +1194,6 @@ function SettingsTab({
   onAvatarSaved: (url: string) => void; onAvatarError: (msg: string) => void;
   onProfileSaved: (data: { firstName: string | null; bio: string | null }) => void;
   onProfileError: (msg: string) => void;
-  preferredPlatforms: string[];
-  interests: string[];
-  aiInterests: string[];
-  tagOptions: InterestOption[];
-  aiOptions: InterestOption[];
-  onInterestsSaved: (data: { preferredPlatforms: string[]; interests: string[]; aiInterests: string[] }) => void;
-  onInterestsError: (msg: string) => void;
   themeMode: import('./profileTheme').ProfileThemeId;
 }) {
   const { tokens } = useProfileTheme();
@@ -1170,17 +1218,6 @@ function SettingsTab({
       <AvatarPicker themeMode={themeMode} currentPhotoUrl={photoUrl} onSaved={onAvatarSaved} onError={onAvatarError} />
 
       <ProfileEditSection themeMode={themeMode} username={username} firstName={firstName} bio={bio} memberSince={memberSince} onSaved={onProfileSaved} onError={onProfileError} />
-
-      <InterestsEditSection
-        themeMode={themeMode}
-        preferredPlatforms={preferredPlatforms}
-        interests={interests}
-        aiInterests={aiInterests}
-        tagOptions={tagOptions}
-        aiOptions={aiOptions}
-        onSaved={onInterestsSaved}
-        onError={onInterestsError}
-      />
 
       <div className="space-y-2 mb-8 pt-6 border-t" style={{ borderColor: tokens.border }}>
         <a href="mailto:support@erogram.biz" className="flex items-center gap-3 p-3 rounded-xl transition-all hover:opacity-80 border" style={{ borderColor: tokens.border, backgroundColor: fieldBg }}>

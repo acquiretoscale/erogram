@@ -3,6 +3,7 @@ import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator, ScrapeRun, SearchQuery } from '@/lib/models';
 import { getApifyCredentials, markKeyBurned } from '@/lib/apify-key';
 import { processCreatorImages } from '@/lib/actions/creatorImages';
+import { authenticateUser } from '@/lib/auth';
 
 const MAX_PROFILES_PER_SCRAPE = 15;
 
@@ -15,6 +16,11 @@ export const maxDuration = 300;
  */
 export async function DELETE(req: NextRequest) {
   try {
+    const admin = await authenticateUser(req);
+    if (!admin?.isAdmin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { runId } = await req.json();
     if (!runId) return NextResponse.json({ error: 'runId required' }, { status: 400 });
 
@@ -48,13 +54,21 @@ export async function DELETE(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const scrapeStart = Date.now();
   try {
+    const admin = await authenticateUser(req);
+    if (!admin?.isAdmin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { category, maxItems: rawMax = 200, clean = false, country, source = 'bulk', usernames, asyncMode = false } = await req.json();
     const maxItems = Math.min(Math.max(1, rawMax), MAX_PROFILES_PER_SCRAPE);
     if (!category && !usernames) {
       return NextResponse.json({ error: 'category or usernames is required' }, { status: 400 });
     }
 
-    const isAdminSource = source === 'bulk' || source === 'admin' || source === 'import';
+    if (source === 'search') {
+      return NextResponse.json({ error: 'Search-triggered scraping is disabled' }, { status: 403 });
+    }
+
     const actorOverride = 'hello.datawizards/onlyfans-scraper';
     const creds = await getApifyCredentials(actorOverride);
     if (!creds) {

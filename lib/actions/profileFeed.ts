@@ -3,6 +3,8 @@
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator, ProfileFeedComment, ProfileFeedLike, User } from '@/lib/models';
+import { getAinsfwProfileFeedStubs, parseAinsfwMediaKey } from '@/lib/ainsfw/profileFeedItems';
+import { getToolBySlug } from '@/app/ainsfw/data';
 import { buildInterestsCreatorMatch, rotateFeedResults, seededShuffle } from '@/lib/tags/ofSearchMatch';
 import { getCreatorFeedCategories } from '@/lib/tags/creatorProfileTags';
 import { getTagDefinition } from '@/lib/tags/registry';
@@ -34,6 +36,10 @@ export type ProfileFeedMediaItem = {
   commentCount: number;
   liked: boolean;
   comments: ProfileFeedCommentItem[];
+  source?: 'onlyfans' | 'ainsfw';
+  brandLogo?: string;
+  toolSlug?: string;
+  tryNowUrl?: string;
 };
 
 export type ProfileFeedCommentItem = {
@@ -88,6 +94,52 @@ function collectMedia(c: {
   return items;
 }
 
+type ProfileFeedMediaStub = Omit<
+  ProfileFeedMediaItem,
+  'likeCount' | 'commentCount' | 'liked' | 'comments'
+>;
+
+/** AINSFW at post 2 (index 1), then every 20 posts: 22, 42, 62… */
+function isAinsfwFeedSlot(zeroBasedIndex: number) {
+  return zeroBasedIndex >= 1 && (zeroBasedIndex - 1) % 20 === 0;
+}
+
+function buildProfileFeedOrder(
+  ofItems: ProfileFeedMediaStub[],
+  ainsfwItems: ProfileFeedMediaStub[],
+  seed: string,
+): ProfileFeedMediaStub[] {
+  if (!ofItems.length) {
+    return ainsfwItems.length ? seededShuffle(ainsfwItems, `${seed}:ainsfw-only`) : [];
+  }
+  if (!ainsfwItems.length) {
+    return seededShuffle(ofItems, seed);
+  }
+
+  const shuffledOf = seededShuffle(ofItems, seed);
+  const shuffledAinsfw = seededShuffle(ainsfwItems, `${seed}:ainsfw`);
+  const out: ProfileFeedMediaStub[] = [];
+  let ofIdx = 0;
+  let ainsfwIdx = 0;
+
+  const nextAinsfw = () => {
+    const item = shuffledAinsfw[ainsfwIdx % shuffledAinsfw.length];
+    ainsfwIdx += 1;
+    return item;
+  };
+
+  while (ofIdx < shuffledOf.length) {
+    const pos = out.length;
+    if (isAinsfwFeedSlot(pos)) {
+      out.push(nextAinsfw());
+    } else {
+      out.push(shuffledOf[ofIdx++]);
+    }
+  }
+
+  return out;
+}
+
 export type ProfileLikedMediaItem = {
   mediaKey: string;
   type: 'photo' | 'video';
@@ -96,7 +148,26 @@ export type ProfileLikedMediaItem = {
   creatorName: string;
   creatorUsername: string;
   likedAt: string;
+  source?: 'onlyfans' | 'ainsfw';
+  brandLogo?: string;
+  toolSlug?: string;
 };
+
+function applyLikedMediaOrder(items: ProfileLikedMediaItem[], order: string[]): ProfileLikedMediaItem[] {
+  const map = new Map(items.map((item) => [item.mediaKey, item]));
+  const out: ProfileLikedMediaItem[] = [];
+  for (const key of order) {
+    const item = map.get(key);
+    if (item) {
+      out.push(item);
+      map.delete(key);
+    }
+  }
+  for (const item of items) {
+    if (map.has(item.mediaKey)) out.push(item);
+  }
+  return out;
+}
 
 export async function getProfileLikedMedia(token: string): Promise<{
   ok: boolean;
@@ -106,6 +177,9 @@ export async function getProfileLikedMedia(token: string): Promise<{
   if (!userId) return { ok: false, items: [] };
 
   await connectDB();
+  const user = await User.findById(userId).select('likedMediaOrder').lean() as { likedMediaOrder?: string[] } | null;
+  const savedOrder = Array.isArray(user?.likedMediaOrder) ? user.likedMediaOrder : [];
+
   const likes = await ProfileFeedLike.find({ userId })
     .sort({ createdAt: -1 })
     .limit(200)
@@ -113,10 +187,12 @@ export async function getProfileLikedMedia(token: string): Promise<{
 
   if (!likes.length) return { ok: true, items: [] };
 
-  const creatorIds = [...new Set(likes.map((l) => String(l.creatorId)))];
-  const creators = await OnlyFansCreator.find({ _id: { $in: creatorIds } })
-    .select('name username')
-    .lean();
+  const creatorIds = [...new Set(likes.map((l) => String(l.creatorId)).filter((id) => !id.startsWith('ainsfw:')))];
+  const creators = creatorIds.length
+    ? await OnlyFansCreator.find({ _id: { $in: creatorIds } })
+        .select('name username')
+        .lean()
+    : [];
   const creatorMap = new Map(
     creators.map((c) => [String(c._id), { name: c.name as string, username: c.username as string }]),
   );
@@ -127,6 +203,24 @@ export async function getProfileLikedMedia(token: string): Promise<{
     const first = key.indexOf(':');
     const second = key.indexOf(':', first + 1);
     if (first < 0 || second < 0) continue;
+
+    const ainsfwParsed = parseAinsfwMediaKey(key);
+    if (ainsfwParsed) {
+      const tool = getToolBySlug(ainsfwParsed.slug);
+      items.push({
+        mediaKey: key,
+        type: 'video',
+        url: ainsfwParsed.url,
+        creatorId: `ainsfw:${ainsfwParsed.slug}`,
+        creatorName: tool?.name || ainsfwParsed.slug,
+        creatorUsername: ainsfwParsed.slug,
+        likedAt: like.createdAt?.toISOString?.() || '',
+        source: 'ainsfw',
+        brandLogo: tool?.image,
+        toolSlug: ainsfwParsed.slug,
+      });
+      continue;
+    }
 
     const creatorId = key.slice(0, first);
     const type = key.slice(first + 1, second) as 'photo' | 'video';
@@ -142,10 +236,21 @@ export async function getProfileLikedMedia(token: string): Promise<{
       creatorName: creator?.name || creator?.username || 'Creator',
       creatorUsername: creator?.username || '',
       likedAt: like.createdAt?.toISOString?.() || '',
+      source: 'onlyfans',
     });
   }
 
-  return { ok: true, items };
+  return { ok: true, items: applyLikedMediaOrder(items, savedOrder) };
+}
+
+export async function saveLikedMediaOrder(token: string, order: string[]) {
+  const userId = await getUserIdFromToken(token);
+  if (!userId) return { ok: false as const, message: 'Unauthorized' };
+
+  const clean = order.filter((key) => typeof key === 'string' && key.split(':').length >= 3);
+  await connectDB();
+  await User.findByIdAndUpdate(userId, { $set: { likedMediaOrder: clean } });
+  return { ok: true as const };
 }
 
 export async function getProfileMediaFeed(
@@ -176,65 +281,66 @@ export async function getProfileMediaFeed(
   if (!user) return { ok: false, items: [], hasMore: false, nextOffset: 0 };
 
   const tagSlugs = user.interests || [];
-  if (tagSlugs.length === 0) {
-    return { ok: true, items: [], needsInterests: true, hasMore: false, nextOffset: 0 };
-  }
+  const ainsfwStubs = getAinsfwProfileFeedStubs().map((item) => ({ ...item, source: 'ainsfw' as const }));
 
   const day = new Date().toISOString().slice(0, 10);
-  const perSlug = Math.max(8, Math.ceil(FEED_CREATOR_POOL / tagSlugs.length));
-  const slugRows = await Promise.all(
-    tagSlugs.map(async (slug) => {
-      const match = buildInterestsCreatorMatch([slug]);
-      if (!match) return [] as any[];
-      const rows = await OnlyFansCreator.aggregate([
-        {
-          $match: {
-            $and: [
-              match,
-              {
-                $or: [
-                  { 'extraPhotos.0': { $exists: true } },
-                  { 'extraVideos.0': { $exists: true } },
-                  { header: { $regex: /^https?:\/\// } },
-                  { avatar: { $regex: /^https?:\/\// } },
-                ],
-              },
-            ],
-          },
-        },
-        { $sort: { clicks: -1, likesCount: -1, _id: 1 } },
-        { $limit: perSlug },
-        {
-          $project: {
-            name: 1,
-            username: 1,
-            avatar: 1,
-            header: 1,
-        extraPhotos: 1,
-        extraVideos: 1,
-        categories: 1,
-        bio: 1,
-        location: 1,
-      },
-    },
-  ]);
-      const seed = `${userId}:${day}:${rotateSeed}:${slug}`;
-      return rotateFeedResults(rows as any[], seed, perSlug);
-    }),
-  );
+  let picked: any[] = [];
 
-  const seenCreator = new Set<string>();
-  const picked: any[] = [];
-  for (const batch of slugRows) {
-    for (const c of batch) {
-      const id = c._id?.toString?.() || '';
-      if (!id || seenCreator.has(id)) continue;
-      seenCreator.add(id);
-      picked.push(c);
+  if (tagSlugs.length > 0) {
+    const perSlug = Math.max(8, Math.ceil(FEED_CREATOR_POOL / tagSlugs.length));
+    const slugRows = await Promise.all(
+      tagSlugs.map(async (slug) => {
+        const match = buildInterestsCreatorMatch([slug]);
+        if (!match) return [] as any[];
+        const rows = await OnlyFansCreator.aggregate([
+          {
+            $match: {
+              $and: [
+                match,
+                {
+                  $or: [
+                    { 'extraPhotos.0': { $exists: true } },
+                    { 'extraVideos.0': { $exists: true } },
+                    { header: { $regex: /^https?:\/\// } },
+                    { avatar: { $regex: /^https?:\/\// } },
+                  ],
+                },
+              ],
+            },
+          },
+          { $sort: { clicks: -1, likesCount: -1, _id: 1 } },
+          { $limit: perSlug },
+          {
+            $project: {
+              name: 1,
+              username: 1,
+              avatar: 1,
+              header: 1,
+              extraPhotos: 1,
+              extraVideos: 1,
+              categories: 1,
+              bio: 1,
+              location: 1,
+            },
+          },
+        ]);
+        const seed = `${userId}:${day}:${rotateSeed}:${slug}`;
+        return rotateFeedResults(rows as any[], seed, perSlug);
+      }),
+    );
+
+    const seenCreator = new Set<string>();
+    for (const batch of slugRows) {
+      for (const c of batch) {
+        const id = c._id?.toString?.() || '';
+        if (!id || seenCreator.has(id)) continue;
+        seenCreator.add(id);
+        picked.push(c);
+      }
     }
   }
 
-  const flat: Omit<ProfileFeedMediaItem, 'likeCount' | 'commentCount' | 'liked' | 'comments'>[] = [];
+  const flat: ProfileFeedMediaStub[] = [];
   const seenMedia = new Set<string>();
 
   for (const c of picked) {
@@ -262,15 +368,32 @@ export async function getProfileMediaFeed(
         creatorUsername: username,
         profileCategories,
         categoryLabel: profileCategories[0]?.label || '',
+        source: 'onlyfans',
       });
     }
   }
 
+  if (!flat.length && !ainsfwStubs.length) {
+    return {
+      ok: true,
+      items: [],
+      needsInterests: tagSlugs.length === 0,
+      hasMore: false,
+      nextOffset: 0,
+    };
+  }
+
   const feedOrderSeed = `${userId}:${day}:${rotateSeed}`;
-  const ordered = seededShuffle(flat, feedOrderSeed);
+  const ordered = buildProfileFeedOrder(flat, ainsfwStubs, feedOrderSeed);
   const pageItems = ordered.slice(offset, offset + limit);
   if (!pageItems.length) {
-    return { ok: true, items: [], needsInterests: false, hasMore: false, nextOffset: offset };
+    return {
+      ok: true,
+      items: [],
+      needsInterests: tagSlugs.length === 0,
+      hasMore: false,
+      nextOffset: offset,
+    };
   }
 
   const mediaKeys = pageItems.map((i) => i.mediaKey);

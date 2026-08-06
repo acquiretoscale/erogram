@@ -6,6 +6,7 @@ import sharp from 'sharp';
 import { uploadToR2, isR2Configured } from '@/lib/r2';
 import jwt from 'jsonwebtoken';
 import { revalidateCreatorPage } from '@/lib/actions/ofCreatorProfile';
+import { getApifyCredentials } from '@/lib/apify-key';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -35,27 +36,9 @@ export interface CreatorLookupResult {
   telegramUrl: string;
 }
 
-export async function searchCreatorByUsername(query: string): Promise<CreatorLookupResult[]> {
-  if (!query || query.trim().length < 2) return [];
-
-  const cleaned = query.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
-  if (!cleaned) return [];
-
-  await connectDB();
-
-  const results = await OnlyFansCreator.find({
-    deleted: { $ne: true },
-    $or: [
-      { username: { $regex: cleaned, $options: 'i' } },
-      { name: { $regex: cleaned, $options: 'i' } },
-    ],
-  })
-    .select('name username avatar header bio website location price isFree isVerified likesCount subscriberCount mediaCount photosCount videosCount postsCount joinDate categories instagramUrl twitterUrl tiktokUrl telegramUrl')
-    .limit(8)
-    .lean();
-
-  return results.map((r: any) => ({
-    source: 'db' as const,
+function mapDbRowToLookup(r: any): CreatorLookupResult {
+  return {
+    source: 'db',
     name: r.name || '',
     username: r.username || '',
     avatar: r.avatar || '',
@@ -78,7 +61,29 @@ export async function searchCreatorByUsername(query: string): Promise<CreatorLoo
     twitterUrl: r.twitterUrl || '',
     tiktokUrl: r.tiktokUrl || '',
     telegramUrl: r.telegramUrl || '',
-  }));
+  };
+}
+
+export async function searchCreatorByUsername(query: string): Promise<CreatorLookupResult[]> {
+  if (!query || query.trim().length < 2) return [];
+
+  const cleaned = query.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
+  if (!cleaned) return [];
+
+  await connectDB();
+
+  const results = await OnlyFansCreator.find({
+    deleted: { $ne: true },
+    $or: [
+      { username: { $regex: cleaned, $options: 'i' } },
+      { name: { $regex: cleaned, $options: 'i' } },
+    ],
+  })
+    .select('name username avatar header bio website location price isFree isVerified likesCount subscriberCount mediaCount photosCount videosCount postsCount joinDate categories instagramUrl twitterUrl tiktokUrl telegramUrl')
+    .limit(8)
+    .lean();
+
+  return results.map((r: any) => mapDbRowToLookup(r));
 }
 
 export async function fetchCreatorFromApify(username: string): Promise<CreatorLookupResult | null> {
@@ -87,8 +92,24 @@ export async function fetchCreatorFromApify(username: string): Promise<CreatorLo
   const cleaned = username.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
   if (!cleaned) return null;
 
-  const token = process.env.APIFY_SUBMIT_TOKEN;
-  if (!token) return null;
+  await connectDB();
+  const esc = cleaned.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const lookupSlug = cleaned.replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  const existing = await OnlyFansCreator.findOne({
+    deleted: { $ne: true },
+    $or: [{ username: new RegExp(`^${esc}$`, 'i') }, { slug: lookupSlug }],
+  })
+    .select('name username avatar header bio website location price isFree isVerified likesCount subscriberCount mediaCount photosCount videosCount postsCount joinDate categories instagramUrl twitterUrl tiktokUrl telegramUrl')
+    .lean();
+  if (existing && (existing as any).username) {
+    return mapDbRowToLookup(existing);
+  }
+
+  const creds = await getApifyCredentials('hello.datawizards/onlyfans-scraper');
+  const token = process.env.APIFY_SUBMIT_TOKEN || creds?.token;
+  if (!token) {
+    throw new Error('Profile lookup is unavailable right now. Use Add manually and fill the form yourself.');
+  }
 
   const actorId = 'hello.datawizards~onlyfans-scraper';
   const input = { search_queries: [cleaned] };
@@ -98,29 +119,39 @@ export async function fetchCreatorFromApify(username: string): Promise<CreatorLo
     { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) },
   );
 
-  if (!runRes.ok) return null;
+  if (!runRes.ok) {
+    throw new Error(`OnlyFans lookup failed (${runRes.status}). Try again or use Add manually.`);
+  }
 
   const runData = await runRes.json();
   const runId = runData.data?.id;
-  if (!runId) return null;
+  if (!runId) {
+    throw new Error('OnlyFans lookup failed to start. Try again or use Add manually.');
+  }
 
   let status = runData.data?.status;
   const maxWait = 90_000;
   const start = Date.now();
 
   while (!['SUCCEEDED', 'FAILED', 'ABORTED', 'TIMED-OUT'].includes(status)) {
-    if (Date.now() - start > maxWait) return null;
+    if (Date.now() - start > maxWait) {
+      throw new Error('OnlyFans lookup timed out. Try again or use Add manually.');
+    }
     await new Promise((r) => setTimeout(r, 4000));
     const poll = await fetch(`https://api.apify.com/v2/actor-runs/${runId}?token=${token}`);
     status = (await poll.json()).data?.status;
   }
 
-  if (status !== 'SUCCEEDED') return null;
+  if (status !== 'SUCCEEDED') {
+    throw new Error('OnlyFans lookup failed. Try again or use Add manually.');
+  }
 
   const dataRes = await fetch(
-    `https://api.apify.com/v2/actor-runs/${runId}/dataset/items?token=${token}&limit=5`,
+    `https://api.apify.com/v2/actor-runs/${runId}/dataset/items?token=${token}&limit=10`,
   );
-  if (!dataRes.ok) return null;
+  if (!dataRes.ok) {
+    throw new Error('OnlyFans lookup returned no data. Try again or use Add manually.');
+  }
 
   const items = await dataRes.json();
   if (!Array.isArray(items) || items.length === 0) return null;
@@ -154,7 +185,6 @@ export async function fetchCreatorFromApify(username: string): Promise<CreatorLo
   const slug = exact.username.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
 
   // Save ALL Apify data to DB immediately — same as the scrape route
-  await connectDB();
   await OnlyFansCreator.findOneAndUpdate(
     { slug },
     {
@@ -300,6 +330,10 @@ interface SubmitCreatorInput {
   videosCount?: number;
   postsCount?: number;
   token?: string;
+  submitterType?: 'creator' | 'agency';
+  lookingForAgency?: boolean;
+  submitContactMethod?: 'telegram' | 'whatsapp';
+  submitContactValue?: string;
 }
 
 async function optimizeAndUploadToR2(sourceUrl: string, key: string): Promise<string | null> {
@@ -348,6 +382,24 @@ export async function submitCreator(input: SubmitCreatorInput) {
     return { success: false, error: 'Description must be at least 20 characters.' };
   }
 
+  if (input.lookingForAgency !== true && input.lookingForAgency !== false) {
+    return { success: false, error: 'Please answer whether you are looking for an agency.' };
+  }
+
+  if (input.submitContactMethod !== 'telegram' && input.submitContactMethod !== 'whatsapp') {
+    return { success: false, error: 'Please choose Telegram or Whatsapp for contact.' };
+  }
+
+  if (!input.submitContactValue?.trim()) {
+    return { success: false, error: 'Please enter your Telegram or Whatsapp contact.' };
+  }
+
+  const submitMeta = {
+    lookingForAgency: input.lookingForAgency === true,
+    submitContactMethod: input.submitContactMethod,
+    submitContactValue: input.submitContactValue.trim(),
+  };
+
   const usernameMatch = onlyfansUrl.match(/onlyfans\.com\/([a-zA-Z0-9._-]+)/);
   if (!usernameMatch) {
     return { success: false, error: 'Invalid OnlyFans URL. Use format: https://onlyfans.com/username' };
@@ -363,13 +415,20 @@ export async function submitCreator(input: SubmitCreatorInput) {
     submitterUsername = u?.username || '';
   } catch { /* non-fatal */ }
 
-  const ownedProfile = await OnlyFansCreator.findOne({ submittedBy: submitterId, deleted: { $ne: true } })
-    .select('slug username')
-    .lean() as { slug?: string; username?: string } | null;
+  const submitterType = input.submitterType === 'agency' ? 'agency' : 'creator';
+  const limit = submitterType === 'agency' ? 20 : 2;
 
-  if (ownedProfile && ownedProfile.slug !== slug) {
-    const handle = ownedProfile.username || ownedProfile.slug;
-    return { success: false, error: `You already manage @${handle}. One creator profile per account.` };
+  const ownedCount = await OnlyFansCreator.countDocuments({
+    submittedBy: submitterId,
+    deleted: { $ne: true },
+    submitterType,
+    slug: { $ne: slug },
+  });
+
+  if (ownedCount >= limit) {
+    const label = submitterType === 'agency' ? 'Agency accounts' : 'Individual accounts';
+    const unit = submitterType === 'agency' ? 'creators' : 'profiles';
+    return { success: false, error: `${label} are limited to ${limit} ${unit}.` };
   }
 
   const existing = await OnlyFansCreator.findOne({ slug }).lean() as any;
@@ -378,7 +437,7 @@ export async function submitCreator(input: SubmitCreatorInput) {
       return { success: false, error: 'This profile is already linked to another account.' };
     }
     const merged = [...new Set([...(existing.categories || []), ...(input.categories || [])])];
-    const updateFields: Record<string, any> = { categories: merged, submissionStatus: 'pending', submittedByUser: true, submittedBy: submitterId, submittedByUsername: submitterUsername };
+    const updateFields: Record<string, any> = { categories: merged, submissionStatus: 'approved', submittedByUser: true, submittedBy: submitterId, submittedByUsername: submitterUsername, submitterType, ...submitMeta };
     if (input.description?.trim()) updateFields.bio = input.description.trim();
     if (input.telegram?.trim()) updateFields.telegramUrl = input.telegram.trim();
     if (input.instagram?.trim()) updateFields.instagramUrl = input.instagram.trim();
@@ -469,7 +528,9 @@ export async function submitCreator(input: SubmitCreatorInput) {
         submittedByUser: true,
         submittedBy: submitterId,
         submittedByUsername: submitterUsername,
-        submissionStatus: 'pending',
+        submitterType,
+        ...submitMeta,
+        submissionStatus: 'approved',
         extraPhotos: r2Urls.slice(2),
       },
     },
@@ -481,15 +542,36 @@ export async function submitCreator(input: SubmitCreatorInput) {
 
 const NP_BASE = 'https://api.nowpayments.io/v1';
 
-export async function createFeaturedCreatorInvoice(creatorId: string) {
+function paymentSiteUrl(): string {
+  if (process.env.NODE_ENV === 'development') {
+    return process.env.NEXT_PUBLIC_DEV_SITE_URL || 'http://127.0.0.1:3939';
+  }
+  return process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
+}
+
+export async function createFeaturedCreatorInvoice(creatorId: string, token: string) {
   const API_KEY = process.env.NOWPAYMENTS_API_KEY || '';
-  const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
+  const SITE_URL = paymentSiteUrl();
 
   if (!API_KEY) return { error: 'Crypto payments are not configured.' };
+
+  let submitterId: string | null = null;
+  try {
+    if (!token) return { error: 'You must be logged in.' };
+    const decoded = jwt.verify(token, JWT_SECRET) as { id?: string };
+    submitterId = decoded?.id || null;
+    if (!submitterId) return { error: 'You must be logged in.' };
+  } catch {
+    return { error: 'Your session expired. Please log in again.' };
+  }
 
   await connectDB();
   const creator = await OnlyFansCreator.findById(creatorId).lean() as any;
   if (!creator) return { error: 'Creator not found.' };
+
+  if (creator.submittedBy?.toString() !== submitterId) {
+    return { error: 'You can only boost a listing you own.' };
+  }
 
   const orderId = `featured__${creatorId}__${Date.now()}`;
 
@@ -498,21 +580,21 @@ export async function createFeaturedCreatorInvoice(creatorId: string) {
       method: 'POST',
       headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        price_amount: 97,
+        price_amount: 197,
         price_currency: 'usd',
         pay_currency: 'usdttrc20',
         order_id: orderId,
-        order_description: `Featured listing for ${creator.name} on Erogram`,
+        order_description: `Boosted listing (1 week) for ${creator.name} on Erogram`,
         ipn_callback_url: `${SITE_URL}/api/payments/nowpayments/webhook`,
-        success_url: `${SITE_URL}/${creator.slug}?featured=success`,
-        cancel_url: `${SITE_URL}/submit?featured=cancelled`,
+        success_url: `${SITE_URL}/profile?tab=listings&creatorLive=1&boost=success`,
+        cancel_url: `${SITE_URL}/profile?tab=listings&creatorLive=1&boost=cancelled`,
       }),
     });
 
     const data = await res.json();
     if (!res.ok || !data.invoice_url) {
       console.error('NowPayments featured invoice error:', data);
-      return { error: 'Failed to create payment invoice.' };
+      return { error: data?.message || 'Failed to create payment invoice.' };
     }
 
     return { url: data.invoice_url };

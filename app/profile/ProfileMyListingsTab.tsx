@@ -10,6 +10,9 @@ import {
   updateMyApprovedListing,
   type ListingItem,
 } from '@/lib/actions/myListings';
+import { getProfileListingHref } from '@/lib/profileListingUrls';
+import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { createFeaturedCreatorInvoice } from '@/lib/actions/submitCreator';
 import { compressImage } from '@/lib/utils/compressImage';
 import { useProfileTheme } from './ProfileThemeContext';
 import { ProfileEyebrow, ProfileHeading } from './ProfileTypography';
@@ -84,6 +87,76 @@ function boostDurationLabel(duration: string | null): string {
 function boostDaysLeft(expiresAt: string | null): number {
   if (!expiresAt) return 0;
   return Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86400000));
+}
+
+async function payOnlyfansBoost(creatorId: string): Promise<{ url: string | null; error?: string }> {
+  const token = localStorage.getItem('token');
+  if (!token) return { url: null, error: 'Please sign in again.' };
+  const result = await createFeaturedCreatorInvoice(creatorId, token);
+  if (result.error) return { url: null, error: result.error };
+  return { url: result.url || null };
+}
+
+function OnlyfansBoostCheckout({
+  listing,
+  tokens,
+  onRefresh,
+  autoStart = false,
+}: {
+  listing: ListingItem;
+  tokens: ReturnType<typeof useProfileTheme>['tokens'];
+  onRefresh?: () => Promise<void>;
+  autoStart?: boolean;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState('');
+  const startedRef = useRef(false);
+
+  const checkout = useCallback(async () => {
+    setLoading(true);
+    setMsg('');
+    try {
+      const result = await payOnlyfansBoost(listing._id);
+      if (result.error) {
+        setMsg(result.error);
+        return;
+      }
+      if (result.url) {
+        window.location.href = result.url;
+        return;
+      }
+      setMsg('Could not open payment.');
+    } finally {
+      setLoading(false);
+    }
+  }, [listing._id]);
+
+  useEffect(() => {
+    if (!autoStart || startedRef.current) return;
+    startedRef.current = true;
+    void checkout();
+  }, [autoStart, checkout]);
+
+  return (
+    <div className="mt-3 rounded-xl border p-3 sm:p-4" style={{ borderColor: tokens.border, backgroundColor: tokens.bg }}>
+      <p className="text-xs font-bold" style={{ color: tokens.text }}>Boosted listing · $197 for 1 week</p>
+      <p className="mt-1 text-[11px] leading-relaxed" style={{ color: tokens.muted }}>
+        Top 10 ranking pages + OnlyFans Search feed placement.
+      </p>
+      <button
+        type="button"
+        disabled={loading}
+        onClick={() => void checkout()}
+        className="mt-3 w-full rounded-xl px-4 py-2.5 text-xs font-black uppercase tracking-wide transition-opacity hover:opacity-90 disabled:opacity-50"
+        style={{ color: tokens.ink, backgroundColor: tokens.accent, border: `1px solid ${tokens.accent}` }}
+      >
+        {loading ? 'Opening payment…' : 'Boost my profile'}
+      </button>
+      {msg ? (
+        <p className="mt-2 text-center text-xs font-bold text-red-400">{msg}</p>
+      ) : null}
+    </div>
+  );
 }
 
 async function createBoostInvoice(
@@ -303,7 +376,9 @@ function statusColor(status: string): string {
 }
 
 function typeLabel(type: ListingItem['type']): string {
-  return type === 'bot' ? 'Bot' : 'Group';
+  if (type === 'bot') return 'Bot';
+  if (type === 'onlyfans') return 'OnlyFans';
+  return 'Group';
 }
 
 function ListingThumb({
@@ -684,6 +759,7 @@ function ListingRow({
   onDelete,
   onSaved,
   onRefresh,
+  boostPayCreatorId,
 }: {
   listing: ListingItem;
   tokens: ReturnType<typeof useProfileTheme>['tokens'];
@@ -699,7 +775,65 @@ function ListingRow({
   onDelete: () => void;
   onSaved: (patch: Partial<ListingItem>) => void;
   onRefresh?: () => Promise<void>;
+  boostPayCreatorId?: string | null;
 }) {
+  if (listing.type === 'onlyfans') {
+    const editHref = getProfileListingHref(listing);
+    const liveHref = ofCreatorProfileUrl(listing.slug);
+    const live = listing.status === 'approved' && listing.slug;
+    const boostExpiry = listing.boostExpiresAt ? new Date(listing.boostExpiresAt) : null;
+    const isBoostActive = !!(listing.boosted && boostExpiry && boostExpiry > new Date());
+    const daysLeft = boostDaysLeft(listing.boostExpiresAt);
+
+    return (
+      <li className="overflow-hidden px-3 py-3 sm:px-5 sm:py-4" style={{ backgroundColor: tokens.card }}>
+        <div className="flex gap-2.5 sm:gap-3">
+          <ListingThumb listing={listing} tokens={tokens} />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="max-w-full truncate text-sm font-bold" style={{ color: tokens.text }}>{listing.name}</span>
+              <span className="rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide" style={{ backgroundColor: tokens.bg, color: tokens.muted, border: `1px solid ${tokens.border}` }}>
+                {typeLabel(listing.type)}
+              </span>
+              {isBoostActive ? (
+                <span className="rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide" style={{ color: tokens.accent, backgroundColor: `${tokens.accent}18`, border: `1px solid ${tokens.accent}40` }}>
+                  Boosted · {daysLeft}d left
+                </span>
+              ) : null}
+            </div>
+            {listing.category ? (
+              <p className="mt-0.5 truncate text-xs" style={{ color: tokens.muted }}>{listing.category}</p>
+            ) : null}
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <span className="rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide" style={{ color: tokens.text, backgroundColor: tokens.bg, border: `1px solid ${tokens.border}` }}>
+                {listing.views.toLocaleString()} visits
+              </span>
+              <span className="rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide" style={{ color: statusColor(listing.status), backgroundColor: `${statusColor(listing.status)}18`, border: `1px solid ${statusColor(listing.status)}40` }}>
+                {statusLabel(listing.status)}
+              </span>
+              {live ? (
+                <a href={liveHref} target="_blank" rel="noopener noreferrer" className="rounded-lg px-2 py-1.5 text-[10px] font-black uppercase tracking-wide no-underline" style={{ color: tokens.accent, border: `1px solid ${tokens.accent}40`, backgroundColor: `${tokens.accent}10` }}>
+                  View live
+                </a>
+              ) : null}
+              <a href={editHref} target="_blank" rel="noopener noreferrer" className="rounded-lg px-2 py-1.5 text-[10px] font-black uppercase tracking-wide no-underline" style={{ color: tokens.muted, border: `1px solid ${tokens.border}` }}>
+                Edit listing
+              </a>
+            </div>
+            {live && !isBoostActive ? (
+              <OnlyfansBoostCheckout
+                listing={listing}
+                tokens={tokens}
+                onRefresh={onRefresh}
+                autoStart={boostPayCreatorId === listing._id}
+              />
+            ) : null}
+          </div>
+        </div>
+      </li>
+    );
+  }
+
   const live = listing.status === 'approved' && listing.slug;
   const isDemo = isDemoListing(listing._id);
   const boostExpiry = listing.boostExpiresAt ? new Date(listing.boostExpiresAt) : null;
@@ -870,6 +1004,7 @@ export default function ProfileMyListingsTab({ username, isAdmin }: { username?:
   const [expandedListingId, setExpandedListingId] = useState<string | null>(null);
   const [adminBoosted, setAdminBoosted] = useState<(ListingItem & { ownerLabel: string; boostPhase: 'active' | 'past' })[]>([]);
   const [adminBoostedLoading, setAdminBoostedLoading] = useState(false);
+  const [boostPayCreatorId, setBoostPayCreatorId] = useState<string | null>(null);
 
   const demoListings = useMemo(() => {
     if (username !== 'eros') return [];
@@ -895,7 +1030,7 @@ export default function ProfileMyListingsTab({ username, isAdmin }: { username?:
         setError(result.error);
         setListings([]);
       } else {
-        setListings(result.listings.filter((l) => l.type === 'group' || l.type === 'bot'));
+        setListings(result.listings);
       }
       if (isAdmin) {
         const adminResult = await getAllBoostedListings(token);
@@ -912,6 +1047,20 @@ export default function ProfileMyListingsTab({ username, isAdmin }: { username?:
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    const boost = searchParams.get('boost');
+    if (!boost || typeof window === 'undefined') return;
+
+    const creatorId = searchParams.get('creatorId');
+    if (boost === 'pay' && creatorId) setBoostPayCreatorId(creatorId);
+
+    if (boost === 'success') toast('Boost payment received. Your listing is now boosted.', 'success');
+    else if (boost === 'cancelled') toast('Payment cancelled. Your listing is live but not boosted yet.', 'error');
+    else if (boost === 'pay') toast('Complete payment to activate your boosted listing.', 'success');
+
+    window.history.replaceState({}, '', '/profile?tab=listings');
+  }, [searchParams, toast]);
 
   useEffect(() => {
     const renewed = searchParams.get('renewed') === '1';
@@ -1201,6 +1350,7 @@ export default function ProfileMyListingsTab({ username, isAdmin }: { username?:
                 setEditingId(null);
               }}
               onRefresh={load}
+              boostPayCreatorId={boostPayCreatorId}
             />
           ))}
         </ul>

@@ -1,10 +1,10 @@
 import { Metadata } from 'next';
 import CategoriesClient from './CategoriesClient';
-import { getCategoryBrowseSections, getCountryBrowseRegions, getUsStateBrowseItems } from '../categoryBrowse';
+import { getCategorySitemapSections } from '../categorySitemapBrowse';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-const title = 'Browse OnlyFans Categories';
-const description = 'Find creators by type, look, ethnicity, or kink. Updated daily. Browse main OnlyFans categories on Erogram.';
+const title = 'Categories Sitemap';
+const description = 'Browse all OnlyFans category ranking pages on Erogram.';
 
 export const metadata: Metadata = {
   title,
@@ -19,12 +19,12 @@ export const metadata: Metadata = {
   }),
 };
 
-export default async function OnlyFansCategoriesPage() {
-  const [sections, countryRegions] = await Promise.all([
-    getCategoryBrowseSections(),
-    getCountryBrowseRegions(),
-  ]);
-  const usStates = getUsStateBrowseItems();
-
-  return <CategoriesClient sections={sections} countryRegions={countryRegions} usStates={usStates} />;
+export default function OnlyFansCategoriesPage() {
+  const sections = getCategorySitemapSections();
+  const lastUpdated = new Date().toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  return <CategoriesClient sections={sections} lastUpdated={lastUpdated} />;
 }

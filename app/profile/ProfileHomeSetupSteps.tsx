@@ -2,18 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import AvatarPicker from '@/components/AvatarPicker';
-import InterestsEditSection from '@/components/InterestsEditSection';
-import { type InterestOption } from '@/lib/userInterests';
-import type { ProfileThemeId } from './profileTheme';
-import { useProfileTheme } from './ProfileThemeContext';
 import {
   hasChosenProfileAvatar,
   hasCustomizedFeedCategories,
 } from '@/lib/profileHomeSetup';
+import type { ProfileThemeId } from './profileTheme';
+import { useProfileTheme } from './ProfileThemeContext';
 
 const EXPLORE_FEED_DONE_COLOR = '#16a34a';
-type TabTarget = 'feed';
-type ExpandedStep = 'avatar' | 'feed-categories';
+type TabTarget = 'feed' | 'preferences';
+type ExpandedStep = 'avatar';
 
 const STEPS = [
   {
@@ -36,23 +34,17 @@ const STEPS = [
 export default function ProfileHomeSetupSteps({
   photoUrl,
   interests,
-  preferredPlatforms,
-  aiInterests,
-  tagOptions,
-  aiOptions,
   themeMode,
   onNavigate,
   onAvatarSaved,
   onAvatarError,
-  onInterestsSaved,
-  onInterestsError,
 }: {
   photoUrl: string | null;
   interests: string[];
   preferredPlatforms: string[];
   aiInterests: string[];
-  tagOptions: InterestOption[];
-  aiOptions: InterestOption[];
+  tagOptions: import('@/lib/userInterests').InterestOption[];
+  aiOptions: import('@/lib/userInterests').InterestOption[];
   themeMode: ProfileThemeId;
   onNavigate: (tab: TabTarget) => void;
   onAvatarSaved: (url: string) => void;
@@ -72,8 +64,7 @@ export default function ProfileHomeSetupSteps({
 
   useEffect(() => {
     if (expandedStep === 'avatar' && done.avatar) setExpandedStep(null);
-    if (expandedStep === 'feed-categories' && done['feed-categories']) setExpandedStep(null);
-  }, [done.avatar, done['feed-categories'], expandedStep]);
+  }, [done.avatar, expandedStep]);
 
   const remaining = STEPS.filter((step) => !done[step.id]);
   if (remaining.length === 0) return null;
@@ -81,6 +72,10 @@ export default function ProfileHomeSetupSteps({
   const handleStepClick = (stepId: typeof STEPS[number]['id']) => {
     if (stepId === 'explore-feed') {
       onNavigate('feed');
+      return;
+    }
+    if (stepId === 'feed-categories') {
+      onNavigate('preferences');
       return;
     }
     setExpandedStep((prev) => (prev === stepId ? null : stepId));
@@ -142,7 +137,7 @@ export default function ProfileHomeSetupSteps({
                     color: isExploreFeed && complete ? '#fff' : tokens.ink,
                   }}
                 >
-                  {expanded && !isExploreFeed ? 'Close' : step.cta}
+                  {expanded && step.id === 'avatar' ? 'Close' : step.cta}
                 </button>
               )}
             </div>
@@ -160,24 +155,6 @@ export default function ProfileHomeSetupSteps({
           onSaved={onAvatarSaved}
           onError={onAvatarError}
         />
-      )}
-
-      {expandedStep === 'feed-categories' && !done['feed-categories'] && (
-        <div
-          className="mt-3 rounded-xl border p-4 sm:p-6"
-          style={{ borderColor: tokens.border, backgroundColor: tokens.card }}
-        >
-          <InterestsEditSection
-            themeMode={themeMode}
-            preferredPlatforms={preferredPlatforms}
-            interests={interests}
-            aiInterests={aiInterests}
-            tagOptions={tagOptions}
-            aiOptions={aiOptions}
-            onSaved={onInterestsSaved}
-            onError={onInterestsError}
-          />
-        </div>
       )}
     </section>
   );

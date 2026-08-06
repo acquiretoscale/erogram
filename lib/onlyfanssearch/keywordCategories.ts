@@ -100,7 +100,9 @@ export const OF_KEYWORD_CATEGORIES = [
   { name: "California", emoji: '🏷️', slug: "california", patterns: ["\\bcalifornia\\b","\\blos angeles\\b","\\bsan francisco\\b","\\bsan diego\\b",", ca\\b","\\bhollywood\\b","\\bsocal\\b"] },
   { name: "Goth Girl", emoji: '🏷️', slug: "goth-girl", patterns: ["goth girl"] },
   { name: "Georgia", emoji: '🏷️', slug: "georgia", patterns: ["\\bgeorgia,\\b","\\bgeorgia usa\\b","\\batlanta\\b",", ga\\b"] },
-  { name: "Moroccan", emoji: '🏷️', slug: "moroccan", patterns: ["moroccan","morocco","maroc"] },
+  { name: "Moroccan", emoji: '🏷️', slug: "moroccan", patterns: ["moroccan","morocco","maroc","casablanca"] },
+  { name: "Hijabi", emoji: '🏷️', slug: "hijabi", patterns: ["hijab","hijabi","hijabis"] },
+  { name: "Muslim", emoji: '🏷️', slug: "muslim", patterns: ["muslim","muslimah"] },
   { name: "Dick Rating", emoji: '🏷️', slug: "dick-rating", patterns: ["dick rating","cock rating"] },
   { name: "French", emoji: '🏷️', slug: "french", patterns: ["french","france","française"] },
   { name: "Shaved", emoji: '🏷️', slug: "shaved", patterns: ["shaved","smooth","bare"] },
@@ -188,6 +190,14 @@ export const OF_BASE_CATEGORY_PATTERNS: Record<string, readonly string[]> = {
   goth: ['goth', 'gothgirl'],
   cosplay: ['cosplay', 'cosplaygirl'],
   colombian: ['colombian', 'colombiana', 'colombia'],
+  arab: [
+    'arab', 'arabic', 'arabian', 'arabe', 'middle eastern',
+    'saudi', 'emirati', 'uae', 'dubai', 'qatar', 'kuwait', 'bahrain', 'oman',
+    'lebanon', 'lebanese', 'syria', 'syrian', 'palestine', 'palestinian',
+    'jordan', 'jordanian', 'iraq', 'iraqi', 'egypt', 'egyptian', 'yemen', 'yemeni',
+    'morocco', 'moroccan', 'algeria', 'algerian', 'tunisia', 'tunisian', 'libya', 'libyan',
+    'gulf', 'maroc', 'casablanca',
+  ],
 };
 
 export type OfKeywordCategory = (typeof OF_KEYWORD_CATEGORIES)[number];

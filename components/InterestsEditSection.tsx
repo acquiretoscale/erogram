@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { USER_PLATFORMS, type InterestOption } from '@/lib/userInterests';
+import { useEffect, useState } from 'react';
+import { type InterestOption } from '@/lib/userInterests';
 import { getProfileInterestOptions, updateUserInterests } from '@/lib/actions/userProfile';
 
 import type { ProfileThemeId } from '@/app/profile/profileTheme';
-import { getProfileThemeTokens, profileComponentColors } from '@/app/profile/profileTheme';
+import { profileComponentColors } from '@/app/profile/profileTheme';
 
 interface InterestsEditSectionProps {
   preferredPlatforms: string[];
@@ -14,6 +14,8 @@ interface InterestsEditSectionProps {
   tagOptions?: InterestOption[];
   aiOptions?: InterestOption[];
   editorial?: boolean;
+  embedded?: boolean;
+  minimumCategories?: number;
   themeMode?: ProfileThemeId;
   onSaved: (data: { preferredPlatforms: string[]; interests: string[]; aiInterests: string[] }) => void;
   onError?: (message: string) => void;
@@ -23,55 +25,30 @@ function toggle(list: string[], value: string) {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 }
 
-const CATEGORY_INITIAL_VISIBLE = 15;
-const CATEGORY_MAX_VISIBLE = 40;
-
-function visibleCategoryOptions(
-  options: InterestOption[],
-  selected: string[],
-  showAll: boolean,
-): InterestOption[] {
-  const pool = options.slice(0, CATEGORY_MAX_VISIBLE);
-  if (showAll) return pool;
-  const top = pool.slice(0, CATEGORY_INITIAL_VISIBLE);
-  const topSlugs = new Set(top.map((item) => item.slug));
-  const selectedExtra = pool.filter((item) => selected.includes(item.slug) && !topSlugs.has(item.slug));
-  return [...top, ...selectedExtra];
-}
-
 export default function InterestsEditSection({
-  preferredPlatforms,
   interests,
-  aiInterests,
   tagOptions: tagOptionsProp,
-  aiOptions: aiOptionsProp,
   editorial = false,
+  embedded = false,
+  minimumCategories = 0,
   themeMode,
   onSaved,
   onError,
 }: InterestsEditSectionProps) {
   const mode = themeMode ?? (editorial ? 'light' : undefined);
   const c = mode ? profileComponentColors(mode) : null;
-  const tokens = mode ? getProfileThemeTokens(mode) : null;
-  const [platforms, setPlatforms] = useState<string[]>(preferredPlatforms);
   const [ofCats, setOfCats] = useState<string[]>(interests);
-  const [aiCats, setAiCats] = useState<string[]>(aiInterests);
   const [saving, setSaving] = useState(false);
   const [tagOptions, setTagOptions] = useState<InterestOption[]>(tagOptionsProp || []);
-  const [aiOptions, setAiOptions] = useState<InterestOption[]>(aiOptionsProp || []);
   const [loadingOptions, setLoadingOptions] = useState(!tagOptionsProp?.length);
-  const [showAllCategories, setShowAllCategories] = useState(false);
 
   useEffect(() => {
-    setPlatforms(preferredPlatforms);
     setOfCats(interests);
-    setAiCats(aiInterests);
-  }, [preferredPlatforms, interests, aiInterests]);
+  }, [interests]);
 
   useEffect(() => {
     if (tagOptionsProp?.length) {
       setTagOptions(tagOptionsProp);
-      setAiOptions(aiOptionsProp || []);
       setLoadingOptions(false);
       return;
     }
@@ -80,7 +57,6 @@ export default function InterestsEditSection({
       .then((opts) => {
         if (cancelled) return;
         setTagOptions(opts.tagInterests);
-        setAiOptions(opts.aiInterests);
       })
       .catch(() => onError?.('Failed to load categories'))
       .finally(() => {
@@ -89,21 +65,11 @@ export default function InterestsEditSection({
     return () => {
       cancelled = true;
     };
-  }, [tagOptionsProp, aiOptionsProp, onError]);
+  }, [tagOptionsProp, onError]);
 
-  const showOfTg = platforms.includes('onlyfans') || platforms.includes('telegram');
-  const showAi = platforms.includes('ai');
-
-  const visibleTagOptions = useMemo(
-    () => visibleCategoryOptions(tagOptions, ofCats, showAllCategories),
-    [tagOptions, ofCats, showAllCategories],
-  );
-  const canExpandCategories = tagOptions.length > CATEGORY_INITIAL_VISIBLE;
-
-  const dirty =
-    JSON.stringify([...platforms].sort()) !== JSON.stringify([...preferredPlatforms].sort()) ||
-    JSON.stringify([...ofCats].sort()) !== JSON.stringify([...interests].sort()) ||
-    JSON.stringify([...aiCats].sort()) !== JSON.stringify([...aiInterests].sort());
+  const dirty = JSON.stringify([...ofCats].sort()) !== JSON.stringify([...interests].sort());
+  const minMet = minimumCategories <= 0 || ofCats.length >= minimumCategories;
+  const canSave = dirty && minMet && !saving && !loadingOptions;
 
   const handleSave = async () => {
     const token = localStorage.getItem('token');
@@ -111,12 +77,16 @@ export default function InterestsEditSection({
       onError?.('Please log in again');
       return;
     }
+    if (minimumCategories > 0 && ofCats.length < minimumCategories) {
+      onError?.(`Pick at least ${minimumCategories} categories to personalize your feed.`);
+      return;
+    }
     setSaving(true);
     try {
       const res = await updateUserInterests(token, {
-        preferredPlatforms: platforms,
+        preferredPlatforms: ['onlyfans'],
         interests: ofCats,
-        aiInterests: aiCats,
+        aiInterests: [],
       });
       if (!res.ok) {
         onError?.(res.message || 'Failed to save interests');
@@ -142,7 +112,9 @@ export default function InterestsEditSection({
     } : undefined;
 
   const pill = (active: boolean) =>
-    c
+    embedded && c
+      ? 'px-2.5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-[0.06em] transition-all border'
+      : c
       ? 'px-2.5 py-1.5 rounded-full text-[11px] font-semibold transition-all border'
       : `px-2.5 py-1.5 rounded-full text-[11px] font-semibold transition-all border ${
           active
@@ -150,114 +122,54 @@ export default function InterestsEditSection({
             : 'bg-white/[0.03] border-white/10 text-white/50 hover:border-white/20 hover:text-white/70'
         }`;
 
-  const platformStyle = (active: boolean): React.CSSProperties | undefined =>
-    c ? {
-      backgroundColor: active ? tokens!.hover : c.inputBg,
-      borderColor: c.border,
-    } : undefined;
-
-  const platformBtn = (active: boolean) =>
-    c
-      ? 'flex-1 min-w-[90px] px-3 py-2.5 rounded-xl text-left transition-all border'
-      : `flex-1 min-w-[90px] px-3 py-2.5 rounded-xl text-left transition-all border ${
-          active ? 'bg-[#00aff0]/10 border-[#00aff0]/40' : 'bg-white/[0.03] border-white/10 hover:border-white/20'
-        }`;
-
   const sectionLabel = c ? 'text-[11px] font-bold tracking-[0.2em] uppercase mb-2' : 'text-[11px] font-semibold text-white/45 mb-2';
-  const saveBtn = c
+  const saveBtn = embedded && c
+    ? 'w-full py-2.5 rounded-md text-[12px] font-bold tracking-[0.06em] uppercase transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90'
+    : c
     ? 'w-full py-2.5 rounded-full text-[11px] font-bold tracking-[0.2em] uppercase transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90'
     : 'w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 bg-white/[0.06] hover:bg-white/[0.1]';
 
   return (
-    <div className={`mb-6 space-y-4 text-left border-t pt-6 ${c ? '' : 'border-white/[0.06]'}`} style={c ? { borderColor: c.border } : undefined}>
+    <div
+      className={`mb-6 space-y-4 text-left ${embedded ? '' : 'border-t pt-6'} ${embedded ? '' : c ? '' : 'border-white/[0.06]'}`}
+      style={embedded ? undefined : c ? { borderColor: c.border } : undefined}
+    >
       <div>
-        <p className={sectionLabel} style={{ color: c?.muted }}>Platforms</p>
-        <div className="flex flex-wrap gap-2">
-          {USER_PLATFORMS.map((p) => {
-            const active = platforms.includes(p.id);
-            return (
+        {(minimumCategories > 0 || !embedded) && (
+        <div className={`flex flex-wrap items-center gap-2 mb-2 ${minimumCategories > 0 ? 'justify-end' : ''}`}>
+          {minimumCategories <= 0 && !embedded && (
+            <p className={sectionLabel} style={{ color: c?.muted, marginBottom: 0 }}>Categories</p>
+          )}
+          {minimumCategories > 0 && (
+            <p className="text-[10px] font-bold uppercase tracking-[0.06em]" style={{ color: minMet ? c?.text ?? '#00aff0' : c?.muted ?? 'rgba(255,255,255,0.45)' }}>
+              {ofCats.length} selected · min {minimumCategories}
+            </p>
+          )}
+        </div>
+        )}
+        {loadingOptions ? (
+          <p className="text-[11px]" style={{ color: c?.muted }}>Loading categories...</p>
+        ) : (
+          <div className={`flex flex-wrap gap-1.5 max-h-80 overflow-y-auto pr-1 ${embedded && c ? 'sm:gap-2' : ''}`}>
+            {tagOptions.map((item) => (
               <button
-                key={p.id}
+                key={item.slug}
                 type="button"
-                onClick={() => setPlatforms((prev) => toggle(prev, p.id))}
-                className={platformBtn(active)}
-                style={platformStyle(active)}
+                onClick={() => setOfCats((prev) => toggle(prev, item.slug))}
+                className={pill(ofCats.includes(item.slug))}
+                style={pillStyle(ofCats.includes(item.slug))}
               >
-                <span className="text-sm font-bold block" style={{ color: active ? c?.text ?? undefined : c?.muted ?? undefined }}>{p.label}</span>
+                {item.name}
               </button>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
-
-      {showOfTg && (
-        <div>
-          <p className={sectionLabel} style={{ color: c?.muted }}>
-            {platforms.includes('onlyfans') && platforms.includes('telegram')
-              ? 'OnlyFans & Telegram categories'
-              : platforms.includes('onlyfans')
-                ? 'OnlyFans categories'
-                : 'Telegram categories'}
-          </p>
-          {loadingOptions ? (
-            <p className="text-[11px]" style={{ color: c?.muted }}>Loading categories...</p>
-          ) : (
-            <>
-              <div className={`flex flex-wrap gap-1.5 ${showAllCategories ? 'max-h-80 overflow-y-auto pr-1' : ''}`}>
-                {visibleTagOptions.map((item) => (
-                  <button
-                    key={item.slug}
-                    type="button"
-                    onClick={() => setOfCats((prev) => toggle(prev, item.slug))}
-                    className={pill(ofCats.includes(item.slug))}
-                    style={pillStyle(ofCats.includes(item.slug))}
-                  >
-                    {item.name}
-                  </button>
-                ))}
-              </div>
-              {canExpandCategories && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllCategories((prev) => !prev)}
-                  className="mt-2 text-[11px] font-semibold transition-opacity hover:opacity-70"
-                  style={{ color: c?.text ?? '#00aff0' }}
-                >
-                  {showAllCategories ? 'Show less' : 'View all'}
-                </button>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {showAi && (
-        <div>
-          <p className={sectionLabel} style={{ color: c?.muted }}>AI NSFW categories</p>
-          {loadingOptions ? (
-            <p className="text-[11px]" style={{ color: c?.muted }}>Loading categories...</p>
-          ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {aiOptions.map((item) => (
-                <button
-                  key={item.slug}
-                  type="button"
-                  onClick={() => setAiCats((prev) => toggle(prev, item.slug))}
-                  className={pill(aiCats.includes(item.slug))}
-                  style={pillStyle(aiCats.includes(item.slug))}
-                >
-                  {item.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       <button
         type="button"
         onClick={handleSave}
-        disabled={!dirty || saving || loadingOptions}
+        disabled={!canSave}
         className={saveBtn}
         style={c ? { backgroundColor: c.btnBg, color: c.btnText } : undefined}
       >

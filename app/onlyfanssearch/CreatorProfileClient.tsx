@@ -855,11 +855,11 @@ export default function CreatorProfileClient({
   }, [canManageProfile]);
 
   useEffect(() => {
-    if (!canManageProfile) return;
+    if (!canManageProfile && !isAdmin) return;
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     if (params.get('edit') === '1') setProfileEdit(true);
-  }, [canManageProfile]);
+  }, [canManageProfile, isAdmin]);
 
   const handleEditProfileClick = async () => {
     const token = localStorage.getItem('token');

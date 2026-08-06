@@ -1,56 +1,56 @@
-import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
-
-export const USER_PLATFORMS = [
-  { id: 'onlyfans', label: 'OnlyFans' },
-  { id: 'telegram', label: 'Telegram' },
-  { id: 'ai', label: 'AI NSFW' },
-] as const;
-
-export type UserPlatformId = (typeof USER_PLATFORMS)[number]['id'];
+import { OF_CATEGORY_MAP } from '@/app/onlyfanssearch/constants';
 
 export type InterestOption = { slug: string; name: string; count?: number };
 
-/** Hidden from profile category picker (junk bio hashtags). */
-export const PROFILE_CATEGORY_EXCLUDED_SLUGS = new Set(['like', 'of', 'big']);
-
-/** Always available on profile interests — categories + tag-only niches (even below tag index threshold). */
-export const PROFILE_TAG_SLUGS: readonly string[] = [
-  ...OF_CATEGORIES.map((c) => c.slug),
-  'solo',
-  'model',
-  'custom',
-  'natural',
-  'fetish',
-  'nude',
-  'sexting',
-  'mommy',
-  'girlfriend',
-  'toys',
-  'instagram',
-  'german',
-  'greek',
-  'moroccan',
-  'french',
-  'spanish',
-  'japanese',
-  'korean',
-  'mexican',
-  'asexual',
-  'bulgarian',
-  'caucasian',
-  'couple-lesbian',
-  'couple-straight',
-  'croatian',
-  'ecuadorian',
-  'malaysian',
-  'public-sex',
-  'shower-sex',
-  'singaporean',
-  'slovak',
-  'step-fantasy',
+/** Top creator category slugs for profile interests (live DB order, Aug 2026). */
+export const PROFILE_OF_INTEREST_SLUGS: readonly string[] = [
+  'big-ass',
+  'big-boobs',
+  'cosplay',
+  'latina',
+  'petite',
+  'milf',
+  'streamer',
+  'blonde',
+  'ahegao',
+  'thick',
+  'lesbian',
+  'teen',
+  'alt',
+  'asian',
+  'brunette',
+  'feet',
+  'goth',
+  'lingerie',
+  'anal',
+  'redhead',
+  'fitness',
+  'squirt',
+  'tattoo',
+  'findom',
+  'submissive',
+  'joi',
+  'amateur',
+  'celebrity',
+  'couple',
+  'bbw',
+  'blowjob',
+  'colombian',
+  'pornstar',
+  'student',
+  'bdsm',
+  'ebony',
+  'british',
+  'roleplay',
+  'brazilian',
+  'twerk',
+  'piercing',
+  'nurse',
 ];
 
-const PLATFORM_IDS = new Set(USER_PLATFORMS.map((p) => p.id));
+export function profileOfInterestLabel(slug: string): string {
+  return OF_CATEGORY_MAP.get(slug)?.name || slug.replace(/-/g, ' ');
+}
 
 export function sanitizeUserInterests(
   input: {
@@ -58,18 +58,18 @@ export function sanitizeUserInterests(
     interests?: string[];
     aiInterests?: string[];
   },
-  allowed: { tagSlugs: Set<string>; aiSlugs: Set<string> },
+  allowed: { tagSlugs: Set<string> },
 ) {
-  const preferredPlatforms = (input.preferredPlatforms || []).filter((p) =>
-    PLATFORM_IDS.has(p as UserPlatformId),
-  );
   const interests = (input.interests || []).filter((s) => allowed.tagSlugs.has(s));
-  const aiInterests = (input.aiInterests || []).filter((s) => allowed.aiSlugs.has(s));
-  return { preferredPlatforms, interests, aiInterests };
+  return {
+    preferredPlatforms: ['onlyfans'],
+    interests,
+    aiInterests: [] as string[],
+  };
 }
 
 export function interestLabel(slug: string, catalog?: InterestOption[]): string {
   const hit = catalog?.find((c) => c.slug === slug);
   if (hit) return hit.name;
-  return slug.replace(/-/g, ' ');
+  return profileOfInterestLabel(slug);
 }

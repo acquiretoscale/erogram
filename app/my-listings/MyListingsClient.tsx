@@ -394,7 +394,7 @@ export default function MyListingsClient() {
       getMyListings(token),
       getMyAINSFWListings(token).catch(() => ({ listings: [] })),
     ]);
-    if (result.error) { localStorage.removeItem('token'); setIsLoggedIn(false); setLoading(false); return; }
+    if (result.error) { setIsLoggedIn(true); setError(result.error); setLoading(false); return; }
     setIsLoggedIn(true);
     // AI NSFW listings are review-only here (boosts use the crypto flow on /add/ainsfw)
     const ainsfwRows: ListingItem[] = (ainsfw.listings || []).map((a) => ({

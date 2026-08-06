@@ -2,7 +2,7 @@
 /**
  * retag-of-creators.js
  * Cleans junk category tags and re-tags creators from bio/name/username/location signals.
- * Only uses valid OF category slugs. Caps at 4 tags (best-of spam guard).
+ * Only uses valid OF category slugs.
  *
  * Run:  node scripts/retag-of-creators.js --dry-run
  * Apply: node scripts/retag-of-creators.js
@@ -11,7 +11,6 @@ const mongoose = require('mongoose');
 require('dotenv').config({ path: '.env.local' });
 
 const DRY_RUN = process.argv.includes('--dry-run');
-const MAX_CATEGORIES = 4;
 
 const VALID_SLUGS = new Set([
   'asian', 'blonde', 'teen', 'milf', 'amateur', 'redhead', 'goth', 'petite', 'big-ass', 'big-boobs',
@@ -66,7 +65,7 @@ const RULES = [
   { slug: 'nurse', re: /\bnurse\b/i },
   { slug: 'amateur', re: /\bamateur\b/i },
   { slug: 'influencer', re: /\binfluencer\b|instagram model|\binsta model\b/i },
-  { slug: 'arab', re: /\barab\b|\bhijab\b|\bmuslim\b/i },
+  { slug: 'arab', re: /\barab\b|\barabic\b|\barabian\b|\barabe\b|middle eastern|\b(saudi|emirati|uae|dubai|qatar|kuwait|bahrain|oman|lebanon|lebanese|syria|syrian|palestine|palestinian|jordan|jordanian|iraq|iraqi|egypt|egyptian|yemen|yemeni|morocco|moroccan|algeria|algerian|tunisia|tunisian|libya|libyan|gulf|maroc|casablanca)\b|hijabi?|\bmuslim\b|muslimah/i },
   { slug: 'no-ppv', re: /\bno ppv\b|no paywall|free page/i },
   { slug: 'pregnant', re: /\bpregnant\b/i },
   { slug: 'mature', re: /\bmature\b/i },
@@ -99,7 +98,7 @@ function buildCategories(doc) {
   const existingValid = (doc.categories || []).filter((c) => VALID_SLUGS.has(String(c).toLowerCase()));
   const merged = new Set([...existingValid, ...detected]);
   const sorted = [...merged].sort((a, b) => (PRIORITY.get(a) ?? 999) - (PRIORITY.get(b) ?? 999));
-  return sorted.slice(0, MAX_CATEGORIES);
+  return sorted;
 }
 
 function arraysEqual(a, b) {
@@ -125,7 +124,6 @@ async function main() {
     changed: 0,
     junkRemoved: 0,
     added: { pornstar: 0, blowjob: 0, couple: 0, bdsm: 0, asmr: 0, housewife: 0, bbw: 0 },
-    trimmedOver4: 0,
   };
 
   for await (const doc of cursor) {
@@ -135,8 +133,6 @@ async function main() {
     const oldValid = old.filter((c) => VALID_SLUGS.has(String(c).toLowerCase()));
     const oldJunk = old.length - oldValid.length;
     if (oldJunk > 0) stats.junkRemoved++;
-
-    if (old.length > MAX_CATEGORIES) stats.trimmedOver4++;
 
     if (arraysEqual(old, next)) continue;
 
@@ -156,7 +152,6 @@ async function main() {
   console.log(`Scanned: ${stats.scanned}`);
   console.log(`Will update: ${stats.changed} (dry=${DRY_RUN})`);
   console.log(`Creators with junk tags cleaned: ${stats.junkRemoved}`);
-  console.log(`Creators trimmed from >4 tags: ${stats.trimmedOver4}`);
   console.log('\nNew tags added:');
   for (const [k, v] of Object.entries(stats.added)) console.log(`  ${k}: +${v}`);
 

@@ -35,25 +35,15 @@ export default async function OnlyFansPage({ searchParams }: PageProps) {
   }
   let initialCreators: any[] = [];
   let totalCreators = 0;
-  let recentlyAdded: any[] = [];
-
   try {
     await connectDB();
 
     const baseMatch = { avatar: { $ne: '' }, gender: 'female', categories: { $exists: true, $ne: [] }, deleted: { $ne: true }, submissionStatus: { $ne: 'pending' }, ...whaleBrowseLikesFilter };
 
-    const [count, recentRaw] = await Promise.all([
-      OnlyFansCreator.countDocuments(baseMatch),
-      OnlyFansCreator.find(baseMatch)
-        .sort({ createdAt: -1 })
-        .limit(20)
-        .select('name username slug avatar header categories subscriberCount likesCount photosCount videosCount price isFree url clicks')
-        .lean(),
-    ]);
+    const count = await OnlyFansCreator.countDocuments(baseMatch);
 
     initialCreators = [];
     totalCreators = count;
-    recentlyAdded = (recentRaw as any[]).map((c) => ({ ...c, _id: c._id.toString() }));
   } catch (e) {
     console.error('Failed to fetch OF creators:', e);
   }
@@ -105,7 +95,6 @@ export default async function OnlyFansPage({ searchParams }: PageProps) {
       initialCreators={initialCreators}
       totalCreators={totalCreators}
       initialQuery={q || ''}
-      recentlyAdded={recentlyAdded}
       topBannerCampaigns={topBannerCampaigns}
       paidFeatured={paidFeatured}
       trendingOnErogram={trendingOnErogram}

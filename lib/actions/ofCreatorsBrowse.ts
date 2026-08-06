@@ -2,14 +2,13 @@
 
 import connectDB from '@/lib/db/mongodb';
 import { Types } from 'mongoose';
-import { OnlyFansCreator, SearchQuery, User } from '@/lib/models';
+import { OnlyFansCreator, User } from '@/lib/models';
 import { whaleBrowseLikesFilter } from '@/lib/tags/creatorMatch';
 import {
   buildBrowseQualityMatch,
   buildSearchOrClauses,
   buildSearchTierStage,
   expandSearchQuery,
-  isKnownSearchQuery,
   rotateSearchResults,
 } from '@/lib/tags/ofSearchMatch';
 import { buildNicheMatchClause, creatorQualityFilter } from '@/lib/tags/creatorMatch';
@@ -76,7 +75,6 @@ export async function browseCreators(excludeIds: string[] = [], limit = 80) {
 // ---------------------------------------------------------------------------
 
 const MAX_TOTAL = 1000;
-const SCRAPE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 /** Public /onlyfanssearch — pool + max results per search. */
 const SEARCH_POOL = 100;
 /** Premium profile search — deeper pool, per-user rotation. */
@@ -356,12 +354,12 @@ export async function profilePremiumSearchCreators(
 
 export async function searchCreators(q: string, limit = 100, skip = 0) {
   const trimmed = q.trim();
-  if (!trimmed) return { creators: [], total: 0, shouldScrape: false };
+  if (!trimmed) return { creators: [], total: 0 };
 
   await connectDB();
 
   const plan = expandSearchQuery(trimmed);
-  if (!plan) return { creators: [], total: 0, shouldScrape: false };
+  if (!plan) return { creators: [], total: 0 };
 
   const match = buildBrowseQualityMatch(buildSearchOrClauses(plan));
 
@@ -390,18 +388,9 @@ export async function searchCreators(q: string, limit = 100, skip = 0) {
   );
   const total = creators.length;
 
-  let shouldScrape = false;
-  if (skip === 0) {
-    if (!(total > 0 && isKnownSearchQuery(plan))) {
-      shouldScrape = await logAndCheckScrapeNeeded(plan.normalized, trimmed);
-    }
-  }
-
   return {
     creators: rotated.map(({ _searchTier, ...c }: any) => ({ ...c, _id: c._id.toString() })),
     total,
-    shouldScrape,
-    scrapeQuery: shouldScrape ? plan.normalized : undefined,
   };
 }
 
@@ -423,30 +412,6 @@ export async function deleteCreatorBySlug(token: string, slug: string) {
   );
   if (!result) throw new Error('Not found');
   return { success: true };
-}
-
-async function logAndCheckScrapeNeeded(normalized: string, originalQuery: string): Promise<boolean> {
-  try {
-    const existing = await SearchQuery.findOneAndUpdate(
-      { queryNormalized: normalized },
-      {
-        $inc: { searchCount: 1 },
-        $set: { lastSearchedAt: new Date(), query: originalQuery },
-        $setOnInsert: { queryNormalized: normalized, scraped: false, scrapeStatus: 'pending', resultsCount: 0 },
-      },
-      { upsert: true, new: true },
-    );
-
-    if (existing.scrapeStatus === 'scraping') return false;
-    if (existing.scrapeStatus === 'done' && existing.scrapedAt) {
-      if (Date.now() - new Date(existing.scrapedAt).getTime() < SCRAPE_COOLDOWN_MS) return false;
-    }
-
-    await SearchQuery.updateOne({ _id: existing._id }, { $set: { scrapeStatus: 'scraping' } });
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 const TOP_CLICKED_PAGE_SIZE = 24;

@@ -12,6 +12,7 @@ import {
   profileGridGapClass,
   type ProfileGridDensity,
 } from './profileGridDensity';
+import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
 
 interface ProfileNearMeSectionProps {
   savedCreatorIds: Set<string>;
@@ -113,7 +114,7 @@ export default function ProfileNearMeSection({
               style={{ borderColor: tokens.border, backgroundColor: tokens.card }}
             >
               <a
-                href={`/${creator.username}-onlyfans`}
+                href={ofCreatorProfileUrl(creator.username)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block"
