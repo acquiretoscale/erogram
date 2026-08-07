@@ -55,20 +55,29 @@ async function getTopGroupCategories(limit: number = 16) {
   try {
     await connectDB();
     const base = { status: 'approved', isAdvertisement: { $ne: true }, category: { $ne: 'Hentai' } };
-    const counts = await Promise.all(
-      filterCategories.map(async (c) => ({
-        name: c,
-        count: await Group.countDocuments({
-          ...base,
-          $or: [{ categories: c }, { category: c }, { country: c }, { vaultCategories: c }],
-        }),
-      })),
-    );
-    return counts
-      .filter((c) => c.count > 0 && !COUNTRY_FILTERS.has(c.name))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, limit)
-      .map((c) => ({ name: c.name, count: c.count, slug: categorySlug(c.name) }));
+    const wanted = filterCategories.filter((c) => !COUNTRY_FILTERS.has(c));
+    const counts = await Group.aggregate([
+      { $match: base },
+      {
+        $project: {
+          names: {
+            $setUnion: [
+              { $ifNull: ['$categories', []] },
+              { $ifNull: ['$vaultCategories', []] },
+              { $cond: [{ $ifNull: ['$category', false] }, ['$category'], []] },
+              { $cond: [{ $ifNull: ['$country', false] }, ['$country'], []] },
+            ],
+          },
+        },
+      },
+      { $unwind: '$names' },
+      { $match: { names: { $in: wanted } } },
+      { $group: { _id: '$names', count: { $sum: 1 } } },
+      { $sort: { count: -1, _id: 1 } },
+      { $limit: limit },
+    ]);
+    return (counts as { _id: string; count: number }[])
+      .map((c) => ({ name: c._id, count: c.count, slug: categorySlug(c._id) }));
   } catch (error) {
     console.error('Error fetching top group categories:', error);
     return [];

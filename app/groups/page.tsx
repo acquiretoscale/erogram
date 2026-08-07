@@ -23,6 +23,7 @@ const COUNTRY_FILTERS = new Set([
 ]);
 
 // Build the category + country filter options, keeping only entries that have ≥1 listing.
+// ONE aggregation (not 70+ countDocuments) — same counts, same order as before.
 async function getFilterOptions(): Promise<{ categories: string[]; countries: string[]; categoryCounts: Array<{ name: string; count: number }> }> {
   try {
     await connectDB();
@@ -30,17 +31,33 @@ async function getFilterOptions(): Promise<{ categories: string[]; countries: st
     // including premium/vault groups, so high-content categories surface even when most of
     // their depth lives in the vault. Only 'All'/'Hentai' are excluded.
     const base = { status: 'approved', isAdvertisement: { $ne: true }, category: { $ne: 'Hentai' } };
-    const counts = await Promise.all(
-      filterCategories.map(async (c) => ({
-        name: c,
-        count: await Group.countDocuments({ ...base, $or: [{ categories: c }, { category: c }, { country: c }, { vaultCategories: c }] }),
-      }))
-    );
-    const live = counts.filter((c) => c.count > 0);
-    const categoryCounts = live.filter((c) => !COUNTRY_FILTERS.has(c.name)).sort((a, b) => b.count - a.count);
+    const wanted = [...filterCategories];
+    const rows = await Group.aggregate([
+      { $match: base },
+      {
+        $project: {
+          names: {
+            $setUnion: [
+              { $ifNull: ['$categories', []] },
+              { $ifNull: ['$vaultCategories', []] },
+              { $cond: [{ $ifNull: ['$category', false] }, ['$category'], []] },
+              { $cond: [{ $ifNull: ['$country', false] }, ['$country'], []] },
+            ],
+          },
+        },
+      },
+      { $unwind: '$names' },
+      { $match: { names: { $in: wanted } } },
+      { $group: { _id: '$names', count: { $sum: 1 } } },
+      { $sort: { count: -1, _id: 1 } },
+    ]);
+    const live = (rows as { _id: string; count: number }[])
+      .filter((c) => c.count > 0)
+      .map((c) => ({ name: c._id, count: c.count }));
+    const categoryCounts = live.filter((c) => !COUNTRY_FILTERS.has(c.name));
     return {
       categories: categoryCounts.map((c) => c.name),
-      countries: live.filter((c) => COUNTRY_FILTERS.has(c.name)).sort((a, b) => b.count - a.count).map((c) => c.name),
+      countries: live.filter((c) => COUNTRY_FILTERS.has(c.name)).map((c) => c.name),
       categoryCounts,
     };
   } catch {

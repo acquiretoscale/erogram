@@ -477,7 +477,36 @@ export async function deleteCampaign(token: string, id: string) {
  *                    When provided, only campaigns targeting that page (or with no page restriction) are returned.
  * @param opts.device 'mobile' | 'desktop' — filters by bannerDevice field.
  */
+// --- Lightweight per-instance TTL cache for hot ad-serving lookups ---
+// Cap lookups + full feed/banner payloads used to recompute on EVERY pageview.
+// Soft limit by design: <=60s delay on new/paused ads and cap flips is acceptable.
+const AD_LOOKUP_TTL_MS = 60_000;
+const _adLookupCache = new Map<string, { exp: number; val: Set<string> }>();
+async function ttlCachedSet(key: string, fn: () => Promise<Set<string>>): Promise<Set<string>> {
+  const hit = _adLookupCache.get(key);
+  if (hit && hit.exp > Date.now()) return hit.val;
+  const val = await fn();
+  _adLookupCache.set(key, { exp: Date.now() + AD_LOOKUP_TTL_MS, val });
+  return val;
+}
+const _adResultCache = new Map<string, { exp: number; val: unknown }>();
+async function ttlCachedResult<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const hit = _adResultCache.get(key);
+  if (hit && hit.exp > Date.now()) return hit.val as T;
+  const val = await fn();
+  _adResultCache.set(key, { exp: Date.now() + AD_LOOKUP_TTL_MS, val });
+  return val;
+}
+
 export async function getActiveCampaigns(
+  slot: string,
+  opts?: { page?: string; device?: 'mobile' | 'desktop' },
+) {
+  const cacheKey = `activeCampaigns:${slot}:${opts?.page || ''}:${opts?.device || ''}`;
+  return ttlCachedResult(cacheKey, () => computeActiveCampaigns(slot, opts));
+}
+
+async function computeActiveCampaigns(
   slot: string,
   opts?: { page?: string; device?: 'mobile' | 'desktop' },
 ) {
@@ -1191,22 +1220,6 @@ async function normalizeFeedPositions(): Promise<void> {
  * Their ads are then excluded from serving for the rest of the day → other advertisers / Erogram-own ads fill in.
  * Near-real-time (counts logged CampaignClicks); small overdelivery is acceptable by design.
  */
-// --- Lightweight per-instance TTL cache for hot ad-serving lookups ---
-// getCappedAdvertiserIds / getCappedCampaignIds run on EVERY ad-bearing pageview
-// and were previously recomputed 2-3x per request (each aggregates the whole
-// day's CampaignClick log). Caching the RESULT for a short window collapses that
-// to ~1 compute per key per minute per serverless instance. Cap enforcement is a
-// soft limit by design, so a <=60s delay is acceptable. No stat data is changed.
-const AD_LOOKUP_TTL_MS = 60_000;
-const _adLookupCache = new Map<string, { exp: number; val: Set<string> }>();
-async function ttlCachedSet(key: string, fn: () => Promise<Set<string>>): Promise<Set<string>> {
-  const hit = _adLookupCache.get(key);
-  if (hit && hit.exp > Date.now()) return hit.val;
-  const val = await fn();
-  _adLookupCache.set(key, { exp: Date.now() + AD_LOOKUP_TTL_MS, val });
-  return val;
-}
-
 async function getCappedAdvertiserIds(): Promise<Set<string>> {
   return ttlCachedSet('cappedAdvertisers', computeCappedAdvertiserIds);
 }
@@ -1289,9 +1302,10 @@ async function computeCappedCampaignIds(): Promise<Set<string>> {
 }
 
 export async function getActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ainsfw') {
-  const { unstable_noStore } = await import('next/cache');
-  unstable_noStore();
+  return ttlCachedResult(`feedCampaigns:${placement}`, () => computeActiveFeedCampaigns(placement));
+}
 
+async function computeActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ainsfw') {
   await connectDB();
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
