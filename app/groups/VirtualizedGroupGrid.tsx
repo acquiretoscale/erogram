@@ -26,7 +26,21 @@ const SLOT3_GC = 8;
 const SLOT4_GC = 12;
 const LOOP_GAP = 5;
 
-function buildFeedItems(groups: Group[], campaigns: FeedCampaign[]): Item[] {
+function seededRandom(seed: string): number {
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+        hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+        hash = hash & hash;
+    }
+    return Math.abs(hash) / 2147483647;
+}
+
+function buildFeedItems(
+    groups: Group[],
+    campaigns: FeedCampaign[],
+    pickIndex: (seed: string, size: number) => number = (seed, size) =>
+        Math.floor(seededRandom(seed) * size),
+): Item[] {
     const items: Item[] = [];
     if (campaigns.length === 0) {
         return groups.map((g, i) => ({ type: 'group' as const, data: g, index: i }));
@@ -35,14 +49,15 @@ function buildFeedItems(groups: Group[], campaigns: FeedCampaign[]): Item[] {
     // Each in-feed slot rotates with WEIGHTED priority: a boosted (highest-paying) ad gets
     // BOOST_WEIGHT entries in the draw so it shows ~10× more, but non-boosted ads still rotate
     // in (never starved). One tunable multiplier dials how strongly money buys visibility.
-    const rotate = (list: FeedCampaign[]): FeedCampaign | undefined => {
+    const rotate = (list: FeedCampaign[], slotKey: string): FeedCampaign | undefined => {
         if (list.length === 0) return undefined;
         const draw: FeedCampaign[] = [];
         for (const c of list) {
             const weight = c.priority === 'boost' ? BOOST_WEIGHT : 1;
             for (let i = 0; i < weight; i++) draw.push(c);
         }
-        return draw[Math.floor(Math.random() * draw.length)];
+        const seed = `${slotKey}:${draw.map((c) => c._id).join(',')}`;
+        return draw[pickIndex(seed, draw.length)];
     };
     const byFeedPlacement = (id: string, legacyTier?: number) =>
         campaigns.filter((c) => c.placement === id || (!c.placement && c.tierSlot === legacyTier));
@@ -50,9 +65,9 @@ function buildFeedItems(groups: Group[], campaigns: FeedCampaign[]): Item[] {
     const slot3all = byFeedPlacement('feed-3', 3);
     const slot4 = byFeedPlacement('feed-4', 4);
     const slot5all = byFeedPlacement('feed-5', 5);
-    const slot2pick = rotate(slot2all);
-    const slot3pick = rotate(slot3all);
-    const slot5pick = rotate(slot5all);
+    const slot2pick = rotate(slot2all, 'feed-2');
+    const slot3pick = rotate(slot3all, 'feed-3');
+    const slot5pick = rotate(slot5all, 'feed-5');
 
     let groupIdx = 0;
     let groupCount = 0;
@@ -93,7 +108,7 @@ const VirtualizedGroupGrid = React.memo(function VirtualizedGroupGrid({
     const [items, setItems] = useState<Item[]>(() => buildFeedItems(groups, feedCampaigns));
 
     useEffect(() => {
-        setItems(buildFeedItems(groups, feedCampaigns));
+        setItems(buildFeedItems(groups, feedCampaigns, (_seed, size) => Math.floor(Math.random() * size)));
     }, [groups, feedCampaigns]);
 
     return (

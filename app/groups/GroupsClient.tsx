@@ -317,13 +317,20 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   // Deep link: /groups?category=X selects that category so the feed shows its
   // newest-first search results (used by the Trending Group Categories links).
   const searchParams = useSearchParams();
+  const urlCategoryParam = searchParams.get('category');
+  const effectiveCategory =
+    urlCategoryParam && urlCategoryParam !== 'All' && categoryOptions.includes(urlCategoryParam)
+      ? urlCategoryParam
+      : selectedCategory;
+  const prevUrlCategoryParam = useRef<string | null>(null);
   useEffect(() => {
-    const cat = searchParams.get('category');
-    if (cat && cat !== 'All' && categoryOptions.includes(cat)) {
-      setSelectedCategory(cat);
+    if (urlCategoryParam && urlCategoryParam !== 'All' && categoryOptions.includes(urlCategoryParam)) {
+      setSelectedCategory(urlCategoryParam);
+    } else if (prevUrlCategoryParam.current && !urlCategoryParam) {
+      setSelectedCategory(initialCountry || 'All');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    prevUrlCategoryParam.current = urlCategoryParam;
+  }, [urlCategoryParam, categoryOptions, initialCountry]);
 
   // Save state to sessionStorage
   useEffect(() => {
@@ -384,7 +391,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
         isFirstLoad.current &&
         selectedSort === 'newest' &&
         !debouncedSearchQuery &&
-        selectedCategory === (initialCountry || 'All') &&
+        effectiveCategory === (initialCountry || 'All') &&
         selectedCountry === 'All' &&
         regularGroups.length > 0
       ) {
@@ -397,7 +404,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
       setGroupsLoadError(false);
       try {
         const searchParam = debouncedSearchQuery ? `&search=${encodeURIComponent(debouncedSearchQuery)}` : '';
-        const categoryParam = selectedCategory !== 'All' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
+        const categoryParam = effectiveCategory !== 'All' ? `&category=${encodeURIComponent(effectiveCategory)}` : '';
         const countryParam = selectedCountry !== 'All' ? `&country=${encodeURIComponent(selectedCountry)}` : '';
         const response = await fetch(`/api/groups?skip=0&limit=${groupsPageSize}&sortBy=${selectedSort}${searchParam}${categoryParam}${countryParam}&locale=${locale}`, { cache: 'no-store' });
         const data = await response.json();
@@ -422,13 +429,19 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
     fetchGroups();
     lastVisibleIndexRef.current = -1;
-  }, [selectedSort, debouncedSearchQuery, selectedCategory, selectedCountry, groupsPageSize, locale, initialCountry]);
+  }, [selectedSort, debouncedSearchQuery, effectiveCategory, selectedCountry, groupsPageSize, locale, initialCountry]);
 
   const isDefaultBrowse =
     selectedSort === 'newest' &&
     !debouncedSearchQuery &&
-    selectedCategory === (initialCountry || 'All') &&
+    effectiveCategory === (initialCountry || 'All') &&
     selectedCountry === 'All';
+
+  const showTopGroups =
+    isDefaultBrowse &&
+    !searchQuery.trim() &&
+    !topGroupsLoading &&
+    topGroups.length > 0;
 
   const displayGroups = useMemo(() => {
     return regularGroups;
@@ -601,6 +614,20 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
       {/* Main Content */}
       <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 xl:px-16 pt-20 sm:pt-24 pb-8 min-h-screen">
+        <nav aria-label="Breadcrumb" className="mb-4">
+          <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 list-none p-0 m-0 text-xs sm:text-sm text-gray-400">
+            <li>
+              <Link href={lp('/')} className="hover:text-white transition-colors">
+                {t('slug.home')}
+              </Link>
+            </li>
+            <li aria-hidden="true" className="text-gray-600 select-none">/</li>
+            <li className="text-white font-medium" aria-current="page">
+              {t('nav.groups')}
+            </li>
+          </ol>
+        </nav>
+
         {/* Hero — same framework as AI NSFW (badge + title + subtitle) */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
@@ -739,7 +766,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
               {t('groups.trendingGroupCategories')}
             </h2>
             {trendingCategories.map(({ label, href, title }) => {
-              const isActive = selectedCategory === label;
+              const isActive = effectiveCategory === label;
               return (
                 <Link
                   key={href}
@@ -747,6 +774,11 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                   title={title || `${label} Telegram groups`}
                   aria-label={title || `${label} Telegram groups`}
                   aria-current={isActive ? 'true' : undefined}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setSelectedCategory(label);
+                    window.history.replaceState(null, '', href);
+                  }}
                   className={`px-2.5 py-1 rounded-full border text-[11px] font-bold transition-all whitespace-nowrap ${
                     isActive
                       ? 'border-[#ff5e2a] bg-[#ff5e2a]/15 text-white'
@@ -809,7 +841,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
           <div className="w-full min-w-0">
             <div className="relative">
               {/* Top Groups — hidden during search or when a filter is active */}
-              {!topGroupsLoading && !debouncedSearchQuery && selectedCategory === (initialCountry || 'All') && selectedCountry === 'All' && topGroups.length > 0 && (
+              {showTopGroups && (
                 <div className="mb-5 relative rounded-2xl overflow-hidden bg-white">
                   <div className="relative p-3 sm:p-4">
                       {/* Header */}

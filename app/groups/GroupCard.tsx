@@ -6,7 +6,6 @@ import { compressImage } from '@/lib/utils/compressImage';
 import { Group } from './types';
 import { cardEntryProps } from './cardEntry';
 import { useTranslation } from '@/lib/i18n/client';
-import { entityShowsVerifiedBadge } from '@/lib/boostPricing';
 
 interface GroupCardProps {
     group: Group;
@@ -308,26 +307,19 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                             </div>
                         )}
                     </div>
-                    <div className="absolute top-3 left-3 z-20 flex">
-                        {!lockedPremium && entityShowsVerifiedBadge(group) ? (
-                            <div className="text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white flex items-center gap-1.5">
-                                <svg className="w-3 h-3 text-emerald-400" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
-                                Verified
-                            </div>
-                        ) : itemType === 'bot' ? (
-                            <div className="text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white flex items-center gap-1.5">
-                                <span>🤖</span> Bot
-                            </div>
-                        ) : isFeatured ? (
-                            <div className="text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white flex items-center gap-1.5">
-                                <span>⭐</span> Featured
-                            </div>
-                        ) : group.pinned ? (
-                            <div className="text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white flex items-center gap-1.5">
-                                <span>📌</span> Pinned
-                            </div>
-                        ) : null}
-                    </div>
+                    {(itemType === 'bot' || group.pinned) && (
+                        <div className="absolute top-3 left-3 z-20 flex">
+                            {itemType === 'bot' ? (
+                                <div className="text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white flex items-center gap-1.5">
+                                    <span>🤖</span> Bot
+                                </div>
+                            ) : (
+                                <div className="text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white flex items-center gap-1.5">
+                                    <span>📌</span> Pinned
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Card Content */}
@@ -352,9 +344,6 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                                 className="truncate min-w-0 bg-clip-text text-transparent"
                                 style={{ backgroundImage: `linear-gradient(135deg, ${accent.from}, ${accent.to})` }}
                             >{group.name}</span>
-                            )}
-                            {entityShowsVerifiedBadge(group) && (
-                                <svg className="w-3.5 h-3.5 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
                             )}
                         </span>
                         {typeof growthPercent === 'number' && (

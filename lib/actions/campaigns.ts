@@ -9,6 +9,7 @@ import { getExpiredOFAgencyTargets } from '@/lib/actions/onlyfansTracking';
 import { dropExpiredOFAgencyAds } from '@/lib/ofExpiry';
 import { campaignNotExpired } from '@/lib/campaignDates';
 import { assertValidAdVideoUrl } from '@/lib/adVideoR2';
+import { isAdTrackingPaused } from '@/lib/adTrackingKillSwitch';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -813,9 +814,11 @@ export async function getKeywordPlacementCampaigns(placement: string, categorySl
   // ROTATION (brain: inc-top-groups-rotation): every assigned ad must rotate, not just the
   // top-priority one. Boost-weighted shuffle — boosted ads get BOOST_WEIGHT draws (more visibility)
   // but non-boosted ads still rotate in. Same law as Top Groups. Without this, .slice() froze on [0].
+  // Tracking kill switch: equal weight for all ads (still rotate, no boost advantage).
+  const trackingOff = await isAdTrackingPaused();
   const weightedPool: any[] = [];
   for (const c of filtered) {
-    const draws = c.priority === 'boost' ? BOOST_WEIGHT : 1;
+    const draws = !trackingOff && c.priority === 'boost' ? BOOST_WEIGHT : 1;
     for (let k = 0; k < draws; k++) weightedPool.push(c);
   }
   for (let i = weightedPool.length - 1; i > 0; i--) {
@@ -1221,6 +1224,7 @@ async function normalizeFeedPositions(): Promise<void> {
  * Near-real-time (counts logged CampaignClicks); small overdelivery is acceptable by design.
  */
 async function getCappedAdvertiserIds(): Promise<Set<string>> {
+  if (await isAdTrackingPaused()) return new Set();
   return ttlCachedSet('cappedAdvertisers', computeCappedAdvertiserIds);
 }
 
@@ -1274,6 +1278,7 @@ async function computeCappedAdvertiserIds(): Promise<Set<string>> {
  * Used for OnlyFans creators (and any single ad) where the cap is the campaign's, not the advertiser's.
  */
 async function getCappedCampaignIds(): Promise<Set<string>> {
+  if (await isAdTrackingPaused()) return new Set();
   return ttlCachedSet('cappedCampaigns', computeCappedCampaignIds);
 }
 
@@ -1420,6 +1425,7 @@ async function computeActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ainsfw
   // Slot 5: Featured Bot — pick one random variant (shown at position 5 in groups feed).
   // Slot 6: Top Groups Spot 1 (reachable via named placement top-groups-1).
   const results: any[] = [];
+  const trackingOff = await isAdTrackingPaused();
   for (let s = 1; s <= 11; s++) {
     const variants = slotGroups.get(s);
     if (!variants || variants.length === 0) continue;
@@ -1429,7 +1435,8 @@ async function computeActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ainsfw
     // they're listed first so the client weights them heavier (more visibility), but
     // non-boosted ads in the same slot still rotate in. If one advertiser/agency puts 5
     // creators in a slot, all 5 rotate. No collapsing, no one-per-advertiser.
-    const boosted = variants.filter((v) => v.campaign.priority === 'boost');
+    // Tracking kill switch: equal order (no boost-first), priority forced to normal for clients.
+    const boosted = trackingOff ? [] : variants.filter((v) => v.campaign.priority === 'boost');
     const orderedAll = boosted.length > 0
       ? [...boosted, ...variants.filter((v) => v.campaign.priority !== 'boost')]
       : variants;
@@ -1462,7 +1469,7 @@ async function computeActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ainsfw
         premiumCategory: pick.premiumCategory || '',
         socialProof: pick.socialProof || 'random',
         ofUsername: (pick as any).ofUsername || '',
-        priority: (pick as any).priority === 'boost' ? 'boost' : 'normal',
+        priority: (!trackingOff && (pick as any).priority === 'boost') ? 'boost' : 'normal',
         advertiserId: pick.advertiserId ? pick.advertiserId.toString() : null,
         ...(ofData ? {
           ofLikesCount: ofData.likesCount,
@@ -1515,7 +1522,7 @@ async function computeActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ainsfw
         premiumCategory: c.premiumCategory || '',
         socialProof: c.socialProof || 'random',
         ofUsername: c.ofUsername || '',
-        priority: c.priority === 'boost' ? 'boost' : 'normal',
+        priority: (!trackingOff && c.priority === 'boost') ? 'boost' : 'normal',
         advertiserId: c.advertiserId ? c.advertiserId.toString() : null,
         ...(ofData ? {
           ofLikesCount: ofData.likesCount,
@@ -1654,9 +1661,11 @@ const IMPRESSION_TRACKING_PAUSED = true;
 /**
  * Track a click on a campaign. Fire-and-forget from the client.
  * Updates Campaign.clicks and records a CampaignClick for period stats (7d, 30d).
+ * No-ops when Ad Network tracking kill switch is on (ads still serve).
  */
 export async function trackClick(campaignId: string, placement?: string) {
   try {
+    if (await isAdTrackingPaused()) return;
     await connectDB();
     // Read advertiserId+slot from the same update we already do, then stamp them on
     // the click row so stats group by stored fields instead of joining to Campaign.
@@ -1689,6 +1698,7 @@ export async function trackImpression(campaignId: string) {
   // CLICKS only, so nothing about ad delivery changes while this is off.
   // To resume: delete the early return below.
   if (IMPRESSION_TRACKING_PAUSED) return;
+  if (await isAdTrackingPaused()) return;
   try {
     await connectDB();
     const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"

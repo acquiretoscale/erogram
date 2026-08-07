@@ -2,6 +2,7 @@
 
 import connectDB from '@/lib/db/mongodb';
 import { Advertiser, Campaign, CampaignClick } from '@/lib/models';
+import { isAdTrackingPaused } from '@/lib/adTrackingKillSwitch';
 
 const EROGRAM_ADVERTISER_NAME = 'EROGRAM';
 
@@ -67,6 +68,7 @@ async function getArticleCampaignId(advertiserName: string = EROGRAM_ADVERTISER_
 export async function trackArticleClick(slug: string, url?: string, type?: 'link' | 'cta') {
   if (!slug || typeof slug !== 'string') return;
   try {
+    if (await isAdTrackingPaused()) return;
     await connectDB();
     // Attribute to the advertiser whose domain the CTA/link points to (e.g. Lovescape),
     // else fall back to the internal EROGRAM advertiser. Keeps the same article-link slot.

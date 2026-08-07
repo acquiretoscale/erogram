@@ -261,7 +261,7 @@ function LiveVisitorBar() {
         .catch(() => {});
     };
     fetchCount();
-    const id = setInterval(fetchCount, 5_000);
+    const id = setInterval(fetchCount, 300_000);
     return () => clearInterval(id);
   }, []);
 

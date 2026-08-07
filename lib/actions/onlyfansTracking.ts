@@ -2,6 +2,7 @@
 
 import connectDB from '@/lib/db/mongodb';
 import { TrendingOFCreator, OnlyFansCreator, Campaign, CampaignClick, OFClient } from '@/lib/models';
+import { isAdTrackingPaused } from '@/lib/adTrackingKillSwitch';
 
 /**
  * UNIFIED CLICK TRACKING — OnlyFans creators are just ONE ad category in the Erogram
@@ -53,6 +54,7 @@ export async function getExpiredOFAgencyTargets(): Promise<ExpiredOFAgencyTarget
  * without a per-row join. Uses findByIdAndUpdate's returned doc so we read the
  * campaign once (not an extra query). */
 async function logCampaignClick(campaignId: any, placement: string) {
+  if (await isAdTrackingPaused()) return;
   const camp = await Campaign.findByIdAndUpdate(
     campaignId,
     { $inc: { clicks: 1 } },
