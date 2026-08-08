@@ -54,7 +54,7 @@ export default async function PublicProfilePage(props: PublicProfilePageProps) {
   const username = decodeURIComponent(params.username).replace(/^@/, '');
 
   await connectDB();
-  const user = await User.findOne({ username }).lean();
+  const user = (await User.findOne({ username }).lean()) as Record<string, any> | null;
 
   if (!user || user.isProfileVisible !== true) {
     // Private (or missing): never ship profile HTML to the public. Admin unlocks client-side.

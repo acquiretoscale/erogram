@@ -86,9 +86,9 @@ export default async function OnlyFansPage({ searchParams }: PageProps) {
       topBannerCampaigns={topBannerCampaigns}
       paidFeatured={paidFeatured}
       trendingOnErogram={trendingOnErogram}
-      communityCreators={communityCreators}
-      topBookmarkedRecent={topBookmarkedRecent}
-      topLikedCreators={topLikedCreators}
+      communityCreators={communityCreators as any}
+      topBookmarkedRecent={topBookmarkedRecent as any}
+      topLikedCreators={topLikedCreators as any}
       topLikedPhotos={topLikedPhotos}
       visitorCountryCode={visitorCountryCode}
     />

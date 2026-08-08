@@ -40,6 +40,8 @@ interface FeaturedTrendingItem {
   username: string;
   avatar: string;
   likesCount?: number;
+  url?: string;
+  destinationUrl?: string;
 }
 
 function hubFormatCount(n: number) {

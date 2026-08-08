@@ -753,7 +753,7 @@ export async function getNewestOnlyFansCreators(limit = 40) {
     pinned.push(buildTrendingFallbackProfile(trending, username));
   }
 
-  const ranked = (rows as Record<string, unknown>[])
+  const ranked: Array<Record<string, unknown> & { extraPhotoCount: number }> = (rows as Record<string, unknown>[])
     .map((raw) => ({
       ...raw,
       extraPhotoCount: countUniqueExtraPhotos({
@@ -762,7 +762,7 @@ export async function getNewestOnlyFansCreators(limit = 40) {
         extraPhotos: raw.extraPhotos as string[] | undefined,
       }),
     }))
-    .sort((a, b) => {
+    .sort((a: Record<string, unknown> & { extraPhotoCount: number }, b: Record<string, unknown> & { extraPhotoCount: number }) => {
       if (b.extraPhotoCount !== a.extraPhotoCount) return b.extraPhotoCount - a.extraPhotoCount;
       const bTime = b.createdAt ? new Date(b.createdAt as string | Date).getTime() : 0;
       const aTime = a.createdAt ? new Date(a.createdAt as string | Date).getTime() : 0;
@@ -851,7 +851,7 @@ export async function getTopCommunityBookmarkedCreatorsLast30Days(limit = 10) {
 
   const seen = new Set<string>();
   const creators: Record<string, unknown>[] = [];
-  const ranked = (rows as Record<string, unknown>[])
+  const ranked: Array<Record<string, unknown> & { _id: string; erogramSaves: number }> = (rows as Record<string, unknown>[])
     .map((raw) => ({
       ...raw,
       _id: String(raw._id),
@@ -907,7 +907,7 @@ export async function getTopCommunityLikedCreators(limit = 40) {
 
   const seen = new Set<string>();
   const creators: Record<string, unknown>[] = [];
-  const ranked = (rows as Record<string, unknown>[])
+  const ranked: Array<Record<string, unknown> & { _id: string; erogramSaves: number }> = (rows as Record<string, unknown>[])
     .map((raw) => ({
       ...raw,
       _id: String(raw._id),
