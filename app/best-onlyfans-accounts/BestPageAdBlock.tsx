@@ -27,7 +27,7 @@ export default function BestPageAdBlock({ ads }: BestPageAdBlockProps) {
                 rel="noopener noreferrer"
                 className="flex items-center justify-between gap-3 rounded-xl border border-[rgba(43,27,40,0.08)] px-3 py-2.5 text-sm font-bold text-[#2B1B28] transition-colors hover:border-[#00AFF0]/35"
               >
-                <span className="truncate">{c.name || username}</span>
+                <span className="truncate">{c.name || c.ofUsername}</span>
                 <span className="text-[10px] uppercase tracking-wide text-[#00AFF0] shrink-0">View</span>
               </a>
             </li>

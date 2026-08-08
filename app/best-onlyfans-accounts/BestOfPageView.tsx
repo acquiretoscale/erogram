@@ -766,7 +766,7 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
         )}
 
         {/* TRENDING ON EROGRAM — same featured creators shown on /OFsearch for this category. */}
-        <BestPageAdBlock ads={trendingFeatured as any} placement="best-of" />
+        <BestPageAdBlock ads={trendingFeatured as any} />
 
         {/* ── More Top OnlyFans Rankings (40-link internal cluster) ── */}
         {featuredCategories.length > 0 && (
