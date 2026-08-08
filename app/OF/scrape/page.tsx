@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
 import { browseOFMCreators, purgeOFMCreators } from '@/lib/actions/ofm';
+import LegalBlacklistPanel from '../components/LegalBlacklistPanel';
 
 const MAX_PER_SCRAPE = 2000;
 
@@ -240,6 +241,7 @@ export default function ScrapePage() {
 
   return (
     <div className="space-y-8">
+      <LegalBlacklistPanel variant="compact" />
       {/* Header */}
       <div>
         <h1 className="text-2xl font-black text-white">Scrape Data</h1>

@@ -35,6 +35,14 @@ export function onlyFansExternalUrl(usernameOrSlug: string, storedUrl?: string):
   return `https://onlyfans.com/${name}`;
 }
 
+/** Naked OnlyFans.com link (no /go hop, no UTM). Public anchors must use OF_GO_REL. */
+export function ofOutboundUrl(usernameOrSlug: string, storedUrl?: string): string {
+  return onlyFansExternalUrl(usernameOrSlug, storedUrl);
+}
+
+/** rel for public outbound anchors — nofollow so Google does not treat them as graph edges. */
+export const OF_GO_REL = 'nofollow noopener noreferrer';
+
 /** Static /profile/* routes — not creator usernames. */
 const RESERVED_PROFILE_SEGMENTS = new Set(['leaderboard']);
 

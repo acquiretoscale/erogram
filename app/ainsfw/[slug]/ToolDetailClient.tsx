@@ -22,7 +22,6 @@ import FlameReviewSection from '@/components/FlameReviewSection';
 import { CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import { VerifiedByErogramLabel } from '@/components/VerifiedBadge';
 import { pickTagHashtagAlt } from '@/lib/ainsfw/imageAlt';
-import { AINSFW_GALLERY } from '@/app/ainsfw/galleryMap';
 import { AINSFW_TOOL_PREVIEW_VIDEOS } from '@/lib/ainsfw/toolPreviewVideos';
 import { ainsfwCtaButtonClass } from '@/lib/ainsfw/ctaButton';
 import ToolProsConsSkeleton from '@/components/ainsfw/ToolProsConsSkeleton';
@@ -475,12 +474,13 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
       setIsAdmin(localStorage.getItem('isAdmin') === 'true');
     } catch {}
 
-    // Fetch processed gallery images
+    // Gallery from admin/listing-owner saves only (API already applies resolveGallery).
+    // Empty array means intentionally empty — do NOT fall back to hardcoded map.
     setGalleryLoading(true);
     fetch(`/api/ainsfw/images?slug=${encodeURIComponent(tool.slug)}&name=${encodeURIComponent(tool.name)}&vendor=${encodeURIComponent(tool.vendor)}`)
       .then(r => r.json())
-      .then(d => { if (d.images?.length) setGallery(d.images.slice(0, 8)); })
-      .catch(() => {})
+      .then(d => { setGallery(Array.isArray(d.images) ? d.images.slice(0, 8) : []); })
+      .catch(() => { setGallery([]); })
       .finally(() => setGalleryLoading(false));
   }, [tool.slug, tool.name, tool.vendor]);
 
@@ -533,7 +533,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
   const btnColor = CATEGORY_COLOR[tool.category] || 'bg-gray-700';
   const catBadge = CATEGORY_BADGE[tool.category] || 'bg-gray-700 text-white';
   const imageHoverTitle = `${tool.name} - ${tool.category}`;
-  const reviewGallery = gallery.length > 0 ? gallery : (AINSFW_GALLERY[tool.slug] || []);
+  const reviewGallery = gallery;
   const previewVideo = AINSFW_TOOL_PREVIEW_VIDEOS[tool.slug];
   const reviewInsertCtx = useRef<ReviewInsertCtx>({ galleryIdx: 0, paragraphCount: 0 });
 

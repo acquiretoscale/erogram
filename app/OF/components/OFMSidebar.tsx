@@ -21,6 +21,17 @@ const NAV = [
     ),
   },
   {
+    label: 'Legal',
+    href: '/OF/legal',
+    highlight: 'danger' as const,
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+    ),
+  },
+  {
     label: 'Creators',
     href: '/OF/creators',
     icon: (
@@ -127,6 +138,7 @@ export default function OFMSidebar({ onLogout, isOpen, onClose }: OFMSidebarProp
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {NAV.map((item) => {
           const isActive = item.href === '/OF' ? pathname === '/OF' : pathname.startsWith(item.href);
+          const danger = 'highlight' in item && item.highlight === 'danger';
           return (
             <Link
               key={item.href}
@@ -134,12 +146,19 @@ export default function OFMSidebar({ onLogout, isOpen, onClose }: OFMSidebarProp
               onClick={onClose}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all ${
                 isActive
-                  ? 'bg-[#00AFF0]/10 text-[#00AFF0] border border-[#00AFF0]/20'
-                  : 'text-white/50 hover:text-white hover:bg-white/[0.05]'
+                  ? danger
+                    ? 'bg-red-500/15 text-red-300 border border-red-500/35'
+                    : 'bg-[#00AFF0]/10 text-[#00AFF0] border border-[#00AFF0]/20'
+                  : danger
+                    ? 'text-red-400/90 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20'
+                    : 'text-white/50 hover:text-white hover:bg-white/[0.05]'
               }`}
             >
-              <span className={isActive ? 'text-[#00AFF0]' : 'text-white/40'}>{item.icon}</span>
+              <span className={isActive ? (danger ? 'text-red-400' : 'text-[#00AFF0]') : danger ? 'text-red-400/80' : 'text-white/40'}>{item.icon}</span>
               {item.label}
+              {danger && !isActive && (
+                <span className="ml-auto text-[9px] font-black uppercase tracking-wider text-red-400/80">DMCA</span>
+              )}
             </Link>
           );
         })}

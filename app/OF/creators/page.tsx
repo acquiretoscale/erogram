@@ -211,7 +211,7 @@ export default function CreatorsPage() {
               onClick={() => setView('pending')}
               className={`px-3.5 py-1.5 text-xs font-bold transition ${view === 'pending' ? 'bg-[#00AFF0] text-white' : 'bg-white/[0.04] text-white/50 hover:text-white'}`}
             >
-              Pending / Submitted
+              Latest User Additions
             </button>
           </div>
           {view === 'all' && (

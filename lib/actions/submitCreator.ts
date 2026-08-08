@@ -7,6 +7,7 @@ import { uploadToR2, isR2Configured } from '@/lib/r2';
 import jwt from 'jsonwebtoken';
 import { revalidateCreatorPage } from '@/lib/actions/ofCreatorProfile';
 import { getApifyCredentials } from '@/lib/apify-key';
+import { isCreatorBlacklisted } from '@/lib/onlyfanssearch/creatorBlacklist';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -91,6 +92,10 @@ export async function fetchCreatorFromApify(username: string): Promise<CreatorLo
 
   const cleaned = username.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
   if (!cleaned) return null;
+
+  if (isCreatorBlacklisted(cleaned)) {
+    throw new Error('This creator is permanently blocked from Erogram.');
+  }
 
   await connectDB();
   const esc = cleaned.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -183,6 +188,10 @@ export async function fetchCreatorFromApify(username: string): Promise<CreatorLo
   if (websiteRaw && !tkUrl && /tiktok\.com/i.test(websiteRaw)) { tkUrl = websiteRaw; finalWebsite = ''; }
 
   const slug = exact.username.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+
+  if (isCreatorBlacklisted(exact.username) || isCreatorBlacklisted(slug)) {
+    throw new Error('This creator is permanently blocked from Erogram.');
+  }
 
   // Save ALL Apify data to DB immediately — same as the scrape route
   await OnlyFansCreator.findOneAndUpdate(
@@ -407,6 +416,10 @@ export async function submitCreator(input: SubmitCreatorInput) {
 
   const username = usernameMatch[1].toLowerCase();
   const slug = username.replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+
+  if (isCreatorBlacklisted(username) || isCreatorBlacklisted(slug)) {
+    return { success: false, error: 'This creator is permanently blocked from Erogram.' };
+  }
 
   await connectDB();
 

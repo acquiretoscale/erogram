@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bookmark, CircleUser, ExternalLink, Heart, MapPin, Search, SlidersHorizontal } from 'lucide-react';
+import { Bookmark, Heart, MapPin, Search, SlidersHorizontal } from 'lucide-react';
 import {
   OF_RESULTS_PAGE_SIZE,
   type ProfilePremiumPriceFilter,
@@ -28,7 +28,7 @@ import {
   type OfSearchResultsView,
 } from './profileGridDensity';
 import OnlyFansHeroFilterPanel from '@/app/onlyfanssearch/OnlyFansHeroFilterPanel';
-import { ofCreatorProfileUrl, onlyFansExternalUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { ofOutboundUrl } from '@/lib/onlyfanssearch/creatorUrls';
 import CreatorMediaEngagement from '@/components/CreatorMediaEngagement';
 import {
   getBatchMediaEngagement,
@@ -179,9 +179,6 @@ function FeaturedLiveBadge({ liveHourStart, liveHourEnd }: { liveHourStart?: num
 
 const HERO_OF_BTN =
   'inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-3.5 rounded-xl border-2 border-[#0099db] font-black text-[11px] sm:text-[12px] uppercase tracking-wide text-white bg-[#00AFF0] shadow-[4px_4px_0_0_#0099db] hover:bg-[#0099db] hover:shadow-[2px_2px_0_0_#0099db] hover:translate-x-[2px] hover:translate-y-[2px] active:shadow-none active:translate-x-[4px] active:translate-y-[4px] transition-all whitespace-nowrap';
-
-const CREATOR_PROFILE_ICON_BTN =
-  'shrink-0 w-9 h-9 rounded-xl bg-[#0084BD] text-white flex items-center justify-center shadow-lg border border-[#0084BD] hover:bg-[#0070A3] transition-colors';
 
 const HERO_NEO_BLUE_BTN =
   'inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-3.5 rounded-xl border-[2.5px] border-black font-black text-[11px] sm:text-[12px] uppercase tracking-wide text-white bg-[#005a8c] shadow-[4px_4px_0_0_#000] hover:bg-[#006da8] hover:shadow-[2px_2px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] active:shadow-none active:translate-x-[4px] active:translate-y-[4px] transition-all whitespace-nowrap';
@@ -1653,7 +1650,8 @@ export default function ProfileOFPremiumSearch({
                         if (tc.isPaidCampaign && tc.campaignId) {
                           trackCampaignClick(tc.campaignId, searchFeedPlacement(vIdx));
                         }
-                        window.open(`/go/${tc.username}`, '_blank', 'noopener,noreferrer');
+                        const dest = (tc.url || tc.destinationUrl || '').trim() || `https://onlyfans.com/${tc.username}`;
+                        window.open(dest, '_blank', 'noopener,noreferrer');
                       }}
                       className={`group w-full text-left rounded-2xl overflow-hidden bg-white border-2 border-[#00AFF0] shadow-[0_8px_28px_-8px_rgba(0,175,240,0.25)] hover:shadow-[0_12px_36px_-6px_rgba(0,175,240,0.35)] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer focus:outline-none ${isFeed ? 'max-w-lg mx-auto' : ''}`}
                     >
@@ -1694,8 +1692,7 @@ export default function ProfileOFPremiumSearch({
                 }
 
                 results.forEach((creator, i) => {
-                  const erogramUrl = ofCreatorProfileUrl(creator.username || creator.slug);
-                  const onlyfansUrl = onlyFansExternalUrl(creator.username || creator.slug, creator.url);
+                  const onlyfansUrl = ofOutboundUrl(creator.username || creator.slug, creator.url);
                   const feedMediaKey = creator.avatar?.startsWith('http')
                     ? creatorFeedMediaKey(creator._id, creator.avatar)
                     : '';
@@ -1775,33 +1772,18 @@ export default function ProfileOFPremiumSearch({
                           >
                             <div className="flex flex-row gap-2 flex-1 min-w-0">
                               <a
-                                href={`/go/${creator.username}`}
+                                href={onlyfansUrl}
                                 target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center justify-center w-9 h-9 rounded-xl shrink-0 transition-all hover:opacity-95"
+                                rel="nofollow noopener noreferrer"
+                                className="inline-flex items-center justify-center gap-2 flex-1 min-w-0 px-3 py-2 rounded-xl shrink-0 transition-all hover:opacity-95 text-white text-[12px] sm:text-sm font-black"
                                 style={{
-                                  color: '#ffffff',
                                   backgroundColor: '#00AFF0',
                                   boxShadow: '0 4px 14px rgba(0,175,240,0.35)',
                                 }}
                                 aria-label="Visit Profile"
                               >
                                 <OnlyFansIcon size={16} />
-                              </a>
-                              <a
-                                href={erogramUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center justify-center w-9 h-9 rounded-xl shrink-0 transition-all hover:opacity-95"
-                                style={{
-                                  color: '#111827',
-                                  backgroundColor: '#ffffff',
-                                  border: '1px solid rgba(0,0,0,0.14)',
-                                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                                }}
-                                aria-label="Visit Erogram profile"
-                              >
-                                <CircleUser size={18} strokeWidth={2} />
+                                <span className="truncate">{t('ofSearch.viewProfile')}</span>
                               </a>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
@@ -1879,21 +1861,12 @@ export default function ProfileOFPremiumSearch({
                         )}
                         <div className="flex items-center gap-1.5 mt-auto pt-2.5">
                           <a
-                            href={erogramUrl}
+                            href={onlyfansUrl}
                             target="_blank"
-                            rel="noopener noreferrer"
+                            rel="nofollow noopener noreferrer"
                             className="flex-1 py-2 rounded-xl bg-[#0084BD] text-white text-[12px] sm:text-sm font-black text-center shadow-lg border border-[#0084BD] hover:bg-[#0070A3] transition-colors"
                           >
                             {t('ofSearch.viewProfile')}
-                          </a>
-                          <a
-                            href={onlyfansUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={CREATOR_PROFILE_ICON_BTN}
-                            aria-label="Open OnlyFans"
-                          >
-                            <ExternalLink size={16} strokeWidth={2} />
                           </a>
                         </div>
                       </div>

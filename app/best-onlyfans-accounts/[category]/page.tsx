@@ -34,10 +34,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const label = cat.name;
   const l = label.toLowerCase();
   const titleMap: Record<Locale, string> = {
-    en: `10 Best ${label} OnlyFans Accounts & Creators (${year})`,
-    de: `Die 10 besten ${label} OnlyFans-Accounts & Creator (${year})`,
-    es: `Las 10 mejores cuentas ${label} de OnlyFans (${year})`,
-    pt: `As 10 melhores contas ${label} de OnlyFans (${year})`,
+    en: `10 Best ${label} OnlyFans Models (${year})`,
+    de: `Die 10 besten ${label} OnlyFans-Models (${year})`,
+    es: `Las 10 mejores modelos ${label} de OnlyFans (${year})`,
+    pt: `As 10 melhores modelos ${label} de OnlyFans (${year})`,
   };
   const descMap: Record<Locale, string> = {
     en: getMetaDescription(slug, 'en') || `Searching for girls best ${l} OnlyFans models? Our top 10 best ${l} OnlyFans models are here to deliver exactly what you crave.`,

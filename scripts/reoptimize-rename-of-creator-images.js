@@ -80,14 +80,32 @@ const TARGET_MAX_BYTES = 150 * 1024;
 const QUALITY_STEPS = [90, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40];
 const DOWNLOAD_TIMEOUT_MS = 20000;
 
-// of-purged-creators blacklist (brain). Never re-upload these.
+// Forever DMCA / purged blacklist — keep in sync with lib/onlyfanssearch/creatorBlacklist.ts
 const PURGED = new Set([
   'francety', 'ashleyyyreyyy', 'gem101', 'stellabrooks', 'babydollll',
-  'amibuefree', 'amibuexo', 'pennylondon', 'pennylondonvip', 'melthewhale',
-  'melthewhalefree', 'thevivonline', 'luciddreamexe', 'lu2hot', 'your_fatale',
-  'bellajynx.free', 'kassqueen98', 'kassqueen98_free', 'yeah_bamby',
-  'charlotte_rachel', 'bellebrooksxo', 'lioqueen', 'natashatosini', 'jocy_cosplay',
+  'amibuefree', 'amibuexo', 'amibue', 'amibuexx', 'pennylondon', 'pennylondon_x',
+  'pennylondonvip', 'melthewhale', 'melthewhalefree', 'whaleymel', 'thevivonline',
+  'helloviv', 'vivianwest', 'luciddreamexe', 'dzesi_ikita', 'ericadream', 'lu2hot',
+  'thelu2hot', 'emmaswrld', 'your_fatale', 'yeah_bamby', 'bambi_baby', 'bellajynx.free',
+  'bellajynxxx', 'bella.jynx', 'bella_jynx', 'bellajynx', 'bellajynxx', 'itsbellajynx',
+  'pixiecat', 'pixiecatofficial', 'thebellajynx', 'bellajynxofficial', 'hotbellapov',
+  'bellajynx_cos', 'weirdfroggirl', 'kassqueen98', 'kassqueen98_free', 'pussiesncream_',
+  'ddd_queen', 'charlotte_rachel', 'charlotterachel', 'charlotte_rachelx', 'bellebrooksxo',
+  'lioqueen', 'lioqueenn', 'nataliasalasvv', 'nataliasalasv', 'natashatosini',
+  'jocy_cosplay', 'jocycosplay.vip', 'jocycosplay', 'jocycosplay_oficial', 'jocycosplayvip',
+  'jocyfansly', 'waifualien', 'waifualien_', 'jocycosplayoficial', 'justgemma', 'gemmamccourt',
+  'honeyrashell', 'elizabethbluee', 'blahgigi', 'summerstarz', 'summerstarzfree',
+  'beckydaisy', 'becksdaisy', 'becksdaisy1', 'becksdaisy__', 'sofieesoles', 'sofieebabyy',
+  'sofiee', 'dianakills', 'dianakillingsworth', 'shibahuskymom', 'lazylittleleaf',
+  'lazyleaff', 'lazypurpleleaf', 'luraymama', 'onaartist', 'daisymaymommy',
+  'thepregnantbabe', 'jamieispregnant', 'jamiejerksme', 'freeeroticneko', 'eroticneko',
+  'siashicat', 'urthickpersiangf', 'urthickpersiangfnoppv', 'meliaclaps', 'angelflairee',
+  'roomorgue', 'tymwitsfree', 'tymwits', 'nikkirita', 'nikkiritaa', 'nikkiritaaa',
+  'nikkiritapriv', 'marichka18', 'marichkacute', 'mialushhh', 'mialushhhvip',
+  'sagittariusgrl', 'anibae', 'anibae.vip', 'anibae.free', 'anibae_cos', 'amandastunning',
+  'skyrhi', 'skyrhi_', 'skyyrhi', 'htownliv', 'jaydenee',
 ].map(u => u.toLowerCase()));
+
 
 // ── R2 client ────────────────────────────────────────────────────────────────
 const r2 = new S3Client({

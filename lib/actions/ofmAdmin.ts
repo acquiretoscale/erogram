@@ -6,6 +6,7 @@ import { User, OnlyFansCreator, TrendingOFCreator, ScrapeRun, SearchQuery, OFMSe
 import { getApifyCredentials, markKeyBurned } from '@/lib/apify-key';
 import { processCreatorImages } from '@/lib/actions/creatorImages';
 import { revalidateCreatorPage } from '@/lib/actions/ofCreatorProfile';
+import { isCreatorBlacklisted } from '@/lib/onlyfanssearch/creatorBlacklist';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -136,6 +137,9 @@ async function createBasicEntryAction(
   categories?: string[],
   trendingSlot?: number,
 ) {
+  if (isCreatorBlacklisted(username) || isCreatorBlacklisted(slug)) {
+    throw new Error('This creator is permanently blocked from Erogram.');
+  }
   await connectDB();
 
   const catList = Array.isArray(categories) && categories.length > 0
@@ -212,6 +216,10 @@ export async function importOFMCreator(
     .replace(/[/?#].*$/, '')
     .trim();
   if (!cleanUsername) throw new Error('Invalid username');
+
+  if (isCreatorBlacklisted(cleanUsername)) {
+    throw new Error('This creator is permanently blocked from Erogram.');
+  }
 
   const slug = cleanUsername
     .toLowerCase()
@@ -540,6 +548,12 @@ export async function bulkImportCreators(
 
         const slug = parsed.username.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
 
+        if (isCreatorBlacklisted(parsed.username) || isCreatorBlacklisted(slug)) {
+          r.status = 'failed';
+          r.error = 'Permanently blocked from Erogram';
+          continue;
+        }
+
         const doc = await OnlyFansCreator.findOneAndUpdate(
           { slug },
           {
@@ -594,6 +608,7 @@ export async function saveBulkApifyResults(items: any[]) {
   for (const item of items) {
     const username = item.username;
     if (!username) continue;
+    if (isCreatorBlacklisted(username)) continue;
     const slug = username.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
     try {
       const doc = await OnlyFansCreator.findOneAndUpdate(

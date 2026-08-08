@@ -2,9 +2,9 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { ofOutboundUrl } from '@/lib/onlyfanssearch/creatorUrls';
 import { motion } from 'framer-motion';
-import { Heart, Trash2, Crown, User } from 'lucide-react';
+import { Heart, Trash2, Crown } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import ProfileOFPremiumSearch from '@/app/profile/ProfileOFPremiumSearch';
 import { OfSearchResultsViewToggle } from '@/app/profile/ProfileGridDensityToggle';
@@ -52,10 +52,7 @@ function isCreatorLiveNow(start: number, end: number): boolean {
 }
 
 const CREATOR_VIEW_PROFILE_BTN =
-  'flex-1 flex items-center justify-center gap-2 py-2 sm:py-2.5 rounded-xl bg-[#0084BD] text-white text-[12px] sm:text-sm font-black text-center shadow-lg border border-[#0084BD] group-hover:bg-[#0070A3] transition-colors no-underline';
-
-const CREATOR_PROFILE_ICON_BTN =
-  'flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl bg-[#0084BD] text-white shadow-lg border border-[#0084BD] hover:bg-[#0070A3] transition-colors';
+  'w-full flex items-center justify-center gap-2 py-2 sm:py-2.5 rounded-xl bg-[#0084BD] text-white text-[12px] sm:text-sm font-black text-center shadow-lg border border-[#0084BD] group-hover:bg-[#0070A3] transition-colors no-underline';
 
 const FEATURED_CTA =
   'w-full py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-[13px] sm:text-sm font-bold text-center shadow-sm group-hover:shadow-md group-hover:from-[#009ADB] group-hover:to-[#00BFE8] transition-all';
@@ -113,18 +110,6 @@ function CategoryCreatorCard({ creator, onTrack, onSave, onDelete, savedIds, isA
     onTrack(creator.slug);
   };
 
-  const handleErogramProfile = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const path = ofCreatorProfileUrl(creator.username);
-    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) {
-      window.open(`/join-erogram?redirect=${encodeURIComponent(path)}`, '_blank', 'noopener,noreferrer');
-      return;
-    }
-    window.open(path, '_blank', 'noopener,noreferrer');
-  };
-
   return (
     <div className="relative">
       <div className="group rounded-2xl bg-white overflow-hidden shadow-md hover:shadow-xl transition-shadow">
@@ -173,24 +158,15 @@ function CategoryCreatorCard({ creator, onTrack, onSave, onDelete, savedIds, isA
           )}
         </div>
         <div className="px-2.5 pb-2.5 pt-2 sm:px-4 sm:pb-4 sm:pt-3">
-          <div className="flex gap-1.5 sm:gap-2">
-            <a
-              href={`/go/${creator.username}`}
-              target="_blank"
-              rel="noopener"
-              onClick={handleViewProfileClick}
-              className={CREATOR_VIEW_PROFILE_BTN}
-            >
-              {t('ofSearch.viewProfile')}
-            </a>
-            <button
-              onClick={handleErogramProfile}
-              className={CREATOR_PROFILE_ICON_BTN}
-              title="View on Erogram"
-            >
-              <User size={16} />
-            </button>
-          </div>
+          <a
+            href={ofOutboundUrl(creator.username, creator.url)}
+            target="_blank"
+            rel="nofollow noopener noreferrer"
+            onClick={handleViewProfileClick}
+            className={CREATOR_VIEW_PROFILE_BTN}
+          >
+            {t('ofSearch.viewProfile')}
+          </a>
         </div>
       </div>
       <button
@@ -517,7 +493,8 @@ export default function CategoryClient({ creators: initialCreators, category, la
                           const vIdx = shownVariantRef.current[tc._id] ?? -1;
                           if (tc.isPaidCampaign && tc.campaignId) trackCampaignClick(tc.campaignId, ofCatPlacement(vIdx));
                           else if (tc._id) trackTrendingClick(tc._id, vIdx);
-                          window.open(`/go/${tc.username}`, '_blank', 'noopener');
+                          const dest = (tc.url || tc.destinationUrl || '').trim() || `https://onlyfans.com/${tc.username}`;
+                          window.open(dest, '_blank', 'noopener,noreferrer');
                         }}
                         className="group w-full text-left rounded-2xl overflow-hidden bg-white ring-[2px] ring-[#00AFF0]/30 hover:ring-[#00AFF0] shadow-[0_8px_28px_-8px_rgba(0,175,240,0.25)] hover:shadow-[0_12px_36px_-6px_rgba(0,175,240,0.35)] hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none"
                       >
@@ -579,7 +556,8 @@ export default function CategoryClient({ creators: initialCreators, category, la
                                 const vIdx = shownVariantRef.current[tc._id] ?? -1;
                                 if (tc.isPaidCampaign && tc.campaignId) trackCampaignClick(tc.campaignId, ofCatPlacement(vIdx));
                                 else if (tc._id) trackTrendingClick(tc._id, vIdx);
-                                window.open(`/go/${tc.username}`, '_blank', 'noopener');
+                                const dest = (tc.url || tc.destinationUrl || '').trim() || `https://onlyfans.com/${tc.username}`;
+                                window.open(dest, '_blank', 'noopener,noreferrer');
                               }}
                               className="group w-full text-left rounded-2xl overflow-hidden bg-white ring-[2px] ring-[#00AFF0]/30 hover:ring-[#00AFF0] shadow-[0_8px_28px_-8px_rgba(0,175,240,0.25)] hover:shadow-[0_12px_36px_-6px_rgba(0,175,240,0.35)] hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none"
                             >

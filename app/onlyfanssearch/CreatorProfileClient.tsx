@@ -26,7 +26,7 @@ import { useTranslation, useLocalePath } from '@/lib/i18n/client';
 import { getCreatorProfileCategories } from '@/lib/tags/creatorProfileTags';
 import { bestOfBlogSlug } from '@/app/best-onlyfans-accounts/bestOfPages';
 import { getCreatorBio } from '@/app/onlyfanssearch/creatorBios';
-import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { ofCreatorProfileUrl, ofOutboundUrl } from '@/lib/onlyfanssearch/creatorUrls';
 import { OF_SEARCH_TOKENS, ofSearchNavProps } from '@/app/onlyfanssearch/ofSearchTokens';
 
 const ProfileOFPremiumSearch = dynamic(() => import('@/app/profile/ProfileOFPremiumSearch'), {
@@ -113,9 +113,9 @@ function VerifiedBadge({ className = 'w-5 h-5 sm:w-6 sm:h-6' }: { className?: st
 function VisitOnlyFansCTA({ username, onClick, className = '' }: { username: string; onClick: () => void; className?: string }) {
   return (
     <a
-      href={`/go/${username}`}
+      href={ofOutboundUrl(username)}
       target="_blank"
-      rel="noopener noreferrer"
+      rel="nofollow noopener noreferrer"
       onClick={onClick}
       className={`group flex items-center gap-3 px-4 sm:px-5 py-4 sm:py-5 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_28px_rgba(0,175,240,0.45)] no-underline ${className}`}
       style={{
@@ -658,12 +658,25 @@ function RelatedSidebarCard({ creator, publicOnlyfansPath = false, compact = fal
   const profileHref = lp(ofCreatorProfileUrl(creator.username));
   const thumb = relatedAvatarSrc(creator);
 
+  // Option B: Hide creator profile links from Google/Guests.
+  const handleProfileClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof window === 'undefined') return;
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.open(`/join-erogram?redirect=${encodeURIComponent(profileHref)}`, '_blank', 'noopener,noreferrer');
+    } else {
+      window.open(profileHref, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   if (card) {
     return (
-      <Link
-        href={profileHref}
-        prefetch={false}
-        className="group block rounded-xl border border-white/[0.08] bg-white/[0.03] hover:border-[#00AFF0]/35 hover:bg-[#00AFF0]/10 transition-all overflow-hidden"
+      <button
+        type="button"
+        onClick={handleProfileClick}
+        className="group block w-full text-left rounded-xl border border-white/[0.08] bg-white/[0.03] hover:border-[#00AFF0]/35 hover:bg-[#00AFF0]/10 transition-all overflow-hidden cursor-pointer"
       >
         <div className="aspect-[3/4] w-full overflow-hidden bg-[#0d1e2a]">
           {thumb ? (
@@ -687,15 +700,15 @@ function RelatedSidebarCard({ creator, publicOnlyfansPath = false, compact = fal
           <p className="text-xs font-black text-white truncate group-hover:text-[#00AFF0] transition-colors">{creator.name}</p>
           <p className="text-[10px] text-[#00AFF0]/80 truncate">@{creator.username}</p>
         </div>
-      </Link>
+      </button>
     );
   }
 
   return (
-    <Link
-      href={profileHref}
-      prefetch={false}
-      className={`group flex items-center rounded-lg border border-white/[0.08] bg-white/[0.03] hover:border-[#00AFF0]/35 hover:bg-[#00AFF0]/10 transition-all ${
+    <button
+      type="button"
+      onClick={handleProfileClick}
+      className={`group flex w-full items-center rounded-lg border border-white/[0.08] bg-white/[0.03] hover:border-[#00AFF0]/35 hover:bg-[#00AFF0]/10 transition-all text-left cursor-pointer ${
         compact ? 'gap-2 p-1.5' : 'gap-3 p-2.5 rounded-xl'
       }`}
     >
@@ -725,7 +738,7 @@ function RelatedSidebarCard({ creator, publicOnlyfansPath = false, compact = fal
         )}
       </div>
       {!compact && <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-[#00AFF0] shrink-0 transition-colors" />}
-    </Link>
+    </button>
   );
 }
 
@@ -839,7 +852,7 @@ export default function CreatorProfileClient({
     const isDev = typeof window !== 'undefined' && window.location.hostname === 'localhost';
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token && !isDev) {
-      window.location.href = `/go/${creator.username}`;
+      window.location.href = ofOutboundUrl(creator.username, creator.url);
       return;
     }
     setAuthChecked(true);

@@ -2,7 +2,8 @@
 
 import connectDB from '@/lib/db/mongodb';
 import { Types } from 'mongoose';
-import { OnlyFansCreator, User } from '@/lib/models';
+import { Campaign, OnlyFansCreator, ProfileFeedLike, TrendingOFCreator, User } from '@/lib/models';
+import { campaignNotExpired } from '@/lib/campaignDates';
 import { whaleBrowseLikesFilter } from '@/lib/tags/creatorMatch';
 import {
   buildBrowseQualityMatch,
@@ -26,6 +27,25 @@ function buildR2AvatarMatch() {
   } catch {
     return { $ne: '' };
   }
+}
+
+/** Unique extra photos beyond avatar + cover — matches OnlyFansClient communityExtras. */
+function countUniqueExtraPhotos(creator: {
+  avatar?: string;
+  header?: string;
+  extraPhotos?: string[];
+}): number {
+  const avatar = (creator.avatar || '').trim();
+  const cover = (creator.header || '').trim();
+  const seen = new Set<string>([avatar, cover].filter(Boolean));
+  let count = 0;
+  for (const url of creator.extraPhotos || []) {
+    const u = (url || '').trim();
+    if (!u.startsWith('http') || seen.has(u)) continue;
+    seen.add(u);
+    count++;
+  }
+  return count;
 }
 
 const CREATOR_PROJECT = {
@@ -547,4 +567,361 @@ export async function getTopClickedOnlyfansCreators(
   const hasMore = creators.length >= limit && totalLoaded < TOP_CLICKED_MAX_PUBLIC;
 
   return { ok: true as const, creators, hasMore };
+}
+
+const COMMUNITY_CREATOR_SELECT =
+  'name username slug avatar header extraPhotos categories subscriberCount likesCount photosCount videosCount price isFree url clicks redirectToOF instagramUrl twitterUrl tiktokUrl telegramUrl fanslyUrl fanvueUrl redditUrl patreonUrl website linktreeUrl allmylinksUrl beaconsUrl createdAt';
+
+/** Always first in community block, with FEATURED badge in UI. */
+const COMMUNITY_FEATURED_TOP = ['abellaolsen', 'amelia_russo'] as const;
+
+function usernameRegex(username: string) {
+  return new RegExp(`^${username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+}
+
+function buildTrendingFallbackProfile(
+  trending: Record<string, unknown>,
+  username: string,
+): Record<string, unknown> {
+  return {
+    _id: trending._id,
+    name: trending.name || trending.username || username,
+    username: trending.username || username,
+    slug: `${username}-onlyfans`,
+    avatar: trending.avatar || '',
+    header: trending.avatar || '',
+    extraPhotos: [],
+    categories: [],
+    likesCount: 0,
+    photosCount: 0,
+    videosCount: 0,
+    price: 0,
+    isFree: true,
+    url: trending.url || '',
+    clicks: 0,
+    createdAt: trending.createdAt,
+  };
+}
+
+function formatCommunityCreator(
+  raw: Record<string, unknown>,
+  saveMap: Map<string, number>,
+): Record<string, unknown> {
+  const id = String(raw._id);
+  return {
+    ...raw,
+    _id: id,
+    extraPhotos: Array.isArray(raw.extraPhotos) ? raw.extraPhotos : [],
+    erogramSaves: saveMap.get(id) || 0,
+    ...(raw.isCommunityFeatured ? { isCommunityFeatured: true } : {}),
+  };
+}
+
+async function loadCommunityTopFeatured(): Promise<Record<string, unknown>[]> {
+  const [rows, trendingFallback] = await Promise.all([
+    OnlyFansCreator.find({
+      username: { $in: COMMUNITY_FEATURED_TOP.map((u) => usernameRegex(u)) },
+      deleted: { $ne: true },
+    })
+      .select(COMMUNITY_CREATOR_SELECT)
+      .lean(),
+    TrendingOFCreator.find({
+      username: { $in: COMMUNITY_FEATURED_TOP.map((u) => usernameRegex(u)) },
+      active: true,
+    })
+      .select('username name avatar url bio createdAt')
+      .lean(),
+  ]);
+
+  const byUser = new Map<string, Record<string, unknown>>();
+  for (const raw of rows as Record<string, unknown>[]) {
+    byUser.set(String(raw.username || '').toLowerCase(), raw);
+  }
+  for (const raw of trendingFallback as Record<string, unknown>[]) {
+    const username = String(raw.username || '').toLowerCase();
+    if (!byUser.has(username)) byUser.set(username, buildTrendingFallbackProfile(raw, username));
+  }
+
+  return COMMUNITY_FEATURED_TOP.map((username) => byUser.get(username))
+    .filter(Boolean)
+    .map((profile) => ({ ...profile!, isCommunityFeatured: true }));
+}
+
+/** Active featured slots — newest campaign/trending add first in community block. */
+async function getRecentlyFeaturedUsernames(): Promise<{ username: string; featuredAt: Date }[]> {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const [campaigns, trending] = await Promise.all([
+    Campaign.find({
+      status: 'active',
+      isVisible: true,
+      adType: 'onlyfans-creator',
+      ofUsername: { $exists: true, $ne: '' },
+      startDate: { $lte: now },
+      ...campaignNotExpired(startOfToday),
+      placements: 'of-search-featured',
+    })
+      .select('ofUsername createdAt startDate')
+      .sort({ createdAt: -1 })
+      .lean(),
+    TrendingOFCreator.find({ active: true })
+      .select('username createdAt')
+      .sort({ createdAt: -1 })
+      .lean(),
+  ]);
+
+  const featuredAtByUser = new Map<string, Date>();
+  const noteFeatured = (username: string, at: Date) => {
+    const u = username.trim().toLowerCase();
+    if (!u) return;
+    const prev = featuredAtByUser.get(u);
+    if (!prev || at.getTime() > prev.getTime()) featuredAtByUser.set(u, at);
+  };
+
+  for (const c of campaigns as Array<{ ofUsername?: string; createdAt?: Date; startDate?: Date }>) {
+    noteFeatured(String(c.ofUsername || ''), new Date(c.createdAt || c.startDate || 0));
+  }
+  for (const t of trending as Array<{ username?: string; createdAt?: Date }>) {
+    noteFeatured(String(t.username || ''), new Date(t.createdAt || 0));
+  }
+
+  return [...featuredAtByUser.entries()]
+    .sort((a, b) => b[1].getTime() - a[1].getTime())
+    .map(([username, featuredAt]) => ({ username, featuredAt }));
+}
+
+/** Newest profiles added to the directory — for /onlyfanssearch Community block. */
+export async function getNewestOnlyFansCreators(limit = 40) {
+  await connectDB();
+
+  const pageSize = Math.min(Math.max(1, limit), 40);
+  const poolSize = Math.max(pageSize * 4, 120);
+  const match: Record<string, unknown> = {
+    ...creatorQualityFilter,
+    categories: { $exists: true, $ne: [] },
+    submissionStatus: { $ne: 'pending' },
+  };
+
+  const featuredUsers = await getRecentlyFeaturedUsernames();
+  const featuredUsernames = featuredUsers.map((f) => f.username);
+  const topFeaturedUsernames = new Set<string>(COMMUNITY_FEATURED_TOP);
+
+  const [topFeatured, featuredRows, rows, trendingFallback] = await Promise.all([
+    loadCommunityTopFeatured(),
+    featuredUsernames.length
+      ? OnlyFansCreator.find({
+          username: { $in: featuredUsernames.map((u) => usernameRegex(u)) },
+          deleted: { $ne: true },
+        })
+          .select(COMMUNITY_CREATOR_SELECT)
+          .lean()
+      : Promise.resolve([]),
+    OnlyFansCreator.find(match)
+      .sort({ createdAt: -1 })
+      .limit(poolSize)
+      .select(COMMUNITY_CREATOR_SELECT)
+      .lean(),
+    featuredUsernames.length
+      ? TrendingOFCreator.find({
+          username: { $in: featuredUsernames.map((u) => usernameRegex(u)) },
+          active: true,
+        })
+          .select('username name avatar url bio createdAt')
+          .lean()
+      : Promise.resolve([]),
+  ]);
+
+  const featuredByUser = new Map<string, Record<string, unknown>>();
+  for (const raw of featuredRows as Record<string, unknown>[]) {
+    featuredByUser.set(String(raw.username || '').toLowerCase(), raw);
+  }
+  const trendingByUser = new Map<string, Record<string, unknown>>();
+  for (const raw of trendingFallback as Record<string, unknown>[]) {
+    trendingByUser.set(String(raw.username || '').toLowerCase(), raw);
+  }
+
+  const pinned: Record<string, unknown>[] = [...topFeatured];
+  for (const { username } of featuredUsers) {
+    if (topFeaturedUsernames.has(username)) continue;
+    const profile = featuredByUser.get(username);
+    if (profile) {
+      pinned.push(profile);
+      continue;
+    }
+    const trending = trendingByUser.get(username);
+    if (!trending) continue;
+    pinned.push(buildTrendingFallbackProfile(trending, username));
+  }
+
+  const ranked = (rows as Record<string, unknown>[])
+    .map((raw) => ({
+      ...raw,
+      extraPhotoCount: countUniqueExtraPhotos({
+        avatar: raw.avatar as string | undefined,
+        header: raw.header as string | undefined,
+        extraPhotos: raw.extraPhotos as string[] | undefined,
+      }),
+    }))
+    .sort((a, b) => {
+      if (b.extraPhotoCount !== a.extraPhotoCount) return b.extraPhotoCount - a.extraPhotoCount;
+      const bTime = b.createdAt ? new Date(b.createdAt as string | Date).getTime() : 0;
+      const aTime = a.createdAt ? new Date(a.createdAt as string | Date).getTime() : 0;
+      return bTime - aTime;
+    });
+
+  const pinnedUsernames = new Set(pinned.map((p) => String(p.username || '').toLowerCase()));
+  const allRows = [...pinned, ...ranked.filter((r) => !pinnedUsernames.has(String(r.username || '').toLowerCase()))];
+  const ids = allRows.map((r) => r._id).filter(Boolean);
+  const saveMap = new Map<string, number>();
+  if (ids.length > 0) {
+    const saveCounts = await User.aggregate([
+      { $match: { savedCreators: { $in: ids } } },
+      { $unwind: '$savedCreators' },
+      { $match: { savedCreators: { $in: ids } } },
+      { $group: { _id: '$savedCreators', erogramSaves: { $sum: 1 } } },
+    ]);
+    for (const row of saveCounts) {
+      saveMap.set(String(row._id), row.erogramSaves as number);
+    }
+  }
+
+  const seen = new Set<string>();
+  const creators: Record<string, unknown>[] = [];
+  for (const raw of allRows) {
+    const username = String(raw.username || '').toLowerCase();
+    if (!username || seen.has(username)) continue;
+    seen.add(username);
+    const { extraPhotoCount: _extraPhotoCount, ...rest } = raw as Record<string, unknown> & { extraPhotoCount?: number };
+    creators.push(formatCommunityCreator(rest, saveMap));
+    if (creators.length >= pageSize) break;
+  }
+
+  return creators;
+}
+
+/** Top bookmarked creators in the last 30 days — whales excluded via creatorQualityFilter. */
+export async function getTopCommunityBookmarkedCreatorsLast30Days(limit = 10) {
+  await connectDB();
+
+  const pageSize = Math.min(Math.max(1, limit), 40);
+  const poolSize = Math.max(pageSize * 3, 40);
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+  const saveCounts = await ProfileFeedLike.aggregate([
+    { $match: { createdAt: { $gte: since } } },
+    { $group: { _id: { creatorId: '$creatorId', userId: '$userId' } } },
+    {
+      $lookup: {
+        from: 'users',
+        localField: '_id.userId',
+        foreignField: '_id',
+        as: 'user',
+      },
+    },
+    { $unwind: '$user' },
+    {
+      $match: {
+        $expr: { $in: ['$_id.creatorId', { $ifNull: ['$user.savedCreators', []] }] },
+      },
+    },
+    { $group: { _id: '$_id.creatorId', erogramSaves: { $sum: 1 } } },
+    { $sort: { erogramSaves: -1 } },
+    { $limit: poolSize },
+  ]);
+
+  if (saveCounts.length === 0) return [];
+
+  const saveMap = new Map<string, number>();
+  for (const row of saveCounts) {
+    saveMap.set(String(row._id), row.erogramSaves as number);
+  }
+
+  const match: Record<string, unknown> = {
+    _id: { $in: saveCounts.map((r) => r._id) },
+    ...creatorQualityFilter,
+    categories: { $exists: true, $ne: [] },
+    submissionStatus: { $ne: 'pending' },
+  };
+
+  const rows = await OnlyFansCreator.find(match)
+    .select(
+      'name username slug avatar header categories subscriberCount likesCount photosCount videosCount price isFree url clicks redirectToOF instagramUrl twitterUrl tiktokUrl telegramUrl fanslyUrl fanvueUrl redditUrl patreonUrl website linktreeUrl allmylinksUrl beaconsUrl',
+    )
+    .lean();
+
+  const seen = new Set<string>();
+  const creators: Record<string, unknown>[] = [];
+  const ranked = (rows as Record<string, unknown>[])
+    .map((raw) => ({
+      ...raw,
+      _id: String(raw._id),
+      erogramSaves: saveMap.get(String(raw._id)) || 0,
+    }))
+    .sort((a, b) => (b.erogramSaves as number) - (a.erogramSaves as number));
+
+  for (const raw of ranked) {
+    const username = String(raw.username || '').toLowerCase();
+    if (!username || seen.has(username)) continue;
+    seen.add(username);
+    creators.push(raw);
+    if (creators.length >= pageSize) break;
+  }
+
+  return creators;
+}
+
+/** Most saved/liked by Erogram users — whales excluded via creatorQualityFilter. */
+export async function getTopCommunityLikedCreators(limit = 40) {
+  await connectDB();
+
+  const pageSize = Math.min(Math.max(1, limit), 40);
+  const poolSize = Math.max(pageSize * 3, 80);
+
+  const saveCounts = await User.aggregate([
+    { $match: { savedCreators: { $exists: true, $ne: [] } } },
+    { $unwind: '$savedCreators' },
+    { $group: { _id: '$savedCreators', erogramSaves: { $sum: 1 } } },
+    { $sort: { erogramSaves: -1 } },
+    { $limit: poolSize },
+  ]);
+
+  if (saveCounts.length === 0) return [];
+
+  const saveMap = new Map<string, number>();
+  for (const row of saveCounts) {
+    saveMap.set(String(row._id), row.erogramSaves as number);
+  }
+
+  const match: Record<string, unknown> = {
+    _id: { $in: saveCounts.map((r) => r._id) },
+    ...creatorQualityFilter,
+    categories: { $exists: true, $ne: [] },
+    submissionStatus: { $ne: 'pending' },
+  };
+
+  const rows = await OnlyFansCreator.find(match)
+    .select(
+      'name username slug avatar header categories subscriberCount likesCount photosCount videosCount price isFree url clicks redirectToOF instagramUrl twitterUrl tiktokUrl telegramUrl fanslyUrl fanvueUrl redditUrl patreonUrl website linktreeUrl allmylinksUrl beaconsUrl',
+    )
+    .lean();
+
+  const seen = new Set<string>();
+  const creators: Record<string, unknown>[] = [];
+  const ranked = (rows as Record<string, unknown>[])
+    .map((raw) => ({
+      ...raw,
+      _id: String(raw._id),
+      erogramSaves: saveMap.get(String(raw._id)) || 0,
+    }))
+    .sort((a, b) => (b.erogramSaves as number) - (a.erogramSaves as number));
+
+  for (const raw of ranked) {
+    const username = String(raw.username || '').toLowerCase();
+    if (!username || seen.has(username)) continue;
+    seen.add(username);
+    creators.push(raw);
+    if (creators.length >= pageSize) break;
+  }
+
+  return creators;
 }

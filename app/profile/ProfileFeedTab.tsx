@@ -9,7 +9,7 @@ import {
   type ProfileFeedMediaItem,
 } from '@/lib/actions/profileFeed';
 import CreatorMediaEngagement from '@/components/CreatorMediaEngagement';
-import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { ofCreatorProfileUrl, ofOutboundUrl } from '@/lib/onlyfanssearch/creatorUrls';
 import { useProfileTheme } from './ProfileThemeContext';
 import { ProfileHeading } from './ProfileTypography';
 import ProfileCategoryPills from './ProfileCategoryPills';
@@ -79,9 +79,9 @@ function FeedVisitButtons({ username }: { username: string }) {
   return (
     <div className="flex flex-row gap-2">
       <a
-        href={`/go/${username}`}
+        href={ofOutboundUrl(username)}
         target="_blank"
-        rel="noopener noreferrer"
+        rel="nofollow noopener noreferrer"
         aria-label="Visit Profile"
         title="Visit Profile"
         className={iconBtn}

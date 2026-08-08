@@ -1,4 +1,5 @@
 import { getAllToolStats } from '@/lib/actions/ainsfw';
+import { resolveGallery } from '@/lib/ainsfw/toolContent';
 import type { BestAiCryptoToolPage, BestAiToolPage } from './pages';
 import { getToolsForBestAiPage, getToolsForCryptoPage, getToolDisplayCategories } from './pages';
 
@@ -38,11 +39,13 @@ async function buildRankedToolList(
     .map((tool) => {
       const stats = statsMap[tool.slug];
       const mainImage = stats?.imageOverride || tool.image;
-      const hidden = new Set(stats?.hiddenGalleryUrls || []);
-      const extraGallery = (stats?.customGallery || []).filter(
-        (url) => url && !hidden.has(url) && url !== mainImage,
-      );
-      const galleryImages = [mainImage, ...extraGallery].slice(0, 7);
+      const resolved = resolveGallery(tool.slug, {
+        customGallery: stats?.customGallery,
+        hiddenGalleryUrls: stats?.hiddenGalleryUrls,
+        galleryManaged: stats?.galleryManaged,
+      });
+      const extraGallery = resolved.filter((url) => url && url !== mainImage);
+      const galleryImages = [mainImage, ...extraGallery].filter(Boolean).slice(0, 7);
       return {
         tool: {
           slug: tool.slug,

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getOFMTrending } from '@/lib/actions/ofm';
 import { importOFMCreator, checkExistingCreators, getRecentImports, saveBulkApifyResults } from '@/lib/actions/ofmAdmin';
+import LegalBlacklistPanel from '../components/LegalBlacklistPanel';
 
 type TrendingSlot = { _id: string; position: number; name: string } | null;
 
@@ -85,6 +86,7 @@ export default function ImportPage() {
 
   return (
     <div className="space-y-8">
+      <LegalBlacklistPanel variant="compact" />
       <div>
         <h1 className="text-2xl font-black text-white">Import Creator</h1>
         <p className="text-white/40 text-sm mt-1">

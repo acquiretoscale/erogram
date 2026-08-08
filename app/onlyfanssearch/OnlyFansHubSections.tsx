@@ -260,7 +260,10 @@ export function OnlyFansTrendingSection({
             <button
               key={tc._id}
               type="button"
-              onClick={() => window.open(`/go/${tc.username}`, '_blank', 'noopener,noreferrer')}
+              onClick={() => {
+                const dest = (tc.url || tc.destinationUrl || '').trim() || `https://onlyfans.com/${tc.username}`;
+                window.open(dest, '_blank', 'noopener,noreferrer');
+              }}
               className="group text-left rounded-2xl overflow-hidden bg-white/[0.04] border border-white/[0.08] hover:border-[#00AFF0]/30 transition-all"
             >
               <div className="relative aspect-[3/4] bg-[#0a1c2e]">

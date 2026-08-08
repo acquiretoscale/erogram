@@ -22,7 +22,9 @@ interface ShowcaseCreator {
 function FeedCard({ creator }: { creator: ShowcaseCreator }) {
   const handleClick = () => {
     trackTrendingClick(creator.id);
-    window.open(`/go/${creator.username}`, '_blank', 'noopener');
+    // Promoted showcase: tracking / destination URL untouched.
+    const dest = (creator.url || '').trim() || `https://onlyfans.com/${creator.username}`;
+    window.open(dest, '_blank', 'noopener,noreferrer');
   };
 
   return (

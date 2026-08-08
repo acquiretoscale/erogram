@@ -124,6 +124,7 @@ export async function getFeaturedCreatorFeedItems(category?: string) {
 
   return shuffled.map((c, i) => {
     const stats = statsMap.get(c.username);
+    // Promoted creators: keep their tracking / destination URL untouched (never force /go).
     const raw = (c.url || '').trim();
     const dest = /^https?:\/\//i.test(raw) ? raw : `https://onlyfans.com/${c.username}`;
     // First creator → slot 2 (visible after 2 groups), second → slot 3 (after 8),

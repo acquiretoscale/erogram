@@ -53,6 +53,7 @@ function docToStats(doc: any, admin = false): ToolStatsData {
     imageOverride: doc.imageOverride || '',
     customGallery: doc.customGallery || [],
     hiddenGalleryUrls: doc.hiddenGalleryUrls || [],
+    galleryManaged: !!doc.galleryManaged || (doc.hiddenGalleryUrls?.length ?? 0) > 0 || (doc.customGallery?.length ?? 0) > 0,
     coverManaged: !!doc.coverManaged,
     reviews: filtered.map((r: any) => mapReview(r, admin)),
   };
@@ -67,6 +68,7 @@ export interface ToolStatsData {
   imageOverride?: string;
   customGallery?: string[];
   hiddenGalleryUrls?: string[];
+  galleryManaged?: boolean;
   coverManaged?: boolean;
   reviews: ToolReviewData[];
 }
@@ -74,7 +76,7 @@ export interface ToolStatsData {
 export async function getToolStats(slug: string): Promise<ToolStatsData> {
   await connectDB();
   const doc = await AINsfwToolStats.findOne({ slug: slugQuery(slug) }).lean() as any;
-  if (!doc) return { upvotes: 0, downvotes: 0, featured: false, reviews: [], descriptionOverride: '', imageOverride: '', customGallery: [], hiddenGalleryUrls: [] };
+  if (!doc) return { upvotes: 0, downvotes: 0, featured: false, reviews: [], descriptionOverride: '', imageOverride: '', customGallery: [], hiddenGalleryUrls: [], galleryManaged: false };
   return docToStats(doc);
 }
 
@@ -175,7 +177,7 @@ export async function adminSetToolVotes(
 export async function adminDeleteReview(slug: string, reviewIdx: number): Promise<ToolStatsData> {
   await connectDB();
   const doc = await AINsfwToolStats.findOne({ slug: slugQuery(slug) });
-  if (!doc) return { upvotes: 0, downvotes: 0, featured: false, reviews: [], descriptionOverride: '', imageOverride: '', customGallery: [], hiddenGalleryUrls: [] };
+  if (!doc) return { upvotes: 0, downvotes: 0, featured: false, reviews: [], descriptionOverride: '', imageOverride: '', customGallery: [], hiddenGalleryUrls: [], galleryManaged: false };
   if (doc.reviews && reviewIdx >= 0 && reviewIdx < doc.reviews.length) {
     doc.reviews.splice(reviewIdx, 1);
     await doc.save();

@@ -6,13 +6,12 @@ import { OnlyFansCreator } from '@/lib/models';
 export async function getPendingCreators() {
   await connectDB();
   const docs = await OnlyFansCreator.find({
-    $or: [
-      { submissionStatus: 'pending' },
-      { submittedByUser: true },
-    ],
+    submittedByUser: true,
+    deleted: { $ne: true },
   })
-    .sort({ createdAt: -1 })
-    .select('name username slug avatar header bio categories location price url extraPhotos submissionStatus createdAt')
+    .sort({ updatedAt: -1 })
+    .limit(100)
+    .select('name username slug avatar header bio categories location price url extraPhotos submissionStatus submittedByUsername createdAt updatedAt')
     .lean();
   return docs.map((d: any) => ({ ...d, _id: d._id.toString() }));
 }

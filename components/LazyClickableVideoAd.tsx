@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 
 export const JOI_AI_VIDEO_URL = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/joi-ai-promo-v112.mp4';
 export const JOI_AI_VIDEO_POSTER = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/joi-ai-promo-v111-poster.webp';
-export const JOI_AI_GO_URL = '/go/joi-ai';
+export const JOI_AI_URL = 'https://www.joi.com';
 
 type LazyClickableVideoAdProps = {
   href?: string;
@@ -18,7 +18,7 @@ type LazyClickableVideoAdProps = {
 };
 
 export default function LazyClickableVideoAd({
-  href = JOI_AI_GO_URL,
+  href = JOI_AI_URL,
   videoUrl = JOI_AI_VIDEO_URL,
   posterUrl = JOI_AI_VIDEO_POSTER,
   className = '',

@@ -116,7 +116,7 @@ export const OF_CATEGORY_SLUGS: Set<string> = new Set(OF_CATEGORIES.map((c) => c
 
 export const OF_CATEGORY_MAP: Map<string, (typeof OF_CATEGORIES)[number]> = new Map(OF_CATEGORIES.map((c) => [c.slug, c]));
 
-/** Build the public SEO URL for a category page: /blondeonlyfans */
+/** Build the public SEO URL for a category page: /onlyfanssearch/blonde */
 export function ofCategoryUrl(catSlug: string) {
-  return `/${catSlug}onlyfans`;
+  return `/onlyfanssearch/${catSlug}`;
 }

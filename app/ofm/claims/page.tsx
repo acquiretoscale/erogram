@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import OFMNav from '../OFMNav';
+import OFMLegalBanner from '../OFMLegalBanner';
 import {
   listProfileClaims,
   approveProfileClaim,
@@ -69,6 +70,7 @@ export default function OFMClaims() {
     <div className="min-h-screen bg-[#080c14] text-white">
       <OFMNav active="claims" />
       <div className="max-w-6xl mx-auto px-4 sm:px-8 py-6 sm:py-8">
+        <OFMLegalBanner />
         <h1 className="text-2xl font-black mb-2">Claimed Profiles</h1>
         <p className="text-sm text-white/45 mb-6">Review ownership claims from creators and agencies.</p>
 

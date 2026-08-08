@@ -24,6 +24,7 @@ export const userSchema = new Schema(
     firstName: { type: String, default: null },
     bio: { type: String, default: null, maxlength: 160 },
     photoUrl: { type: String, default: null },
+    sex: { type: String, enum: ['male', 'female', null], default: null },
     ip: { type: String },
     userAgent: { type: String },
     browser: { type: String },

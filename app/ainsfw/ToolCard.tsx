@@ -9,7 +9,7 @@ import type { ToolReviewData } from '@/lib/actions/ainsfw';
 import type { ToolStatsData } from '@/lib/actions/ainsfw';
 import { trackClick, trackImpression } from '@/lib/actions/campaigns';
 import { pickTagHashtagAlt } from '@/lib/ainsfw/imageAlt';
-import { AINSFW_GALLERY } from '@/app/ainsfw/galleryMap';
+import { resolveGallery } from '@/lib/ainsfw/toolContent';
 import { AINSFW_TOOL_PREVIEW_VIDEOS } from '@/lib/ainsfw/toolPreviewVideos';
 import { requestHubVideoPlay, releaseHubVideoPlay } from '@/lib/ainsfw/hubVideoPlayManager';
 import VerifiedBadge, { AINSFW_VERIFIED_TOOLTIP } from '@/components/VerifiedBadge';
@@ -160,7 +160,11 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
   const mainImg = tool.image && (tool.image.startsWith('https://') || tool.image.startsWith('/'))
     ? tool.image : placeholder;
   const previewVideo = AINSFW_TOOL_PREVIEW_VIDEOS[tool.slug];
-  const curatedGallery = AINSFW_GALLERY[tool.slug] ?? [];
+  const curatedGallery = resolveGallery(tool.slug, {
+    customGallery: initialStats?.customGallery,
+    hiddenGalleryUrls: initialStats?.hiddenGalleryUrls,
+    galleryManaged: initialStats?.galleryManaged,
+  });
   const hasCuratedGallery = curatedGallery.length > 0;
   const hasLogo = mainImg !== placeholder;
 

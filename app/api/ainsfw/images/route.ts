@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AINSFW_GALLERY } from '@/app/ainsfw/galleryMap';
-import { getPublicToolGallery, isToolGalleryManaged } from '@/lib/actions/ainsfwAdmin';
+import { getPublicToolGallery } from '@/lib/actions/ainsfwAdmin';
 
 /**
- * Owner order 2026-08-05: NO web scraping, ever. Galleries come only from
- * admin uploads or the curated R2 map. A tool with no curated gallery shows none.
+ * Owner order: galleries come from admin/listing-owner saves via resolveGallery.
+ * Hardcoded map is only the default seed when nothing has been managed yet.
+ * Empty managed gallery = intentionally empty (no fallback).
  */
 export async function GET(req: NextRequest) {
   const slug = req.nextUrl.searchParams.get('slug');
@@ -13,13 +13,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ images: [] }, { status: 400 });
   }
 
-  const [adminGallery, galleryManaged] = await Promise.all([
-    getPublicToolGallery(slug),
-    isToolGalleryManaged(slug),
-  ]);
-  if (galleryManaged) {
-    return NextResponse.json({ images: adminGallery });
-  }
-
-  return NextResponse.json({ images: AINSFW_GALLERY[slug] ?? [] });
+  const images = await getPublicToolGallery(slug);
+  return NextResponse.json({ images });
 }

@@ -1,16 +1,25 @@
 import { MetadataRoute } from 'next';
+import { OF_CATEGORIES } from './onlyfanssearch/constants';
 
 export default function robots(): MetadataRoute.Robots {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
 
-  const commonDisallow = ['/admin', '/advert', '/api', '/_next/static/', '/redirect.html', '/advertise', '/promo', '/premium', '/OF', '/onlyfans/', '/top100'];
+  const commonDisallow = ['/admin', '/advert', '/api', '/_next/static/', '/redirect.html', '/advertise', '/promo', '/premium', '/OF', '/onlyfans/', '/go/', '/top100'];
+  
+  // Build dynamic Allow list for OnlyFans categories
+  const ofCategoryAllows = OF_CATEGORIES.map(cat => `/onlyfanssearch/${cat.slug}`);
   
   return {
     rules: [
       {
         userAgent: '*',
-        allow: '/',
-        disallow: commonDisallow,
+        allow: [
+          '/',
+          '/onlyfanssearch$', // allow hub itself
+          ...ofCategoryAllows,
+          '/onlyfanssearch/top-10-*',
+        ],
+        disallow: ['/onlyfanssearch/', ...commonDisallow],
       },
       {
         userAgent: 'GPTBot',

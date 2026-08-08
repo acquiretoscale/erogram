@@ -4,6 +4,7 @@ import { OnlyFansCreator, ScrapeRun, SearchQuery } from '@/lib/models';
 import { getApifyCredentials, markKeyBurned } from '@/lib/apify-key';
 import { processCreatorImages } from '@/lib/actions/creatorImages';
 import { authenticateUser } from '@/lib/auth';
+import { isCreatorBlacklisted } from '@/lib/onlyfanssearch/creatorBlacklist';
 
 const MAX_PROFILES_PER_SCRAPE = 15;
 
@@ -145,6 +146,7 @@ export async function POST(req: NextRequest) {
       for (const item of items) {
         const parsed = parseDatawizardsItem(item);
         if (!parsed) continue;
+        if (isCreatorBlacklisted(parsed.username)) continue;
         const slug = parsed.username.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
         try {
           const setFields: Record<string, any> = {
@@ -518,6 +520,8 @@ async function processRun(
       : parseIgolaItem(item);
     if (!parsed) { skipped++; continue; }
 
+    if (isCreatorBlacklisted(parsed.username)) continue;
+
     const slug = parsed.username.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
 
     try {
@@ -588,6 +592,7 @@ async function processRun(
       ? parseDatawizardsItem(item)
       : isSentry ? parseSentryItem(item) : parseIgolaItem(item);
     if (!parsed) continue;
+    if (isCreatorBlacklisted(parsed.username)) continue;
     const s = parsed.username.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
     slugsToProcess.push(s);
   }

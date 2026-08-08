@@ -38,7 +38,6 @@ const CANDIDATES = [
   'prii_feet',
   'sabrinaelis',
   'sttaringartx',
-  'ts0f1m',
   'vanessa.cherry18',
   'vedolifts',
   'yourkittypeach',

@@ -13,6 +13,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 const FEED_CREATOR_POOL = 100;
 const FEED_PAGE_SIZE = 12;
 const COMMENTS_PER_POST = 30;
+const LIKE_WEIGHT_GROUP_SUM = { $sum: { $ifNull: ['$seedWeight', 1] } };
 
 function mapCommentRow(r: any): ProfileFeedCommentItem {
   return {
@@ -51,6 +52,20 @@ export type ProfileFeedCommentItem = {
 
 function mediaKeyFor(creatorId: string, type: string, url: string) {
   return `${creatorId}:${type}:${url}`;
+}
+
+function parseMediaKey(mediaKey: string): { creatorId: string; type: 'photo' | 'video'; url: string } | null {
+  const firstColon = mediaKey.indexOf(':');
+  if (firstColon === -1) return null;
+  const secondColon = mediaKey.indexOf(':', firstColon + 1);
+  if (secondColon === -1) return null;
+  const type = mediaKey.slice(firstColon + 1, secondColon);
+  if (type !== 'photo' && type !== 'video') return null;
+  return {
+    creatorId: mediaKey.slice(0, firstColon),
+    type,
+    url: mediaKey.slice(secondColon + 1),
+  };
 }
 
 export type CreatorMediaEngagement = {
@@ -634,4 +649,76 @@ export async function getBatchMediaEngagement(
       };
     }),
   };
+}
+
+export type TopLikedCreatorPhoto = {
+  mediaKey: string;
+  url: string;
+  likeCount: number;
+  creatorId: string;
+  creatorName: string;
+  creatorUsername: string;
+  creatorSlug: string;
+  creatorAvatar: string;
+};
+
+/** Most liked creator photos for /onlyfanssearch hub block. */
+export async function getTopLikedCreatorPhotos(limit = 20): Promise<TopLikedCreatorPhoto[]> {
+  await connectDB();
+
+  const pageSize = Math.min(Math.max(1, limit), 20);
+  const rows = await ProfileFeedLike.aggregate([
+    { $match: { mediaKey: { $regex: ':photo:' } } },
+    { $group: { _id: '$mediaKey', likeCount: LIKE_WEIGHT_GROUP_SUM, creatorId: { $first: '$creatorId' } } },
+    { $sort: { likeCount: -1, _id: 1 } },
+    { $limit: pageSize },
+  ]);
+
+  if (!rows.length) return [];
+
+  const creatorIds = [
+    ...new Set(
+      rows
+        .map((row: { _id: string; creatorId?: unknown }) => {
+          const parsed = parseMediaKey(row._id);
+          return String(row.creatorId || parsed?.creatorId || '');
+        })
+        .filter(Boolean),
+    ),
+  ];
+
+  const creators = await OnlyFansCreator.find({
+    _id: { $in: creatorIds },
+    deleted: { $ne: true },
+  })
+    .select('name username slug avatar')
+    .lean() as Array<{ _id: unknown; name?: string; username?: string; slug?: string; avatar?: string }>;
+
+  const creatorMap = new Map<string, (typeof creators)[number]>();
+  for (const creator of creators) {
+    creatorMap.set(String(creator._id), creator);
+  }
+
+  const out: TopLikedCreatorPhoto[] = [];
+  for (const row of rows as Array<{ _id: string; likeCount: number; creatorId?: unknown }>) {
+    const parsed = parseMediaKey(row._id);
+    if (!parsed || parsed.type !== 'photo' || !parsed.url.startsWith('http')) continue;
+
+    const creatorId = String(row.creatorId || parsed.creatorId);
+    const creator = creatorMap.get(creatorId);
+    if (!creator) continue;
+
+    out.push({
+      mediaKey: row._id,
+      url: parsed.url,
+      likeCount: row.likeCount,
+      creatorId,
+      creatorName: String(creator.name || creator.username || ''),
+      creatorUsername: String(creator.username || ''),
+      creatorSlug: String(creator.slug || creator.username || ''),
+      creatorAvatar: String(creator.avatar || ''),
+    });
+  }
+
+  return out;
 }

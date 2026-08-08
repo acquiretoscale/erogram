@@ -268,11 +268,12 @@ export async function getOFMPendingCreators(token: string) {
 
   const docs = await OnlyFansCreator.find({
     deleted: { $ne: true },
-    $or: [{ submissionStatus: 'pending' }, { submittedByUser: true }],
+    submittedByUser: true,
   })
-    .sort({ createdAt: -1 })
+    .sort({ updatedAt: -1 })
+    .limit(100)
     .select(
-      'name username slug avatar header bio categories location price url extraPhotos submissionStatus submittedBy submittedByUsername submitterType telegramUrl instagramUrl twitterUrl tiktokUrl website createdAt',
+      'name username slug avatar header bio categories location price url extraPhotos submissionStatus submittedBy submittedByUsername submitterType telegramUrl instagramUrl twitterUrl tiktokUrl website createdAt updatedAt',
     )
     .lean();
 

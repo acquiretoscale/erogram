@@ -55,7 +55,7 @@ const tabs: TabItem[] = [
     { href: '/OF',                      name: 'OF Admin',        icon: Crown },
     { href: '/admin/advertisers',      name: 'Advertisers',     icon: Briefcase },
     { href: '/admin/ad-network',       name: 'Ad Network',      icon: Network },
-    { href: '/admin/pending-creators', name: 'Pending Creators', icon: UserCheck },
+    { href: '/admin/pending-creators', name: 'User Submissions', icon: UserCheck },
     { href: '/admin/users',            name: 'Users',           icon: User },
     { href: '/admin/leads',            name: 'Leads',           icon: Target },
     { href: '/admin/newsletter',       name: 'Newsletter',      icon: Mail },

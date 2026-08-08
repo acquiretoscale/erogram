@@ -50,7 +50,7 @@ export default function SubmitPromoAudienceProof() {
     >
       <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-white/[0.08]" style={{ background: HEADER_BG }}>
         <p className="text-sm sm:text-base text-white/80 leading-relaxed">
-          With <strong className="font-black text-white">consistent 40% month-over-month Google&apos;s organic growth.</strong> In just a few months, Erogram became one of the fastest Adult Discovery hubs online.
+          Erogram has grown with consistent 40% month-over-month organic traffic growth from Google.
         </p>
       </div>
 
@@ -60,7 +60,7 @@ export default function SubmitPromoAudienceProof() {
         </div>
 
         <p className="text-sm sm:text-base text-white/70 leading-relaxed px-1">
-          With visitors mainly from Tier 1 &amp; 2 countries like US, UK, Germany, Australia, and other high-value markets, your creator profiles get in front of buyers, and whales with high purchasing power, seeking adult entertainment.
+          With visitors mainly from Tier 1 and Tier 2 markets like the US, UK, Germany, Canada, Australia, and other high-value countries, your profile gets in front of fans with strong purchasing power.
         </p>
 
         <div className="overflow-hidden rounded-xl border border-[#00AFF0]/25 bg-[#071222]">

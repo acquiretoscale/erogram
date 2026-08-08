@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { getPendingCreators, updateCreatorStatus, deleteCreator, editCreator } from './actions';
+import { getPendingCreators, deleteCreator, editCreator } from './actions';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 
 export default function PendingCreatorsPage() {
@@ -18,11 +18,6 @@ export default function PendingCreatorsPage() {
   useEffect(() => {
     getPendingCreators().then(setCreators).finally(() => setLoading(false));
   }, []);
-
-  const handleApprove = async (id: string) => {
-    await updateCreatorStatus(id, 'approved');
-    setCreators(prev => prev.filter(c => c._id !== id));
-  };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this creator permanently?')) return;
@@ -66,12 +61,12 @@ export default function PendingCreatorsPage() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-black text-white mb-6">Submitted Creators ({creators.length})</h1>
+      <h1 className="text-2xl font-black text-white mb-6">Latest User Additions ({creators.length})</h1>
 
       {creators.length === 0 ? (
         <div className="text-center py-16 text-gray-500">
-          <div className="text-4xl mb-3">✅</div>
-          <p>No pending submissions.</p>
+          <div className="text-4xl mb-3">📭</div>
+          <p>No user-submitted profiles yet.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -87,8 +82,8 @@ export default function PendingCreatorsPage() {
                 <div className="flex-1 min-w-0">
                   <h3 className="text-lg font-black text-white truncate">
                     {c.name} <span className="text-xs text-gray-500 font-normal">@{c.username}</span>
-                    {c.submissionStatus === 'approved' && <span className="ml-2 text-[10px] font-bold text-green-400 bg-green-500/20 px-2 py-0.5 rounded-full">LIVE</span>}
-                    {c.submissionStatus === 'pending' && <span className="ml-2 text-[10px] font-bold text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded-full">PENDING</span>}
+                    {c.submissionStatus === 'rejected' && <span className="ml-2 text-[10px] font-bold text-red-400 bg-red-500/20 px-2 py-0.5 rounded-full">REMOVED</span>}
+                    {c.submissionStatus !== 'rejected' && <span className="ml-2 text-[10px] font-bold text-green-400 bg-green-500/20 px-2 py-0.5 rounded-full">LIVE</span>}
                   </h3>
                   <p className="text-sm text-gray-400 line-clamp-2 mb-2">{c.bio}</p>
                   <div className="flex flex-wrap gap-1.5 mb-2">
@@ -98,7 +93,8 @@ export default function PendingCreatorsPage() {
                   </div>
                   <div className="flex items-center gap-4 text-xs text-gray-500">
                     <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">OnlyFans ↗</a>
-                    <span>{new Date(c.createdAt).toLocaleDateString()}</span>
+                    <span>{new Date(c.updatedAt || c.createdAt).toLocaleString()}</span>
+                    {c.submittedByUsername && <span>by @{c.submittedByUsername}</span>}
                   </div>
                   {c.extraPhotos?.length > 0 && (
                     <div className="flex gap-2 mt-2">
@@ -109,7 +105,6 @@ export default function PendingCreatorsPage() {
                   )}
                 </div>
                 <div className="flex flex-col gap-2 shrink-0 justify-center">
-                  <button onClick={() => handleApprove(c._id)} className="px-4 py-2 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-bold transition-colors">✓ Approve</button>
                   <button onClick={() => openEdit(c)} className="px-4 py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/30 text-blue-400 text-sm font-bold transition-colors">✏ Edit</button>
                   <button onClick={() => handleDelete(c._id)} className="px-4 py-2 rounded-xl bg-red-600/20 hover:bg-red-600/40 border border-red-500/30 text-red-400 text-sm font-bold transition-colors">🗑 Delete</button>
                 </div>

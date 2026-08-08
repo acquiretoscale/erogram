@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import OFMSidebar from './components/OFMSidebar';
+import OFLegalBanner from './components/OFLegalBanner';
 
 export default function OFMLayout({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -168,6 +169,7 @@ export default function OFMLayout({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1 md:ml-[220px] pt-16 md:pt-0 min-h-screen overflow-y-auto">
         <div className="max-w-7xl mx-auto p-4 md:p-8">
+          <OFLegalBanner />
           {children}
         </div>
       </main>

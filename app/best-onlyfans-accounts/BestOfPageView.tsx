@@ -51,10 +51,12 @@ function rankBadgeStyle(rank: number): { bg: string; color: string; label: strin
 }
 
 function bioSnippet(bio?: string, max = 144): string {
-  const text = bio?.replace(/\s+/g, ' ').trim();
+  if (!bio) return '';
+  const text = bio.normalize('NFC').replace(/\s+/g, ' ').trim();
   if (!text) return '';
-  if (text.length <= max) return text;
-  return `${text.slice(0, max).trim()}…`;
+  const chars = [...text];
+  if (chars.length <= max) return text;
+  return `${chars.slice(0, max).join('').trim()}…`;
 }
 
 /**
@@ -498,6 +500,20 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                   : '';
               const cardRowClass = `relative z-10 flex flex-col sm:flex-row gap-0 sm:gap-5`;
 
+              // Option B: Hide creator profile links from Google/Guests.
+              // We use a button-style redirect for the Erogram profile link to prevent crawling.
+              const handleErogramProfile = (e: React.MouseEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof window === 'undefined') return;
+                const token = localStorage.getItem('token');
+                if (!token) {
+                  window.open(`/join-erogram?redirect=${encodeURIComponent(erogramHref)}`, '_blank', 'noopener,noreferrer');
+                } else {
+                  window.open(erogramHref, '_blank', 'noopener,noreferrer');
+                }
+              };
+
               return (
                 <li key={creator._id}>
                   <article
@@ -610,7 +626,7 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                         <div className="mt-4 sm:mt-auto pt-1">
                           {isPromo ? (
                               <a
-                                href={creator.username ? `/go/${creator.username}` : '#'}
+                                href={creator.url || '#'}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl font-black uppercase text-white px-8 py-4 text-[16px] tracking-[0.14em] transition-opacity hover:opacity-95"
@@ -625,7 +641,11 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                       </div>
                       </div>
                     ) : (
-                      <Link href={erogramHref} target="_blank" rel="noopener noreferrer" className={`${cardRowClass} cursor-pointer no-underline`}>
+                      <button
+                        type="button"
+                        onClick={handleErogramProfile}
+                        className={`${cardRowClass} w-full text-left cursor-pointer appearance-none bg-transparent border-none p-0 m-0`}
+                      >
                       {/* Avatar */}
                       <div
                         className="relative flex-shrink-0 w-full sm:w-[11.5rem] h-52 sm:h-auto sm:min-h-[15rem] overflow-hidden sm:rounded-l-[1.35rem]"
@@ -720,7 +740,7 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                           </span>
                         </div>
                       </div>
-                      </Link>
+                      </button>
                     )}
                   </article>
                 </li>

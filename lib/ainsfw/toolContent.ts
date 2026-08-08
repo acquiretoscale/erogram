@@ -10,8 +10,10 @@ export type ToolContentFields = {
 };
 
 export function resolveGallery(slug: string, content?: ToolContentFields | null): string[] {
-  if (content?.galleryManaged && Array.isArray(content.customGallery)) {
-    return content.customGallery;
+  // Once admin/listing-owner has managed the gallery, ONLY their saved list is used.
+  // Empty customGallery means intentionally empty — never fall back to the hardcoded map.
+  if (content?.galleryManaged) {
+    return Array.isArray(content.customGallery) ? content.customGallery : [];
   }
   if ((content?.hiddenGalleryUrls?.length ?? 0) > 0) {
     const base = AINSFW_GALLERY[slug] || [];
@@ -28,6 +30,8 @@ export function contentFromStats(doc?: ToolContentFields | null): ToolContentFie
     imageOverride: doc.imageOverride || '',
     customGallery: doc.customGallery || [],
     hiddenGalleryUrls: doc.hiddenGalleryUrls || [],
+    galleryManaged: !!doc.galleryManaged || (doc.hiddenGalleryUrls?.length ?? 0) > 0 || (doc.customGallery?.length ?? 0) > 0,
+    coverManaged: !!doc.coverManaged,
   };
 }
 

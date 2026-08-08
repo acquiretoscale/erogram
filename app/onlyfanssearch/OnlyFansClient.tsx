@@ -1,18 +1,19 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Search, Bookmark, Crown, Trash2, X, Heart, Clock, TrendingUp, User } from 'lucide-react';
+import { Search, Bookmark, Crown, Trash2, X, Heart, Clock, TrendingUp, Globe, Send, ImageIcon } from 'lucide-react';
 import { OF_CATEGORY_MAP, OF_SEARCH_HUB_CATEGORY_SLUGS } from './constants';
 import { bestOfBlogSlug, getTopBestOfByType, BEST_OF_PAGE_MAP, type BestOfPage } from '@/app/best-onlyfans-accounts/bestOfPages';
 import Navbar from '@/components/Navbar';
 import HeaderBanner from '@/components/HeaderBanner';
-import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { ofCreatorProfileUrl, ofOutboundUrl } from '@/lib/onlyfanssearch/creatorUrls';
 import { trackCreatorClick, trackTrendingClick } from '@/lib/actions/onlyfansTracking';
 import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
 import { getTrendingCreators } from '@/lib/actions/publicData';
 import { deleteCreatorBySlug } from '@/lib/actions/ofCreatorsBrowse';
+import type { TopLikedCreatorPhoto } from '@/lib/actions/profileFeed';
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
 import Footer from '@/components/Footer';
 import ProfileOFPremiumSearch from '@/app/profile/ProfileOFPremiumSearch';
@@ -56,6 +57,7 @@ interface Creator {
   slug: string;
   avatar: string;
   header?: string;
+  extraPhotos?: string[];
   categories?: string[];
   subscriberCount?: number;
   likesCount: number;
@@ -68,7 +70,420 @@ interface Creator {
   redirectToOF?: boolean;
   liveHourStart?: number;
   liveHourEnd?: number;
+  instagramUrl?: string;
+  twitterUrl?: string;
+  tiktokUrl?: string;
+  telegramUrl?: string;
+  fanslyUrl?: string;
+  fanvueUrl?: string;
+  redditUrl?: string;
+  patreonUrl?: string;
+  website?: string;
+  linktreeUrl?: string;
+  allmylinksUrl?: string;
+  beaconsUrl?: string;
+  erogramSaves?: number;
+  isCommunityFeatured?: boolean;
 }
+
+type CommunitySocialBadge = {
+  key: string;
+  label: string;
+  icon: ReactNode;
+};
+
+function OnlyFansLogoIcon() {
+  return (
+    <svg className="w-[24px] h-[24px]" viewBox="0 0 24 24" fill="#00AFF0" aria-hidden="true">
+      <path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z" />
+    </svg>
+  );
+}
+
+function InstagramLogoIcon({ gradId }: { gradId: string }) {
+  return (
+    <svg className="w-[24px] h-[24px]" viewBox="0 0 24 24" aria-hidden="true">
+      <defs>
+        <linearGradient id={gradId} x1="0%" y1="100%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#feda75" />
+          <stop offset="25%" stopColor="#fa7e1e" />
+          <stop offset="50%" stopColor="#d62976" />
+          <stop offset="75%" stopColor="#962fbf" />
+          <stop offset="100%" stopColor="#4f5bd5" />
+        </linearGradient>
+      </defs>
+      <rect x="2.5" y="2.5" width="19" height="19" rx="5.5" fill="none" stroke={`url(#${gradId})`} strokeWidth="2" />
+      <circle cx="12" cy="12" r="4.2" fill="none" stroke={`url(#${gradId})`} strokeWidth="2" />
+      <circle cx="17.2" cy="6.8" r="1.2" fill={`url(#${gradId})`} />
+    </svg>
+  );
+}
+
+function getCommunitySocialBadges(creator: Creator): CommunitySocialBadge[] {
+  const badges: CommunitySocialBadge[] = [];
+  const add = (key: string, label: string, icon: ReactNode, show: boolean) => {
+    if (!show) return;
+    badges.push({ key, label, icon });
+  };
+
+  add('onlyfans', 'OnlyFans', <OnlyFansLogoIcon />, !!creator.username);
+  add('instagram', 'Instagram', <InstagramLogoIcon gradId={`ig-community-${creator._id}`} />, !!creator.instagramUrl?.trim());
+  add('fansly', 'Fansly', (
+    <img src="/assets/platforms/fansly-logo.webp" alt="" className="h-[24px] w-auto object-contain" loading="lazy" decoding="async" />
+  ), !!creator.fanslyUrl?.trim());
+  add('twitter', 'X', (
+    <svg className="w-[24px] h-[24px] text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.451-6.231zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z" />
+    </svg>
+  ), !!creator.twitterUrl?.trim());
+  add('tiktok', 'TikTok', (
+    <svg className="w-[24px] h-[24px] text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.77 1.52V6.76a4.85 4.85 0 0 1-1.01-.07z" />
+    </svg>
+  ), !!creator.tiktokUrl?.trim());
+  add('telegram', 'Telegram', <Send size={24} className="text-white" strokeWidth={2.4} />, !!creator.telegramUrl?.trim());
+  add('fanvue', 'Fanvue', (
+    <img src="/assets/platforms/fanvue-logo.webp" alt="" className="h-[24px] w-auto object-contain" loading="lazy" decoding="async" />
+  ), !!creator.fanvueUrl?.trim());
+  add('reddit', 'Reddit', (
+    <svg className="w-[24px] h-[24px] text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z" />
+    </svg>
+  ), !!creator.redditUrl?.trim());
+  add('patreon', 'Patreon', (
+    <img src="/assets/platforms/patreon-logo.webp" alt="" className="h-[24px] w-auto object-contain" loading="lazy" decoding="async" />
+  ), !!creator.patreonUrl?.trim());
+  add('linktree', 'Linktree', <Globe size={24} className="text-white" strokeWidth={2.4} />, !!creator.linktreeUrl?.trim());
+  add('allmylinks', 'AllMyLinks', <Globe size={24} className="text-white" strokeWidth={2.4} />, !!creator.allmylinksUrl?.trim());
+  add('beacons', 'Beacons', <Globe size={24} className="text-white" strokeWidth={2.4} />, !!creator.beaconsUrl?.trim());
+  add('website', 'Website', <Globe size={24} className="text-white" strokeWidth={2.4} />, !!creator.website?.trim());
+
+  return badges;
+}
+
+function openCommunityProfile(username: string, slug: string, onTrack: (slug: string) => void) {
+  onTrack(slug);
+  const path = ofCreatorProfileUrl(username);
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+  if (!token) {
+    window.open(`/join-erogram?redirect=${encodeURIComponent(path)}`, '_blank', 'noopener,noreferrer');
+    return;
+  }
+  window.open(path, '_blank', 'noopener,noreferrer');
+}
+
+function MostLikedPhotoCard({
+  photo,
+  onTrack,
+}: {
+  photo: TopLikedCreatorPhoto;
+  onTrack: (slug: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => openCommunityProfile(photo.creatorUsername, photo.creatorSlug, onTrack)}
+      className="group relative overflow-hidden rounded-xl border border-white/10 bg-[#eef4f8] shadow-md hover:border-[#00AFF0]/35 hover:shadow-lg transition-all text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00AFF0]"
+      aria-label={photo.creatorName}
+    >
+      <div className="aspect-[3/4] overflow-hidden bg-gray-100">
+        <img
+          src={photo.url}
+          alt=""
+          className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
+          loading="lazy"
+          referrerPolicy="no-referrer"
+        />
+      </div>
+      <div className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold">
+        <Heart size={11} fill="currentColor" aria-hidden="true" />
+        <span>{photo.likeCount}</span>
+      </div>
+      <div className="absolute inset-x-0 bottom-0 px-2.5 py-2 bg-gradient-to-t from-black/75 via-black/45 to-transparent">
+        <p className="text-[11px] sm:text-[12px] font-bold text-white truncate">{photo.creatorName}</p>
+      </div>
+    </button>
+  );
+}
+
+function communityExtras(creator: Creator): string[] {
+  const avatar = (creator.avatar || '').trim();
+  const cover = (creator.header || '').trim();
+  const seen = new Set<string>([avatar].filter(Boolean));
+  const out: string[] = [];
+  // Cover always first (left) when it exists and is not the avatar
+  if (cover.startsWith('http') && !seen.has(cover)) {
+    seen.add(cover);
+    out.push(cover);
+  }
+  for (const url of creator.extraPhotos || []) {
+    const u = (url || '').trim();
+    if (!u.startsWith('http') || seen.has(u)) continue;
+    seen.add(u);
+    out.push(u);
+    if (out.length >= 4) break;
+  }
+  return out;
+}
+
+function CommunityProfileRow({
+  creator,
+  onTrack,
+  isSaved = false,
+  onToggleSave,
+}: {
+  creator: Creator;
+  onTrack: (slug: string) => void;
+  showErogramSaves?: boolean;
+  isSaved?: boolean;
+  onToggleSave?: (creatorId: string) => void;
+}) {
+  const socials = getCommunitySocialBadges(creator);
+  const avatar = (creator.avatar || '').trim();
+  const cover = (creator.header || '').trim() || avatar;
+  const extras = communityExtras(creator);
+  const saves = creator.erogramSaves ?? 0;
+  const [loggedIn, setLoggedIn] = useState(false);
+
+  useEffect(() => {
+    setLoggedIn(!!localStorage.getItem('token'));
+  }, []);
+
+  const previewPhotos =
+    extras.length > 0
+      ? extras.slice(0, 4)
+      : [...new Set([avatar, cover].filter((u) => u.startsWith('http')))].slice(0, 2);
+
+  const goAuth = () => {
+    const path = ofCreatorProfileUrl(creator.username);
+    window.open(`/join-erogram?redirect=${encodeURIComponent(path)}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleVisit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    openCommunityProfile(creator.username, creator.slug, onTrack);
+  };
+
+  const handleBookmark = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!localStorage.getItem('token')) {
+      goAuth();
+      return;
+    }
+    onToggleSave?.(creator._id);
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => openCommunityProfile(creator.username, creator.slug, onTrack)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openCommunityProfile(creator.username, creator.slug, onTrack);
+        }
+      }}
+      className={`group relative flex h-full w-full flex-col text-left overflow-hidden rounded-2xl border bg-[#0d1824] shadow-md hover:-translate-y-0.5 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00AFF0] ${
+        creator.isCommunityFeatured
+          ? 'border-white/20 shadow-[0_10px_28px_-14px_rgba(0,0,0,0.65)] hover:border-white/30'
+          : 'border-white/10 hover:border-[#00AFF0]/45 hover:shadow-[0_12px_32px_-12px_rgba(0,175,240,0.45)]'
+      }`}
+      aria-label={`@${creator.username}`}
+    >
+      {/* Full-bleed cover — same effect as the horizontal visit cards */}
+      <div className="absolute inset-0" aria-hidden="true">
+        {cover.startsWith('http') ? (
+          <img
+            src={cover}
+            alt=""
+            className="w-full h-full object-cover scale-105 group-hover:scale-110 transition-transform duration-500"
+            loading="lazy"
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-[#0a1c2e] via-[#12324a] to-[#00AFF0]/30" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/75 to-black/88" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/25" />
+      </div>
+
+      <div className="relative flex flex-1 flex-col gap-2.5 p-3 sm:p-3.5">
+        {/* Avatar — centered, IG ring */}
+        <div className="flex justify-center pt-1 shrink-0">
+          <div
+            className="rounded-full p-[2.5px] bg-gradient-to-tr from-[#feda75] via-[#fa7e1e] via-[#d62976] via-[#962fbf] to-[#4f5bd5] shadow-lg"
+            aria-hidden="true"
+          >
+            <div className="rounded-full p-[2px] bg-[#0d1824]">
+              <div className="w-[14rem] h-[14rem] sm:w-[15.25rem] sm:h-[15.25rem] rounded-full overflow-hidden bg-[#1a2a3a] ring-1 ring-white/10">
+                {avatar.startsWith('http') ? (
+                  <img
+                    src={avatar}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-xl font-black text-[#00AFF0]/70">
+                    {(creator.username || '?').charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Handle + featured pill (below avatar — never covers photo) */}
+        <div className="flex flex-col items-center gap-1 shrink-0 px-1">
+          <p className="text-center text-[17px] sm:text-[18px] font-black text-white truncate leading-tight drop-shadow-sm w-full">
+            @{creator.username}
+          </p>
+          {creator.isCommunityFeatured && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-[#d4af37]/30 bg-black/35 text-[#e8dcc0]/90 text-[8px] sm:text-[9px] font-semibold uppercase tracking-[0.16em] backdrop-blur-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+              <Crown size={9} className="text-[#d4af37]/75 shrink-0" strokeWidth={2.25} aria-hidden="true" />
+              Featured
+            </span>
+          )}
+        </div>
+
+        {/* Socials — fixed height so all cards match */}
+        <div className="flex items-center justify-center gap-1.5 h-8 shrink-0 pointer-events-none" aria-hidden="true">
+          {socials.slice(0, 4).map((social) => (
+            <span
+              key={social.key}
+              title={social.label}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-black/45 border border-white/15 backdrop-blur-sm [&_svg]:w-6 [&_svg]:h-6 [&_img]:h-6"
+            >
+              {social.icon}
+            </span>
+          ))}
+        </div>
+
+        {/* Preview photos — fixed 2x2 slot (same height as 4-picture cards) */}
+        <div className="grid grid-cols-2 grid-rows-2 gap-1.5 w-[64%] mx-auto h-[10.5rem] sm:h-[11.5rem] shrink-0" aria-hidden="true">
+          {Array.from({ length: 4 }).map((_, idx) => {
+            const src = previewPhotos[idx];
+            const blurLocked = !loggedIn && previewPhotos.length > 2 && idx >= 2;
+            if (!src) {
+              return <div key={`empty-${idx}`} className="min-h-0 rounded-lg" />;
+            }
+            return (
+              <div
+                key={`${src}-${idx}`}
+                className="relative min-h-0 rounded-lg overflow-hidden border border-white/25 shadow-md ring-1 ring-black/20 bg-black/30"
+              >
+                <img
+                  src={src}
+                  alt=""
+                  className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${blurLocked ? 'blur-md scale-110' : ''}`}
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                />
+                {blurLocked && <div className="absolute inset-0 bg-black/25" />}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Visit + Bookmarks */}
+        <div className="mt-auto flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            title="click to visit erogram profile"
+            onClick={handleVisit}
+            className={`${CREATOR_VIEW_PROFILE_BTN} !w-auto flex-1`}
+          >
+            Visit Profile
+          </button>
+          <button
+            type="button"
+            title="click to bookmark creator"
+            onClick={handleBookmark}
+            className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-xl bg-[#0084BD] text-white text-[12px] sm:text-sm font-black shadow-lg border border-[#0084BD] hover:bg-[#0070A3] transition-colors"
+          >
+            <Bookmark size={14} className="shrink-0" fill={isSaved ? 'currentColor' : 'none'} aria-hidden="true" />
+            <span className="tabular-nums">{saves.toLocaleString()}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BookmarkedProfilesSection({
+  title,
+  ariaLabel,
+  creators,
+  onTrack,
+  columns = 1,
+}: {
+  title: string;
+  ariaLabel: string;
+  creators: Creator[];
+  onTrack: (slug: string) => void;
+  columns?: 1 | 4;
+}) {
+  if (creators.length === 0) return null;
+
+  if (columns === 4) {
+    return (
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8 sm:pt-6 sm:pb-10" aria-label={ariaLabel}>
+        <div className="flex items-center gap-2 mb-4 sm:mb-5">
+          <Bookmark size={18} className="text-[#00AFF0]" fill="currentColor" />
+          <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-wide">{title}</h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+          {Array.from({ length: BOOKMARKED_BLOCKS }, (_, blockIdx) =>
+            creators.slice(
+              blockIdx * BOOKMARKED_PER_BLOCK,
+              blockIdx * BOOKMARKED_PER_BLOCK + BOOKMARKED_PER_BLOCK,
+            ),
+          )
+            .filter((block) => block.length > 0)
+            .map((block, blockIdx) => (
+              <div key={blockIdx} className="rounded-xl bg-[#eef4f8] border border-white/10 p-1.5 sm:p-2 shadow-md flex flex-col gap-1.5 sm:gap-2">
+                {block.map((creator) => (
+                  <CommunityProfileRow
+                    key={creator._id}
+                    creator={creator}
+                    onTrack={onTrack}
+                    showErogramSaves
+                  />
+                ))}
+              </div>
+            ))}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8 sm:pt-6 sm:pb-10" aria-label={ariaLabel}>
+      <div className="flex items-center gap-2 mb-4 sm:mb-5">
+        <Bookmark size={18} className="text-[#00AFF0]" fill="currentColor" />
+        <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-wide">{title}</h2>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+        <div className="rounded-xl bg-[#eef4f8] border border-white/10 p-1.5 sm:p-2 shadow-md flex flex-col gap-1.5 sm:gap-2">
+          {creators.map((creator) => (
+            <CommunityProfileRow
+              key={creator._id}
+              creator={creator}
+              onTrack={onTrack}
+              showErogramSaves
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const BOOKMARKED_BLOCKS = 4;
+const BOOKMARKED_PER_BLOCK = 5;
+const PROFILES_PER_BLOCK = 40;
 
 interface TrendingCreatorItem {
   _id: string;
@@ -88,10 +503,12 @@ interface Props {
   initialQuery?: string;
   topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string; bannerDevice?: 'all' | 'mobile' | 'desktop' }>;
   trendingOnErogram?: TrendingCreatorItem[];
+  communityCreators?: Creator[];
+  topBookmarkedRecent?: Creator[];
+  topLikedCreators?: Creator[];
+  topLikedPhotos?: TopLikedCreatorPhoto[];
   paidFeatured?: any[];
   visitorCountryCode?: string;
-  top10PreviewAvatars?: Record<string, string[]>;
-  bestAccountsPreviewAvatars?: Record<string, string[]>;
 }
 
 function mergeFeaturedLists(paid: any[], rail: any[]) {
@@ -136,10 +553,7 @@ function FeaturedLiveBadge({ liveHourStart, liveHourEnd }: { liveHourStart?: num
 }
 
 const CREATOR_VIEW_PROFILE_BTN =
-  'flex-1 flex items-center justify-center gap-2 py-2 sm:py-2.5 rounded-xl bg-[#0084BD] text-white text-[12px] sm:text-sm font-black text-center shadow-lg border border-[#0084BD] group-hover:bg-[#0070A3] transition-colors no-underline';
-
-const CREATOR_PROFILE_ICON_BTN =
-  'flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl bg-[#0084BD] text-white shadow-lg border border-[#0084BD] hover:bg-[#0070A3] transition-colors';
+  'w-full flex items-center justify-center gap-2 py-2 sm:py-2.5 rounded-xl bg-[#0084BD] text-white text-[12px] sm:text-sm font-black text-center shadow-lg border border-[#0084BD] group-hover:bg-[#0070A3] transition-colors no-underline';
 
 const FEATURED_CTA =
   'w-full py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-[13px] sm:text-sm font-bold text-center shadow-sm group-hover:shadow-md group-hover:from-[#009ADB] group-hover:to-[#00BFE8] transition-all';
@@ -151,31 +565,7 @@ function formatCount(n: number) {
   return `${n}K`;
 }
 
-function PreviewMosaic({ avatars }: { avatars: string[] }) {
-  const pics = avatars.slice(0, 4);
-  return (
-    <div className="grid grid-cols-2 gap-px w-14 h-14 shrink-0 rounded-lg overflow-hidden border border-[rgba(43,27,40,0.1)]" aria-hidden="true">
-      {Array.from({ length: 4 }).map((_, idx) => {
-        const src = pics[idx];
-        return (
-          <div key={idx} className="relative aspect-square bg-[rgba(43,27,40,0.05)]">
-            {src ? (
-              <img
-                src={src}
-                alt=""
-                className="absolute inset-0 w-full h-full object-cover"
-                loading="lazy"
-                referrerPolicy="no-referrer"
-              />
-            ) : null}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function BestAccountsLinksSection({ previewAvatars }: { previewAvatars: Record<string, string[]> }) {
+function BestAccountsLinksSection() {
   const lp = useLocalePath();
 
   const categories = useMemo(
@@ -186,11 +576,11 @@ function BestAccountsLinksSection({ previewAvatars }: { previewAvatars: Record<s
   );
 
   const columns = useMemo(() => {
-    const perCol = Math.ceil(categories.length / 3);
+    const perCol = 5;
     return [
       { key: 'look', title: '10 Best OnlyFans · Look & body', items: categories.slice(0, perCol) },
       { key: 'style', title: '10 Best OnlyFans · Style & vibe', items: categories.slice(perCol, perCol * 2) },
-      { key: 'niche', title: '10 Best OnlyFans · Niches & kinks', items: categories.slice(perCol * 2) },
+      { key: 'niche', title: '10 Best OnlyFans · Niches & kinks', items: categories.slice(perCol * 2, perCol * 3) },
     ];
   }, [categories]);
 
@@ -221,10 +611,9 @@ function BestAccountsLinksSection({ previewAvatars }: { previewAvatars: Record<s
                   <li key={cat.slug} className="border-b border-[rgba(43,27,40,0.08)] last:border-b-0">
                     <Link
                       href={href}
-                      className="flex items-start gap-2.5 py-2 text-[#2B1B28] no-underline hover:opacity-80 transition-opacity"
+                      className="block py-2 text-[11px] sm:text-[12px] font-semibold leading-snug text-[#2B1B28] no-underline hover:text-[#00AFF0] transition-colors"
                     >
-                      <PreviewMosaic avatars={previewAvatars[cat.slug] || []} />
-                      <span className="text-[11px] sm:text-[12px] font-semibold leading-snug pt-0.5">{linkText}</span>
+                      {linkText}
                     </Link>
                   </li>
                 );
@@ -237,7 +626,7 @@ function BestAccountsLinksSection({ previewAvatars }: { previewAvatars: Record<s
   );
 }
 
-function Top10RankingsSection({ previewAvatars }: { previewAvatars: Record<string, string[]> }) {
+function Top10RankingsSection() {
   const lp = useLocalePath();
   const niches = useMemo(() => getTopBestOfByType('niche'), []);
   const regions = useMemo(() => getTopBestOfByType('country'), []);
@@ -267,10 +656,9 @@ function Top10RankingsSection({ previewAvatars }: { previewAvatars: Record<strin
                   <li key={page.slug} className="border-b border-[rgba(43,27,40,0.08)] last:border-b-0">
                     <Link
                       href={href}
-                      className="flex items-start gap-2.5 py-2 text-[#2B1B28] no-underline"
+                      className="block py-2 text-[11px] sm:text-[12px] font-semibold leading-snug text-[#2B1B28] no-underline hover:text-[#00AFF0] transition-colors"
                     >
-                      <PreviewMosaic avatars={previewAvatars[page.slug] || []} />
-                      <span className="text-[11px] sm:text-[12px] font-semibold leading-snug pt-0.5">{linkText}</span>
+                      {linkText}
                     </Link>
                   </li>
                 );
@@ -305,18 +693,6 @@ function CreatorCard({
 
   const handleViewProfileClick = () => {
     onClickTrack(creator.slug);
-  };
-
-  const handleErogramProfile = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const path = ofCreatorProfileUrl(creator.username);
-    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) {
-      window.open(`/join-erogram?redirect=${encodeURIComponent(path)}`, '_blank', 'noopener,noreferrer');
-      return;
-    }
-    window.open(path, '_blank', 'noopener,noreferrer');
   };
 
   if (deleted) return null;
@@ -412,24 +788,15 @@ function CreatorCard({
           </div>
         </div>
         <div className="px-2.5 pb-2.5 pt-2 sm:px-4 sm:pb-4 sm:pt-3">
-          <div className="flex gap-1.5 sm:gap-2">
-            <a
-              href={`/go/${creator.username}`}
-              target="_blank"
-              rel="noopener"
-              onClick={handleViewProfileClick}
-              className={CREATOR_VIEW_PROFILE_BTN}
-            >
-              {t('ofSearch.viewProfile')}
-            </a>
-            <button
-              onClick={handleErogramProfile}
-              className={CREATOR_PROFILE_ICON_BTN}
-              title="View on Erogram"
-            >
-              <User size={16} />
-            </button>
-          </div>
+          <a
+            href={ofOutboundUrl(creator.username, creator.url)}
+            target="_blank"
+            rel="nofollow noopener noreferrer"
+            onClick={handleViewProfileClick}
+            className={CREATOR_VIEW_PROFILE_BTN}
+          >
+            {t('ofSearch.viewProfile')}
+          </a>
         </div>
       </div>
     </div>
@@ -459,7 +826,7 @@ function CreatorPostModal({ creator, onClose }: { creator: Creator; onClose: () 
 
   useEffect(() => {
     if (redirecting && countdown === 0) {
-      window.open(`/go/${creator.username}`, '_blank', 'noopener');
+      window.open(ofOutboundUrl(creator.username, creator.url), '_blank', 'noopener,noreferrer');
       setRedirecting(false);
     }
   }, [redirecting, countdown, creator.username]);
@@ -527,7 +894,7 @@ function CreatorPostModal({ creator, onClose }: { creator: Creator; onClose: () 
   );
 }
 
-export default function OnlyFansClient({ initialCreators, totalCreators, initialQuery = '', topBannerCampaigns = [], trendingOnErogram = [], paidFeatured = [], visitorCountryCode = '', top10PreviewAvatars = {}, bestAccountsPreviewAvatars = {} }: Props) {
+export default function OnlyFansClient({ initialCreators, totalCreators, initialQuery = '', topBannerCampaigns = [], trendingOnErogram = [], communityCreators = [], topBookmarkedRecent = [], topLikedCreators = [], topLikedPhotos = [], paidFeatured = [], visitorCountryCode = '' }: Props) {
   const { t } = useTranslation();
   const lp = useLocalePath();
   const [creators, setCreators] = useState<Creator[]>(initialCreators);
@@ -548,7 +915,9 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
     shownVariantRef.current[tc._id] = variant;
     if (tc.isPaidCampaign && tc.campaignId) trackCampaignClick(tc.campaignId, ofSearchPlacement(variant));
     else trackTrendingClick(tc._id, variant);
-    window.open(`/go/${tc.username}`, '_blank', 'noopener');
+    // Promoted / featured: keep tracking link untouched.
+    const dest = (tc.url || tc.destinationUrl || '').trim() || `https://onlyfans.com/${tc.username}`;
+    window.open(dest, '_blank', 'noopener,noreferrer');
   }, []);
   useEffect(() => {
     setIsAdmin(localStorage.getItem('isAdmin') === 'true');
@@ -589,7 +958,7 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
   const handleToggleSave = useCallback(async (creatorId: string) => {
     const token = localStorage.getItem('token');
     if (!token) {
-      window.location.href = `/login?redirect=${encodeURIComponent('/onlyfanssearch')}`;
+      window.open(`/join-erogram?redirect=${encodeURIComponent('/onlyfanssearch')}`, '_blank', 'noopener,noreferrer');
       return;
     }
 
@@ -621,6 +990,20 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
     trackCreatorClick(slug);
   };
 
+  const communityBlocks = useMemo(() => {
+    const blocks: { id: string; label?: string; creators: Creator[]; showErogramSaves?: boolean }[] = [];
+
+    const recentlyJoined = communityCreators.slice(0, PROFILES_PER_BLOCK);
+    if (recentlyJoined.length > 0) {
+      blocks.push({
+        id: 'recently-joined',
+        creators: recentlyJoined,
+      });
+    }
+
+    return blocks;
+  }, [communityCreators]);
+
   const handleDelete = async (slug: string) => {
     const token = localStorage.getItem('token');
     if (!token) { alert('Not logged in'); return; }
@@ -645,6 +1028,13 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
         )}
         <section className="bg-gradient-to-b from-[#00AFF0]/10 via-[#00AFF0]/[0.04] to-[#111111] pt-6 pb-8 sm:pt-8 sm:pb-10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-white/40 mb-4">
+              <Link href={lp('/')} className="hover:text-[#00AFF0] transition-colors">
+                {t('bestOnlyfans.breadcrumbHome')}
+              </Link>
+              <span aria-hidden="true">/</span>
+              <span className="text-white/70">{t('bestOnlyfans.breadcrumbOfSearch')}</span>
+            </nav>
             <div className="text-center mb-6 sm:mb-8">
               <motion.h1
                 initial={{ opacity: 0, y: 16 }}
@@ -767,9 +1157,60 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
               </section>
             )}
 
-            <BestAccountsLinksSection previewAvatars={bestAccountsPreviewAvatars} />
+            {communityBlocks.length > 0 && (
+              <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-8 sm:pt-8 sm:pb-10" aria-label="Creator Spotlight">
+                <div className="relative overflow-hidden rounded-3xl border border-black/[0.06] bg-white shadow-[0_20px_50px_-20px_rgba(0,0,0,0.12)]">
+                  <div className="pointer-events-none absolute -top-24 right-0 h-56 w-56 rounded-full bg-[#00AFF0]/[0.06] blur-3xl" aria-hidden="true" />
+                  <div className="relative flex flex-col lg:flex-row lg:items-stretch lg:justify-between gap-6 sm:gap-8 p-5 sm:p-7 lg:p-8 border-b border-black/[0.06]">
+                    <div className="min-w-0 flex-1 max-w-3xl">
+                      <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.28em] text-[#00AFF0] mb-3 sm:mb-4">
+                        Creator Spotlight
+                      </p>
+                      <h2 className="text-[1.65rem] sm:text-3xl lg:text-[2.125rem] font-black text-gray-900 leading-[1.12] tracking-tight mb-3 sm:mb-4">
+                        Your next favorite creator just joined Erogram
+                      </h2>
+                      <p className="text-[14px] sm:text-base text-gray-600 leading-relaxed max-w-2xl">
+                        The community keeps growing. Explore the latest creators to join EROGRAM, with galleries, videos, and links all in one place. Create a free account to like, save, comment, and support your favorite creators.
+                      </p>
+                    </div>
+                    <div className="shrink-0 lg:w-[min(100%,22rem)] flex flex-col justify-center rounded-2xl border border-[#00AFF0]/15 bg-[#eef8fd] p-4 sm:p-5">
+                      <p className="text-[15px] sm:text-base font-black text-gray-900 mb-1.5">Are you a creator?</p>
+                      <p className="text-[12px] sm:text-[13px] text-gray-600 leading-relaxed mb-4 sm:mb-5">
+                        Claim your free profile and join the discovery feed. Create your profile and start getting seen.
+                      </p>
+                      <a
+                        href="/submit"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center w-full sm:w-auto px-5 py-3 rounded-xl bg-gradient-to-r from-[#00AFF0] via-[#00C4FF] to-[#009AD6] text-white text-[13px] sm:text-sm font-black tracking-tight shadow-[0_10px_28px_-6px_rgba(0,175,240,0.65),inset_0_1px_0_0_rgba(255,255,255,0.25)] ring-1 ring-[#00AFF0]/50 hover:from-[#00C4FF] hover:to-[#00AFF0] hover:shadow-[0_14px_32px_-4px_rgba(0,175,240,0.75)] transition-all duration-200"
+                      >
+                        Create free profile
+                      </a>
+                    </div>
+                  </div>
+                {communityBlocks.map((block) => (
+                  <div key={block.id} className="w-full p-2 sm:p-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                        {block.creators.map((creator) => (
+                          <CommunityProfileRow
+                            key={creator._id}
+                            creator={creator}
+                            onTrack={trackClick}
+                            showErogramSaves={block.showErogramSaves}
+                            isSaved={savedIds.has(creator._id)}
+                            onToggleSave={handleToggleSave}
+                          />
+                        ))}
+                      </div>
+                  </div>
+                ))}
+                </div>
+              </section>
+            )}
 
-            <Top10RankingsSection previewAvatars={top10PreviewAvatars} />
+            <BestAccountsLinksSection />
+
+            <Top10RankingsSection />
 
             <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-4">
               <OnlyFansEditorialSeo />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -25,6 +25,9 @@ const OF_DARKER = '#0077B3';
 const primaryCta =
   'inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-black text-sm uppercase tracking-widest text-white transition-all hover:-translate-y-0.5 hover:brightness-110 active:translate-y-[2px]';
 
+const submitHeroCta =
+  'inline-flex items-center justify-center gap-2 px-10 sm:px-12 py-5 sm:py-6 rounded-xl font-black text-lg sm:text-xl tracking-wide text-white transition-all hover:-translate-y-0.5 hover:brightness-110 active:translate-y-[2px]';
+
 const submitCta =
   'inline-flex items-center justify-center gap-2 px-16 py-8 rounded-2xl font-black text-2xl sm:text-[1.75rem] uppercase tracking-widest text-white transition-all hover:-translate-y-0.5 hover:brightness-110 active:translate-y-[2px]';
 
@@ -45,29 +48,13 @@ const agencyCardClass =
 const mainSectionTitleClass =
   'text-2xl sm:text-3xl md:text-4xl font-black uppercase tracking-[0.08em] text-center mb-6 sm:mb-8 leading-tight';
 
-function last30dPageViewsFromLifetime(lifetimeViews: number): number {
-  return Math.round(lifetimeViews * (30 / 365));
-}
-
 export default function SubmitLandingPage() {
   const router = useRouter();
-  const [last30dPageViews, setLast30dPageViews] = useState<number | null>(null);
 
   const startCreatorFlow = useCallback((plan: 'free' | 'boosted') => {
     saveSubmitCreatorPlan(plan);
     router.push(`/submit/join?plan=${plan}`);
   }, [router]);
-
-  useEffect(() => {
-    fetch('/api/advertise-stats', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((d) => {
-        if (typeof d.totalViews === 'number') {
-          setLast30dPageViews(last30dPageViewsFromLifetime(d.totalViews));
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#f0f8ff] via-white to-[#f8fcff]">
@@ -111,16 +98,12 @@ export default function SubmitLandingPage() {
             style={{ background: agencyHeaderBg }}
           >
             <p className="text-[15px] sm:text-base leading-[1.75] text-white/90 max-w-xl mx-auto text-center">
-              Page views last 30 days{' '}
-              <span className="font-black tabular-nums text-[#0077B3]">
-                {last30dPageViews != null ? last30dPageViews.toLocaleString() : '…'}
-              </span>
-              . Erogram connects creators with fans actively searching for premium new accounts to subscribe to. Get discovered by thousands of high-intent buyers every day while your Fanpage keeps generating visibility through our rapidly growing Google presence.
+              Erogram connects creators with fans actively searching for premium new accounts to subscribe to. Get discovered by high-intent visitors actively searching for creators like you while your Fanpage keeps generating visibility through our rapidly growing Google presence.
             </p>
           </div>
 
-          <Link href="#pricing" className={submitCta} style={primaryCtaStyle}>
-            SUBMIT
+          <Link href="#pricing" className={submitHeroCta} style={primaryCtaStyle}>
+            Get Listed on Erogram
           </Link>
 
           <div className="mt-8 sm:mt-10 overflow-hidden rounded-2xl border border-[#00AFF0]/25 shadow-[0_16px_40px_-20px_rgba(0,40,80,0.35)] ring-1 ring-black/[0.04]">
@@ -138,7 +121,7 @@ export default function SubmitLandingPage() {
         <section>
           <div className="mb-6 sm:mb-8 text-center px-1 sm:px-2">
             <h2 className="text-lg sm:text-2xl md:text-3xl lg:text-[2rem] font-black uppercase tracking-tight text-gray-900 leading-snug max-w-4xl mx-auto">
-              GET LISTED ON THE FASTEST GROWING ADULT ENTERTAINMENT DISCOVERY HUB.
+              Get listed on one of the fastest-growing adult discovery hubs online.
             </h2>
           </div>
           <SubmitPromoAudienceProof />
@@ -178,24 +161,24 @@ export default function SubmitLandingPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
             <div className="overflow-hidden rounded-2xl border border-[#00AFF0]/30 bg-white shadow-[0_16px_40px_-20px_rgba(0,40,80,0.2)]">
               <div className="px-5 sm:px-6 py-4 border-b border-white/10" style={{ background: agencyHeaderBg }}>
-                <h3 className="text-lg sm:text-xl font-black text-white">Erogram fans</h3>
+                <h3 className="text-lg sm:text-xl font-black text-white">Erogram search traffic</h3>
               </div>
               <ul className="space-y-3 p-5 sm:p-6 text-sm sm:text-[15px] text-gray-700">
-                <li className="flex gap-3"><span className="text-[#00AFF0] font-black shrink-0">✓</span> Already have OnlyFans with payment saved</li>
-                <li className="flex gap-3"><span className="text-[#00AFF0] font-black shrink-0">✓</span> Actively searching, ready to subscribe</li>
-                <li className="flex gap-3"><span className="text-[#00AFF0] font-black shrink-0">✓</span> Know exactly what they want</li>
-                <li className="flex gap-3 text-gray-900 font-bold"><span className="text-[#00AFF0] font-black shrink-0">✓</span> 2 to 5x higher spend per fan</li>
+                <li>Already have creator-platform accounts with payment methods saved</li>
+                <li>Actively searching for creators to support</li>
+                <li>Know exactly what niche they want</li>
+                <li>Higher purchase intent than casual social traffic</li>
               </ul>
             </div>
             <div className="overflow-hidden rounded-2xl border border-gray-200 bg-[#f8f9fb] shadow-[0_8px_24px_-16px_rgba(0,0,0,0.12)]">
               <div className="px-5 sm:px-6 py-4 border-b border-gray-200 bg-gray-100">
-                <h3 className="text-lg sm:text-xl font-black text-gray-500">TikTok, IG, Reddit, Pornsites</h3>
+                <h3 className="text-lg sm:text-xl font-black text-gray-500">TikTok / IG / Reddit / other free traffic</h3>
               </div>
               <ul className="space-y-3 p-5 sm:p-6 text-sm sm:text-[15px] text-gray-500">
-                <li className="flex gap-3"><span className="text-gray-400 font-black shrink-0">−</span> Mindless scrolling, no payment method</li>
-                <li className="flex gap-3"><span className="text-gray-400 font-black shrink-0">−</span> Tire kickers and time wasters</li>
-                <li className="flex gap-3"><span className="text-gray-400 font-black shrink-0">−</span> Subscribe on a free trial then vanish</li>
-                <li className="flex gap-3"><span className="text-gray-400 font-black shrink-0">−</span> Low spend</li>
+                <li>Often casual scrolling</li>
+                <li>Lower intent to spend</li>
+                <li>Requires more attention and nurturing</li>
+                <li>Less likely to convert immediately</li>
               </ul>
             </div>
           </div>
@@ -259,12 +242,12 @@ export default function SubmitLandingPage() {
               </div>
               <div className="p-6 sm:p-8 flex flex-col flex-1">
               <ul className={`${bodyClass} space-y-3 mb-8 list-none flex-1`}>
-                <li className="flex gap-2"><span className="text-[#00AFF0] shrink-0">✓</span> Permanent free listing on EROgram</li>
-                <li className="flex gap-2"><span className="text-[#00AFF0] shrink-0">✓</span> Create your fanpage with all your socials</li>
+                <li className="flex gap-2"><span className="text-[#00AFF0] shrink-0">✓</span> Permanent free listing on Erogram</li>
+                <li className="flex gap-2"><span className="text-[#00AFF0] shrink-0">✓</span> Create your fanpage with all your social links</li>
                 <li className="flex gap-2 items-start">
                   <span className="text-[#00AFF0] shrink-0">✓</span>
                   <span className="flex-1">
-                    Get listed in our OnlyFans search engine{' '}
+                    Appear in Erogram&apos;s creator search{' '}
                     <span className="relative inline-flex align-middle group/info">
                       <button
                         type="button"
@@ -282,11 +265,11 @@ export default function SubmitLandingPage() {
                     </span>
                   </span>
                 </li>
-                <li className="flex gap-2"><span className="text-[#00AFF0] shrink-0">✓</span> Post photos &amp; videos and appear on Erogram&apos;s feed</li>
+                <li className="flex gap-2"><span className="text-[#00AFF0] shrink-0">✓</span> Post photos and videos to your Erogram feed</li>
                 <li className="flex gap-2 items-start">
                   <span className="text-[#00AFF0] shrink-0">✓</span>
                   <span className="flex-1">
-                    Promote up to 2 Onlyfans accounts{' '}
+                    Promote up to 2 OnlyFans accounts{' '}
                     <span className="relative inline-flex align-middle group/info-listings">
                       <button
                         type="button"
@@ -304,8 +287,9 @@ export default function SubmitLandingPage() {
                     </span>
                   </span>
                 </li>
-                <li className="flex gap-2"><span className="text-[#00AFF0] shrink-0">✓</span> Get your profile ranked on Google over time.</li>
-                <li className="flex gap-2"><span className="text-[#00AFF0] shrink-0">✓</span> Get placed in your niche search and gain free new fans</li>
+                <li className="flex gap-2"><span className="text-[#00AFF0] shrink-0">✓</span> Add niche tags to improve discoverability</li>
+                <li className="flex gap-2"><span className="text-[#00AFF0] shrink-0">✓</span> Eligible to appear on category and niche pages</li>
+                <li className="flex gap-2"><span className="text-[#00AFF0] shrink-0">✓</span> Built to help your profile get discovered over time</li>
               </ul>
               <button
                 type="button"
@@ -323,10 +307,11 @@ export default function SubmitLandingPage() {
               </div>
               <div className="p-6 sm:p-8 flex flex-col flex-1 bg-gradient-to-b from-[#f4fbff] to-white">
               <ul className={`${bodyClass} space-y-3 mb-4 list-none flex-1`}>
+                <li className="flex gap-2"><span className="text-[#00AFF0] shrink-0">✓</span> Everything in Free</li>
                 <li className="flex gap-2 items-start">
                   <span className="text-[#00AFF0] shrink-0">✓</span>
                   <span className="flex-1">
-                    Featured in up to 4 Top 10 ranking categories{' '}
+                    Featured in up to 4 high-performing category pages{' '}
                     <span className="relative inline-flex align-middle group/info-top10">
                       <button
                         type="button"
@@ -350,7 +335,7 @@ export default function SubmitLandingPage() {
                 <li className="flex gap-2 items-start">
                   <span className="text-[#00AFF0] shrink-0">✓</span>
                   <span className="flex-1">
-                    Featured on the OnlyFans Search feed{' '}
+                    Featured in Erogram&apos;s creator search feed{' '}
                     <span className="relative inline-flex align-middle group/info-of-feed">
                       <button
                         type="button"
@@ -371,7 +356,9 @@ export default function SubmitLandingPage() {
                     </span>
                   </span>
                 </li>
-                <li className="flex gap-2"><span className="text-[#00AFF0] shrink-0">✓</span> You get everything in Free</li>
+                <li className="flex gap-2"><span className="text-[#00AFF0] shrink-0">✓</span> Priority visibility across selected niche pages</li>
+                <li className="flex gap-2"><span className="text-[#00AFF0] shrink-0">✓</span> Designed to increase profile views, clicks, and engagement</li>
+                <li className="flex gap-2"><span className="text-[#00AFF0] shrink-0">✓</span> One-time payment for 7 days</li>
               </ul>
               <div
                 className="mb-5 rounded-xl flex flex-col items-center justify-center gap-1 py-4 sm:py-5 px-4 text-center"
@@ -388,7 +375,7 @@ export default function SubmitLandingPage() {
                   More Traction
                 </span>
                 <p className="text-xs sm:text-sm text-gray-600 mt-2 mb-0 max-w-[18rem] leading-snug">
-                  Boosted creators usually get up to 40x more traction than free profiles.
+                  Boosted profiles can receive significantly more traction. In some cases, boosted creators have seen up to 40x more profile engagement than free listings.
                 </p>
               </div>
               <div className="mb-4 rounded-xl border border-[#00AFF0]/20 bg-[#f0f8ff]/70 px-4 py-3 text-center">

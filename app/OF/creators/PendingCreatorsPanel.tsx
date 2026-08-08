@@ -7,7 +7,6 @@ import {
   deleteOFMCreator,
   editOFMPendingCreator,
   getOFMPendingCreators,
-  updateOFMPendingCreatorStatus,
 } from '@/lib/actions/ofm';
 
 type PendingCreator = {
@@ -34,6 +33,7 @@ type PendingCreator = {
   tiktokUrl: string;
   website: string;
   createdAt: string;
+  updatedAt?: string;
 };
 
 export default function PendingCreatorsPanel() {
@@ -70,28 +70,6 @@ export default function PendingCreatorsPanel() {
   useEffect(() => {
     load();
   }, [load]);
-
-  const handleApprove = async (id: string) => {
-    const token = localStorage.getItem('token') || '';
-    try {
-      await updateOFMPendingCreatorStatus(token, id, 'approved');
-      setCreators((prev) => prev.map((c) => (c._id === id ? { ...c, submissionStatus: 'approved' } : c)));
-      showToast('Approved');
-    } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : 'Approve failed');
-    }
-  };
-
-  const handleReject = async (id: string) => {
-    const token = localStorage.getItem('token') || '';
-    try {
-      await updateOFMPendingCreatorStatus(token, id, 'rejected');
-      setCreators((prev) => prev.filter((c) => c._id !== id));
-      showToast('Rejected');
-    } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : 'Reject failed');
-    }
-  };
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -152,8 +130,6 @@ export default function PendingCreatorsPanel() {
     }
   };
 
-  const pendingCount = creators.filter((c) => c.submissionStatus === 'pending').length;
-
   return (
     <div className="space-y-6">
       {toast && (
@@ -163,10 +139,9 @@ export default function PendingCreatorsPanel() {
       )}
 
       <div>
-        <h2 className="text-xl font-black text-white">Pending &amp; Submitted Creators</h2>
+        <h2 className="text-xl font-black text-white">Latest User Additions</h2>
         <p className="text-white/40 text-sm mt-0.5">
-          {creators.length.toLocaleString()} submissions
-          {pendingCount > 0 ? ` · ${pendingCount} pending review` : ''}
+          {creators.length.toLocaleString()} user-submitted profiles, newest first
         </p>
       </div>
 
@@ -176,13 +151,13 @@ export default function PendingCreatorsPanel() {
             <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-[#00AFF0]" />
           </div>
         ) : creators.length === 0 ? (
-          <div className="text-center text-white/20 py-12 text-sm">No pending or submitted creators.</div>
+          <div className="text-center text-white/20 py-12 text-sm">No user-submitted profiles yet.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/[0.06]">
-                  {['Creator', 'Contact', 'Details', 'Submitted', 'Status', 'Actions'].map((h) => (
+                  {['Creator', 'Contact', 'Details', 'Added', 'Status', 'Actions'].map((h) => (
                     <th
                       key={h}
                       className={`px-4 py-3 text-left text-[11px] font-bold text-white/30 uppercase tracking-wider whitespace-nowrap${h === 'Actions' ? ' sticky right-0 bg-[#0c1116]' : ''}`}
@@ -279,22 +254,18 @@ export default function PendingCreatorsPanel() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-white/30 text-[11px] whitespace-nowrap">
-                        {c.createdAt ? new Date(c.createdAt).toLocaleString() : '—'}
+                        {c.updatedAt || c.createdAt
+                          ? new Date(c.updatedAt || c.createdAt).toLocaleString()
+                          : '—'}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        {c.submissionStatus === 'approved' && (
+                        {c.submissionStatus === 'rejected' ? (
+                          <span className="text-[10px] font-bold text-red-400 bg-red-500/15 px-2 py-1 rounded-full uppercase tracking-wide">
+                            Removed
+                          </span>
+                        ) : (
                           <span className="text-[10px] font-bold text-green-400 bg-green-500/15 px-2 py-1 rounded-full uppercase tracking-wide">
                             Live
-                          </span>
-                        )}
-                        {c.submissionStatus === 'pending' && (
-                          <span className="text-[10px] font-bold text-amber-400 bg-amber-500/15 px-2 py-1 rounded-full uppercase tracking-wide">
-                            Pending
-                          </span>
-                        )}
-                        {c.submissionStatus === 'rejected' && (
-                          <span className="text-[10px] font-bold text-red-400 bg-red-500/15 px-2 py-1 rounded-full uppercase tracking-wide">
-                            Rejected
                           </span>
                         )}
                       </td>
@@ -309,24 +280,6 @@ export default function PendingCreatorsPanel() {
                             >
                               View on Erogram
                             </a>
-                          )}
-                          {c.submissionStatus !== 'approved' && (
-                            <button
-                              type="button"
-                              onClick={() => handleApprove(c._id)}
-                              className="px-3 py-1.5 rounded-lg bg-green-600/90 hover:bg-green-500 text-white text-xs font-bold transition"
-                            >
-                              Approve
-                            </button>
-                          )}
-                          {c.submissionStatus === 'pending' && (
-                            <button
-                              type="button"
-                              onClick={() => handleReject(c._id)}
-                              className="px-3 py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/35 border border-amber-500/30 text-amber-300 text-xs font-bold transition"
-                            >
-                              Reject
-                            </button>
                           )}
                           <button
                             type="button"

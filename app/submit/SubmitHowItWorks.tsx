@@ -1,23 +1,28 @@
 const STEPS = [
   {
     step: 'STEP 1',
-    title: 'One-click import',
-    body: 'Import your OnlyFans profile in a single click - photos, bio, and details transfer automatically.',
+    title: 'Create your Erogram account',
+    body: 'Set up your free account in under a minute.',
   },
   {
     step: 'STEP 2',
-    title: 'Create your Erogram account',
-    body: 'Set up your free account in under a minute and claim your page.',
+    title: 'Import your profile',
+    body: 'Import your OnlyFans profile in one click — photos, bio, and details transfer automatically.',
   },
   {
     step: 'STEP 3',
-    title: 'Customize & choose your plan',
-    body: 'Add your socials, extra photos/videos, and niche tags. Stay free or unlock Boosted ($197/Week) for Top 10 rankings + OnlyFans Search feed placement.',
+    title: 'Customize your page',
+    body: 'Add your socials, extra photos/videos, and niche tags.',
   },
   {
     step: 'STEP 4',
-    title: 'Happy Growth!',
-    body: null,
+    title: 'Choose your visibility level',
+    body: 'Stay free or unlock Boosted for priority placement on top category pages.',
+  },
+  {
+    step: 'STEP 5',
+    title: 'Start getting discovered',
+    body: 'Your profile becomes part of Erogram\u2019s search, feed, and niche pages.',
   },
 ] as const;
 
@@ -40,23 +45,18 @@ export default function SubmitHowItWorks() {
           How it works
         </h2>
 
-        <ol className="grid grid-cols-4 gap-1.5 sm:gap-3 px-2 sm:px-4 pb-4 sm:pb-5 list-none m-0">
+        <ol className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3 px-2 sm:px-4 pb-4 sm:pb-5 list-none m-0">
           {STEPS.map((step) => (
             <li
               key={step.step}
               className="flex flex-col rounded-lg sm:rounded-xl border border-white/[0.08] bg-white/[0.04] px-2 py-2.5 sm:px-3.5 sm:py-4 min-h-0"
             >
-              <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.12em] sm:tracking-[0.18em] text-[#00AFF0] mb-1.5 sm:mb-2 m-0">
-                {step.step}
-              </p>
               <h3 className="text-[11px] sm:text-sm font-black text-white leading-snug mb-0">
-                {step.title}
+                {step.step} — {step.title}
               </h3>
-              {step.body ? (
-                <p className="text-[9px] sm:text-xs leading-snug sm:leading-relaxed text-white/60 mt-1.5 sm:mt-2 mb-0">
-                  {step.body}
-                </p>
-              ) : null}
+              <p className="text-[9px] sm:text-xs leading-snug sm:leading-relaxed text-white/60 mt-1.5 sm:mt-2 mb-0">
+                {step.body}
+              </p>
             </li>
           ))}
         </ol>

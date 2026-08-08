@@ -18,7 +18,16 @@ import { getTagDefinition, type TagDefinition } from '@/lib/tags/registry';
 import { buildInterestsCreatorMatch, rotateFeedResults } from '@/lib/tags/ofSearchMatch';
 import { getCreatorFeedCategories } from '@/lib/tags/creatorProfileTags';
 import { fetchNearMeCreatorsTiered, type NearMeCreatorItem } from '@/lib/actions/nearMeCreators';
-import { Bot, OnlyFansCreator } from '@/lib/models';
+import {
+  ArticleComment,
+  Bot,
+  CreatorReview,
+  Group,
+  OnlyFansCreator,
+  Post,
+  ProfileFeedComment,
+} from '@/lib/models';
+import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
 import { PROFILE_THEMES, type ProfileThemeId, isFreeProfileTheme } from '@/app/profile/profileTheme';
 
 const MIN_INTEREST_CONTENT = 20;
@@ -614,4 +623,120 @@ export async function getNearMeCreators(token: string, rotateSeed = 'default') {
     needsLocation: res.needsLocation,
     areaLabel: res.areaLabel,
   };
+}
+
+export type PublicUserContribution = {
+  id: string;
+  type: 'group_review' | 'creator_review' | 'article_comment' | 'photo_comment';
+  label: string;
+  content: string;
+  rating?: number;
+  href: string;
+  createdAt: string;
+};
+
+export async function getPublicUserContributions(userId: string, limit = 10): Promise<PublicUserContribution[]> {
+  await connectDB();
+  const uid = new mongoose.Types.ObjectId(userId);
+
+  const [posts, creatorReviews, articleComments, photoComments] = await Promise.all([
+    Post.find({ author: uid, status: 'approved' })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate('groupId', 'name slug')
+      .lean(),
+    CreatorReview.find({ author: uid, status: 'approved' })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean(),
+    ArticleComment.find({ author: uid, status: 'approved' })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean(),
+    ProfileFeedComment.find({ author: uid, status: 'approved' })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate('creatorId', 'username name')
+      .lean(),
+  ]);
+
+  const items: PublicUserContribution[] = [];
+
+  for (const row of posts as Array<{
+    _id: unknown;
+    content?: string;
+    rating?: number;
+    createdAt?: Date;
+    groupId?: { name?: string; slug?: string } | null;
+  }>) {
+    const group = row.groupId && typeof row.groupId === 'object' ? row.groupId : null;
+    if (!group?.slug) continue;
+    items.push({
+      id: `post-${String(row._id)}`,
+      type: 'group_review',
+      label: group.name ? `Review on ${group.name}` : 'Group review',
+      content: row.content || '',
+      rating: row.rating,
+      href: `/${group.slug}`,
+      createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : '',
+    });
+  }
+
+  for (const row of creatorReviews as Array<{
+    _id: unknown;
+    creatorSlug?: string;
+    content?: string;
+    rating?: number;
+    createdAt?: Date;
+  }>) {
+    if (!row.creatorSlug) continue;
+    items.push({
+      id: `creator-${String(row._id)}`,
+      type: 'creator_review',
+      label: `Review on @${row.creatorSlug}`,
+      content: row.content || '',
+      rating: row.rating,
+      href: ofCreatorProfileUrl(row.creatorSlug),
+      createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : '',
+    });
+  }
+
+  for (const row of articleComments as Array<{
+    _id: unknown;
+    articleSlug?: string;
+    content?: string;
+    createdAt?: Date;
+  }>) {
+    if (!row.articleSlug) continue;
+    items.push({
+      id: `article-${String(row._id)}`,
+      type: 'article_comment',
+      label: 'Article comment',
+      content: row.content || '',
+      href: `/blog/${row.articleSlug}`,
+      createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : '',
+    });
+  }
+
+  for (const row of photoComments as Array<{
+    _id: unknown;
+    content?: string;
+    createdAt?: Date;
+    creatorId?: { username?: string; name?: string } | null;
+  }>) {
+    const creator = row.creatorId && typeof row.creatorId === 'object' ? row.creatorId : null;
+    const slug = creator?.username;
+    items.push({
+      id: `photo-${String(row._id)}`,
+      type: 'photo_comment',
+      label: creator?.name ? `Comment on ${creator.name}` : 'Photo comment',
+      content: row.content || '',
+      href: slug ? ofCreatorProfileUrl(slug) : '/onlyfanssearch',
+      createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : '',
+    });
+  }
+
+  return items
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, limit);
 }

@@ -637,7 +637,7 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
     tags: ['ai undress', 'ai nude generator', 'ai nudifier', 'nude ai', 'photo nude maker', 'ai companion', 'ai girlfriend', 'ai nsfw chat'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards'],
-    tryNowUrl: '/go/joi-ai',
+    tryNowUrl: 'https://www.joi.com',
     sourceUrl: 'https://www.joi.com',
   },
   {

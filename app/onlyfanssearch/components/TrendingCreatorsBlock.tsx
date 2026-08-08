@@ -25,7 +25,9 @@ function formatLikes(n: number) {
 function TrendingCard({ creator, index }: { creator: TrendingCreator; index: number }) {
   const handleClick = () => {
     trackTrendingClick(creator._id);
-    window.open(`/go/${creator.username}`, '_blank', 'noopener');
+    // Promoted: open their tracking / destination URL directly — never force /go.
+    const dest = (creator.url || '').trim() || `https://onlyfans.com/${creator.username}`;
+    window.open(dest, '_blank', 'noopener,noreferrer');
   };
 
   return (

@@ -1,11 +1,13 @@
 import OFMNav from './OFMNav';
 import OFMHome from './OFMHome';
+import OFMLegalBanner from './OFMLegalBanner';
 
 export default function OFMPage() {
   return (
     <div className="min-h-screen bg-[#080c14] text-white">
       <OFMNav active="home" />
       <div className="max-w-6xl mx-auto px-4 sm:px-8 py-6 sm:py-8">
+        <OFMLegalBanner />
         <OFMHome />
       </div>
     </div>

@@ -724,7 +724,11 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
             }).catch(() => {});
         }
         const url = (ad.url || '').trim();
-        if (url && url.startsWith('/')) {
+        // Organic /go hop: open new tab. Promoted onlyfans-creator ads keep their own
+        // destinationUrl / tracking link untouched (never rewrite to /go).
+        if (url.startsWith('/go/')) {
+            window.open(url, '_blank', 'noopener,noreferrer');
+        } else if (url && url.startsWith('/')) {
             window.location.href = url;
         } else if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
             window.open(url, '_blank', 'noopener,noreferrer');

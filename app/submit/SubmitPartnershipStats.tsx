@@ -7,12 +7,7 @@ const SURFACE = '#0a1628';
 const HEADER_BG = 'linear-gradient(160deg, #041828 0%, #0a2840 55%, #0d3550 100%)';
 const SUBMIT_AD_CLICKS_DISPLAY_OFFSET = 40_000;
 
-function last30dPageViewsFromLifetime(lifetimeViews: number): number {
-  return Math.round(lifetimeViews * (30 / 365));
-}
-
 function useAdClickStats(pollMs = 60_000) {
-  const [totalViews, setTotalViews] = useState<number | null>(null);
   const [last30dAdClicks, setLast30dAdClicks] = useState<number | null>(null);
 
   useEffect(() => {
@@ -20,7 +15,6 @@ function useAdClickStats(pollMs = 60_000) {
       fetch('/api/advertise-stats', { cache: 'no-store' })
         .then((r) => r.json())
         .then((d) => {
-          if (typeof d.totalViews === 'number') setTotalViews(d.totalViews);
           if (typeof d.last30dClientClicks === 'number') setLast30dAdClicks(d.last30dClientClicks);
         })
         .catch(() => {});
@@ -30,13 +24,11 @@ function useAdClickStats(pollMs = 60_000) {
     return () => clearInterval(id);
   }, [pollMs]);
 
-  const last30dPageViews = totalViews != null ? last30dPageViewsFromLifetime(totalViews) : null;
-
-  return { last30dAdClicks, last30dPageViews };
+  return { last30dAdClicks };
 }
 
 export default function SubmitPartnershipStats() {
-  const { last30dAdClicks, last30dPageViews } = useAdClickStats();
+  const { last30dAdClicks } = useAdClickStats();
   const displayedAdClicks =
     last30dAdClicks != null ? Math.max(0, last30dAdClicks - SUBMIT_AD_CLICKS_DISPLAY_OFFSET) : null;
 
@@ -62,13 +54,7 @@ export default function SubmitPartnershipStats() {
               {displayedAdClicks != null ? displayedAdClicks.toLocaleString() : '—'}
             </p>
             <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wide text-white/45 leading-tight">
-              clicks last 30 days
-            </span>
-          </div>
-          <div className="mt-3 pt-3 border-t border-white/[0.08] flex flex-col items-center">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-white/45 mb-0.5">Page views last 30 days</span>
-            <span className="text-lg sm:text-xl font-black tabular-nums leading-none" style={{ color: OF }}>
-              {last30dPageViews != null ? last30dPageViews.toLocaleString() : '—'}
+              clicks last 7 days
             </span>
           </div>
         </div>
