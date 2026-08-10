@@ -10,6 +10,10 @@ import { bestTgCategoryFromPublicSegment } from '@/lib/bestTelegramGroups/btgUrl
 import Navbar from '@/components/Navbar';
 import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import { getLocale, getPathname } from '@/lib/i18n/server';
+import { getDictionary, localePath } from '@/lib/i18n';
+import { getKeywordPlacementCampaigns } from '@/lib/actions/campaigns';
+import BestGroupsAds from '@/app/best-telegram-groups/BestGroupsAds';
+import BestGroupRankCard from '@/app/best-telegram-groups/BestGroupRankCard';
 import { getMetaDescription } from '@/lib/bestTelegramGroups/metaDescriptions';
 import {
   buildTop10Ranking,

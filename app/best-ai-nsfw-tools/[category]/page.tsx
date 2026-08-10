@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import { getLocale, getPathname } from '@/lib/i18n/server';
-import type { Locale } from '@/lib/i18n';
+import { getDictionary, type Locale } from '@/lib/i18n';
 import { getBestAiToolMetaDescription } from '@/lib/bestAiNsfwTools/metaDescriptions';
 import {
   BEST_AI_NSFW_TOOL_PAGES,
