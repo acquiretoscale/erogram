@@ -239,7 +239,18 @@ export default async function AINsfwToolPage({ params }: PageProps) {
   const verifiedSlugs = getVerifiedSlugs(paidSubmissions.map((t) => t.slug));
 
   const { mergeToolContent } = await import('@/lib/ainsfw/toolContent');
-  const displayTool = mergeToolContent(aiTool, toolStats);
+  const mergedTool = mergeToolContent(aiTool, toolStats);
+
+  // Localized review text for DE/ES when it exists. An admin descriptionOverride
+  // still wins, so mergeToolContent's result is never discarded.
+  const pageLocale = await getLocale();
+  const localizedDescription = (
+    pageLocale === 'de' ? aiTool.description_de : pageLocale === 'es' ? aiTool.description_es : ''
+  )?.trim();
+  const hasOverride = mergedTool.description !== aiTool.description;
+  const displayTool = localizedDescription && !hasOverride
+    ? { ...mergedTool, description: localizedDescription }
+    : mergedTool;
   const featuredHubTools = featuredHubToolsRaw.map((t) => mergeToolContent(t, featuredHubStats[t.slug]));
 
   const toolPageUrl = `${BASE_URL}/ainsfw/${displayTool.slug}`;
