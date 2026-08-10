@@ -85,6 +85,7 @@ export default function UsersTab() {
     }, [users, searchQuery, premiumFilter]);
 
     const premiumCount = useMemo(() => users.filter(isPremiumActive).length, [users]);
+    const installCount = useMemo(() => users.filter((u) => !!u.pwaInstalledAt).length, [users]);
     const savedOFStats = useMemo(() => {
         let usersWithSaves = 0;
         let totalSaves = 0;
@@ -103,6 +104,8 @@ export default function UsersTab() {
                     <p className="text-[#999] text-sm">
                         {users.length} registered &middot;{' '}
                         <span className="text-amber-400 font-medium">{premiumCount} premium</span>
+                        {' '}&middot;{' '}
+                        <span className="text-emerald-400 font-medium">{installCount} app installs</span>
                     </p>
                 </div>
             </div>
@@ -216,6 +219,7 @@ export default function UsersTab() {
                                     <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">Role</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">Premium</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">Country</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">App</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-[#666] uppercase tracking-wider">Joined</th>
                                     <th className="px-6 py-4 text-right text-xs font-bold text-[#666] uppercase tracking-wider">Actions</th>
                                 </tr>
@@ -265,6 +269,9 @@ export default function UsersTab() {
                                                 </td>
                                                 <td className="px-6 py-4 text-gray-400 text-xs">
                                                     {user.country || '—'}
+                                                </td>
+                                                <td className="px-6 py-4 text-gray-400 text-xs">
+                                                    {user.pwaInstalledAt ? '✓' : '—'}
                                                 </td>
                                                 <td className="px-6 py-4 text-gray-400">
                                                     {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
@@ -322,6 +329,18 @@ export default function UsersTab() {
                                                         <span className="inline-flex items-center gap-1 text-xs text-gray-300" title={[user.city, user.country, user.timezone].filter(Boolean).join(' · ')}>
                                                             {user.country}
                                                             {user.city && <span className="text-white/30">· {user.city}</span>}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-white/20 text-xs">—</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {user.pwaInstalledAt ? (
+                                                        <span
+                                                            className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
+                                                            title={new Date(user.pwaInstalledAt).toLocaleString()}
+                                                        >
+                                                            Installed
                                                         </span>
                                                     ) : (
                                                         <span className="text-white/20 text-xs">—</span>

@@ -1,4 +1,4 @@
-/* v=6 — sale push: color wordmark icon + white badge for Android status bar */
+/* v=7 — push + installability (no network intercept) */
 const NOTIFICATION_ICON = '/icons/notification-icon.png?v=6';
 const NOTIFICATION_BADGE = '/icons/notification-badge.png?v=6';
 
@@ -9,6 +9,9 @@ self.addEventListener('activate', (event) => {
       .then(() => self.clients.claim())
   );
 });
+
+/* Empty fetch listener — needed for installability on older Chrome. Does not intercept. */
+self.addEventListener('fetch', () => {});
 
 self.addEventListener('push', (event) => {
   if (!event.data) return;

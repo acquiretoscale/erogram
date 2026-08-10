@@ -128,7 +128,7 @@ export default async function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
 
-        {/* SW registered only for admins — see AdminSaleAlert */}
+        {/* SW registered site-wide for PWA install — see PwaInstallBanner */}
       </head>
         <body
         className={`${geistSans.variable} ${geistMono.variable} ${interTight.variable} ${baloo2.variable} ${bebasNeue.variable} ${archivo.variable} antialiased`}

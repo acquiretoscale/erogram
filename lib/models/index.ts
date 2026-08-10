@@ -71,6 +71,8 @@ export const userSchema = new Schema(
       commentsPosted: { type: Number, default: 0 },
       lastActivity: { type: Date, default: Date.now },
     },
+    /** Set when the logged-in user accepts the PWA install prompt (Android/Chrome). */
+    pwaInstalledAt: { type: Date, default: null },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
   },
