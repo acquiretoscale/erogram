@@ -14,6 +14,7 @@ import { getBestOfFillCreators, getBestOfTopByClicks, getBestOfPreviewAvatars } 
 import { getFeaturedCreatorFeedItems } from '@/lib/actions/publicData';
 import BestPageAdBlock from '@/app/best-onlyfans-accounts/BestPageAdBlock';
 import BestOfDeleteButton from '@/app/best-onlyfans-accounts/BestOfDeleteButton';
+import BestOfProfileButton from '@/app/best-onlyfans-accounts/BestOfProfileButton';
 import { BestOfHeroIntro, BestOfEditorialBody } from '@/app/best-onlyfans-accounts/BestOfEditorial';
 import { getBestOfPageContent, type BestOfPageContent } from '@/lib/bestOfPageContent';
 import { getBodyTranslation } from '@/lib/bestOfPageContent/bodyTranslations';
@@ -500,20 +501,6 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                   : '';
               const cardRowClass = `relative z-10 flex flex-col sm:flex-row gap-0 sm:gap-5`;
 
-              // Option B: Hide creator profile links from Google/Guests.
-              // We use a button-style redirect for the Erogram profile link to prevent crawling.
-              const handleErogramProfile = (e: React.MouseEvent) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (typeof window === 'undefined') return;
-                const token = localStorage.getItem('token');
-                if (!token) {
-                  window.open(`/join-erogram?redirect=${encodeURIComponent(erogramHref)}`, '_blank', 'noopener,noreferrer');
-                } else {
-                  window.open(erogramHref, '_blank', 'noopener,noreferrer');
-                }
-              };
-
               return (
                 <li key={creator._id}>
                   <article
@@ -641,9 +628,8 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                       </div>
                       </div>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={handleErogramProfile}
+                      <BestOfProfileButton
+                        erogramHref={erogramHref}
                         className={`${cardRowClass} w-full text-left cursor-pointer appearance-none bg-transparent border-none p-0 m-0`}
                       >
                       {/* Avatar */}
@@ -740,7 +726,7 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                           </span>
                         </div>
                       </div>
-                      </button>
+                      </BestOfProfileButton>
                     )}
                   </article>
                 </li>
