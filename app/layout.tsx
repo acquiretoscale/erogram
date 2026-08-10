@@ -8,7 +8,7 @@ import { getLocale, getPathname } from "@/lib/i18n/server";
 import { getDictionary, LocaleProvider } from "@/lib/i18n";
 import { LOCALES, localePath, LOCALE_HREFLANG, DEFAULT_LOCALE } from "@/lib/i18n/config";
 import { switchLocalePath } from "@/lib/i18n/switchLocalePath";
-import { buildSocialMeta } from "@/lib/seo/socialMeta";
+import { buildSocialMeta, buildMetadataAlternates } from "@/lib/seo/socialMeta";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -60,9 +60,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const title = m.homeTitle || "Erogram | Best NSFW Telegram Groups, Bots & AI Tools Directory (2026)";
   const description = m.homeDesc || "Find and explore the best Telegram groups from around the world. Connect with communities that match your interests.";
 
-  // Self-referencing canonical — each locale owns its own URL
-  const canonical = `${canonicalBase}${pathname === '/' ? '' : pathname}` || canonicalBase;
-  const isBlog = pathname === '/blog' || pathname.startsWith('/blog/');
+  const alternates = buildMetadataAlternates(pathname, locale);
+  const canonical = alternates?.canonical?.toString() || canonicalBase;
 
   return {
     title: { default: title, template: "%s | Erogram" },
@@ -79,22 +78,7 @@ export async function generateMetadata(): Promise<Metadata> {
       apple: '/icons/icon-192.png?v=6',
     },
     metadataBase: new URL(siteUrl),
-    alternates: {
-      canonical,
-      ...(isBlog
-        ? {}
-        : {
-            languages: {
-              ...Object.fromEntries(
-                LOCALES.map(loc => [
-                  LOCALE_HREFLANG[loc],
-                  `${canonicalBase}${switchLocalePath(pathname, locale, loc)}`,
-                ])
-              ),
-              'x-default': `${canonicalBase}${switchLocalePath(pathname, locale, 'en')}`,
-            },
-          }),
-    },
+    alternates,
     ...buildSocialMeta({
       title,
       description,

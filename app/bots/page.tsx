@@ -9,7 +9,7 @@ import { getAllBotStats } from '@/lib/actions/botVotes';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
 import { BOTS_FEED_PAGE_SIZE } from './constants';
-import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 const canonicalBase = CANONICAL_BASE;
 const PLACEHOLDER = process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png';
@@ -21,19 +21,18 @@ export async function generateMetadata(): Promise<Metadata> {
   const pathname = await getPathname();
   const dict = await getDictionary(locale);
 
-  const canonical = `${canonicalBase}${pathname === '/' ? '' : pathname}`;
+  const alternates = buildMetadataAlternates(pathname, locale);
+  const canonical = alternates?.canonical?.toString() || `${canonicalBase}${pathname === '/' ? '' : pathname}`;
 
   return {
     title: dict.meta.botsTitle,
     description: dict.meta.botsDesc,
     keywords: 'NSFW telegram bots, adult telegram bots, telegram bot directory, NSFW AI bots, adult chat bots, erotic bots, telegram companions',
-    alternates: {
-      canonical,
-    },
+    alternates,
     ...buildSocialMeta({
       title: dict.meta.botsTitle,
       description: dict.meta.botsDesc,
-      url: `${canonicalBase}${pathname}`,
+      url: canonical,
       type: 'website',
       imageAlt: 'Erogram - Telegram Bots',
     }),

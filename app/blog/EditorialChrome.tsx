@@ -1052,6 +1052,7 @@ export function EditorialFooter() {
 
           <FooterCol label="COMPANY">
             <FooterLink href={lp('/promo')}>Advertise with us</FooterLink>
+            <FooterLink href={lp('/partners')}>Partners</FooterLink>
             <FooterLink href={lp('/partnership')}>Get EROgram Badge</FooterLink>
             <FooterLink href={lp('/about')}>About</FooterLink>
             <FooterLink href={lp('/contact')}>Contact</FooterLink>

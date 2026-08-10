@@ -14,6 +14,7 @@ import {
   CreatorProfilePageView,
   generateCreatorProfileMetadata,
 } from '@/lib/onlyfanssearch/creatorProfilePage';
+import { isBlacklistedPublicPathSegment } from '@/lib/onlyfanssearch/creatorBlacklist';
 
 // SEO: no more force-dynamic + $sample. The page now serves a STABLE curated
 // ranking so Google sees the same content on every crawl (brain GAP 5 → was
@@ -25,6 +26,9 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { category: rawSlug } = await params;
+  if (isBlacklistedPublicPathSegment(rawSlug)) {
+    notFound();
+  }
   const locale = await getLocale();
 
   // Top-10 OnlyFans category pages live at /onlyfanssearch/top-10-{cat}-onlyfans-models.
@@ -72,6 +76,10 @@ function serializeCreator(c: any) {
 
 export default async function OnlyFansSlugPage({ params }: PageProps) {
   const { category: rawSlug } = await params;
+
+  if (isBlacklistedPublicPathSegment(rawSlug)) {
+    notFound();
+  }
 
   // Top-10 OnlyFans category ranking pages live here at /onlyfanssearch/top-10-{cat}-onlyfans-models.
   const bestOf = bestOfSlugFromPublicPath(rawSlug);

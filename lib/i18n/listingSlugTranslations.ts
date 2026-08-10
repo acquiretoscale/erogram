@@ -1,6 +1,5 @@
 export const LISTING_SLUG_TRANSLATIONS: Record<string, { de?: string; es?: string; pt?: string }> = {
   "ainsfw:ai-girlfriend-unlaced": { de: "ki-freundin-unlaced", es: "novia-ia-unlaced", pt: "namorada-ia-unlaced" },
-  "ainsfw:ai-girlfriend-wtf-ai-girlfriend": { de: "ki-freundin-wtf-ki-freundin", es: "novia-ia-wtf-ia-novia", pt: "namorada-ia-wtf" },
   "ainsfw:ai-girlfriend-xmodelsai": { de: "ki-freundin-xmodelsai", es: "novia-ia-xmodelsai", pt: "namorada-ia-xmodelsai" },
   "ainsfw:aiallure-ai-chat": { de: "aiallure-ai-chat", es: "aiallure-chat-ia", pt: "aiallure-bate-papo-ia" },
   "ainsfw:ainudez-undress-ai": { de: "ainudez-auszieht-ki", es: "ainudez-ia-para-desnudar", pt: "ainudez-ia-para-tirar-roupa" },

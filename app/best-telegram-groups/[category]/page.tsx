@@ -8,12 +8,8 @@ import { Group, BestGroupPick } from '@/lib/models';
 import { categories, categorySlug, categoryFromSlug } from '@/app/groups/constants';
 import { bestTgCategoryFromPublicSegment } from '@/lib/bestTelegramGroups/btgUrls';
 import Navbar from '@/components/Navbar';
-import { getLocale } from '@/lib/i18n/server';
-import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
-import { getKeywordPlacementCampaigns } from '@/lib/actions/campaigns';
-import BestGroupsAds from '@/app/best-telegram-groups/BestGroupsAds';
-import BestGroupRankCard from '@/app/best-telegram-groups/BestGroupRankCard';
-import { buildSocialMeta } from '@/lib/seo/socialMeta';
+import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getMetaDescription } from '@/lib/bestTelegramGroups/metaDescriptions';
 import {
   buildTop10Ranking,
@@ -45,6 +41,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
     const locale = await getLocale();
+    const pathname = await getPathname();
     const { category } = await params;
 
     // Find the real category name (matches hyphen slug OR legacy space slug)
@@ -65,8 +62,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         isAdvertisement: false,
     });
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
-    const canonical = `${siteUrl}${localePath(`/best-telegram-groups/${canonicalSlug}`, locale)}`;
+    const alternates = buildMetadataAlternates(pathname, locale);
+    const canonical = alternates?.canonical?.toString() || `${CANONICAL_BASE}${pathname}`;
     const l = realCategory.toLowerCase();
 
     // Bing flags near-identical title templates as duplicates. Each category keeps
@@ -137,9 +134,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const meta = {
         title,
         description: descMap[locale] || descMap.en,
-        alternates: {
-            canonical,
-        },
+        alternates,
         ...buildSocialMeta({
             title,
             description: descMap[locale] || descMap.en,

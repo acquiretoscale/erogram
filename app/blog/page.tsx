@@ -1,7 +1,8 @@
 import { Metadata } from 'next';
 import BlogHubClient from './BlogHubClient';
 import { getPublishedBlogArticles, getTopBlogArticles } from '@/lib/actions/blog';
-import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { getLocale, getPathname } from '@/lib/i18n/server';
 
 export const revalidate = 60;
 
@@ -11,18 +12,25 @@ const blogOgTitle = 'The Erogram Blog';
 const blogOgDescription =
   'Guides, lists, and investigations: AI NSFW, NSFW Telegram groups & bots, OnlyFans creators, and adult entertainment.';
 
-export const metadata: Metadata = {
-  title: 'The Erogram Blog — AI NSFW, Telegram, OnlyFans & Adult Culture',
-  description:
-    'Guides, lists, and investigations from the Erogram desk: AI NSFW tools, NSFW Telegram groups & bots, OnlyFans creators, and adult entertainment culture.',
-  alternates: { canonical: `${BASE_URL}/blog` },
-  ...buildSocialMeta({
-    title: blogOgTitle,
-    description: blogOgDescription,
-    url: `${BASE_URL}/blog`,
-    type: 'website',
-  }),
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const pathname = await getPathname();
+  const alternates = buildMetadataAlternates(pathname, locale);
+  const canonical = alternates?.canonical?.toString() || `${BASE_URL}/blog`;
+
+  return {
+    title: 'The Erogram Blog — AI NSFW, Telegram, OnlyFans & Adult Culture',
+    description:
+      'Guides, lists, and investigations from the Erogram desk: AI NSFW tools, NSFW Telegram groups & bots, OnlyFans creators, and adult entertainment culture.',
+    alternates,
+    ...buildSocialMeta({
+      title: blogOgTitle,
+      description: blogOgDescription,
+      url: canonical,
+      type: 'website',
+    }),
+  };
+}
 
 export default async function BlogHubPage() {
   const [articles, topArticles] = await Promise.all([

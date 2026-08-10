@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary } from '@/lib/i18n';
-import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import { BEST_AI_NSFW_TOOL_PAGES, getToolsForBestAiPage } from '@/lib/bestAiNsfwTools/pages';
 import { BEST_AI_TOOLS_HUB_HERO } from '@/lib/bestAiNsfwTools/heroIntros';
 import BestAiToolsIndexClient from '@/app/best-ai-nsfw-tools/BestAiToolsIndexClient';
@@ -14,12 +14,14 @@ const INDEX_DESC =
   'Browse Erogram top 10 rankings of the best adult AI tools by category. Curated lists of AI girlfriends, undress apps, NSFW generators, sexting chat, and more.';
 
 export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
   const pathname = await getPathname();
-  const canonical = `${canonicalBase}${pathname}`;
+  const alternates = buildMetadataAlternates(pathname, locale);
+  const canonical = alternates?.canonical?.toString() || `${canonicalBase}${pathname}`;
   return {
     title: INDEX_TITLE,
     description: INDEX_DESC,
-    alternates: { canonical },
+    alternates,
     other: { rating: 'adult' },
     ...buildSocialMeta({
       title: INDEX_TITLE,

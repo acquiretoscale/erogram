@@ -5,12 +5,12 @@ import { AI_NSFW_TOOLS } from './data';
 import AINsfwClient from './AINsfwClient';
 import { AINSFW_PAGE_SIZE } from './constants';
 import { pickRecentTools } from './recentCategoryTools';
-import { getLocale } from '@/lib/i18n/server';
+import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary } from '@/lib/i18n';
 import { getAllToolStats, getFeaturedTools, getBoostFeaturedSlugs, getApprovedSubmissions } from '@/lib/actions/ainsfw';
 import { getActiveCampaigns, getPlacementFeedCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
 import { getAuthorBySlug } from '@/lib/actions/authors';
-import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import { getVerifiedSlugs } from '@/app/ainsfw/fullReviews';
 import { getFeaturedHubSlugs } from '@/lib/ainsfw/featuredHub';
 
@@ -23,7 +23,11 @@ export const revalidate = 300;
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
+  const pathname = await getPathname();
   const dict = await getDictionary(locale);
+
+  const alternates = buildMetadataAlternates(pathname, locale);
+  const url = alternates?.canonical?.toString() || `${BASE_URL}/ainsfw`;
 
   return {
     title: dict.meta.ainsfwTitle,
@@ -31,13 +35,11 @@ export async function generateMetadata(): Promise<Metadata> {
     keywords:
       'ai girlfriend, undress ai, ai chat nsfw, ai companion, ai nsfw tools, best ai girlfriend 2026, ai undress, ai chatbot nsfw, erogram',
     other: { rating: 'adult' },
-    alternates: {
-      canonical: `${BASE_URL}/ainsfw`,
-    },
+    alternates,
     ...buildSocialMeta({
       title: dict.meta.ainsfwTitle,
       description: dict.meta.ainsfwDesc,
-      url: `${BASE_URL}/ainsfw`,
+      url,
       type: 'website',
       imageAlt: 'Erogram — AI NSFW Tools',
     }),

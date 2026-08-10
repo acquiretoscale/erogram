@@ -5,6 +5,7 @@ import { resolveOfCategorySlugFromPublicSegment } from '@/lib/bestOnlyfansAccoun
 import { resolveListingSlugFromPublicSegment } from '@/lib/i18n/listingSlugTranslations';
 import { getLocalizedHubSegment } from '@/lib/i18n/hubSlugTranslations';
 import { OF_SEARCH_HUB } from '@/lib/i18n/config';
+import { isBlacklistedPublicPathSegment } from '@/lib/onlyfanssearch/creatorBlacklist';
 
 /**
  * Locale-aware middleware for Erogram.
@@ -46,6 +47,18 @@ export function middleware(request: NextRequest) {
   }
 
   const { pathname } = request.nextUrl;
+
+  // ── DMCA forever ban: hard-404 claimed creator pages in ALL locales ─────────
+  // Covers: /{user}-onlyfans, /{user}-onlyfans-telegram, /jocy-cosplay, /lioqueen,
+  // /onlyfanssearch/{user}, and the same paths under /de|/es|/pt.
+  {
+    const dmcaPath = pathname.match(
+      /^(\/(?:de|es|pt))?\/(?:onlyfanssearch\/)?([^/]+)\/?$/,
+    );
+    if (dmcaPath && isBlacklistedPublicPathSegment(dmcaPath[2])) {
+      return new NextResponse(null, { status: 404 });
+    }
+  }
 
   // If locale was already resolved by a previous middleware pass (rewrite), keep it
   const existingLocale = request.headers.get('x-locale');
@@ -170,11 +183,15 @@ export function middleware(request: NextRequest) {
   }
 
   // Legacy OF creator URLs: /{username}-onlyfans → /onlyfanssearch/{username}
+  // (DMCA-blacklisted usernames already 404 above — never redirect those.)
   {
     const legacyOf = pathname.match(/^(\/(?:de|es|pt))?\/([^/]+)-onlyfans\/?$/);
     if (legacyOf) {
       const localePrefix = legacyOf[1] || '';
       const username = legacyOf[2];
+      if (isBlacklistedPublicPathSegment(username) || isBlacklistedPublicPathSegment(`${username}-onlyfans`)) {
+        return new NextResponse(null, { status: 404 });
+      }
       const url = request.nextUrl.clone();
       url.pathname = `${localePrefix}/onlyfanssearch/${username}`;
       return NextResponse.redirect(url, 301);

@@ -26,6 +26,7 @@ import {
   buildGroupListingMetaDescription,
   resolveEntityMetaDescription,
 } from '@/lib/seo/entityMetaDescription';
+import { isBlacklistedPublicPathSegment } from '@/lib/onlyfanssearch/creatorBlacklist';
 
 // Pre-built at deploy (all approved groups + bots via generateStaticParams below)
 // + background refresh every 5 minutes (ISR): Google sees stable server HTML like
@@ -500,6 +501,9 @@ async function getGroupReviewStats(groupId: string) {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
+  if (isBlacklistedPublicPathSegment(slug)) {
+    notFound();
+  }
   const locale = await getLocale();
   // Static-safe canonical: derive from slug + locale (BTG pattern), not the request path.
   const pathname = localePath(`/${slug}`, locale);
@@ -633,6 +637,9 @@ export default async function JoinPage({ params }: PageProps) {
   const isTelegram = false;
 
   const { slug } = await params;
+  if (isBlacklistedPublicPathSegment(slug)) {
+    notFound();
+  }
   const locale = await getLocale();
 
   // Try to find a group first

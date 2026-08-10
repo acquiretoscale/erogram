@@ -7,7 +7,8 @@ import {
   getCreatorReviews,
   type CreatorProfile,
 } from '@/lib/actions/ofCreatorProfile';
-import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { getLocale, getPathname } from '@/lib/i18n/server';
 import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
 import { getCreatorRankingPages } from '@/lib/tags/creatorMatch';
 import { getBestOfPreviewAvatars } from '@/lib/actions/bestOfCreators';
@@ -26,7 +27,9 @@ export async function generateCreatorProfileMetadata(
   const creator = await getCreatorByProfileSegment(profileSegment);
   if (!creator) return null;
 
-  const pageUrl = creatorCanonicalUrl(creator, canonicalPath);
+  const pathname = await getPathname();
+  const alternates = buildMetadataAlternates(pathname, locale);
+  const pageUrl = alternates?.canonical?.toString() || creatorCanonicalUrl(creator, canonicalPath);
   const name = creator.name;
   const username = creator.username;
   const primaryCat = creator.categories[0] || 'onlyfans';
@@ -114,7 +117,7 @@ export async function generateCreatorProfileMetadata(
       ? { index: true, follow: true }
       : { index: false, follow: false },
     other: { rating: 'adult' },
-    alternates: { canonical: pageUrl },
+    alternates,
     ...buildSocialMeta({
       title: ogTitle,
       description: desc,

@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { switchLocalePath } from '@/lib/i18n/switchLocalePath';
+import { LOCALES, LOCALE_HREFLANG, Locale, DEFAULT_LOCALE } from '@/lib/i18n/config';
 
 /** Canonical origin for absolute OG/Twitter image URLs. */
 export const CANONICAL_BASE = 'https://erogram.pro';
@@ -59,5 +61,30 @@ export function buildSocialMeta(input: SocialMetaInput): Pick<Metadata, 'openGra
       description: input.description,
       images: [imgUrl],
     },
+  };
+}
+
+/**
+ * Standard alternates (canonical + hreflang) for all localized pages.
+ * @param pathname — current path (from getPathname(), includes locale if present)
+ * @param locale — current active locale
+ */
+export function buildMetadataAlternates(pathname: string, locale: Locale): Metadata['alternates'] {
+  const isBlog = pathname === '/blog' || pathname.startsWith('/blog/');
+  const canonical = `${CANONICAL_BASE}${switchLocalePath(pathname, locale, locale)}`;
+
+  return {
+    canonical,
+    languages: isBlog
+      ? {}
+      : {
+          ...Object.fromEntries(
+            LOCALES.map((loc) => [
+              LOCALE_HREFLANG[loc],
+              `${CANONICAL_BASE}${switchLocalePath(pathname, locale, loc)}`,
+            ])
+          ),
+          'x-default': `${CANONICAL_BASE}${switchLocalePath(pathname, locale, 'en')}`,
+        },
   };
 }

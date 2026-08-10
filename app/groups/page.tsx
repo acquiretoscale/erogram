@@ -12,7 +12,7 @@ import type { StoryCategory, StoryMediaSlide } from './types';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
 import { filterCategories, GROUPS_FEED_PAGE_SIZE, TRENDING_CATEGORY_MIN_COUNT } from './constants';
-import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 const canonicalBase = CANONICAL_BASE;
 
@@ -84,18 +84,17 @@ export async function generateMetadata(): Promise<Metadata> {
   const pathname = await getPathname();
   const dict = await getDictionary(locale);
 
-  const canonical = `${canonicalBase}${pathname === '/' ? '' : pathname}`;
+  const alternates = buildMetadataAlternates(pathname, locale);
+  const canonical = alternates?.canonical?.toString() || `${canonicalBase}${pathname === '/' ? '' : pathname}`;
 
   return {
     title: dict.meta.groupsTitle,
     description: dict.meta.groupsDesc,
-    alternates: {
-      canonical,
-    },
+    alternates,
     ...buildSocialMeta({
       title: dict.meta.groupsTitle,
       description: dict.meta.groupsDesc,
-      url: `${canonicalBase}${pathname}`,
+      url: canonical,
       type: 'website',
       imageAlt: 'Erogram - Telegram Groups',
     }),

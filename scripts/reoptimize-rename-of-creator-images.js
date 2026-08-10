@@ -104,6 +104,19 @@ const PURGED = new Set([
   'nikkiritapriv', 'marichka18', 'marichkacute', 'mialushhh', 'mialushhhvip',
   'sagittariusgrl', 'anibae', 'anibae.vip', 'anibae.free', 'anibae_cos', 'amandastunning',
   'skyrhi', 'skyrhi_', 'skyyrhi', 'htownliv', 'jaydenee',
+  'pasteljelliesvip', 'pasteljelliesc', 'pasteljellies',
+  'dangerousdilemma', 'baritoneilemma', 'deliciousdilemma',
+  'viktoriapeach', 'viktoria69peach', 'viktoriapeach69',
+  'marshaxxxmay', 'marshamay', 'glitterandfangs', 'softcorecosplay', 'bobacorecos',
+  'executionergf', 'executionergfvip', 'bomtrady',
+  'shamelessx', 'shameless-sg', 'shamelessxx',
+  'bluebeari3', 'bluebeari', 'yourbluebeari', 'bluebeari3vip', 'bluebeari3exclusive',
+  'nalimarie', 'nalimarieofficial', 'nalimariefree',
+  'paleseafoam', 'paleseafoa', 'palseafoam',
+  'arabicprincess', 'milakream', 'jamilakream',
+  'slavebc', 'blonde_bc', 'blondebc',
+  'alessa', 'bellegothddess', 'belledarkgod', 'belledarkgoddess', 'belledarkmistress',
+  'ts0f1m', 'ts0f1m.free',
 ].map(u => u.toLowerCase()));
 
 

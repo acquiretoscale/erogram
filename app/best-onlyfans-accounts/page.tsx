@@ -6,7 +6,7 @@ import Footer from '@/components/Footer';
 import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, localePath } from '@/lib/i18n';
-import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import { ofCategoryPublicPath } from '@/lib/bestOnlyfansAccounts/boaUrls';
 import BestEditorialSeo from '@/app/best-onlyfans-accounts/BestEditorialSeo';
 
@@ -21,13 +21,13 @@ export async function generateMetadata(): Promise<Metadata> {
     const locale = await getLocale();
     const pathname = await getPathname();
     const dict = await getDictionary(locale);
-    const canonical = `${canonicalBase}${pathname}`;
+    const alternates = buildMetadataAlternates(pathname, locale);
+    const canonical = alternates?.canonical?.toString() || `${CANONICAL_BASE}${pathname}`;
+
     return {
         title: dict.meta.bestOnlyfansIndexTitle,
         description: dict.meta.bestOnlyfansIndexDesc,
-        alternates: {
-            canonical,
-        },
+        alternates,
         ...buildSocialMeta({
             title: dict.meta.bestOnlyfansIndexTitle,
             description: dict.meta.bestOnlyfansIndexDesc,

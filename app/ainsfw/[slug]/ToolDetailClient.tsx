@@ -29,6 +29,7 @@ import ToolKeyFeatures from '@/components/ainsfw/ToolKeyFeatures';
 import AinsfwVideoListingBadge from '@/components/ainsfw/AinsfwVideoListingBadge';
 import TopAINsfwBlock from '../TopAINsfwBlock';
 import { hasProsCons, type AINsfwListingBlocks } from '../listingBlocks';
+import { getMemoryPeers } from '../memoryPeers';
 
 interface ToolDetailClientProps {
   tool: AINsfwTool;
@@ -855,6 +856,37 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                   <p key={i}>{para}</p>
                 ))}
               </div>
+
+              {(() => {
+                const memoryPeers = getMemoryPeers(tool.slug);
+                if (!memoryPeers) return null;
+                return (
+                  <section className="mb-8 rounded-2xl border border-white/10 bg-[#0d0d0d] px-4 sm:px-6 py-5 sm:py-6">
+                    <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight mb-1.5">
+                      {tool.name} Conversation &amp; Memory strength
+                    </h2>
+                    <p className="text-sm text-gray-400 mb-4">
+                      What our peers say about the conversation and memory strength
+                    </p>
+                    <ul className="space-y-4">
+                      {memoryPeers.map((peer, i) => (
+                        <li key={`${peer.peer}-${i}`} className="text-gray-300 text-sm sm:text-base leading-relaxed">
+                          <p className="mb-1.5">&ldquo;{peer.text}&rdquo;</p>
+                          <a
+                            href={peer.homepage}
+                            target="_blank"
+                            rel="nofollow noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[#22c55e] font-semibold hover:underline"
+                          >
+                            {peer.peer}
+                            <span aria-hidden className="text-[10px] opacity-70">↗</span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                );
+              })()}
 
               <div className="mb-8 flex justify-center">
                 <button

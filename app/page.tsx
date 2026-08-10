@@ -11,7 +11,7 @@ import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
 import { AI_NSFW_TOOLS } from '@/app/ainsfw/data';
 import { pickRecentTools, RECENT_POOL_LIMIT } from '@/app/ainsfw/recentCategoryTools';
 import { getAllToolStats, getApprovedSubmissions } from '@/lib/actions/ainsfw';
-import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import { filterCategories, categorySlug } from '@/app/groups/constants';
 
 export const revalidate = 300;
@@ -35,13 +35,15 @@ export async function generateMetadata(): Promise<Metadata> {
 
   const title = m.homeTitle || 'Erogram | Best NSFW Telegram Groups, Bots & AI Tools Directory (2026)';
   const description = m.homeDesc || 'The best NSFW & Porn Telegram groups directory. Browse thousands of verified adult Telegram and AI bots, onlyfans, AI NSFW Tools & more. Updated daily.';
-  const canonical = `${CANONICAL_BASE}${pathname === '/' ? '' : pathname}`;
+
+  const alternates = buildMetadataAlternates(pathname, locale);
+  const canonical = alternates?.canonical?.toString() || `${CANONICAL_BASE}${pathname === '/' ? '' : pathname}`;
 
   return {
     title,
     description,
     keywords: 'porn telegram, telegram porn, best porn telegram groups, nsfw telegram groups, adult telegram directory, porn telegram channels, nsfw telegram, telegram porn groups, amateur porn telegram, anal telegram',
-    alternates: { canonical },
+    alternates,
     ...buildSocialMeta({
       title,
       description,

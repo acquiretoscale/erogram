@@ -65,6 +65,7 @@ const RAW = [
   'jocy_cosplay',
   'jocycosplay.vip',
   'jocycosplay',
+  'jocy-cosplay',
   'jocycosplay_oficial',
   'jocycosplayvip',
   'jocyfansly',
@@ -164,6 +165,69 @@ const RAW = [
   'jaydene whelehan',
   'ts0f1m',
   'ts0f1m.free',
+  // Aug 9 2026 Google notices — forever ban
+  'pasteljelliesvip',
+  'pasteljelliesc',
+  'pasteljellies',
+  'dangerousdilemma',
+  'baritoneilemma',
+  'deliciousdilemma',
+  'viktoriapeach',
+  'viktoria69peach',
+  'viktoriapeach69',
+  'marsha may',
+  'marshaxxxmay',
+  'marshamay',
+  'glitterandfangs',
+  'softcorecosplay',
+  'bobacorecos',
+  'executionergf',
+  'executionergfvip',
+  'bom trady',
+  'bomtrady',
+  'shamelessx',
+  'shameless-sg',
+  'shamelessxx',
+  'bluebeari3',
+  'bluebeari',
+  'yourbluebeari',
+  'bluebeari3vip',
+  'bluebeari3exclusive',
+  'nali marie',
+  'nali-marie',
+  'nalimarie',
+  'nalimarieofficial',
+  'nalimariefree',
+  'paleseafoam',
+  'paleseafoa',
+  'palseafoam',
+  'arabic princess',
+  'arabicprincess',
+  'milakream',
+  'jamilakream',
+  'slavebc',
+  'blonde_bc',
+  'blondebc',
+  'alessa',
+  'bellegothddess',
+  'belledarkgod',
+  'belledarkgoddess',
+  'belledarkmistress',
+  // Aug 9–10 2026 Google DMCA notices (DMCA Piracy Prevention Inc)
+  'finesse_ahhxxx',
+  'finesse ahhxxx',
+  'finesseahhxxx',
+  'vanessahh',
+  'bbgumbitchh',
+  'bbgumbitch',
+  'feya quinn',
+  'feyaquinn',
+  'feyaquinnvip',
+  'rosierendallx',
+  'rosierendallxo',
+  'itsrosierendallfree',
+  'itsrosierendall',
+  'rosierendall',
 ] as const;
 
 function addKey(set: Set<string>, raw: string) {
@@ -197,6 +261,27 @@ export function isCreatorBlacklisted(usernameOrSlug: string): boolean {
   if (slug && BLACKLIST.has(slug)) return true;
   const compact = n.replace(/[^a-z0-9]/g, '');
   if (compact && BLACKLIST.has(compact)) return true;
+  return false;
+}
+
+/**
+ * True when a public URL segment must hard-404 (DMCA forever ban).
+ * Covers bare slugs, /onlyfanssearch/{user}, legacy /{user}-onlyfans,
+ * and /{user}-onlyfans-telegram (any locale prefix stripped by caller).
+ */
+export function isBlacklistedPublicPathSegment(segment: string): boolean {
+  const raw = String(segment || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^\/+|\/+$/g, '');
+  if (!raw) return false;
+  if (isCreatorBlacklisted(raw)) return true;
+  if (raw.endsWith('-onlyfans-telegram')) {
+    return isCreatorBlacklisted(raw.slice(0, -'-onlyfans-telegram'.length));
+  }
+  if (raw.endsWith('-onlyfans')) {
+    return isCreatorBlacklisted(raw.slice(0, -'-onlyfans'.length));
+  }
   return false;
 }
 

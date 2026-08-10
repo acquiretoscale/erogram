@@ -12,9 +12,9 @@
 import type { Metadata } from 'next';
 import { LOCALES, LOCALE_HREFLANG, OF_SEARCH_HUB, type Locale } from '@/lib/i18n/config';
 import { ofCategoryUrl } from './constants';
-import { buildSocialMeta } from '@/lib/seo/socialMeta';
+import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { switchLocalePath } from '@/lib/i18n/switchLocalePath';
 
-const BASE = 'https://erogram.pro';
 const robots = { index: true, follow: true } as const;
 
 function mainPath(locale: Locale) {
@@ -27,9 +27,18 @@ function topPath(_locale: Locale) {
   return '/Toponlyfanscreators';
 }
 
-function alt(paths: Record<Locale, string>, currentPath: string) {
+function alt(pathname: string, locale: Locale) {
   return {
-    canonical: `${BASE}${currentPath}`,
+    canonical: `${CANONICAL_BASE}${switchLocalePath(pathname, locale, locale)}`,
+    languages: {
+      ...Object.fromEntries(
+        LOCALES.map((loc) => [
+          LOCALE_HREFLANG[loc],
+          `${CANONICAL_BASE}${switchLocalePath(pathname, locale, loc)}`,
+        ])
+      ),
+      'x-default': `${CANONICAL_BASE}${switchLocalePath(pathname, locale, 'en')}`,
+    },
   };
 }
 
@@ -58,20 +67,12 @@ export function mainOfMeta(locale: Locale): Metadata {
   return {
     title: title[locale],
     description: desc[locale],
-    alternates: alt(
-      {
-        en: '/onlyfanssearch',
-        de: `/de/${OF_SEARCH_HUB.de}`,
-        es: `/es/${OF_SEARCH_HUB.es}`,
-        pt: `/pt/${OF_SEARCH_HUB.pt}`,
-      },
-      current,
-    ),
+    alternates: alt(current, locale),
     robots,
     ...buildSocialMeta({
       title: ogTitle[locale],
       description: desc[locale],
-      url: `${BASE}${current}`,
+      url: `${CANONICAL_BASE}${current}`,
       type: 'website',
     }),
   };
@@ -111,20 +112,12 @@ export function categoryOfMeta(locale: Locale, catSlug: string, label: string): 
   return {
     title,
     description: desc,
-    alternates: alt(
-      {
-        en: ofCategoryUrl(catSlug),
-        de: `/de/${OF_SEARCH_HUB.de}/${catSlug}`,
-        es: `/es/${OF_SEARCH_HUB.es}/${catSlug}`,
-        pt: `/pt/${OF_SEARCH_HUB.pt}/${catSlug}`,
-      },
-      current,
-    ),
+    alternates: alt(current, locale),
     robots,
     ...buildSocialMeta({
       title: ogTitle,
       description: desc,
-      url: `${BASE}${current}`,
+      url: `${CANONICAL_BASE}${current}`,
       type: 'website',
     }),
   };
@@ -155,20 +148,12 @@ export function topCreatorsOfMeta(locale: Locale): Metadata {
   return {
     title: title[locale],
     description: desc[locale],
-    alternates: alt(
-      {
-        en: '/Toponlyfanscreators',
-        de: '/Toponlyfanscreators',
-        es: '/Toponlyfanscreators',
-        pt: '/Toponlyfanscreators',
-      },
-      current,
-    ),
+    alternates: alt(current, locale),
     robots,
     ...buildSocialMeta({
       title: ogTitle[locale],
       description: desc[locale],
-      url: `${BASE}${current}`,
+      url: `${CANONICAL_BASE}${current}`,
       type: 'website',
     }),
   };

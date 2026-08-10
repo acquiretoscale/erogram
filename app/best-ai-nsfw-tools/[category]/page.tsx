@@ -1,8 +1,7 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getLocale } from '@/lib/i18n/server';
-import { getDictionary, localePath, type Locale } from '@/lib/i18n';
-import { buildSocialMeta } from '@/lib/seo/socialMeta';
+import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getBestAiToolMetaDescription } from '@/lib/bestAiNsfwTools/metaDescriptions';
 import {
   BEST_AI_NSFW_TOOL_PAGES,
@@ -37,11 +36,12 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const locale = await getLocale();
+  const pathname = await getPathname();
   const { category } = await params;
   const cryptoPage = cryptoPageFromSlug(category);
   if (cryptoPage) {
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
-    const canonical = `${siteUrl}${localePath(`/${BEST_AI_NSFW_TOOLS_HUB}/${cryptoPage.slug}`, locale)}`;
+    const alternates = buildMetadataAlternates(pathname, locale);
+    const canonical = alternates?.canonical?.toString() || `${CANONICAL_BASE}${pathname}`;
     const title = getCryptoPageMetaTitle(cryptoPage);
     const description =
       getBestAiToolMetaDescription(cryptoPage.slug, locale) ||
@@ -50,7 +50,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const meta = {
       title,
       description,
-      alternates: { canonical },
+      alternates,
       other: { rating: 'adult' as const },
       ...buildSocialMeta({
         title,
@@ -70,8 +70,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const year = new Date().getFullYear();
   const count = getToolsForBestAiPage(page).length;
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
-  const canonical = `${siteUrl}${localePath(`/${BEST_AI_NSFW_TOOLS_HUB}/${page.slug}`, locale)}`;
+  const alternates = buildMetadataAlternates(pathname, locale);
+  const canonical = alternates?.canonical?.toString() || `${CANONICAL_BASE}${pathname}`;
   const variant = [...page.slug].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % 3;
 
   const titleVariants: Record<Locale, { full: [string, string, string]; compact: [string, string, string] }> = {
@@ -136,7 +136,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const meta = {
     title,
     description,
-    alternates: { canonical },
+    alternates,
     other: { rating: 'adult' as const },
     ...buildSocialMeta({
       title,

@@ -16,7 +16,8 @@ import { pickRecentCategoryTools } from '@/app/ainsfw/recentCategoryTools';
 import { getAuthorBySlug } from '@/lib/actions/authors';
 import { getAinsfwCategoryMeta, getAinsfwMetaDescription, getAinsfwMetaTitle } from '@/lib/ainsfw/metaDescriptions';
 import { pickTagHashtagAlt } from '@/lib/ainsfw/imageAlt';
-import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { getLocale, getPathname } from '@/lib/i18n/server';
 
 // Pre-built at deploy (generateStaticParams below) + background refresh every
 // 5 minutes (ISR): stable server HTML for Google, fresh stats/ads for users.
@@ -93,6 +94,8 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
+  const locale = await getLocale();
+  const pathname = await getPathname();
 
   // Category page
   const category = getCategoryBySlug(slug);
@@ -100,11 +103,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const customCatMeta = getAinsfwCategoryMeta(slug);
     const title = customCatMeta?.title ?? `Best ${category} Tools 2026 — Erogram`;
     const description = customCatMeta?.en ?? `Browse the top ${category} tools reviewed and ranked by Erogram. Find the best ${category.toLowerCase()} options with real user ratings.`;
-    const url = `${BASE_URL}/ainsfw/${slug}`;
+    const alternates = buildMetadataAlternates(pathname, locale);
+    const url = alternates?.canonical?.toString() || `${CANONICAL_BASE}/ainsfw/${slug}`;
+
     return {
       title,
       description,
-      alternates: { canonical: url },
+      alternates,
       other: { rating: 'adult' },
       ...buildSocialMeta({ title, description, url, type: 'website' }),
     };
@@ -116,8 +121,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       const { permanentRedirect } = await import('next/navigation');
       permanentRedirect(`/ainsfw/${aiTool.slug}`);
     }
-    const toolPageUrl = `${BASE_URL}/ainsfw/${aiTool.slug}`;
-    const toolImgUrl = aiTool.image.startsWith('http') ? aiTool.image : `${BASE_URL}${aiTool.image}`;
+    const alternates = buildMetadataAlternates(pathname, locale);
+    const toolPageUrl = alternates?.canonical?.toString() || `${CANONICAL_BASE}/ainsfw/${aiTool.slug}`;
+    const toolImgUrl = aiTool.image.startsWith('http') ? aiTool.image : `${CANONICAL_BASE}${aiTool.image}`;
 
     const customTitle = getAinsfwMetaTitle(aiTool.slug);
     const title = customTitle ?? `${aiTool.name} Review — Best ${aiTool.category} Tool 2026`;
@@ -130,7 +136,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description: toolDesc,
       keywords: `${aiTool.name}, ${aiTool.category}, ai nsfw tools, ${aiTool.tags.slice(0, 5).join(', ')}, erogram, best ${aiTool.category.toLowerCase()} 2026`,
       other: { rating: 'adult' },
-      alternates: { canonical: toolPageUrl },
+      alternates,
       ...buildSocialMeta({
         title,
         description: toolDesc,

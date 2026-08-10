@@ -41,6 +41,24 @@ const TARGETS = [
   'jocy_cosplay', 'jocycosplay', 'jocycosplay.vip', 'bellebrooksxo', 'honeyrashell',
   'summerstarz', 'pussiesncream_', 'kassqueen98', 'charlotte_rachel', 'charlotterachel',
   'gem101', 'justgemma',
+  // Aug 9 2026 Google notices wave
+  'pasteljelliesvip', 'pasteljelliesc', 'pasteljellies',
+  'dangerousdilemma', 'baritoneilemma', 'deliciousdilemma',
+  'viktoriapeach', 'viktoria69peach', 'viktoriapeach69',
+  'marsha may', 'marshaxxxmay', 'marshamay',
+  'glitterandfangs', 'softcorecosplay', 'bobacorecos',
+  'executionergf', 'executionergfvip', 'bom trady', 'bomtrady',
+  'shamelessx', 'shameless-sg', 'shamelessxx',
+  'bluebeari3', 'bluebeari', 'yourbluebeari', 'bluebeari3vip', 'bluebeari3exclusive',
+  'nali marie', 'nali-marie', 'nalimarie', 'nalimarieofficial', 'nalimariefree',
+  'paleseafoam', 'paleseafoa', 'palseafoam',
+  'arabic princess', 'arabicprincess', 'milakream', 'jamilakream',
+  'slavebc', 'blonde_bc', 'blondebc',
+  'alessa', 'bellegothddess',   'belledarkgod', 'belledarkgoddess', 'belledarkmistress',
+  // Aug 9–10 2026 Google DMCA notices
+  'finesse_ahhxxx', 'finesseahhxxx', 'vanessahh',
+  'bbgumbitchh', 'bbgumbitch', 'feyaquinn', 'feyaquinnvip',
+  'rosierendallx', 'rosierendallxo', 'itsrosierendallfree', 'itsrosierendall', 'rosierendall',
 ];
 
 if (!MONGO_URI) {
@@ -138,12 +156,43 @@ async function main() {
     }
   }
 
+  const db = mongoose.connection.db;
+  const ids = unique.map((d) => d._id);
+  const slugSet = [...new Set(unique.flatMap((d) => [d.slug, d.username, slugify(d.username)].filter(Boolean)))];
+  const usernameRx = usernames.map((u) => new RegExp(`^${u.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'));
+
   if (!DRY_RUN && unique.length) {
-    const ids = unique.map((d) => d._id);
+    const reviews = await db.collection('creatorreviews').deleteMany({
+      creatorSlug: { $in: [...slugSet, ...slugs] },
+    });
+    console.log(`CreatorReview deleted: ${reviews.deletedCount}`);
+
+    const users = await db.collection('users').updateMany(
+      { savedCreators: { $in: ids } },
+      { $pull: { savedCreators: { $in: ids } } },
+    );
+    console.log(`Users savedCreators cleaned: ${users.modifiedCount}`);
+
+    const trending = await db.collection('trendingofcreators').find({ username: { $in: usernameRx } }).toArray();
+    const trendIds = trending.map((t) => t._id);
+    if (trendIds.length) {
+      await db.collection('trendingclickdailies').deleteMany({ creatorId: { $in: trendIds } });
+      const tr = await db.collection('trendingofcreators').deleteMany({ _id: { $in: trendIds } });
+      console.log(`TrendingOFCreator deleted: ${tr.deletedCount}`);
+    }
+
+    const camp = await db.collection('campaigns').deleteMany({
+      $or: [
+        { ofUsername: { $in: usernameRx } },
+        ...usernames.map((u) => ({ destinationUrl: new RegExp(u.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') })),
+      ],
+    });
+    console.log(`Campaigns deleted: ${camp.deletedCount}`);
+
     const res = await col.deleteMany({ _id: { $in: ids } });
-    console.log(`\nDeleted ${res.deletedCount} Mongo documents.`);
+    console.log(`\nDeleted ${res.deletedCount} OnlyFansCreator documents.`);
   } else {
-    console.log(`\nWould delete ${unique.length} Mongo documents.`);
+    console.log(`\nWould delete ${unique.length} Mongo documents + related reviews/saves/trending/campaigns.`);
   }
 
   console.log(`R2 object delete attempts: ${r2Deleted}${DRY_RUN ? ' (dry)' : ''}`);

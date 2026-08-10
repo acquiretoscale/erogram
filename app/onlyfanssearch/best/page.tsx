@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
-import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getFreeMajorSubCategories } from '@/lib/onlyfans/freeMajorCategories';
 import { buildBestFreeArticleRanking } from '@/lib/onlyfans/bestFreeArticle/buildRanking';
 import { bestFreeArticleCopy } from '@/lib/onlyfans/bestFreeArticle/copy';
@@ -11,13 +12,18 @@ const PAGE_URL = `${CANONICAL_BASE}${PAGE_PATH}`;
 const PAGE_TITLE = 'Explore the Best OnlyFans Girls & Models Accounts (2026)';
 
 export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const pathname = await getPathname();
   const title = `${PAGE_TITLE} | Erogram`;
   const description = 'Browse free OnlyFans creators on Erogram.';
+  const alternates = buildMetadataAlternates(pathname, locale);
+  const url = alternates?.canonical?.toString() || PAGE_URL;
+
   return {
     title,
     description,
-    alternates: { canonical: PAGE_URL },
-    ...buildSocialMeta({ title, description, url: PAGE_URL }),
+    alternates,
+    ...buildSocialMeta({ title, description, url }),
   };
 }
 

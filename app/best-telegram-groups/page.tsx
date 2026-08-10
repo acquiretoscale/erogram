@@ -8,7 +8,7 @@ import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
 
 import connectDB from '@/lib/db/mongodb';
 import { Group } from '@/lib/models';
-import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 const canonicalBase = CANONICAL_BASE;
 
@@ -16,13 +16,13 @@ export async function generateMetadata(): Promise<Metadata> {
     const locale = await getLocale();
     const pathname = await getPathname();
     const dict = await getDictionary(locale);
-    const canonical = `${canonicalBase}${pathname}`;
+    const alternates = buildMetadataAlternates(pathname, locale);
+    const canonical = alternates?.canonical?.toString() || `${CANONICAL_BASE}${pathname}`;
+
     return {
         title: dict.meta.bestGroupsIndexTitle,
         description: dict.meta.bestGroupsIndexDesc,
-        alternates: {
-            canonical,
-        },
+        alternates,
         ...buildSocialMeta({
             title: dict.meta.bestGroupsIndexTitle,
             description: dict.meta.bestGroupsIndexDesc,

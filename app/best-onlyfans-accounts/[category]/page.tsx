@@ -4,7 +4,7 @@ import { OF_CATEGORIES, OF_CATEGORY_MAP } from '@/app/onlyfanssearch/constants';
 import { ofCategoryFromPublicSegment } from '@/lib/bestOnlyfansAccounts/boaUrls';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import type { Locale } from '@/lib/i18n';
-import { buildSocialMeta } from '@/lib/seo/socialMeta';
+import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import { getMetaDescription } from '@/lib/bestOnlyfansAccounts/metaDescriptions';
 import BestOfPageView, { buildBestOfMetadata } from '@/app/best-onlyfans-accounts/BestOfPageView';
 import { BEST_OF_PAGE_MAP } from '@/app/best-onlyfans-accounts/bestOfPages';
@@ -51,12 +51,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     es: `Las 10 mejores cuentas ${label} de OnlyFans (${year})`,
     pt: `As 10 melhores contas ${label} de OnlyFans (${year})`,
   };
-  const canonical = `${siteUrl}${pathname}`;
+  const alternates = buildMetadataAlternates(pathname, locale);
+  const canonical = alternates?.canonical?.toString() || `${CANONICAL_BASE}${pathname}`;
 
   return {
     title: titleMap[locale] || titleMap.en,
     description: descMap[locale] || descMap.en,
-    alternates: { canonical },
+    alternates,
     ...buildSocialMeta({
       title: ogTitleMap[locale] || ogTitleMap.en,
       description: descMap[locale] || descMap.en,

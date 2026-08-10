@@ -4,7 +4,8 @@ import BlogArticleClient from './BlogArticleClient';
 import { getBlogArticleBySlug, getRelatedBlogArticles } from '@/lib/actions/blog';
 import { getArticleComments } from '@/lib/actions/articleComments';
 import { BLOG_CATEGORY_MAP } from '@/lib/blog/categories';
-import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { getLocale, getPathname } from '@/lib/i18n/server';
+import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 export const revalidate = 60;
 
@@ -31,12 +32,15 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
+  const locale = await getLocale();
+  const pathname = await getPathname();
   const legacy = LEGACY_BLOG_SLUG_REDIRECTS[slug];
   if (legacy) redirect(`/blog/${legacy}`);
   const article = await getBlogArticleBySlug(slug);
   if (!article) return { title: 'Article Not Found', robots: { index: false, follow: false } };
 
-  const url = `${BASE_URL}/blog/${article.slug}`;
+  const alternates = buildMetadataAlternates(pathname, locale);
+  const url = alternates?.canonical?.toString() || `${BASE_URL}/blog/${article.slug}`;
   const metaTitle = article.metaTitle || article.title;
   const metaDescription = article.metaDescription || article.excerpt || article.title;
   const ogImage = toAbsoluteUrl(article.ogImage || article.featuredImage);
@@ -45,7 +49,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: metaTitle,
     description: metaDescription,
     keywords: article.metaKeywords || undefined,
-    alternates: { canonical: url },
+    alternates,
     ...buildSocialMeta({
       title: article.ogTitle || metaTitle,
       description: article.ogDescription || metaDescription,
