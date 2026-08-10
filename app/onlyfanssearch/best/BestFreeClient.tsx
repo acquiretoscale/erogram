@@ -50,7 +50,7 @@ export default function BestFreeClient({
   paidFeatured = [],
 }: BestFreeClientProps) {
   const lp = useLocalePath();
-  const locale = useLocale();
+  const { locale } = useLocale();
   const { t } = useTranslation();
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const activeSlug = categorySlug || '';
