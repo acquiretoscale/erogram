@@ -96,31 +96,31 @@ function MastheadLangSwitcher({ compact = false }: { compact?: boolean }) {
 }
 
 // Real Erogram menu elements
-const NAV_PRE: Array<{ label: string; href: string; badge?: string }> = [
-  { label: 'Groups', href: '/groups' },
-  { label: 'Bots', href: '/bots' },
-  { label: 'AI NSFW', href: '/ainsfw' },
+const NAV_PRE: Array<{ labelKey: string; fallback: string; href: string; badge?: string }> = [
+  { labelKey: 'nav.groups', fallback: 'Groups', href: '/groups' },
+  { labelKey: 'nav.bots', fallback: 'Bots', href: '/bots' },
+  { labelKey: 'nav.aiNsfw', fallback: 'AI NSFW', href: '/ainsfw' },
 ];
 
-const NAV_POST: Array<{ label: string; href: string; badge?: string }> = [
-  { label: 'Blog', href: '/blog' },
+const NAV_POST: Array<{ labelKey: string; fallback: string; href: string; badge?: string }> = [
+  { labelKey: 'nav.blog', fallback: 'Blog', href: '/blog' },
 ];
 
 const ADD_ITEMS = [
   {
-    label: 'OnlyFans Creator', href: '/submit', color: '#00AFF0',
+    labelKey: 'nav.onlyfansCreator', fallback: 'OnlyFans Creator', href: '/submit', color: '#00AFF0',
     icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" /></svg>,
   },
   {
-    label: 'Telegram Group', href: '/add/group', color: '#4ab3f4',
+    labelKey: 'nav.telegramGroup', fallback: 'Telegram Group', href: '/add/group', color: '#4ab3f4',
     icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z" /></svg>,
   },
   {
-    label: 'Telegram Bot', href: '/add/bot', color: '#4ab3f4',
+    labelKey: 'nav.telegramBot', fallback: 'Telegram Bot', href: '/add/bot', color: '#4ab3f4',
     icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2" /><circle cx="9" cy="16" r="1" /><circle cx="15" cy="16" r="1" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>,
   },
   {
-    label: 'AI NSFW', href: '/add/ainsfw', color: '#e8b923',
+    labelKey: 'nav.aiNsfw', fallback: 'AI NSFW', href: '/add/ainsfw', color: '#e8b923',
     icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 8v8M9 8l6 8M15 8v8" /></svg>,
   },
 ];
@@ -132,6 +132,7 @@ const OF_NAV_MENU_CATEGORIES = OF_SEARCH_HUB_CATEGORY_SLUGS.flatMap((slug) => {
 });
 
 function OFsearchNav() {
+  const { t } = useTranslation();
   const lp = useLocalePath();
   const pathname = usePathname() || '';
   const [open, setOpen] = useState(false);
@@ -162,7 +163,7 @@ function OFsearchNav() {
         onClick={() => setOpen(false)}
         className={`inline-flex items-center gap-1.5 text-[13px] font-bold leading-none transition-colors ${isActive ? 'text-[#38c0f5]' : 'text-white hover:text-white/80'}`}
       >
-        <span>Onlyfans</span>
+        <span>{t('nav.onlyfans', 'OnlyFans')}</span>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden className="shrink-0"><path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z"/></svg>
       </Link>
       <button
@@ -198,15 +199,15 @@ function OFsearchNav() {
                   </svg>
                   <span className="font-extrabold text-[15px] leading-tight">
                     <span className="text-[#0f0c0a]">Only</span><span className="text-[#00AFF0]">Fans</span>
-                    <span className="block text-[10px] font-bold text-[#8a8178] tracking-wide">Search 1.8M+ Creators</span>
+                    <span className="block text-[10px] font-bold text-[#8a8178] tracking-wide">{t('nav.searchCreators', 'Search 1.8M+ Creators')}</span>
                   </span>
                 </span>
                 <span className="text-[#00AFF0] text-[18px] transition-transform group-hover:translate-x-0.5">→</span>
               </Link>
 
               <div className="px-3.5 pt-3 pb-1.5 flex items-center justify-between">
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#9a928a]">Best OnlyFans Accounts</span>
-                <Link href={lp('/best-onlyfans-accounts')} className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#00AFF0] hover:text-[#0089c7] transition-colors">All →</Link>
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#9a928a]">{t('nav.bestOfAccounts', 'Best OnlyFans Accounts')}</span>
+                <Link href={lp('/best-onlyfans-accounts')} className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#00AFF0] hover:text-[#0089c7] transition-colors">{t('nav.allArrow', 'All →')}</Link>
               </div>
               <div className="grid grid-cols-3 gap-px px-2 pb-2">
                 {OF_NAV_MENU_CATEGORIES.map((cat) => (
@@ -226,14 +227,14 @@ function OFsearchNav() {
                   onClick={() => setOpen(false)}
                   className="px-2 py-2.5 rounded-lg text-[12px] font-bold text-[#0f0c0a] bg-white border border-[#00AFF0]/20 hover:border-[#00AFF0]/50 hover:text-[#00AFF0] transition-colors text-center"
                 >
-                  Categories
+                  {t('nav.categories', 'Categories')}
                 </Link>
                 <Link
                   href={lp('/submit')}
                   onClick={() => setOpen(false)}
                   className="px-2 py-2.5 rounded-lg text-[12px] font-bold text-white bg-[#00AFF0] hover:bg-[#009AD6] transition-colors text-center"
                 >
-                  Submit your Creator
+                  {t('nav.submitCreator', 'Submit your Creator')}
                 </Link>
               </div>
             </div>
@@ -288,15 +289,17 @@ function LiveVisitorBar() {
 }
 
 function AddToolNav() {
+  const { t } = useTranslation();
+  const lp = useLocalePath();
   const [open, setOpen] = useState(false);
   return (
     <div className="relative hidden sm:block" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
       <Link
-        href="/add"
+        href={lp('/add')}
         className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.12em] uppercase text-black bg-white hover:bg-white/90 px-3.5 py-2 rounded-[5px] transition-colors"
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="shrink-0 -ml-0.5"><path d="M12 5v14M5 12h14" /></svg>
-        Submit
+        {t('nav.submit', 'Submit')}
         <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`shrink-0 opacity-50 transition-transform ${open ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6" /></svg>
       </Link>
       <AnimatePresence>
@@ -309,7 +312,7 @@ function AddToolNav() {
             style={{ transformOrigin: 'top right' }}
             className="absolute right-0 mt-2 w-[230px] bg-[#161412] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden p-1.5"
           >
-            <div className="px-3 py-2 text-[9px] font-black uppercase tracking-[0.2em] text-white/35">What are you adding?</div>
+            <div className="px-3 py-2 text-[9px] font-black uppercase tracking-[0.2em] text-white/35">{t('nav.whatAdding', 'What are you adding?')}</div>
             {ADD_ITEMS.map((it, i) => (
               <motion.div
                 key={it.href}
@@ -318,14 +321,14 @@ function AddToolNav() {
                 transition={{ delay: 0.05 + i * 0.05, duration: 0.2 }}
               >
                 <Link
-                  href={it.href}
+                  href={lp(it.href)}
                   onClick={() => setOpen(false)}
                   className="group flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/[0.05] transition-colors"
                 >
                   <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-110" style={{ background: `${it.color}1f`, color: it.color }}>
                     {it.icon}
                   </span>
-                  <span className="text-[13px] font-semibold text-[#cfc9c2] group-hover:text-white transition-colors">{it.label}</span>
+                  <span className="text-[13px] font-semibold text-[#cfc9c2] group-hover:text-white transition-colors">{t(it.labelKey, it.fallback)}</span>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="ml-auto text-white/20 group-hover:text-white/60 group-hover:translate-x-0.5 transition-all"><path d="M9 6l6 6-6 6" /></svg>
                 </Link>
               </motion.div>
@@ -450,6 +453,7 @@ function useMastheadAuth() {
 type MastheadAuth = ReturnType<typeof useMastheadAuth>;
 
 function MastheadUserMenu({ accent, auth, lp }: { accent: string; auth: MastheadAuth; lp: (p: string) => string }) {
+  const { t } = useTranslation();
   const { mounted, username, firstName, photoUrl, isPremium, isAdmin, listings, ainsfw, logout } = auth;
   const displayName = firstName || username || '';
   const [open, setOpen] = useState(false);
@@ -463,7 +467,9 @@ function MastheadUserMenu({ accent, auth, lp }: { accent: string; auth: Masthead
   }, [open]);
 
   const item = 'flex items-center gap-2.5 px-4 py-2 text-[13px] text-[#cfc9c2] hover:text-white hover:bg-white/[0.05] transition-colors';
-  const campaignsLabel = listings?.hasPaidCampaign ? 'My Campaigns' : 'My Listings';
+  const campaignsLabel = listings?.hasPaidCampaign
+    ? t('nav.myCampaigns', 'My Campaigns')
+    : t('nav.myListings', 'My Listings');
 
   if (!mounted) {
     return <span className="w-8 h-8 rounded-full bg-white/[0.08] border border-white/15 inline-block" suppressHydrationWarning />;
@@ -473,14 +479,14 @@ function MastheadUserMenu({ accent, auth, lp }: { accent: string; auth: Masthead
     return (
       <div className="flex items-center gap-2">
         <Link href={lp('/login')} className="text-[11px] font-bold tracking-[0.14em] uppercase text-white border border-white/25 hover:border-white/60 hover:bg-white/[0.06] px-4 py-2 rounded-[5px] transition-colors">
-          Login
+          {t('nav.login', 'Login')}
         </Link>
         <Link
           href={lp('/login?mode=join')}
           className="text-[11px] font-bold tracking-[0.14em] uppercase text-white px-4 py-2 rounded-[5px] transition-opacity hover:opacity-85"
           style={{ background: accent }}
         >
-          Join
+          {t('nav.join', 'Join')}
         </Link>
       </div>
     );
@@ -515,48 +521,48 @@ function MastheadUserMenu({ accent, auth, lp }: { accent: string; auth: Masthead
             <Link href={lp('/my-listings')} onClick={() => setOpen(false)} className={item}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 11 18-5v12L3 14v-3z" /><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" /></svg>
               <span className="flex-1">{campaignsLabel}</span>
-              {!!listings.inReviewCount && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20">{listings.inReviewCount} in review</span>}
+              {!!listings.inReviewCount && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20">{listings.inReviewCount} {t('nav.inReview', 'in review')}</span>}
             </Link>
           )}
           {ainsfw?.hasListings && (
             <Link href="/ai-nsfw-listings" onClick={() => setOpen(false)} className={item}>
               <span className="text-[13px] leading-none">🔞</span>
-              <span className="flex-1">My AI NSFW</span>
-              {!!ainsfw.inReviewCount && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20">{ainsfw.inReviewCount} in review</span>}
+              <span className="flex-1">{t('nav.myAiNsfw', 'My AI NSFW')}</span>
+              {!!ainsfw.inReviewCount && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20">{ainsfw.inReviewCount} {t('nav.inReview', 'in review')}</span>}
             </Link>
           )}
           {isAdmin && (
             <Link href="/admin" onClick={() => setOpen(false)} className={item}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></svg>
-              Admin Panel
+              {t('nav.adminPanel', 'Admin Panel')}
             </Link>
           )}
           {isAdmin && (
             <Link href="/OF" onClick={() => setOpen(false)} className={item}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" /><path d="M8 12h8M12 8v8" /></svg>
-              OF Admin
+              {t('nav.ofAdmin', 'OF Admin')}
             </Link>
           )}
           <Link href={lp('/profile')} onClick={() => setOpen(false)} className={item}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" /></svg>
-            Profile
+            {t('nav.profile', 'Profile')}
           </Link>
           <Link href={`${lp('/profile')}?tab=saved`} onClick={() => setOpen(false)} className={item}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" /></svg>
-            Saved
+            {t('nav.saved', 'Saved')}
           </Link>
           <Link href="/blog" onClick={() => setOpen(false)} className={item}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>
-            Blog
+            {t('nav.blog', 'Blog')}
           </Link>
           <Link href={`${lp('/profile')}?tab=settings`} onClick={() => setOpen(false)} className={item}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-            Support
+            {t('nav.support', 'Support')}
           </Link>
           <div className="border-t border-white/[0.06] mt-1 pt-1">
             <button onClick={() => { logout(); setOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2 text-[13px] text-white/40 hover:text-red-400 hover:bg-red-500/5 transition-colors text-left">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
-              Logout
+              {t('nav.logout', 'Logout')}
             </button>
           </div>
         </div>
@@ -576,6 +582,7 @@ const GOLD_BG = 'linear-gradient(135deg, #b8860b 0%, #ffd700 40%, #fff8b0 55%, #
 const GOLD_SHADOW = '0 4px 18px -6px rgba(255,215,0,0.55), inset 0 1px 0 rgba(255,255,255,0.4)';
 
 function UpgradePremiumButton({ href, onClick }: { href: string; onClick?: () => void }) {
+  const { t } = useTranslation();
   return (
     <Link
       href={href}
@@ -584,12 +591,13 @@ function UpgradePremiumButton({ href, onClick }: { href: string; onClick?: () =>
       style={{ background: GOLD_BG, boxShadow: GOLD_SHADOW }}
     >
       <svg width="13" height="13" viewBox="0 0 24 24" fill="#1a0f00" className="shrink-0" aria-hidden><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z" /></svg>
-      UPGRADE PREMIUM
+      {t('nav.upgradePremium', 'UPGRADE PREMIUM')}
     </Link>
   );
 }
 
 function MobileNavMenu({ open, lp, onClose, trendingLight = false }: { open: boolean; lp: (p: string) => string; onClose: () => void; trendingLight?: boolean }) {
+  const { t } = useTranslation();
   const [ofOpen, setOfOpen] = useState(false);
   const { locale } = useLocale();
   const pathForSwitch = usePublicPathname();
@@ -598,10 +606,10 @@ function MobileNavMenu({ open, lp, onClose, trendingLight = false }: { open: boo
   const item = 'flex items-center gap-3 px-4 py-2.5 text-[14px] text-[#cfc9c2] hover:text-white hover:bg-white/[0.05] active:bg-white/[0.08] transition-colors';
 
   // Scannable icons for top-tier mobile menu affordance (left icon + label).
-  const navIcon = (label: string) => {
-    if (label === 'Groups') return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
-    if (label === 'Bots') return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/><circle cx="8" cy="16" r="1"/><circle cx="16" cy="16" r="1"/></svg>;
-    if (label === 'AI NSFW') return <span className="text-[15px] leading-none">🔞</span>;
+  const navIcon = (href: string) => {
+    if (href === '/groups') return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+    if (href === '/bots') return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/><circle cx="8" cy="16" r="1"/><circle cx="16" cy="16" r="1"/></svg>;
+    if (href === '/ainsfw') return <span className="text-[15px] leading-none">🔞</span>;
     return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>;
   };
 
@@ -614,12 +622,12 @@ function MobileNavMenu({ open, lp, onClose, trendingLight = false }: { open: boo
     >
       <div className="px-4 pb-5 pt-3 space-y-3 bg-black">
         <div className="bg-[#161412] border border-white/10 rounded-xl overflow-hidden py-1">
-          <div className="px-4 py-2.5 text-[13px] font-semibold text-white/50 border-b border-white/[0.06]">Explore</div>
+          <div className="px-4 py-2.5 text-[13px] font-semibold text-white/50 border-b border-white/[0.06]">{t('nav.explore', 'Explore')}</div>
 
           {NAV_PRE.map((n) => (
-            <Link key={n.label} href={lp(n.href)} onClick={onClose} className={item}>
-              {navIcon(n.label)}
-              <span className="flex-1">{n.label}</span>
+            <Link key={n.href} href={lp(n.href)} onClick={onClose} className={item}>
+              {navIcon(n.href)}
+              <span className="flex-1">{t(n.labelKey, n.fallback)}</span>
               {n.badge && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#c0392f] text-white">{n.badge}</span>}
             </Link>
           ))}
@@ -627,10 +635,10 @@ function MobileNavMenu({ open, lp, onClose, trendingLight = false }: { open: boo
           {/* Onlyfans */}
           <Link href={lp('/onlyfanssearch')} onClick={onClose} className={item}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="#00AFF0" aria-hidden className="shrink-0"><path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z"/></svg>
-            <span className="flex-1 font-semibold text-[#38c0f5]">Onlyfans</span>
+            <span className="flex-1 font-semibold text-[#38c0f5]">{t('nav.onlyfans', 'OnlyFans')}</span>
           </Link>
           <Link href={lp('/onlyfanssearch/categories')} onClick={onClose} className={`${item} pl-10`}>
-            <span className="flex-1">Categories</span>
+            <span className="flex-1">{t('nav.categories', 'Categories')}</span>
           </Link>
 
           {/* Top 10 OnlyFans — collapsible */}
@@ -651,16 +659,16 @@ function MobileNavMenu({ open, lp, onClose, trendingLight = false }: { open: boo
 
           <Link href={lp('/tags')} onClick={onClose} className={item}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-            <span className="flex-1">Tags</span>
+            <span className="flex-1">{t('nav.tags', 'Tags')}</span>
           </Link>
           <Link href="/trending" onClick={onClose} className={item}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={trendingLight ? 'currentColor' : '#ef4444'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-            <span className={`flex-1 font-semibold ${trendingLight ? 'text-white' : 'text-red-500'}`}>TRENDING</span>
+            <span className={`flex-1 font-semibold ${trendingLight ? 'text-white' : 'text-red-500'}`}>{t('nav.trending', 'TRENDING')}</span>
           </Link>
           {NAV_POST.map((n) => (
-            <Link key={n.label} href={n.href} onClick={onClose} className={item}>
-              {navIcon(n.label)}
-              <span className="flex-1">{n.label}</span>
+            <Link key={n.href} href={n.href} onClick={onClose} className={item}>
+              {navIcon(n.href)}
+              <span className="flex-1">{t(n.labelKey, n.fallback)}</span>
               {n.badge && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#c0392f] text-white">{n.badge}</span>}
             </Link>
           ))}
@@ -668,7 +676,7 @@ function MobileNavMenu({ open, lp, onClose, trendingLight = false }: { open: boo
 
         {/* Language */}
         <div className="bg-[#161412] border border-white/10 rounded-xl overflow-hidden py-1">
-          <div className="px-4 py-2.5 text-[13px] font-semibold text-white/50 border-b border-white/[0.06]">Language</div>
+          <div className="px-4 py-2.5 text-[13px] font-semibold text-white/50 border-b border-white/[0.06]">{t('nav.language', 'Language')}</div>
           <div className="grid grid-cols-3 gap-1.5 p-2">
             {LOCALES.map((l) => (
               <a
@@ -689,9 +697,12 @@ function MobileNavMenu({ open, lp, onClose, trendingLight = false }: { open: boo
 }
 
 function MobileUserMenu({ open, auth, lp, onClose }: { open: boolean; auth: MastheadAuth; lp: (p: string) => string; onClose: () => void }) {
+  const { t } = useTranslation();
   const { mounted, username, firstName, isPremium, isAdmin, listings, ainsfw, logout } = auth;
   const displayName = firstName || username || '';
-  const campaignsLabel = listings?.hasPaidCampaign ? 'My Campaigns' : 'My Listings';
+  const campaignsLabel = listings?.hasPaidCampaign
+    ? t('nav.myCampaigns', 'My Campaigns')
+    : t('nav.myListings', 'My Listings');
   const item = 'flex items-center gap-3 px-4 py-2.5 text-[14px] text-[#cfc9c2] hover:text-white hover:bg-white/[0.05] active:bg-white/[0.08] transition-colors';
 
   return (
@@ -718,58 +729,58 @@ function MobileUserMenu({ open, auth, lp, onClose }: { open: boolean; auth: Mast
               <Link href={lp('/my-listings')} onClick={onClose} className={item}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
                 <span className="flex-1">{campaignsLabel}</span>
-                {!!listings.inReviewCount && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20">{listings.inReviewCount} in review</span>}
+                {!!listings.inReviewCount && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20">{listings.inReviewCount} {t('nav.inReview', 'in review')}</span>}
               </Link>
             )}
             {ainsfw?.hasListings && (
               <Link href="/ai-nsfw-listings" onClick={onClose} className={item}>
                 <span className="text-[14px] leading-none">🔞</span>
-                <span className="flex-1">My AI NSFW</span>
-                {!!ainsfw.inReviewCount && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20">{ainsfw.inReviewCount} in review</span>}
+                <span className="flex-1">{t('nav.myAiNsfw', 'My AI NSFW')}</span>
+                {!!ainsfw.inReviewCount && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20">{ainsfw.inReviewCount} {t('nav.inReview', 'in review')}</span>}
               </Link>
             )}
             {isAdmin && (
               <Link href="/admin" onClick={onClose} className={item}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-                Admin Panel
+                {t('nav.adminPanel', 'Admin Panel')}
               </Link>
             )}
             {isAdmin && (
               <Link href="/OF" onClick={onClose} className={item}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M8 12h8M12 8v8"/></svg>
-                OF Admin
+                {t('nav.ofAdmin', 'OF Admin')}
               </Link>
             )}
             <Link href={lp('/profile')} onClick={onClose} className={item}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>
-              Profile
+              {t('nav.profile', 'Profile')}
             </Link>
             <Link href={`${lp('/profile')}?tab=saved`} onClick={onClose} className={item}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
-              Saved
+              {t('nav.saved', 'Saved')}
             </Link>
             <Link href="/blog" onClick={onClose} className={item}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-              Blog
+              {t('nav.blog', 'Blog')}
             </Link>
             <Link href={`${lp('/profile')}?tab=settings`} onClick={onClose} className={item}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              Support
+              {t('nav.support', 'Support')}
             </Link>
             <div className="border-t border-white/[0.06] mt-1 pt-1">
               <button onClick={() => { logout(); onClose(); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-[14px] text-white/40 hover:text-red-400 hover:bg-red-500/5 transition-colors text-left">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-                Logout
+                {t('nav.logout', 'Logout')}
               </button>
             </div>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
             <Link href={lp('/login')} onClick={onClose} className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#161412] border border-white/10 text-[14px] font-bold text-white hover:bg-white/[0.06] transition-colors">
-              Login
+              {t('nav.login', 'Login')}
             </Link>
             <Link href={lp('/login?mode=join')} onClick={onClose} className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white text-[14px] font-bold text-black hover:opacity-90 transition-opacity">
-              Join
+              {t('nav.join', 'Join')}
             </Link>
           </div>
         )}
@@ -803,6 +814,7 @@ function accentForPath(pathname: string): string {
  * `fixed` makes it a drop-in replacement for the legacy fixed Navbar.
  */
 export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'default' }: { accent?: string; fixed?: boolean; wordmarkMode?: 'default' | 'pornhub' | 'onlyfans' }) {
+  const { t } = useTranslation();
   const auth = useMastheadAuth();
   const lp = useLocalePath();
   const pathname = usePathname();
@@ -849,11 +861,11 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
         <nav className="hidden lg:flex items-center gap-6 lg:gap-8 shrink-0">
           {NAV_PRE.map((n) => (
             <Link
-              key={n.label}
+              key={n.href}
               href={lp(n.href)}
               className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-[0.18em] uppercase text-white hover:text-white/80 transition-colors"
             >
-              {n.label}
+              {t(n.labelKey, n.fallback)}
               {n.badge && (
                 <span className="text-[8px] font-bold tracking-[0.08em] leading-none px-1 py-0.5 rounded-[3px] bg-[#c0392f] text-white">
                   {n.badge}
@@ -863,18 +875,18 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
           ))}
           <OFsearchNav />
           <Link href={lp('/tags')} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-[0.18em] uppercase text-white hover:text-white/80 transition-colors">
-            Tags
+            {t('nav.tags', 'Tags')}
           </Link>
           <Link href="/trending" className={`shrink-0 inline-flex items-center gap-1 text-[13px] font-black uppercase tracking-[0.1em] transition-colors ${trendingLight ? 'text-white hover:text-white/80' : 'text-red-500 hover:text-red-400'}`}>
-            TRENDING
+            {t('nav.trending', 'TRENDING')}
           </Link>
           {NAV_POST.map((n) => (
             <Link
-              key={n.label}
+              key={n.href}
               href={n.href}
               className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-[0.18em] uppercase text-white hover:text-white/80 transition-colors"
             >
-              {n.label}
+              {t(n.labelKey, n.fallback)}
               {n.badge && (
                 <span className="text-[8px] font-bold tracking-[0.08em] leading-none px-1 py-0.5 rounded-[3px] bg-[#c0392f] text-white">
                   {n.badge}
@@ -903,7 +915,7 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
               className="inline-flex items-center gap-1 text-[10px] font-bold tracking-[0.1em] uppercase text-black bg-white hover:bg-white/90 px-2.5 py-1.5 rounded-[5px] transition-colors shrink-0"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="shrink-0 -ml-0.5"><path d="M12 5v14M5 12h14" /></svg>
-              Submit
+              {t('nav.submit', 'Submit')}
             </Link>
           )}
           <button

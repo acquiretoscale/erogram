@@ -61,7 +61,7 @@ export async function getOFMCreators(
   await connectDB();
 
   const page = Math.max(1, params.page ?? 1);
-  const limit = Math.min(100, Math.max(1, params.limit ?? 50));
+  const limit = Math.min(200, Math.max(1, params.limit ?? 100));
   const search = params.search || '';
   const category = params.category || '';
   const isFree = params.isFree;
@@ -256,6 +256,15 @@ export async function deleteOFMCreator(token: string, id: string) {
   const result = await OnlyFansCreator.findByIdAndDelete(id);
   if (!result) throw new Error('Not found');
   return { success: true };
+}
+
+export async function bulkDeleteOFMCreators(token: string, ids: string[]) {
+  if (!(await authenticateAdmin(token))) throw new Error('Unauthorized');
+  if (!ids.length) throw new Error('No creators selected');
+  await connectDB();
+
+  const result = await OnlyFansCreator.deleteMany({ _id: { $in: ids } });
+  return { success: true, deleted: result.deletedCount ?? 0 };
 }
 
 // ---------------------------------------------------------------------------

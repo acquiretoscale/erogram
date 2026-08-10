@@ -17,7 +17,6 @@ export const OF_SEARCH_TOKENS: ProfileThemeTokens = {
 
 export function ofSearchNavProps(lp: (path: string) => string) {
   return {
-    nearMeHref: lp('/onlyfanssearch/near-me'),
     bestModelsHref: lp('/onlyfanssearch/best'),
     bestFreeHref: lp('/onlyfanssearch/best'),
   };

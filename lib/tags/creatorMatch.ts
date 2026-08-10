@@ -39,13 +39,9 @@ const BIO_ONLY_BEST_OF_SLUGS = new Set([
   'girlfriend',
   'toys',
   'instagram',
-  'korean',
   'caucasian',
   'couple-lesbian',
   'couple-straight',
-  'ecuadorian',
-  'public-sex',
-  'shower-sex',
   'singaporean',
   'step-fantasy',
 ]);

@@ -81,18 +81,11 @@ function OfCreatorCard({ creator }: { creator: TagCreatorResult }) {
           </span>
         </div>
         <p className="mt-0.5 text-[11px] text-[#00AFF0] sm:text-[13px]">@{creator.username}</p>
-        {(creator.likesCount > 0 || creator.subscriberCount > 0) && (
+        {(creator.subscriberCount > 0) && (
           <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-gray-400 sm:text-[11px]">
-            {creator.subscriberCount > 0 && (
-              <span>
-                {formatCount(creator.subscriberCount)} subs
-              </span>
-            )}
-            {creator.likesCount > 0 && (
-              <span>
-                {creator.subscriberCount > 0 ? '·' : ''} {formatCount(creator.likesCount)} likes
-              </span>
-            )}
+            <span>
+              {formatCount(creator.subscriberCount)} subs
+            </span>
           </div>
         )}
       </div>

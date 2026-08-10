@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { markPwaInstalled } from '@/lib/actions/pwaInstall';
+import { recordPwaInstall } from '@/lib/actions/pwaInstall';
 
 const DISMISS_KEY = 'pwa_install_dismissed';
+const CLIENT_KEY = 'pwa_install_client';
+const RECORDED_KEY = 'pwa_install_recorded';
 const DISMISS_DAYS = 14;
 const SW_URL = '/sw.js?v=7';
 
@@ -39,10 +41,35 @@ function wasDismissedRecently(): boolean {
   }
 }
 
-function recordInstallIfLoggedIn() {
+function getClientId(): string {
   try {
+    let id = localStorage.getItem(CLIENT_KEY);
+    if (id && id.length >= 8) return id;
+    id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : `c-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(CLIENT_KEY, id);
+    return id;
+  } catch {
+    return `c-${Date.now()}`;
+  }
+}
+
+function recordInstall() {
+  try {
+    if (localStorage.getItem(RECORDED_KEY) === '1') {
+      // Still sync user link if they log in later after a guest install
+      const token = localStorage.getItem('token');
+      if (token) recordPwaInstall(token, getClientId()).catch(() => {});
+      return;
+    }
     const token = localStorage.getItem('token');
-    if (token) markPwaInstalled(token).catch(() => {});
+    const clientId = getClientId();
+    recordPwaInstall(token, clientId)
+      .then((r) => {
+        if (r?.ok) localStorage.setItem(RECORDED_KEY, '1');
+      })
+      .catch(() => {});
   } catch {}
 }
 
@@ -55,10 +82,20 @@ export default function PwaInstallBanner() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (isStandalone()) {
-      recordInstallIfLoggedIn();
+      recordInstall();
       return;
     }
-    if (!isMobileUa() || wasDismissedRecently()) return;
+
+    // Install detection runs even when the banner is hidden or dismissed.
+    const onInstalled = () => {
+      recordInstall();
+      setVisible(false);
+    };
+    window.addEventListener('appinstalled', onInstalled);
+
+    if (!isMobileUa() || wasDismissedRecently()) {
+      return () => window.removeEventListener('appinstalled', onInstalled);
+    }
 
     setIsIOS(isIosDevice());
 
@@ -71,12 +108,7 @@ export default function PwaInstallBanner() {
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setVisible(true);
     };
-    const onInstalled = () => {
-      recordInstallIfLoggedIn();
-      setVisible(false);
-    };
     window.addEventListener('beforeinstallprompt', onPrompt);
-    window.addEventListener('appinstalled', onInstalled);
 
     let iosTimer: ReturnType<typeof setTimeout> | undefined;
     if (isIosDevice()) {
@@ -104,7 +136,7 @@ export default function PwaInstallBanner() {
       const choice = await deferredPrompt.userChoice;
       setDeferredPrompt(null);
       if (choice.outcome === 'accepted') {
-        recordInstallIfLoggedIn();
+        recordInstall();
         setVisible(false);
         return;
       }
@@ -123,10 +155,10 @@ export default function PwaInstallBanner() {
       className="fixed bottom-0 inset-x-0 z-[9998] safe-bottom pointer-events-none"
     >
       <div className="pointer-events-auto mx-auto max-w-lg px-3 pb-3">
-        <div className="rounded-2xl border border-white/10 bg-[#1a1a1a]/95 backdrop-blur-md shadow-xl px-4 py-3.5">
+        <div className="rounded-2xl border border-black/10 bg-white shadow-2xl px-4 py-3.5">
           {showIosTip ? (
             <div className="space-y-3">
-              <p className="text-[13px] text-[#ccc] leading-relaxed">
+              <p className="text-[13px] text-[#333] leading-relaxed">
                 Tap the Share button (box with arrow) at the bottom of Safari, then tap &quot;Add to Home Screen&quot;.
               </p>
               <button
@@ -147,8 +179,8 @@ export default function PwaInstallBanner() {
                 className="rounded-xl shrink-0"
               />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-white leading-tight">Erogram</p>
-                <p className="text-[12px] text-[#999] mt-0.5">Download App</p>
+                <p className="text-sm font-semibold text-[#111] leading-tight">Erogram</p>
+                <p className="text-[12px] text-[#666] mt-0.5">Download App</p>
               </div>
               <button
                 type="button"
@@ -161,7 +193,7 @@ export default function PwaInstallBanner() {
                 type="button"
                 onClick={dismiss}
                 aria-label="Dismiss"
-                className="shrink-0 w-8 h-8 flex items-center justify-center text-[#888] active:text-white"
+                className="shrink-0 w-8 h-8 flex items-center justify-center text-[#999] active:text-[#111]"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M18 6L6 18M6 6l12 12" />

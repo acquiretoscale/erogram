@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslation } from '@/lib/i18n/client';
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -154,6 +156,7 @@ function ToolCardPreviewVideo({
 }
 
 export default function ToolCard({ tool, index, initialStats, onVoteChange, featured, campaignId, verified = false, light = false }: ToolCardProps) {
+  const { t } = useTranslation();
   const imageHoverTitle = `${tool.name} - ${tool.category}`;
   const galleryImageAlt = (idx: number) => pickTagHashtagAlt(tool.tags, idx);
   const placeholder = '/assets/image.jpg';
@@ -451,7 +454,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
               <div className="absolute top-1.5 left-1.5 z-20 flex flex-col gap-1 items-start">
                 <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#22c55e] text-black text-[9px] font-black uppercase tracking-widest">
                   <svg className="w-2 h-2" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3a2 2 0 01-2 2H7a2 2 0 01-2-2v-1h14v1z"/></svg>
-                  Featured
+                  {t('ainsfw.featured', 'Featured')}
                 </span>
               </div>
 
@@ -508,11 +511,11 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                 {/* CTA + bookmark */}
                 <div className="flex items-center gap-2">
                   <div className={`${btnCls} cursor-pointer flex-1 text-center`}>
-                    TRY NOW →
+                    {t('ainsfw.tryNow', 'TRY NOW →')}
                   </div>
                   <button
                     onClick={handleBookmark}
-                    title={bookmarked ? 'Remove bookmark' : 'Save'}
+                    title={bookmarked ? t('ainsfw.save', 'Save') : t('ainsfw.save', 'Save')}
                     className={`shrink-0 w-9 h-9 rounded-lg border flex items-center justify-center transition-all ${
                       bookmarked
                         ? 'bg-[#f43f5e]/15 border-[#f43f5e]/40 text-[#f43f5e]'
@@ -544,7 +547,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
               <textarea value={reviewText} onChange={(e) => setReviewText(e.target.value)} placeholder={`Share your experience with ${tool.name}...`} rows={4} className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-3 py-3 text-base text-white placeholder-white/30 resize-none focus:outline-none focus:ring-2 focus:ring-[#22c55e]/40 mb-4" />
               {reviews.length > 0 && (
                 <div className="mb-4 space-y-3 max-h-48 overflow-y-auto">
-                  <p className="text-sm font-bold text-white/60 uppercase tracking-wide mb-1">Previous reviews</p>
+                  <p className="text-sm font-bold text-white/60 uppercase tracking-wide mb-1">{t('ainsfw.previousReviews', 'Previous reviews')}</p>
                   {reviews.slice(0, 5).map((r, i) => (
                     <div key={i} className="bg-white/[0.04] rounded-lg px-3 py-3 border border-white/10">
                       <div className="flex items-center gap-2 mb-1"><div className="flex">{[1,2,3,4,5].map((s) => (<svg key={s} className={`w-3.5 h-3.5 ${s <= r.rating ? 'text-[#22c55e]' : 'text-white/30'}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>))}</div><span className="text-white/40 text-xs">{r.createdAt}</span></div>
@@ -553,7 +556,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                   ))}
                 </div>
               )}
-              <button onClick={handleReviewSubmit} disabled={!reviewText.trim() || reviewSubmitted} className="w-full py-3 rounded-xl font-black text-base bg-[#22c55e] text-black active:bg-[#16a34a] transition-all disabled:opacity-40">{reviewSubmitted ? '✓ Submitted!' : 'Submit Review'}</button>
+              <button onClick={handleReviewSubmit} disabled={!reviewText.trim() || reviewSubmitted} className="w-full py-3 rounded-xl font-black text-base bg-[#22c55e] text-black active:bg-[#16a34a] transition-all disabled:opacity-40">{reviewSubmitted ? t('ainsfw.submitted', '✓ Submitted!') : t('ainsfw.submitReview', 'Submit Review')}</button>
               {reviewError && <p className={`text-xs mt-2 text-center ${reviewSubmitted ? 'text-[#22c55e]' : 'text-red-400'}`}>{reviewError}</p>}
             </motion.div>
           </div>
@@ -642,11 +645,11 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
 
               <div className="flex items-center gap-2">
                 <div className={`${btnCls} cursor-pointer flex-1 text-center`}>
-                  TRY NOW →
+                  {t('ainsfw.tryNow', 'TRY NOW →')}
                 </div>
                 <button
                   onClick={handleBookmark}
-                  title={bookmarked ? 'Remove bookmark' : 'Save'}
+                  title={bookmarked ? t('ainsfw.save', 'Save') : t('ainsfw.save', 'Save')}
                   className={`shrink-0 w-9 h-9 rounded-lg border flex items-center justify-center transition-all ${
                     bookmarked
                       ? 'bg-[#f43f5e]/15 border-[#f43f5e]/40 text-[#f43f5e]'
@@ -679,7 +682,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
               <textarea value={reviewText} onChange={(e) => setReviewText(e.target.value)} placeholder={`Share your experience with ${tool.name}...`} rows={4} className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-3 py-3 text-base text-white placeholder-white/30 resize-none focus:outline-none focus:ring-2 focus:ring-[#22c55e]/40 mb-4" />
             {reviews.length > 0 && (
               <div className="mb-4 space-y-3 max-h-48 overflow-y-auto">
-                <p className="text-sm font-bold text-white/60 uppercase tracking-wide mb-1">Previous reviews</p>
+                <p className="text-sm font-bold text-white/60 uppercase tracking-wide mb-1">{t('ainsfw.previousReviews', 'Previous reviews')}</p>
                 {reviews.slice(0, 5).map((r, i) => (
                     <div key={i} className="bg-white/[0.04] rounded-lg px-3 py-3 border border-white/10">
                       <div className="flex items-center gap-2 mb-1"><div className="flex">{[1,2,3,4,5].map((s) => (<svg key={s} className={`w-3.5 h-3.5 ${s <= r.rating ? 'text-[#22c55e]' : 'text-white/30'}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>))}</div><span className="text-white/40 text-xs">{r.createdAt}</span></div>
@@ -688,7 +691,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                 ))}
               </div>
             )}
-            <button onClick={handleReviewSubmit} disabled={!reviewText.trim() || reviewSubmitted} className="w-full py-3 rounded-xl font-black text-base bg-[#22c55e] text-black active:bg-[#16a34a] transition-all disabled:opacity-40">{reviewSubmitted ? '✓ Submitted!' : 'Submit Review'}</button>
+            <button onClick={handleReviewSubmit} disabled={!reviewText.trim() || reviewSubmitted} className="w-full py-3 rounded-xl font-black text-base bg-[#22c55e] text-black active:bg-[#16a34a] transition-all disabled:opacity-40">{reviewSubmitted ? t('ainsfw.submitted', '✓ Submitted!') : t('ainsfw.submitReview', 'Submit Review')}</button>
             {reviewError && <p className={`text-xs mt-2 text-center ${reviewSubmitted ? 'text-[#22c55e]' : 'text-red-400'}`}>{reviewError}</p>}
           </motion.div>
         </div>

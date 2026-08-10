@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
-const OUT_HTML = path.join(process.env.HOME, 'Desktop/outreach/index.html');
+const OUT_HTML = path.join(process.env.HOME, 'Desktop/Lists/research-hub.html');
 
 const TOOLS_JSON = path.join(ROOT, 'tmp/outreach-merged.json');
 const DIRS_JSON = path.join(ROOT, 'tmp/nsfw-directory-pricing.json');

@@ -82,20 +82,16 @@ export async function fetchNichePremiumGroups(filter: Record<string, unknown>, l
   return [...nicheDocs, ...backfillDocs].map(serializeGroup);
 }
 
-/** Premium first, then 10 free, then up to 4 more premium. Ranks run 1…n in display order. */
+/** Free ranks first (LCP / SEO), then up to 3 premium teases at the bottom. */
 export function buildTop10Ranking(freeGroups: Top10GroupDoc[], premiumGroups: Top10GroupDoc[]): Top10RankEntry[] {
   const free = freeGroups.slice(0, 10);
-  const headPremium = premiumGroups[0] ?? null;
-  const tailPremium = premiumGroups
-    .filter((g) => g._id !== headPremium?._id)
-    .slice(0, 4);
+  const premiumTail = premiumGroups.slice(0, 3);
 
   const entries: Top10RankEntry[] = [];
   let rank = 1;
 
-  if (headPremium) entries.push({ group: headPremium, isPremium: true, rank: rank++ });
   for (const g of free) entries.push({ group: g, isPremium: false, rank: rank++ });
-  for (const pg of tailPremium) entries.push({ group: pg, isPremium: true, rank: rank++ });
+  for (const pg of premiumTail) entries.push({ group: pg, isPremium: true, rank: rank++ });
 
   return entries;
 }

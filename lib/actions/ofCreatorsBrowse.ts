@@ -176,6 +176,78 @@ export async function browseCategoryCreators(
   };
 }
 
+/**
+ * After a category feed is exhausted, fill with creators from the same related cluster
+ * (e.g. brazilian → colombian, latina, mexican…). Falls back to generic browse when
+ * the slug has no cluster.
+ */
+export async function browseClusterFillCreators(
+  categorySlug: string,
+  excludeIds: string[] = [],
+  limit = 20,
+) {
+  const { getRelatedRankingSlugs } = await import('@/lib/bestOnlyfansAccounts/relatedRankings');
+  const siblings = getRelatedRankingSlugs(categorySlug);
+  if (!siblings.length) {
+    return browseCreators(excludeIds, limit);
+  }
+
+  await connectDB();
+  const pageSize = Math.min(Math.max(1, limit), 48);
+  const excludeObjectIds = excludeIds
+    .filter((id) => Types.ObjectId.isValid(id))
+    .map((id) => new Types.ObjectId(id));
+  const seenIds = new Set(excludeIds);
+  const creators: Record<string, unknown>[] = [];
+
+  for (const sibling of siblings) {
+    if (creators.length >= pageSize + 1) break;
+    const need = pageSize + 1 - creators.length;
+    const match: Record<string, unknown> = {
+      ...buildSlugCreatorMatch(sibling),
+    };
+    if (excludeObjectIds.length || creators.length) {
+      const nin = [
+        ...excludeObjectIds,
+        ...creators
+          .map((c) => c._id)
+          .filter((id): id is string => typeof id === 'string' && Types.ObjectId.isValid(id))
+          .map((id) => new Types.ObjectId(id)),
+      ];
+      if (nin.length) match._id = { $nin: nin };
+    }
+
+    const rows = await OnlyFansCreator.find(match)
+      .sort({ clicks: -1, likesCount: -1, _id: 1 })
+      .limit(need)
+      .select(
+        'name username slug avatar header bio subscriberCount likesCount photosCount videosCount price isFree isVerified url clicks',
+      )
+      .lean();
+
+    for (const raw of rows as Record<string, unknown>[]) {
+      const id = String(raw._id);
+      if (seenIds.has(id)) continue;
+      seenIds.add(id);
+      creators.push({
+        ...raw,
+        _id: id,
+        bio: String(raw.bio || '').slice(0, 200),
+      });
+      if (creators.length > pageSize) break;
+    }
+  }
+
+  const hasMore = creators.length > pageSize;
+  const page = creators.slice(0, pageSize);
+
+  return {
+    creators: page,
+    hasMore,
+    total: page.length,
+  };
+}
+
 /** Filtered hub browse for /onlyfans hero — niches + price + premium toggles, optional text query. */
 export async function hubBrowseCreators(
   filters: ProfilePremiumSearchFilters & { query?: string },
@@ -468,20 +540,34 @@ export async function searchCreators(q: string, limit = 100, skip = 0) {
 export async function deleteCreatorBySlug(token: string, slug: string) {
   const jwt = (await import('jsonwebtoken')).default;
   const { User } = await import('@/lib/models');
+  const { deleteFromR2 } = await import('@/lib/r2');
   const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
   try {
     const d = jwt.verify(token, JWT_SECRET) as any;
     await connectDB();
     const u = await User.findById(d.id);
     if (!u || !u.isAdmin) throw new Error('Unauthorized');
-  } catch {
+  } catch (e) {
+    if (e instanceof Error && e.message === 'Unauthorized') throw e;
     throw new Error('Unauthorized');
   }
-  const result = await OnlyFansCreator.findOneAndUpdate(
-    { slug },
-    { $set: { deleted: true, deletedAt: new Date() } },
-  );
-  if (!result) throw new Error('Not found');
+
+  await connectDB();
+  const creator = await OnlyFansCreator.findOne({ slug }).lean() as {
+    _id: unknown;
+    avatar?: string;
+    header?: string;
+    extraPhotos?: string[];
+  } | null;
+  if (!creator) throw new Error('Not found');
+
+  if (creator.avatar) await deleteFromR2(creator.avatar).catch(() => {});
+  if (creator.header) await deleteFromR2(creator.header).catch(() => {});
+  for (const url of creator.extraPhotos || []) {
+    if (url) await deleteFromR2(url).catch(() => {});
+  }
+
+  await OnlyFansCreator.deleteOne({ _id: creator._id });
   return { success: true };
 }
 

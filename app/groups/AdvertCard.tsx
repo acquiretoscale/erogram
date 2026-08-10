@@ -75,21 +75,19 @@ function isGroupsInFeedAd(campaign?: FeedCampaign): boolean {
 const DEFAULT_AD_BTN: React.CSSProperties = {
     background: 'linear-gradient(135deg, #ff5e2a, #ff9432)',
     color: '#ffffff',
-    boxShadow: '0 4px 14px -5px rgba(255,94,42,0.5)',
 };
 
-/** In-feed only: fluo green + 2 neon alternates — same hue/glow level. */
+/** In-feed only: solid colors, no glow. */
 const IN_FEED_BTN_PALETTE: React.CSSProperties[] = [
-    { background: '#39FF14', color: '#000000', boxShadow: '0 0 10px rgba(57,255,20,0.4), 0 4px 16px rgba(57,255,20,0.5)' },
-    { background: '#00F0FF', color: '#000000', boxShadow: '0 0 10px rgba(0,240,255,0.4), 0 4px 16px rgba(0,240,255,0.5)' },
-    { background: '#FFFF00', color: '#000000', boxShadow: '0 0 10px rgba(255,255,0,0.4), 0 4px 16px rgba(255,255,0,0.5)' },
+    { background: '#39FF14', color: '#000000' },
+    { background: '#00F0FF', color: '#000000' },
+    { background: '#FFFF00', color: '#000000' },
 ];
 
-/** OnlyFans creator ads: darker fluo blue — same glow level as green. */
+/** OnlyFans creator ads: solid blue, no glow. */
 const OF_CREATOR_BTN: React.CSSProperties = {
     background: '#0088FF',
     color: '#FFFFFF',
-    boxShadow: '0 0 10px rgba(0,136,255,0.4), 0 4px 16px rgba(0,136,255,0.5)',
 };
 
 function adButtonStyle(
@@ -103,7 +101,7 @@ function adButtonStyle(
     return IN_FEED_BTN_PALETTE[idx];
 }
 
-const AD_BTN_CLASS = 'w-full py-2.5 sm:py-3 px-3 rounded-xl font-black text-sm transition-all duration-300 hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]';
+const AD_BTN_CLASS = 'w-full py-2.5 sm:py-3 px-3 rounded-xl font-black text-sm active:scale-[0.98]';
 
 function formatCount(n: number): string {
     if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -207,7 +205,7 @@ function OnlyFansCreatorAdCard({ campaign, handleClick, growthPercent, isIndex =
             <div
                 ref={cardRef}
                 onClick={onCardClick}
-                className="group relative h-full min-h-[280px] sm:min-h-[480px] rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer border border-[#00AFF0]/25 hover:border-[#00AFF0]/60 hover:shadow-2xl hover:shadow-[#00AFF0]/15 transition-all duration-500 bg-[#0a0a0a]"
+                className="group relative h-full min-h-[280px] sm:min-h-[480px] rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer border border-[#00AFF0]/25 bg-[#0a0a0a]"
                 role="link"
                 tabIndex={0}
                 onKeyDown={(e) => e.key === 'Enter' && onCardClick()}
@@ -269,7 +267,7 @@ function OnlyFansCreatorAdCard({ campaign, handleClick, growthPercent, isIndex =
                     <button
                         onClick={(e) => { e.stopPropagation(); onCardClick(); }}
                         style={OF_CREATOR_BTN}
-                        className="w-full py-2.5 sm:py-3 rounded-full text-sm sm:text-base font-black text-center transition-all duration-300 hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
+                        className="w-full py-2.5 sm:py-3 rounded-full text-sm sm:text-base font-black text-center active:scale-[0.98]"
                     >
                         {campaign.buttonText || t('groups.viewProfile')}
                     </button>
@@ -343,7 +341,7 @@ function VideoAdCard({ campaign, handleClick, hidePromoted = false, growthPercen
         >
             <div
                 ref={cardRef}
-                className="rounded-2xl sm:rounded-3xl overflow-hidden h-full min-h-[280px] sm:min-h-[480px] relative cursor-pointer group border border-white/5 hover:border-white/20 transition-all duration-500 hover:shadow-2xl hover:shadow-black/50 bg-[#0a0a0a]"
+                className="rounded-2xl sm:rounded-3xl overflow-hidden h-full min-h-[280px] sm:min-h-[480px] relative cursor-pointer group border border-white/5 bg-[#0a0a0a]"
                 onClick={handleClick}
                 role="link"
                 tabIndex={0}
@@ -489,7 +487,7 @@ function PremiumMosaicCard({ campaign, handleClick, growthPercent }: { campaign:
     return (
         <div ref={cardRef} onClick={handleClick} className="block h-full cursor-pointer" role="link" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && handleClick()}>
             <div className="relative h-full">
-                <div className="glass rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col backdrop-blur-xl hover:shadow-2xl hover:shadow-black/50 transition-all duration-500 group border border-white/5 hover:border-white/20">
+                <div className="rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col bg-[#131a24] group border border-white/5">
                     {/* 2x2 mosaic — square grid */}
                     <div className="relative w-full p-2 sm:p-3 overflow-hidden">
                         <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
@@ -527,7 +525,7 @@ function PremiumMosaicCard({ campaign, handleClick, growthPercent }: { campaign:
                                 </div>
                             </div>
                         )}
-                        <h3 className={`font-black text-white mb-1 sm:mb-2 leading-tight group-hover:text-orange-400 transition-colors flex items-center justify-between gap-2 ${typeof growthPercent === 'number' ? 'text-sm sm:text-lg' : 'text-sm sm:text-xl'}`}>
+                        <h3 className={`font-black text-white mb-1 sm:mb-2 leading-tight flex items-center justify-between gap-2 ${typeof growthPercent === 'number' ? 'text-sm sm:text-lg' : 'text-sm sm:text-xl'}`}>
                             <span className="truncate min-w-0">🔒 {campaign.name || `Premium ${catLabel}`}</span>
                             <span className="shrink-0">
                                 <GrowthTrendBadge growthPercent={growthPercent} />
@@ -798,7 +796,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                 className={`h-full ${entry.className}`}
                 style={entry.style}
             >
-                <div className={`glass rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col backdrop-blur-xl border transition-all duration-500 group relative border-cyan-500/20 hover:border-cyan-400/50 hover:shadow-2xl hover:shadow-cyan-500/20`}>
+                <div className="rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col bg-[#131a24] border border-cyan-500/20 group relative">
                     {/* Image */}
                     <div ref={imgRef} className="relative w-full h-32 sm:h-52 overflow-hidden bg-[#1a1a1a]">
                         <Image
@@ -817,7 +815,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                     </div>
                     {/* Content */}
                     <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
-                        <h3 className={`font-black text-white mb-2 sm:mb-3 leading-tight group-hover:text-cyan-400 transition-colors flex items-center justify-between gap-2 ${typeof growthPercent === 'number' ? 'text-sm sm:text-lg' : 'text-sm sm:text-xl'}`}>
+                        <h3 className={`font-black text-white mb-2 sm:mb-3 leading-tight flex items-center justify-between gap-2 ${typeof growthPercent === 'number' ? 'text-sm sm:text-lg' : 'text-sm sm:text-xl'}`}>
                             <span className="flex items-center gap-1 min-w-0">
                                 <span className="truncate min-w-0">{ad.name}</span>
                                 {showVerified && (
@@ -861,7 +859,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                 className={`h-full ${entry.className}`}
                 style={entry.style}
             >
-                <div className={`glass rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col backdrop-blur-xl border transition-all duration-500 group relative border-white/5 hover:border-white/20 hover:shadow-2xl hover:shadow-black/50`}>
+                <div className="rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col bg-[#131a24] border border-white/5 group relative">
                     {/* Advert Image */}
                     <div ref={imgRef} className="relative w-full h-32 sm:h-52 overflow-hidden bg-[#1a1a1a]">
                         <Image
@@ -879,7 +877,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                     {/* Card Content */}
                     <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
                         {/* Title */}
-                        <h3 className={`font-black text-white mb-2 sm:mb-3 leading-tight group-hover:text-blue-400 transition-colors flex items-center justify-between gap-2 ${typeof growthPercent === 'number' ? 'text-sm sm:text-lg' : 'text-sm sm:text-xl'}`}>
+                        <h3 className={`font-black text-white mb-2 sm:mb-3 leading-tight flex items-center justify-between gap-2 ${typeof growthPercent === 'number' ? 'text-sm sm:text-lg' : 'text-sm sm:text-xl'}`}>
                             <span className="flex items-center gap-1 min-w-0">
                                 <span className="truncate min-w-0">{ad.name}</span>
                                 {showVerified && (
@@ -930,7 +928,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
             className={`group h-full ${entry.className}`}
             style={entry.style}
         >
-            <div className="glass rounded-2xl overflow-hidden h-full flex flex-col backdrop-blur-xl border border-white/5 transition-all duration-300 relative group-hover:scale-[1.02] group-hover:shadow-2xl group-hover:shadow-black/50 group-hover:border-white/20">
+            <div className="rounded-2xl overflow-hidden h-full flex flex-col bg-[#131a24] border border-white/5 relative">
                 {/* Advert Image */}
                 <div ref={imgRef} className="relative w-full h-32 sm:h-48 overflow-hidden bg-[#1a1a1a]">
                     <Image

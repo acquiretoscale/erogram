@@ -17,7 +17,6 @@ import { AI_NSFW_TOOLS, categoryToSlug, getCategoryBySlug } from '@/app/ainsfw/d
 import { getTagDefinition, type TagDefinition } from '@/lib/tags/registry';
 import { buildInterestsCreatorMatch, rotateFeedResults } from '@/lib/tags/ofSearchMatch';
 import { getCreatorFeedCategories } from '@/lib/tags/creatorProfileTags';
-import { fetchNearMeCreatorsTiered, type NearMeCreatorItem } from '@/lib/actions/nearMeCreators';
 import {
   ArticleComment,
   Bot,
@@ -591,38 +590,6 @@ export async function saveSavedLikesOrder(token: string, order: string[]) {
   });
 
   return { ok: true as const };
-}
-
-const NEAR_ME_LIMIT = 12;
-
-export type { NearMeCreatorItem };
-
-export async function getNearMeCreators(token: string, rotateSeed = 'default') {
-  const userId = await getUserIdFromToken(token);
-  if (!userId) {
-    return { ok: false as const, creators: [] as NearMeCreatorItem[], needsLocation: true, areaLabel: '' };
-  }
-
-  await connectDB();
-  const user = await User.findById(userId).select('country city').lean() as {
-    country?: string;
-    city?: string;
-  } | null;
-
-  const res = await fetchNearMeCreatorsTiered(
-    user?.country,
-    user?.city,
-    rotateSeed,
-    userId,
-    NEAR_ME_LIMIT,
-  );
-
-  return {
-    ok: true as const,
-    creators: res.creators,
-    needsLocation: res.needsLocation,
-    areaLabel: res.areaLabel,
-  };
 }
 
 export type PublicUserContribution = {

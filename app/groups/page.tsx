@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { unstable_cache } from 'next/cache';
 import Link from 'next/link';
 import connectDB from '@/lib/db/mongodb';
 import { Group, Bot, StorySlideContent, SiteConfig } from '@/lib/models';
@@ -110,7 +111,7 @@ async function getGroups(limit: number, isMobile: boolean = false, locale: strin
     // Stable newest-first feed (pinned → createdAt).
     const groups = await Group.aggregate([
       { $match: { status: 'approved', isAdvertisement: { $ne: true }, premiumOnly: { $ne: true }, category: { $ne: 'Hentai' } } },
-      { $sort: { pinned: -1, createdAt: -1 } },
+      { $sort: { pinned: -1, createdAt: -1, _id: -1 } },
       { $skip: skip },
       { $limit: limit },
       {
@@ -488,13 +489,45 @@ async function getStoryData(categories: StoryCategoryConfig[], locale: string = 
   }
 }
 
+// ── Cached heavy DB reads ──
+// The page still renders per request (locale comes from headers), but the expensive
+// Mongo aggregations are reused so visitors don't wait on them. New groups appear
+// within GROUPS_CACHE_TTL, or immediately when the 'groups' tag is revalidated.
+const GROUPS_CACHE_TTL = 300;
+
+const getCachedGroups = (limit: number, locale: string, skip: number) =>
+  unstable_cache(
+    () => getGroups(limit, false, locale, skip),
+    ['groups-feed', locale, String(limit), String(skip)],
+    { revalidate: GROUPS_CACHE_TTL, tags: ['groups'] },
+  )();
+
+const getCachedApprovedGroupsCount = unstable_cache(
+  () => getApprovedGroupsCount(),
+  ['groups-count'],
+  { revalidate: GROUPS_CACHE_TTL, tags: ['groups'] },
+);
+
+const getCachedFilterOptions = unstable_cache(
+  () => getFilterOptions(),
+  ['groups-filter-options'],
+  { revalidate: GROUPS_CACHE_TTL, tags: ['groups'] },
+);
+
+const getCachedStoryData = (categories: StoryCategoryConfig[], locale: string) =>
+  unstable_cache(
+    () => getStoryData(categories, locale),
+    ['groups-story-data', locale, categories.map((c) => c.slug).join(',')],
+    { revalidate: GROUPS_CACHE_TTL, tags: ['groups'] },
+  )();
+
 export async function GroupsPageView({ page = 1 }: { page?: number }) {
   const currentPage = Math.max(1, page);
   const locale = await getLocale();
 
   const [groups, totalGroups] = await Promise.all([
-    getGroups(GROUPS_FEED_PAGE_SIZE, false, locale, (currentPage - 1) * GROUPS_FEED_PAGE_SIZE),
-    getApprovedGroupsCount(),
+    getCachedGroups(GROUPS_FEED_PAGE_SIZE, locale, (currentPage - 1) * GROUPS_FEED_PAGE_SIZE),
+    getCachedApprovedGroupsCount(),
   ]);
   const paginationTotalPages = Math.max(1, Math.ceil(totalGroups / GROUPS_FEED_PAGE_SIZE));
 
@@ -511,9 +544,9 @@ export async function GroupsPageView({ page = 1 }: { page?: number }) {
   const [topBannerCampaigns, feedCampaignsRaw, storyData, featuredCreatorItems, filterOpts, linkedOfKeys] = await Promise.all([
     getActiveCampaigns('top-banner', { page: 'groups' }),
     getActiveFeedCampaigns('groups'),
-    storiesEnabled ? getStoryData(storyConfig, locale) : Promise.resolve([] as StoryCategory[]),
+    storiesEnabled ? getCachedStoryData(storyConfig, locale) : Promise.resolve([] as StoryCategory[]),
     getFeaturedCreatorFeedItems().catch(() => []),
-    getFilterOptions(),
+    getCachedFilterOptions(),
     getLinkedOFCreatorClaimKeys(),
   ]);
 

@@ -150,7 +150,7 @@ export default async function BestCountryGroupsPage({ params }: PageProps) {
     })) as Top10GroupDoc[];
 
     const freeGroups = [...curatedGroups, ...autoGroups];
-    const premiumGroups = await fetchNichePremiumGroups(countryPremiumFilter(realCountry), 5);
+    const premiumGroups = await fetchNichePremiumGroups(countryPremiumFilter(realCountry), 3);
     const ranking = buildTop10Ranking(freeGroups, premiumGroups);
 
     // If very few groups overall, show some from other countries

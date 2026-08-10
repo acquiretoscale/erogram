@@ -14,6 +14,11 @@ const OF_SLUGS = new Set([
   'curvy','ebony','feet','lingerie','thick','twerk','squirt','piercing',
 ]);
 
+/** Owner-removed Top-10 pages — never regenerate. */
+const BLOCKLIST = new Set([
+  'ecuadorian', 'korean', 'massachusetts', 'peruvian', 'public-sex', 'shower-sex', 'south-korean',
+]);
+
 function slugify(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
@@ -283,7 +288,7 @@ async function main() {
   }
 
   pages.sort((a, b) => b.count - a.count);
-  const final = pages.slice(0, 200);
+  const final = pages.filter((p) => !BLOCKLIST.has(p.slug)).slice(0, 200);
 
   console.log(JSON.stringify({ total: final.length, pages: final }, null, 2));
   fs.writeFileSync('/tmp/best-of-pages.json', JSON.stringify(final, null, 2));

@@ -60,8 +60,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { category, maxItems: rawMax = 200, clean = false, country, source = 'bulk', usernames, asyncMode = false } = await req.json();
+    const { category, maxItems: rawMax = 200, clean = false, country, source = 'bulk', usernames, asyncMode = false, minLikes: rawMinLikes, maxLikes: rawMaxLikes } = await req.json();
     const maxItems = Math.min(Math.max(1, rawMax), MAX_PROFILES_PER_SCRAPE);
+    const minLikes = Number.isFinite(Number(rawMinLikes)) && Number(rawMinLikes) > 0 ? Number(rawMinLikes) : 0;
+    const maxLikes = Number.isFinite(Number(rawMaxLikes)) && Number(rawMaxLikes) > 0 ? Number(rawMaxLikes) : Infinity;
     if (!category && !usernames) {
       return NextResponse.json({ error: 'category or usernames is required' }, { status: 400 });
     }
@@ -70,7 +72,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Search-triggered scraping is disabled' }, { status: 403 });
     }
 
-    const actorOverride = 'hello.datawizards/onlyfans-scraper';
+    // Username lookups: datawizards (exact profile fetch). Keyword/niche discovery: finder-pro.
+    const isUsernameLookup = Array.isArray(usernames) && usernames.length > 0;
+    const actorOverride = isUsernameLookup
+      ? 'hello.datawizards/onlyfans-scraper'
+      : 'sentry/onlyfans-finder-pro';
     const creds = await getApifyCredentials(actorOverride);
     if (!creds) {
       return NextResponse.json({ error: 'No active Apify API keys. Add keys in OFM Settings.' }, { status: 500 });
@@ -85,13 +91,13 @@ export async function POST(req: NextRequest) {
     const keyHint = APIFY_TOKEN.slice(-4);
 
     // Username-based scrape: pass usernames directly to the actor
-    const isUsernameScrape = Array.isArray(usernames) && usernames.length > 0;
+    const isUsernameScrape = isUsernameLookup;
     const input = isUsernameScrape
       ? { search_queries: usernames }
       : isDatawizards
       ? buildDatawizardsInput(category, maxItems, isTopBrowse, country)
       : isSentry
-      ? buildSentryInput(category, maxItems, isTopBrowse)
+      ? buildSentryInput(category, maxItems, isTopBrowse, maxLikes === Infinity ? undefined : maxLikes)
       : buildIgolaInput(category, maxItems, isTopBrowse, country);
 
     await connectDB();
@@ -147,6 +153,7 @@ export async function POST(req: NextRequest) {
         const parsed = parseDatawizardsItem(item);
         if (!parsed) continue;
         if (isCreatorBlacklisted(parsed.username)) continue;
+        if (parsed.likesCount < minLikes || parsed.likesCount > maxLikes) continue;
         const slug = parsed.username.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
         try {
           const setFields: Record<string, any> = {
@@ -203,7 +210,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Apify run failed', details: errMsg }, { status: 502 });
     }
 
-    return await processRun(runRes, APIFY_TOKEN, actorId, maxItems, catLower, clean, isSentry, isDatawizards, logEntry._id, scrapeStart, source);
+    return await processRun(runRes, APIFY_TOKEN, actorId, maxItems, catLower, clean, isSentry, isDatawizards, logEntry._id, scrapeStart, source, minLikes, maxLikes);
   } catch (error: any) {
     console.error('Scrape error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -212,16 +219,17 @@ export async function POST(req: NextRequest) {
 
 // ── Input builders per actor ────────────────────────────────────
 
-function buildSentryInput(category: string, maxProfiles: number, isTop: boolean) {
-  return {
-    searchMode: 'top',
-    additionalKeywords: isTop ? '' : category,
-    maxProfiles: 1,
+function buildSentryInput(category: string, maxProfiles: number, isTop: boolean, maxLikes?: number) {
+  const input: Record<string, any> = {
+    searchMode: isTop ? 'top' : 'query',
+    maxResults: maxProfiles,
     requireInstagram: false,
-    scrapeOtherSocials: false,
-    scrollPatience: 3,
-    maxPages: 2,
+    sortBy: 'likes',
+    sortOrder: 'descending',
   };
+  if (!isTop) input.keywords = [category];
+  if (maxLikes && Number.isFinite(maxLikes)) input.maxLikes = maxLikes;
+  return input;
 }
 
 function buildIgolaInput(category: string, maxItems: number, isTop: boolean, country?: string) {
@@ -297,11 +305,11 @@ function parseAbbreviatedNumber(val: any): number {
 }
 
 function parseSentryItem(item: any) {
-  const username = item.onlyfansUsername || '';
+  const username = item.onlyfansUsername || item.username || '';
   if (!username) return null;
 
-  const name = item.displayName || username;
-  const bio = item.bio || '';
+  const name = item.displayName || item.name || username;
+  const bio = item.bio || item.bioSnippet || '';
 
   if (containsBlockedContent(bio, name, username)) return null;
 
@@ -310,7 +318,7 @@ function parseSentryItem(item: any) {
   return {
     name,
     username,
-    avatar: item.profileImage || '',
+    avatar: item.profileImage || item.avatar || '',
     bio: bio.slice(0, 500),
     likesCount: parseAbbreviatedNumber(item.likes),
     subscriberCount: 0,
@@ -318,17 +326,17 @@ function parseSentryItem(item: any) {
     photosCount: parseAbbreviatedNumber(item.photos),
     videosCount: parseAbbreviatedNumber(item.videos),
     price: parseFloat(String(item.price || '0').replace(/[^0-9.]/g, '')) || 0,
-    isFree: String(item.price || '').toLowerCase() === 'free' || item.price === '0' || item.price === '0.00' || item.price === 0,
+    isFree: item.isFree === true || String(item.price || '').toLowerCase() === 'free' || item.price === '0' || item.price === '0.00' || item.price === 0,
     isVerified: false,
-    url: item.onlyfansLink || `https://onlyfans.com/${username}`,
+    url: item.onlyfansLink || item.profileUrl || `https://onlyfans.com/${username}`,
     gender: 'female' as const,
     lastSeen: item.lastSeen || '',
-    instagramUrl: item.primaryInstagram || firstLink(item.instagramLinks),
-    instagramUsername: item.primaryInstagramUsername || '',
-    twitterUrl: firstLink(item.twitterLinks),
-    tiktokUrl: firstLink(item.tiktokLinks),
-    fanslyUrl: firstLink(item.fanslyLinks),
-    pornhubUrl: firstLink(item.pornhubLinks),
+    instagramUrl: item.primaryInstagram || item.instagramUrl || firstLink(item.instagramLinks),
+    instagramUsername: item.primaryInstagramUsername || item.instagramUsername || '',
+    twitterUrl: item.twitter || firstLink(item.twitterLinks),
+    tiktokUrl: item.tiktok || firstLink(item.tiktokLinks),
+    fanslyUrl: item.fansly || firstLink(item.fanslyLinks),
+    pornhubUrl: item.pornhub || firstLink(item.pornhubLinks),
   };
 }
 
@@ -452,6 +460,8 @@ async function processRun(
   logId: any,
   scrapeStart: number,
   source: string,
+  minLikes = 0,
+  maxLikes = Infinity,
 ) {
   const runData = await runRes.json();
   const runId = runData.data?.id;
@@ -521,6 +531,8 @@ async function processRun(
     if (!parsed) { skipped++; continue; }
 
     if (isCreatorBlacklisted(parsed.username)) continue;
+
+    if (parsed.likesCount < minLikes || parsed.likesCount > maxLikes) { skipped++; continue; }
 
     const slug = parsed.username.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
 
@@ -593,6 +605,7 @@ async function processRun(
       : isSentry ? parseSentryItem(item) : parseIgolaItem(item);
     if (!parsed) continue;
     if (isCreatorBlacklisted(parsed.username)) continue;
+    if (parsed.likesCount < minLikes || parsed.likesCount > maxLikes) continue;
     const s = parsed.username.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
     slugsToProcess.push(s);
   }

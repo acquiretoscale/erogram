@@ -15,13 +15,6 @@ interface TrendingCreator {
   likesCount?: number;
 }
 
-function formatLikes(n: number) {
-  if (!n) return '';
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return `${n}K`;
-}
-
 function TrendingCard({ creator, index }: { creator: TrendingCreator; index: number }) {
   const handleClick = () => {
     trackTrendingClick(creator._id);
@@ -62,9 +55,6 @@ function TrendingCard({ creator, index }: { creator: TrendingCreator; index: num
           {creator.name}
         </h3>
         <p className="text-[11px] sm:text-sm text-[#00AFF0] mt-0.5 font-bold">@{creator.username}</p>
-        {(creator.likesCount ?? 0) > 0 && (
-          <p className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5">{formatLikes(creator.likesCount!)} likes</p>
-        )}
         {creator.categories.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-2">
             {creator.categories.slice(0, 2).map(cat => (

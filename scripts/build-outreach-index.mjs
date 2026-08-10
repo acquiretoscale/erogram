@@ -10,7 +10,7 @@ const AIAPPS = path.join(__dirname, '../tmp/aiapps-nsfw-outreach.json');
 const NSFW_RECENT = path.join(__dirname, '../tmp/nsfw-recent-outreach.json');
 const NSFW_BEST = path.join(__dirname, '../tmp/nsfw-best-promoted.json');
 const OUT_JSON = path.join(__dirname, '../tmp/outreach-merged.json');
-const OUT_HTML = path.join(process.env.HOME, 'Desktop/outreach/index.html');
+const OUT_HTML = path.join(process.env.HOME, 'Desktop/Lists/ainsfw-outreach.html');
 
 const PROMO_AIAPPS = 'aiapps.com';
 const PROMO_RECENT = 'nsfw.tools Recently Added';

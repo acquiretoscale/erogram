@@ -9,13 +9,15 @@ import BestFreeClient from './BestFreeClient';
 
 const PAGE_PATH = '/onlyfanssearch/best';
 const PAGE_URL = `${CANONICAL_BASE}${PAGE_PATH}`;
-const PAGE_TITLE = 'Explore the Best OnlyFans Girls & Models Accounts (2026)';
+const PAGE_TITLE = 'The Best 100 OnlyFans Models to follow in 2026';
+const PAGE_DESCRIPTION =
+  'Best 100 OnlyFans models to follow in 2026, big ass, Alt, Asian, Big boobs, Latina, ahegao and hundreds of other categories';
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const pathname = await getPathname();
   const title = `${PAGE_TITLE} | Erogram`;
-  const description = 'Browse free OnlyFans creators on Erogram.';
+  const description = PAGE_DESCRIPTION;
   const alternates = buildMetadataAlternates(pathname, locale);
   const url = alternates?.canonical?.toString() || PAGE_URL;
 

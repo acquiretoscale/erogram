@@ -3,14 +3,14 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { EditorialMasthead, EditorialFooter } from '@/app/blog/EditorialChrome';
-import { BEST_OF_PAGE_MAP, BEST_OF_PAGES, type BestOfPage } from '@/app/best-onlyfans-accounts/bestOfPages';
+import { BEST_OF_PAGE_MAP, type BestOfPage } from '@/app/best-onlyfans-accounts/bestOfPages';
 import { hottestRankingPublicPath } from '@/lib/bestOfPageContent/hottestUrls';
 import { ofCategoryPublicPath } from '@/lib/bestOnlyfansAccounts/boaUrls';
 import { getLocale } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, LOCALE_HREFLANG, localePath } from '@/lib/i18n';
 import type { Locale } from '@/lib/i18n';
 import { getKeywordPlacementCampaigns } from '@/lib/actions/campaigns';
-import { getBestOfFillCreators, getBestOfTopByClicks, getBestOfPreviewAvatars } from '@/lib/actions/bestOfCreators';
+import { getBestOfRankingOrganicWithClusterFill, getBestOfRankingOrganicCap } from '@/lib/actions/bestOfCreators';
 import { getFeaturedCreatorFeedItems } from '@/lib/actions/publicData';
 import BestPageAdBlock from '@/app/best-onlyfans-accounts/BestPageAdBlock';
 import BestOfDeleteButton from '@/app/best-onlyfans-accounts/BestOfDeleteButton';
@@ -23,6 +23,8 @@ import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
 import { getTagLabel } from '@/lib/tags/labelTranslations';
 import { resolveBestOfPage } from '@/lib/onlyfans/categoryComboPills';
+import RelatedRankingLinks from '@/app/best-onlyfans-accounts/RelatedRankingLinks';
+import { getRelatedRankingLinks } from '@/lib/bestOnlyfansAccounts/relatedRankings';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || CANONICAL_BASE;
 const OF_BLUE = '#00AFF0';
@@ -248,8 +250,7 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
   const pageContent = resolveBestOfContent(slug, locale, variant);
   const label = getTagLabel(slug, page.label, locale);
 
-  const [topByClicks, bestOfAds, trendingFeatured] = await Promise.all([
-    getBestOfTopByClicks(page, 10),
+  const [bestOfAds, trendingFeatured] = await Promise.all([
     getKeywordPlacementCampaigns('best-of', slug, 6).catch(() => []),
     page.match === 'category' && page.categorySlug
       ? getFeaturedCreatorFeedItems(page.categorySlug).catch(() => [])
@@ -284,59 +285,29 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
     };
   });
 
-  // ── Organic Top-10 (ranked 1–10): top-by-clicks, then fill, excluding promoted unames ──
-  const usedUsernames = new Set<string>(promoted.map((p) => (p.username || '').toLowerCase()).filter(Boolean));
-  const organic: any[] = [];
-
-  for (const c of topByClicks) {
-    if (organic.length >= 10) break;
-    if (usedUsernames.has(c.username)) continue;
-    usedUsernames.add(c.username);
-    organic.push({
-      _id: (c._id as any).toString(),
-      name: c.name || '',
-      username: c.username || '',
-      slug: (c as any).slug || c.username || '',
-      avatar: c.avatar || '',
-      bio: (c as any).bio || '',
-      location: (c as any).location || '',
-      likesCount: c.likesCount || 0,
-      mediaCount: c.mediaCount || 0,
-      photosCount: c.photosCount || 0,
-      videosCount: c.videosCount || 0,
-      postsCount: (c as any).postsCount || 0,
-      price: c.price || 0,
-      isFree: c.isFree || false,
-      url: c.url || '',
-      clicks: (c as any).clicks || 0,
-      isTrending: false,
-    });
-  }
-
-  if (organic.length < 10) {
-    const fillCreators = await getBestOfFillCreators(page, Array.from(usedUsernames), 10 - organic.length);
-    for (const c of fillCreators) {
-      organic.push({
-        _id: (c._id as any).toString(),
-        name: c.name || '',
-        username: c.username || '',
-        slug: (c as any).slug || c.username || '',
-        avatar: c.avatar || '',
-        bio: (c as any).bio || '',
-        location: (c as any).location || '',
-        likesCount: c.likesCount || 0,
-        mediaCount: c.mediaCount || 0,
-        photosCount: c.photosCount || 0,
-        videosCount: c.videosCount || 0,
-        postsCount: (c as any).postsCount || 0,
-        price: c.price || 0,
-        isFree: c.isFree || false,
-        url: c.url || '',
-        clicks: (c as any).clicks || 0,
-        isTrending: false,
-      });
-    }
-  }
+  // ── Organic ranking: up to 50 when page has 50+ creators, else up to 30 ──
+  const rankingCap = await getBestOfRankingOrganicCap(page);
+  const promotedUsernames = promoted.map((p) => (p.username || '').toLowerCase()).filter(Boolean);
+  const rankingRows = await getBestOfRankingOrganicWithClusterFill(page, rankingCap, promotedUsernames);
+  const organic: any[] = rankingRows.map((c) => ({
+    _id: (c._id as any).toString(),
+    name: c.name || '',
+    username: c.username || '',
+    slug: (c as any).slug || c.username || '',
+    avatar: c.avatar || '',
+    bio: (c as any).bio || '',
+    location: (c as any).location || '',
+    likesCount: c.likesCount || 0,
+    mediaCount: c.mediaCount || 0,
+    photosCount: c.photosCount || 0,
+    videosCount: c.videosCount || 0,
+    postsCount: (c as any).postsCount || 0,
+    price: c.price || 0,
+    isFree: c.isFree || false,
+    url: c.url || '',
+    clicks: (c as any).clicks || 0,
+    isTrending: false,
+  }));
 
   // ── Interleave for display: promoted (no number) at slots 1, 6, 13; organic ranked 1–10 ──
   // Slots are 1-indexed. Build the visible list, assigning rank numbers only to organic.
@@ -357,24 +328,15 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
       display.push({ item: promoQueue.shift(), rank: null });
     }
     slot += 1;
-    if (slot > 50) break; // safety
+    if (slot > 60) break; // safety (50 organic + promoted slots)
   }
 
-  // ── Internal-link cluster: featured cards + 3 typed link groups (niche / country / state) ──
-  const CLUSTER_FEATURED = 4;
-  const CLUSTER_LINKS_PER_TYPE = 10;
-  const clusterCandidates = BEST_OF_PAGES.filter((p) => p.slug !== slug).sort((a, b) => {
-    const aSame = a.type === page.type ? 1 : 0;
-    const bSame = b.type === page.type ? 1 : 0;
-    if (bSame !== aSame) return bSame - aSame;
-    return b.count - a.count;
-  });
-  const featuredCategories = clusterCandidates.slice(0, CLUSTER_FEATURED);
-  const nicheLinkPages = BEST_OF_PAGES.filter((p) => p.slug !== slug && p.type === 'niche').sort((a, b) => b.count - a.count).slice(0, CLUSTER_LINKS_PER_TYPE);
-  const countryLinkPages = BEST_OF_PAGES.filter((p) => p.slug !== slug && p.type === 'country').sort((a, b) => b.count - a.count).slice(0, CLUSTER_LINKS_PER_TYPE);
-  const stateLinkPages = BEST_OF_PAGES.filter((p) => p.slug !== slug && p.type === 'state').sort((a, b) => b.count - a.count).slice(0, CLUSTER_LINKS_PER_TYPE);
-
-  const relatedAvatars = await getBestOfPreviewAvatars(featuredCategories, 4).catch(() => ({} as Record<string, string[]>));
+  const relatedTopLinks = getRelatedRankingLinks(slug, variant, 'top');
+  const relatedBottomLinks = getRelatedRankingLinks(
+    slug,
+    variant === 'top10' ? 'best' : 'top10',
+    'bottom',
+  );
 
   // ── Erogram editorial palette (same as /trending) ──
   const CREAM = '#F7F4EC';   // page background
@@ -455,6 +417,21 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
               {dict.bestOnlyfans.lookingFor.replace('{category}', label).replace('{year}', String(year))}
             </p>
           )}
+          {relatedTopLinks.length > 0 && (
+            <div className="mt-5">
+              <p className="text-[10px] font-bold tracking-[0.28em] uppercase mb-2.5" style={{ color: MUTED }}>
+                {dict.bestOnlyfans.keepExploring}
+              </p>
+              <RelatedRankingLinks
+                slug={slug}
+                pageVariant={variant}
+                placement="top"
+                localizeHref={(path) => localePath(path, locale)}
+                tone="cream"
+                ariaLabel={`Related ${label} rankings`}
+              />
+            </div>
+          )}
         </header>
 
         {/* Ranked List — organic 1–10 + promoted (TRENDING UP) at slots 1/6/13 */}
@@ -471,7 +448,6 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                 if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}K`;
                 return `${n}`;
               };
-              const likes = creator.likesCount || 0;
               const photos = creator.photosCount || 0;
               const videos = creator.videosCount || 0;
               const media = creator.mediaCount || 0;
@@ -483,7 +459,6 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
               const statBorder = isPromo ? 'rgba(255,255,255,0.10)' : 'rgba(43,27,40,0.10)';
 
               const stats: { label: string; value: string }[] = [];
-              if (likes > 0) stats.push({ label: 'Likes', value: fmt(likes) });
               if (totalContent > 0) stats.push({ label: 'Content', value: fmt(totalContent) });
               if (photos > 0) stats.push({ label: 'Photos', value: fmt(photos) });
               if (videos > 0) stats.push({ label: 'Videos', value: fmt(videos) });
@@ -754,125 +729,57 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
         {/* TRENDING ON EROGRAM — same featured creators shown on /OFsearch for this category. */}
         <BestPageAdBlock ads={trendingFeatured as any} />
 
-        {/* ── More Top OnlyFans Rankings (40-link internal cluster) ── */}
-        {featuredCategories.length > 0 && (
-          <section className="mt-4 pt-12 border-t" style={{ borderColor: 'rgba(43,27,40,0.12)' }} aria-label={`More OnlyFans categories related to ${label}`}>
-            <div className="text-[10px] font-bold tracking-[0.32em] uppercase mb-3" style={{ color: MUTED }}>{dict.bestOnlyfans.keepExploring}</div>
-            <h2 className="font-[family-name:var(--font-baloo)] font-extrabold text-[1.9rem] sm:text-[2.3rem] leading-tight tracking-tight mb-2" style={{ color: PLUM }}>
+        <section className="mt-14 pt-8 border-t" style={{ borderColor: 'rgba(43,27,40,0.08)' }} aria-label={dict.bestOnlyfans.exploreMoreHottest}>
+          <h2 className="font-[family-name:var(--font-baloo)] font-extrabold text-[1.75rem] sm:text-[2rem] leading-tight tracking-tight mb-3" style={{ color: PLUM }}>
+            {dict.bestOnlyfans.exploreMoreHottest}
+          </h2>
+          <p className="text-[15px] leading-[1.75] mb-8 max-w-2xl" style={{ color: MUTED }}>
+            {locale === 'en' ? (
+              <>
+                <Link
+                  href={localePath('/best', locale)}
+                  className="font-semibold underline underline-offset-2 hover:text-[#00AFF0] transition-colors"
+                  style={{ color: PLUM }}
+                >
+                  Browse our full library of verified OnlyFans rankings
+                </Link>
+                {', updated daily by the Erogram editorial team. Whether you are searching by niche, country, or U.S. state, each list spotlights '}
+                <Link
+                  href={localePath('/onlyfanssearch/categories', locale)}
+                  className="font-semibold underline underline-offset-2 hover:text-[#00AFF0] transition-colors"
+                  style={{ color: PLUM }}
+                >
+                  the most popular creators in that category
+                </Link>
+                .
+              </>
+            ) : (
+              dict.bestOnlyfans.exploreMoreDesc
+            )}
+          </p>
+        </section>
+
+        {relatedBottomLinks.length > 0 && (
+          <section className="mt-4 mb-4" style={{ borderColor: 'rgba(43,27,40,0.12)' }} aria-label={`Related ${label} rankings`}>
+            <p className="text-[10px] font-bold tracking-[0.28em] uppercase mb-2.5" style={{ color: MUTED }}>
+              {dict.bestOnlyfans.keepExploring}
+            </p>
+            <h2 className="font-[family-name:var(--font-baloo)] font-extrabold text-[1.4rem] sm:text-[1.7rem] leading-tight tracking-tight mb-4" style={{ color: PLUM }}>
               {dict.bestOnlyfans.moreTopRankings}
             </h2>
-            <p className="text-[15px] leading-[1.7] mb-8 max-w-xl" style={{ color: MUTED }}>
-              {dict.bestOnlyfans.handpickedDesc}
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {featuredCategories.map((rc0) => {
-                const rc = { ...rc0, label: getTagLabel(rc0.slug, rc0.label, locale) };
-                const pics = (relatedAvatars[rc.slug] || []).slice(0, 4);
-                return (
-                  <Link
-                    key={rc.slug}
-                    href={rankingPublicPath(rc.slug, locale, variant)}
-                    className="group relative flex flex-col p-5 rounded-3xl border transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_30px_70px_-32px_rgba(43,27,40,0.5)] shadow-[0_18px_50px_-34px_rgba(43,27,40,0.35)] overflow-hidden"
-                    style={{ borderColor: 'rgba(43,27,40,0.10)', backgroundColor: INK }}
-                  >
-                    {/* 4 miniature creator pictures */}
-                    <div className="grid grid-cols-4 gap-1.5 mb-4">
-                      {Array.from({ length: 4 }).map((_, idx) => {
-                        const src = pics[idx];
-                        return (
-                          <div
-                            key={idx}
-                            className="relative aspect-[3/4] rounded-xl overflow-hidden"
-                            style={{ backgroundColor: 'rgba(43,27,40,0.06)' }}
-                          >
-                            {src ? (
-                              <img
-                                src={src}
-                                alt={`${rc.label} OnlyFans model preview`}
-                                className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.08]"
-                                loading="lazy"
-                                referrerPolicy="no-referrer"
-                              />
-                            ) : null}
-                          </div>
-                        );
-                      })}
-                      {/* subtle ranking sheen */}
-                      <span className="pointer-events-none absolute -top-px left-5 right-5 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(43,27,40,0.18), transparent)' }} />
-                    </div>
-
-                    <div className="flex-1">
-                      <div className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.24em] uppercase mb-2 px-2 py-0.5 rounded-full" style={{ color: INK, backgroundColor: PLUM }}>
-                        Top 10 · {rc.label}
-                      </div>
-                      <h3 className="font-[family-name:var(--font-baloo)] font-extrabold text-[1.3rem] leading-[1.1] tracking-tight" style={{ color: PLUM }}>
-                        {rankingTitle(rc.label, year, locale, variant)}
-                      </h3>
-                      <p className="text-[13px] leading-[1.6] mt-2" style={{ color: MUTED }}>
-                        {dict.bestOnlyfans.relatedSubhead.replace('{label}', rc.label.toLowerCase())}
-                      </p>
-                    </div>
-
-                    <span className="inline-flex items-center gap-2 mt-5 self-start text-[11px] font-bold tracking-[0.18em] uppercase rounded-full px-5 py-2.5 border transition-all group-hover:gap-3" style={{ color: PLUM, borderColor: 'rgba(43,27,40,0.35)' }}>
-                      {dict.bestOnlyfans.seeRanking}
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-x-0.5 transition-transform"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
+            <RelatedRankingLinks
+              slug={slug}
+              pageVariant={variant === 'top10' ? 'best' : 'top10'}
+              placement="bottom"
+              localizeHref={(path) => localePath(path, locale)}
+              tone="cream"
+              ariaLabel={`Related ${label} rankings`}
+            />
           </section>
         )}
 
         {pageContent && locale === 'en' && pageContent.bottomBody.trim() && (
           <BestOfEditorialBody markdown={pageContent.bottomBody} />
-        )}
-
-        {/* ── Explore More Top 10 OnlyFans Model Rankings ── */}
-        {(nicheLinkPages.length > 0 || countryLinkPages.length > 0 || stateLinkPages.length > 0) && (
-          <nav className="mt-14 pt-8 border-t" style={{ borderColor: 'rgba(43,27,40,0.08)' }} aria-label="Explore more Top 10 OnlyFans model rankings">
-            <h2 className="font-[family-name:var(--font-baloo)] font-extrabold text-[1.75rem] sm:text-[2rem] leading-tight tracking-tight mb-3" style={{ color: PLUM }}>
-              {dict.bestOnlyfans.exploreMoreHottest}
-            </h2>
-            <p className="text-[15px] leading-[1.75] mb-8 max-w-2xl" style={{ color: MUTED }}>
-              {dict.bestOnlyfans.exploreMoreDesc}
-            </p>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-8 gap-y-8">
-              {[
-                { key: 'niche', title: dict.bestOnlyfans.browseByCategory, pages: nicheLinkPages },
-                { key: 'country', title: dict.bestOnlyfans.browseByCountry, pages: countryLinkPages },
-                { key: 'state', title: dict.bestOnlyfans.browseByState, pages: stateLinkPages },
-              ].map((group) =>
-                group.pages.length > 0 ? (
-                  <div key={group.key}>
-                    <h3 className="font-[family-name:var(--font-baloo)] font-bold text-[1.1rem] sm:text-[1.2rem] mb-4" style={{ color: PLUM }}>
-                      {group.title}
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {group.pages.map((rc) => (
-                        <Link
-                          key={rc.slug}
-                          href={rankingPublicPath(rc.slug, locale, variant)}
-                          className="inline-flex items-center px-3.5 py-1.5 rounded-full text-[13px] font-bold border transition-all hover:-translate-y-px hover:opacity-90"
-                          style={PREMIUM_PINK_BTN}
-                        >
-                          {getTagLabel(rc.slug, rc.label, locale)}
-                        </Link>
-                      ))}
-                    </div>
-                    <Link
-                      href={localePath('/onlyfanssearch', locale)}
-                      className="inline-flex items-center gap-1.5 mt-4 px-3.5 py-1.5 rounded-full text-[13px] font-bold border transition-all hover:-translate-y-px hover:opacity-90"
-                      style={PREMIUM_PINK_BTN}
-                    >
-                      {dict.bestOnlyfans.browseAll}
-                    </Link>
-                  </div>
-                ) : null,
-              )}
-            </div>
-          </nav>
         )}
 
         {/* FAQ — niche-dynamic copy, fully visible HTML + FAQPage JSON-LD for Google */}

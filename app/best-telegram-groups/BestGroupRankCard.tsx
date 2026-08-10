@@ -20,44 +20,56 @@ export default function BestGroupRankCard({ entry, joinLabel, viewsLabel, locale
   const { group, isPremium, rank } = entry;
   if (isPremium) {
     const subs = (group.memberCount || 0).toLocaleString();
+    // Short blur span only (cheaper paint). Rest of the name stays hidden.
+    const clearName = group.name.slice(0, 4);
+    const blurName = group.name.slice(4, 7) || '···';
     return (
       <div
-        className="rounded-3xl p-6 md:p-8 relative overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #1a1408, #151210)', border: '2px solid rgba(201,151,58,0.35)' }}
+        className="rounded-3xl p-6 md:p-8 relative overflow-hidden bg-[#1a1408] border-2 border-[rgba(201,151,58,0.35)]"
       >
         <div
-          className="absolute top-0 left-0 px-6 py-2 rounded-br-3xl font-black text-xl z-10"
-          style={{ background: 'linear-gradient(135deg, #c9973a, #a67c2e)', color: '#1a1000' }}
+          className="absolute top-0 left-0 px-6 py-2 rounded-br-3xl font-black text-xl z-10 bg-[#c9973a] text-[#1a1000]"
         >
           #{rank}
         </div>
-        <div className="absolute top-0 right-0 m-4 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider z-10"
-          style={{ background: 'rgba(201,151,58,0.15)', border: '1px solid rgba(201,151,58,0.35)', color: '#c9973a' }}>
+        <div className="absolute top-0 right-0 m-4 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider z-10 bg-[rgba(201,151,58,0.15)] border border-[rgba(201,151,58,0.35)] text-[#c9973a]">
           Premium
         </div>
 
         <div className="flex flex-col md:flex-row gap-8 mt-4">
           <div className="w-full md:w-1/3 flex-shrink-0">
-            <div className="relative aspect-square rounded-2xl overflow-hidden shadow-2xl" style={{ border: '2px solid rgba(201,151,58,0.3)' }}>
-              <FallbackImage src={imageSrc(group.image)} alt="" className="object-cover" />
+            <div className="relative aspect-square rounded-2xl overflow-hidden border-2 border-[rgba(201,151,58,0.3)]">
+              <FallbackImage
+                src={imageSrc(group.image)}
+                alt=""
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 33vw"
+                loading="lazy"
+              />
             </div>
           </div>
           <div className="flex-grow flex flex-col justify-center">
             <h2 className="text-3xl font-bold mb-4">
-              <span className="text-white">{group.name.slice(0, 4)}</span>
-              <span style={{ filter: 'blur(5px)', color: '#fff', userSelect: 'none' }}>{group.name.slice(4) || '····'}</span>
+              <span className="text-white">{clearName}</span>
+              <span
+                className="inline-block text-white select-none"
+                style={{ filter: 'blur(4px)' }}
+                aria-hidden="true"
+              >
+                {blurName}
+              </span>
             </h2>
             <div className="flex flex-wrap gap-3 mb-6">
-              <span className="px-3 py-1 rounded-full text-sm font-medium" style={{ background: 'rgba(201,151,58,0.1)', border: '1px solid rgba(201,151,58,0.25)', color: '#c9973a' }}>
+              <span className="px-3 py-1 rounded-full text-sm font-medium bg-[rgba(201,151,58,0.1)] border border-[rgba(201,151,58,0.25)] text-[#c9973a]">
                 {subs} subscribers
               </span>
               {pageCategory && (
-                <span className="px-3 py-1 rounded-full text-sm font-medium text-gray-400" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <span className="px-3 py-1 rounded-full text-sm font-medium text-gray-400 bg-white/5 border border-white/10">
                   📂 {pageCategory}
                 </span>
               )}
               {(!pageCategory || group.category !== pageCategory) && (
-                <span className="px-3 py-1 rounded-full text-sm font-medium text-gray-400" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <span className="px-3 py-1 rounded-full text-sm font-medium text-gray-400 bg-white/5 border border-white/10">
                   📂 {group.category}
                 </span>
               )}
@@ -70,8 +82,7 @@ export default function BestGroupRankCard({ entry, joinLabel, viewsLabel, locale
                 href="/premium"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block w-full md:w-auto text-center font-black py-4 px-8 rounded-xl text-sm uppercase tracking-wide"
-                style={{ background: 'linear-gradient(135deg, #b8860b 0%, #ffd700 40%, #fff8b0 55%, #ffd700 70%, #b8860b 100%)', color: '#3a2a00', boxShadow: '0 6px 20px -6px rgba(255,215,0,0.45)' }}
+                className="block w-full md:w-auto text-center font-black py-4 px-8 rounded-xl text-sm uppercase tracking-wide bg-[#c9973a] text-[#1a1000]"
               >
                 Access Premium
               </a>

@@ -12,6 +12,7 @@ interface FallbackImageProps {
     className?: string;
     sizes?: string;
     priority?: boolean;
+    loading?: 'lazy' | 'eager';
 }
 
 /**
@@ -25,6 +26,7 @@ export default function FallbackImage({
     className,
     sizes,
     priority,
+    loading,
 }: FallbackImageProps) {
     const validSrc = (src && typeof src === 'string' && src.startsWith('https://')) ? src : PLACEHOLDER_IMAGE_URL;
     const [imageSrc, setImageSrc] = useState(validSrc);
@@ -37,6 +39,7 @@ export default function FallbackImage({
             className={className}
             sizes={sizes}
             priority={priority}
+            loading={priority ? undefined : loading}
             onError={() => setImageSrc(PLACEHOLDER_IMAGE_URL)}
         />
     );

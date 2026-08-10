@@ -71,13 +71,15 @@ async function scrapeProfilePhoto(username: string): Promise<string | null> {
 
   const imageUrl = ogMatch[1];
 
-  // Telegram's default placeholder (no profile picture set)
-  if (imageUrl.includes('telegram-peer-photo-size') === false && imageUrl.includes('cdn') === false && !imageUrl.startsWith('https://cdn')) {
-    // Check for known default/placeholder patterns
-    if (imageUrl.includes('placeholder') || imageUrl.length < 20) {
-      console.log(`[Fetch Photo] @${username} has default avatar (no custom photo)`);
-      return null;
-    }
+  // Reject Telegram letter/SVG placeholders and site logos — never save these as group photos.
+  if (
+    imageUrl.startsWith('data:') ||
+    imageUrl.includes('telegram.org/img') ||
+    imageUrl.includes('placeholder') ||
+    imageUrl.length < 20
+  ) {
+    console.log(`[Fetch Photo] @${username} has default/letter avatar (no custom photo)`);
+    return null;
   }
 
   return imageUrl;
@@ -159,6 +161,12 @@ export async function POST(req: NextRequest) {
         const photoBuffer = await downloadImage(imageUrl);
         if (!photoBuffer) {
           results.push({ id, status: 'failed', error: `Could not download photo for @${username}` });
+          continue;
+        }
+
+        // Guard: letter avatars / broken scrapes are tiny (~1–3KB). Never write those.
+        if (photoBuffer.length < 5000) {
+          results.push({ id, status: 'failed', error: `Photo too small (${photoBuffer.length}B) for @${username} - likely default avatar` });
           continue;
         }
 

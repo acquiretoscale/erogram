@@ -185,13 +185,6 @@ export default function BestEditorialSeo({ locale }: Props) {
         is a smaller ranking but a consistently searched one.
       </p>
 
-      <h2 className={h2}>OnlyFans Creators in Your City</h2>
-      <p className="mb-8">
-        Location is the filter most fans skip.{' '}
-        <Link href={lp('/onlyfanssearch/near-me')} className={link}>Near Me</Link>{' '}
-        sorts creators by city, state, and country using what they list publicly. It is not GPS and it is not tracking, it is the field they already filled in themselves. Same timezone means she is online when you are. Same country means the references land and the language is native. That is a different experience from a creator eleven hours ahead who posts while you are asleep.
-      </p>
-
       <h2 className={h2}>Keep Your List Instead of Losing It</h2>
       <p className="mb-4">
         Here is the pattern that costs people the most: read a list, find six names worth remembering, close the tab, remember none of them by Thursday, then repeat the same search next week and land on a worse page.
@@ -239,9 +232,7 @@ export default function BestEditorialSeo({ locale }: Props) {
       <p className="mb-4">
         Start with a ranked niche from the grid if you know what you want. Use the{' '}
         <Link href={lp('/onlyfanssearch')} className={link}>full index</Link>{' '}
-        if you want to stack price, category, and location filters. Try{' '}
-        <Link href={lp('/onlyfanssearch/near-me')} className={link}>Near Me</Link>{' '}
-        if proximity matters.{' '}
+        if you want to stack price and category filters.{' '}
         <Link href={lp('/join-erogram?redirect=/best-onlyfans-accounts')} className={link}>Make the free account</Link>{' '}
         if you want to keep any of it.
       </p>

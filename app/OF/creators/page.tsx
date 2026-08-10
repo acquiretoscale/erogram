@@ -5,6 +5,7 @@ import { OF_CATEGORIES, OF_CATEGORY_MAP } from '@/app/onlyfanssearch/constants';
 import {
   getOFMCreators,
   deleteOFMCreator,
+  bulkDeleteOFMCreators,
 } from '@/lib/actions/ofm';
 import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
 import { importOFMCreator } from '@/lib/actions/ofmAdmin';
@@ -64,6 +65,8 @@ function formatLikes(n: number) {
   return n.toLocaleString();
 }
 
+const PAGE_LIMIT_OPTIONS = [100, 150, 200];
+
 const SORT_OPTIONS = [
   { value: 'scrapedAt', label: 'Scraped At' },
   { value: 'likesCount', label: 'Likes' },
@@ -98,6 +101,11 @@ export default function CreatorsPage() {
   const [promotingId, setPromotingId] = useState<string | null>(null);
   const [importInput, setImportInput] = useState('');
   const [importing, setImporting] = useState(false);
+  const [layoutView, setLayoutView] = useState<'mosaic' | 'table'>('mosaic');
+  const [pageLimit, setPageLimit] = useState(100);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -145,7 +153,7 @@ export default function CreatorsPage() {
     try {
       const data = await getOFMCreators(token, {
         page: p,
-        limit: 50,
+        limit: pageLimit,
         sortBy,
         sortDir,
         ...(search && { search }),
@@ -157,14 +165,60 @@ export default function CreatorsPage() {
       setTotal(data.total || 0);
       setPages(data.pages || 1);
       setPage(p);
+      setSelectedIds(new Set());
     } catch {
       showToast('Failed to load creators');
     } finally {
       setLoading(false);
     }
-  }, [page, search, category, isFree, accountSize, sortBy, sortDir]);
+  }, [page, search, category, isFree, accountSize, sortBy, sortDir, pageLimit]);
 
-  useEffect(() => { load(1); }, [search, category, isFree, accountSize, sortBy, sortDir]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(1); }, [search, category, isFree, accountSize, sortBy, sortDir, pageLimit]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const allOnPageSelected = creators.length > 0 && creators.every((c) => selectedIds.has(c._id));
+
+  const toggleSelectAllOnPage = () => {
+    if (allOnPageSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        creators.forEach((c) => next.delete(c._id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        creators.forEach((c) => next.add(c._id));
+        return next;
+      });
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = [...selectedIds];
+    if (!ids.length) return;
+    setBulkDeleting(true);
+    const token = localStorage.getItem('token') || '';
+    try {
+      const res = await bulkDeleteOFMCreators(token, ids);
+      setBulkDeleteOpen(false);
+      setSelectedIds(new Set());
+      showToast(`Deleted ${res.deleted} creator${res.deleted === 1 ? '' : 's'}`);
+      load(page);
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Bulk delete failed');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -215,9 +269,27 @@ export default function CreatorsPage() {
             </button>
           </div>
           {view === 'all' && (
-            <a href="/OF/import" className="px-3.5 py-1.5 bg-white/[0.06] border border-white/10 rounded-xl text-white/50 text-xs font-semibold hover:bg-white/10 transition">
-              Advanced Import →
-            </a>
+            <>
+              <div className="flex rounded-xl border border-white/10 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setLayoutView('mosaic')}
+                  className={`px-3.5 py-1.5 text-xs font-bold transition ${layoutView === 'mosaic' ? 'bg-[#00AFF0] text-white' : 'bg-white/[0.04] text-white/50 hover:text-white'}`}
+                >
+                  Mosaic
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLayoutView('table')}
+                  className={`px-3.5 py-1.5 text-xs font-bold transition ${layoutView === 'table' ? 'bg-[#00AFF0] text-white' : 'bg-white/[0.04] text-white/50 hover:text-white'}`}
+                >
+                  Table
+                </button>
+              </div>
+              <a href="/OF/import" className="px-3.5 py-1.5 bg-white/[0.06] border border-white/10 rounded-xl text-white/50 text-xs font-semibold hover:bg-white/10 transition">
+                Advanced Import →
+              </a>
+            </>
           )}
         </div>
       </div>
@@ -305,9 +377,38 @@ export default function CreatorsPage() {
         >
           {sortDir === 'desc' ? '↓ Desc' : '↑ Asc'}
         </button>
+        <select
+          value={pageLimit}
+          onChange={(e) => setPageLimit(Number(e.target.value))}
+          className="px-3 py-2 bg-white/[0.05] border border-white/10 rounded-xl text-white/70 text-sm outline-none focus:border-[#00AFF0]/40 transition"
+        >
+          {PAGE_LIMIT_OPTIONS.map(n => <option key={n} value={n}>{n} per page</option>)}
+        </select>
       </div>
 
-      {/* Table */}
+      {selectedIds.size > 0 && (
+        <div className="sticky top-2 z-40 flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-red-950/80 border border-red-500/30 rounded-2xl backdrop-blur-sm">
+          <span className="text-white text-sm font-semibold">{selectedIds.size} selected</span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              className="px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/10 text-white/60 text-xs font-bold hover:bg-white/10 transition"
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={() => setBulkDeleteOpen(true)}
+              className="px-4 py-1.5 rounded-lg bg-red-500 hover:bg-red-400 text-white text-xs font-black tracking-wide transition"
+            >
+              Delete selected
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Creators grid / table */}
       <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center h-32">
@@ -315,11 +416,92 @@ export default function CreatorsPage() {
           </div>
         ) : creators.length === 0 ? (
           <div className="text-center text-white/20 py-12 text-sm">No creators found.</div>
+        ) : layoutView === 'mosaic' ? (
+          <div className="p-4">
+            <div className="flex items-center gap-3 mb-4">
+              <label className="flex items-center gap-2 text-xs font-bold text-white/50 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={allOnPageSelected}
+                  onChange={toggleSelectAllOnPage}
+                  className="w-4 h-4 rounded border-white/20 bg-white/5 accent-[#00AFF0]"
+                />
+                Select all on page ({creators.length})
+              </label>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+              {creators.map((c) => {
+                const selected = selectedIds.has(c._id);
+                const goldTags = getAdminGoldTags(c);
+                return (
+                  <div
+                    key={c._id}
+                    className={`group relative rounded-2xl overflow-hidden border transition ${selected ? 'border-red-400 ring-2 ring-red-400/60' : 'border-white/[0.08] hover:border-[#00AFF0]/30'}`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleSelect(c._id)}
+                      className="absolute top-2 left-2 z-10 w-7 h-7 rounded-lg bg-black/60 border border-white/20 flex items-center justify-center"
+                    >
+                      <input
+                        type="checkbox"
+                        readOnly
+                        checked={selected}
+                        className="w-4 h-4 pointer-events-none accent-[#00AFF0]"
+                      />
+                    </button>
+                    <div className="aspect-[3/4] bg-white/5 relative">
+                      {c.avatar ? (
+                        <img src={c.avatar} alt={c.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-[#00AFF0]/10 text-[#00AFF0] text-3xl font-bold">
+                          {c.name.charAt(0)}
+                        </div>
+                      )}
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-3 pt-10">
+                        <div className="font-semibold text-white text-sm truncate">{c.name}</div>
+                        <div className="text-[11px] text-white/50 truncate">@{c.username}</div>
+                        <div className="text-[11px] text-white/70 font-bold mt-0.5">{formatLikes(c.likesCount)} likes</div>
+                      </div>
+                    </div>
+                    {goldTags.length > 0 && (
+                      <div className="px-2 py-2 flex flex-wrap gap-1 max-h-16 overflow-hidden">
+                        {goldTags.slice(0, 4).map((tag) => (
+                          <span key={tag.slug} className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-amber-500/15 text-amber-200 border border-amber-400/20 truncate max-w-full">
+                            {tag.label}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="px-2 pb-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                      <a href={c.url} target="_blank" rel="noopener noreferrer" className="p-1.5 text-white/40 hover:text-[#00AFF0] rounded-lg" title="OnlyFans">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
+                      </a>
+                      <a href={`${ofCreatorProfileUrl(c.username)}?edit=1`} className="p-1.5 text-white/40 hover:text-white rounded-lg" title="Edit">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      </a>
+                      <button type="button" onClick={() => setDeleteId(c._id)} className="p-1.5 text-white/40 hover:text-red-400 rounded-lg" title="Delete">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/[0.06]">
+                  <th className="px-4 py-3 text-left w-10">
+                    <input
+                      type="checkbox"
+                      checked={allOnPageSelected}
+                      onChange={toggleSelectAllOnPage}
+                      className="w-4 h-4 rounded border-white/20 bg-white/5 accent-[#00AFF0]"
+                    />
+                  </th>
                   {['Creator', 'Likes', 'Tag categories', 'Scraped', 'Actions'].map(h => (
                     <th key={h} className={`px-4 py-3 text-left text-[11px] font-bold text-white/30 uppercase tracking-wider whitespace-nowrap${h === 'Actions' ? ' sticky right-0 bg-[#0c1116]' : ''}`}>{h}</th>
                   ))}
@@ -328,20 +510,29 @@ export default function CreatorsPage() {
               <tbody>
                 {creators.map((c) => {
                   const goldTags = getAdminGoldTags(c);
+                  const selected = selectedIds.has(c._id);
                   return (
-                  <tr key={c._id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition">
+                  <tr key={c._id} className={`border-b border-white/[0.04] hover:bg-white/[0.02] transition ${selected ? 'bg-red-500/5' : ''}`}>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-4 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => toggleSelect(c._id)}
+                        className="w-4 h-4 rounded border-white/20 bg-white/5 accent-[#00AFF0]"
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3 min-w-0">
                         {c.avatar ? (
-                          <img src={c.avatar} alt={c.name} className="w-56 h-56 rounded-2xl object-cover bg-white/5 flex-shrink-0" />
+                          <img src={c.avatar} alt={c.name} className="w-12 h-12 rounded-xl object-cover bg-white/5 flex-shrink-0" />
                         ) : (
-                          <div className="w-56 h-56 rounded-2xl bg-[#00AFF0]/10 border border-[#00AFF0]/20 flex items-center justify-center text-[#00AFF0] text-4xl font-bold flex-shrink-0">
+                          <div className="w-12 h-12 rounded-xl bg-[#00AFF0]/10 border border-[#00AFF0]/20 flex items-center justify-center text-[#00AFF0] text-lg font-bold flex-shrink-0">
                             {c.name.charAt(0)}
                           </div>
                         )}
                         <div className="min-w-0">
-                          <div className="font-semibold text-white text-base">{c.name}</div>
-                          <div className="text-sm text-white/30 mt-0.5">@{c.username}</div>
+                          <div className="font-semibold text-white text-sm">{c.name}</div>
+                          <div className="text-xs text-white/30 mt-0.5">@{c.username}</div>
                           {c.isVerified && <span className="text-[#00AFF0] text-xs mt-1 inline-block">✓ Verified</span>}
                         </div>
                       </div>
@@ -438,13 +629,30 @@ export default function CreatorsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="bg-[#0e1419] border border-white/10 rounded-2xl p-6 w-full max-w-sm">
             <h3 className="text-white font-bold text-lg mb-2">Delete Creator?</h3>
-            <p className="text-white/40 text-sm mb-5">This action cannot be undone.</p>
+            <p className="text-white/40 text-sm mb-5">This action cannot be undone. They will disappear from Top 10 rankings.</p>
             <div className="flex gap-3">
               <button onClick={() => setDeleteId(null)} className="flex-1 py-2.5 bg-white/[0.06] border border-white/10 rounded-xl text-white/60 text-sm font-semibold hover:bg-white/10 transition">
                 Cancel
               </button>
               <button onClick={handleDelete} className="flex-1 py-2.5 bg-red-500/80 hover:bg-red-500 rounded-xl text-white text-sm font-bold transition">
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bulkDeleteOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-[#0e1419] border border-white/10 rounded-2xl p-6 w-full max-w-sm">
+            <h3 className="text-white font-bold text-lg mb-2">Delete {selectedIds.size} creators?</h3>
+            <p className="text-white/40 text-sm mb-5">Permanent. Removed from database and Top 10 rankings.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setBulkDeleteOpen(false)} disabled={bulkDeleting} className="flex-1 py-2.5 bg-white/[0.06] border border-white/10 rounded-xl text-white/60 text-sm font-semibold hover:bg-white/10 transition disabled:opacity-50">
+                Cancel
+              </button>
+              <button onClick={handleBulkDelete} disabled={bulkDeleting} className="flex-1 py-2.5 bg-red-500/80 hover:bg-red-500 rounded-xl text-white text-sm font-bold transition disabled:opacity-50">
+                {bulkDeleting ? 'Deleting…' : 'Delete all'}
               </button>
             </div>
           </div>

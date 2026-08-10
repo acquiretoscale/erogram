@@ -54,6 +54,10 @@ function groupsPageHref(page: number): string {
   return page <= 1 ? '/groups' : `/groups/page/${page}`;
 }
 
+function groupsSessionStorageKey(page: number): string {
+  return `erogram_groups_state_v5_p${page}`;
+}
+
 export default function GroupsClient({ initialGroups, feedCampaigns = [], initialCountry, initialIsMobile = false, initialIsTelegram = false, topBannerCampaigns = [], storyData = [], trendingCategories = [], categoryOptions = [], countryOptions = [], paginationCurrentPage = 1, paginationTotalPages = 1, groupsPageSize = 32 }: GroupsClientProps) {
   const STORY_SEEN_KEY = 'erogram:stories:seen:v1';
   const [username, setUsername] = useState<string | null>(null);
@@ -277,17 +281,18 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   const isRestoredRef = useRef(false);
   const isFirstLoad = useRef(true);
 
-  // Restore state from sessionStorage on mount
+  // Restore state from sessionStorage on mount (per pagination page — never bleed page 1 into page 2+)
   useEffect(() => {
     try {
-      const savedState = sessionStorage.getItem('erogram_groups_state_v5');
+      const storageKey = groupsSessionStorageKey(paginationCurrentPage);
+      const savedState = sessionStorage.getItem(storageKey);
       if (savedState) {
-        const { groups, skip: savedSkip, hasMore: savedHasMore, scrollY, filters, timestamp } = JSON.parse(savedState);
+        const { groups, scrollY, filters, timestamp } = JSON.parse(savedState);
 
         // Check if cache is expired (1 hour)
         const now = Date.now();
         if (timestamp && (now - timestamp > 60 * 60 * 1000)) {
-          sessionStorage.removeItem('erogram_groups_state_v5');
+          sessionStorage.removeItem(storageKey);
           return;
         }
 
@@ -297,7 +302,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
           search: searchQuery
         };
 
-        // Only restore if filters match
+        // Only restore if filters match this page's saved snapshot
         if (JSON.stringify(currentFilters) === JSON.stringify(filters)) {
           setRegularGroups(groups);
           isRestoredRef.current = true;
@@ -312,7 +317,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
     } catch (e) {
       console.error('Failed to restore state:', e);
     }
-  }, []);
+  }, [paginationCurrentPage]);
 
   // Deep link: /groups?category=X selects that category so the feed shows its
   // newest-first search results (used by the Trending Group Categories links).
@@ -332,10 +337,12 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
     prevUrlCategoryParam.current = urlCategoryParam;
   }, [urlCategoryParam, categoryOptions, initialCountry]);
 
-  // Save state to sessionStorage
+  // Save state to sessionStorage (scoped to current pagination page)
   useEffect(() => {
+    const storageKey = groupsSessionStorageKey(paginationCurrentPage);
     const saveState = () => {
       const state = {
+        page: paginationCurrentPage,
         groups: regularGroups,
         scrollY: window.scrollY,
         filters: {
@@ -345,21 +352,22 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
         },
         timestamp: Date.now()
       };
-      sessionStorage.setItem('erogram_groups_state_v5', JSON.stringify(state));
+      sessionStorage.setItem(storageKey, JSON.stringify(state));
     };
 
     // Save on unmount
     return () => saveState();
-  }, [regularGroups, selectedCategory, selectedSort, searchQuery]);
+  }, [regularGroups, selectedCategory, selectedSort, searchQuery, paginationCurrentPage]);
 
   // Save scroll position periodically while scrolling
   useEffect(() => {
+    const storageKey = groupsSessionStorageKey(paginationCurrentPage);
     const handleScrollSave = () => {
-      const savedState = sessionStorage.getItem('erogram_groups_state_v5');
+      const savedState = sessionStorage.getItem(storageKey);
       if (savedState) {
         const state = JSON.parse(savedState);
         state.scrollY = window.scrollY;
-        sessionStorage.setItem('erogram_groups_state_v5', JSON.stringify(state));
+        sessionStorage.setItem(storageKey, JSON.stringify(state));
       }
     };
 
@@ -375,7 +383,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
     window.addEventListener('scroll', throttledScroll);
     return () => window.removeEventListener('scroll', throttledScroll);
-  }, []);
+  }, [paginationCurrentPage]);
 
   // Refetch groups when sort, search, category, or country changes
   useEffect(() => {

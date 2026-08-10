@@ -68,12 +68,12 @@ function formatCount(n: number) {
   if (!n) return '—';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return `${n}K`;
+  return String(n);
 }
 
 function formatExact(n: number) {
   if (n >= 1_000) return n.toLocaleString();
-  return `${n}K`;
+  return String(n);
 }
 
 function OnlyFansIcon({ className = 'w-9 h-9', fill = '#00AFF0' }: { className?: string; fill?: string }) {

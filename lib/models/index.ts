@@ -784,6 +784,17 @@ export const adminPushSubscriptionSchema = new Schema(
   { timestamps: true }
 );
 
+// PWA install events — one per browser (guest or logged-in)
+export const pwaInstallSchema = new Schema(
+  {
+    clientId: { type: String, required: true, unique: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    createdAt: { type: Date, default: Date.now },
+  },
+  { timestamps: false }
+);
+pwaInstallSchema.index({ createdAt: -1 });
+
 // Premium pricing config (singleton — one document with key='default')
 const planSubSchema = {
   priceUsd: { type: Number, required: true },
@@ -907,6 +918,7 @@ export const StarsRate = models.StarsRate || model('StarsRate', starsRateSchema)
 export const Bookmark = models.Bookmark || model('Bookmark', bookmarkSchema);
 export const BookmarkFolder = models.BookmarkFolder || model('BookmarkFolder', bookmarkFolderSchema);
 export const AdminPushSubscription = models.AdminPushSubscription || model('AdminPushSubscription', adminPushSubscriptionSchema);
+export const PwaInstall = models.PwaInstall || model('PwaInstall', pwaInstallSchema);
 export const PremiumConfig = models.PremiumConfig || model('PremiumConfig', premiumConfigSchema);
 export const ManualRevenue = models.ManualRevenue || model('ManualRevenue', manualRevenueSchema);
 export const PremiumPricing = models.PremiumPricing || model('PremiumPricing', premiumPricingSchema);

@@ -1,4 +1,4 @@
-// Auto-generated best-of page registry — 148 pages (countries, US states, niches).
+// Auto-generated best-of page registry — 143 pages (countries, US states, niches).
 // Regenerate: node scripts/generate-best-of-pages.js
 
 export type BestOfPageType = "niche" | "country" | "state";
@@ -1381,29 +1381,6 @@ export const BEST_OF_PAGES: BestOfPage[] = [
     "count": 13
   },
   {
-    "slug": "massachusetts",
-    "label": "Massachusetts",
-    "type": "state",
-    "match": "keyword",
-    "patterns": [
-      "massachusetts",
-      "boston"
-    ],
-    "count": 11
-  },
-  {
-    "slug": "south-korean",
-    "label": "South Korean",
-    "type": "country",
-    "match": "keyword",
-    "patterns": [
-      "korean",
-      "korea",
-      "seoul korea"
-    ],
-    "count": 18
-  },
-  {
     "slug": "russian",
     "label": "Russian",
     "type": "country",
@@ -1471,17 +1448,6 @@ export const BEST_OF_PAGES: BestOfPage[] = [
       "colorado",
       "denver",
       "colorado springs"
-    ],
-    "count": 14
-  },
-  {
-    "slug": "peruvian",
-    "label": "Peruvian",
-    "type": "country",
-    "match": "keyword",
-    "patterns": [
-      "peruvian",
-      "peru"
     ],
     "count": 14
   },
@@ -1639,18 +1605,6 @@ export const BEST_OF_PAGES: BestOfPage[] = [
     "count": 214
   },
   {
-    "slug": "korean",
-    "label": "Korean",
-    "type": "country",
-    "match": "keyword",
-    "patterns": [
-      "korean",
-      "korea",
-      "seoul korea"
-    ],
-    "count": 16
-  },
-  {
     "slug": "caucasian",
     "label": "Caucasian",
     "type": "niche",
@@ -1686,44 +1640,6 @@ export const BEST_OF_PAGES: BestOfPage[] = [
       "with my husband"
     ],
     "count": 2
-  },
-  {
-    "slug": "ecuadorian",
-    "label": "Ecuadorian",
-    "type": "country",
-    "match": "keyword",
-    "patterns": [
-      "ecuadorian",
-      "ecuador"
-    ],
-    "count": 3
-  },
-  {
-    "slug": "public-sex",
-    "label": "Public Sex",
-    "type": "niche",
-    "match": "keyword",
-    "patterns": [
-      "public sex",
-      "public play",
-      "outdoor sex"
-    ],
-    "count": 7
-  },
-  {
-    "slug": "shower-sex",
-    "label": "Shower Sex",
-    "type": "niche",
-    "match": "keyword",
-    "patterns": [
-      "shower sex",
-      "shower play",
-      "shower content",
-      "shower show",
-      "shower video",
-      "shower fun"
-    ],
-    "count": 10
   },
   {
     "slug": "singaporean",

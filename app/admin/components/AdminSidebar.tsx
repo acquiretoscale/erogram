@@ -29,6 +29,7 @@ import {
     Mail,
     MessageSquare,
     Send,
+    Smartphone,
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -57,6 +58,7 @@ const tabs: TabItem[] = [
     { href: '/admin/ad-network',       name: 'Ad Network',      icon: Network },
     { href: '/admin/pending-creators', name: 'User Submissions', icon: UserCheck },
     { href: '/admin/users',            name: 'Users',           icon: User },
+    { href: '/admin/app',              name: 'APP',             icon: Smartphone },
     { href: '/admin/leads',            name: 'Leads',           icon: Target },
     { href: '/admin/newsletter',       name: 'Newsletter',      icon: Mail },
     { href: '/admin/email',            name: 'Email',           icon: Send },

@@ -13,9 +13,11 @@ import {
   type OfSearchResultsView,
 } from '@/app/profile/profileGridDensity';
 import { OF_SEARCH_TOKENS, ofSearchNavProps } from '@/app/onlyfanssearch/ofSearchTokens';
+import RelatedRankingLinks from '@/app/best-onlyfans-accounts/RelatedRankingLinks';
+import { getRelatedRankingLinks } from '@/lib/bestOnlyfansAccounts/relatedRankings';
 import { trackCreatorClick, trackTrendingClick } from '@/lib/actions/onlyfansTracking';
 import { getTrendingCreators } from '@/lib/actions/publicData';
-import { browseCreators, browseCategoryCreators, deleteCreatorBySlug } from '@/lib/actions/ofCreatorsBrowse';
+import { browseCategoryCreators, browseClusterFillCreators, deleteCreatorBySlug } from '@/lib/actions/ofCreatorsBrowse';
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
 import type { FeedCampaign } from '@/app/groups/types';
 import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
@@ -41,7 +43,7 @@ function formatCount(n: number) {
   if (!n) return '';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return `${n}K`;
+  return String(n);
 }
 
 function isCreatorLiveNow(start: number, end: number): boolean {
@@ -150,10 +152,9 @@ function CategoryCreatorCard({ creator, onTrack, onSave, onDelete, savedIds, isA
             </span>
           </div>
           <p className="text-[11px] sm:text-[13px] text-[#00AFF0] mt-0.5">@{creator.username}</p>
-          {(creator.likesCount > 0 || creator.subscriberCount > 0) && (
+          {(creator.subscriberCount > 0) && (
             <div className="flex items-center gap-1.5 mt-0.5 text-[10px] sm:text-[11px] text-gray-400">
-              {creator.subscriberCount > 0 && <span>{formatCount(creator.subscriberCount)} {t('ofSearch.subscribers')}</span>}
-              {creator.likesCount > 0 && <span>{creator.subscriberCount > 0 ? '· ' : ''}{formatCount(creator.likesCount)} {t('ofSearch.likes')}</span>}
+              <span>{formatCount(creator.subscriberCount)} {t('ofSearch.subscribers')}</span>
             </div>
           )}
         </div>
@@ -221,6 +222,8 @@ export default function CategoryClient({ creators: initialCreators, category, la
   const [categoryHasMore, setCategoryHasMore] = useState(initialCreators.length >= 12);
   const [categoryLoading, setCategoryLoading] = useState(false);
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
+  const relatedTopCount = getRelatedRankingLinks(category, 'top10', 'top').length;
+  const relatedBottomCount = getRelatedRankingLinks(category, 'best', 'bottom').length;
 
   useEffect(() => {
     setResultsView(loadOfSearchResultsView());
@@ -331,7 +334,7 @@ export default function CategoryClient({ creators: initialCreators, category, la
       const categoryIds = creators.map((c) => c._id);
       const afterIds = afterCategoryCreators.map((c) => c._id);
       const exclude = [...categoryIds, ...afterIds];
-      const data = await browseCreators(exclude, 20);
+      const data = await browseClusterFillCreators(category, exclude, 20);
       if (data.creators && data.creators.length > 0) {
         setAfterCategoryCreators((prev) => {
           const existingIds = new Set(prev.map((c) => c._id));
@@ -347,7 +350,7 @@ export default function CategoryClient({ creators: initialCreators, category, la
     } finally {
       setAfterCategoryLoading(false);
     }
-  }, [afterCategoryLoading, afterCategoryHasMore, creators, afterCategoryCreators]);
+  }, [afterCategoryLoading, afterCategoryHasMore, creators, afterCategoryCreators, category]);
 
   useEffect(() => {
     const el = loadMoreSentinelRef.current;
@@ -432,6 +435,22 @@ export default function CategoryClient({ creators: initialCreators, category, la
               onToggleSave={handleToggleSave}
               {...ofSearchNavProps(lp)}
             />
+
+            {relatedTopCount > 0 && (
+              <div className="mt-5 max-w-3xl mx-auto">
+                <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-white/40 mb-2.5">
+                  {t('bestOnlyfans.keepExploring')}
+                </p>
+                <RelatedRankingLinks
+                  slug={category}
+                  pageVariant="top10"
+                  placement="top"
+                  localizeHref={lp}
+                  tone="dark"
+                  ariaLabel={`Related ${label} rankings`}
+                />
+              </div>
+            )}
 
             </div>
           </div>
@@ -518,9 +537,6 @@ export default function CategoryClient({ creators: initialCreators, category, la
                         <div className="px-3 pt-2.5 sm:px-4 sm:pt-3">
                           <h3 className="font-bold text-[13px] sm:text-[15px] text-gray-900 truncate leading-tight">{tc.name}</h3>
                           <p className="text-[11px] sm:text-[13px] text-[#00AFF0] font-semibold mt-0.5">@{tc.username}</p>
-                          {(tc.likesCount > 0) && (
-                            <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5">{formatCount(tc.likesCount)} {t('ofSearch.likes')}</p>
-                          )}
                         </div>
                         <div className="px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3">
                           <div className={FEATURED_CTA}>
@@ -572,9 +588,6 @@ export default function CategoryClient({ creators: initialCreators, category, la
                               <div className="px-3 pt-2.5 sm:px-4 sm:pt-3">
                                 <h3 className="font-bold text-[13px] sm:text-[15px] text-gray-900 truncate leading-tight">{tc.name}</h3>
                                 <p className="text-[11px] sm:text-[13px] text-[#00AFF0] font-semibold mt-0.5">@{tc.username}</p>
-                                {(tc.likesCount > 0) && (
-                                  <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5">{formatCount(tc.likesCount)} {t('ofSearch.likes')}</p>
-                                )}
                               </div>
                               <div className="px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3"><div className={FEATURED_CTA}>{t('ofSearch.viewProfile')}</div></div>
                             </button>
@@ -660,6 +673,27 @@ export default function CategoryClient({ creators: initialCreators, category, la
             </div>
           )}
         </section>
+
+        {relatedBottomCount > 0 && (
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5 sm:p-6 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-white/40 mb-2.5">
+                {t('bestOnlyfans.keepExploring')}
+              </p>
+              <h2 className="text-lg sm:text-xl font-black text-white mb-4">
+                {t('bestOnlyfans.moreTopRankings')}
+              </h2>
+              <RelatedRankingLinks
+                slug={category}
+                pageVariant="best"
+                placement="bottom"
+                localizeHref={lp}
+                tone="dark"
+                ariaLabel={`Related ${label} rankings`}
+              />
+            </div>
+          </section>
+        )}
 
       </main>
     </div>

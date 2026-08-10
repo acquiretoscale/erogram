@@ -508,7 +508,6 @@ interface Props {
   topLikedCreators?: Creator[];
   topLikedPhotos?: TopLikedCreatorPhoto[];
   paidFeatured?: any[];
-  visitorCountryCode?: string;
 }
 
 function mergeFeaturedLists(paid: any[], rail: any[]) {
@@ -562,7 +561,7 @@ function formatCount(n: number) {
   if (!n) return '';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return `${n}K`;
+  return String(n);
 }
 
 function BestAccountsLinksSection() {
@@ -770,10 +769,9 @@ function CreatorCard({
               </span>
             </div>
             <p className="text-[11px] sm:text-[13px] text-[#00AFF0] mt-0.5">@{creator.username}</p>
-            {(creator.likesCount > 0 || (creator.subscriberCount ?? 0) > 0) && (
+            {(creator.subscriberCount ?? 0) > 0 && (
               <div className="flex items-center gap-1.5 mt-0.5 text-[10px] sm:text-[11px] text-gray-400">
-                {(creator.subscriberCount ?? 0) > 0 && <span>{formatCount(creator.subscriberCount!)} {t('ofSearch.subscribers')}</span>}
-                {creator.likesCount > 0 && <span>{(creator.subscriberCount ?? 0) > 0 ? '·' : ''} {formatCount(creator.likesCount)} {t('ofSearch.likes')}</span>}
+                <span>{formatCount(creator.subscriberCount!)} {t('ofSearch.subscribers')}</span>
               </div>
             )}
             {creator.categories && creator.categories.length > 0 && (
@@ -894,7 +892,7 @@ function CreatorPostModal({ creator, onClose }: { creator: Creator; onClose: () 
   );
 }
 
-export default function OnlyFansClient({ initialCreators, totalCreators, initialQuery = '', topBannerCampaigns = [], trendingOnErogram = [], communityCreators = [], topBookmarkedRecent = [], topLikedCreators = [], topLikedPhotos = [], paidFeatured = [], visitorCountryCode = '' }: Props) {
+export default function OnlyFansClient({ initialCreators, totalCreators, initialQuery = '', topBannerCampaigns = [], trendingOnErogram = [], communityCreators = [], topBookmarkedRecent = [], topLikedCreators = [], topLikedPhotos = [], paidFeatured = [] }: Props) {
   const { t } = useTranslation();
   const lp = useLocalePath();
   const [creators, setCreators] = useState<Creator[]>(initialCreators);
@@ -1066,7 +1064,6 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
               savedCreatorIds={savedIds}
               onToggleSave={handleToggleSave}
               loginRedirect={lp('/onlyfanssearch')}
-              initialVisitorCountry={visitorCountryCode}
               paidFeatured={paidFeatured}
               {...ofSearchNavProps(lp)}
             />
@@ -1134,9 +1131,6 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
                         <div className="px-3 pt-2.5 sm:px-4 sm:pt-3">
                           <h3 className="font-bold text-[13px] sm:text-[15px] text-gray-900 truncate leading-tight">{tc.name}</h3>
                           <p className="text-[11px] sm:text-[13px] text-[#00AFF0] font-semibold mt-0.5">@{tc.username}</p>
-                          {(tc.likesCount > 0) && (
-                            <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5">{formatCount(tc.likesCount)} {t('ofSearch.likes')}</p>
-                          )}
                           {tc.categories && tc.categories.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1.5">
                               {tc.categories.slice(0, 2).map((cat: string) => (

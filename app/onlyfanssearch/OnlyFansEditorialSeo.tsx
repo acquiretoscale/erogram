@@ -95,15 +95,6 @@ export default function OnlyFansEditorialSeo() {
       </p>
 
       <h2 className="text-xl sm:text-2xl font-black text-white mb-4 tracking-tight">
-        Creators Near You
-      </h2>
-      <p className="mb-8">
-        The{' '}
-        <Link href={lp('/onlyfanssearch/near-me')} className={link}>Near Me</Link>{' '}
-        filter surfaces creators in your city, state, or country. It is not GPS, it reads what creators list publicly. It turned out to be one of our most used features, partly because people like supporting local, and partly because a creator two hours away is a very different fantasy than one on another continent.
-      </p>
-
-      <h2 className="text-xl sm:text-2xl font-black text-white mb-4 tracking-tight">
         Make a Free Profile. This Is the Part People Skip.
       </h2>
       <p className="mb-4">
@@ -188,10 +179,6 @@ export default function OnlyFansEditorialSeo() {
         <li>
           Watching your spend? Start with the{' '}
           <Link href={lp('/onlyfanssearch/best')} className={link}>best free OnlyFans accounts</Link>.
-        </li>
-        <li>
-          Want local?{' '}
-          <Link href={lp('/onlyfanssearch/near-me')} className={link}>Near Me</Link>.
         </li>
         <li>
           Want to keep what you find?{' '}

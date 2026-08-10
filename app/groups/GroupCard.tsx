@@ -49,7 +49,6 @@ function inFeedGroupBtnStyle(groupId: string): React.CSSProperties {
         background: `linear-gradient(135deg, ${p.from}, ${p.to})`,
         color: '#fff',
         border: 'none',
-        boxShadow: `0 4px 14px -6px ${p.shadow}`,
     };
 }
 
@@ -214,16 +213,14 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
 
     const entry = cardEntryProps(isIndex);
 
+    // First cards are the LCP candidates on mobile: fetch them ahead of other assets.
+    const isPriorityImage = isIndex < 4;
+
     return (
         <div
             className={`h-full relative group/card ${entry.className}`}
             style={entry.style}
         >
-            {/* Accent aura glow behind the card */}
-            <div
-                className="pointer-events-none absolute -inset-[1.5px] rounded-[20px] sm:rounded-[26px] opacity-50 blur-[10px] transition-opacity duration-500 group-hover/card:opacity-90"
-                style={{ background: `linear-gradient(135deg, ${accent.from}, ${accent.to})` }}
-            />
             {/* Bookmark + admin actions — anchored to motion.div, bookmark always on top */}
             <div className="absolute top-2 right-2 z-30 flex flex-col gap-1.5 items-end">
                 <BookmarkButton
@@ -255,7 +252,7 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
             </div>
 
             <div
-                className="relative rounded-[18px] sm:rounded-3xl overflow-hidden h-full flex flex-col border border-white/10 transition-all duration-500 group"
+                className="relative rounded-[18px] sm:rounded-3xl overflow-hidden h-full flex flex-col border border-white/10 group"
                 style={{ background: 'linear-gradient(180deg, #131a24 0%, #0d1117 100%)' }}
             >
 
@@ -269,6 +266,7 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                             referrerPolicy="no-referrer"
                             loading={isIndex < 12 ? 'eager' : 'lazy'}
+                            fetchPriority={isPriorityImage ? 'high' : 'auto'}
                             onError={() => setImageSrc(placeholder)}
                         />
                     ) : (
@@ -277,6 +275,7 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                             alt={group.name}
                             className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-110"
                             loading={isIndex < 12 ? 'eager' : 'lazy'}
+                            fetchPriority={isPriorityImage ? 'high' : 'auto'}
                             onError={() => setImageSrc(placeholder)}
                         />
                     )}
@@ -341,8 +340,8 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                                 </span>
                             ) : (
                             <span
-                                className="truncate min-w-0 bg-clip-text text-transparent"
-                                style={{ backgroundImage: `linear-gradient(135deg, ${accent.from}, ${accent.to})` }}
+                                className="truncate min-w-0"
+                                style={{ color: accent.text }}
                             >{group.name}</span>
                             )}
                         </span>
@@ -399,10 +398,10 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                                             : `/${group.slug}`}
                             target="_blank"
                             rel={group.isAdvertisement ? "sponsored noopener noreferrer" : "noopener noreferrer"}
-                            className={`group/btn relative flex-1 flex items-center justify-center gap-1.5 overflow-hidden font-black transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${
+                            className={`group/btn relative flex-1 flex items-center justify-center gap-1.5 overflow-hidden font-black active:scale-[0.98] ${
                                 lockedPremium
-                                    ? 'rounded-xl py-2 sm:py-2.5 px-3 hover:brightness-105'
-                                    : 'rounded-xl py-2 sm:py-2.5 px-3 hover:brightness-110'
+                                    ? 'rounded-xl py-2 sm:py-2.5 px-3'
+                                    : 'rounded-xl py-2 sm:py-2.5 px-3'
                             }`}
                             style={lockedPremium
                                 ? {
@@ -413,7 +412,7 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                                 }
                                 : inFeed && itemType === 'group'
                                     ? inFeedGroupBtnStyle(group._id)
-                                    : { background: 'linear-gradient(135deg, #ff5e2a, #ff9432)', color: '#fff', border: 'none', boxShadow: '0 4px 14px -6px rgba(255,94,42,0.65)' }
+                                    : { background: 'linear-gradient(135deg, #ff5e2a, #ff9432)', color: '#fff', border: 'none' }
                             }
                         >
                             {lockedPremium && (

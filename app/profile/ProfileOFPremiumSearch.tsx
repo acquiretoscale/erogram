@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bookmark, Heart, MapPin, Search, SlidersHorizontal } from 'lucide-react';
+import { Bookmark, Heart, Search, SlidersHorizontal, Trash2 } from 'lucide-react';
 import {
   OF_RESULTS_PAGE_SIZE,
   type ProfilePremiumPriceFilter,
@@ -12,13 +12,15 @@ import {
   advancedSearchCreators,
   hubBrowseCreators,
   getTopClickedOnlyfansCreators,
+  deleteCreatorBySlug,
+  browseClusterFillCreators,
 } from '@/lib/actions/ofCreatorsBrowse';
-import { getNearMeCreators } from '@/lib/actions/userProfile';
-import { getNearMeCreatorsPublic, getNearMeByPlaceSlug, getVisitorNearMeLocation } from '@/lib/actions/nearMeCreators';
 import { getFreeOnlyfansCreators } from '@/lib/actions/freeOnlyfansCreators';
 import { getSearchResultFeaturedCampaigns, trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
-import { countryCodeToFlag, parseCity } from '@/lib/utils/geo';
-import { nearMeAreaLabel as formatNearMeAreaLabel } from '@/lib/tags/nearMeMatch';
+import {
+  getRelatedRankingSlugs,
+  resolveClusterSlugFromQuery,
+} from '@/lib/bestOnlyfansAccounts/relatedRankings';
 import { useTranslation } from '@/lib/i18n/client';
 import { OfSearchResultsViewToggle } from './ProfileGridDensityToggle';
 import { ProfileHeading } from './ProfileTypography';
@@ -35,12 +37,6 @@ import {
   toggleProfileFeedLike,
   type CreatorMediaEngagement as FeedMediaEngagement,
 } from '@/lib/actions/profileFeed';
-
-function readCountryCookie(): string | undefined {
-  if (typeof document === 'undefined') return undefined;
-  const m = document.cookie.match(/(?:^|;\s*)__ero_cc=([A-Za-z]{2})/);
-  return m ? m[1].toUpperCase() : undefined;
-}
 
 interface CreatorResult {
   _id: string;
@@ -102,20 +98,8 @@ interface ProfileOFPremiumSearchProps {
   loginRedirect?: string;
   /** Compact centered layout with collapsible filters (/onlyfans hero) */
   layout?: 'profile' | 'hero';
-  /** Hero only: Near me + price + likes + Instagram filters only */
+  /** Hero only: price + likes + Instagram filters only */
   minimalFilters?: boolean;
-  /** Server-detected ISO country for Near me flag */
-  initialVisitorCountry?: string;
-  /** Server-detected city for Near me banner */
-  initialVisitorCity?: string;
-  /** Link target for Near me on /onlyfans hub */
-  nearMeHref?: string;
-  /** Dedicated /onlyfanssearch/near-me page */
-  nearMePage?: boolean;
-  /** Server area label for near-me page banner */
-  initialNearMeAreaLabel?: string;
-  /** Chosen country/state slug on /onlyfanssearch/near-me */
-  nearMePlaceSlug?: string;
   /** White hero surface (/onlyfans main) */
   heroLightBg?: boolean;
   /** Link target for Best Free on /onlyfans hub */
@@ -148,13 +132,6 @@ const MOSAIC_RESULTS_GRID = 'grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5';
 
 function searchFeedPlacement(idx: number) {
   return idx >= 0 ? `of-search-featured:v${idx}` : 'of-search-featured';
-}
-
-function formatFeaturedLikes(n: number) {
-  if (!n) return '';
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return `${n}`;
 }
 
 function isCreatorLiveNow(start: number, end: number): boolean {
@@ -340,12 +317,6 @@ export default function ProfileOFPremiumSearch({
   loginRedirect = '/onlyfanssearch',
   layout = 'profile',
   minimalFilters = false,
-  initialVisitorCountry = '',
-  initialVisitorCity = '',
-  nearMeHref,
-  nearMePage = false,
-  initialNearMeAreaLabel = '',
-  nearMePlaceSlug,
   heroLightBg = false,
   bestFreeHref,
   bestModelsHref,
@@ -395,14 +366,6 @@ export default function ProfileOFPremiumSearch({
     setResultsView(loadOfSearchResultsView());
   }, []);
 
-  const [nearMeActive, setNearMeActive] = useState(false);
-  const [nearMeAreaLabel, setNearMeAreaLabel] = useState('');
-  const [visitorCountry, setVisitorCountry] = useState(
-    () => initialVisitorCountry || readCountryCookie() || '',
-  );
-  const [visitorCity, setVisitorCity] = useState(
-    () => parseCity(initialVisitorCity) || initialVisitorCity || '',
-  );
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const searchGen = useRef(0);
@@ -411,19 +374,37 @@ export default function ProfileOFPremiumSearch({
   const [feedFeatured, setFeedFeatured] = useState<any[]>(paidFeatured);
   const resultsRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const [nearMeHasMore, setNearMeHasMore] = useState(false);
   const [freeOnlyHasMore, setFreeOnlyHasMore] = useState(false);
   const [bestModelsHasMore, setBestModelsHasMore] = useState(false);
   const [browseHasMore, setBrowseHasMore] = useState(false);
+  const [clusterFillHasMore, setClusterFillHasMore] = useState(false);
+  const clusterSlugRef = useRef<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const browseOffsetRef = useRef(0);
   const browseSeedRef = useRef('default');
   const [feedEngagementMap, setFeedEngagementMap] = useState<Map<string, FeedMediaEngagement>>(new Map());
   const [userPhotoUrl, setUserPhotoUrl] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    onActiveChange?.(searched || nearMeActive);
-  }, [searched, nearMeActive, onActiveChange]);
+    const cached = localStorage.getItem('isAdmin') === 'true';
+    if (cached) setIsAdmin(true);
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.isAdmin) {
+          setIsAdmin(true);
+          localStorage.setItem('isAdmin', 'true');
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    onActiveChange?.(searched);
+  }, [searched, onActiveChange]);
 
   useEffect(() => {
     if (paidFeatured.length) setFeedFeatured(paidFeatured);
@@ -438,25 +419,25 @@ export default function ProfileOFPremiumSearch({
     }
   }, [paidFeatured]);
 
-  useEffect(() => {
-    if (!isHero || !minimalFilters) return;
-    const token = localStorage.getItem('token');
-    const hint = readCountryCookie();
-    getVisitorNearMeLocation(hint, token || undefined).then((loc) => {
-      if (loc.countryCode) setVisitorCountry(loc.countryCode);
-      const city = parseCity(loc.city) || loc.city;
-      if (city) setVisitorCity(city);
-    });
-  }, [isHero, minimalFilters]);
-
-  const visitorFlag = countryCodeToFlag(visitorCountry);
-  const nearMeBannerLabel = nearMePage
-    ? nearMeAreaLabel || formatNearMeAreaLabel(visitorCountry, visitorCity)
-    : nearMeAreaLabel || initialNearMeAreaLabel;
-
   const openLogin = useCallback(() => {
     window.open(`/join-erogram?redirect=${encodeURIComponent(loginRedirect)}`, '_blank', 'noopener,noreferrer');
   }, [loginRedirect]);
+
+  const handleAdminDelete = useCallback(async (creator: CreatorResult) => {
+    const slug = creator.slug || `${creator.username}-onlyfans`;
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Login required');
+      return;
+    }
+    if (!confirm(`Permanently delete @${creator.username}? This cannot be undone.`)) return;
+    try {
+      await deleteCreatorBySlug(token, slug);
+      setRawResults((prev) => prev.filter((c) => c._id !== creator._id));
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Delete failed');
+    }
+  }, []);
 
   const requirePremiumForFilter = useCallback(() => {
     if (canUsePremiumFilters) return;
@@ -464,57 +445,12 @@ export default function ProfileOFPremiumSearch({
     else openLogin();
   }, [canUsePremiumFilters, onUpgrade, openLogin]);
 
-  const heroGridWrap = isHero ? `max-w-7xl mx-auto ${nearMePage || freeOnlyPage || bestModelsPage ? 'mt-10' : 'mt-4'}` : '';
-
-  const runNearMe = useCallback(async () => {
-    if (!canUse) return;
-    if (!freeAccess) {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        openLogin();
-        return;
-      }
-    }
-    const gen = ++searchGen.current;
-    setLoading(true);
-    setNearMeActive(true);
-    setQuery('');
-    setNearMeHasMore(false);
-    if (!nearMePage) setNearMeAreaLabel('');
-    try {
-      const res = freeAccess
-        ? nearMePlaceSlug
-          ? await getNearMeByPlaceSlug(nearMePlaceSlug, String(Date.now()))
-          : await getNearMeCreatorsPublic(
-              String(Date.now()),
-              readCountryCookie(),
-              localStorage.getItem('token') || undefined,
-            )
-        : await getNearMeCreators(localStorage.getItem('token')!, String(Date.now()));
-      if (gen !== searchGen.current) return;
-      if (!res.ok) return;
-      setRawResults(res.creators as CreatorResult[]);
-      setNearMeAreaLabel(res.areaLabel || '');
-      setNearMeHasMore(!!('hasMore' in res && res.hasMore));
-      setSearched(true);
-      void loadFeedFeatured('near me');
-      requestAnimationFrame(() => {
-        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-    } catch {
-      setNearMeActive(false);
-      setSearched(false);
-    } finally {
-      if (gen === searchGen.current) setLoading(false);
-    }
-  }, [canUse, freeAccess, openLogin, nearMePage, nearMePlaceSlug, loadFeedFeatured]);
+  const heroGridWrap = isHero ? `max-w-7xl mx-auto ${freeOnlyPage || bestModelsPage ? 'mt-10' : 'mt-4'}` : '';
 
   const runFreeOnly = useCallback(async () => {
     if (!canUse || !freeAccess) return;
     const gen = ++searchGen.current;
     setLoading(true);
-    setNearMeActive(false);
-    setNearMeAreaLabel('');
     setQuery('');
     setFreeOnlyHasMore(false);
     try {
@@ -555,8 +491,6 @@ export default function ProfileOFPremiumSearch({
     if (!canUse || !freeAccess) return;
     const gen = ++searchGen.current;
     setLoading(true);
-    setNearMeActive(false);
-    setNearMeAreaLabel('');
     setQuery('');
     setBestModelsHasMore(false);
     try {
@@ -593,34 +527,35 @@ export default function ProfileOFPremiumSearch({
     }
   }, [bestModelsPage, freeAccess, loadingMore, bestModelsHasMore, loading, rawResults]);
 
-  const loadMoreNearMe = useCallback(async () => {
-    if (!nearMePage || !freeAccess || loadingMore || !nearMeHasMore || loading) return;
-    setLoadingMore(true);
-    try {
-      const exclude = rawResults.map((c) => c.username);
-      const res = nearMePlaceSlug
-        ? await getNearMeByPlaceSlug(nearMePlaceSlug, String(Date.now()), exclude)
-        : await getNearMeCreatorsPublic(
-            String(Date.now()),
-            readCountryCookie(),
-            localStorage.getItem('token') || undefined,
-            exclude,
-          );
-      if (!res.ok) {
-        setNearMeHasMore(false);
+  const loadMoreBrowse = useCallback(async () => {
+    if (loadingMore || loading) return;
+
+    // Primary results exhausted → fill from related cluster (brazil → colombia, etc.)
+    if (!browseHasMore && clusterFillHasMore) {
+      const slug = clusterSlugRef.current;
+      if (!slug) {
+        setClusterFillHasMore(false);
         return;
       }
-      if (res.creators.length) {
-        setRawResults((prev) => [...prev, ...(res.creators as CreatorResult[])]);
+      setLoadingMore(true);
+      try {
+        const exclude = rawResults.map((c) => c._id);
+        const res = await browseClusterFillCreators(slug, exclude, OF_RESULTS_PAGE_SIZE);
+        if (res.creators?.length) {
+          setRawResults((prev) => {
+            const seen = new Set(prev.map((c) => c._id));
+            const fresh = (res.creators as CreatorResult[]).filter((c) => !seen.has(c._id));
+            return fresh.length ? [...prev, ...fresh] : prev;
+          });
+        }
+        setClusterFillHasMore(!!res.hasMore);
+      } finally {
+        setLoadingMore(false);
       }
-      setNearMeHasMore(!!res.hasMore);
-    } finally {
-      setLoadingMore(false);
+      return;
     }
-  }, [nearMePage, freeAccess, loadingMore, nearMeHasMore, loading, rawResults, nearMePlaceSlug]);
 
-  const loadMoreBrowse = useCallback(async () => {
-    if (loadingMore || !browseHasMore || loading) return;
+    if (!browseHasMore) return;
     setLoadingMore(true);
     try {
       const trimmed = query.trim();
@@ -649,6 +584,13 @@ export default function ProfileOFPremiumSearch({
         }
         browseOffsetRef.current = res.nextOffset;
         setBrowseHasMore(res.hasMore);
+        if (!res.hasMore) {
+          const cluster =
+            (selectedCategory && getRelatedRankingSlugs(selectedCategory).length ? selectedCategory : null) ||
+            resolveClusterSlugFromQuery(trimmed);
+          clusterSlugRef.current = cluster;
+          setClusterFillHasMore(!!cluster && getRelatedRankingSlugs(cluster).length > 0);
+        }
         return;
       }
 
@@ -682,6 +624,11 @@ export default function ProfileOFPremiumSearch({
         }
         browseOffsetRef.current = res.nextOffset;
         setBrowseHasMore(res.hasMore);
+        if (!res.hasMore) {
+          const cluster = resolveClusterSlugFromQuery(trimmed);
+          clusterSlugRef.current = cluster;
+          setClusterFillHasMore(!!cluster && getRelatedRankingSlugs(cluster).length > 0);
+        }
         return;
       }
 
@@ -713,12 +660,18 @@ export default function ProfileOFPremiumSearch({
       }
       browseOffsetRef.current = res.nextOffset;
       setBrowseHasMore(res.hasMore);
+      if (!res.hasMore) {
+        const cluster = resolveClusterSlugFromQuery(trimmed);
+        clusterSlugRef.current = cluster;
+        setClusterFillHasMore(!!cluster && getRelatedRankingSlugs(cluster).length > 0);
+      }
     } finally {
       setLoadingMore(false);
     }
   }, [
     loadingMore,
     browseHasMore,
+    clusterFillHasMore,
     loading,
     isHero,
     minimalFilters,
@@ -729,21 +682,8 @@ export default function ProfileOFPremiumSearch({
     instagramOnly,
     joinWithinDays,
     freeAccess,
+    rawResults,
   ]);
-
-  useEffect(() => {
-    if (!nearMePage || !nearMeHasMore || loadingMore) return;
-    const el = loadMoreRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) loadMoreNearMe();
-      },
-      { rootMargin: '240px' },
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [nearMePage, nearMeHasMore, loadingMore, loadMoreNearMe, rawResults.length]);
 
   useEffect(() => {
     if (!freeOnlyPage || !freeOnlyHasMore || loadingMore) return;
@@ -774,8 +714,8 @@ export default function ProfileOFPremiumSearch({
   }, [bestModelsPage, bestModelsHasMore, loadingMore, loadMoreBestModels, rawResults.length]);
 
   useEffect(() => {
-    if (!browseHasMore || loadingMore || loading) return;
-    if (nearMePage || freeOnlyPage || bestModelsPage) return;
+    if ((!browseHasMore && !clusterFillHasMore) || loadingMore || loading) return;
+    if (freeOnlyPage || bestModelsPage) return;
     const el = loadMoreRef.current;
     if (!el) return;
     const obs = new IntersectionObserver(
@@ -786,7 +726,7 @@ export default function ProfileOFPremiumSearch({
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [browseHasMore, loadingMore, loading, loadMoreBrowse, rawResults.length, nearMePage, freeOnlyPage, bestModelsPage]);
+  }, [browseHasMore, clusterFillHasMore, loadingMore, loading, loadMoreBrowse, rawResults.length, freeOnlyPage, bestModelsPage]);
 
   useEffect(() => {
     if (!freeOnlyPage || !canUse) return;
@@ -797,11 +737,6 @@ export default function ProfileOFPremiumSearch({
     if (!bestModelsPage || !canUse) return;
     runBestModels();
   }, [bestModelsPage, canUse, runBestModels]);
-
-  useEffect(() => {
-    if (!nearMePage || !canUse) return;
-    runNearMe();
-  }, [nearMePage, canUse, nearMePlaceSlug, runNearMe]);
 
   const runHubBrowse = useCallback(async (freshSeed?: string, qOverride?: string, catOverride?: string | null) => {
     if (!canUse) return;
@@ -822,9 +757,9 @@ export default function ProfileOFPremiumSearch({
 
     const gen = ++searchGen.current;
     setLoading(true);
-    setNearMeActive(false);
-    setNearMeAreaLabel('');
     setBrowseHasMore(false);
+    setClusterFillHasMore(false);
+    clusterSlugRef.current = null;
     browseOffsetRef.current = 0;
     browseSeedRef.current = freshSeed || String(Date.now());
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') || undefined : undefined;
@@ -845,6 +780,13 @@ export default function ProfileOFPremiumSearch({
       setRawResults(res.creators as CreatorResult[]);
       browseOffsetRef.current = res.nextOffset;
       setBrowseHasMore(res.hasMore);
+      if (!res.hasMore) {
+        const cluster =
+          (category && getRelatedRankingSlugs(category).length ? category : null) ||
+          resolveClusterSlugFromQuery(trimmed);
+        clusterSlugRef.current = cluster;
+        setClusterFillHasMore(!!cluster && getRelatedRankingSlugs(cluster).length > 0);
+      }
       setSearched(true);
       if (trimmed) loadFeedFeatured(trimmed);
       else if (paidFeatured.length) setFeedFeatured(paidFeatured);
@@ -870,9 +812,9 @@ export default function ProfileOFPremiumSearch({
     const gen = ++searchGen.current;
 
     setLoading(true);
-    setNearMeActive(false);
-    setNearMeAreaLabel('');
     setBrowseHasMore(false);
+    setClusterFillHasMore(false);
+    clusterSlugRef.current = null;
     browseOffsetRef.current = 0;
     browseSeedRef.current = freshSeed || String(Date.now());
     try {
@@ -887,6 +829,11 @@ export default function ProfileOFPremiumSearch({
         setRawResults(res.creators as CreatorResult[]);
         browseOffsetRef.current = res.nextOffset;
         setBrowseHasMore(res.hasMore);
+        if (!res.hasMore) {
+          const cluster = resolveClusterSlugFromQuery(trimmed);
+          clusterSlugRef.current = cluster;
+          setClusterFillHasMore(!!cluster && getRelatedRankingSlugs(cluster).length > 0);
+        }
         setSearched(true);
         return;
       }
@@ -903,6 +850,11 @@ export default function ProfileOFPremiumSearch({
       setRawResults(res.creators as CreatorResult[]);
       browseOffsetRef.current = res.nextOffset;
       setBrowseHasMore(res.hasMore);
+      if (!res.hasMore) {
+        const cluster = resolveClusterSlugFromQuery(trimmed);
+        clusterSlugRef.current = cluster;
+        setClusterFillHasMore(!!cluster && getRelatedRankingSlugs(cluster).length > 0);
+      }
       setSearched(true);
     } finally {
       if (gen === searchGen.current) setLoading(false);
@@ -1082,11 +1034,11 @@ export default function ProfileOFPremiumSearch({
     setInstagramOnly(false);
     setJoinWithinDays(0);
     setSelectedCategory(null);
-    setNearMeActive(false);
-    setNearMeAreaLabel('');
     setRawResults([]);
     setSearched(false);
     setBrowseHasMore(false);
+    setClusterFillHasMore(false);
+    clusterSlugRef.current = null;
     browseOffsetRef.current = 0;
   }, []);
 
@@ -1128,9 +1080,8 @@ export default function ProfileOFPremiumSearch({
     if (instagramOnly) n++;
     if (joinWithinDays > 0) n++;
     if (selectedCategory) n++;
-    if (nearMeActive && !minimalFilters) n++;
     return n;
-  }, [priceFilter, minPrice, maxPrice, minMedia, likesSort, instagramOnly, joinWithinDays, selectedCategory, nearMeActive, minimalFilters]);
+  }, [priceFilter, minPrice, maxPrice, minMedia, likesSort, instagramOnly, joinWithinDays, selectedCategory]);
 
   const toolbar = canUse ? (
     <div className={`flex items-center gap-2 flex-wrap ${isHero ? 'justify-center mb-3' : 'mt-3'}`}>
@@ -1153,21 +1104,6 @@ export default function ProfileOFPremiumSearch({
       className={`flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none ${isHero ? 'flex-wrap justify-center' : 'mb-4'}`}
       style={{ scrollbarWidth: 'none' }}
     >
-      {!minimalFilters && (
-        <>
-          <button
-            type="button"
-            onClick={() => runNearMe()}
-            className={pillClass(nearMeActive)}
-            style={pillStyle(nearMeActive)}
-          >
-            Near me
-          </button>
-
-          <span className="w-px h-4 shrink-0 mx-0.5" style={{ backgroundColor: tokens.border }} />
-        </>
-      )}
-
       {(['all', 'free', 'paid'] as const).map((key) => (
         <button
           key={key}
@@ -1382,7 +1318,7 @@ export default function ProfileOFPremiumSearch({
       ) : (
         <>
           <div className={isHero ? `${isCompactBlock ? 'w-full' : 'max-w-3xl mx-auto w-full'} ${heroLightBg ? 'pt-1 pb-2' : ''}` : undefined}>
-            <form onSubmit={handleSubmit} className={`relative ${isHero ? `${nearMePage ? 'mb-2 mt-2' : isCompactBlock ? 'mb-1.5' : 'mb-2'}` : 'mb-3'}`}>
+            <form onSubmit={handleSubmit} className={`relative ${isHero ? `${isCompactBlock ? 'mb-1.5' : 'mb-2'}` : 'mb-3'}`}>
               <div className="relative w-full min-w-0">
                 <Search
                   size={isCompactBlock ? 15 : isHero ? 18 : 16}
@@ -1455,35 +1391,6 @@ export default function ProfileOFPremiumSearch({
 
             {isHero && minimalFilters && (
               <div className={isCompactBlock ? 'grid grid-cols-2 gap-1.5 mb-1.5' : 'flex items-stretch gap-2 mb-3'}>
-                {nearMeHref ? (
-                  <a
-                    href={nearMeHref}
-                    aria-current={nearMePage ? 'page' : undefined}
-                    className={`${heroNavBtn} ${!isCompactBlock ? 'flex-1' : ''} ${
-                      nearMePage ? 'ring-2 ring-[#00AFF0] ring-offset-2 ring-offset-[#111111]' : ''
-                    }`}
-                  >
-                    <MapPin size={isCompactBlock ? 12 : 15} strokeWidth={2.5} className="shrink-0" />
-                    {nearMePage && visitorFlag ? (
-                      <span className={`leading-none shrink-0 ${isCompactBlock ? 'text-xs' : 'text-sm'}`} aria-hidden="true">
-                        {visitorFlag}
-                      </span>
-                    ) : null}
-                    <span className="truncate">Near me</span>
-                  </a>
-                ) : !hideResults ? (
-                  <button
-                    type="button"
-                    onClick={() => runNearMe()}
-                    disabled={loading}
-                    className={`${heroNavBtn} ${!isCompactBlock ? 'flex-1' : ''} disabled:opacity-50 ${
-                      nearMeActive && !heroLightBg && !isCompactBlock ? 'bg-[#0077b6] ring-2 ring-[#00AFF0] ring-offset-2 ring-offset-[#111111]' : ''
-                    } ${nearMeActive && heroLightBg ? 'ring-2 ring-[#00AFF0]/50 ring-offset-2 ring-offset-white' : ''}`}
-                  >
-                    <MapPin size={isCompactBlock ? 12 : 15} strokeWidth={2.5} className="shrink-0" />
-                    <span className="truncate">Near me</span>
-                  </button>
-                ) : null}
                 {bestModelsHref ? (
                   <a
                     href={bestModelsHref}
@@ -1536,18 +1443,6 @@ export default function ProfileOFPremiumSearch({
                   )}
                 </button>
               </div>
-            )}
-
-            {nearMePage && nearMeBannerLabel && (
-              <p className="text-base text-center text-white/60 mt-5 mb-8 px-4">
-                Showing creators near{' '}
-                {visitorFlag ? (
-                  <span className="text-base leading-none align-middle" aria-hidden="true">
-                    {visitorFlag}
-                  </span>
-                ) : null}{' '}
-                {nearMeBannerLabel}
-              </p>
             )}
 
             {(!isHero || filtersOpen) && (
@@ -1620,8 +1515,8 @@ export default function ProfileOFPremiumSearch({
               />
             </div>
           ) : searched && results.length === 0 ? (
-            <p className={`text-sm ${isHero ? `text-center max-w-xl mx-auto ${nearMePage ? 'mt-10' : 'mt-3'} ${heroLightBg ? 'text-gray-500' : 'text-white/60'}` : ''}`} style={!isHero ? { color: tokens.muted } : undefined}>
-              {nearMeActive || !query.trim()
+            <p className={`text-sm ${isHero ? `text-center max-w-xl mx-auto mt-3 ${heroLightBg ? 'text-gray-500' : 'text-white/60'}` : ''}`} style={!isHero ? { color: tokens.muted } : undefined}>
+              {!query.trim()
                 ? t('ofSearch.noCreatorsFound')
                 : `${t('ofSearch.noCreatorsFound')} "${query.trim()}"`}
             </p>
@@ -1633,7 +1528,7 @@ export default function ProfileOFPremiumSearch({
                   isHero &&
                   minimalFilters &&
                   feedFeatured.length > 0 &&
-                  (!!query.trim() || freeOnlyPage || bestModelsPage || nearMePage || nearMeActive);
+                  (!!query.trim() || freeOnlyPage || bestModelsPage);
                 let featIdx = 0;
                 const nodes: React.ReactNode[] = [];
 
@@ -1674,11 +1569,6 @@ export default function ProfileOFPremiumSearch({
                       <div className="px-3 pt-2.5 pb-3 sm:px-4 sm:pt-3 sm:pb-4 bg-white">
                         <p className="font-bold text-[13px] sm:text-[15px] text-gray-900 truncate">{tc.name}</p>
                         <p className="text-[11px] sm:text-[13px] text-[#00AFF0] font-semibold mt-0.5">@{tc.username}</p>
-                        {tc.likesCount > 0 && (
-                          <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5">
-                            {formatFeaturedLikes(tc.likesCount)} {t('ofSearch.likes')}
-                          </p>
-                        )}
                         <div className="w-full py-2 sm:py-2.5 mt-2 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-[13px] sm:text-sm font-bold text-center shadow-sm group-hover:shadow-md group-hover:from-[#009ADB] group-hover:to-[#00BFE8] transition-all">
                           {t('ofSearch.viewProfile')}
                         </div>
@@ -1713,6 +1603,21 @@ export default function ProfileOFPremiumSearch({
                       className={`group rounded-xl overflow-hidden border transition-all hover:opacity-95 relative flex flex-col ${isFeed ? 'w-full max-w-lg mx-auto rounded-2xl' : ''}`}
                       style={{ borderColor: tokens.border, backgroundColor: tokens.card }}
                     >
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            void handleAdminDelete(creator);
+                          }}
+                          className="absolute top-2 left-2 z-20 w-8 h-8 flex items-center justify-center rounded-full bg-red-600/90 hover:bg-red-600 text-white backdrop-blur-sm transition-all shadow-lg"
+                          title="Hard delete profile"
+                          aria-label="Hard delete profile"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                       {isFeed && (
                         <div className="flex items-center gap-2.5 px-3 py-2.5" style={{ borderBottom: `1px solid ${tokens.border}` }}>
                           <img
@@ -1900,7 +1805,7 @@ export default function ProfileOFPremiumSearch({
               })()}
             </div>
           ) : null}
-          {(nearMePage && nearMeHasMore) || (freeOnlyPage && freeOnlyHasMore) || (bestModelsPage && bestModelsHasMore) || browseHasMore ? (
+          {(freeOnlyPage && freeOnlyHasMore) || (bestModelsPage && bestModelsHasMore) || browseHasMore || clusterFillHasMore ? (
             !loading && (
             <div ref={loadMoreRef} className={`${heroGridWrap} mt-4 min-h-6 ${resultsView === 'feed' ? 'max-w-lg mx-auto w-full' : ''}`} aria-hidden>
               {loadingMore && (

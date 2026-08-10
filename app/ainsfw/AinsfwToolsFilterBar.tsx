@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '@/lib/i18n/client';
 import type { AINsfwCategory, AinsfwSortOption, PaymentOption, PricingModel } from './types';
 import { AINSFW_CATEGORIES, AINSFW_SORT_OPTIONS, ALL_PAYMENT_OPTIONS, PRICING_MODEL_OPTIONS } from './types';
 
@@ -37,6 +38,20 @@ export default function AinsfwToolsFilterBar({
   onSearchChange,
   onClear,
 }: AinsfwToolsFilterBarProps) {
+  const { t } = useTranslation();
+  const catLabel = (cat: string) => t(`ainsfw.categories.${cat}`, cat);
+  const pricingLabel = (model: string) => {
+    if (model === 'All') return t('ainsfw.allModels', 'All models');
+    if (model === 'Free') return t('ainsfw.free', 'Free');
+    if (model === 'Paid') return t('ainsfw.paid', 'Paid');
+    if (model === 'Freemium') return t('ainsfw.freemium', 'Freemium');
+    return model;
+  };
+  const sortLabel = (value: string, fallback: string) => {
+    if (value === 'default') return t('ainsfw.sortDefault', 'Default');
+    if (value === 'top-upvotes') return t('ainsfw.sortTopUpvotes', 'Top upvotes');
+    return fallback;
+  };
   const hasFilters =
     activeCategory !== 'All' ||
     activePricing !== 'All' ||
@@ -56,7 +71,7 @@ export default function AinsfwToolsFilterBar({
           >
             {AINSFW_CATEGORIES.map((cat) => (
               <option key={cat} value={cat} className="bg-[#0a1f12]">
-                {cat === 'All' ? 'All categories' : cat}
+                {cat === 'All' ? t('ainsfw.allCategories', 'All categories') : catLabel(cat)}
               </option>
             ))}
           </select>
@@ -66,7 +81,7 @@ export default function AinsfwToolsFilterBar({
         <div className="flex items-center gap-1 shrink-0">
           {PRICING_MODEL_OPTIONS.map((model) => {
             const isActive = activePricing === model;
-            const label = model === 'All' ? 'All models' : model;
+            const label = pricingLabel(model);
             return (
               <button
                 key={model}
@@ -88,7 +103,7 @@ export default function AinsfwToolsFilterBar({
             aria-label="Accepted payment"
             className={`${selectCls} max-w-[8.5rem] sm:max-w-[9.5rem]`}
           >
-            <option value="All" className="bg-[#0a1f12]">All payments</option>
+            <option value="All" className="bg-[#0a1f12]">{t('ainsfw.allPayments', 'All payments')}</option>
             {ALL_PAYMENT_OPTIONS.map((pay) => (
               <option key={pay} value={pay} className="bg-[#0a1f12]">{pay}</option>
             ))}
@@ -107,7 +122,7 @@ export default function AinsfwToolsFilterBar({
                 aria-pressed={isActive}
                 className={`${pillBase} ${isActive ? pillActive : pillIdle}`}
               >
-                {label}
+                {sortLabel(value, label)}
               </button>
             );
           })}
@@ -119,7 +134,7 @@ export default function AinsfwToolsFilterBar({
             type="text"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search…"
+            placeholder={t('ainsfw.searchPlaceholder', 'Search…')}
             aria-label="Search AI NSFW tools"
             className="w-full h-8 pl-7 pr-7 rounded-lg bg-[#04140c]/80 border border-[#22c55e]/25 text-white text-[10px] sm:text-[11px] placeholder:text-white/35 focus:outline-none focus:ring-1 focus:ring-[#22c55e]/50"
           />
@@ -141,7 +156,7 @@ export default function AinsfwToolsFilterBar({
             onClick={onClear}
             className={`${pillBase} ${pillIdle} shrink-0`}
           >
-            Clear
+            {t('ainsfw.clear', 'Clear')}
           </button>
         )}
       </div>

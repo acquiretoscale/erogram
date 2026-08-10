@@ -8,15 +8,9 @@ const link =
 const strong = 'text-white/85 font-semibold';
 const h3 = 'text-lg sm:text-xl font-black text-white tracking-tight';
 
-function formatLikes(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
-  if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
-  return String(n);
-}
-
 function fallbackIntro(entry: BestFreeCreatorEntry): string {
   const { facts } = entry;
-  return facts.bioHandwritten || facts.bioDb || `${facts.name} is a free OnlyFans creator indexed on Erogram with ${formatLikes(facts.likesCount)} likes.`;
+  return facts.bioHandwritten || facts.bioDb || `${facts.name} is a free OnlyFans creator indexed on Erogram.`;
 }
 
 type Props = {
@@ -89,9 +83,6 @@ export default function BestFreeCreatorEntry({ entry }: Props) {
 
       <h3 className={`${h3} mb-2`}>Key Strengths</h3>
       <ul className="mb-5 space-y-2 list-disc pl-5 marker:text-[#00AFF0]">
-        <li>
-          <strong className={strong}>{formatLikes(facts.likesCount)} likes</strong> on OnlyFans
-        </li>
         <li>
           <strong className={strong}>Free subscription</strong> ($0/month on Erogram index)
         </li>

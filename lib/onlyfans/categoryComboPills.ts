@@ -43,7 +43,165 @@ export const BANNED_COMBO_SLUGS = new Set([
   'big-tits-big-boobs',
 ]);
 
-export const CATEGORY_COMBO_PILLS: Record<string, ComboPillDef[]> = {
+/** US states ↔ Australia / UK / Canada combo intersections */
+const US_STATE_GEO = [
+  { slug: 'california', label: 'California' },
+  { slug: 'florida', label: 'Florida' },
+  { slug: 'texas', label: 'Texas' },
+  { slug: 'nevada', label: 'Nevada' },
+  { slug: 'new-york', label: 'New York' },
+  { slug: 'georgia', label: 'Georgia' },
+  { slug: 'michigan', label: 'Michigan' },
+  { slug: 'colorado', label: 'Colorado' },
+  { slug: 'illinois', label: 'Illinois' },
+  { slug: 'north-carolina', label: 'North Carolina' },
+  { slug: 'arizona', label: 'Arizona' },
+] as const;
+
+const ANGLO_GEO = [
+  { slug: 'canadian', label: 'Canadian', query: 'canadian' },
+  { slug: 'australian', label: 'Australian', query: 'australian' },
+  { slug: 'british', label: 'British', query: 'british' },
+] as const;
+
+function usStateAngloCombos(stateSlug: string, stateLabel: string): ComboPillDef[] {
+  return ANGLO_GEO.map((g) => ({
+    label: `${stateLabel} ${g.label}`,
+    query: `${stateLabel.toLowerCase()} ${g.query}`,
+    modifierSlug: g.slug,
+    comboSlug: `${stateSlug}-${g.slug}`,
+  }));
+}
+
+function angloUsStateCombos(geoSlug: string, geoLabel: string, geoQuery: string): ComboPillDef[] {
+  return US_STATE_GEO.map((s) => ({
+    label: `${geoLabel} ${s.label}`,
+    query: `${geoQuery} ${s.label.toLowerCase()}`,
+    modifierSlug: s.slug,
+    comboSlug: `${s.slug}-${geoSlug}`,
+  }));
+}
+
+const US_STATE_COMBO_ENTRIES: Record<string, ComboPillDef[]> = Object.fromEntries(
+  US_STATE_GEO.map((s) => [s.slug, usStateAngloCombos(s.slug, s.label)]),
+);
+
+/** No big-ass / big-boobs combos on couple / lesbian-style niches. */
+const BODY_COMBO_EXCLUDE = new Set([
+  'couple',
+  'couple-lesbian',
+  'couple-straight',
+  'lesbian',
+  'bisexual',
+  'threesome',
+  'hotwife',
+  'girlfriend',
+]);
+
+function nicheComboLabel(slug: string): string {
+  return (
+    BEST_OF_PAGE_MAP.get(slug)?.label ||
+    OF_CATEGORY_MAP.get(slug)?.name ||
+    slug
+      .split('-')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ')
+  );
+}
+
+function resolveSharedComboSlug(
+  map: Record<string, ComboPillDef[]>,
+  nicheSlug: string,
+  bodySlug: 'big-ass' | 'big-boobs',
+  fallback: string,
+): string {
+  for (const d of map[nicheSlug] || []) {
+    if (d.modifierSlug === bodySlug) return d.comboSlug;
+  }
+  for (const d of map[bodySlug] || []) {
+    if (d.modifierSlug === nicheSlug) return d.comboSlug;
+  }
+  return fallback;
+}
+
+/** Big Ass + Big Boobs on every niche except couple / lesbian family. */
+function withUniversalBodyCombos(base: Record<string, ComboPillDef[]>): Record<string, ComboPillDef[]> {
+  const out: Record<string, ComboPillDef[]> = {};
+  for (const [k, v] of Object.entries(base)) out[k] = [...v];
+
+  const nicheSlugs = new Set<string>();
+  for (const s of BEST_OF_PAGE_MAP.keys()) nicheSlugs.add(s);
+  for (const s of OF_CATEGORY_MAP.keys()) nicheSlugs.add(s);
+  for (const s of Object.keys(out)) nicheSlugs.add(s);
+
+  const eligible = [...nicheSlugs]
+    .filter((s) => !BODY_COMBO_EXCLUDE.has(s))
+    .filter((s) => OF_CATEGORY_MAP.has(s) || BEST_OF_PAGE_MAP.has(s))
+    .sort();
+
+  if (!out['big-ass']) out['big-ass'] = [];
+  if (!out['big-boobs']) out['big-boobs'] = [];
+
+  for (const slug of eligible) {
+    if (!out[slug]) out[slug] = [];
+    const label = nicheComboLabel(slug);
+
+    if (slug !== 'big-ass') {
+      const comboSlug = resolveSharedComboSlug(
+        out,
+        slug,
+        'big-ass',
+        slug === 'korean' ? 'korean-big-ass' : `big-ass-${slug}`,
+      );
+      if (!out[slug].some((d) => d.modifierSlug === 'big-ass')) {
+        out[slug].push({
+          label: slug === 'ebony' ? 'Big Ass Black' : `Big Ass ${label}`,
+          query: `big ass ${slug === 'ebony' ? 'ebony' : label.toLowerCase()}`,
+          modifierSlug: 'big-ass',
+          comboSlug,
+        });
+      }
+      if (!out['big-ass'].some((d) => d.modifierSlug === slug)) {
+        out['big-ass'].push({
+          label:
+            slug === 'ebony'
+              ? 'Big Ass Black'
+              : slug === 'korean'
+                ? 'Korean Big Ass'
+                : `Big Ass ${label}`,
+          query: `big ass ${slug === 'korean' || slug === 'ebony' ? slug : label.toLowerCase()}`,
+          modifierSlug: slug,
+          comboSlug,
+        });
+      }
+    }
+
+    if (slug !== 'big-boobs') {
+      const comboSlug = resolveSharedComboSlug(out, slug, 'big-boobs', `big-tits-${slug}`);
+      if (!out[slug].some((d) => d.modifierSlug === 'big-boobs')) {
+        out[slug].push({
+          label: `Big Tits ${label}`,
+          query: `big boobs ${label.toLowerCase()}`,
+          modifierSlug: 'big-boobs',
+          comboSlug,
+        });
+      }
+      if (!out['big-boobs'].some((d) => d.modifierSlug === slug)) {
+        out['big-boobs'].push({
+          label: `Big Tits ${label}`,
+          query: `big boobs ${label.toLowerCase()}`,
+          modifierSlug: slug,
+          comboSlug,
+        });
+      }
+    }
+  }
+
+  return out;
+}
+
+const CATEGORY_COMBO_PILLS_BASE: Record<string, ComboPillDef[]> = {
+  ...US_STATE_COMBO_ENTRIES,
   'big-ass': [
     { label: 'Big Ass Latina', query: 'big ass latina', modifierSlug: 'latina', comboSlug: 'big-ass-latina' },
     { label: 'Big Ass Black', query: 'big ass ebony', modifierSlug: 'ebony', comboSlug: 'big-ass-ebony' },
@@ -69,7 +227,25 @@ export const CATEGORY_COMBO_PILLS: Record<string, ComboPillDef[]> = {
     { label: 'Big Tits Redhead', query: 'big boobs redhead', modifierSlug: 'redhead', comboSlug: 'big-tits-redhead' },
     { label: 'Big Tits BBW', query: 'big boobs bbw', modifierSlug: 'bbw', comboSlug: 'big-tits-bbw' },
     { label: 'Big Tits Amateur', query: 'big boobs amateur', modifierSlug: 'amateur', comboSlug: 'big-tits-amateur' },
+    { label: 'Big Tits Arab', query: 'big boobs arab', modifierSlug: 'arab', comboSlug: 'big-tits-arab' },
   ],
+  'big-booty': [
+    { label: 'Big Booty Arab', query: 'big booty arab', modifierSlug: 'arab', comboSlug: 'big-booty-arab' },
+  ],
+  pawg: [
+    { label: 'Arab PAWG', query: 'arab pawg', modifierSlug: 'arab', comboSlug: 'arab-pawg' },
+  ],
+  arab: [
+    { label: 'Big Ass Arab', query: 'big ass arab', modifierSlug: 'big-ass', comboSlug: 'big-ass-arab' },
+    { label: 'Big Booty Arab', query: 'big booty arab', modifierSlug: 'big-booty', comboSlug: 'big-booty-arab' },
+    { label: 'Arab PAWG', query: 'arab pawg', modifierSlug: 'pawg', comboSlug: 'arab-pawg' },
+    { label: 'Curvy Arab', query: 'curvy arab', modifierSlug: 'curvy', comboSlug: 'curvy-arab' },
+    { label: 'Big Tits Arab', query: 'big boobs arab', modifierSlug: 'big-boobs', comboSlug: 'big-tits-arab' },
+    { label: 'Arab Pornstar', query: 'arab pornstar', modifierSlug: 'pornstar', comboSlug: 'arab-pornstar' },
+  ],
+  canadian: angloUsStateCombos('canadian', 'Canadian', 'canadian'),
+  australian: angloUsStateCombos('australian', 'Australian', 'australian'),
+  british: angloUsStateCombos('british', 'British', 'british'),
   goth: [
     { label: 'Big Tits Goth', query: 'big boobs goth', modifierSlug: 'big-boobs', comboSlug: 'big-tits-goth' },
     { label: 'Goth PAWG', query: 'goth thick curvy', modifierSlug: 'thick', comboSlug: 'goth-pawg' },
@@ -127,6 +303,7 @@ export const CATEGORY_COMBO_PILLS: Record<string, ComboPillDef[]> = {
     { label: 'BBW MILF', query: 'bbw milf', modifierSlug: 'milf', comboSlug: 'bbw-milf' },
     { label: 'Big Tits BBW', query: 'big boobs bbw', modifierSlug: 'big-boobs', comboSlug: 'big-tits-bbw' },
     { label: 'Big Ass BBW', query: 'big ass bbw', modifierSlug: 'big-ass', comboSlug: 'big-ass-bbw' },
+    { label: 'Chubby BBW', query: 'chubby bbw', modifierSlug: 'chubby', comboSlug: 'chubby-bbw' },
   ],
   blonde: [
     { label: 'Big Tits Blonde', query: 'big boobs blonde', modifierSlug: 'big-boobs', comboSlug: 'big-tits-blonde' },
@@ -144,6 +321,7 @@ export const CATEGORY_COMBO_PILLS: Record<string, ComboPillDef[]> = {
     { label: 'Ebony BBW', query: 'ebony bbw', modifierSlug: 'bbw', comboSlug: 'ebony-bbw' },
     { label: 'Big Ass Ebony', query: 'big ass ebony', modifierSlug: 'big-ass', comboSlug: 'big-ass-ebony' },
     { label: 'Ebony Teen', query: 'ebony teen', modifierSlug: 'teen', comboSlug: 'ebony-teen' },
+    { label: 'Chubby Ebony', query: 'chubby ebony', modifierSlug: 'chubby', comboSlug: 'chubby-ebony' },
   ],
   amateur: [
     { label: 'Amateur MILF', query: 'amateur milf', modifierSlug: 'milf', comboSlug: 'amateur-milf' },
@@ -171,11 +349,14 @@ export const CATEGORY_COMBO_PILLS: Record<string, ComboPillDef[]> = {
     { label: 'Curvy Latina', query: 'curvy latina', modifierSlug: 'latina', comboSlug: 'curvy-latina' },
     { label: 'Curvy MILF', query: 'curvy milf', modifierSlug: 'milf', comboSlug: 'curvy-milf' },
     { label: 'Curvy Ebony', query: 'curvy ebony', modifierSlug: 'ebony', comboSlug: 'curvy-ebony' },
+    { label: 'Curvy Arab', query: 'curvy arab', modifierSlug: 'arab', comboSlug: 'curvy-arab' },
   ],
   chubby: [
     { label: 'Chubby Goth', query: 'chubby goth', modifierSlug: 'goth', comboSlug: 'chubby-goth' },
     { label: 'Chubby Latina', query: 'chubby latina', modifierSlug: 'latina', comboSlug: 'chubby-latina' },
     { label: 'Chubby MILF', query: 'chubby milf', modifierSlug: 'milf', comboSlug: 'chubby-milf' },
+    { label: 'Chubby BBW', query: 'chubby bbw', modifierSlug: 'bbw', comboSlug: 'chubby-bbw' },
+    { label: 'Chubby Ebony', query: 'chubby ebony', modifierSlug: 'ebony', comboSlug: 'chubby-ebony' },
   ],
   petite: [
     { label: 'Petite Asian', query: 'petite asian', modifierSlug: 'asian', comboSlug: 'petite-asian' },
@@ -199,8 +380,12 @@ export const CATEGORY_COMBO_PILLS: Record<string, ComboPillDef[]> = {
     { label: 'Latina Pornstar', query: 'latina pornstar', modifierSlug: 'latina', comboSlug: 'latina-pornstar' },
     { label: 'Asian Pornstar', query: 'asian pornstar', modifierSlug: 'asian', comboSlug: 'asian-pornstar' },
     { label: 'MILF Pornstar', query: 'milf pornstar', modifierSlug: 'milf', comboSlug: 'milf-pornstar' },
+    { label: 'Arab Pornstar', query: 'arab pornstar', modifierSlug: 'arab', comboSlug: 'arab-pornstar' },
   ],
 };
+
+export const CATEGORY_COMBO_PILLS: Record<string, ComboPillDef[]> =
+  withUniversalBodyCombos(CATEGORY_COMBO_PILLS_BASE);
 
 function buildComboBestOfPages(): Map<string, BestOfPage> {
   const map = new Map<string, BestOfPage>();

@@ -118,6 +118,6 @@ export function categoryFromSlug(slug: string): string | undefined {
 }
 
 /** Groups feed: unified batch size on /groups and each /groups/page/N (mobile + desktop). */
-export const GROUPS_FEED_PAGE_SIZE = 32;
+export const GROUPS_FEED_PAGE_SIZE = 24;
 /** Minimum listings a category needs to appear in the "Trending Group Categories" row. */
 export const TRENDING_CATEGORY_MIN_COUNT = 20;

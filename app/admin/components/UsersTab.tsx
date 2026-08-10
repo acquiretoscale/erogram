@@ -85,7 +85,6 @@ export default function UsersTab() {
     }, [users, searchQuery, premiumFilter]);
 
     const premiumCount = useMemo(() => users.filter(isPremiumActive).length, [users]);
-    const installCount = useMemo(() => users.filter((u) => !!u.pwaInstalledAt).length, [users]);
     const savedOFStats = useMemo(() => {
         let usersWithSaves = 0;
         let totalSaves = 0;
@@ -104,8 +103,6 @@ export default function UsersTab() {
                     <p className="text-[#999] text-sm">
                         {users.length} registered &middot;{' '}
                         <span className="text-amber-400 font-medium">{premiumCount} premium</span>
-                        {' '}&middot;{' '}
-                        <span className="text-emerald-400 font-medium">{installCount} app installs</span>
                     </p>
                 </div>
             </div>

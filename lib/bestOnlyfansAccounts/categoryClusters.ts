@@ -1158,22 +1158,6 @@ export const CATEGORY_CLUSTERS: readonly CategoryCluster[] = [
     terms: []
   },
   {
-    id: "massachusetts",
-    primarySlug: "massachusetts",
-    slugs: [
-      "massachusetts"
-    ],
-    terms: []
-  },
-  {
-    id: "south-korean",
-    primarySlug: "south-korean",
-    slugs: [
-      "south-korean"
-    ],
-    terms: []
-  },
-  {
     id: "russian",
     primarySlug: "russian",
     slugs: [
@@ -1218,14 +1202,6 @@ export const CATEGORY_CLUSTERS: readonly CategoryCluster[] = [
     primarySlug: "colorado",
     slugs: [
       "colorado"
-    ],
-    terms: []
-  },
-  {
-    id: "peruvian",
-    primarySlug: "peruvian",
-    slugs: [
-      "peruvian"
     ],
     terms: []
   },
@@ -1331,14 +1307,6 @@ export const CATEGORY_CLUSTERS: readonly CategoryCluster[] = [
     ]
   },
   {
-    id: "korean",
-    primarySlug: "korean",
-    slugs: [
-      "korean"
-    ],
-    terms: []
-  },
-  {
     id: "asexual",
     primarySlug: "asexual",
     slugs: [
@@ -1379,34 +1347,10 @@ export const CATEGORY_CLUSTERS: readonly CategoryCluster[] = [
     terms: []
   },
   {
-    id: "ecuadorian",
-    primarySlug: "ecuadorian",
-    slugs: [
-      "ecuadorian"
-    ],
-    terms: []
-  },
-  {
     id: "malaysian",
     primarySlug: "malaysian",
     slugs: [
       "malaysian"
-    ],
-    terms: []
-  },
-  {
-    id: "public-sex",
-    primarySlug: "public-sex",
-    slugs: [
-      "public-sex"
-    ],
-    terms: []
-  },
-  {
-    id: "shower-sex",
-    primarySlug: "shower-sex",
-    slugs: [
-      "shower-sex"
     ],
     terms: []
   },

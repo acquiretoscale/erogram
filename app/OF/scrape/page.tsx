@@ -45,6 +45,8 @@ export default function ScrapePage() {
   const [customTerms, setCustomTerms] = useState<string[]>([]);
   const [customInput, setCustomInput] = useState('');
   const [maxResults, setMaxResults] = useState(200);
+  const [minLikes, setMinLikes] = useState(0);
+  const [maxLikes, setMaxLikes] = useState(0);
   const [jobs, setJobs] = useState<JobEntry[]>([]);
   const [isRunning, setIsRunning] = useState(false);
 
@@ -207,7 +209,14 @@ export default function ScrapePage() {
         const res = await fetch('/api/onlyfans/scrape', {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ category: job.category, maxItems: capped, clean: true, source: 'bulk' }),
+          body: JSON.stringify({
+            category: job.category,
+            maxItems: capped,
+            clean: !(minLikes > 0 || maxLikes > 0),
+            source: 'bulk',
+            minLikes,
+            maxLikes,
+          }),
           signal: controller.signal,
         });
         const result: ScrapeResult = await res.json();
@@ -335,6 +344,30 @@ export default function ScrapePage() {
               className="w-28 px-3 py-2 bg-white/[0.05] border border-white/10 rounded-xl text-white text-sm outline-none focus:border-[#00AFF0]/40 transition"
             />
             <p className="text-white/20 text-[10px] mt-1">Max {MAX_PER_SCRAPE.toLocaleString()}</p>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-1.5">Min Likes</label>
+            <input
+              type="number"
+              min={0}
+              step={100}
+              value={minLikes}
+              onChange={(e) => setMinLikes(Math.max(0, parseInt(e.target.value) || 0))}
+              className="w-28 px-3 py-2 bg-white/[0.05] border border-white/10 rounded-xl text-white text-sm outline-none focus:border-[#00AFF0]/40 transition"
+            />
+            <p className="text-white/20 text-[10px] mt-1">0 = no min</p>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-1.5">Max Likes</label>
+            <input
+              type="number"
+              min={0}
+              step={100}
+              value={maxLikes}
+              onChange={(e) => setMaxLikes(Math.max(0, parseInt(e.target.value) || 0))}
+              className="w-28 px-3 py-2 bg-white/[0.05] border border-white/10 rounded-xl text-white text-sm outline-none focus:border-[#00AFF0]/40 transition"
+            />
+            <p className="text-white/20 text-[10px] mt-1">0 = no max</p>
           </div>
           <div className="flex-1" />
           <div className="text-right">

@@ -14,7 +14,6 @@ import {
   getNewestOnlyFansCreators,
   getTopCommunityLikedCreators,
 } from '@/lib/actions/ofCreatorsBrowse';
-import { getVisitorCountryCode } from '@/lib/actions/nearMeCreators';
 import { getTopLikedCreatorPhotos } from '@/lib/actions/profileFeed';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -50,11 +49,10 @@ export default async function OnlyFansPage({ searchParams }: PageProps) {
     console.error('Failed to fetch OF creators:', e);
   }
 
-  const [topBannerCampaigns, ofSearchFeaturedRaw, trendingOnErogram, visitorCountryCode, communityCreators, topBookmarkedRecent, topLikedCreators, topLikedPhotos] = await Promise.all([
+  const [topBannerCampaigns, ofSearchFeaturedRaw, trendingOnErogram, communityCreators, topBookmarkedRecent, topLikedCreators, topLikedPhotos] = await Promise.all([
     getActiveCampaigns('top-banner', { page: 'onlyfans', device: isMobile ? 'mobile' : 'desktop' }).catch(() => []),
     getPlacementFeedCampaigns('of-search-featured', 8).catch(() => []),
     getTrendingOnErogram().catch(() => []),
-    getVisitorCountryCode().catch(() => ''),
     getNewestOnlyFansCreators(40).catch(() => []),
     getTopCommunityLikedCreators(20).catch(() => []),
     getTopCommunityLikedCreators(20).catch(() => []),
@@ -90,7 +88,6 @@ export default async function OnlyFansPage({ searchParams }: PageProps) {
       topBookmarkedRecent={topBookmarkedRecent as any}
       topLikedCreators={topLikedCreators as any}
       topLikedPhotos={topLikedPhotos}
-      visitorCountryCode={visitorCountryCode}
     />
   );
 }

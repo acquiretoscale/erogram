@@ -1,4 +1,3 @@
-import React from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -221,7 +220,7 @@ export default async function BestGroupsPage({ params }: PageProps) {
     })) as Top10GroupDoc[];
 
     const freeGroups = [...curatedGroups, ...autoGroups];
-    const premiumGroups = await fetchNichePremiumGroups(categoryPremiumFilter(realCategory), 5);
+    const premiumGroups = await fetchNichePremiumGroups(categoryPremiumFilter(realCategory), 3);
     const ranking = buildTop10Ranking(freeGroups, premiumGroups);
 
     // If very few groups overall, show some from other categories
@@ -278,29 +277,32 @@ export default async function BestGroupsPage({ params }: PageProps) {
                     </p>
                 </header>
 
-                {/* Main List — order: Premium → Featured ad → #1 free → rest */}
+                {/* Main List — Featured ad + free ranks first; premium teases at bottom */}
                 {ranking.length > 0 ? (
                     <div className="space-y-12 mb-20">
-                        {ranking.map((entry, index) => {
-                            const headIsPremium = ranking[0]?.isPremium;
-                            return (
-                            <React.Fragment key={`${entry.group._id}-${entry.rank}`}>
-                            {index === 0 && !headIsPremium && topGroupAd && (
-                                <BestGroupsAds variant="top" ads={[topGroupAd as any]} />
-                            )}
+                        {topGroupAd && (
+                            <BestGroupsAds variant="top" ads={[topGroupAd as any]} />
+                        )}
+                        {ranking.filter((e) => !e.isPremium).map((entry) => (
                             <BestGroupRankCard
+                                key={`${entry.group._id}-${entry.rank}`}
                                 entry={entry}
                                 joinLabel={`${dict.bestGroups.joinGroup} 🚀`}
                                 viewsLabel={dict.common.views}
                                 localePath={(path) => localePath(path, locale)}
                                 pageCategory={realCategory}
                             />
-                            {index === 0 && headIsPremium && topGroupAd && (
-                                <BestGroupsAds variant="top" ads={[topGroupAd as any]} />
-                            )}
-                            </React.Fragment>
-                            );
-                        })}
+                        ))}
+                        {ranking.filter((e) => e.isPremium).map((entry) => (
+                            <BestGroupRankCard
+                                key={`${entry.group._id}-${entry.rank}`}
+                                entry={entry}
+                                joinLabel={`${dict.bestGroups.joinGroup} 🚀`}
+                                viewsLabel={dict.common.views}
+                                localePath={(path) => localePath(path, locale)}
+                                pageCategory={realCategory}
+                            />
+                        ))}
                     </div>
                 ) : (
                     <div className="text-center py-10 mb-20">

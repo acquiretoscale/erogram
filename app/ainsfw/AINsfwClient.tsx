@@ -1,4 +1,5 @@
 'use client';
+import { useTranslation, useLocalePath } from '@/lib/i18n/client';
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
@@ -10,7 +11,6 @@ import AdvertCard from '../groups/AdvertCard';
 import type { FeedCampaign } from '../groups/types';
 import type { AINsfwTool, AINsfwCategory, AinsfwSortOption, PaymentOption, PricingModel } from './types';
 import { toolMatchesPricingModel } from './types';
-import { useTranslation } from '@/lib/i18n';
 import { renderAinsfwGuideText } from '@/lib/ainsfw/internalLinks';
 import { RECENT_DISPLAY_LIMIT } from './recentCategoryTools';
 import type { ToolStatsData } from '@/lib/actions/ainsfw';
@@ -56,6 +56,7 @@ interface AINsfwClientProps {
 
 function GuideEditorNote({ author }: { author: AuthorProfile }) {
   const { t } = useTranslation();
+  const lp = useLocalePath();
   return (
     <div className="mb-8 pb-8 border-b border-[#22c55e]/15">
       <p className="text-[10px] font-bold tracking-[0.32em] uppercase text-[#22c55e] mb-4">{t('ainsfw.guideEditorTitle')}</p>
@@ -111,6 +112,7 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
   const [search, setSearch] = useState('');
   const [scores, setScores] = useState<Record<string, number>>(() => loadAllScores(allStats));
   const { t } = useTranslation();
+  const lp = useLocalePath();
 
   // LIVE ADS: page HTML is ISR-cached (up to 5 min stale), so the browser
   // refreshes ad campaigns right after load for real rotation.
@@ -180,9 +182,9 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
       <div className="relative z-10 px-4 sm:px-6 py-3 sm:py-3.5 border-b border-[#22c55e]/15 bg-[#04140c]/80 backdrop-blur-xl mt-24 sm:mt-28">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           <nav className="flex items-center text-xs text-gray-500 gap-1.5 min-w-0">
-            <Link href="/" className="hover:text-white transition-colors shrink-0">Home</Link>
+            <Link href={lp('/')} className="hover:text-white transition-colors shrink-0">{t('ainsfw.home', 'Home')}</Link>
             <span className="shrink-0">/</span>
-            <span className="text-white font-semibold truncate">AI NSFW Tools</span>
+            <span className="text-white font-semibold truncate">{t('ainsfw.breadcrumbHub', 'AI NSFW Tools')}</span>
           </nav>
           <AinsfwHeaderActions
             shareText="Check out the best AI NSFW tools on Erogram"
@@ -202,7 +204,7 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
         >
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/30 text-[#22c55e] text-xs font-bold uppercase tracking-[2px] mb-5">
             <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse" />
-            Curated &amp; Reviewed
+            {t('ainsfw.curatedReviewed', 'Curated & Reviewed')}
           </div>
           <h1 className="ainsfw-hero-title text-[44px] sm:text-[64px] md:text-[76px] mb-4">
             {t('ainsfw.heroTitle', 'Best AI NSFW Tools')}
@@ -215,7 +217,7 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
               href="/best-ai-nsfw-tools"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#22c55e] text-black text-xs font-black uppercase tracking-wide hover:bg-[#4ade80] transition-colors"
             >
-              TOP 10 Rankings
+              {t('ainsfw.top10Rankings', 'TOP 10 Rankings')}
             </Link>
             {HERO_CATEGORY_LINKS.map((category) => (
               <Link
@@ -305,7 +307,7 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
                     className="px-4 py-2 rounded-xl border border-white/10 bg-white/[0.04] text-sm font-bold text-white/80 hover:border-[#22c55e]/40 hover:text-white transition-colors"
                     rel="prev"
                   >
-                    ← Previous
+                    {t('ainsfw.previous', '← Previous')}
                   </Link>
                 )}
                 {Array.from({ length: paginationTotalPages }, (_, i) => i + 1).map((p) => {
@@ -331,7 +333,7 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
                     className="px-4 py-2 rounded-xl border border-white/10 bg-white/[0.04] text-sm font-bold text-white/80 hover:border-[#22c55e]/40 hover:text-white transition-colors"
                     rel="next"
                   >
-                    Next →
+                    {t('ainsfw.next', 'Next →')}
                   </Link>
                 )}
               </nav>
