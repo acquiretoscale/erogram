@@ -2,6 +2,7 @@
 
 import { useCallback } from 'react';
 import Link from 'next/link';
+import { useLocalePath, useTranslation } from '@/lib/i18n/client';
 import { motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -47,6 +48,9 @@ export default function CategoryClient({
   featuredHubStats,
   verifiedSlugs = [],
 }: Props) {
+  const { t } = useTranslation();
+  const lp = useLocalePath();
+  const catLabel = (cat: string) => t(`ainsfw.categories.${cat}`, cat);
   const desc = CATEGORY_DESC[category] || `Browse the best ${category} tools — reviewed and ranked by Erogram.`;
   const handleFeaturedVoteChange = useCallback((_slug: string, _score: number) => {}, []);
 
@@ -58,11 +62,11 @@ export default function CategoryClient({
       <div className="relative z-10 px-4 sm:px-6 py-3 sm:py-3.5 border-b border-[#22c55e]/15 bg-[#04140c]/80 backdrop-blur-xl mt-24 sm:mt-28">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           <nav className="flex items-center text-xs text-gray-500 gap-1.5 min-w-0">
-            <Link href="/" className="hover:text-white transition-colors shrink-0">Home</Link>
+            <Link href={lp('/')} className="hover:text-white transition-colors shrink-0">{t('ainsfw.home', 'Home')}</Link>
             <span className="shrink-0">/</span>
-            <Link href="/ainsfw" className="hover:text-white transition-colors shrink-0">AI NSFW Tools</Link>
+            <Link href={lp('/ainsfw')} className="hover:text-white transition-colors shrink-0">{t('ainsfw.breadcrumbHub', 'AI NSFW Tools')}</Link>
             <span className="shrink-0">/</span>
-            <span className="text-white font-semibold truncate">{category}</span>
+            <span className="text-white font-semibold truncate">{catLabel(category)}</span>
           </nav>
           <AinsfwHeaderActions
             shareText={`Check out ${category} AI NSFW tools on Erogram`}
@@ -81,7 +85,7 @@ export default function CategoryClient({
           className="text-center mb-10"
         >
           <h1 className="ainsfw-hero-title text-[36px] sm:text-[52px] md:text-[64px] mb-4">
-            Best {category} Tools
+            {t('ainsfw.bestCategoryTools', 'Best {category} Tools').replace(/\{category\}/g, catLabel(category))}
           </h1>
           <p className="text-white/50 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
             {desc}

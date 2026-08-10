@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
-import { useLocale, useLocalePath, usePublicPathname } from '@/lib/i18n/client';
+import { useLocale, useLocalePath, usePublicPathname, useTranslation } from '@/lib/i18n/client';
 import { LOCALES, LOCALE_FLAGS, LOCALE_NAMES, switchLocalePath, type Locale } from '@/lib/i18n';
 import { getMyListingsSummary } from '@/lib/actions/myListings';
 import { getMyAINSFWSummary } from '@/lib/actions/myAINSFWListings';
@@ -245,6 +245,7 @@ function OFsearchNav() {
 }
 
 function LiveVisitorBar() {
+  const { t } = useTranslation();
   const [count, setCount] = useState(0);
   const [live, setLive] = useState(false);
 
@@ -278,8 +279,8 @@ function LiveVisitorBar() {
           {count > 0 ? count.toLocaleString('en-US') : '—'}
         </span>
         <span className="text-[9px] sm:text-[10px] font-semibold text-white/55 uppercase tracking-[0.08em] whitespace-nowrap leading-none">
-          <span className="sm:hidden">browsing now</span>
-          <span className="hidden sm:inline">people browsing Erogram right now</span>
+          <span className="sm:hidden">{t('ainsfw.peopleBrowsingShort', 'browsing now')}</span>
+          <span className="hidden sm:inline">{t('ainsfw.peopleBrowsing', 'people browsing Erogram right now')}</span>
         </span>
       </div>
     </div>
@@ -968,6 +969,7 @@ function FooterCol({ label, children }: { label: string; children: React.ReactNo
 }
 
 function FooterSocialBlock() {
+  const { t } = useTranslation();
   const tileBase =
     'group relative flex h-12 w-12 items-center justify-center rounded-[14px] border transition-all duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30';
 
@@ -975,7 +977,7 @@ function FooterSocialBlock() {
     <div className="relative overflow-hidden rounded-2xl border border-white/[0.09] bg-white/[0.03] px-5 py-4 sm:min-w-[252px] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/[0.07] via-transparent to-[#c0392f]/[0.06]" />
       <p className="relative mb-4 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a39e97]">
-        Follow EROgram on socials
+        {t('footer.followSocials', 'Follow EROgram on socials')}
       </p>
       <div className="relative flex items-center justify-center gap-3">
         <a
@@ -1007,6 +1009,7 @@ function FooterSocialBlock() {
 
 export function EditorialFooter() {
   const lp = useLocalePath();
+  const { t } = useTranslation();
   const year = new Date().getFullYear();
   return (
     <footer className="bg-black border-t border-white/[0.08]">
@@ -1023,8 +1026,8 @@ export function EditorialFooter() {
               <span className="w-[8px] h-[8px] ml-1 shrink-0 self-end mb-[2px] bg-[#c0392f]" />
             </Link>
             <p className="text-[12px] sm:text-[13px] text-[#8c8780] leading-relaxed max-w-md">
-              Your #1 hub for Porn Telegram groups &amp; NSFW tools, bots, AI companions, OnlyFans creators.
-              Explore and save your favorites all in one place.
+              {t('footer.tagline', 'Your #1 hub for Porn Telegram groups & NSFW tools, bots, AI companions, OnlyFans creators.')}{' '}
+              {t('footer.taglineSub', 'Explore and save your favorites all in one place.')}
             </p>
           </div>
 
@@ -1033,38 +1036,38 @@ export function EditorialFooter() {
 
         {/* 4 columns */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-8 sm:gap-x-8 sm:gap-y-10 mb-8 pb-8 border-b border-white/[0.08]">
-          <FooterCol label="Explore">
-            <FooterLink href={lp('/best-telegram-groups')}>Telegram Groups</FooterLink>
-            <FooterLink href={lp('/bots')}>Telegram Bots</FooterLink>
-            <FooterLink href={lp('/ainsfw')}>AI NSFW Tools</FooterLink>
-            <FooterLink href="/tags">Tags</FooterLink>
-            <FooterLink href="/blog">Blog &amp; Guides</FooterLink>
-            <FooterLink href={lp('/onlyfanssearch')}>OnlyFans Creators</FooterLink>
-            <FooterLink href="/trending"><span className="text-[#c0392f] font-semibold">Trending</span></FooterLink>
+          <FooterCol label={t('footer.explore', 'Explore')}>
+            <FooterLink href={lp('/best-telegram-groups')}>{t('footer.telegramGroups', 'Telegram Groups')}</FooterLink>
+            <FooterLink href={lp('/bots')}>{t('footer.telegramBots', 'Telegram Bots')}</FooterLink>
+            <FooterLink href={lp('/ainsfw')}>{t('footer.aiNsfwTools', 'AI NSFW Tools')}</FooterLink>
+            <FooterLink href="/tags">{t('footer.tags', 'Tags')}</FooterLink>
+            <FooterLink href="/blog">{t('footer.blogGuides', 'Blog & Guides')}</FooterLink>
+            <FooterLink href={lp('/onlyfanssearch')}>{t('footer.onlyfansCreators', 'OnlyFans Creators')}</FooterLink>
+            <FooterLink href="/trending"><span className="text-[#c0392f] font-semibold">{t('footer.trending', 'Trending')}</span></FooterLink>
           </FooterCol>
 
-          <FooterCol label="Get Seen">
-            <FooterLink href={lp('/add/group')}>Submit Group</FooterLink>
-            <FooterLink href={lp('/add/bot')}>Submit Bot</FooterLink>
-            <FooterLink href={lp('/submit')}>Submit OF Creator</FooterLink>
-            <FooterLink href={lp('/add/ainsfw')}>Submit AI NSFW</FooterLink>
+          <FooterCol label={t('footer.getSeen', 'Get Seen')}>
+            <FooterLink href={lp('/add/group')}>{t('footer.submitGroup', 'Submit Group')}</FooterLink>
+            <FooterLink href={lp('/add/bot')}>{t('footer.submitBot', 'Submit Bot')}</FooterLink>
+            <FooterLink href={lp('/submit')}>{t('footer.submitOfCreator', 'Submit OF Creator')}</FooterLink>
+            <FooterLink href={lp('/add/ainsfw')}>{t('footer.submitAiNsfw', 'Submit AI NSFW')}</FooterLink>
           </FooterCol>
 
-          <FooterCol label="COMPANY">
-            <FooterLink href={lp('/promo')}>Advertise with us</FooterLink>
-            <FooterLink href={lp('/partners')}>Partners</FooterLink>
-            <FooterLink href={lp('/partnership')}>Get EROgram Badge</FooterLink>
-            <FooterLink href={lp('/about')}>About</FooterLink>
-            <FooterLink href={lp('/contact')}>Contact</FooterLink>
+          <FooterCol label={t('footer.company', 'COMPANY')}>
+            <FooterLink href={lp('/promo')}>{t('footer.advertise', 'Advertise with us')}</FooterLink>
+            <FooterLink href={lp('/partners')}>{t('footer.partners', 'Partners')}</FooterLink>
+            <FooterLink href={lp('/partnership')}>{t('footer.getBadge', 'Get EROgram Badge')}</FooterLink>
+            <FooterLink href={lp('/about')}>{t('footer.about', 'About')}</FooterLink>
+            <FooterLink href={lp('/contact')}>{t('footer.contact', 'Contact')}</FooterLink>
           </FooterCol>
 
-          <FooterCol label="Trust &amp; Legal">
-            <FooterLink href={lp('/terms')}>Terms</FooterLink>
-            <FooterLink href={lp('/privacy')}>Privacy</FooterLink>
-            <FooterLink href={lp('/dmca')}>DMCA</FooterLink>
-            <FooterLink href={lp('/copyright')}>Copyright &amp; Takedown</FooterLink>
-            <FooterLink href={lp('/compliance')}>Content Compliance</FooterLink>
-            <FooterLink href={lp('/report-abuse')}>Report Abuse</FooterLink>
+          <FooterCol label={t('footer.trustLegal', 'Trust & Legal')}>
+            <FooterLink href={lp('/terms')}>{t('footer.terms', 'Terms')}</FooterLink>
+            <FooterLink href={lp('/privacy')}>{t('footer.privacy', 'Privacy')}</FooterLink>
+            <FooterLink href={lp('/dmca')}>{t('footer.dmca', 'DMCA')}</FooterLink>
+            <FooterLink href={lp('/copyright')}>{t('footer.copyrightTakedown', 'Copyright & Takedown')}</FooterLink>
+            <FooterLink href={lp('/compliance')}>{t('footer.contentCompliance', 'Content Compliance')}</FooterLink>
+            <FooterLink href={lp('/report-abuse')}>{t('footer.reportAbuse', 'Report Abuse')}</FooterLink>
           </FooterCol>
         </div>
 

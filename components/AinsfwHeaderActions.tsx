@@ -1,6 +1,9 @@
+'use client';
+
 import Link from 'next/link';
 import InlineSocialShare from '@/components/InlineSocialShare';
 import { ainsfwCtaButtonClass } from '@/lib/ainsfw/ctaButton';
+import { useLocalePath, useTranslation } from '@/lib/i18n/client';
 
 type AinsfwHeaderActionsProps = {
   shareText: string;
@@ -15,6 +18,8 @@ export default function AinsfwHeaderActions({
   fallbackUrl,
   part = 'all',
 }: AinsfwHeaderActionsProps) {
+  const { t } = useTranslation();
+  const lp = useLocalePath();
   const showShare = part === 'all' || part === 'share';
   const showSubmit = part === 'all' || part === 'submit';
 
@@ -29,10 +34,10 @@ export default function AinsfwHeaderActions({
       )}
       {showSubmit && (
         <Link
-          href="/add/ainsfw"
+          href={lp('/add/ainsfw')}
           className={ainsfwCtaButtonClass('header')}
         >
-          SUBMIT YOUR TOOL
+          {t('ainsfw.submitYourTool', 'SUBMIT YOUR TOOL')}
         </Link>
       )}
     </div>

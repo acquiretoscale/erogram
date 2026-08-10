@@ -30,6 +30,25 @@ import AinsfwVideoListingBadge from '@/components/ainsfw/AinsfwVideoListingBadge
 import TopAINsfwBlock from '../TopAINsfwBlock';
 import { hasProsCons, type AINsfwListingBlocks } from '../listingBlocks';
 import { getMemoryPeers } from '../memoryPeers';
+import { useLocalePath, useTranslation } from '@/lib/i18n/client';
+
+function useAinsfwChrome() {
+  const { t } = useTranslation();
+  const lp = useLocalePath();
+  return {
+    t,
+    lp,
+    catLabel: (cat: string) => t(`ainsfw.categories.${cat}`, cat),
+    tryFree: (name: string) => t('ainsfw.tryFree', 'TRY {name} FREE').replace(/\{name\}/g, name),
+    tryForFree: (name: string) => t('ainsfw.tryForFree', 'TRY {name} for free').replace(/\{name\}/g, name),
+    tryName: (name: string) => t('ainsfw.tryName', 'TRY {name}').replace(/\{name\}/g, name),
+    reviewsLabel: (count: number) =>
+      (count === 1
+        ? t('ainsfw.reviewOne', '{count} review')
+        : t('ainsfw.reviews', '{count} reviews')
+      ).replace(/\{count\}/g, String(count)),
+  };
+}
 
 interface ToolDetailClientProps {
   tool: AINsfwTool;
@@ -145,6 +164,7 @@ function ReviewCta({
   disabled: boolean;
   toolName: string;
 }) {
+  const { t, tryFree } = useAinsfwChrome();
   return (
     <div className="mb-8 flex justify-center">
       <button
@@ -152,7 +172,7 @@ function ReviewCta({
         disabled={disabled}
         className={ainsfwCtaButtonClass('md')}
       >
-        {disabled ? 'Opening...' : `TRY ${toolName} FREE`}
+        {disabled ? t('ainsfw.opening', 'Opening...') : tryFree(toolName)}
       </button>
     </div>
   );
@@ -189,6 +209,7 @@ function ReviewInsertCta({
   isRedirecting: boolean;
   forVideo?: boolean;
 }) {
+  const { t, tryName, tryForFree } = useAinsfwChrome();
   return (
     <button
       type="button"
@@ -196,7 +217,7 @@ function ReviewInsertCta({
       disabled={isRedirecting}
       className={ainsfwCtaButtonClass(forVideo ? 'videoLg' : 'lg')}
     >
-      {isRedirecting ? 'Opening...' : forVideo ? `TRY ${toolName}` : `TRY ${toolName} for free`}
+      {isRedirecting ? t('ainsfw.opening', 'Opening...') : forVideo ? tryName(toolName) : tryForFree(toolName)}
     </button>
   );
 }
@@ -232,6 +253,7 @@ function ToolPreviewVideoBlock({
   className?: string;
   largeReviewCta?: boolean;
 }) {
+  const { t, tryName } = useAinsfwChrome();
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [inView, setInView] = useState(false);
@@ -301,7 +323,7 @@ function ToolPreviewVideoBlock({
       ) : null}
       <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 px-3 pb-3 pt-10 bg-gradient-to-t from-black/75 via-black/35 to-transparent">
         <p className="text-white/70 text-xs sm:text-sm font-bold text-center tracking-wide">
-          Video Made with {toolName}
+          {t('ainsfw.videoMadeWith', 'Video Made with {name}').replace(/\{name\}/g, toolName)}
         </p>
         {largeReviewCta ? (
           <div onClick={(e) => e.stopPropagation()}>
@@ -314,7 +336,7 @@ function ToolPreviewVideoBlock({
             disabled={isRedirecting}
             className={ainsfwCtaButtonClass('videoSm')}
           >
-            {isRedirecting ? 'Opening...' : `TRY ${toolName}`}
+            {isRedirecting ? t('ainsfw.opening', 'Opening...') : tryName(toolName)}
           </button>
         )}
       </div>
@@ -439,6 +461,7 @@ function ReviewGlossary({
 }
 
 export default function ToolDetailClient({ tool, fullReview, showVerified = false, aiArticles = [], initialStats, reviewAuthor, listingBlocks, featuredHubSlugs = [], featuredHubTools = [], featuredHubStats = {}, verifiedSlugs = [] }: ToolDetailClientProps) {
+  const { t, lp, catLabel, tryFree, tryForFree, reviewsLabel } = useAinsfwChrome();
   const placeholder = '/assets/image.jpg';
   const [imageSrc, setImageSrc] = useState(
     tool.image && (tool.image.startsWith('https://') || tool.image.startsWith('/'))
@@ -557,11 +580,11 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
       <div className="relative z-10 px-4 sm:px-6 py-3 sm:py-3.5 border-b border-[#22c55e]/15 bg-[#04140c]/80 backdrop-blur-xl mt-24 sm:mt-28">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           <nav className="flex items-center flex-wrap text-xs text-gray-500 gap-1.5 min-w-0">
-            <Link href="/" className="hover:text-white transition-colors shrink-0">Home</Link>
+            <Link href={lp('/')} className="hover:text-white transition-colors shrink-0">{t('ainsfw.home', 'Home')}</Link>
             <span className="shrink-0">/</span>
-            <Link href="/ainsfw" className="hover:text-white transition-colors shrink-0">AI NSFW Tools</Link>
+            <Link href={lp('/ainsfw')} className="hover:text-white transition-colors shrink-0">{t('ainsfw.breadcrumbHub', 'AI NSFW Tools')}</Link>
             <span className="shrink-0">/</span>
-            <Link href={`/ainsfw/${categoryToSlug(tool.category)}`} className="text-gray-400 hover:text-white transition-colors truncate max-w-[120px]">{tool.category}</Link>
+            <Link href={lp(`/ainsfw/${categoryToSlug(tool.category)}`)} className="text-gray-400 hover:text-white transition-colors truncate max-w-[120px]">{catLabel(tool.category)}</Link>
             <span className="shrink-0">/</span>
             <span className="text-white font-semibold truncate max-w-[140px] sm:max-w-[180px]">{tool.name}</span>
           </nav>
@@ -650,7 +673,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                     />
                     <div className="absolute top-3 left-3">
                       <span className={`${catBadge} text-xs font-black px-2 py-1 rounded border border-black/20 uppercase tracking-wider`}>
-                        {tool.category}
+                        {catLabel(tool.category)}
                       </span>
                     </div>
                   </div>
@@ -664,7 +687,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                     disabled={isRedirecting}
                     className={ainsfwCtaButtonClass('md', 'w-full')}
                   >
-                    {isRedirecting ? 'Opening...' : `TRY ${tool.name} FREE`}
+                    {isRedirecting ? t('ainsfw.opening', 'Opening...') : tryFree(tool.name)}
                   </button>
                 </div>
                 )}
@@ -672,22 +695,22 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                 {/* Quick stats grid */}
                 <div className="p-4 grid grid-cols-2 gap-2">
                   <div className="bg-white/5 rounded-xl border border-white/10 p-2.5 text-center">
-                    <div className="text-[9px] font-black text-gray-400 uppercase tracking-wider mb-0.5">Plan</div>
+                    <div className="text-[9px] font-black text-gray-400 uppercase tracking-wider mb-0.5">{t('ainsfw.plan', 'Plan')}</div>
                     <div className="text-xs font-bold text-white leading-tight">{tool.subscription}</div>
                   </div>
                   <div className="bg-white/5 rounded-xl border border-white/10 p-2.5 text-center">
-                    <div className="text-[9px] font-black text-gray-400 uppercase tracking-wider mb-0.5">Vendor</div>
+                    <div className="text-[9px] font-black text-gray-400 uppercase tracking-wider mb-0.5">{t('ainsfw.vendor', 'Vendor')}</div>
                     <div className="text-xs font-bold text-white truncate leading-tight">{tool.vendor}</div>
                   </div>
                   <div className="col-span-2 bg-white/5 rounded-xl border border-white/10 p-2.5">
-                    <div className="text-[9px] font-black text-gray-400 uppercase tracking-wider mb-1">Accepts</div>
+                    <div className="text-[9px] font-black text-gray-400 uppercase tracking-wider mb-1">{t('ainsfw.accepts', 'Accepts')}</div>
                     <div className="flex flex-wrap gap-1.5">
                       {tool.payment.length > 0 ? tool.payment.map((p) => (
                         <span key={p} className="inline-flex items-center gap-1 bg-white/10 border border-white/20 rounded px-2 py-0.5 text-[10px] font-black text-white">
                           {PAYMENT_ICON[p] || '💰'} {p}
                         </span>
                       )) : (
-                        <span className="text-xs text-gray-400">Not specified</span>
+                        <span className="text-xs text-gray-400">{t('ainsfw.notSpecified', 'Not specified')}</span>
                       )}
                     </div>
                   </div>
@@ -713,7 +736,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                   ))}
                 </div>
                 <span className="text-base font-bold text-[#22c55e]">
-                  {reviews.length} review{reviews.length !== 1 ? 's' : ''}
+                  {reviewsLabel(reviews.length)}
                 </span>
               </button>
 
@@ -847,7 +870,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                       </svg>
                     ))}
                   </div>
-                  <span className="text-gray-400 text-sm">{reviewAvg}/5 · {reviews.length} review{reviews.length !== 1 ? 's' : ''}</span>
+                  <span className="text-gray-400 text-sm">{reviewAvg}/5 · {reviewsLabel(reviews.length)}</span>
                 </button>
               )}
 
@@ -894,7 +917,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                   disabled={isRedirecting}
                   className={ainsfwCtaButtonClass('full', 'max-w-md')}
                 >
-                  {isRedirecting ? 'Opening...' : `TRY ${tool.name} FREE`}
+                  {isRedirecting ? t('ainsfw.opening', 'Opening...') : tryFree(tool.name)}
                 </button>
               </div>
 
@@ -1028,7 +1051,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                               disabled={isRedirecting}
                               className={ainsfwCtaButtonClass('md')}
                             >
-                              {isRedirecting ? 'Opening...' : `TRY ${tool.name} for free`}
+                              {isRedirecting ? t('ainsfw.opening', 'Opening...') : tryForFree(tool.name)}
                             </button>
                           </div>
                         )}
@@ -1066,7 +1089,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                     disabled={isRedirecting}
                     className={ainsfwCtaButtonClass('full', 'max-w-md')}
                   >
-                    {isRedirecting ? 'Opening...' : `TRY ${tool.name} FREE`}
+                    {isRedirecting ? t('ainsfw.opening', 'Opening...') : tryFree(tool.name)}
                   </button>
                 </div>
               )}
@@ -1109,10 +1132,10 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
           <section className="mt-12 border-t border-white/5 pt-10">
             <div className="flex items-end justify-between mb-4">
               <div>
-                <h2 className="text-xl sm:text-2xl font-black text-white">AI NSFW Articles &amp; Guides</h2>
-                <p className="text-gray-400 text-sm">In-depth reviews, comparisons and how-tos</p>
+                <h2 className="text-xl sm:text-2xl font-black text-white">{t('ainsfw.articlesTitle', 'AI NSFW Articles & Guides')}</h2>
+                <p className="text-gray-400 text-sm">{t('ainsfw.articlesSub', 'In-depth reviews, comparisons and how-tos')}</p>
               </div>
-              <Link href="/blog/category/ai-nsfw" className="text-xs font-bold text-[#22c55e] hover:underline">All AI articles →</Link>
+              <Link href={lp('/blog/category/ai-nsfw')} className="text-xs font-bold text-[#22c55e] hover:underline">{t('ainsfw.allAiArticles', 'All AI articles →')}</Link>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {aiArticles.map((article, i) => (
@@ -1141,16 +1164,16 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
         )}
 
         <section className="mt-12 border-t border-white/5 pt-10">
-          <h2 className="text-xl sm:text-2xl font-black text-white mb-2">Browse AI NSFW Categories</h2>
-          <p className="text-gray-400 text-sm mb-5">Explore tools by type on Erogram</p>
+          <h2 className="text-xl sm:text-2xl font-black text-white mb-2">{t('ainsfw.browseCategories', 'Browse AI NSFW Categories')}</h2>
+          <p className="text-gray-400 text-sm mb-5">{t('ainsfw.browseCategoriesSub', 'Explore tools by type on Erogram')}</p>
           <div className="flex flex-wrap gap-2">
             {AINSFW_CATEGORIES.filter((c) => c !== 'All').map((cat) => (
               <Link
                 key={cat}
-                href={`/ainsfw/${categoryToSlug(cat)}`}
+                href={lp(`/ainsfw/${categoryToSlug(cat)}`)}
                 className="px-4 py-2 rounded-lg bg-white/10 text-white border border-white/15 text-sm font-black hover:bg-white/15 hover:border-[#22c55e]/40 transition-all"
               >
-                {cat}
+                {catLabel(cat)}
               </Link>
             ))}
           </div>
