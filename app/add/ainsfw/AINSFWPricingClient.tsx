@@ -5,7 +5,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { AnimatePresence, motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
-import ErogramDevilGirlFooter from '@/components/ErogramDevilGirlFooter';
 import Footer from '@/components/Footer';
 import { saveAINSFWListingDraft, checkoutAINSFWListing, type AINSFWFormData } from '@/lib/actions/ainsfwPayment';
 import { AINSFW_PLAN_PRICES, type AINSFWPlan } from '@/lib/ainsfw/planPrices';
@@ -1746,7 +1745,6 @@ export default function AINSFWPricingClient({
 
       <MobileSubmitStickyBar onSubmit={scrollToPricing} />
 
-      <ErogramDevilGirlFooter variant="mascot-blended" />
       <Footer />
     </div>
   );
