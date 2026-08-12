@@ -268,6 +268,7 @@ export function getFullReview(slug: string): AINsfwFullReview | undefined {
  * Add every new paying client here with goLive — single source of truth for badge + recent pool.
  */
 export const AINSFW_PAID_CLIENTS = [
+  { slug: 'flick-ai-ai-porn-generator', goLive: '2026-08-12T00:00:00.000Z' },
   { slug: 'clothoff-undress-ai', goLive: '2026-08-05T00:00:00.000Z' },
   { slug: 'nudiva-undress-ai', goLive: '2026-08-05T00:00:00.000Z' },
   { slug: 'genesis-porn-ai-image', goLive: '2026-08-05T00:00:00.000Z' },

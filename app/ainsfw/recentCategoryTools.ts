@@ -2,7 +2,7 @@ import type { AINsfwTool } from './types';
 import { AINSFW_PAID_CLIENTS } from './fullReviews';
 import { AINSFW_RECENT_EXCLUDED_SLUGS } from './newlyAddedSlugs';
 
-export const RECENT_POOL_LIMIT = 6;
+export const RECENT_POOL_LIMIT = 8;
 export const RECENT_DISPLAY_LIMIT = 4;
 
 /** When a category has fewer paid recent listings, pull from these related categories next. */
@@ -46,7 +46,7 @@ export function pickRecentCategoryTools(
   category: string,
   toolsBySlug: Map<string, AINsfwTool>,
   paidSubmissions: Array<AINsfwTool & { createdAt?: string }>,
-  limit = RECENT_DISPLAY_LIMIT,
+  limit = RECENT_POOL_LIMIT,
 ): AINsfwTool[] {
   const picked: AINsfwTool[] = [];
   const seen = new Set<string>();

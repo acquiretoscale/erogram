@@ -103,6 +103,7 @@ const NAV_PRE: Array<{ labelKey: string; fallback: string; href: string; badge?:
 ];
 
 const NAV_POST: Array<{ labelKey: string; fallback: string; href: string; badge?: string }> = [
+  { labelKey: 'nav.community', fallback: 'Community', href: '/community' },
   { labelKey: 'nav.blog', fallback: 'Blog', href: '/blog' },
 ];
 
@@ -657,10 +658,6 @@ function MobileNavMenu({ open, lp, onClose, trendingLight = false }: { open: boo
             </div>
           )}
 
-          <Link href={lp('/tags')} onClick={onClose} className={item}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-            <span className="flex-1">{t('nav.tags', 'Tags')}</span>
-          </Link>
           <Link href="/trending" onClick={onClose} className={item}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={trendingLight ? 'currentColor' : '#ef4444'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
             <span className={`flex-1 font-semibold ${trendingLight ? 'text-white' : 'text-red-500'}`}>{t('nav.trending', 'TRENDING')}</span>
@@ -874,9 +871,6 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
             </Link>
           ))}
           <OFsearchNav />
-          <Link href={lp('/tags')} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-[0.18em] uppercase text-white hover:text-white/80 transition-colors">
-            {t('nav.tags', 'Tags')}
-          </Link>
           <Link href="/trending" className={`shrink-0 inline-flex items-center gap-1 text-[13px] font-black uppercase tracking-[0.1em] transition-colors ${trendingLight ? 'text-white hover:text-white/80' : 'text-red-500 hover:text-red-400'}`}>
             {t('nav.trending', 'TRENDING')}
           </Link>
@@ -1052,10 +1046,10 @@ export function EditorialFooter() {
             <FooterLink href={lp('/best-telegram-groups')}>{t('footer.telegramGroups', 'Telegram Groups')}</FooterLink>
             <FooterLink href={lp('/bots')}>{t('footer.telegramBots', 'Telegram Bots')}</FooterLink>
             <FooterLink href={lp('/ainsfw')}>{t('footer.aiNsfwTools', 'AI NSFW Tools')}</FooterLink>
-            <FooterLink href="/tags">{t('footer.tags', 'Tags')}</FooterLink>
             <FooterLink href="/blog">{t('footer.blogGuides', 'Blog & Guides')}</FooterLink>
             <FooterLink href={lp('/onlyfanssearch')}>{t('footer.onlyfansCreators', 'OnlyFans Creators')}</FooterLink>
             <FooterLink href="/trending"><span className="text-[#c0392f] font-semibold">{t('footer.trending', 'Trending')}</span></FooterLink>
+            <FooterLink href="/tags">{t('footer.tags', 'Tags')}</FooterLink>
           </FooterCol>
 
           <FooterCol label={t('footer.getSeen', 'Get Seen')}>

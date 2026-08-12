@@ -12,7 +12,6 @@ import type { FeedCampaign } from '../groups/types';
 import type { AINsfwTool, AINsfwCategory, AinsfwSortOption, PaymentOption, PricingModel } from './types';
 import { toolMatchesPricingModel } from './types';
 import { renderAinsfwGuideText } from '@/lib/ainsfw/internalLinks';
-import { RECENT_DISPLAY_LIMIT } from './recentCategoryTools';
 import type { ToolStatsData } from '@/lib/actions/ainsfw';
 import type { AuthorProfile } from '@/lib/actions/authors';
 import { AINSFW_PAGE_SIZE } from './constants';
@@ -240,7 +239,7 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
             )}
 
             {isDefaultBrowse && paginationCurrentPage === 1 && recentTools.length > 0 && (
-              <RecentAdditionsBlock tools={recentTools} allStats={allStats} shuffle displayCount={RECENT_DISPLAY_LIMIT} verifiedSlugs={verifiedSlugs} />
+              <RecentAdditionsBlock tools={recentTools} allStats={allStats} verifiedSlugs={verifiedSlugs} />
             )}
 
             <div id="ainsfw-tools" className="scroll-mt-24">
