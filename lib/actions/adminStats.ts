@@ -28,7 +28,7 @@ export async function getMetrics(token: string) {
 
   await connectDB();
   const [userCount, groupCount, approvedGroupCount, pendingGroupCount, viewsResult, pendingBotCount, pendingReviewCount, pendingReportCount] = await Promise.all([
-    User.countDocuments(),
+    User.countDocuments({ isSeedUser: { $ne: true } }),
     Group.countDocuments(),
     Group.countDocuments({ status: 'approved' }),
     Group.countDocuments({ status: 'pending' }),
@@ -99,6 +99,7 @@ export async function getLatestSale(token: string, since: number) {
     User.findOne({
       createdAt: { $gt: sinceDate },
       isAdmin: { $ne: true },
+      isSeedUser: { $ne: true },
     }).sort({ createdAt: -1 }).lean() as any,
   ]);
 
@@ -144,7 +145,7 @@ export async function getAdminNotifications(token: string) {
     Post.find({ status: 'pending' }).sort({ createdAt: -1 }).limit(20).select('authorName content createdAt').populate('groupId', 'name').lean(),
     Report.find({ status: 'pending' }).sort({ createdAt: -1 }).limit(20).select('reason createdAt groupDetails').lean(),
     Group.find({ status: 'pending' }).sort({ createdAt: -1 }).limit(20).select('name createdAt createdByUsername').lean(),
-    User.find({ createdAt: { $gte: since48h } }).sort({ createdAt: -1 }).limit(20).select('username firstName premium createdAt country').lean(),
+    User.find({ createdAt: { $gte: since48h }, isSeedUser: { $ne: true } }).sort({ createdAt: -1 }).limit(20).select('username firstName premium createdAt country').lean(),
     PremiumEvent.find({ event: { $in: ['payment_success', 'crypto_payment_success', 'submission_payment_success', 'featured_creator_payment_success'] }, createdAt: { $gte: since7d } }).sort({ createdAt: -1 }).limit(20).select('plan paymentMethod createdAt userId entityType tier paymentMethod').populate('userId', 'username firstName').lean(),
     Bot.find({ createdAt: { $gte: since48h }, status: { $ne: 'pending' } }).sort({ createdAt: -1 }).limit(20).select('name createdAt paidBoost').lean(),
   ]);

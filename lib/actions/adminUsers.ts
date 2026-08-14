@@ -25,9 +25,11 @@ export async function getUsers(token: string, search?: string) {
   if (!admin) throw new Error('Unauthorized');
 
   await connectDB();
-  let query: any = {};
+  // Ghost seed users NEVER appear as real users. Hard cut.
+  let query: any = { isSeedUser: { $ne: true } };
   if (search) {
     query = {
+      isSeedUser: { $ne: true },
       $or: [
         { username: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },

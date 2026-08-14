@@ -72,6 +72,15 @@ export function countryCodeToFlag(code: string | undefined | null): string {
   );
 }
 
+/** Flag emoji for a stored or display country code (UK/GB → 🇬🇧). */
+export function countryToFlagEmoji(code: string | undefined | null): string {
+  if (!code?.trim()) return '';
+  const upper = code.trim().toUpperCase();
+  if (upper === 'UK' || upper === 'GB') return countryCodeToFlag('GB');
+  const iso = parseCountryCode(upper);
+  return iso ? countryCodeToFlag(iso) : '';
+}
+
 /**
  * Build a $set update object from geo data, skipping undefined values
  * so we never overwrite existing data with null.

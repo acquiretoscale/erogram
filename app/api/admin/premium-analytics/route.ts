@@ -58,9 +58,10 @@ export async function GET(req: NextRequest) {
       .limit(50)
       .lean(),
 
-    // Current premium users
+    // Real paid premium only. Seed/community fake premium has no lastPaymentChargeId.
     User.find({
       premium: true,
+      lastPaymentChargeId: { $exists: true, $nin: [null, ''] },
       $or: [{ premiumExpiresAt: null }, { premiumExpiresAt: { $gt: new Date() } }],
     })
       .select('username telegramUsername firstName lastName telegramId premiumPlan premiumSince premiumExpiresAt paymentMethod lastPaymentChargeId')

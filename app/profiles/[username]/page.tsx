@@ -3,7 +3,10 @@ import { User } from '@/lib/models';
 import { getPublicUserContributions } from '@/lib/actions/userProfile';
 import SeedProfileAdminPanel from './SeedProfileAdminPanel';
 import PrivateSeedProfileGate from './PrivateSeedProfileGate';
+import ProfileLoginGate from './ProfileLoginGate';
 import Link from 'next/link';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 
 interface PublicProfilePageProps {
   params: Promise<{ username: string }>;
@@ -20,7 +23,7 @@ export async function generateMetadata(props: PublicProfilePageProps) {
     bio?: string;
   } | null;
 
-  if (!user || user.isProfileVisible !== true) {
+  if (!user || user.isProfileVisible === false) {
     return {
       title: 'Profile Not Found',
       description: 'This user profile does not exist or is not public.',
@@ -49,6 +52,11 @@ function snippet(text: string, max = 140) {
   return `${t.slice(0, max).trim()}…`;
 }
 
+const CREAM = '#F7F4EC';
+const PLUM = '#2B1B28';
+const MUTED = '#6B6568';
+const BORDER = 'rgba(43,27,40,0.12)';
+
 export default async function PublicProfilePage(props: PublicProfilePageProps) {
   const params = await props.params;
   const username = decodeURIComponent(params.username).replace(/^@/, '');
@@ -56,65 +64,122 @@ export default async function PublicProfilePage(props: PublicProfilePageProps) {
   await connectDB();
   const user = (await User.findOne({ username }).lean()) as Record<string, any> | null;
 
-  if (!user || user.isProfileVisible !== true) {
-    // Private (or missing): never ship profile HTML to the public. Admin unlocks client-side.
-    return <PrivateSeedProfileGate username={username} />;
+  const profilePath = `/profiles/${encodeURIComponent(username)}`;
+
+  if (!user || user.isProfileVisible === false) {
+    return <PrivateSeedProfileGate username={username} redirectPath={profilePath} />;
   }
 
   const contributions = await getPublicUserContributions(String(user._id), 10);
   const joinedAt = new Date(user.createdAt).toISOString();
+  const displayName = user.firstName || username;
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 text-white">
-      <div className="border-b border-slate-800 bg-slate-900/50 backdrop-blur">
-        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="text-sm text-slate-400 hover:text-white transition">
-            ← Back to Erogram
-          </Link>
-        </div>
-      </div>
-
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <div className="bg-slate-800 rounded-lg border border-slate-700 p-8">
-          <SeedProfileAdminPanel
-            userId={String(user._id)}
-            username={username}
-            firstName={user.firstName || null}
-            sex={user.sex || null}
-            bio={user.bio || null}
-            photoUrl={user.photoUrl || null}
-            joinedAt={joinedAt}
-          />
-        </div>
-
-        <div className="mt-8 bg-slate-800 rounded-lg border border-slate-700 p-8">
-          <h2 className="text-lg font-bold text-white mb-1">Recent contributions</h2>
-          <p className="text-sm text-slate-400 mb-6">Reviews, comments, and activity on Erogram</p>
-
-          {contributions.length === 0 ? (
-            <p className="text-sm text-slate-500">No public contributions yet.</p>
-          ) : (
-            <ul className="space-y-4">
-              {contributions.map((item) => (
-                <li key={item.id} className="border border-slate-700 rounded-lg p-4 bg-slate-900/40">
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <Link href={item.href} className="text-sm font-semibold text-blue-400 hover:text-blue-300">
-                      {item.label}
-                    </Link>
-                    <span className="text-xs text-slate-500 shrink-0">{formatWhen(item.createdAt)}</span>
-                  </div>
-                  {item.rating ? (
-                    <p className="text-xs text-amber-400 mb-2">{item.rating}/5 stars</p>
-                  ) : null}
-                  {item.content ? (
-                    <p className="text-sm text-slate-300 leading-relaxed">{snippet(item.content)}</p>
-                  ) : null}
+    <ProfileLoginGate redirectPath={profilePath}>
+      <Navbar />
+      <main
+        className="min-h-screen font-[family-name:var(--font-baloo)]"
+        style={{ backgroundColor: CREAM, color: PLUM }}
+      >
+        <div className="pt-24 pb-12">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6">
+            <nav aria-label="Breadcrumb" className="mb-6">
+              <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 list-none p-0 m-0 text-[11px] font-semibold" style={{ color: MUTED }}>
+                <li>
+                  <Link href="/" className="hover:opacity-70 transition-opacity" style={{ color: MUTED }}>
+                    Home
+                  </Link>
                 </li>
-              ))}
-            </ul>
-          )}
+                <li aria-hidden className="select-none" style={{ color: 'rgba(43,27,40,0.28)' }}>/</li>
+                <li>
+                  <Link href="/community" className="hover:opacity-70 transition-opacity" style={{ color: MUTED }}>
+                    Community
+                  </Link>
+                </li>
+                <li aria-hidden className="select-none" style={{ color: 'rgba(43,27,40,0.28)' }}>/</li>
+                <li className="font-bold truncate max-w-[200px]" style={{ color: PLUM }} aria-current="page">
+                  {displayName}
+                </li>
+              </ol>
+            </nav>
+
+            <div
+              className="rounded-2xl border overflow-hidden mb-6"
+              style={{
+                backgroundColor: CREAM,
+                borderColor: BORDER,
+                boxShadow: '0 30px 80px -30px rgba(43,27,40,0.2)',
+              }}
+            >
+              <div
+                className="relative h-28 sm:h-36"
+                style={{ background: 'linear-gradient(135deg, #3a0f1e 0%, #240a14 50%, #0c0508 100%)' }}
+              />
+              <div className="px-5 sm:px-8 pb-7 -mt-12 relative">
+                <SeedProfileAdminPanel
+                  userId={String(user._id)}
+                  username={username}
+                  firstName={user.firstName || null}
+                  sex={user.sex || null}
+                  country={user.country || null}
+                  bio={user.bio || null}
+                  photoUrl={user.photoUrl || null}
+                  joinedAt={joinedAt}
+                />
+              </div>
+            </div>
+
+            <div
+              className="rounded-2xl border p-5 sm:p-8"
+              style={{
+                backgroundColor: CREAM,
+                borderColor: BORDER,
+                boxShadow: '0 18px 40px -28px rgba(43,27,40,0.28)',
+              }}
+            >
+              <div className="text-[10px] font-bold tracking-[0.28em] uppercase mb-2" style={{ color: PLUM }}>
+                Activity
+              </div>
+              <h2 className="text-xl font-extrabold mb-1" style={{ color: PLUM }}>
+                Recent contributions
+              </h2>
+              <p className="text-sm mb-6" style={{ color: MUTED }}>
+                Reviews, comments, and activity on Erogram
+              </p>
+
+              {contributions.length === 0 ? (
+                <p className="text-sm" style={{ color: MUTED }}>No public contributions yet.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {contributions.map((item) => (
+                    <li
+                      key={item.id}
+                      className="rounded-xl border p-4"
+                      style={{ backgroundColor: 'rgba(43,27,40,0.03)', borderColor: BORDER }}
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <Link href={item.href} className="text-sm font-bold hover:opacity-70 transition-opacity" style={{ color: PLUM }}>
+                          {item.label}
+                        </Link>
+                        <span className="text-xs shrink-0 tabular-nums" style={{ color: MUTED }}>{formatWhen(item.createdAt)}</span>
+                      </div>
+                      {item.rating ? (
+                        <p className="text-xs mb-2" style={{ color: PLUM }}>{item.rating}/5 stars</p>
+                      ) : null}
+                      {item.content ? (
+                        <p className="text-sm leading-relaxed" style={{ color: MUTED }}>{snippet(item.content)}</p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
         </div>
+      </main>
+      <div style={{ background: 'linear-gradient(to bottom, #3d2538 0%, #2B1B28 100%)' }}>
+        <Footer />
       </div>
-    </main>
+    </ProfileLoginGate>
   );
 }

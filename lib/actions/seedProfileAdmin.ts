@@ -27,8 +27,14 @@ async function authenticateAdmin(token: string) {
 
 async function isEngagementSeedUser(userId: string): Promise<boolean> {
   await connectDB();
-  const user = await User.findById(userId).select('password').lean() as { password?: string } | null;
-  if (!user?.password) return false;
+  const user = await User.findById(userId).select('password isSeedUser').lean() as {
+    password?: string;
+    isSeedUser?: boolean;
+  } | null;
+  if (!user) return false;
+  // DB flag is the source of truth: SEED USER / NOT A REAL USER
+  if (user.isSeedUser === true) return true;
+  if (!user.password) return false;
   return bcrypt.compare(SEED_PASSWORD, user.password);
 }
 

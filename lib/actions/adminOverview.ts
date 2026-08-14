@@ -71,9 +71,14 @@ export async function getAdminOverview(token: string) {
     Report.countDocuments({ status: 'pending' }),
     CampaignClick.countDocuments(),
     CampaignClick.countDocuments({ clickedAt: { $gte: _24h } }),
-    User.countDocuments(),
+    User.countDocuments({ isSeedUser: { $ne: true } }),
     Group.aggregate([{ $group: { _id: null, total: { $sum: '$views' } } }]),
-    User.find({ $or: [{ premium: true }, { premiumSince: { $ne: null } }] })
+    // Real paid subs only. Seed/community fake premium has no lastPaymentChargeId.
+    User.find({
+      isSeedUser: { $ne: true },
+      $or: [{ premium: true }, { premiumSince: { $ne: null } }],
+      lastPaymentChargeId: { $exists: true, $nin: [null, ''] },
+    })
       .sort({ premiumSince: -1 })
       .select('username firstName country city photoUrl telegramUsername premium premiumPlan premiumSince premiumExpiresAt paymentMethod')
       .lean(),
@@ -106,12 +111,12 @@ export async function getAdminOverview(token: string) {
       { $sort: { _id: 1 } },
     ]),
     User.aggregate([
-      { $match: { createdAt: { $gte: _30d } } },
+      { $match: { createdAt: { $gte: _30d }, isSeedUser: { $ne: true } } },
       { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, value: { $sum: 1 } } },
       { $sort: { _id: 1 } },
     ]),
     User.aggregate([
-      { $match: { createdAt: { $gte: _30d }, country: { $ne: null } } },
+      { $match: { createdAt: { $gte: _30d }, country: { $ne: null }, isSeedUser: { $ne: true } } },
       { $group: { _id: '$country', count: { $sum: 1 } } },
       { $sort: { count: -1 } }, { $limit: 10 },
     ]),
@@ -145,7 +150,7 @@ export async function getAdminOverview(token: string) {
     Group.countDocuments({ status: 'scheduled' }),
     Group.findOne({ status: 'scheduled' }).sort({ scheduledPublishAt: 1 }).select('scheduledPublishAt name').lean(),
     Group.findOne({ status: 'scheduled' }).sort({ scheduledPublishAt: -1 }).select('scheduledPublishAt').lean(),
-    User.countDocuments({ createdAt: { $gte: _24h } }),
+    User.countDocuments({ createdAt: { $gte: _24h }, isSeedUser: { $ne: true } }),
     Bot.countDocuments({ createdAt: { $gte: _24h } }),
     Bot.countDocuments({ createdAt: { $gte: _24h }, paidBoost: true }),
   ]);
@@ -327,8 +332,8 @@ export async function getAdminOverview(token: string) {
       adClicks: { last24h: adClicks24h, lifetime: totalAdClicks, trend30d: buildTrend(adClicksTrend30d) },
       traffic: { lifetime: totalPageviewsLifetime, trend30d: buildTrend(trafficTrend30d) },
       users: {
-        total: totalUsers - 20, free: totalUsers - 20 - allPremiumUsers.length,
-        newUsersTrend30d: buildTrend((newUsersTrend30d as { _id: string; value: number }[]).map(d => d._id === '2026-03-14' ? { ...d, value: Math.max(0, d.value - 20) } : d)),
+        total: totalUsers, free: totalUsers - allPremiumUsers.length,
+        newUsersTrend30d: buildTrend(newUsersTrend30d as { _id: string; value: number }[]),
         byCountry30d: (usersByCountry30d as { _id: string; count: number }[]).map(c => ({ country: c._id, count: c.count })),
       },
       engagement: { bookmarks: totalBookmarks, folders: totalBookmarkFolders },

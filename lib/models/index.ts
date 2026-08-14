@@ -40,6 +40,13 @@ export const userSchema = new Schema(
     joinedGroups: [{ type: Schema.Types.ObjectId, ref: 'Group' }],
     savedGroups: [{ type: Schema.Types.ObjectId, ref: 'Group' }],
     isAdmin: { type: Boolean, default: false },
+    /**
+     * SEED USER / NOT A REAL USER.
+     * Ghost account for community/engagement seeding only.
+     * No email, no Telegram, no Google, never logged in as a person.
+     * ALWAYS filter `{ isSeedUser: { $ne: true } }` when counting or treating "real users".
+     */
+    isSeedUser: { type: Boolean, default: false, index: true },
     isProfileVisible: { type: Boolean, default: true },
     hideTelegramHandle: { type: Boolean, default: false },
     showTelegramHandle: { type: Boolean, default: true },

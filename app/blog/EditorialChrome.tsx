@@ -104,7 +104,6 @@ const NAV_PRE: Array<{ labelKey: string; fallback: string; href: string; badge?:
 
 const NAV_POST: Array<{ labelKey: string; fallback: string; href: string; badge?: string }> = [
   { labelKey: 'nav.community', fallback: 'Community', href: '/community' },
-  { labelKey: 'nav.blog', fallback: 'Blog', href: '/blog' },
 ];
 
 const ADD_ITEMS = [
@@ -658,9 +657,8 @@ function MobileNavMenu({ open, lp, onClose, trendingLight = false }: { open: boo
             </div>
           )}
 
-          <Link href="/trending" onClick={onClose} className={item}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={trendingLight ? 'currentColor' : '#ef4444'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-            <span className={`flex-1 font-semibold ${trendingLight ? 'text-white' : 'text-red-500'}`}>{t('nav.trending', 'TRENDING')}</span>
+          <Link href="/blog" onClick={onClose} className={item}>
+            <span className="flex-1">{t('nav.blog', 'Blog')}</span>
           </Link>
           {NAV_POST.map((n) => (
             <Link key={n.href} href={n.href} onClick={onClose} className={item}>
@@ -669,6 +667,10 @@ function MobileNavMenu({ open, lp, onClose, trendingLight = false }: { open: boo
               {n.badge && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#c0392f] text-white">{n.badge}</span>}
             </Link>
           ))}
+          <Link href="/trending" onClick={onClose} className={item}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={trendingLight ? 'currentColor' : '#ef4444'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            <span className={`flex-1 font-semibold ${trendingLight ? 'text-white' : 'text-red-500'}`}>{t('nav.trending', 'TRENDING')}</span>
+          </Link>
         </div>
 
         {/* Language */}
@@ -871,8 +873,11 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
             </Link>
           ))}
           <OFsearchNav />
-          <Link href="/trending" className={`shrink-0 inline-flex items-center gap-1 text-[13px] font-black uppercase tracking-[0.1em] transition-colors ${trendingLight ? 'text-white hover:text-white/80' : 'text-red-500 hover:text-red-400'}`}>
-            {t('nav.trending', 'TRENDING')}
+          <Link
+            href="/blog"
+            className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-[0.18em] uppercase text-white hover:text-white/80 transition-colors"
+          >
+            {t('nav.blog', 'Blog')}
           </Link>
           {NAV_POST.map((n) => (
             <Link
@@ -888,6 +893,9 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
               )}
             </Link>
           ))}
+          <Link href="/trending" className={`shrink-0 inline-flex items-center gap-1 text-[13px] font-black uppercase tracking-[0.1em] transition-colors ${trendingLight ? 'text-white hover:text-white/80' : 'text-red-500 hover:text-red-400'}`}>
+            {t('nav.trending', 'TRENDING')}
+          </Link>
         </nav>
 
         {/* Desktop right — ad slot + Add Tool + user menu + language (far right) */}
