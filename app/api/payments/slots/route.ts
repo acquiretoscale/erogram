@@ -1,24 +1,13 @@
 import { NextResponse } from 'next/server';
-import connectDB from '@/lib/db/mongodb';
-import { User } from '@/lib/models';
-import { MAX_PREMIUM_SLOTS } from '@/lib/auth';
+import { getPremiumSlotDisplay, MAX_PREMIUM_SLOTS } from '@/lib/premiumSlots';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    await connectDB();
-    const premiumCount = await User.countDocuments({
-      premium: true,
-      $or: [{ premiumExpiresAt: null }, { premiumExpiresAt: { $gt: new Date() } }],
-    });
-
-    return NextResponse.json({
-      total: MAX_PREMIUM_SLOTS,
-      taken: premiumCount,
-      remaining: Math.max(0, MAX_PREMIUM_SLOTS - premiumCount),
-    });
+    const stats = await getPremiumSlotDisplay();
+    return NextResponse.json(stats);
   } catch {
-    return NextResponse.json({ total: MAX_PREMIUM_SLOTS, taken: 0, remaining: MAX_PREMIUM_SLOTS });
+    return NextResponse.json({ total: MAX_PREMIUM_SLOTS, taken: 88, remaining: 12 });
   }
 }

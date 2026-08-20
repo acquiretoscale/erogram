@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateUser, MAX_PREMIUM_SLOTS } from '@/lib/auth';
-import connectDB from '@/lib/db/mongodb';
-import { User, PremiumEvent } from '@/lib/models';
+import { authenticateUser } from '@/lib/auth';
+import { PremiumEvent } from '@/lib/models';
 import { getPremiumPricing, isValidPlan, getPlanConfig } from '@/lib/premiumPricing';
 
 const API_KEY = process.env.NOWPAYMENTS_API_KEY || '';
@@ -22,15 +21,6 @@ export async function POST(req: NextRequest) {
 
   if (user.premium) {
     return NextResponse.json({ message: 'You are already a VIP member.' }, { status: 400 });
-  }
-
-  await connectDB();
-  const premiumCount = await User.countDocuments({
-    premium: true,
-    $or: [{ premiumExpiresAt: null }, { premiumExpiresAt: { $gt: new Date() } }],
-  });
-  if (premiumCount >= MAX_PREMIUM_SLOTS) {
-    return NextResponse.json({ message: 'All VIP slots are taken. Check back later.', soldOut: true }, { status: 403 });
   }
 
   const { plan } = await req.json();

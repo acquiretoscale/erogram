@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
 import { User, PremiumEvent, Group, Bot } from '@/lib/models';
 import { recordCouponUsage } from '@/lib/actions/coupons';
-import { MAX_PREMIUM_SLOTS } from '@/lib/auth';
 import { notifyAdminsOfSale } from '@/lib/utils/notifyAdmins';
 import { getPremiumPricing } from '@/lib/premiumPricing';
 import { buildBoostPaymentUpdate, SCALE_STARS } from '@/lib/boostPricing';
@@ -85,15 +84,6 @@ export async function POST(req: NextRequest) {
 
         if (user.premium && (!user.premiumExpiresAt || new Date(user.premiumExpiresAt) > new Date())) {
           await answerPreCheckoutQuery(query.id, false, 'You are already a Premium member');
-          return NextResponse.json({ ok: true });
-        }
-
-        const taken = await User.countDocuments({
-          premium: true,
-          $or: [{ premiumExpiresAt: null }, { premiumExpiresAt: { $gt: new Date() } }],
-        });
-        if (taken >= MAX_PREMIUM_SLOTS) {
-          await answerPreCheckoutQuery(query.id, false, 'All Premium spots are taken');
           return NextResponse.json({ ok: true });
         }
 
