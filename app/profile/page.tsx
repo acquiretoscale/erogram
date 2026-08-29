@@ -103,10 +103,7 @@ function ProfileContent() {
   });
   const [viewBarOpen, setViewBarOpen] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [emailUnverified, setEmailUnverified] = useState(false);
   const [emailVerifiedSuccess, setEmailVerifiedSuccess] = useState(false);
-  const [resendSending, setResendSending] = useState(false);
-  const [resendSent, setResendSent] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const [headerHeight, setHeaderHeight] = useState(82);
   const router = useRouter();
@@ -165,7 +162,6 @@ function ProfileContent() {
       sessionStorage.getItem('erogram:emailVerifiedJustNow') === '1';
     if (!justVerified) return;
 
-    setEmailUnverified(false);
     setEmailVerifiedSuccess(true);
     if (searchParams.get('emailVerified') === '1') {
       router.replace('/profile', { scroll: false });
@@ -199,8 +195,6 @@ function ProfileContent() {
         if (data.photoUrl) setPhotoUrl(data.photoUrl);
         if (data.createdAt) setMemberSince(data.createdAt);
         setBio(data.bio || null);
-        if (data.emailVerified) setEmailUnverified(false);
-        else setEmailUnverified(!!data.email && !data.emailVerified);
         setUserData({
           firstName: data.firstName || null,
           photoUrl: data.photoUrl || null,
@@ -257,19 +251,6 @@ function ProfileContent() {
     return diff <= 0 ? 0 : Math.ceil(diff / 86400000);
   };
 
-  const handleResendVerification = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    setResendSending(true);
-    try {
-      const { resendVerificationEmail } = await import('@/lib/actions/verifyEmail');
-      await resendVerificationEmail(token);
-      setResendSent(true);
-    } finally {
-      setResendSending(false);
-    }
-  };
-
   const handleDismissEmailVerifiedSuccess = () => {
     setEmailVerifiedSuccess(false);
     sessionStorage.removeItem('erogram:emailVerifiedJustNow');
@@ -285,7 +266,7 @@ function ProfileContent() {
     isAdmin, viewMode, viewBarOpen, deletingAccount, userData, tagOptions, aiOptions, activeTab, menuCollapsed, headerHeight,
     headerRef, effectivePremium, effectiveAdmin, selectTab, setMenuCollapsed, setViewBarOpen, setViewMode, handleLogout, handleDeleteAccount,
     getRemainingDays, toast, router, setFirstName, setBio, setPhotoUrl, setUserData, currentUserId,
-    emailUnverified, emailVerifiedSuccess, handleDismissEmailVerifiedSuccess, resendSending, resendSent, handleResendVerification,
+    emailVerifiedSuccess, handleDismissEmailVerifiedSuccess,
   }} />;
 }
 
@@ -297,7 +278,7 @@ function ProfileThemedShell(props: any) {
     isAdmin, viewMode, viewBarOpen, deletingAccount, userData, tagOptions, aiOptions, activeTab, menuCollapsed, headerHeight,
     headerRef, effectivePremium, effectiveAdmin, selectTab, setMenuCollapsed, setViewBarOpen, setViewMode, handleLogout, handleDeleteAccount,
     getRemainingDays, toast, router, setFirstName, setBio, setPhotoUrl, setUserData, currentUserId,
-    emailUnverified, emailVerifiedSuccess, handleDismissEmailVerifiedSuccess, resendSending, resendSent, handleResendVerification,
+    emailVerifiedSuccess, handleDismissEmailVerifiedSuccess,
   } = props;
   const creatorLiveHighlight = searchParams.get('creatorLive') === '1';
 
@@ -379,24 +360,6 @@ function ProfileThemedShell(props: any) {
             >
               Close
             </button>
-          </div>
-        </div>
-      )}
-
-      {emailUnverified && !emailVerifiedSuccess && (
-        <div className="bg-[#00AFF0] text-white border-b border-[#0099d6]">
-          <div className="max-w-[1280px] mx-auto px-4 sm:px-8 py-2.5 flex items-center justify-center gap-3 flex-wrap text-[12px] sm:text-sm font-semibold">
-            <span>{resendSent ? 'Verification email sent. Check your inbox.' : 'Verify your email for the full experience.'}</span>
-            {!resendSent && (
-              <button
-                type="button"
-                onClick={handleResendVerification}
-                disabled={resendSending}
-                className="underline hover:no-underline disabled:opacity-60"
-              >
-                {resendSending ? 'Sending…' : 'Resend email'}
-              </button>
-            )}
           </div>
         </div>
       )}
@@ -677,7 +640,7 @@ function ProfileThemedShell(props: any) {
                   UPDATED / VERIFIED DAILY
                 </p>
               </div>
-              <VaultTab isPremium={effectivePremium} isAdmin={effectiveAdmin} onUpgrade={() => selectTab('subscription')} />
+              <VaultTab isPremium={effectivePremium} isAdmin={effectiveAdmin} onUpgrade={() => router.push('/premium')} />
             </motion.div>
           ) : activeTab === 'theme' ? (
             <ThemeTab isPremium={effectivePremium} />
@@ -844,7 +807,7 @@ function HomeTab({
 
   const handlePremiumGate = (premiumTab: Tab) => {
     if (isPremium) onNavigate(premiumTab);
-    else onNavigate('subscription');
+    else window.location.assign('/premium');
   };
 
   const formatGroupCount = (n: number) => {
