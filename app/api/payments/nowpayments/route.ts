@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateUser } from '@/lib/auth';
 import { PremiumEvent } from '@/lib/models';
-import { getPremiumPricing, isValidPlan, getPlanConfig } from '@/lib/premiumPricing';
+import { getPremiumPricing, getPlanConfig } from '@/lib/premiumPricing';
 
 const API_KEY = process.env.NOWPAYMENTS_API_KEY || '';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { plan } = await req.json();
-  if (!plan || !isValidPlan(plan)) {
+  if (plan !== 'quarterly' && plan !== 'yearly') {
     return NextResponse.json({ message: 'Invalid plan.' }, { status: 400 });
   }
 

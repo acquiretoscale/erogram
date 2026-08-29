@@ -39,11 +39,13 @@ interface VaultTeaserItem { _id: string; name: string; image: string; category: 
 
 const G = { gold: '#00aff0', goldLight: '#00d4ff', goldDim: 'rgba(255,255,255,0.4)', goldText: 'rgba(255,255,255,0.55)', border: 'rgba(255,255,255,0.08)', borderLight: 'rgba(255,255,255,0.12)', innerBg: 'rgba(255,255,255,0.03)' };
 const PREMIUM_BEIGE = '#ffffff';
-const TELEGRAM_BLUE = '#1877b8';
 const ORDER_GREEN = '#16a34a';
 const ORDER_GREEN_DARK = '#15803d';
 const CRYPTO_ORANGE = '#f7931a';
-const CRYPTO_ORANGE_BORDER = '#e07d0a';
+const TELEGRAM_BLUE = '#1877b8';
+const CHECKOUT_BLUE = '#1e3a8a';
+const checkoutBtnClass =
+  'shrink-0 px-3.5 py-2.5 rounded-lg font-black text-white border-2 border-[#111] shadow-[3px_3px_0_0_#111] transition-all duration-150 hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_0_#111] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0_0_#111] disabled:opacity-50 flex flex-col items-center';
 
 function formatUsd(amount: number): string {
   return amount % 1 === 0 ? `$${amount}` : `$${amount.toFixed(2)}`;
@@ -51,6 +53,10 @@ function formatUsd(amount: number): string {
 
 function formatPerMonth(priceUsd: number, months: number): string {
   return `$${(priceUsd / months).toFixed(2)}/mo`;
+}
+
+function launchListPrice(saleUsd: number): number {
+  return +(saleUsd / 0.8).toFixed(2);
 }
 
 function formatStars(amount: number | null): string {
@@ -172,7 +178,7 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [awaitingPayment, setAwaitingPayment] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
-  const [paymentMethodUsed, setPaymentMethodUsed] = useState<'stars' | 'crypto'>('stars');
+  const [paymentMethodUsed, setPaymentMethodUsed] = useState<'stars' | 'crypto'>('crypto');
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [paymentJustCompleted, setPaymentJustCompleted] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -182,26 +188,32 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
   const [isIOSDevice, setIsIOSDevice] = useState(false);
   const [appInstalled, setAppInstalled] = useState(false);
   const [payMethod, setPayMethod] = useState<'stars' | 'crypto'>('stars');
+  const isStars = payMethod === 'stars';
 
   const planDisplay = useMemo(() => ({
     quarterly: {
       label: '3 Months',
-      stars: formatStars(pricing.quarterly.starsAmount),
+      stars: formatStars(500),
       usd: formatUsd(pricing.quarterly.priceUsd),
+      listUsd: formatUsd(launchListPrice(pricing.quarterly.priceUsd)),
       perMo: formatPerMonth(pricing.quarterly.priceUsd, 3),
+      listPerMo: formatPerMonth(launchListPrice(pricing.quarterly.priceUsd), 3),
       perMoShort: `$${(pricing.quarterly.priceUsd / 3).toFixed(2)}/mo ONLY`,
     },
     yearly: {
       label: '1 Year',
-      stars: formatStars(pricing.yearly.starsAmount),
+      stars: formatStars(1000),
       usd: formatUsd(pricing.yearly.priceUsd),
+      listUsd: formatUsd(launchListPrice(pricing.yearly.priceUsd)),
       perMo: formatPerMonth(pricing.yearly.priceUsd, 12),
+      listPerMo: formatPerMonth(launchListPrice(pricing.yearly.priceUsd), 12),
       perMoShort: `$${(pricing.yearly.priceUsd / 12).toFixed(2)}/mo ONLY`,
     },
     lifetime: {
       label: 'Lifetime',
       stars: formatStars(pricing.lifetime.starsAmount),
       usd: formatUsd(pricing.lifetime.priceUsd),
+      listUsd: formatUsd(launchListPrice(pricing.lifetime.priceUsd)),
       perMo: 'forever' as const,
       perMoShort: 'Use Forever!',
     },
@@ -214,7 +226,7 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
     },
   }), [pricing]);
 
-  const ctaBg = ORDER_GREEN;
+  const ctaBg = CHECKOUT_BLUE;
 
   const checkPremiumStatus = useCallback(async (fromPoll = false) => {
     const token = localStorage.getItem('token');
@@ -284,13 +296,8 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
       const endpoint = payMethod === 'crypto' ? '/api/payments/nowpayments' : '/api/payments/stars';
       const res = await axios.post(endpoint, { plan }, { headers: { Authorization: `Bearer ${token}` } });
       if (res.data?.url) {
-        setPaymentUrl(res.data.url);
-        setPaymentMethodUsed(payMethod);
-        setSelectedPlan(plan);
-        setAwaitingPayment(true);
-        if (pollRef.current) clearInterval(pollRef.current);
-        let a = 0;
-        pollRef.current = setInterval(async () => { a++; await checkPremiumStatus(true); if (a >= 120) { clearInterval(pollRef.current!); pollRef.current = null; setAwaitingPayment(false); } }, 5000);
+        window.location.assign(res.data.url);
+        return;
       }
     } catch (err: any) { if (err?.response?.data?.soldOut) setSoldOut(true); setError(err?.response?.data?.message || 'Failed to create payment'); } finally { setLoading(null); }
   };
@@ -308,12 +315,11 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
       <PremiumMosaicBackground items={vaultTeaser} />
       <div className="relative z-10 max-w-[520px] mx-auto px-3 sm:px-4 pt-5 pb-16">
         {/* ━━━ TIMER — at top of page (logged-in only) ━━━ */}
-        {!isPremium && !soldOut && timeLeft > 0 && (
-          <div className="mb-5 rounded-xl bg-white p-3 shadow-lg shadow-white/5">
+        {!isPremium && !soldOut && timeLeft > 0 && !isStars && (
+          <div className="mb-5 rounded-xl p-3" style={{ background: '#F6C744' }}>
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <span className="px-2 py-1 rounded-md text-[11px] font-black uppercase tracking-wide bg-red-600 text-white">80% OFF</span>
-                <span className="text-[11px] font-bold text-gray-800">Launch price ends soon</span>
+                <span className="text-[11px] font-bold text-gray-800">20% OFF ON USDT payment. (Limited Time Offer)</span>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -401,12 +407,11 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
         </div>
 
         {/* ━━━ TIMER — above checkout ━━━ */}
-        {!isPremium && !soldOut && timeLeft > 0 && (
-          <div className="mb-4 rounded-xl bg-white p-3 shadow-lg shadow-white/5">
+        {!isPremium && !soldOut && timeLeft > 0 && !isStars && (
+          <div className="mb-4 rounded-xl p-3" style={{ background: '#F6C744' }}>
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <span className="px-2 py-1 rounded-md text-[11px] font-black uppercase tracking-wide bg-red-600 text-white">80% OFF</span>
-                <span className="text-[11px] font-bold text-gray-800">Launch price ends soon</span>
+                <span className="text-[11px] font-bold text-gray-800">20% OFF ON USDT payment. (Limited Time Offer)</span>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -417,16 +422,6 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
             </div>
           </div>
         )}
-
-        <div className="mb-4 rounded-xl overflow-hidden">
-          <img
-            src="/assets/premium-promo.webp"
-            alt=""
-            className="block w-full h-auto"
-            loading="lazy"
-            decoding="async"
-          />
-        </div>
 
         {/* ━━━ UPGRADE CARD — after Inner Circle ━━━ */}
         <div
@@ -526,34 +521,43 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
             {!isPremium && !soldOut && !paymentUrl && !awaitingPayment && (
               <div className="rounded-xl p-3 space-y-2.5">
 
-                {/* Payment method picker */}
-                <div>
-                  <p className="text-[10px] text-gray-900 text-center mb-2.5 font-semibold">One-time payment · No auto-renewal</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => setPayMethod('stars')}
-                      className="rounded-xl py-3 text-center transition-all"
-                      style={{
-                        background: payMethod === 'stars' ? TELEGRAM_BLUE : '#f3f4f6',
-                        border: payMethod === 'stars' ? `2px solid ${TELEGRAM_BLUE}` : '2px solid #e5e7eb',
-                      }}
-                    >
-                      <div className={`text-[12px] font-black ${payMethod === 'stars' ? 'text-white' : 'text-gray-900'}`}>⭐ Telegram Stars</div>
-                      <div className={`text-[9px] mt-0.5 ${payMethod === 'stars' ? 'text-white/70' : 'text-gray-900'}`}>Pay via Telegram</div>
-                    </button>
-                    <button
-                      onClick={() => setPayMethod('crypto')}
-                      className="rounded-xl py-3 text-center transition-all"
-                      style={{
-                        background: payMethod === 'crypto' ? CRYPTO_ORANGE : 'rgba(247,147,26,0.14)',
-                        border: payMethod === 'crypto' ? `2px solid ${CRYPTO_ORANGE_BORDER}` : `2px solid ${CRYPTO_ORANGE}`,
-                      }}
-                    >
-                      <div className={`text-[12px] font-black ${payMethod === 'crypto' ? 'text-white' : 'text-gray-900'}`} style={payMethod === 'crypto' ? undefined : { color: CRYPTO_ORANGE_BORDER }}>₿ Crypto</div>
-                      <div className={`text-[9px] mt-0.5 ${payMethod === 'crypto' ? 'text-white/70' : 'text-gray-700'}`}>USDT, BTC, ETH & more</div>
-                    </button>
-                  </div>
+                <div className="grid grid-cols-2 gap-1 p-1 rounded-2xl" style={{ background: '#f3f4f6', border: '1px solid #e5e7eb' }}>
+                  <button
+                    type="button"
+                    onClick={() => setPayMethod('stars')}
+                    className="rounded-xl px-2.5 py-2.5 text-left transition-all"
+                    style={payMethod === 'stars'
+                      ? { background: '#fff', boxShadow: '0 1px 3px rgba(17,24,39,0.12)', border: `1px solid ${TELEGRAM_BLUE}` }
+                      : { background: 'transparent', border: '1px solid transparent' }}
+                  >
+                    <div className="text-[12px] font-black text-gray-900 leading-none">⭐ Telegram Stars</div>
+                    <div className="text-[9px] mt-1 text-gray-500 leading-none">Pay via Telegram</div>
+                    <img src="/assets/stars-card-logos.png" alt="" className="h-5 w-full max-w-[150px] mt-1.5 object-contain object-left" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPayMethod('crypto')}
+                    className="rounded-xl px-2.5 py-2.5 text-left transition-all flex items-center"
+                    style={payMethod === 'crypto'
+                      ? { background: '#fff', boxShadow: '0 1px 3px rgba(17,24,39,0.12)', border: '1px solid #f7931a' }
+                      : { background: 'transparent', border: '1px solid transparent' }}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <img src="https://aislutbot.com/payments/usdt-icon.png" alt="" className="h-5 w-5 shrink-0 object-contain" />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <div className="text-[12px] font-black text-gray-900 leading-none">₿ Crypto</div>
+                          <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wide bg-red-600 text-white">20% OFF</span>
+                        </div>
+                        <div className="text-[9px] mt-1 text-gray-500 leading-none">USDT, BTC, ETH & more</div>
+                      </div>
+                    </div>
+                  </button>
                 </div>
+                {isStars && (
+                  <p className="text-[10px] text-gray-900 text-center font-semibold">You'll be redirected to Telegram app, to pay using TG Stars using Debit/Credit Card.</p>
+                )}
+                <p className="text-[10px] text-gray-900 text-center font-semibold">One-time payment · No auto-renewal</p>
 
                 <div className="space-y-2">
                   {/* 3 Months */}
@@ -562,15 +566,14 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
                       <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                         <span className="font-black text-gray-900 text-[13px]">3 Months</span>
                       </div>
-                      <div className="flex items-center gap-1 flex-wrap">
-                        {payMethod === 'stars' ? (
-                          <>
-                            <span className="font-black text-[20px] leading-none text-gray-900">{pricing.quarterly.starsAmount?.toLocaleString('en-US')}</span>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="#111827"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                            <span className="font-black text-[14px] leading-none text-gray-900 ml-1">{planDisplay.quarterly.usd}</span>
-                          </>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {isStars ? (
+                          <span className="font-black text-[20px] leading-none text-gray-900">{planDisplay.quarterly.stars}</span>
                         ) : (
-                          <span className="font-black text-[20px] leading-none text-gray-900">{planDisplay.quarterly.usd}</span>
+                          <>
+                            <span className="line-through text-[14px] font-bold text-red-500">{planDisplay.quarterly.listUsd}</span>
+                            <span className="font-black text-[20px] leading-none text-gray-900">{planDisplay.quarterly.usd}</span>
+                          </>
                         )}
                       </div>
                       <p className="text-[9px] mt-1 text-gray-900 font-semibold">One-time payment · No auto-renewal</p>
@@ -578,15 +581,20 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
                     <button
                       onClick={() => handlePurchase('quarterly')}
                       disabled={!!loading}
-                      className="shrink-0 px-3.5 py-2 rounded-lg font-black text-white transition-all active:scale-95 disabled:opacity-50 hover:opacity-90 flex flex-col items-center"
-                      style={{ background: ctaBg, whiteSpace: 'nowrap' }}
+                      className={checkoutBtnClass}
+                      style={{ background: CHECKOUT_BLUE, whiteSpace: 'nowrap' }}
                     >
                       {loading === 'quarterly' ? (
                         <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
                       ) : (
                         <>
                           <span className="text-[11px] uppercase tracking-wide">Get 3 Months</span>
-                          <span className="text-[9px] font-bold text-white/70">{planDisplay.quarterly.perMoShort}</span>
+                          {!isStars && (
+                            <>
+                              <span className="text-[9px] font-bold text-white/50 line-through">{planDisplay.quarterly.listPerMo}</span>
+                              <span className="text-[9px] font-bold text-white/70">{planDisplay.quarterly.perMoShort}</span>
+                            </>
+                          )}
                         </>
                       )}
                     </button>
@@ -596,19 +604,20 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
                   <div className="rounded-lg overflow-hidden" style={{ border: `2px solid ${ctaBg}` }}>
                     <div className="flex items-center justify-between px-3 py-1.5" style={{ background: ctaBg }}>
                       <span className="font-black text-white text-[13px]">1 Year</span>
-                      <span className="text-[8px] font-black tracking-widest text-white uppercase opacity-70">BESTSELLER</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[8px] font-black tracking-widest text-white uppercase opacity-70">BESTSELLER</span>
+                      </div>
                     </div>
                     <div className="px-3 py-3 flex items-center gap-3">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1 flex-wrap">
-                          {payMethod === 'stars' ? (
-                            <>
-                              <span className="font-black text-[20px] leading-none text-gray-900">{pricing.yearly.starsAmount?.toLocaleString('en-US')}</span>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="#111827"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                              <span className="font-black text-[14px] leading-none text-gray-900 ml-1">{planDisplay.yearly.usd}</span>
-                            </>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {isStars ? (
+                            <span className="font-black text-[20px] leading-none text-gray-900">{planDisplay.yearly.stars}</span>
                           ) : (
-                            <span className="font-black text-[20px] leading-none text-gray-900">{planDisplay.yearly.usd}</span>
+                            <>
+                              <span className="line-through text-[14px] font-bold text-red-500">{planDisplay.yearly.listUsd}</span>
+                              <span className="font-black text-[20px] leading-none text-gray-900">{planDisplay.yearly.usd}</span>
+                            </>
                           )}
                         </div>
                         <p className="text-[9px] mt-1 text-gray-900 font-semibold">One-time payment · No auto-renewal</p>
@@ -616,66 +625,35 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
                       <button
                         onClick={() => handlePurchase('yearly')}
                         disabled={!!loading}
-                        className="shrink-0 px-3.5 py-2 rounded-lg font-black text-white transition-all active:scale-95 disabled:opacity-50 hover:opacity-90 flex flex-col items-center"
-                        style={{ background: ctaBg, whiteSpace: 'nowrap' }}
+                        className={checkoutBtnClass}
+                        style={{ background: CHECKOUT_BLUE, whiteSpace: 'nowrap' }}
                       >
                         {loading === 'yearly' ? (
                           <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
                         ) : (
                           <>
-                            <span className="text-[11px] uppercase tracking-wide">Get Yearly</span>
-                            <span className="text-[9px] font-bold text-white/70">{planDisplay.yearly.perMoShort}</span>
+                          <span className="text-[11px] uppercase tracking-wide">Get Yearly</span>
+                          {!isStars && (
+                            <>
+                              <span className="text-[9px] font-bold text-white/50 line-through">{planDisplay.yearly.listPerMo}</span>
+                              <span className="text-[9px] font-bold text-white/70">{planDisplay.yearly.perMoShort}</span>
+                            </>
+                          )}
                           </>
                         )}
                       </button>
                     </div>
                   </div>
-
-                  {/* Lifetime */}
-                  <div className="rounded-lg px-3 py-3 flex items-center gap-3" style={{ border: '1px solid #e5e7eb' }}>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                        <span className="font-black text-gray-900 text-[13px]">Lifetime</span>
-                        <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-gray-800 text-white">PAY ONCE</span>
-                      </div>
-                      <div className="flex items-center gap-1 flex-wrap">
-                        {payMethod === 'stars' ? (
-                          <>
-                            <span className="font-black text-[20px] leading-none text-gray-900">{pricing.lifetime.starsAmount?.toLocaleString('en-US')}</span>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="#111827"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                            <span className="font-black text-[14px] leading-none text-gray-900 ml-1">{planDisplay.lifetime.usd}</span>
-                            <span className="text-gray-900 text-[10px]">· Access forever</span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="font-black text-[20px] leading-none text-gray-900">{planDisplay.lifetime.usd}</span>
-                            <span className="text-gray-900 text-[10px]">· Access forever</span>
-                          </>
-                        )}
-                      </div>
-                      <p className="text-[9px] mt-1 text-gray-900">One-time payment · Never expires</p>
-                    </div>
-                    <button
-                      onClick={() => handlePurchase('lifetime')}
-                      disabled={!!loading}
-                      className="shrink-0 px-3.5 py-2 rounded-lg font-black text-white transition-all active:scale-95 disabled:opacity-50 hover:opacity-90 flex flex-col items-center"
-                      style={{ background: ctaBg, whiteSpace: 'nowrap' }}
-                    >
-                      {loading === 'lifetime' ? (
-                        <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                      ) : (
-                        <>
-                          <span className="text-[11px] uppercase tracking-wide">Pay Once</span>
-                          <span className="text-[9px] font-bold text-white/70">{planDisplay.lifetime.perMoShort}</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
                 </div>
-                <p className="text-center text-[11px] text-gray-900 font-semibold mt-2">One-time payment · No auto-renewal · No recurring charges</p>
-                <p className="text-center text-[9px] text-gray-900 mt-1">
-                  {payMethod === 'crypto' ? 'Secure checkout via NOWPayments · USDT, BTC, ETH & 100+ coins' : 'Secure checkout via Telegram Stars · Instant access'}
-                </p>
+                {payMethod === 'crypto' ? (
+                <div className="flex justify-center pt-1">
+                  <img src="https://aislutbot.com/payments/nowpayments-logo.png" alt="" className="h-8 w-auto max-w-[220px] object-contain" />
+                </div>
+                ) : (
+                <div className="flex justify-center pt-1">
+                  <img src="/assets/stars-card-logos.png" alt="" className="h-9 w-auto max-w-full object-contain" />
+                </div>
+                )}
               </div>
             )}
 
@@ -751,10 +729,14 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
               );
             })()}
 
+            {!isPremium && (
             <div className="mt-4 space-y-0.5">
-              <p className="text-center text-[9px] text-gray-900">Pay with Telegram Stars or Crypto</p>
-              <p className="text-center text-[9px] text-gray-900">Erogram is actively developing — more features coming soon</p>
+              <p className="text-center text-[9px] text-gray-900">{isStars ? 'Complete payment in Telegram · This page updates automatically · After payment you will be redirected back to Erogram' : 'Complete payment on NOWPayments · This page updates automatically · After payment you will be redirected back to Erogram'}</p>
+              <p className="text-center text-[9px] text-gray-900">
+                Need help? Telegram: <a href="https://t.me/erogramDOTpro" target="_blank" rel="noopener noreferrer" className="font-bold underline">@erogramDOTpro</a> · <a href="mailto:support@erogram.biz" className="font-bold underline">support@erogram.biz</a>
+              </p>
             </div>
+            )}
           </div>
         </div>
 

@@ -18,14 +18,42 @@ export interface PremiumPricing {
   offerText: string;
 }
 
+/** Flip to true to sell Premium with Telegram Stars again. Existing VIP users are never touched. */
+export const STARS_CHECKOUT_ENABLED = true;
+
+export function fullPriceUsd(saleUsd: number): number {
+  return +(saleUsd / 0.7).toFixed(2);
+}
+
+export const STARS_CHECKOUT_AMOUNT = {
+  quarterly: 500,
+  yearly: 1000,
+} as const;
+
+/** Checkout USD only. Does not change days or anyone already Premium. */
+const CHECKOUT_PRICE_USD = {
+  quarterly: 12,
+  yearly: 19.97,
+  lifetime: 97,
+} as const;
+
 const DEFAULTS: PremiumPricing = {
   monthly: { priceUsd: 8.99, starsAmount: 600, days: 30, label: 'Erogram VIP (1 Month)', description: '30-day unlimited access — Secret Vault, bookmarks & more' },
-  quarterly: { priceUsd: 9.97, starsAmount: 660, days: 90, label: 'Erogram VIP (3 Months)', description: '3-month unlimited access — Secret Vault, bookmarks & more' },
-  yearly: { priceUsd: 19.97, starsAmount: null, days: 365, label: 'Erogram VIP (1 Year)', description: '1-year unlimited access — Secret Vault, bookmarks & more' },
-  lifetime: { priceUsd: 97, starsAmount: null, days: 36500, label: 'Erogram VIP (Lifetime)', description: 'Lifetime unlimited access — Secret Vault, bookmarks & more' },
+  quarterly: { priceUsd: CHECKOUT_PRICE_USD.quarterly, starsAmount: 660, days: 90, label: 'Erogram VIP (3 Months)', description: '3-month unlimited access — Secret Vault, bookmarks & more' },
+  yearly: { priceUsd: CHECKOUT_PRICE_USD.yearly, starsAmount: null, days: 365, label: 'Erogram VIP (1 Year)', description: '1-year unlimited access — Secret Vault, bookmarks & more' },
+  lifetime: { priceUsd: CHECKOUT_PRICE_USD.lifetime, starsAmount: null, days: 36500, label: 'Erogram VIP (Lifetime)', description: 'Lifetime unlimited access — Secret Vault, bookmarks & more' },
   offerBadge: '80% OFF',
   offerText: 'Launch price ends soon',
 };
+
+function applyCheckoutPrices(pricing: PremiumPricing): PremiumPricing {
+  return {
+    ...pricing,
+    quarterly: { ...pricing.quarterly, priceUsd: CHECKOUT_PRICE_USD.quarterly },
+    yearly: { ...pricing.yearly, priceUsd: CHECKOUT_PRICE_USD.yearly },
+    lifetime: { ...pricing.lifetime, priceUsd: CHECKOUT_PRICE_USD.lifetime },
+  };
+}
 
 let cached: PremiumPricing | null = null;
 let cachedAt = 0;
@@ -72,8 +100,9 @@ export async function getPremiumPricing(): Promise<PremiumPricing> {
     cached = DEFAULTS;
   }
 
+  cached = applyCheckoutPrices(cached!);
   cachedAt = Date.now();
-  return cached!;
+  return cached;
 }
 
 const VALID_PLANS = ['monthly', 'quarterly', 'yearly', 'lifetime'] as const;
@@ -108,7 +137,14 @@ export function syncPricingStarsFromUsd(pricing: PremiumPricing, ratePerStar: nu
 
 export async function getPremiumPricingForCheckout(): Promise<PremiumPricing> {
   const [pricing, rate] = await Promise.all([getPremiumPricing(), getStarsRate()]);
-  return syncPricingStarsFromUsd(pricing, rate);
+  const synced = syncPricingStarsFromUsd(pricing, rate);
+  return {
+    ...synced,
+    monthly: { ...synced.monthly, starsAmount: usdToStars(fullPriceUsd(pricing.monthly.priceUsd), rate) },
+    quarterly: { ...synced.quarterly, starsAmount: STARS_CHECKOUT_AMOUNT.quarterly },
+    yearly: { ...synced.yearly, starsAmount: STARS_CHECKOUT_AMOUNT.yearly },
+    lifetime: { ...synced.lifetime, starsAmount: null },
+  };
 }
 
 export function getInvoiceStarsAmount(plan: PlanConfig, ratePerStar: number): number {

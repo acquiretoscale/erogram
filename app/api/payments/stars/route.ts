@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PremiumEvent } from '@/lib/models';
 import { authenticateUser } from '@/lib/auth';
-import { getPremiumPricing, getStarsRate, isValidPlan, getPlanConfig, getInvoiceStarsAmount } from '@/lib/premiumPricing';
+import { STARS_CHECKOUT_ENABLED, STARS_CHECKOUT_AMOUNT, getPremiumPricing, getPlanConfig } from '@/lib/premiumPricing';
 
 const BOT_TOKEN = process.env.TELEGRAM_PAYMENT_BOT_TOKEN || '';
 
@@ -10,6 +10,10 @@ function logEvent(data: Record<string, any>) {
 }
 
 export async function POST(req: NextRequest) {
+  if (!STARS_CHECKOUT_ENABLED) {
+    return NextResponse.json({ message: 'Telegram Stars checkout is temporarily disabled.' }, { status: 503 });
+  }
+
   if (!BOT_TOKEN) {
     console.error('TELEGRAM_PAYMENT_BOT_TOKEN is not set — payments disabled to prevent routing money to wrong account');
     return NextResponse.json({ message: 'Payments are not configured. Contact admin.' }, { status: 503 });
@@ -24,13 +28,13 @@ export async function POST(req: NextRequest) {
   }
 
   const { plan } = await req.json();
-  if (!plan || !isValidPlan(plan)) {
+  if (plan !== 'quarterly' && plan !== 'yearly') {
     return NextResponse.json({ message: 'Invalid plan' }, { status: 400 });
   }
 
-  const [pricing, rate] = await Promise.all([getPremiumPricing(), getStarsRate()]);
+  const pricing = await getPremiumPricing();
   const p = getPlanConfig(pricing, plan);
-  const starsAmount = getInvoiceStarsAmount(p, rate);
+  const starsAmount = STARS_CHECKOUT_AMOUNT[plan];
 
   try {
     const payload = JSON.stringify({
