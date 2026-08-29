@@ -31,10 +31,11 @@ export async function POST(req: NextRequest) {
   if (plan !== 'quarterly' && plan !== 'yearly') {
     return NextResponse.json({ message: 'Invalid plan' }, { status: 400 });
   }
+  const checkoutPlan: keyof typeof STARS_CHECKOUT_AMOUNT = plan;
 
   const pricing = await getPremiumPricing();
-  const p = getPlanConfig(pricing, plan);
-  const starsAmount = STARS_CHECKOUT_AMOUNT[plan];
+  const p = getPlanConfig(pricing, checkoutPlan);
+  const starsAmount = STARS_CHECKOUT_AMOUNT[checkoutPlan];
 
   try {
     const payload = JSON.stringify({
