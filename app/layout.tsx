@@ -48,8 +48,8 @@ const baloo2 = Baloo_2({
   weight: ["500", "600", "700", "800"],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
-const canonicalBase = 'https://erogram.pro';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogramx.com';
+const canonicalBase = 'https://erogramx.com';
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();

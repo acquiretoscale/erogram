@@ -1,4 +1,18 @@
 {
+  "redirects": [
+    {
+      "has": [{ "type": "host", "value": "erogram.pro" }],
+      "source": "/(.*)",
+      "destination": "https://erogramx.com/$1",
+      "permanent": true
+    },
+    {
+      "has": [{ "type": "host", "value": "www.erogram.pro" }],
+      "source": "/(.*)",
+      "destination": "https://erogramx.com/$1",
+      "permanent": true
+    }
+  ],
   "crons": [
     {
       "path": "/api/cron/publish-scheduled",

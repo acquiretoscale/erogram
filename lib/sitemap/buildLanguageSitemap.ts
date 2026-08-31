@@ -1,13 +1,11 @@
 import connectDB from '@/lib/db/mongodb';
 import { Group, Bot, AINsfwSubmission } from '@/lib/models';
 import { categories } from '@/app/groups/constants';
-import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
-import { BEST_OF_PAGES, bestOfBlogSlug } from '@/app/best-onlyfans-accounts/bestOfPages';
 import { AI_NSFW_TOOLS, CATEGORY_SLUGS, toolSlug } from '@/app/ainsfw/data';
 import { publicPathFromInternal } from '@/lib/i18n/switchLocalePath';
 import type { Locale } from '@/lib/i18n/config';
 
-const BASE_URL = 'https://erogram.pro';
+const BASE_URL = 'https://erogramx.com';
 const PER_PAGE = 12;
 
 function entry(internalPath: string, locale: Locale, lastmod?: Date): string {
@@ -78,14 +76,6 @@ export async function buildLanguageSitemap(locale: Locale): Promise<string> {
     .forEach(s => entries.push(entry(`/ainsfw/${s}`, locale)));
   Object.keys(CATEGORY_SLUGS).forEach(s => entries.push(entry(`/ainsfw/${s}`, locale)));
 
-  // OnlyFans Search
-  entries.push(entry('/onlyfanssearch', locale));
-  OF_CATEGORIES.forEach(cat => entries.push(entry(`/onlyfanssearch/${cat.slug}`, locale)));
-  BEST_OF_PAGES.forEach(p => entries.push(entry(`/onlyfanssearch/${bestOfBlogSlug(p.slug)}`, locale)));
-
-  // best-onlyfans-accounts (translated slugs)
-  OF_CATEGORIES.forEach(cat => entries.push(entry(`/best-onlyfans-accounts/${cat.slug}`, locale)));
-
   // best-telegram-groups (translated hub + category slugs)
   entries.push(entry('/best-telegram-groups', locale));
   categories
@@ -100,7 +90,6 @@ export async function buildLanguageSitemap(locale: Locale): Promise<string> {
     ));
 
   // Static pages (no blog — English-only by owner rule)
-  entries.push(entry('/best-onlyfans-creators', locale));
   entries.push(entry('/add', locale));
   entries.push(entry('/about', locale));
   entries.push(entry('/terms', locale));

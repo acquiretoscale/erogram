@@ -4,8 +4,6 @@ import { Group, Article, Bot, AINsfwSubmission } from '@/lib/models';
 import { categories } from '@/app/groups/constants';
 import { LOCALES, LOCALE_HREFLANG, localePath } from '@/lib/i18n/config';
 import { BLOG_CATEGORY_SLUGS } from '@/lib/blog/categories';
-import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
-import { BEST_OF_PAGES, bestOfBlogSlug } from '@/app/best-onlyfans-accounts/bestOfPages';
 import { AI_NSFW_TOOLS, CATEGORY_SLUGS, toolSlug } from '@/app/ainsfw/data';
 
 /** Build alternates object for a given path — tells Google about all language versions. */
@@ -19,8 +17,8 @@ function buildAlternates(basePath: string, canonicalBase: string) {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
-  const canonicalBase = 'https://erogram.pro';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogramx.com';
+  const canonicalBase = 'https://erogramx.com';
   const PER_PAGE = 12;
 
   try {
@@ -60,8 +58,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: 'weekly' as const,
         priority: 0.8,
       })),
-      { url: `${baseUrl}/onlyfanssearch`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9, alternates: buildAlternates('/onlyfanssearch', canonicalBase) },
-      { url: `${baseUrl}/best-onlyfans-creators`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8, alternates: buildAlternates('/best-onlyfans-creators', canonicalBase) },
       { url: `${baseUrl}/ainsfw`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9, alternates: buildAlternates('/ainsfw', canonicalBase) },
       { url: `${baseUrl}/best-telegram-groups`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8, alternates: buildAlternates('/best-telegram-groups', canonicalBase) },
       { url: `${baseUrl}/add`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6, alternates: buildAlternates('/add', canonicalBase) },
@@ -69,39 +65,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       { url: `${baseUrl}/terms`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3, alternates: buildAlternates('/terms', canonicalBase) },
       { url: `${baseUrl}/privacy`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3, alternates: buildAlternates('/privacy', canonicalBase) },
     ];
-
-    const ofTop10Routes: MetadataRoute.Sitemap = BEST_OF_PAGES.map((page) => {
-      const path = `/onlyfanssearch/${bestOfBlogSlug(page.slug)}`;
-      return {
-        url: `${baseUrl}${path}`,
-        lastModified: new Date(),
-        changeFrequency: 'weekly' as const,
-        priority: 0.8,
-        alternates: buildAlternates(path, canonicalBase),
-      };
-    });
-
-    const ofBrowseRoutes: MetadataRoute.Sitemap = OF_CATEGORIES.map((cat) => {
-      const path = `/onlyfanssearch/${cat.slug}`;
-      return {
-        url: `${baseUrl}${path}`,
-        lastModified: new Date(),
-        changeFrequency: 'weekly' as const,
-        priority: 0.8,
-        alternates: buildAlternates(path, canonicalBase),
-      };
-    });
-
-    const ofBestCategoryRoutes: MetadataRoute.Sitemap = OF_CATEGORIES.map((cat) => {
-      const path = `/best-onlyfans-accounts/${cat.slug}`;
-      return {
-        url: `${baseUrl}${path}`,
-        lastModified: new Date(),
-        changeFrequency: 'weekly' as const,
-        priority: 0.8,
-        alternates: buildAlternates(path, canonicalBase),
-      };
-    });
 
     const bestGroupsCategoryRoutes: MetadataRoute.Sitemap = categories
       .filter(cat => cat !== 'All' && activeCategories.has(cat))
@@ -248,9 +211,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     return [
       ...staticRoutes,
-      ...ofTop10Routes,
-      ...ofBrowseRoutes,
-      ...ofBestCategoryRoutes,
       ...ainsfwToolRoutes,
       ...ainsfwCategoryRoutes,
       ...bestGroupsCategoryRoutes,
@@ -271,8 +231,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       { url: `${baseUrl}/groups`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
       { url: `${baseUrl}/bots`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
       { url: `${baseUrl}/blog`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
-      { url: `${baseUrl}/onlyfanssearch`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
-      { url: `${baseUrl}/best-onlyfans-creators`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8 },
       { url: `${baseUrl}/ainsfw`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
       { url: `${baseUrl}/best-telegram-groups`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8 },
       { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },

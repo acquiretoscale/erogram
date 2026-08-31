@@ -15,6 +15,7 @@ import {
   generateCreatorProfileMetadata,
 } from '@/lib/onlyfanssearch/creatorProfilePage';
 import { isBlacklistedPublicPathSegment } from '@/lib/onlyfanssearch/creatorBlacklist';
+import { CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 // SEO: no more force-dynamic + $sample. The page now serves a STABLE curated
 // ranking so Google sees the same content on every crawl (brain GAP 5 → was
@@ -137,7 +138,7 @@ export default async function OnlyFansSlugPage({ params }: PageProps) {
       creators={serialized}
       category={rawSlug}
       label={cat.name}
-      canonicalUrl={`https://erogram.pro${ofCategoryUrl(rawSlug)}`}
+      canonicalUrl={`${CANONICAL_BASE}${ofCategoryUrl(rawSlug)}`}
       paidFeatured={paidFeatured}
       agnosticAds={ofCatAds as any}
     />

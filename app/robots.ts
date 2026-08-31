@@ -2,7 +2,7 @@ import { MetadataRoute } from 'next';
 import { OF_CATEGORIES } from './onlyfanssearch/constants';
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogramx.com';
 
   const commonDisallow = ['/admin', '/advert', '/api', '/_next/static/', '/redirect.html', '/advertise', '/promo', '/premium', '/OF', '/onlyfans/', '/go/', '/top100'];
   

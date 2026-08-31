@@ -3,7 +3,7 @@ import { switchLocalePath } from '@/lib/i18n/switchLocalePath';
 import { LOCALES, LOCALE_HREFLANG, Locale, DEFAULT_LOCALE } from '@/lib/i18n/config';
 
 /** Canonical origin for absolute OG/Twitter image URLs. */
-export const CANONICAL_BASE = 'https://erogram.pro';
+export const CANONICAL_BASE = 'https://erogramx.com';
 
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || CANONICAL_BASE;
 
