@@ -4,8 +4,9 @@ import { categories } from '@/app/groups/constants';
 import { AI_NSFW_TOOLS, CATEGORY_SLUGS, toolSlug } from '@/app/ainsfw/data';
 import { publicPathFromInternal } from '@/lib/i18n/switchLocalePath';
 import type { Locale } from '@/lib/i18n/config';
+import { CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-const BASE_URL = 'https://erogramx.com';
+const BASE_URL = CANONICAL_BASE;
 const PER_PAGE = 12;
 
 function entry(internalPath: string, locale: Locale, lastmod?: Date): string {

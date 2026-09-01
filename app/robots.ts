@@ -1,7 +1,8 @@
 import { MetadataRoute } from 'next';
+import { CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogramx.com';
+  const baseUrl = CANONICAL_BASE;
 
   const commonDisallow = ['/admin', '/advert', '/api', '/_next/static/', '/redirect.html', '/advertise', '/promo', '/premium', '/OF', '/onlyfans/', '/go/', '/top100'];
 

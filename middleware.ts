@@ -52,13 +52,10 @@ export function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Legacy /onlyfanssearch → /ofsearch (301)
+  // /onlyfanssearch is dead (DMCA footprint). Hard-404 forever. NEVER redirect to /ofsearch.
   {
-    const legacyHub = pathname.match(/^(\/(?:de|es|pt))?\/onlyfanssearch(\/.*)?$/);
-    if (legacyHub) {
-      const url = request.nextUrl.clone();
-      url.pathname = `${legacyHub[1] || ''}/ofsearch${legacyHub[2] || ''}`;
-      return NextResponse.redirect(url, 301);
+    if (/^(\/(?:de|es|pt))?\/onlyfanssearch(\/|$)/.test(pathname)) {
+      return new NextResponse(null, { status: 404 });
     }
   }
 

@@ -5,6 +5,7 @@ import { categories } from '@/app/groups/constants';
 import { LOCALES, LOCALE_HREFLANG, localePath } from '@/lib/i18n/config';
 import { BLOG_CATEGORY_SLUGS } from '@/lib/blog/categories';
 import { AI_NSFW_TOOLS, CATEGORY_SLUGS, toolSlug } from '@/app/ainsfw/data';
+import { CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 /** Build alternates object for a given path — tells Google about all language versions. */
 function buildAlternates(basePath: string, canonicalBase: string) {
@@ -17,8 +18,8 @@ function buildAlternates(basePath: string, canonicalBase: string) {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogramx.com';
-  const canonicalBase = 'https://erogramx.com';
+  const baseUrl = CANONICAL_BASE;
+  const canonicalBase = CANONICAL_BASE;
   const PER_PAGE = 12;
 
   try {
