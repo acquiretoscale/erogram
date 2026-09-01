@@ -52,13 +52,6 @@ export function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // /onlyfanssearch is dead (DMCA footprint). Hard-404 forever. NEVER redirect to /ofsearch.
-  {
-    if (/^(\/(?:de|es|pt))?\/onlyfanssearch(\/|$)/.test(pathname)) {
-      return new NextResponse(null, { status: 404 });
-    }
-  }
-
   // Category card grids off — send /ofsearch/{category} to Top 10 or hub
   if (!OF_SEARCH_ENGINE_ENABLED) {
     const catBrowse = pathname.match(/^(\/(?:de|es|pt))?\/ofsearch\/([^/]+)\/?$/);
@@ -134,6 +127,17 @@ export function middleware(request: NextRequest) {
     reqHeaders.set('x-locale', locale);
     reqHeaders.set('x-pathname', originalPath);
     return attachVisitorCountry(NextResponse.next({ request: { headers: reqHeaders } }));
+  }
+
+  // /onlyfanssearch hub only (decoy). Subpaths stay 404. NEVER redirect to /ofsearch.
+  {
+    const localeHub = pathname.match(/^\/(de|es|pt)\/onlyfanssearch\/?$/);
+    if (localeHub) {
+      return rewriteWithLocale('/onlyfanssearch', localeHub[1], pathname);
+    }
+  }
+  if (/^(\/(?:de|es|pt))?\/onlyfanssearch\//.test(pathname)) {
+    return new NextResponse(null, { status: 404 });
   }
 
   // ── Localized OnlyFans search paths ─────────────────────────────────────────
