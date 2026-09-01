@@ -1,3 +1,4 @@
+import type { Types } from 'mongoose';
 import connectDB from '@/lib/db/mongodb';
 import { Campaign, Bot, Group } from '@/lib/models';
 
@@ -29,7 +30,7 @@ export async function expireStaleBotBoosts(asOf = new Date()): Promise<number> {
   await connectDB();
   const stale = await Bot.find(
     { boosted: true, boostExpiresAt: { $ne: null, $lte: asOf } },
-  ).select('_id').lean();
+  ).select('_id').lean<{ _id: Types.ObjectId }[]>();
 
   const res = await Bot.updateMany(
     { boosted: true, boostExpiresAt: { $ne: null, $lte: asOf } },
@@ -51,7 +52,7 @@ export async function expireStaleGroupBoosts(asOf = new Date()): Promise<number>
   await connectDB();
   const stale = await Group.find(
     { boosted: true, boostExpiresAt: { $ne: null, $lte: asOf } },
-  ).select('_id').lean();
+  ).select('_id').lean<{ _id: Types.ObjectId }[]>();
 
   const res = await Group.updateMany(
     { boosted: true, boostExpiresAt: { $ne: null, $lte: asOf } },
