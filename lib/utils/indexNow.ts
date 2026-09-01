@@ -1,5 +1,5 @@
 const INDEXNOW_KEY = 'f8f91525268a439b8ae6ce03d362f9bc';
-const INDEXNOW_HOST = 'erogram.pro';
+const INDEXNOW_HOST = 'erogramx.com';
 const SITEMAP_URL = `https://${INDEXNOW_HOST}/sitemap.xml`;
 
 /**

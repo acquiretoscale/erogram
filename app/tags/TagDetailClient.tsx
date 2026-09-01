@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import type { TagBotResult, TagCreatorResult, TagAiToolResult, TagGroupResult, TagTop10Block } from '@/lib/actions/tags';
+import type { TagBotResult, TagAiToolResult, TagGroupResult } from '@/lib/actions/tags';
 import type { TagRankingPage } from '@/lib/tags/rankings';
 import TagOfSection from './TagOfSection';
 import { categorySlug } from '@/app/groups/constants';
@@ -91,9 +91,7 @@ export default function TagDetailClient({
   aiCount,
   total,
   groups,
-  rankingPages,
-  top10,
-  creators,
+  rankingPages = [],
   bots,
   aiTools,
 }: {
@@ -105,9 +103,7 @@ export default function TagDetailClient({
   aiCount: number;
   total: number;
   groups: TagGroupResult[];
-  rankingPages: (TagRankingPage & { previewAvatars: string[] })[];
-  top10: TagTop10Block | null;
-  creators: TagCreatorResult[];
+  rankingPages: TagRankingPage[];
   bots: TagBotResult[];
   aiTools: TagAiToolResult[];
 }) {
@@ -198,13 +194,7 @@ export default function TagDetailClient({
           </section>
         )}
 
-        <TagOfSection
-          label={label}
-          rankingPages={rankingPages}
-          top10={top10}
-          creators={creators}
-          creatorCount={creatorCount}
-        />
+        <TagOfSection rankingPages={rankingPages} />
       </main>
       <Footer />
     </div>

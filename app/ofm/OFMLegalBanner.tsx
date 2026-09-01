@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { CREATOR_BLACKLIST_COUNT } from '@/lib/onlyfanssearch/creatorBlacklist';
+import { CREATOR_BLACKLIST_COUNT } from '@/lib/ofsearch/creatorBlacklist';
 
 export default function OFMLegalBanner() {
   const pathname = usePathname();

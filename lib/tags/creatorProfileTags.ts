@@ -1,4 +1,4 @@
-import { OF_CATEGORY_MAP, OF_CATEGORY_SLUGS } from '@/app/onlyfanssearch/constants';
+import { OF_CATEGORY_MAP, OF_CATEGORY_SLUGS } from '@/app/ofsearch/constants';
 import { extractVisibleBioHashtagSlugs } from '@/lib/tags/bioHashtags';
 import { getMatchingKeywordOfCategories, type RankingMatchFields } from '@/lib/tags/creatorMatch';
 import { getTagDefinition } from '@/lib/tags/registry';
@@ -63,7 +63,7 @@ const PROFILE_CATEGORY_CANON: Record<string, string> = {
   taiwan: 'taiwanese',
 };
 
-/** Prefer real OF category slug; otherwise keep tag / ranking slug for /onlyfanssearch/{slug}. */
+/** Prefer real OF category slug; otherwise keep tag / ranking slug for /ofsearch/{slug}. */
 function toBrowseSlug(raw: string): string {
   const norm = normalizeSlug(raw);
   if (OF_CATEGORY_SLUGS.has(norm)) return norm;

@@ -77,7 +77,7 @@ export default function InFeedAdFormatComparison() {
       <div className="overflow-hidden bg-white" style={{ border: '3px solid #000', boxShadow: '6px 6px 0px #000', color: '#000' }}>
         <div className="px-6 py-5 sm:px-8 text-center" style={{ background: 'linear-gradient(160deg, #04140c 0%, #0a2e1a 60%, #064e3b 100%)' }}>
           <h2 className="text-xl sm:text-2xl font-black text-white leading-tight uppercase tracking-tight">
-            Example of our IN FEED native ads.
+            Example of our In feed integrated ads.
           </h2>
         </div>
 

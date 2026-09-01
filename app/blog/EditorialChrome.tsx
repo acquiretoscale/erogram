@@ -8,10 +8,10 @@ import { useLocale, useLocalePath, usePublicPathname, useTranslation } from '@/l
 import { LOCALES, LOCALE_FLAGS, LOCALE_NAMES, switchLocalePath, type Locale } from '@/lib/i18n';
 import { getMyListingsSummary } from '@/lib/actions/myListings';
 import { getMyAINSFWSummary } from '@/lib/actions/myAINSFWListings';
-import { OF_CATEGORY_MAP, OF_SEARCH_HUB_CATEGORY_SLUGS } from '@/app/onlyfanssearch/constants';
 import { getCampaignPlacement } from '@/lib/actions/publicData';
 import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
 import { RtaBadge } from '@/components/AgeGate';
+import ErogramWordmark from '@/components/ErogramWordmark';
 
 function MastheadAdSlot() {
   const [cta, setCta] = useState<{ _id: string; destinationUrl: string; description: string; buttonText: string } | null>(null);
@@ -97,14 +97,12 @@ function MastheadLangSwitcher({ compact = false }: { compact?: boolean }) {
 
 // Real Erogram menu elements
 const NAV_PRE: Array<{ labelKey: string; fallback: string; href: string; badge?: string }> = [
+  { labelKey: 'nav.home', fallback: 'Home', href: '/' },
   { labelKey: 'nav.groups', fallback: 'Groups', href: '/groups' },
   { labelKey: 'nav.bots', fallback: 'Bots', href: '/bots' },
   { labelKey: 'nav.aiNsfw', fallback: 'AI NSFW', href: '/ainsfw' },
 ];
 
-const NAV_POST: Array<{ labelKey: string; fallback: string; href: string; badge?: string }> = [
-  { labelKey: 'nav.community', fallback: 'Community', href: '/community' },
-];
 
 const ADD_ITEMS = [
   {
@@ -125,123 +123,20 @@ const ADD_ITEMS = [
   },
 ];
 
-/** Original OF nav dropdown — 28 hub categories only (matches pre-expansion OF_CATEGORIES). */
-const OF_NAV_MENU_CATEGORIES = OF_SEARCH_HUB_CATEGORY_SLUGS.flatMap((slug) => {
-  const cat = OF_CATEGORY_MAP.get(slug);
-  return cat ? [cat] : [];
-});
-
 function OFsearchNav() {
   const { t } = useTranslation();
   const lp = useLocalePath();
   const pathname = usePathname() || '';
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const isActive = pathname.includes('/onlyfanssearch') || pathname.includes('/best-onlyfans-accounts');
-  const mainHref = lp('/onlyfanssearch');
-
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    const t = setTimeout(() => document.addEventListener('mousedown', handler, true), 80);
-    return () => { clearTimeout(t); document.removeEventListener('mousedown', handler, true); };
-  }, [open]);
+  const isActive = pathname.includes('/ofsearch') || pathname.includes('/best-onlyfans-accounts');
 
   return (
-    <div
-      className="relative shrink-0 flex items-center"
-      ref={ref}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+    <Link
+      href={lp('/ofsearch')}
+      className={`shrink-0 inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.18em] uppercase transition-colors ${isActive ? 'text-[#38c0f5]' : 'text-white hover:text-white/80'}`}
     >
-      <Link
-        href={mainHref}
-        onClick={() => setOpen(false)}
-        className={`inline-flex items-center gap-1.5 text-[13px] font-bold leading-none transition-colors ${isActive ? 'text-[#38c0f5]' : 'text-white hover:text-white/80'}`}
-      >
-        <span>{t('nav.onlyfans', 'OnlyFans')}</span>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden className="shrink-0"><path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z"/></svg>
-      </Link>
-      <button
-        type="button"
-        aria-label="OnlyFans menu"
-        aria-expanded={open}
-        aria-haspopup="menu"
-        onClick={() => setOpen((v) => !v)}
-        className={`ml-0.5 p-1 rounded-md text-white/50 hover:text-white hover:bg-white/[0.06] transition-colors ${open ? 'text-white' : ''}`}
-      >
-        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6" /></svg>
-      </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            transition={{ duration: 0.16, ease: 'easeOut' }}
-            style={{ transformOrigin: 'top left' }}
-            className="absolute left-0 top-full pt-2 w-[340px] z-50"
-          >
-            <div className="bg-white border border-black/10 rounded-2xl shadow-2xl overflow-hidden">
-              <Link
-                href={mainHref}
-                onClick={() => setOpen(false)}
-                className="flex items-center justify-between px-4 py-3.5 border-b border-black/[0.06] hover:bg-[#00AFF0]/[0.05] group transition-colors"
-              >
-                <span className="inline-flex items-center gap-2">
-                  <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
-                    <circle cx="12" cy="12" r="9" fill="none" stroke="#00AFF0" strokeWidth="3" />
-                    <circle cx="12" cy="12" r="3.4" fill="#0089c7" />
-                  </svg>
-                  <span className="font-extrabold text-[15px] leading-tight">
-                    <span className="text-[#0f0c0a]">Only</span><span className="text-[#00AFF0]">Fans</span>
-                    <span className="block text-[10px] font-bold text-[#8a8178] tracking-wide">{t('nav.searchCreators', 'Search 1.8M+ Creators')}</span>
-                  </span>
-                </span>
-                <span className="text-[#00AFF0] text-[18px] transition-transform group-hover:translate-x-0.5">→</span>
-              </Link>
-
-              <div className="px-3.5 pt-3 pb-1.5 flex items-center justify-between">
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#9a928a]">{t('nav.bestOfAccounts', 'Best OnlyFans Accounts')}</span>
-                <Link href={lp('/best-onlyfans-accounts')} className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#00AFF0] hover:text-[#0089c7] transition-colors">{t('nav.allArrow', 'All →')}</Link>
-              </div>
-              <div className="grid grid-cols-3 gap-px px-2 pb-2">
-                {OF_NAV_MENU_CATEGORIES.map((cat) => (
-                  <Link
-                    key={cat.slug}
-                    href={lp(`/best-onlyfans-accounts/${cat.slug}`)}
-                    className="px-2 py-1.5 rounded-lg text-[11px] font-semibold text-[#4a443d] hover:text-[#00AFF0] hover:bg-[#00AFF0]/[0.06] transition-colors truncate"
-                  >
-                    {cat.name}
-                  </Link>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 px-3 py-3 border-t border-[#00AFF0]/15 bg-[#e8f7fd]">
-                <Link
-                  href={lp('/onlyfanssearch/categories')}
-                  onClick={() => setOpen(false)}
-                  className="px-2 py-2.5 rounded-lg text-[12px] font-bold text-[#0f0c0a] bg-white border border-[#00AFF0]/20 hover:border-[#00AFF0]/50 hover:text-[#00AFF0] transition-colors text-center"
-                >
-                  {t('nav.categories', 'Categories')}
-                </Link>
-                <Link
-                  href={lp('/submit')}
-                  onClick={() => setOpen(false)}
-                  className="px-2 py-2.5 rounded-lg text-[12px] font-bold text-white bg-[#00AFF0] hover:bg-[#009AD6] transition-colors text-center"
-                >
-                  {t('nav.submitCreator', 'Submit your Creator')}
-                </Link>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+      {t('nav.onlyfans', 'OFsearch')}
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden className="shrink-0"><path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.430 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z"/></svg>
+    </Link>
   );
 }
 
@@ -268,7 +163,7 @@ function LiveVisitorBar() {
   }, []);
 
   return (
-    <div className="w-full bg-white/[0.03] border-b border-white/[0.06]" aria-label={count > 0 ? `${count.toLocaleString('en-US')} visiting now` : 'Visiting now'}>
+    <div className="w-full bg-white/[0.03] border-b border-white/[0.06]" aria-label={count > 0 ? `${count.toLocaleString('en-US')} people browsing right now` : 'People browsing right now'}>
       <div className="max-w-[1280px] mx-auto px-4 sm:px-8 h-[24px] flex items-center justify-center gap-1.5">
         <span className="relative flex h-1.5 w-1.5 shrink-0">
           {live && count > 0 && (
@@ -276,13 +171,15 @@ function LiveVisitorBar() {
           )}
           <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${live && count > 0 ? 'bg-emerald-400' : 'bg-white/20'}`} />
         </span>
-        <span className="text-[11px] font-black text-white tabular-nums leading-none">
-          {count > 0 ? count.toLocaleString('en-US') : '—'}
-        </span>
         <span className="text-[9px] sm:text-[10px] font-semibold text-white/55 uppercase tracking-[0.08em] whitespace-nowrap leading-none">
-          <span className="sm:hidden">{t('ainsfw.peopleBrowsingShort', 'browsing now')}</span>
-          <span className="hidden sm:inline">{t('ainsfw.peopleBrowsing', 'people browsing Erogram right now')}</span>
+          {count > 0 ? count.toLocaleString('en-US') : '—'} {t('ainsfw.peopleBrowsing', 'people browsing right now')}
         </span>
+        <Link
+          href="/advertise"
+          className="ml-1 sm:ml-2 text-[8px] sm:text-[9px] font-bold text-white hover:text-white/85 uppercase tracking-[0.14em] whitespace-nowrap leading-none transition-colors"
+        >
+          ADVERTISE
+        </Link>
       </div>
     </div>
   );
@@ -596,17 +493,16 @@ function UpgradePremiumButton({ href, onClick }: { href: string; onClick?: () =>
   );
 }
 
-function MobileNavMenu({ open, lp, onClose, trendingLight = false }: { open: boolean; lp: (p: string) => string; onClose: () => void; trendingLight?: boolean }) {
+function MobileNavMenu({ open, lp, onClose }: { open: boolean; lp: (p: string) => string; onClose: () => void }) {
   const { t } = useTranslation();
-  const [ofOpen, setOfOpen] = useState(false);
   const { locale } = useLocale();
   const pathForSwitch = usePublicPathname();
-  const currentMonthYear = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   const item = 'flex items-center gap-3 px-4 py-2.5 text-[14px] text-[#cfc9c2] hover:text-white hover:bg-white/[0.05] active:bg-white/[0.08] transition-colors';
 
   // Scannable icons for top-tier mobile menu affordance (left icon + label).
   const navIcon = (href: string) => {
+    if (href === '/') return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V9.5z"/></svg>;
     if (href === '/groups') return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
     if (href === '/bots') return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/><circle cx="8" cy="16" r="1"/><circle cx="16" cy="16" r="1"/></svg>;
     if (href === '/ainsfw') return <span className="text-[15px] leading-none">🔞</span>;
@@ -624,6 +520,11 @@ function MobileNavMenu({ open, lp, onClose, trendingLight = false }: { open: boo
         <div className="bg-[#161412] border border-white/10 rounded-xl overflow-hidden py-1">
           <div className="px-4 py-2.5 text-[13px] font-semibold text-white/50 border-b border-white/[0.06]">{t('nav.explore', 'Explore')}</div>
 
+          <Link href={lp('/porn-websites')} onClick={onClose} className={item}>
+            {navIcon('/porn-websites')}
+            <span className="flex-1">Porn Websites</span>
+          </Link>
+
           {NAV_PRE.map((n) => (
             <Link key={n.href} href={lp(n.href)} onClick={onClose} className={item}>
               {navIcon(n.href)}
@@ -633,43 +534,16 @@ function MobileNavMenu({ open, lp, onClose, trendingLight = false }: { open: boo
           ))}
 
           {/* Onlyfans */}
-          <Link href={lp('/onlyfanssearch')} onClick={onClose} className={item}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="#00AFF0" aria-hidden className="shrink-0"><path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z"/></svg>
-            <span className="flex-1 font-semibold text-[#38c0f5]">{t('nav.onlyfans', 'OnlyFans')}</span>
+          <Link href={lp('/ofsearch')} onClick={onClose} className={item}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="#00AFF0" aria-hidden className="shrink-0"><path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.430 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z"/></svg>
+            <span className="flex-1 font-semibold text-[#38c0f5]">{t('nav.onlyfans', 'OFsearch')}</span>
           </Link>
-          <Link href={lp('/onlyfanssearch/categories')} onClick={onClose} className={`${item} pl-10`}>
-            <span className="flex-1">{t('nav.categories', 'Categories')}</span>
+          <Link href={lp('/submit')} onClick={onClose} className={`${item} pl-10`}>
+            <span className="flex-1">{t('nav.submitCreator', 'Submit your Creator')}</span>
           </Link>
-
-          {/* Top 10 OnlyFans — collapsible */}
-          <button onClick={() => setOfOpen(!ofOpen)} className={`${item} w-full text-left`}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="#00AFF0" aria-hidden className="shrink-0"><path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z"/></svg>
-            <span className="flex-1">Top 10 OnlyFans · {currentMonthYear}</span>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`shrink-0 text-white/50 transition-transform ${ofOpen ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6" /></svg>
-          </button>
-          {ofOpen && (
-            <div className="px-3 pb-2 pt-0.5">
-              <div className="grid grid-cols-3 gap-1.5">
-                {OF_NAV_MENU_CATEGORIES.map((cat) => (
-                  <Link key={cat.slug} href={`/onlyfanssearch/top-10-${cat.slug}-onlyfans-models`} onClick={onClose} className="text-center px-1.5 py-1.5 rounded-lg border border-[#00AFF0]/25 bg-[#00AFF0]/[0.06] text-[11px] font-semibold text-[#38c0f5] hover:bg-[#00AFF0] hover:text-white transition-colors truncate">{cat.name}</Link>
-                ))}
-              </div>
-            </div>
-          )}
 
           <Link href="/blog" onClick={onClose} className={item}>
             <span className="flex-1">{t('nav.blog', 'Blog')}</span>
-          </Link>
-          {NAV_POST.map((n) => (
-            <Link key={n.href} href={n.href} onClick={onClose} className={item}>
-              {navIcon(n.href)}
-              <span className="flex-1">{t(n.labelKey, n.fallback)}</span>
-              {n.badge && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#c0392f] text-white">{n.badge}</span>}
-            </Link>
-          ))}
-          <Link href="/trending" onClick={onClose} className={item}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={trendingLight ? 'currentColor' : '#ef4444'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-            <span className={`flex-1 font-semibold ${trendingLight ? 'text-white' : 'text-red-500'}`}>{t('nav.trending', 'TRENDING')}</span>
           </Link>
         </div>
 
@@ -788,16 +662,12 @@ function MobileUserMenu({ open, auth, lp, onClose }: { open: boolean; auth: Mast
   );
 }
 
-function isOnlyFansAccent(accent: string): boolean {
-  return accent === '#00AFF0';
-}
-
 // OnlyFans-blue routes get the blue accent; everything else uses Erogram dark red.
 function accentForPath(pathname: string): string {
   const p = (pathname || '/').replace(/^\/(de|es|pt)/, '') || '/';
   if (
-    p === '/onlyfanssearch' ||
-    p.startsWith('/onlyfanssearch/') ||
+    p === '/ofsearch' ||
+    p.startsWith('/ofsearch/') ||
     p.startsWith('/best-onlyfans-accounts') ||
     p.endsWith('-onlyfans')
   ) {
@@ -818,40 +688,30 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
   const lp = useLocalePath();
   const pathname = usePathname();
   const resolvedAccent = accent ?? accentForPath(pathname || '/');
-  const trendingLight = isOnlyFansAccent(resolvedAccent);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
 
   return (
     <header className={`${fixed ? 'fixed top-0 left-0 right-0' : 'relative'} z-50 bg-black/95 backdrop-blur-md border-b border-white/[0.08]`}>
       <div className="max-w-[1280px] mx-auto px-4 sm:px-8 h-[58px] flex items-center gap-2 sm:gap-6">
-        {/* Wordmark — all white, only the dot accent-colored, heavy weight */}
+        {/* Wordmark — EROGRAMX (red X via ErogramWordmark). */}
         <Link
           href="/"
+          aria-label="ErogramX"
           className={`shrink-0 flex items-baseline uppercase tracking-tighter leading-none select-none mr-2 sm:mr-6 lg:mr-8 ${
             wordmarkMode === 'pornhub'
               ? 'text-[1.75rem] sm:text-[1.86rem] font-black gap-0'
-              : wordmarkMode === 'onlyfans'
-                ? 'text-[1.75rem] sm:text-[1.86rem] font-extrabold gap-0 normal-case tracking-tight'
-                : 'text-[1.86rem] font-black'
+              : 'text-[1.86rem] font-black'
           }`}
-          style={{ fontFamily: wordmarkMode === 'pornhub' || wordmarkMode === 'onlyfans' ? 'var(--font-inter-tight), Arial Black, sans-serif' : 'var(--font-inter-tight), sans-serif' }}
+          style={{ fontFamily: wordmarkMode === 'pornhub' ? 'var(--font-inter-tight), Arial Black, sans-serif' : 'var(--font-inter-tight), sans-serif' }}
         >
           {wordmarkMode === 'pornhub' ? (
             <>
               <span className="text-white profile-ph-wordmark-main">Ero</span>
               <span className="profile-ph-wordmark-hub">gram</span>
             </>
-          ) : wordmarkMode === 'onlyfans' ? (
-            <>
-              <span className="text-white profile-of-wordmark-main">Ero</span>
-              <span className="profile-of-wordmark-fans">gram</span>
-            </>
           ) : (
-            <>
-              <span className="text-white">EROGRAM</span>
-              <span className="w-[10px] h-[10px] ml-1 shrink-0 self-end mb-[3px]" style={{ backgroundColor: resolvedAccent }} />
-            </>
+            <ErogramWordmark accent="#c0392f" />
           )}
         </Link>
 
@@ -872,29 +732,18 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
               )}
             </Link>
           ))}
+          <Link
+            href={lp('/porn-websites')}
+            className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-[0.18em] uppercase text-white hover:text-white/80 transition-colors"
+          >
+            Porn Websites
+          </Link>
           <OFsearchNav />
           <Link
             href="/blog"
             className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-[0.18em] uppercase text-white hover:text-white/80 transition-colors"
           >
             {t('nav.blog', 'Blog')}
-          </Link>
-          {NAV_POST.map((n) => (
-            <Link
-              key={n.href}
-              href={n.href}
-              className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-[0.18em] uppercase text-white hover:text-white/80 transition-colors"
-            >
-              {t(n.labelKey, n.fallback)}
-              {n.badge && (
-                <span className="text-[8px] font-bold tracking-[0.08em] leading-none px-1 py-0.5 rounded-[3px] bg-[#c0392f] text-white">
-                  {n.badge}
-                </span>
-              )}
-            </Link>
-          ))}
-          <Link href="/trending" className={`shrink-0 inline-flex items-center gap-1 text-[13px] font-black uppercase tracking-[0.1em] transition-colors ${trendingLight ? 'text-white hover:text-white/80' : 'text-red-500 hover:text-red-400'}`}>
-            {t('nav.trending', 'TRENDING')}
           </Link>
         </nav>
 
@@ -959,7 +808,7 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
 
       <LiveVisitorBar />
 
-      <MobileNavMenu open={mobileOpen} lp={lp} onClose={() => setMobileOpen(false)} trendingLight={trendingLight} />
+      <MobileNavMenu open={mobileOpen} lp={lp} onClose={() => setMobileOpen(false)} />
       <MobileUserMenu open={userOpen} auth={auth} lp={lp} onClose={() => setUserOpen(false)} />
     </header>
   );
@@ -1033,11 +882,11 @@ export function EditorialFooter() {
           <div>
             <Link
               href="/"
+              aria-label="ErogramX"
               className="inline-flex items-baseline text-[1.65rem] sm:text-[1.85rem] font-black uppercase tracking-tighter leading-none select-none mb-3"
               style={{ fontFamily: 'var(--font-inter-tight), sans-serif' }}
             >
-              <span className="text-white">EROGRAM</span>
-              <span className="w-[8px] h-[8px] ml-1 shrink-0 self-end mb-[2px] bg-[#c0392f]" />
+              <ErogramWordmark accent="#c0392f" />
             </Link>
             <p className="text-[12px] sm:text-[13px] text-[#8c8780] leading-relaxed max-w-md">
               {t('footer.tagline', 'Your #1 hub for Porn Telegram groups & NSFW tools, bots, AI companions, OnlyFans creators.')}{' '}
@@ -1051,13 +900,15 @@ export function EditorialFooter() {
         {/* 4 columns */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-8 sm:gap-x-8 sm:gap-y-10 mb-8 pb-8 border-b border-white/[0.08]">
           <FooterCol label={t('footer.explore', 'Explore')}>
+            <FooterLink href={lp('/porn-websites')}>Porn Websites</FooterLink>
             <FooterLink href={lp('/best-telegram-groups')}>{t('footer.telegramGroups', 'Telegram Groups')}</FooterLink>
             <FooterLink href={lp('/bots')}>{t('footer.telegramBots', 'Telegram Bots')}</FooterLink>
             <FooterLink href={lp('/ainsfw')}>{t('footer.aiNsfwTools', 'AI NSFW Tools')}</FooterLink>
             <FooterLink href="/blog">{t('footer.blogGuides', 'Blog & Guides')}</FooterLink>
-            <FooterLink href={lp('/onlyfanssearch')}>{t('footer.onlyfansCreators', 'OnlyFans Creators')}</FooterLink>
+            <FooterLink href={lp('/ofsearch')}>{t('footer.onlyfansCreators', 'OnlyFans Creators')}</FooterLink>
             <FooterLink href="/trending"><span className="text-[#c0392f] font-semibold">{t('footer.trending', 'Trending')}</span></FooterLink>
             <FooterLink href="/tags">{t('footer.tags', 'Tags')}</FooterLink>
+            <FooterLink href="/community">{t('nav.community', 'Community')}</FooterLink>
           </FooterCol>
 
           <FooterCol label={t('footer.getSeen', 'Get Seen')}>

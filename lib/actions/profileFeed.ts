@@ -662,7 +662,7 @@ export type TopLikedCreatorPhoto = {
   creatorAvatar: string;
 };
 
-/** Most liked creator photos for /onlyfanssearch hub block. */
+/** Most liked creator photos for /ofsearch hub block. */
 export async function getTopLikedCreatorPhotos(limit = 20): Promise<TopLikedCreatorPhoto[]> {
   await connectDB();
 

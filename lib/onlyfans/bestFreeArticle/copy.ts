@@ -1,7 +1,7 @@
 /**
  * WRITING MODEL: fill this file.
  *
- * Page: http://127.0.0.1:3939/onlyfanssearch/best
+ * Page: http://127.0.0.1:3939/ofsearch/best
  * Voice: /submit + ainsfw. Direct. No poetry. No em dashes.
  *
  * Per creator (20 total, usernames from buildBestFreeArticleRanking):

@@ -1,6 +1,6 @@
 'use server';
 
-import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { ofCreatorProfileUrl } from '@/lib/ofsearch/creatorUrls';
 import jwt from 'jsonwebtoken';
 import { revalidatePath } from 'next/cache';
 import connectDB from '@/lib/db/mongodb';

@@ -9,7 +9,7 @@ import {
   type ProfileFeedMediaItem,
 } from '@/lib/actions/profileFeed';
 import CreatorMediaEngagement from '@/components/CreatorMediaEngagement';
-import { ofCreatorProfileUrl, ofOutboundUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { ofCreatorProfileUrl, ofOutboundUrl } from '@/lib/ofsearch/creatorUrls';
 import { useProfileTheme } from './ProfileThemeContext';
 import { ProfileHeading } from './ProfileTypography';
 import ProfileCategoryPills from './ProfileCategoryPills';

@@ -16,6 +16,10 @@ const nextConfig: NextConfig = {
       static: 30,
     },
     optimizePackageImports: ['framer-motion', 'axios', '@types/*'],
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
+    proxyClientMaxBodySize: '10mb',
   },
 
   turbopack: {},

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { PLACEMENTS, AD_KEYWORDS, canonicalKeyword, type PlacementDef } from '@/lib/adPlacements';
 import { updateOFMModelCampaign } from '@/lib/actions/ofManage';
 import { assignCreatorToUncut } from '@/lib/actions/blogFeatured';
-import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { ofCreatorProfileUrl } from '@/lib/ofsearch/creatorUrls';
 
 export interface OFMCampaign {
   _id: string;

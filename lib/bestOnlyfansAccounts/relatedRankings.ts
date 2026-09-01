@@ -3,7 +3,8 @@
  * Each slug belongs to at most one group.
  */
 
-import { BEST_OF_PAGE_MAP, bestOfBlogSlug } from '@/app/best-onlyfans-accounts/bestOfPages';
+import { BEST_OF_PAGE_MAP } from '@/app/best-onlyfans-accounts/bestOfPages';
+import { rankingEnglishPublicPath } from '@/lib/bestOfPageContent/hottestUrls';
 
 export const RELATED_RANKING_GROUPS: readonly (readonly string[])[] = [
   // MENA / Muslim / Arab
@@ -324,9 +325,7 @@ export function resolveClusterSlugFromQuery(query: string): string | null {
 }
 
 function relatedPath(slug: string, variant: RelatedRankingVariant): string {
-  return variant === 'best'
-    ? `/best-onlyfans-accounts/${slug}`
-    : `/onlyfanssearch/${bestOfBlogSlug(slug)}`;
+  return rankingEnglishPublicPath(slug, variant === 'best' ? 'best' : 'top');
 }
 
 function relatedAnchor(slug: string, variant: RelatedRankingVariant): string {

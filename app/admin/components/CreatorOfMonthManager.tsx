@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { ofCreatorProfileUrl } from '@/lib/ofsearch/creatorUrls';
 import {
   getBlogFeaturedCreatorAdmin,
   upsertBlogFeaturedCreator,

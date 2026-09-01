@@ -1270,6 +1270,150 @@ body {
   }
 }
 
+@keyframes of-hero-shine {
+  0%,
+  100% {
+    background-position: 0% center;
+  }
+
+  50% {
+    background-position: 100% center;
+  }
+}
+
+/* ── EXPLORE FUTURISTIC DESIGN SYSTEM (dark red variant of AINSFW) ── */
+
+.explore-bg {
+  background-color: #140404;
+  background-image:
+    radial-gradient(900px circle at 12% -10%, rgba(192, 57, 47, 0.2), transparent 55%),
+    radial-gradient(800px circle at 100% 0%, rgba(127, 29, 29, 0.16), transparent 50%),
+    radial-gradient(600px circle at 50% 100%, rgba(185, 28, 28, 0.08), transparent 45%),
+    linear-gradient(180deg, #140404 0%, #0f0303 40%, #080202 100%);
+  background-attachment: fixed;
+}
+
+.explore-scanlines {
+  position: relative;
+}
+
+.explore-scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.2) 2px,
+    rgba(0, 0, 0, 0.2) 4px
+  );
+  z-index: 1;
+}
+
+.explore-hero-title {
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 0.92;
+  text-transform: uppercase;
+  font-family: var(--font-archivo, 'Arial Black', 'Arial', sans-serif);
+  color: #fff;
+  -webkit-text-fill-color: transparent;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    #ffffff 0px,
+    #ffffff 3px,
+    #b56565 3px,
+    #b56565 5px
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.explore-hero-accent {
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  font-family: var(--font-archivo, 'Arial Black', 'Arial', sans-serif);
+  -webkit-text-fill-color: transparent;
+  background-image: linear-gradient(
+    90deg,
+    #c0392f 0%,
+    #e74c3c 25%,
+    #ff8a8a 50%,
+    #e74c3c 75%,
+    #c0392f 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 16px rgba(192, 57, 47, 0.45));
+  animation: explore-hero-shine 4s ease-in-out infinite;
+}
+
+.explore-hero-title-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.explore-directory-badge {
+  flex-shrink: 0;
+  width: clamp(38px, 7.7vw, 64px);
+  height: auto;
+  margin-left: 4px;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.28));
+}
+
+@media (min-width: 640px) {
+  .explore-hero-title-row {
+    gap: 0.55rem;
+  }
+
+  .explore-directory-badge {
+    width: clamp(45px, 6.3vw, 67px);
+  }
+}
+
+@keyframes explore-hero-shine {
+  0%,
+  100% {
+    background-position: 0% center;
+  }
+
+  50% {
+    background-position: 100% center;
+  }
+}
+
+.of-hero-customers {
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  font-family: var(--font-archivo, 'Arial Black', 'Arial', sans-serif);
+  -webkit-text-fill-color: transparent;
+  background-image: linear-gradient(
+    90deg,
+    #0077B3 0%,
+    #009AD6 25%,
+    #00AFF0 50%,
+    #009AD6 75%,
+    #0077B3 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 16px rgba(0, 175, 240, 0.45));
+  animation: of-hero-shine 4s ease-in-out infinite;
+}
+
 /* Green scanline button — the electric CRT effect on the CTA */
 .ainsfw-cta-btn {
   position: relative;
@@ -1358,30 +1502,4 @@ body {
   color: rgba(255, 255, 255, 0.3);
   letter-spacing: 2px;
   margin-bottom: 6px;
-}
-
-/* AINSFW page navbar logo override — condensed italic scanline style.
-   Targets the "EROGRAM" wordmark span inside the shared masthead, scoped to
-   .ainsfw-page so it never affects any other page. Purely visual: no DOM /
-   functionality change. The masthead link's first span holds the wordmark. */
-.ainsfw-page header a[href="/"] > span.text-white {
-  font-style: italic;
-  font-family: var(--font-archivo, 'Arial Black', 'Arial', sans-serif);
-  font-weight: 900;
-  letter-spacing: -0.03em;
-  -webkit-text-fill-color: transparent;
-  background-image: repeating-linear-gradient(
-    to bottom,
-    #ffffff 0px,
-    #ffffff 2px,
-    #8c8c8c 2px,
-    #8c8c8c 4px
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-}
-
-/* Logo accent dot → brand green on AI NSFW pages (same square shape). */
-.ainsfw-page header a[href="/"] > span:last-child {
-  background-color: #22c55e !important;
 }

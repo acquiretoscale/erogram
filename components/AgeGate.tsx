@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import ErogramWordmark from '@/components/ErogramWordmark';
 
 const LS_KEY = 'age_verified';
 
@@ -53,9 +54,7 @@ export default function AgeGate() {
     >
       <div className="w-full max-w-sm bg-white rounded-2xl overflow-hidden shadow-2xl border border-black/10">
         <div className="px-5 pt-5 pb-1">
-          <span className="text-black text-[15px] font-black tracking-tight leading-none">
-            EROGRAM<span className="text-[#b31b1b]">.PRO</span>
-          </span>
+          <ErogramWordmark accent="#b31b1b" textClassName="text-black" className="text-[15px]" />
         </div>
 
         <div className="px-5 pb-5 pt-3">

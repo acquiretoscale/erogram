@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import BookmarkButton from '@/components/BookmarkButton';
 import ReportModal from '@/app/groups/ReportModal';
 import { useToast } from '@/components/Toast';
@@ -57,6 +58,7 @@ const VaultStar = ({ fill }: { fill: string }) => (
 export default function VaultTab({ isPremium, isAdmin, onUpgrade }: { isPremium: boolean; isAdmin?: boolean; onUpgrade?: () => void }) {
   const { toast } = useToast();
   const { theme } = useProfileTheme();
+  const router = useRouter();
   const [groups, setGroups] = useState<VaultGroup[]>([]);
   const [total, setTotal] = useState(0);
   const [vaultTotal, setVaultTotal] = useState<number | null>(null);
@@ -232,7 +234,10 @@ export default function VaultTab({ isPremium, isAdmin, onUpgrade }: { isPremium:
   };
 
   /* ━━━ PREMIUM + FREE PREVIEW VIEW ━━━ */
-  const goUpgrade = () => { onUpgrade?.(); };
+  const goUpgrade = () => {
+    if (onUpgrade) onUpgrade();
+    else router.push('/premium');
+  };
 
   return (
     <div style={{ background: T.bg }}>

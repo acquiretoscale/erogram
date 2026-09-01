@@ -5,7 +5,7 @@
  */
 import type { BestOfPage } from '@/app/best-onlyfans-accounts/bestOfPages';
 import { BEST_OF_PAGE_MAP } from '@/app/best-onlyfans-accounts/bestOfPages';
-import { OF_CATEGORY_MAP } from '@/app/onlyfanssearch/constants';
+import { OF_CATEGORY_MAP } from '@/app/ofsearch/constants';
 import { buildComboCreatorMatch } from '@/lib/tags/creatorMatch';
 
 export const MIN_COMBO_CREATORS = 30;
@@ -23,7 +23,7 @@ export interface ComboPillItem {
   href: string;
 }
 
-export const ONLYFANS_HUB_PILL: ComboPillItem = { label: 'OnlyFans', href: '/onlyfanssearch' };
+export const ONLYFANS_HUB_PILL: ComboPillItem = { label: 'OFsearch', href: '/ofsearch' };
 
 /** Legacy broken slugs from old inferComboSlug — never serve these. */
 export const BANNED_COMBO_SLUGS = new Set([
@@ -415,7 +415,7 @@ export function isComboLandingSlug(slug: string): boolean {
 }
 
 export function onlyfansComboUrl(comboSlug: string): string {
-  return `/onlyfanssearch/best/${comboSlug}`;
+  return `/ofsearch/best/${comboSlug}`;
 }
 
 export function resolveBestOfPage(slug: string): BestOfPage | undefined {

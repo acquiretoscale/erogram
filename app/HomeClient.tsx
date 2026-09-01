@@ -9,6 +9,8 @@ import { shouldUseLightAnimations, animationClasses } from '@/lib/utils/animatio
 import Footer from '@/components/Footer';
 import type { Locale } from '@/lib/i18n/config';
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
+import { rankingListSize } from '@/lib/bestOfPageContent/top50Rankings';
+import { rankingEnglishPublicPath } from '@/lib/bestOfPageContent/hottestUrls';
 
 const Navbar = dynamic(() => import('@/components/Navbar'), {
   loading: () => (
@@ -333,16 +335,17 @@ function NewestRow({
   );
 }
 
-function bestOnlyfansCategoryAlt(name: string, locale: string): string {
+function bestOnlyfansCategoryAlt(name: string, locale: string, slug: string): string {
+  const n = rankingListSize(slug);
   switch (locale) {
     case 'de':
-      return `Die 10 besten ${name} OnlyFans-Accounts & Creator`;
+      return `Die ${n} besten ${name} OnlyFans-Accounts & Creator`;
     case 'es':
-      return `Las 10 mejores cuentas ${name} de OnlyFans`;
+      return `Las ${n} mejores cuentas ${name} de OnlyFans`;
     case 'pt':
-      return `As 10 melhores contas ${name} de OnlyFans`;
+      return `As ${n} melhores contas ${name} de OnlyFans`;
     default:
-      return `10 Best ${name} OnlyFans Accounts & Creators`;
+      return `${n} Best ${name} OnlyFans Accounts & Creators`;
   }
 }
 
@@ -391,8 +394,8 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
       icon: <img src="/assets/lips-icon.png" alt={dict.meta?.ainsfwTitle || 'AI NSFW Tools'} width="26" height="26" style={{ objectFit: 'contain', filter: 'brightness(0) saturate(100%) invert(13%) sepia(90%) saturate(4000%) hue-rotate(345deg) brightness(80%)' }} />,
     },
     {
-      title: 'OnlyFans Search',
-      href: '/onlyfanssearch',
+      title: 'OFsearch',
+      href: '/ofsearch',
       iconColor: '#00AFF0',
       icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="#00AFF0"><path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z"/></svg>,
     },
@@ -741,20 +744,22 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
             {t('home.bestOfTitle1', 'Best OnlyFans Creators')}
           </SectionTitle>
           <p className="text-center text-white/55 text-sm sm:text-base mb-10 max-w-2xl mx-auto">
-            {t('home.bestOfDesc', 'Explore our curated top-10 rankings of the best OnlyFans creators in every category — updated daily.')}
+            {t('home.bestOfDesc', 'Explore our curated Top 25 and Top 50 rankings of the best OnlyFans creators in every category — updated daily.')}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            {ofCategories.map((cat) => (
+            {ofCategories.map((cat) => {
+              const n = rankingListSize(cat.slug);
+              return (
               <Link
                 key={cat.slug}
-                href={lp(`/best-onlyfans-accounts/${cat.slug}`)}
+                href={lp(rankingEnglishPublicPath(cat.slug, 'best'))}
                 className="group flex items-center gap-4 p-3 sm:p-4 rounded-2xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-xl hover:border-[#c0392f]/60 hover:bg-[#c0392f]/[0.06] transition-all duration-200"
               >
                 <div className="flex-shrink-0 w-14 h-14 rounded-full overflow-hidden bg-white/5 ring-2 ring-white/10 group-hover:ring-[#c0392f]/40 transition-all">
                   {cat.avatar ? (
                     <img
                       src={cat.avatar}
-                      alt={bestOnlyfansCategoryAlt(cat.name, locale)}
+                      alt={bestOnlyfansCategoryAlt(cat.name, locale, cat.slug)}
                       className="w-full h-full object-cover"
                       loading="lazy"
                       width={56}
@@ -767,13 +772,14 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="text-lg sm:text-xl font-extrabold text-white leading-tight truncate group-hover:text-[#c0392f] transition-colors">
-                    {cat.name} <span className="text-white/40 font-bold">OnlyFans</span>
+                    {n} Best {cat.name} <span className="text-white/40 font-bold">OnlyFans</span>
                   </h3>
-                  <p className="text-xs text-white/40 mt-0.5">Top 10 ranked creators</p>
+                  <p className="text-xs text-white/40 mt-0.5">Top {n} ranked creators</p>
                 </div>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-white/20 group-hover:text-[#c0392f] group-hover:translate-x-0.5 transition-all"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
               </Link>
-            ))}
+              );
+            })}
           </div>
           <div className="text-center mt-8">
             <Link href={lp('/best-onlyfans-accounts')}>

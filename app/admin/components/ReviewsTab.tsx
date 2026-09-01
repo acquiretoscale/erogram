@@ -26,7 +26,7 @@ function LocationCell({ review }: { review: any }) {
     if (review.type === 'creator' && review.creatorSlug) {
         return (
             <>
-                <a href={`/onlyfanssearch/${review.creatorSlug}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-orange-400 hover:underline">
+                <a href={`/ofsearch/${review.creatorSlug}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-orange-400 hover:underline">
                     {review.creatorSlug}
                 </a>
                 <div className="text-xs text-gray-400">{TYPE_LABEL.creator}</div>
@@ -57,7 +57,7 @@ function LocationCell({ review }: { review: any }) {
         return (
             <>
                 {review.creatorSlug ? (
-                    <a href={`/onlyfanssearch/${review.creatorSlug}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-teal-400 hover:underline">
+                    <a href={`/ofsearch/${review.creatorSlug}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-teal-400 hover:underline">
                         {review.creatorName || review.creatorSlug}
                     </a>
                 ) : (

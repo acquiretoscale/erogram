@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { rankingEnglishPublicPath } from '@/lib/bestOfPageContent/hottestUrls';
 
 export type HomeFaqSectionId = 'telegram' | 'ainsfw' | 'onlyfans';
 
@@ -37,7 +38,7 @@ function blog(slug: string) {
 
 function getRules(section: HomeFaqSectionId, lp: (path: string) => string): FaqLinkRule[] {
   const tg = (cat: string) => lp(`/best-telegram-groups/${cat}`);
-  const of = (cat: string) => lp(`/best-onlyfans-accounts/${cat}`);
+  const of = (cat: string) => lp(rankingEnglishPublicPath(cat, 'best'));
   const ai = (cat: string) => lp(`/ainsfw/${cat}`);
 
   if (section === 'telegram') {
@@ -83,12 +84,11 @@ function getRules(section: HomeFaqSectionId, lp: (path: string) => string): FaqL
   }
 
   return [
-    rule('OnlyFans Search', '/onlyfanssearch', 1),
-    rule('OnlyFans search', '/onlyfanssearch', 1),
-    rule('OnlyFans creator profiles', '/onlyfanssearch', 1),
-    rule('OnlyFans creators', '/onlyfanssearch', 1),
-    rule('browse by category', '/onlyfanssearch', 1),
-    rule('trending creators', '/onlyfanssearch', 1),
+    rule('OFsearch', '/ofsearch', 1),
+    rule('OnlyFans creator profiles', '/ofsearch', 1),
+    rule('OnlyFans creators', '/ofsearch', 1),
+    rule('browse by category', '/ofsearch', 1),
+    rule('trending creators', '/ofsearch', 1),
     rule('Curated top lists', lp('/best-onlyfans-accounts'), 1),
     rule('Asian', of('asian'), 2),
     rule('MILF', of('milf'), 2),

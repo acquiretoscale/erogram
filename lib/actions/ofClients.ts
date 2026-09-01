@@ -390,7 +390,7 @@ async function buildFreeCreatorsDashboard() {
 
 function buildSections(sectionRows: any[]) {
   const SECTION_TOTALS: Record<string, number> = {
-    'OnlyFans Search': 0, 'AI NSFW': 0, 'Telegram Bots': 0, 'Telegram Groups': 0,
+    'OFsearch': 0, 'AI NSFW': 0, 'Telegram Bots': 0, 'Telegram Groups': 0,
     'Main': 0, 'Individual Pages': 0, 'Top 10s': 0, 'Trending Block': 0, 'Articles': 0, 'Other': 0,
   };
   const sectionOf = (p: string): string => {
@@ -403,7 +403,7 @@ function buildSections(sectionRows: any[]) {
     if (p.startsWith('group-sidebar') || p === 'join-cta') return 'Individual Pages';
     if (p === 'best-of' || p === 'best-groups') return 'Top 10s';
     if (p.startsWith('article:')) return 'Articles';
-    if (p === 'of-cat' || p.startsWith('of-') || p === 'trending-grid') return 'OnlyFans Search';
+    if (p === 'of-cat' || p.startsWith('of-') || p === 'trending-grid') return 'OFsearch';
     return 'Other';
   };
   for (const r of sectionRows) SECTION_TOTALS[sectionOf(r._id)] += r.n;

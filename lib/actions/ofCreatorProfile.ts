@@ -6,9 +6,16 @@ import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator, CreatorReview, User, Group, Post } from '@/lib/models';
 import { deleteFromR2 } from '@/lib/r2';
 import { LOCALES } from '@/lib/i18n/config';
-import { ofCreatorProfileUrl, normalizeCreatorProfileSegment } from '@/lib/onlyfanssearch/creatorUrls';
+import { ofCreatorProfileUrl, normalizeCreatorProfileSegment } from '@/lib/ofsearch/creatorUrls';
+import {
+  buildCreatorProfilePageFilter,
+  getPromotedCreatorUsernames,
+  isCreatorEligibleForProfilePageAsync,
+} from '@/lib/ofsearch/creatorProfileEligibility';
 
 import { getCreatorProfileTags } from '@/lib/tags/creatorProfileTags';
+
+type CreatorLookupOptions = { requireProfileEligibility?: boolean };
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -18,18 +25,18 @@ export async function revalidateCreatorPage(slug: string, username?: string) {
     const paths = new Set<string>();
     if (username) {
       paths.add(ofCreatorProfileUrl(username));
-      paths.add(`/onlyfanssearch/${normalizeCreatorProfileSegment(username)}`);
+      paths.add(`/ofsearch/${normalizeCreatorProfileSegment(username)}`);
     }
     if (slug) {
       paths.add(ofCreatorProfileUrl(slug));
-      paths.add(`/onlyfanssearch/${normalizeCreatorProfileSegment(slug)}`);
+      paths.add(`/ofsearch/${normalizeCreatorProfileSegment(slug)}`);
     }
     for (const p of paths) {
       for (const locale of LOCALES) {
         revalidatePath(locale === 'en' ? p : `/${locale}${p}`);
       }
     }
-    if (username) revalidatePath(`/onlyfanssearch/${username}`);
+    if (username) revalidatePath(`/ofsearch/${username}`);
   } catch (err) {
     console.error('[Creator Update] revalidatePath failed:', err);
   }
@@ -93,15 +100,19 @@ export interface CreatorProfile {
 export async function getCreatorByProfileSegment(segment: string): Promise<CreatorProfile | null> {
   const name = (segment || '').replace(/^@/, '').trim();
   if (!name) return null;
+  const opts: CreatorLookupOptions = { requireProfileEligibility: true };
   if (name.toLowerCase().endsWith('-onlyfans')) {
-    return getCreatorBySlug(name);
+    return getCreatorBySlug(name, opts);
   }
-  const bySlug = await getCreatorBySlug(name);
+  const bySlug = await getCreatorBySlug(name, opts);
   if (bySlug) return bySlug;
-  return getCreatorByUsername(name);
+  return getCreatorByUsername(name, opts);
 }
 
-export async function getCreatorBySlug(slug: string): Promise<CreatorProfile | null> {
+export async function getCreatorBySlug(
+  slug: string,
+  options?: CreatorLookupOptions,
+): Promise<CreatorProfile | null> {
   try {
     await connectDB();
     let creator = await OnlyFansCreator.findOne({ slug, deleted: { $ne: true } }).lean();
@@ -122,76 +133,41 @@ export async function getCreatorBySlug(slug: string): Promise<CreatorProfile | n
     if (!creator) return null;
     if ((creator as any).submissionStatus === 'pending' || (creator as any).submissionStatus === 'rejected') return null;
     // Big-player creators flagged redirectToOF have NO individual Erogram page.
-    // They still appear as cards on /onlyfanssearch (click goes straight to OnlyFans).
+    // They still appear as cards on /ofsearch (click goes straight to OnlyFans).
     if ((creator as any).redirectToOF === true) return null;
+    if (options?.requireProfileEligibility && !(await isCreatorEligibleForProfilePageAsync(creator as any))) {
+      return null;
+    }
 
-    const c = creator as any;
-    return {
-      _id: c._id.toString(),
-      name: c.name || '',
-      username: c.username || '',
-      slug: c.slug || '',
-      bio: c.bio || '',
-      avatar: c.avatar || '',
-      avatarThumbC50: c.avatarThumbC50 || '',
-      avatarThumbC144: c.avatarThumbC144 || '',
-      header: c.header || '',
-      categories: c.categories || [],
-      subscriberCount: c.subscriberCount || 0,
-      likesCount: c.likesCount || 0,
-      mediaCount: c.mediaCount || 0,
-      photosCount: c.photosCount || 0,
-      videosCount: c.videosCount || 0,
-      audiosCount: c.audiosCount || 0,
-      postsCount: c.postsCount || 0,
-      price: c.price || 0,
-      isFree: c.isFree || false,
-      isVerified: c.isVerified || false,
-      url: c.url || '',
-      gender: c.gender || 'unknown',
-      scrapedAt: c.scrapedAt ? new Date(c.scrapedAt).toISOString() : null,
-      lastSeen: c.lastSeen || '',
-      location: c.location || '',
-      website: c.website || '',
-      joinDate: c.joinDate || '',
-      onlyfansId: c.onlyfansId || 0,
-      hasStories: c.hasStories || false,
-      hasStream: c.hasStream || false,
-      tipsEnabled: c.tipsEnabled || false,
-      tipsMin: c.tipsMin || 0,
-      tipsMax: c.tipsMax || 0,
-      finishedStreamsCount: c.finishedStreamsCount || 0,
-      instagramUrl: c.instagramUrl || '',
-      instagramUsername: c.instagramUsername || '',
-      twitterUrl: c.twitterUrl || '',
-      tiktokUrl: c.tiktokUrl || '',
-      fanslyUrl: c.fanslyUrl || '',
-      fanvueUrl: c.fanvueUrl || '',
-      privacyUrl: c.privacyUrl || '',
-      pornhubUrl: c.pornhubUrl || '',
-      telegramUrl: c.telegramUrl || '',
-      linktreeUrl: c.linktreeUrl || '',
-      allmylinksUrl: c.allmylinksUrl || '',
-      beaconsUrl: c.beaconsUrl || '',
-      redditUrl: c.redditUrl || '',
-      patreonUrl: c.patreonUrl || '',
-      extraPhotos: c.extraPhotos || [],
-      extraVideos: c.extraVideos || [],
-      adminImported: c.adminImported || false,
-      publicPage: c.publicPage || false,
-    };
+    return mapCreatorProfile(creator as any);
   } catch {
     return null;
   }
 }
 
-export async function getCreatorByUsername(username: string): Promise<CreatorProfile | null> {
+export async function getCreatorByUsername(
+  username: string,
+  options?: CreatorLookupOptions,
+): Promise<CreatorProfile | null> {
   try {
     await connectDB();
     const creator = await OnlyFansCreator.findOne({ username, deleted: { $ne: true } }).lean();
     if (!creator) return null;
+    if ((creator as any).submissionStatus === 'pending' || (creator as any).submissionStatus === 'rejected') {
+      return null;
+    }
+    if ((creator as any).redirectToOF === true) return null;
+    if (options?.requireProfileEligibility && !(await isCreatorEligibleForProfilePageAsync(creator as any))) {
+      return null;
+    }
 
-    const c = creator as any;
+    return mapCreatorProfile(creator as any);
+  } catch {
+    return null;
+  }
+}
+
+function mapCreatorProfile(c: any): CreatorProfile {
     return {
       _id: c._id.toString(),
       name: c.name || '',
@@ -246,9 +222,6 @@ export async function getCreatorByUsername(username: string): Promise<CreatorPro
       adminImported: c.adminImported || false,
       publicPage: c.publicPage || false,
     };
-  } catch {
-    return null;
-  }
 }
 
 const RELATED_SELECT = 'name username slug avatar avatarThumbC50 avatarThumbC144 header categories subscriberCount likesCount photosCount videosCount price isFree isVerified url location';
@@ -317,11 +290,14 @@ export async function getRelatedCreators(
 ): Promise<CreatorProfile[]> {
   try {
     await connectDB();
+    const promoted = await getPromotedCreatorUsernames();
+    const profileFilter = buildCreatorProfilePageFilter(promoted);
     const baseFilter = {
       slug: { $ne: excludeSlug },
       avatar: { $ne: '' },
       deleted: { $ne: true },
       redirectToOF: { $ne: true },
+      ...profileFilter,
     };
 
     let searchCats = categories.filter(Boolean);
@@ -348,6 +324,7 @@ export async function getRelatedCreators(
         avatar: { $ne: '' },
         deleted: { $ne: true },
         redirectToOF: { $ne: true },
+        ...profileFilter,
       })
         .sort({ likesCount: -1 })
         .limit(limit - creators.length)

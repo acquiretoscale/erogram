@@ -5,7 +5,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import { getActiveCampaigns } from '@/lib/actions/campaigns';
 import { Article, User, Group, Bot, OnlyFansCreator } from '@/lib/models';
 import { getLocale } from '@/lib/i18n/server';
-import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
+import { OF_CATEGORIES } from '@/app/ofsearch/constants';
 import { AI_NSFW_TOOLS } from '@/app/ainsfw/data';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 

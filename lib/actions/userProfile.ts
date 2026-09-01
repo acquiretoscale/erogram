@@ -26,7 +26,7 @@ import {
   Post,
   ProfileFeedComment,
 } from '@/lib/models';
-import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { ofCreatorProfileUrl } from '@/lib/ofsearch/creatorUrls';
 import { PROFILE_THEMES, type ProfileThemeId, isFreeProfileTheme } from '@/app/profile/profileTheme';
 
 const MIN_INTEREST_CONTENT = 20;
@@ -698,7 +698,7 @@ export async function getPublicUserContributions(userId: string, limit = 10): Pr
       type: 'photo_comment',
       label: creator?.name ? `Comment on ${creator.name}` : 'Photo comment',
       content: row.content || '',
-      href: slug ? ofCreatorProfileUrl(slug) : '/onlyfanssearch',
+      href: slug ? ofCreatorProfileUrl(slug) : '/ofsearch',
       createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : '',
     });
   }

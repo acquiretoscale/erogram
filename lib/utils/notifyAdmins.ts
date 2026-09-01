@@ -84,6 +84,11 @@ export async function notifyAdminsOfSale(payload: SaleNotificationPayload) {
     ainsfw_startup: 'AI NSFW Scale',
     ainsfw_platinum: 'AI NSFW Platinum',
     featured_creator: 'Featured Creator',
+    slutbot_ecstasy: 'SLUTBOT Ecstasy',
+    slutbot_passion: 'SLUTBOT Passion',
+    slutbot_desire: 'SLUTBOT Desire',
+    slutbot_flirt: 'SLUTBOT Flirt',
+    slutbot_tease: 'SLUTBOT Tease',
   };
   const planLabel = PLAN_LABELS[payload.plan] || payload.plan;
   const methodLabel = payload.method === 'stars' ? '⭐ Stars' : '₿ Crypto';

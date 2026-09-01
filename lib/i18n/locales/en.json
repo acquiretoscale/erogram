@@ -17,10 +17,11 @@
     "aiNsfw": "AI NSFW",
     "tags": "Tags",
     "trending": "TRENDING",
-    "onlyfans": "OnlyFans",
+    "onlyfans": "OFsearch",
     "submit": "Submit",
     "join": "Join",
     "explore": "Explore",
+    "xplore": "eXplore",
     "language": "Language",
     "whatAdding": "What are you adding?",
     "onlyfansCreator": "OnlyFans Creator",
@@ -54,6 +55,7 @@
     "contact": "Contact",
     "followSocials": "Follow EROgram on socials",
     "explore": "Explore",
+    "xplore": "eXplore",
     "telegramBots": "Telegram Bots",
     "aiNsfwTools": "AI NSFW Tools",
     "tags": "Tags",
@@ -161,15 +163,15 @@
     "faqOnlyfansTitle": "OnlyFans Creators",
     "faqOnlyfans": [
       {
-        "q": "What is OnlyFans Search on Erogram?",
-        "a": "OnlyFans Search is a free search engine with over 1.8 million OnlyFans creator profiles. Visitors can search by name, browse by category or country, and check trending creators. It works as a discovery layer, since OnlyFans itself has almost no search function."
+        "q": "What is OFsearch on Erogram?",
+        "a": "OFsearch is a free search engine with over 1.8 million OnlyFans creator profiles. Visitors can search by name, browse by category or country, and check trending creators. It works as a discovery layer, since OnlyFans itself has almost no search function."
       },
       {
         "q": "How do I find OnlyFans creators by category?",
         "a": "Erogram organizes creators into categories such as Asian, MILF, Latina, Goth, Petite, and many more, plus country filters. Each creator has a profile page with bio, stats, and a link to their OnlyFans. Curated top lists rank the best accounts in each category, updated daily."
       },
       {
-        "q": "Is the OnlyFans search free?",
+        "q": "Is OFsearch free?",
         "a": "Yes, searching and browsing creator profiles costs nothing and no account is needed. Subscribing to a creator happens on OnlyFans itself, at whatever price the creator sets. Erogram only handles the discovery part."
       }
     ]
@@ -501,7 +503,7 @@
     "browseByCountry": "Browse Top 10 OnlyFans Models by Country",
     "browseByState": "Browse Top 10 OnlyFans Models by State",
     "breadcrumbHome": "Home",
-    "breadcrumbOfSearch": "OnlyFans",
+    "breadcrumbOfSearch": "OFsearch",
     "rankLabel": "Rank",
     "liveLabel": "Live"
   },
@@ -585,8 +587,8 @@
     "finalizing": "Finalizing import…"
   },
   "ofSearch": {
-    "heroTitle": "OnlyFans",
-    "heroTitleAccent": "Search",
+    "heroTitle": "OF",
+    "heroTitleAccent": "search",
     "heroDesc": "Explore 1.8M+ OnlyFans creators. Search by keyword, bookmark your favorites, and filter by category.",
     "searchPlaceholder": "Search by name, keyword, ethnicity... press Enter",
     "searchPlaceholderCategory": "Search by name, keyword, location, ethnicity...",
@@ -616,7 +618,7 @@
     "bestLabel": "Best {label}",
     "browseVerified": "Browse verified {label} OnlyFans accounts. Compare prices and find the best {label} creators.",
     "noCreatorsLabel": "No {label} creators yet. Check back soon.",
-    "ofSearchMain": "OFSearch main",
+    "ofSearchMain": "OFsearch main",
     "mostLikes": "Most Likes",
     "leastLikes": "Least Likes",
     "hasInstagram": "Instagram",
@@ -629,7 +631,7 @@
     "shuffle": "Shuffle",
     "noCreatorsInCategory": "No creators in this category yet.",
     "home": "Home",
-    "onlyfansSearch": "OnlyFans",
+    "onlyfansSearch": "OFsearch",
     "submitNewCreator": "Submit New Creator",
     "shareVia": "Share via",
     "copyLink": "Copy link",
@@ -665,7 +667,7 @@
     "topCreatorsDesc": "The definitive list of the {count} most popular OnlyFans creators. Updated daily on Erogram.",
     "noTopCreators": "No top creators loaded yet. Check back soon.",
     "discover": "Discover",
-    "onlyfansSearchFooter": "OnlyFans",
+    "onlyfansSearchFooter": "OFsearch",
     "bestOnlyfansCreators": "Best OnlyFans Creators",
     "bestOnlyfansAccounts": "Best OnlyFans Accounts",
     "catOnlyfans": "{cat} OnlyFans",

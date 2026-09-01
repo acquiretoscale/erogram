@@ -1,6 +1,6 @@
 import type { BestOfPage } from '@/app/best-onlyfans-accounts/bestOfPages';
 import { BEST_OF_PAGES, BEST_OF_PAGE_MAP } from '@/app/best-onlyfans-accounts/bestOfPages';
-import { getKeywordCategoryPatterns, OF_KEYWORD_CATEGORIES } from '@/lib/onlyfanssearch/keywordCategories';
+import { getKeywordCategoryPatterns, OF_KEYWORD_CATEGORIES } from '@/lib/ofsearch/keywordCategories';
 
 const R2 = process.env.R2_PUBLIC_URL || '';
 

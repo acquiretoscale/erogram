@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { ofCreatorProfileUrl } from '@/lib/ofsearch/creatorUrls';
 import type { BlogFeaturedCreatorData } from '@/lib/actions/blogFeatured';
 import { trackBlogFeaturedClick } from '@/lib/actions/blogFeatured';
 import type { BlogTopAITool } from '@/lib/actions/ainsfw';
@@ -76,7 +76,7 @@ export function CoverModelCard({ featuredCreator }: { featuredCreator: BlogFeatu
   if (!featuredCreator) return null;
   const dest =
     featuredCreator.destinationUrl ||
-    (featuredCreator.username ? ofCreatorProfileUrl(featuredCreator.username) : '/onlyfanssearch');
+    (featuredCreator.username ? ofCreatorProfileUrl(featuredCreator.username) : '/ofsearch');
   const cover = featuredCreator.coverImage || featuredCreator.avatar || '';
 
   return (

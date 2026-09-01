@@ -54,8 +54,6 @@ export default async function TagDetailPage({ params }: PageProps) {
       total={detail.total}
       groups={detail.groups}
       rankingPages={detail.rankingPages}
-      top10={detail.top10}
-      creators={detail.creators}
       bots={detail.bots}
       aiTools={detail.aiTools}
     />

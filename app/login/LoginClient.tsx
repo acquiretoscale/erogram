@@ -121,10 +121,10 @@ export default function LoginClient({
             <AuthTabToggle tab={tab} setTab={setTab} isAinsfwTheme={isAinsfwTheme} />
 
             <div className="mb-3">
-              <h1 className="text-lg sm:text-xl font-black text-gray-900 leading-tight">
+              <h1 className={`text-lg sm:text-xl font-black leading-tight ${isAinsfwTheme ? 'text-gray-900' : 'text-white'}`}>
                 {tab === 'join' ? 'Create a free account' : 'Welcome back'}
               </h1>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className={`text-xs mt-0.5 ${isAinsfwTheme ? 'text-gray-500' : 'text-white/55'}`}>
                 {tab === 'join'
                   ? 'Be part of the fastest-growing adult community'
                   : 'Sign in to access your saved profiles'}
@@ -158,7 +158,7 @@ export default function LoginClient({
               </>
             )}
 
-            <p className="mt-3 text-center text-[10px] text-black/40 leading-relaxed">
+            <p className={`mt-3 text-center text-[10px] leading-relaxed ${isAinsfwTheme ? 'text-black/40' : 'text-white/40'}`}>
               By continuing, you agree to our{' '}
               <Link href="/terms" className={isAinsfwTheme ? 'text-[#16a34a] hover:underline' : 'text-[#0088c2] hover:underline'}>Terms</Link>
               {' & '}

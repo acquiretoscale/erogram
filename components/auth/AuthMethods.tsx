@@ -16,12 +16,14 @@ function PasswordInput({
   placeholder,
   autoComplete,
   inputClass,
+  isAinsfwTheme,
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
   autoComplete: string;
   inputClass: string;
+  isAinsfwTheme: boolean;
 }) {
   const [visible, setVisible] = useState(false);
 
@@ -39,7 +41,9 @@ function PasswordInput({
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
-        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+        className={`absolute right-2.5 top-1/2 -translate-y-1/2 transition-colors ${
+          isAinsfwTheme ? 'text-gray-400 hover:text-gray-600' : 'text-white/40 hover:text-white/70'
+        }`}
         aria-label={visible ? 'Hide password' : 'Show password'}
       >
         {visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -49,11 +53,13 @@ function PasswordInput({
 }
 
 function OrDivider({ isAinsfwTheme }: { isAinsfwTheme: boolean }) {
+  const lineClass = isAinsfwTheme ? 'bg-black/10' : 'bg-white/15';
+  const textClass = isAinsfwTheme ? 'text-black/35' : 'text-white/40';
   return (
     <div className="flex items-center gap-2 my-0.5">
-      <div className="flex-1 h-px bg-black/10" />
-      <span className="text-[10px] text-black/35 font-medium">or</span>
-      <div className="flex-1 h-px bg-black/10" />
+      <div className={`flex-1 h-px ${lineClass}`} />
+      <span className={`text-[10px] font-medium ${textClass}`}>or</span>
+      <div className={`flex-1 h-px ${lineClass}`} />
     </div>
   );
 }
@@ -90,14 +96,14 @@ export default function AuthMethods({
 
   const inputClass = isAinsfwTheme
     ? 'w-full px-3 py-2 rounded-lg bg-black/[0.03] border border-black/15 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-[#22c55e]'
-    : 'w-full px-3 py-2 rounded-lg bg-black/[0.03] border border-black/15 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-[#00AFF0]';
+    : 'w-full px-3 py-2 rounded-lg bg-white/10 border border-white/15 text-white placeholder-white/40 text-sm focus:outline-none focus:border-[#00AFF0]';
 
   const btnClass = isAinsfwTheme
     ? 'w-full py-2.5 rounded-lg bg-[#22c55e] text-black font-bold text-sm hover:bg-[#1db954] transition-all disabled:opacity-50'
     : 'w-full py-2.5 rounded-lg bg-[#00AFF0] text-white font-bold text-sm hover:bg-[#0099d6] transition-all disabled:opacity-50';
 
   const googleBtnClass =
-    'flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg bg-white border border-black/15 text-gray-900 font-bold text-sm hover:bg-gray-50 transition-all';
+    'flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg bg-white border border-white/20 text-gray-900 font-bold text-sm hover:bg-gray-100 transition-all shadow-sm';
 
   useEffect(() => {
     (window as any).onTelegramAuth = async function (user: any) {
@@ -107,7 +113,7 @@ export default function AuthMethods({
       try {
         const res = await axios.post('/api/auth/telegram', user);
         if (!res.data?.token) return;
-        onAuthSuccess({ ...res.data, isNewUser: false });
+        onAuthSuccess({ ...res.data, isNewUser: !!res.data.isNewUser });
       } catch (err: any) {
         onError(err.response?.data?.message || 'Telegram login failed');
       } finally {
@@ -118,18 +124,24 @@ export default function AuthMethods({
 
   useEffect(() => {
     if (tab !== 'signin') {
-      setTelegramReady(false);
       setSignInHelp(null);
       setHelpValue('');
       setHelpMessage('');
-      return;
     }
-    const t = setTimeout(() => setTelegramReady(true), 50);
-    return () => clearTimeout(t);
   }, [tab]);
 
   useEffect(() => {
-    if (tab !== 'signin' || !telegramReady) return;
+    if (signInHelp) {
+      setTelegramReady(false);
+      return;
+    }
+    setTelegramReady(false);
+    const t = setTimeout(() => setTelegramReady(true), 50);
+    return () => clearTimeout(t);
+  }, [tab, signInHelp]);
+
+  useEffect(() => {
+    if (signInHelp || !telegramReady) return;
     const container = document.getElementById('telegram-login-container');
     if (!container) return;
     container.innerHTML = '';
@@ -142,7 +154,7 @@ export default function AuthMethods({
     script.setAttribute('data-onauth', 'onTelegramAuth(user)');
     script.setAttribute('data-request-access', 'write');
     container.appendChild(script);
-  }, [tab, telegramReady]);
+  }, [tab, telegramReady, signInHelp]);
 
   const handleHelpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -217,6 +229,7 @@ export default function AuthMethods({
                 placeholder="Password"
                 autoComplete="new-password"
                 inputClass={inputClass}
+                isAinsfwTheme={isAinsfwTheme}
               />
               <PasswordInput
                 value={confirmPassword}
@@ -224,6 +237,7 @@ export default function AuthMethods({
                 placeholder="Confirm"
                 autoComplete="new-password"
                 inputClass={inputClass}
+                isAinsfwTheme={isAinsfwTheme}
               />
             </div>
             <label className="flex items-start gap-2 cursor-pointer select-none">
@@ -233,7 +247,7 @@ export default function AuthMethods({
                 onChange={(e) => setUpdatesOptIn(e.target.checked)}
                 className="mt-0.5 w-4 h-4 rounded border-black/25 accent-[#00AFF0]"
               />
-              <span className="text-[11px] text-black/55 leading-snug">
+              <span className={`text-[11px] leading-snug ${isAinsfwTheme ? 'text-black/55' : 'text-white/60'}`}>
                 Receive updates based on your interest
               </span>
             </label>
@@ -246,11 +260,14 @@ export default function AuthMethods({
             <GoogleIcon />
             Google
           </a>
+          {telegramReady && (
+            <TelegramLoginSlot isAinsfwTheme={isAinsfwTheme} />
+          )}
         </>
       ) : signInHelp ? (
         <>
           <form onSubmit={handleHelpSubmit} className="flex flex-col gap-2">
-            <p className="text-xs text-black/55 leading-snug">
+            <p className={`text-xs leading-snug ${isAinsfwTheme ? 'text-black/55' : 'text-white/60'}`}>
               Enter your email and we will send a link to create a new password.
             </p>
             <input
@@ -267,7 +284,7 @@ export default function AuthMethods({
             </button>
           </form>
           {helpMessage ? (
-            <p className="text-xs text-green-700 leading-snug">{helpMessage}</p>
+            <p className={`text-xs leading-snug ${isAinsfwTheme ? 'text-green-700' : 'text-green-400'}`}>{helpMessage}</p>
           ) : null}
           <button
             type="button"
@@ -300,6 +317,7 @@ export default function AuthMethods({
               placeholder="Password"
               autoComplete="current-password"
               inputClass={inputClass}
+              isAinsfwTheme={isAinsfwTheme}
             />
             <div className="text-[11px] font-semibold">
               <button type="button" onClick={() => { setSignInHelp('password'); onError(''); setHelpMessage(''); }} className={linkClass}>
@@ -316,14 +334,24 @@ export default function AuthMethods({
             Google
           </a>
           {telegramReady && (
-            <div
-              className="flex justify-center items-center min-h-[40px] rounded-lg bg-black/[0.03] border border-black/10 py-1"
-              id="telegram-login-container"
-            />
+            <TelegramLoginSlot isAinsfwTheme={isAinsfwTheme} />
           )}
         </>
       )}
     </div>
+  );
+}
+
+function TelegramLoginSlot({ isAinsfwTheme }: { isAinsfwTheme: boolean }) {
+  return (
+    <div
+      className={`flex justify-center items-center min-h-[40px] rounded-lg py-1 ${
+        isAinsfwTheme
+          ? 'bg-black/[0.03] border border-black/10'
+          : 'bg-white/[0.06] border border-white/10'
+      }`}
+      id="telegram-login-container"
+    />
   );
 }
 

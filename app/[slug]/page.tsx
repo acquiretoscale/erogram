@@ -26,7 +26,7 @@ import {
   buildGroupListingMetaDescription,
   resolveEntityMetaDescription,
 } from '@/lib/seo/entityMetaDescription';
-import { isBlacklistedPublicPathSegment } from '@/lib/onlyfanssearch/creatorBlacklist';
+import { isBlacklistedPublicPathSegment } from '@/lib/ofsearch/creatorBlacklist';
 
 // Pre-built at deploy (all approved groups + bots via generateStaticParams below)
 // + background refresh every 5 minutes (ISR): Google sees stable server HTML like

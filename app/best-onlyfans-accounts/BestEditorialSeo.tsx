@@ -231,7 +231,7 @@ export default function BestEditorialSeo({ locale }: Props) {
       <h2 className={h2}>Pick Your Next Page</h2>
       <p className="mb-4">
         Start with a ranked niche from the grid if you know what you want. Use the{' '}
-        <Link href={lp('/onlyfanssearch')} className={link}>full index</Link>{' '}
+        <Link href={lp('/ofsearch')} className={link}>full index</Link>{' '}
         if you want to stack price and category filters.{' '}
         <Link href={lp('/join-erogram?redirect=/best-onlyfans-accounts')} className={link}>Make the free account</Link>{' '}
         if you want to keep any of it.

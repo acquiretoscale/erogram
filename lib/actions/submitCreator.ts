@@ -7,7 +7,7 @@ import { uploadToR2, isR2Configured } from '@/lib/r2';
 import jwt from 'jsonwebtoken';
 import { revalidateCreatorPage } from '@/lib/actions/ofCreatorProfile';
 import { getApifyCredentials } from '@/lib/apify-key';
-import { isCreatorBlacklisted } from '@/lib/onlyfanssearch/creatorBlacklist';
+import { isCreatorBlacklisted } from '@/lib/ofsearch/creatorBlacklist';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 

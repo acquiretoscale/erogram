@@ -5,7 +5,11 @@ import { resolveOfCategorySlugFromPublicSegment } from '@/lib/bestOnlyfansAccoun
 import { resolveListingSlugFromPublicSegment } from '@/lib/i18n/listingSlugTranslations';
 import { getLocalizedHubSegment } from '@/lib/i18n/hubSlugTranslations';
 import { OF_SEARCH_HUB } from '@/lib/i18n/config';
-import { isBlacklistedPublicPathSegment } from '@/lib/onlyfanssearch/creatorBlacklist';
+import { isBlacklistedPublicPathSegment } from '@/lib/ofsearch/creatorBlacklist';
+import { OF_SEARCH_ENGINE_ENABLED } from '@/lib/ofsearch/featureFlags';
+import { OF_CATEGORY_SLUGS } from '@/app/ofsearch/constants';
+import { BEST_OF_PAGE_MAP } from '@/app/best-onlyfans-accounts/bestOfPages';
+import { rankingEnglishPublicPath, bestOfSlugFromPublicPath } from '@/lib/bestOfPageContent/hottestUrls';
 
 /**
  * Locale-aware middleware for Erogram.
@@ -20,7 +24,7 @@ import { isBlacklistedPublicPathSegment } from '@/lib/onlyfanssearch/creatorBlac
  * existing Google rankings are 100% preserved.
  *
  * OnlyFans SEO rewrites:
- * - /{cat}onlyfans               → /onlyfanssearch/{cat}
+ * - /{cat}onlyfans               → /ofsearch/{cat}
  */
 
 // Block referral traffic from Turkish Yandex only. Russian Yandex (.ru) is kept.
@@ -48,12 +52,48 @@ export function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // Legacy /onlyfanssearch → /ofsearch (301)
+  {
+    const legacyHub = pathname.match(/^(\/(?:de|es|pt))?\/onlyfanssearch(\/.*)?$/);
+    if (legacyHub) {
+      const url = request.nextUrl.clone();
+      url.pathname = `${legacyHub[1] || ''}/ofsearch${legacyHub[2] || ''}`;
+      return NextResponse.redirect(url, 301);
+    }
+  }
+
+  // Category card grids off — send /ofsearch/{category} to Top 10 or hub
+  if (!OF_SEARCH_ENGINE_ENABLED) {
+    const catBrowse = pathname.match(/^(\/(?:de|es|pt))?\/ofsearch\/([^/]+)\/?$/);
+    if (catBrowse) {
+      const localePrefix = catBrowse[1] || '';
+      const slug = decodeURIComponent(catBrowse[2]);
+      if (slug !== 'best' && slug !== 'categories' && slug !== 'locations' && OF_CATEGORY_SLUGS.has(slug)) {
+        const url = request.nextUrl.clone();
+        url.pathname = BEST_OF_PAGE_MAP.has(slug)
+          ? `${localePrefix}${rankingEnglishPublicPath(slug, 'top')}`
+          : `${localePrefix}/ofsearch`;
+        return NextResponse.redirect(url, 308);
+      }
+    }
+  }
+
+  // Old ranking URLs are deleted. Content lives at /ofsearch/top-25-onlyfans-models/{niche}.
+  {
+    const oldRanking = pathname.match(
+      /^(\/(?:de|es|pt))?\/(?:onlyfanssearch|ofsearch)\/(top-(?:10|25|50)-.+-onlyfans-models)\/?$/,
+    );
+    if (oldRanking && bestOfSlugFromPublicPath(oldRanking[2])) {
+      return new NextResponse(null, { status: 404 });
+    }
+  }
+
   // ── DMCA forever ban: hard-404 claimed creator pages in ALL locales ─────────
   // Covers: /{user}-onlyfans, /{user}-onlyfans-telegram, /jocy-cosplay, /lioqueen,
-  // /onlyfanssearch/{user}, and the same paths under /de|/es|/pt.
+  // /ofsearch/{user}, and the same paths under /de|/es|/pt.
   {
     const dmcaPath = pathname.match(
-      /^(\/(?:de|es|pt))?\/(?:onlyfanssearch\/)?([^/]+)\/?$/,
+      /^(\/(?:de|es|pt))?\/(?:(?:onlyfanssearch|ofsearch)\/)?([^/]+)\/?$/,
     );
     if (dmcaPath && isBlacklistedPublicPathSegment(dmcaPath[2])) {
       return new NextResponse(null, { status: 404 });
@@ -100,8 +140,8 @@ export function middleware(request: NextRequest) {
   }
 
   // ── Localized OnlyFans search paths ─────────────────────────────────────────
-  // /de/onlyfanssearch* → rewrite to /onlyfanssearch*, x-locale: de
-  // /es/onlyfanssearch* → rewrite to /onlyfanssearch*, x-locale: es
+  // /de/ofsearch* → rewrite to /ofsearch*, x-locale: de
+  // /es/ofsearch* → rewrite to /ofsearch*, x-locale: es
   const OF_LOCALE_SEGMENTS: Record<string, string> = {
     de: OF_SEARCH_HUB.de,
     es: OF_SEARCH_HUB.es,
@@ -112,12 +152,12 @@ export function middleware(request: NextRequest) {
     const prefix = `/${loc}/${seg}`;
     if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
       const rest = pathname.slice(prefix.length);
-      let dest = `/onlyfanssearch${rest}`;
+      let dest = `/ofsearch${rest}`;
       const catMatch = rest.match(/^\/([^/]+)(\/.*)?$/);
       if (catMatch) {
         const enSlug = resolveBestOfSlugFromPublicSegment(catMatch[1]);
         if (enSlug) {
-          dest = `/onlyfanssearch/top-10-${enSlug}-onlyfans-models${catMatch[2] || ''}`;
+          dest = `${rankingEnglishPublicPath(enSlug, 'top')}${catMatch[2] || ''}`;
         }
       }
       return rewriteWithLocale(dest, loc, pathname);
@@ -147,14 +187,14 @@ export function middleware(request: NextRequest) {
       if (!m) continue;
       const enCat = resolveOfCategorySlugFromPublicSegment(m[1]);
       if (enCat) {
-        return rewriteWithLocale(`/best-onlyfans-accounts/${enCat}`, loc, pathname);
+        return rewriteWithLocale(rankingEnglishPublicPath(enCat, 'best'), loc, pathname);
       }
     }
   }
 
   // ── Localized listing slugs (/de/geile-amateur-gruppe → /amateur-group) ──
   const RESERVED_LOCALE_SEGMENTS = new Set([
-    'groups', 'bots', 'onlyfanssearch',
+    'groups', 'bots', 'onlyfanssearch', 'ofsearch',
     'best-telegram-groups', 'best-onlyfans-accounts', 'best-ai-nsfw-tools', 'add', 'about', 'terms',
     'privacy', 'contact', 'blog', 'ainsfw', 'advertise', 'advertisers', 'trending',
     'top100', 'premium', 'premium10', 'premium15',
@@ -182,7 +222,7 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Legacy OF creator URLs: /{username}-onlyfans → /onlyfanssearch/{username}
+  // Legacy OF creator URLs: /{username}-onlyfans → /ofsearch/{username}
   // (DMCA-blacklisted usernames already 404 above — never redirect those.)
   {
     const legacyOf = pathname.match(/^(\/(?:de|es|pt))?\/([^/]+)-onlyfans\/?$/);
@@ -193,7 +233,7 @@ export function middleware(request: NextRequest) {
         return new NextResponse(null, { status: 404 });
       }
       const url = request.nextUrl.clone();
-      url.pathname = `${localePrefix}/onlyfanssearch/${username}`;
+      url.pathname = `${localePrefix}/ofsearch/${username}`;
       return NextResponse.redirect(url, 301);
     }
   }

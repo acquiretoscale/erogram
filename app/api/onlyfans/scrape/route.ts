@@ -4,7 +4,7 @@ import { OnlyFansCreator, ScrapeRun, SearchQuery } from '@/lib/models';
 import { getApifyCredentials, markKeyBurned } from '@/lib/apify-key';
 import { processCreatorImages } from '@/lib/actions/creatorImages';
 import { authenticateUser } from '@/lib/auth';
-import { isCreatorBlacklisted } from '@/lib/onlyfanssearch/creatorBlacklist';
+import { isCreatorBlacklisted } from '@/lib/ofsearch/creatorBlacklist';
 
 const MAX_PROFILES_PER_SCRAPE = 15;
 

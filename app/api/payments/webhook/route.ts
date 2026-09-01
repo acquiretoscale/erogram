@@ -5,6 +5,7 @@ import { recordCouponUsage } from '@/lib/actions/coupons';
 import { notifyAdminsOfSale } from '@/lib/utils/notifyAdmins';
 import { getPremiumPricing } from '@/lib/premiumPricing';
 import { buildBoostPaymentUpdate, SCALE_STARS } from '@/lib/boostPricing';
+import { fulfillSlutbotStarsPayment, getSlutbotPack, isSlutbotPayload } from '@/lib/slutbotStars';
 
 const GROUP_SUBMISSION_TYPES = new Set(['normal_listing', 'instant_approval', 'boost_week', 'boost_month', 'scale_month']);
 
@@ -55,6 +56,13 @@ export async function POST(req: NextRequest) {
       try {
         const payload = JSON.parse(query.invoice_payload);
 
+        // SLUTBOT Desire packs on this same bot. Never grants Erogram VIP.
+        if (isSlutbotPayload(payload)) {
+          logEvent({ event: 'pre_checkout', username: `SLUTBOT ${payload.plan}`, paymentMethod: 'stars' });
+          await answerPreCheckoutQuery(query.id, true);
+          return NextResponse.json({ ok: true });
+        }
+
         // Group/bot submission instant approval payments
         if (payload.groupId && payload.type && GROUP_SUBMISSION_TYPES.has(payload.type)) {
           await connectDB();
@@ -99,6 +107,33 @@ export async function POST(req: NextRequest) {
       const payment = update.message.successful_payment;
       try {
         const payload = JSON.parse(payment.invoice_payload);
+
+        if (isSlutbotPayload(payload)) {
+          const chargeId = payment.provider_payment_charge_id || payment.telegram_payment_charge_id || '';
+          const pack = getSlutbotPack(payload.plan);
+          const result = await fulfillSlutbotStarsPayment({
+            clientId: payload.clientId,
+            plan: payload.plan,
+            chargeId,
+            starsAmount: Number(payment.total_amount) || 0,
+          });
+          if (result === 'fulfilled' && pack) {
+            logEvent({
+              event: 'payment_success',
+              username: pack.label,
+              paymentMethod: 'stars',
+              chargeId,
+              reason: `slutbot:${payload.plan}:${payload.clientId}`,
+            });
+            notifyAdminsOfSale({
+              plan: `slutbot_${payload.plan}`,
+              method: 'stars',
+              username: pack.label,
+              usd: pack.usd,
+            }).catch(() => {});
+          }
+          return NextResponse.json({ ok: true });
+        }
 
         // Group/bot submission instant approval
         if (payload.groupId && payload.type && GROUP_SUBMISSION_TYPES.has(payload.type)) {

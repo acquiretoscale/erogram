@@ -97,6 +97,14 @@ export default function PwaInstallBanner() {
       return () => window.removeEventListener('appinstalled', onInstalled);
     }
 
+    const isLoggedIn = () => {
+      try {
+        return Boolean(localStorage.getItem('token'));
+      } catch {
+        return false;
+      }
+    };
+
     setIsIOS(isIosDevice());
 
     if ('serviceWorker' in navigator) {
@@ -106,12 +114,12 @@ export default function PwaInstallBanner() {
     const onPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setVisible(true);
+      if (isLoggedIn()) setVisible(true);
     };
     window.addEventListener('beforeinstallprompt', onPrompt);
 
     let iosTimer: ReturnType<typeof setTimeout> | undefined;
-    if (isIosDevice()) {
+    if (isIosDevice() && isLoggedIn()) {
       iosTimer = setTimeout(() => setVisible(true), 2500);
     }
 

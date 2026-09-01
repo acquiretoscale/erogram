@@ -784,7 +784,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
         return null;
     }
 
-    // ONLYFANS CREATOR CARD — portrait layout matching /onlyfanssearch style
+    // ONLYFANS CREATOR CARD — portrait layout matching /ofsearch style
     if (campaign?.adType === 'onlyfans-creator') {
         return <OnlyFansCreatorAdCard campaign={campaign} handleClick={handleClick} growthPercent={growthPercent} isIndex={isIndex} />;
     }

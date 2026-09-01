@@ -29,8 +29,8 @@ import {
   loadOfSearchResultsView,
   type OfSearchResultsView,
 } from './profileGridDensity';
-import OnlyFansHeroFilterPanel from '@/app/onlyfanssearch/OnlyFansHeroFilterPanel';
-import { ofOutboundUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import OnlyFansHeroFilterPanel from '@/app/ofsearch/OnlyFansHeroFilterPanel';
+import { ofOutboundUrl } from '@/lib/ofsearch/creatorUrls';
 import CreatorMediaEngagement from '@/components/CreatorMediaEngagement';
 import {
   getBatchMediaEngagement,
@@ -90,7 +90,7 @@ interface ProfileOFPremiumSearchProps {
   onToggleSave: (creatorId: string) => void;
   /** Profile masthead typography; omit on other pages */
   profileHeading?: boolean;
-  /** Skip premium gate (e.g. /onlyfanssearch hero) */
+  /** Skip premium gate (e.g. /ofsearch hero) */
   freeAccess?: boolean;
   hideHeading?: boolean;
   initialQuery?: string;
@@ -108,7 +108,7 @@ interface ProfileOFPremiumSearchProps {
   bestModelsHref?: string;
   /** Dedicated /best — top clicked models */
   bestModelsPage?: boolean;
-  /** Dedicated free hub /onlyfanssearch/best or free category /onlyfanssearch/best/free-{cat} */
+  /** Dedicated free hub /ofsearch/best or free category /ofsearch/best/free-{cat} */
   freeOnlyPage?: boolean;
   freeCategorySlug?: string;
   freeCategoryLabel?: string;
@@ -314,7 +314,7 @@ export default function ProfileOFPremiumSearch({
   hideHeading = false,
   initialQuery = '',
   onActiveChange,
-  loginRedirect = '/onlyfanssearch',
+  loginRedirect = '/ofsearch',
   layout = 'profile',
   minimalFilters = false,
   heroLightBg = false,
@@ -1007,7 +1007,7 @@ export default function ProfileOFPremiumSearch({
     e.preventDefault();
     const trimmed = query.trim();
     if (compactInline || (isHero && minimalFilters)) {
-      const hub = searchHubHref || loginRedirect || '/onlyfanssearch';
+      const hub = searchHubHref || loginRedirect || '/ofsearch';
       if ((hideResults || compactInline) && trimmed) {
         router.push(`${hub}?q=${encodeURIComponent(trimmed)}`);
         return;
@@ -1044,7 +1044,7 @@ export default function ProfileOFPremiumSearch({
 
   const selectCategory = useCallback(
     (slug: string) => {
-      const categoryBase = searchHubHref || '/onlyfanssearch';
+      const categoryBase = searchHubHref || '/ofsearch';
       if (selectedCategory === slug) {
         setSelectedCategory(null);
         router.push(loginRedirect || categoryBase);

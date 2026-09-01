@@ -14,6 +14,7 @@ import TrustedByLeaders from '@/app/advertise/TrustedByLeaders';
 import PromoAudienceProof from '@/app/promo/PromoAudienceProof';
 import InFeedAdFormatComparison from './InFeedAdFormatComparison';
 import PartnershipStats from '@/app/partnership/PartnershipStats';
+import ErogramWordmark from '@/components/ErogramWordmark';
 
 function planCheckoutPrice(plan: AINSFWPlan | null, couponResult: { valid?: boolean; discountedStars?: number } | null): number {
   if (couponResult?.valid && couponResult.discountedStars != null) {
@@ -506,15 +507,22 @@ function PlanFeatureItem({ text, subtext, info, usePlus = false }: PlanFeature &
   );
 }
 
+const BOOST_BASE_FEATURES = [
+  'Permanent listing',
+  'Lising with tool description, pricing + Logo.',
+  'Edit anytime',
+  'Lifetime organic exposure',
+  'Listed on up to 6 relevant categories to maximise your exposure.',
+  'Featured on recently added AI NSFW for 1 month.',
+] as const;
+
 const BOOST_FEATURES: PlanFeature[] = [
   { text: 'Dofollow link to your website for higher SEO benefits.' },
   {
     text: 'Add up to 5 screenshots',
     info: 'Add more screenshots, optimized with proper alt text, file size, and formatting to enhance your listing\'s SEO.',
   },
-  { text: 'Up to 6 categories and subcategories' },
   { text: '30 days featured in your categories' },
-  { text: '30 days featured on the AI NSFW home page.' },
   {
     text: 'Qualify for our Top 10 Rankings',
     info: 'Your AI tool becomes eligible to appear in our highest-traffic pages after the homepage: the Top 10 AI NSFW Tools rankings for each category. The more upvotes and engagement your tool receives from the EROGRAM community, the higher it can climb in the rankings.',
@@ -541,23 +549,46 @@ const STARTUP_FEATURES: PlanFeature[] = [
   { text: '30 days featured in our Trending section.' },
 ];
 
-const A_LA_CARTE_ADDONS = [
+const A_LA_CARTE_ADDONS: { title: string; price: string; description?: string }[] = [
   {
-    title: 'Editorial Article',
-    price: '$200',
-    description: 'SEO & conversion-optimized editorial article (2,000–3,000 words).',
+    title: 'LONG Form Editorial Article',
+    price: '$290',
+    description: 'SEO and conversion-optimized editorial article (2,000–3,000 words).',
+  },
+  {
+    title: 'Short Form Article / Review',
+    price: '$190',
+    description: 'SEO and conversion-optimized editorial article (1,000 words).',
+  },
+  {
+    title: 'Banner Ad (AINSFW, Groups, or Bots)',
+    price: '$190/M',
+  },
+  {
+    title: 'Top Menu Button',
+    price: '$290/M',
+  },
+  {
+    title: 'Integrated Ads',
+    price: '$190/M',
+    description: 'Native ads integrated in AI Tools, TG groups, and TG bots feeds. Seamless placements with excellent engagement.',
+  },
+  {
+    title: 'Featured on AINSFW / OnlyFans / Bots',
+    price: '$290/M',
+    description: 'Featured on the main section page and on individual listing pages.',
   },
   {
     title: 'Telegram Boost',
-    price: '$300',
+    price: '$190/M',
     description: '30-day promotion across our NSFW Telegram network (9 groups, 30,000+ subscribers), with 3 sponsored posts per week.',
   },
   {
     title: 'Pinned Telegram Posts',
-    price: '$200',
+    price: '$290/M',
     description: 'Keep your promotion pinned for 30 days across our 8 NSFW Telegram groups, ensuring every new member sees your ad first.',
   },
-] as const;
+];
 
 const emptyForm: AINSFWFormData = {
   toolName: '',
@@ -662,11 +693,15 @@ export default function AINSFWPricingClient({
   aiNsfwCount,
   groupsAndBotsCount,
   totalUsers,
+  pageVariant = 'submit',
 }: {
   aiNsfwCount: number;
   groupsAndBotsCount: number;
   totalUsers: number;
+  pageVariant?: 'submit' | 'advertise';
 }) {
+  const isAdvertise = pageVariant === 'advertise';
+  const [advertiseSection, setAdvertiseSection] = useState<'ai-tg' | 'onlyfans'>('ai-tg');
   const [username, setUsername] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<AINSFWPlan | null>(null);
   const [form, setForm] = useState<AINSFWFormData>({ ...emptyForm });
@@ -776,7 +811,13 @@ export default function AINSFWPricingClient({
 
   const scrollToPricing = () => {
     const isMobile = window.matchMedia('(max-width: 767px)').matches;
-    const target = document.getElementById(isMobile ? 'pricing-basic' : 'pricing-grid');
+    const target = document.getElementById(
+      isAdvertise
+        ? 'advertise-sections'
+        : isMobile
+          ? 'pricing-boost'
+          : 'pricing-grid',
+    );
     target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
@@ -951,19 +992,98 @@ export default function AINSFWPricingClient({
     <div className="ainsfw-page ainsfw-bg min-h-screen text-white">
       <Navbar username={username} setUsername={setUsername} />
 
-      <main className="max-w-5xl xl:max-w-7xl 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-12 pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-16">
+      <main
+        className={
+          isAdvertise
+            ? 'flex w-full flex-col justify-center px-4 sm:px-6 lg:px-8 min-h-[calc(100svh-5.75rem)] sm:min-h-[calc(100svh-6.25rem)] pt-32 sm:pt-36 pb-12 sm:pb-16'
+            : 'max-w-5xl xl:max-w-7xl 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-12 pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-16'
+        }
+      >
 
         {/* Breadcrumb */}
+        {!isAdvertise && (
         <div className="flex items-center gap-2 text-sm font-bold text-white/30 mb-6 uppercase tracking-widest">
+          <Link href="/" className="hover:text-white/60 transition-colors">Home</Link>
+          <span className="text-white/20">/</span>
           <Link href="/add" className="hover:text-white/60 transition-colors">Add</Link>
           <span className="text-white/20">/</span>
           <span style={{ color: ACCENT }}>AI NSFW Tool</span>
         </div>
+        )}
 
         {/* HERO */}
-        <div className="mb-10 flex flex-col gap-8 sm:gap-10">
-          <CompactHeroStats views={visitorStats.views} last30dAdClicks={visitorStats.last30dAdClicks} />
+        <div className={isAdvertise ? 'w-full max-w-3xl mx-auto flex flex-col gap-8 sm:gap-10' : 'mb-10 flex flex-col gap-8 sm:gap-10'}>
+          {!isAdvertise && (
+            <CompactHeroStats views={visitorStats.views} last30dAdClicks={visitorStats.last30dAdClicks} />
+          )}
 
+          {isAdvertise ? (
+            <>
+              <motion.h1
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+                className="text-center px-2 pt-4 sm:pt-5 pb-1 leading-[1]"
+              >
+                <span className="ainsfw-hero-title text-[clamp(1.35rem,6.8vw,3.5rem)] sm:text-5xl md:text-6xl">
+                  WE HAVE YOUR{' '}
+                  <span className="ainsfw-hero-customers">AUDIENCE.</span>
+                </span>
+              </motion.h1>
+
+              <div className="flex flex-col gap-5 sm:gap-6 justify-center items-stretch w-full">
+                <h2 className="text-center text-2xl sm:text-3xl font-black uppercase tracking-tight text-white flex flex-wrap items-baseline justify-center gap-x-2">
+                  <span>ADVERTISE ON</span>
+                  <ErogramWordmark className="text-2xl sm:text-3xl" />
+                </h2>
+                <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 items-stretch">
+                <Link
+                  href="/add/ainsfw"
+                  className="relative w-full sm:flex-1 font-black uppercase text-black transition-all duration-150 ease-out hover:-translate-y-1 hover:brightness-105 active:translate-x-[6px] active:translate-y-[6px] active:brightness-100 px-5 sm:px-6 py-4 sm:py-5 text-sm sm:text-base tracking-[0.1em] sm:tracking-[0.12em] text-center"
+                  style={{
+                    background: `linear-gradient(180deg, #fef08a 0%, ${CTA} 38%, ${CTA_DARK} 100%)`,
+                    border: CTA_BORDER,
+                    boxShadow: CTA_SHADOW,
+                  }}
+                >
+                  <span
+                    className="pointer-events-none absolute inset-x-0 top-0 h-[42%] rounded-t-[2px]"
+                    style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.45) 0%, transparent 100%)' }}
+                    aria-hidden
+                  />
+                  <span className="relative inline-flex items-center justify-center gap-3">
+                    <span className="shrink-0 inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-md border-2 border-black/35 bg-black/10 text-xs sm:text-sm font-black leading-none tracking-tight">
+                      18+
+                    </span>
+                    AI, Bots &amp; Adult products
+                  </span>
+                </Link>
+              <Link
+                href="/ofm-agencies"
+                className="relative w-full sm:flex-1 font-black uppercase text-black transition-all duration-150 ease-out hover:-translate-y-1 hover:brightness-105 active:translate-x-[6px] active:translate-y-[6px] active:brightness-100 px-5 sm:px-6 py-4 sm:py-5 text-sm sm:text-base tracking-[0.1em] sm:tracking-[0.12em] text-center"
+                style={{
+                  background: `linear-gradient(180deg, #fef08a 0%, ${CTA} 38%, ${CTA_DARK} 100%)`,
+                  border: CTA_BORDER,
+                  boxShadow: CTA_SHADOW,
+                }}
+              >
+                <span
+                  className="pointer-events-none absolute inset-x-0 top-0 h-[42%] rounded-t-[2px]"
+                  style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.45) 0%, transparent 100%)' }}
+                  aria-hidden
+                />
+                <span className="relative inline-flex items-center justify-center gap-3">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden className="shrink-0 sm:w-8 sm:h-8">
+                    <path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z" />
+                  </svg>
+                  ONLYFANS AGENCIES
+                </span>
+              </Link>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
           <PartnershipStats
             aiNsfwCount={aiNsfwCount}
             groupsAndBotsCount={groupsAndBotsCount}
@@ -981,7 +1101,11 @@ export default function AINSFWPricingClient({
               <span className="ainsfw-hero-customers">CUSTOMERS.</span>
             </span>
           </motion.h1>
+            </>
+          )}
 
+          {!isAdvertise && (
+          <>
           <div className="hidden sm:flex justify-center -mt-2 sm:mt-0">
             <GetListedPricingButton onClick={scrollToPricing}>
               GET LISTED ON EROGRAM
@@ -1105,58 +1229,20 @@ export default function AINSFWPricingClient({
           <div className="mt-5">
             <TrustedByLeaders variant="green" />
           </div>
+          </>
+          )}
         </div>
 
         {/* PRICING GRID */}
+        {!isAdvertise && (
+        <>
         <div id="pricing-grid" className="mb-5 scroll-mt-24">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-7">
-
-          {/* BASIC */}
-          <div id="pricing-basic" className="relative flex flex-col bg-white overflow-hidden scroll-mt-24" style={{ border: BORDER, boxShadow: SHADOW_LG, color: '#000' }}>
-            <div className="px-6 py-4" style={{ background: PLAN_HEADER_BG }}>
-              <p className="font-black uppercase leading-none tracking-tight text-[1.5rem] sm:text-[1.625rem] text-white">
-                BASIC
-              </p>
-              <p className="text-lg sm:text-base font-black uppercase tracking-wide text-white/45 mt-1">Get Seen</p>
-            </div>
-            <div className="px-6 pb-6 pt-4 flex flex-col flex-1">
-            <div className="mb-3">
-              <span className="text-5xl sm:text-4xl font-black text-black">$49</span>
-              <p className="text-xs sm:text-sm font-bold text-black/40 mt-1">One-time payment</p>
-            </div>
-            <p className="text-base sm:text-sm text-black/55 leading-relaxed mb-4">
-              Perfect for getting your AI tool indexed, discoverable, and visible to thousands of high-intent users.
-            </p>
-            <ul className="space-y-2.5 mb-8 flex-1 mt-1">
-              {[
-                'Permanent listing',
-                'Lising with tool description, pricing + Logo.',
-                'Edit anytime',
-                'Lifetime organic exposure',
-                'Listed on up to 3 relevant categories to maximise your exposure.',
-                'Featured on recently added AI NSFW for 1 month.',
-              ].map((f) => (
-                <li key={f} className="flex items-start gap-2.5 text-lg sm:text-base font-semibold text-black/80">
-                  <span style={{ color: ACCENT }} className="mt-0.5 shrink-0"><Check /></span>
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <button
-              onClick={() => openForm('basic')}
-              className="w-full py-4 text-lg sm:text-base font-black uppercase tracking-widest transition-all active:translate-x-[2px] active:translate-y-[2px]"
-              style={selectedPlan === 'basic'
-                ? { background: CTA_DARK, color: '#000', border: BORDER, boxShadow: 'none', transform: 'translate(2px,2px)' }
-                : { background: CTA, color: '#000', border: BORDER, boxShadow: SHADOW }}
-            >
-              {selectedPlan === 'basic' ? '✓ Selected · scroll down' : 'Get Listed · $49'}
-            </button>
-            </div>
-          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-7 items-stretch mb-6 lg:mb-8">
 
           {/* BOOST · $147 */}
           <div
-            className="relative flex flex-col bg-white overflow-hidden"
+            id="pricing-boost"
+            className="relative flex flex-col bg-white overflow-hidden scroll-mt-24 h-full"
             style={{ border: `3px solid ${ACCENT}`, boxShadow: `6px 6px 0px ${ACCENT}`, color: '#000' }}
           >
             <div className="px-6 py-4" style={{ background: PLAN_HEADER_BG }}>
@@ -1171,17 +1257,15 @@ export default function AINSFWPricingClient({
               <p className="text-xs sm:text-sm font-bold text-black/40 mt-1">One-time payment</p>
             </div>
             <p className="text-base sm:text-sm text-black/55 leading-relaxed mb-4">
-              Everything in Basic, plus premium placement that drives significantly more clicks.
+              Perfect for getting your AI tool indexed, discoverable, and visible to thousands of high-intent users.
             </p>
-            <div
-              className="mb-3 px-3 py-2 rounded-md text-center"
-              style={{ background: 'rgba(34,197,94,0.14)', border: `2px solid ${ACCENT}` }}
-            >
-              <p className="text-xs sm:text-sm font-black uppercase tracking-wide text-black leading-none">
-                Everything in Basic
-              </p>
-            </div>
             <ul className="space-y-2.5 mb-4 flex-1">
+              {BOOST_BASE_FEATURES.map((f) => (
+                <li key={f} className="flex items-start gap-2.5 text-lg sm:text-base font-semibold text-black/80">
+                  <span style={{ color: ACCENT }} className="mt-0.5 shrink-0"><Check /></span>
+                  {f}
+                </li>
+              ))}
               {BOOST_FEATURES.map((f) => (
                 <PlanFeatureItem key={f.text} {...f} usePlus />
               ))}
@@ -1189,7 +1273,7 @@ export default function AINSFWPricingClient({
             <p className="text-base sm:text-sm font-bold text-black/45 mb-4">Best for: Growing products that want more traffic.</p>
             <button
               onClick={() => openForm('boost')}
-              className="w-full py-4 text-lg sm:text-base font-black uppercase tracking-widest transition-all active:translate-x-[2px] active:translate-y-[2px]"
+              className="w-full py-4 text-lg sm:text-base font-black uppercase tracking-widest transition-all active:translate-x-[2px] active:translate-y-[2px] mt-auto"
               style={selectedPlan === 'boost'
                 ? { background: CTA_DARK, color: '#000', border: BORDER, boxShadow: 'none', transform: 'translate(2px,2px)' }
                 : { background: CTA, color: '#000', border: BORDER, boxShadow: SHADOW }}
@@ -1199,68 +1283,20 @@ export default function AINSFWPricingClient({
             </div>
           </div>
 
-          {/* SCALE · $297 */}
-          <div className="relative flex flex-col bg-white overflow-hidden" style={{ border: BORDER, boxShadow: SHADOW_LG, color: '#000' }}>
-            <div className="px-6 py-4" style={{ background: PLAN_HEADER_BG }}>
-              <p className="font-black uppercase leading-none tracking-tight text-[1.5rem] sm:text-[1.625rem] text-white">
-                SCALE
-              </p>
-              <p className="text-lg sm:text-base font-black uppercase tracking-wide text-white/45 mt-1">Own Your Category</p>
-            </div>
-            <div className="px-6 pb-6 pt-4 flex flex-col flex-1">
-            <div className="mb-3">
-              <span className="text-5xl sm:text-4xl font-black text-black">$297</span>
-              <p className="text-xs sm:text-sm font-bold text-black/40 mt-1">One-time payment</p>
-            </div>
-            <p className="text-base sm:text-sm text-black/55 leading-relaxed mb-2">
-              Dominate your category and sub-categories and become the brand users see and use first.
-            </p>
-            <p className="text-base sm:text-sm font-black uppercase tracking-wide text-black/70 mb-3">
-              SCALE GETS 10X More exposure than BOOST.
-            </p>
-            <div
-              className="mb-3 px-3 py-2 rounded-md text-center"
-              style={{ background: 'rgba(34,197,94,0.14)', border: `2px solid ${ACCENT}` }}
-            >
-              <p className="text-xs sm:text-sm font-black uppercase tracking-wide text-black leading-none">
-                Everything in Basic &amp; Boost
-              </p>
-            </div>
-            <ul className="space-y-2.5 mb-4 flex-1">
-              {STARTUP_FEATURES.map((f) => (
-                <PlanFeatureItem key={f.text} {...f} usePlus />
-              ))}
-            </ul>
-            <p className="text-base sm:text-sm font-bold text-black/45 mb-4">Best for: Serious brands launching or scaling aggressively.</p>
-            <button
-              onClick={() => openForm('startup')}
-              className="w-full py-4 text-lg sm:text-base font-black uppercase tracking-widest transition-all active:translate-x-[2px] active:translate-y-[2px]"
-              style={selectedPlan === 'startup'
-                ? { background: CTA_DARK, color: '#000', border: BORDER, boxShadow: 'none', transform: 'translate(2px,2px)' }
-                : { background: CTA, color: '#000', border: BORDER, boxShadow: SHADOW }}
-            >
-              {selectedPlan === 'startup' ? '✓ Selected · scroll down' : 'Get Scale · $297'}
-            </button>
-            </div>
-          </div>
-
-          </div>
-
-          <div className="mt-6 lg:mt-7 flex flex-col lg:grid lg:grid-cols-2 lg:gap-6 xl:gap-7 lg:items-stretch">
           {/* STARTUP (enterprise) */}
           <div
-            className="relative flex flex-col overflow-hidden min-w-0"
+            className="relative flex flex-col overflow-hidden min-w-0 h-full"
             style={{
               background: PLAN_HEADER_BG,
               border: `3px solid ${ACCENT}`,
               boxShadow: `6px 6px 0px ${ACCENT}`,
             }}
           >
-            <div className="px-6 py-7 sm:px-8 sm:py-8 lg:px-10 lg:py-10 space-y-2 sm:space-y-2.5">
-              <h2 className="font-black uppercase leading-none tracking-tight text-[2.25rem] sm:text-[2.75rem] lg:text-[3.5rem] text-white">
+            <div className="px-6 py-6 sm:px-8 sm:py-8 flex flex-col flex-1 space-y-2 sm:space-y-2.5">
+              <h2 className="font-black uppercase leading-none tracking-tight text-[2rem] sm:text-[2.25rem] lg:text-[2.5rem] text-white">
                 STARTUP
               </h2>
-              <p className="text-lg sm:text-xl lg:text-2xl font-black uppercase tracking-wide text-white/50">
+              <p className="text-lg sm:text-xl font-black uppercase tracking-wide text-white/50">
                 Maximum Exposure
               </p>
               <p className="text-base sm:text-lg text-white/60 leading-snug pt-1">
@@ -1272,7 +1308,7 @@ export default function AINSFWPricingClient({
               <p className="text-base sm:text-lg font-bold text-white/80 leading-snug">
                 Up to 10× more exposure across EROGRAM compared to SCALE.
               </p>
-              <ul className="pt-3 space-y-2.5 sm:space-y-3">
+              <ul className="pt-2 space-y-2.5 sm:space-y-3 flex-1">
                 {[
                   'Display banners & video advertising',
                   'Up to 40× more exposure across EROGRAM',
@@ -1283,7 +1319,7 @@ export default function AINSFWPricingClient({
                   'Custom campaign strategy',
                   'Dedicated account support',
                 ].map((f) => (
-                  <li key={f} className="flex items-start gap-2.5 text-lg sm:text-base font-semibold text-white/90">
+                  <li key={f} className="flex items-start gap-2.5 text-base sm:text-sm font-semibold text-white/90">
                     <span style={{ color: '#34d399' }} className="mt-0.5 shrink-0"><Check /></span>
                     <span>{f}</span>
                   </li>
@@ -1291,10 +1327,10 @@ export default function AINSFWPricingClient({
               </ul>
             </div>
 
-            <div className="px-6 pb-6 sm:px-8 sm:pb-8 lg:px-10 lg:pb-10 pt-0">
+            <div className="px-6 pb-6 sm:px-8 sm:pb-8 pt-0 mt-auto">
               <a
                 href="mailto:isabella@erogram.biz?subject=Startup%20Package%20Inquiry"
-                className="block w-full max-w-xl mx-auto py-4 lg:py-5 text-lg sm:text-base font-black uppercase tracking-widest text-center text-black transition-all hover:opacity-95 active:translate-x-[2px] active:translate-y-[2px]"
+                className="block w-full py-4 text-lg sm:text-base font-black uppercase tracking-widest text-center text-black transition-all hover:opacity-95 active:translate-x-[2px] active:translate-y-[2px]"
                 style={{ background: CTA, border: BORDER, boxShadow: SHADOW }}
               >
                 Contact us for pricing
@@ -1302,40 +1338,46 @@ export default function AINSFWPricingClient({
             </div>
           </div>
 
+          </div>
+
         {/* À LA CARTE ADD-ONS */}
-        <section className="mb-12 lg:mb-0 min-w-0 flex flex-col">
+        <section className="mb-12 min-w-0 max-w-2xl mx-auto">
           <div
-            className="overflow-hidden bg-white flex flex-col flex-1 h-full"
+            className="overflow-hidden bg-white"
             style={{ border: BORDER, boxShadow: SHADOW_LG, color: '#000' }}
           >
-            <div className="px-6 py-5 sm:px-8" style={{ background: PLAN_HEADER_BG }}>
-              <h2 className="text-2xl sm:text-xl font-black uppercase tracking-tight text-white leading-none">
+            <div className="px-4 py-3.5 sm:px-5" style={{ background: PLAN_HEADER_BG }}>
+              <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight text-white leading-none">
                 À La Carte
               </h2>
-              <p className="mt-1 text-lg sm:text-base font-black uppercase tracking-wide text-white/45">
+              <p className="mt-0.5 text-sm sm:text-base font-black uppercase tracking-wide text-white/45">
                 Growth Add-ons
               </p>
             </div>
-            <ul className="divide-y divide-black/10 px-6 py-2 sm:px-8 flex-1">
+            <ul className="divide-y divide-black/10">
               {A_LA_CARTE_ADDONS.map((addon) => (
-                <li key={addon.title} className="py-5 first:pt-4 last:pb-4">
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mb-2">
-                    <p className="text-xl sm:text-lg font-black text-black">{addon.title}</p>
-                    <p className="text-2xl sm:text-xl font-black text-[#16a34a] leading-none shrink-0">{addon.price}</p>
+                <li key={addon.title} className="py-3 px-4 sm:px-5">
+                  <div className="flex items-baseline justify-between gap-3 mb-1">
+                    <p className="text-sm sm:text-base font-black text-black leading-snug min-w-0">{addon.title}</p>
+                    <p className="text-base sm:text-lg font-black text-[#16a34a] leading-none shrink-0 tabular-nums">{addon.price}</p>
                   </div>
-                  <p className="text-lg sm:text-base font-semibold text-black/65 leading-relaxed">
-                    {addon.description}
-                  </p>
+                  {addon.description ? (
+                    <p className="text-xs sm:text-sm font-semibold text-black/60 leading-snug">
+                      {addon.description}
+                    </p>
+                  ) : null}
                 </li>
               ))}
             </ul>
           </div>
         </section>
 
-          </div>
-
         </div>
+        </>
+        )}
 
+        {!isAdvertise && (
+        <>
         <InFeedAdFormatComparison />
 
         {/* Need help */}
@@ -1377,7 +1419,7 @@ export default function AINSFWPricingClient({
         </section>
 
         {/* ── SUBMISSION FORM ── */}
-        {selectedPlan && (
+        {!isAdvertise && selectedPlan && (
           <div
             id="submit-form"
             className="max-w-2xl mx-auto p-8 mb-5"
@@ -1740,10 +1782,12 @@ export default function AINSFWPricingClient({
             ))}
           </div>
         </section>
+        </>
+        )}
 
       </main>
 
-      <MobileSubmitStickyBar onSubmit={scrollToPricing} />
+      {!isAdvertise && <MobileSubmitStickyBar onSubmit={scrollToPricing} />}
 
       <Footer />
     </div>

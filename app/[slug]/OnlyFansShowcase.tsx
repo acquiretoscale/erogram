@@ -170,11 +170,11 @@ export default function OnlyFansShowcase() {
 
           {/* CTA button */}
           <Link
-            href={lp('/onlyfanssearch')}
+            href={lp('/ofsearch')}
             className="relative block mt-3 w-full text-center py-2.5 rounded-xl font-black text-[13px] transition-all hover:scale-[1.02]"
             style={{ background: 'linear-gradient(135deg, #00AFF0, #00D4FF)', color: '#001820' }}
           >
-            🔥 Trending on OnlyFans Search
+            🔥 Trending on OFsearch
           </Link>
           <p className="mt-2 text-center text-[10px]" style={{ color: '#00AFF0' }}>
             Discover top OnlyFans creators · Updated daily

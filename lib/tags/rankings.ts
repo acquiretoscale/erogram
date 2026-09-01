@@ -1,5 +1,6 @@
 import type { BestOfPage } from '@/app/best-onlyfans-accounts/bestOfPages';
-import { BEST_OF_PAGES, bestOfBlogSlug } from '@/app/best-onlyfans-accounts/bestOfPages';
+import { BEST_OF_PAGES } from '@/app/best-onlyfans-accounts/bestOfPages';
+import { rankingEnglishPublicPath } from '@/lib/bestOfPageContent/hottestUrls';
 import type { TagDefinition } from '@/lib/tags/registry';
 
 export interface TagRankingPage {
@@ -21,7 +22,7 @@ export function getRankingPagesForTag(def: TagDefinition): TagRankingPage[] {
       slug: page.slug,
       label: page.label,
       type: page.type,
-      href: `/onlyfanssearch/${bestOfBlogSlug(page.slug)}`,
+      href: rankingEnglishPublicPath(page.slug, 'top'),
       isPrimary,
     });
   };

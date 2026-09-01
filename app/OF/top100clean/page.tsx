@@ -1,6 +1,6 @@
 import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator } from '@/lib/models';
-import { getCreatorBio } from '@/app/onlyfanssearch/creatorBios';
+import { getCreatorBio } from '@/app/ofsearch/creatorBios';
 
 export const revalidate = 0;
 

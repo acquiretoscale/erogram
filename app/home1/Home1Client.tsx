@@ -12,6 +12,7 @@ import HeaderBanner from '@/components/HeaderBanner';
 import { formatDate } from '@/lib/i18n/date';
 import type { Locale } from '@/lib/i18n/config';
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
+import { rankingEnglishPublicPath } from '@/lib/bestOfPageContent/hottestUrls';
 
 const Navbar = dynamic(() => import('@/components/Navbar'), {
   loading: () => (
@@ -224,11 +225,11 @@ export default function Home1Client({ featuredArticles, heroCampaigns = [], newG
       </button>
       {/* PRIMARY: OnlyFans Search = cyan */}
       <button
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push('/onlyfanssearch'), 0); }}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push('/ofsearch'), 0); }}
         className="cursor-pointer group relative w-full sm:w-auto px-5 py-3 md:px-9 md:py-4 bg-[#00AFF0] hover:bg-[#009dd9] text-white rounded-xl transition-all flex items-center justify-center gap-2 whitespace-nowrap shadow-[0_10px_30px_-8px_rgba(0,175,240,0.65)] hover:shadow-[0_14px_44px_-8px_rgba(0,175,240,0.85)]"
       >
         <span className="text-[14px] md:text-base font-bold tracking-tight">
-          <span className="font-black">OnlyFans Search</span>
+          <span className="font-black">OFsearch</span>
           <span className="text-white/80 font-semibold"> · 1.8M creators</span>
         </span>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 group-hover:translate-x-0.5 transition-transform"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
@@ -587,7 +588,7 @@ export default function Home1Client({ featuredArticles, heroCampaigns = [], newG
             {ofCategories.map((cat) => (
               <Link
                 key={cat.slug}
-                href={lp(`/best-onlyfans-accounts/${cat.slug}`)}
+                href={lp(rankingEnglishPublicPath(cat.slug, 'best'))}
                 className="group flex items-center gap-4 p-3 sm:p-4 rounded-2xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-xl hover:border-[#00AFF0]/50 hover:bg-[#00AFF0]/[0.06] transition-all duration-200"
               >
                 <div className="flex-shrink-0 w-14 h-14 rounded-full overflow-hidden bg-white/5 ring-2 ring-white/10 group-hover:ring-[#00AFF0]/40 transition-all">

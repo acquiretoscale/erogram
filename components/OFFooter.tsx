@@ -3,7 +3,9 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { RtaBadge } from './AgeGate';
-import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
+import ErogramWordmark from '@/components/ErogramWordmark';
+import { OF_CATEGORIES } from '@/app/ofsearch/constants';
+import { rankingEnglishPublicPath } from '@/lib/bestOfPageContent/hottestUrls';
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
 
 export default function OFFooter() {
@@ -25,10 +27,8 @@ export default function OFFooter() {
 
           {/* Brand */}
           <div className="space-y-4 lg:col-span-1">
-            <Link href={lp('/')} className="block">
-              <span className="text-2xl font-black tracking-tighter text-white">
-                ero<span className="text-[#00AFF0]">gram</span>
-              </span>
+            <Link href={lp('/')} className="block" aria-label="ErogramX">
+              <ErogramWordmark className="text-2xl" />
             </Link>
             <p className="text-[#888] text-sm leading-relaxed">
               {t('ofSearch.footerTagline')}<br />
@@ -52,17 +52,17 @@ export default function OFFooter() {
             <h3 className="text-white text-sm font-bold uppercase tracking-wider mb-5">{t('ofSearch.discover')}</h3>
             <ul className="space-y-3">
               <li>
-                <Link href={lp('/onlyfanssearch')} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
+                <Link href={lp('/ofsearch')} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
                   {t('ofSearch.onlyfansSearchFooter')}
                 </Link>
               </li>
               <li>
-                <Link href={lp('/onlyfanssearch')} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
+                <Link href={lp('/ofsearch')} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
                   {t('ofSearch.bestOnlyfansCreators')}
                 </Link>
               </li>
               <li>
-                <Link href={lp('/onlyfanssearch')} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
+                <Link href={lp('/ofsearch')} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
                   {t('ofSearch.bestOnlyfansAccounts')}
                 </Link>
               </li>
@@ -73,7 +73,7 @@ export default function OFFooter() {
               </li>
               {OF_CATEGORIES.slice(0, 6).map((cat) => (
                 <li key={cat.slug}>
-                  <Link href={lp(`/onlyfanssearch/top-10-${cat.slug}-onlyfans-models`)} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
+                  <Link href={lp(rankingEnglishPublicPath(cat.slug, 'top'))} className="text-[#888] text-sm hover:text-[#00AFF0] transition-colors">
                     {t('ofSearch.catOnlyfans').replace('{cat}', cat.name)}
                   </Link>
                 </li>

@@ -18,7 +18,7 @@ import {
   profileGridGapClass,
   type ProfileGridDensity,
 } from './profileGridDensity';
-import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { ofCreatorProfileUrl } from '@/lib/ofsearch/creatorUrls';
 
 type BookmarkFilter = 'all' | 'group' | 'bot' | 'ainsfw' | 'creator';
 

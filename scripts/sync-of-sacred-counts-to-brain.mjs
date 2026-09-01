@@ -16,7 +16,7 @@ const meta = {
   id: 'of-sacred-creator-counts',
   generated: today,
   query: 'buildSlugCreatorMatch(slug) per OF_CATEGORIES slug',
-  source: 'app/onlyfanssearch/constants.ts + lib/onlyfanssearch/keywordCategories.ts',
+  source: 'app/ofsearch/constants.ts + lib/ofsearch/keywordCategories.ts',
   refresh: 'npx tsx scripts/sync-of-sacred-counts-to-brain.mjs',
   dataFile: 'brain/marble/of-sacred-creator-counts.jsonl',
   dbTotal: totals.total,

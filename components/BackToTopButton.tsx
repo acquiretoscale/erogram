@@ -50,7 +50,7 @@ function getBackToTopTheme(pathname: string): BackToTopTheme {
   }
 
   if (
-    p.startsWith('/onlyfanssearch') ||
+    p.startsWith('/ofsearch') ||
     p.startsWith('/submit') ||
     p.includes('-onlyfans') ||
     (p.startsWith('/profile/') && p !== '/profile/leaderboard') ||

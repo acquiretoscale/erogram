@@ -103,7 +103,7 @@ const CATEGORY_PILLS: { id: string; label: string; group: PlacementDef['group'] 
   { id: 'In-Feed', label: 'In feed', group: 'In-Feed' },
   { id: 'Home', label: 'TRENDING (Main)', group: 'Home' },
   { id: 'Best Groups', label: 'Top 10s', group: 'Best Groups' },
-  { id: 'OnlyFans', label: 'OF Search', group: 'OnlyFans' },
+  { id: 'OnlyFans', label: 'OFsearch', group: 'OnlyFans' },
   { id: 'Join Pages', label: 'CTA / In-page', group: 'Join Pages' },
   { id: 'Banners', label: 'Banners', group: 'Banners' },
   { id: 'Trending on Erogram', label: 'Trending on Erogram', group: 'Trending on Erogram' },

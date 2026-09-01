@@ -1,5 +1,5 @@
 import WelcomeClient from '@/app/welcome/WelcomeClient';
-import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
+import { OF_CATEGORIES } from '@/app/ofsearch/constants';
 import { AI_NSFW_TOOLS } from '@/app/ainsfw/data';
 import { getFeaturedSlugs } from '@/lib/actions/ainsfw';
 

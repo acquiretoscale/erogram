@@ -1457,3 +1457,55 @@ const emailTemplateSchema = new Schema({
 }, { timestamps: true });
 
 export const EmailTemplate = models.EmailTemplate || model('EmailTemplate', emailTemplateSchema);
+
+// AI tool generations — image-to-video / image edit archive
+const aiToolGenerationSchema = new Schema(
+  {
+    clientId: { type: String, required: true, index: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'User', default: null, index: true },
+    mode: { type: String, enum: ['image', 'video'], required: true },
+    videoModel: { type: String, enum: ['cheap', 'current'], default: null },
+    sourceImageUrl: { type: String, required: true },
+    outputUrl: { type: String, required: true },
+    prompt: { type: String, default: '' },
+    quality: { type: String, default: '' },
+    duration: { type: Number, default: null },
+  },
+  { timestamps: true },
+);
+aiToolGenerationSchema.index({ createdAt: -1 });
+aiToolGenerationSchema.index({ clientId: 1, createdAt: -1 });
+aiToolGenerationSchema.index({ userId: 1, createdAt: -1 });
+
+export const AiToolGeneration =
+  models.AiToolGeneration || model('AiToolGeneration', aiToolGenerationSchema);
+
+const exploreSiteOverrideSchema = new Schema(
+  {
+    categorySlug: { type: String, required: true, index: true },
+    siteKey: { type: String, required: true, index: true },
+    name: { type: String, default: '' },
+    externalUrl: { type: String, default: '' },
+    description: { type: String, default: '' },
+    image: { type: String, default: '' },
+    hidden: { type: Boolean, default: false },
+    isCustom: { type: Boolean, default: false },
+  },
+  { timestamps: true },
+);
+exploreSiteOverrideSchema.index({ categorySlug: 1, siteKey: 1 }, { unique: true });
+exploreSiteOverrideSchema.index({ siteKey: 1, isCustom: 1 });
+
+export const ExploreSiteOverride =
+  models.ExploreSiteOverride || model('ExploreSiteOverride', exploreSiteOverrideSchema);
+
+const exploreCategoryOrderSchema = new Schema(
+  {
+    categorySlug: { type: String, required: true, unique: true },
+    siteKeys: [{ type: String }],
+  },
+  { timestamps: true },
+);
+
+export const ExploreCategoryOrder =
+  models.ExploreCategoryOrder || model('ExploreCategoryOrder', exploreCategoryOrderSchema);

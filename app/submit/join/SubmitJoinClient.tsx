@@ -106,10 +106,10 @@ export default function SubmitJoinClient({
             <AuthTabToggle tab={tab} setTab={setTab} isAinsfwTheme={false} />
 
             <div className="mb-3">
-              <h1 className="text-lg sm:text-xl font-black text-gray-900 leading-tight">
+              <h1 className="text-lg sm:text-xl font-black text-white leading-tight">
                 {tab === 'join' ? 'Create a free account' : 'Welcome back'}
               </h1>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs text-white/55 mt-0.5">
                 {tab === 'join'
                   ? 'Save your creator listing and publish it on Erogram'
                   : 'Sign in to publish your saved creator listing'}
@@ -143,7 +143,7 @@ export default function SubmitJoinClient({
               </>
             )}
 
-            <p className="mt-3 text-center text-[10px] text-black/40 leading-relaxed">
+            <p className="mt-3 text-center text-[10px] text-white/40 leading-relaxed">
               By continuing, you agree to our{' '}
               <Link href="/terms" className="text-[#0088c2] hover:underline">Terms</Link>
               {' & '}

@@ -45,7 +45,7 @@ export type PlacementSurface =
   // Global banners / CTA
   | 'top-banner'
   | 'navbar-cta'
-  // OnlyFans Search homepage featured strip (/onlyfanssearch)
+  // OnlyFans Search homepage featured strip (/ofsearch)
   | 'of-search-featured';
 
 /** A placement definition the admin UI reads to build the multi-placement selector. */
@@ -101,8 +101,8 @@ export const PLACEMENTS: PlacementDef[] = [
 
   // OnlyFans Search category pages (/{slug}onlyfans) + keyword search results.
   // Featured strip (paid OF creators) + agnostic 4-ad block every 80 results. Keyword = category slug.
-  { id: 'of-search-featured', label: 'OnlyFans Search — Featured (homepage /onlyfans)', group: 'OnlyFans' },
-  { id: 'of-cat', label: 'OnlyFans Search — category pages only (keyword-targeted)', group: 'OnlyFans', keywordTargetable: true },
+  { id: 'of-search-featured', label: 'OFsearch — Featured (homepage /onlyfans)', group: 'OnlyFans' },
+  { id: 'of-cat', label: 'OFsearch — category pages only (keyword-targeted)', group: 'OnlyFans', keywordTargetable: true },
 
   // New unified mixed promotional surface: Trending on Erogram.
   // Used on /groups, /bots, /ainsfw (below native Top).

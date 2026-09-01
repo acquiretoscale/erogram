@@ -1,6 +1,8 @@
 // Auto-generated best-of page registry — 143 pages (countries, US states, niches).
 // Regenerate: node scripts/generate-best-of-pages.js
 
+import { rankingBlogPrefix } from '@/lib/bestOfPageContent/top50Rankings';
+
 export type BestOfPageType = "niche" | "country" | "state";
 export type BestOfMatchType = "category" | "keyword" | "combo";
 
@@ -1671,25 +1673,31 @@ export const BEST_OF_PAGE_MAP = new Map<string, BestOfPage>(BEST_OF_PAGES.map((p
 
 export function getBestOfBrowseHref(_page: BestOfPage): string | null {
   // The /{cat}onlyfans vanity routes were removed; always browse via the main search page.
-  return "/onlyfanssearch";
+  return "/ofsearch";
 }
 
 export function getTopBestOfByType(type: BestOfPageType, limit = 10): BestOfPage[] {
   return BEST_OF_PAGES.filter((p) => p.type === type).sort((a, b) => b.count - a.count).slice(0, limit);
 }
 
-// ── Public URL: /onlyfanssearch/top-10-{slug}-onlyfans-models ──────────────────
-export const BEST_OF_BLOG_PREFIX = "top-10-";
+// ── Public URL: /ofsearch/top-{25|50}-{slug}-onlyfans-models ─────────────
+export const BEST_OF_BLOG_PREFIX = "top-10-"; // legacy only (redirects)
+export const BEST_OF_BLOG_PREFIX_25 = "top-25-";
+export const BEST_OF_BLOG_PREFIX_50 = "top-50-";
 export const BEST_OF_BLOG_SUFFIX = "-onlyfans-models";
 
 /** Build the public blog slug for a best-of page slug. */
 export function bestOfBlogSlug(slug: string): string {
-  return `${BEST_OF_BLOG_PREFIX}${slug}${BEST_OF_BLOG_SUFFIX}`;
+  return `${rankingBlogPrefix(slug)}${slug}${BEST_OF_BLOG_SUFFIX}`;
 }
 
-/** Reverse: extract the best-of page slug from a /blog/[slug], or null if not one of ours. */
+/** Reverse: extract the best-of page slug from a ranking path segment, or null. */
 export function bestOfSlugFromBlog(blogSlug: string): string | null {
-  if (!blogSlug.startsWith(BEST_OF_BLOG_PREFIX) || !blogSlug.endsWith(BEST_OF_BLOG_SUFFIX)) return null;
-  const inner = blogSlug.slice(BEST_OF_BLOG_PREFIX.length, blogSlug.length - BEST_OF_BLOG_SUFFIX.length);
-  return BEST_OF_PAGE_MAP.has(inner) ? inner : null;
+  if (!blogSlug.endsWith(BEST_OF_BLOG_SUFFIX)) return null;
+  for (const prefix of [BEST_OF_BLOG_PREFIX_50, BEST_OF_BLOG_PREFIX_25, BEST_OF_BLOG_PREFIX] as const) {
+    if (!blogSlug.startsWith(prefix)) continue;
+    const inner = blogSlug.slice(prefix.length, blogSlug.length - BEST_OF_BLOG_SUFFIX.length);
+    if (BEST_OF_PAGE_MAP.has(inner)) return inner;
+  }
+  return null;
 }

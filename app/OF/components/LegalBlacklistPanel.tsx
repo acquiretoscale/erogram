@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {
   CREATOR_BLACKLIST_COUNT,
   getCreatorBlacklistForDisplay,
-} from '@/lib/onlyfanssearch/creatorBlacklist';
+} from '@/lib/ofsearch/creatorBlacklist';
 
 const ERADICATED_DATE = 'August 8, 2026';
 const ERADICATED_COUNT = 23;
@@ -166,7 +166,7 @@ export default function LegalBlacklistPanel({ variant = 'full' }: { variant?: Va
           </div>
         </div>
         <p className="text-white/30 text-xs mt-3">
-          Source of truth: <code className="text-white/50">lib/onlyfanssearch/creatorBlacklist.ts</code>
+          Source of truth: <code className="text-white/50">lib/ofsearch/creatorBlacklist.ts</code>
         </p>
       </div>
     </div>

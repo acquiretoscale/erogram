@@ -40,8 +40,8 @@ const INTERNAL_LINK_RULES: LinkRule[] = [
   { pattern: /\bchatbot\b/i, href: AINSFW('AI Sexting / Chat') },
 
   // Cross-ecosystem
-  { pattern: /\b(?:onlyfans|only fans|fansly|patreon)\b/i, href: '/onlyfanssearch' },
-  { pattern: /\b(?:content creator|adult creator|onlyfans creator)\b/i, href: '/onlyfanssearch' },
+  { pattern: /\b(?:onlyfans|only fans|fansly|patreon)\b/i, href: '/ofsearch' },
+  { pattern: /\b(?:content creator|adult creator|onlyfans creator)\b/i, href: '/ofsearch' },
   { pattern: /\b(?:hentai|anime-style|anime character|anime girl)\b/i, href: TG('hentai') },
   { pattern: /\b(?:furry|yiff)\b/i, href: TG('furry') },
   { pattern: /\btelegram\b/i, href: '/groups' },
@@ -138,7 +138,7 @@ export function getAinsfwTagHref(tag: string): string | null {
   if (/hentai|anime/.test(key)) return TG('hentai');
   if (/furry|yiff/.test(key)) return TG('furry');
   if (/telegram/.test(key)) return '/groups';
-  if (/onlyfans/.test(key)) return '/onlyfanssearch';
+  if (/onlyfans/.test(key)) return '/ofsearch';
   if (/\bnsfw\b/.test(key)) return '/ainsfw';
 
   return null;

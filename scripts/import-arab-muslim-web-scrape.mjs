@@ -118,7 +118,7 @@ function loadAll() {
 async function main() {
   const connectDB = (await import('../lib/db/mongodb.js')).default;
   const { OnlyFansCreator } = await import('../lib/models/index.js');
-  const { isCreatorBlacklisted } = await import('../lib/onlyfanssearch/creatorBlacklist.js');
+  const { isCreatorBlacklisted } = await import('../lib/ofsearch/creatorBlacklist.js');
 
   const list = loadAll();
   console.log(`web-scraped unique ${list.length}`);

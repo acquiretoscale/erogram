@@ -1,3 +1,5 @@
+import { rankingCopyForSlug } from './top50Rankings';
+
 export const SLUG_TRANSLATIONS: Record<string, { de?: string; es?: string; pt?: string }> = {
   "ahegao": { de: "top-10-ahegao-onlyfans-modelle", es: "top-10-modelos-onlyfans-ahegao", pt: "top-10-modelos-onlyfans-ahegao" },
   "alt": { de: "top-10-alt-onlyfans-modelle", es: "top-10-modelos-onlyfans-alt", pt: "top-10-modelos-onlyfans-alt" },
@@ -137,12 +139,19 @@ export const SLUG_TRANSLATIONS: Record<string, { de?: string; es?: string; pt?: 
   "yoga": { de: "top-10-yoga-onlyfans-modelle", es: "top-10-modelos-onlyfans-yoga", pt: "top-10-modelos-onlyfans-yoga" },
 };
 export function getLocalizedSlug(slug: string, locale: 'de' | 'es' | 'pt') {
-  return SLUG_TRANSLATIONS[slug]?.[locale] ?? null;
+  const raw = SLUG_TRANSLATIONS[slug]?.[locale] ?? null;
+  if (!raw) return null;
+  return rankingCopyForSlug(raw, slug);
 }
 /** Reverse: localized path segment → internal best-of slug key. */
 export function resolveBestOfSlugFromPublicSegment(segment: string): string | null {
   for (const [slug, tr] of Object.entries(SLUG_TRANSLATIONS)) {
-    if (tr.de === segment || tr.es === segment || tr.pt === segment) return slug;
+    for (const loc of ['de', 'es', 'pt'] as const) {
+      const stored = tr[loc];
+      if (!stored) continue;
+      if (stored === segment) return slug;
+      if (rankingCopyForSlug(stored, slug) === segment) return slug;
+    }
   }
   return null;
 }

@@ -54,7 +54,7 @@ const LAUNCH_TIERS: { tier: string; hint: string; sections: { label: string; pla
     sections: [
       { label: 'Best Telegram Groups', placements: ['best-groups'] },
       { label: 'Best OnlyFans Accounts', placements: ['best-of'] },
-      { label: 'OnlyFans Search categories', placements: ['of-cat'] },
+      { label: 'OFsearch categories', placements: ['of-cat'] },
     ],
   },
   {
@@ -190,7 +190,7 @@ const SLOT_LABELS: Record<string, string> = {
   'group-sidebar-ainsfw': 'Block — AI NSFW Page',
   'best-of': 'Best OnlyFans (Top 10)',
   'best-groups': 'Best Telegram Groups (Top 10)',
-  'of-cat': 'OnlyFans Search Pages',
+  'of-cat': 'OFsearch Pages',
 };
 
 // ── Breakdown lenses for "Clicks by ad space" ──
@@ -1986,7 +1986,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                     { value: 'homepage', label: 'Homepage' },
                     { value: 'groups', label: 'Groups' },
                     { value: 'bots', label: 'Bots' },
-                    { value: 'onlyfans', label: 'OnlyFans Search' },
+                    { value: 'onlyfans', label: 'OFsearch' },
                     { value: 'ainsfw', label: 'AI NSFW' },
                     { value: 'articles', label: 'Articles' },
                     { value: 'join', label: 'Join Pages' },

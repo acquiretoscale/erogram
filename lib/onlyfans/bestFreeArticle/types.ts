@@ -22,7 +22,7 @@ export type BestFreeCreatorFacts = {
   priceLabel: 'Free';
 };
 
-/** Marketing copy per creator. Writing model fills lib/onlyfanssearch/bestFreeArticle/copy.ts */
+/** Marketing copy per creator. Writing model fills lib/ofsearch/bestFreeArticle/copy.ts */
 export type BestFreeCreatorCopy = {
   tagline: string;
   intro: string;

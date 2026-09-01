@@ -8,28 +8,25 @@ import type { ReactNode } from 'react';
  * cannot pass an onClick handler across the RSC boundary.
  */
 export default function BestOfProfileButton({
-  erogramHref,
+  ofHref,
   className,
   children,
 }: {
-  erogramHref: string;
+  ofHref: string;
   className?: string;
   children: ReactNode;
 }) {
-  const handleErogramProfile = (e: React.MouseEvent) => {
+  const handleVisitProfile = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('[data-bestof-bookmark]')) return;
     e.preventDefault();
     e.stopPropagation();
     if (typeof window === 'undefined') return;
-    const token = localStorage.getItem('token');
-    if (!token) {
-      window.open(`/join-erogram?redirect=${encodeURIComponent(erogramHref)}`, '_blank', 'noopener,noreferrer');
-    } else {
-      window.open(erogramHref, '_blank', 'noopener,noreferrer');
-    }
+    if (!ofHref || ofHref === '#') return;
+    window.open(ofHref, '_blank', 'noopener,noreferrer');
   };
 
   return (
-    <button type="button" onClick={handleErogramProfile} className={className}>
+    <button type="button" onClick={handleVisitProfile} className={className}>
       {children}
     </button>
   );

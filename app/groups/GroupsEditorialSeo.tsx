@@ -51,7 +51,7 @@ export default function GroupsEditorialSeo() {
         covers content and utility bots,{' '}
         <Link href="/ainsfw" className="text-[#ff7a3d] hover:text-[#ff9432] underline underline-offset-2 transition-colors">AI NSFW tools</Link>{' '}
         covers generated and interactive experiences, and{' '}
-        <Link href="/onlyfanssearch" className="text-[#ff7a3d] hover:text-[#ff9432] underline underline-offset-2 transition-colors">OnlyFans Search</Link>{' '}
+        <Link href="/ofsearch" className="text-[#ff7a3d] hover:text-[#ff9432] underline underline-offset-2 transition-colors">OFsearch</Link>{' '}
         lets you look creators up directly by name, country or style.
       </p>
 

@@ -21,10 +21,10 @@ export const LOCALE_HREFLANG: Record<Locale, string> = {
 
 /** OnlyFans Search hub path segment per locale (same framework as DE/ES). */
 export const OF_SEARCH_HUB: Record<Locale, string> = {
-  en: 'onlyfanssearch',
-  de: 'onlyfanssearch',
-  es: 'onlyfanssearch',
-  pt: 'onlyfanssearch',
+  en: 'ofsearch',
+  de: 'ofsearch',
+  es: 'ofsearch',
+  pt: 'ofsearch',
 };
 
 export const LOCALE_FLAGS: Record<Locale, string> = {

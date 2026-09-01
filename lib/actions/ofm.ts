@@ -349,7 +349,7 @@ async function sendCreatorApprovedEmail(creator: any): Promise<void> {
 
     const rendered = await renderEmailTemplate('creator-approved', {
       creatorName: creator.name || creator.username || '',
-      profileUrl: `${CANONICAL_BASE}/onlyfanssearch/${creator.username || ''}`,
+      profileUrl: `${CANONICAL_BASE}/ofsearch/${creator.username || ''}`,
     });
     if (!rendered) return;
 

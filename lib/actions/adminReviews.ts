@@ -202,7 +202,7 @@ export async function updateReview(
       .lean();
     if (!comment) throw new Error('Comment not found');
     const slug = (comment as any).creatorId?.slug;
-    if (slug) revalidatePath(`/onlyfanssearch/${slug}`);
+    if (slug) revalidatePath(`/ofsearch/${slug}`);
     return { success: true };
   }
 
@@ -223,7 +223,7 @@ export async function updateReview(
   } else if (data.type === 'creator') {
     const review = await CreatorReview.findByIdAndUpdate(id, updateData, { new: true }).lean();
     if (!review) throw new Error('Review not found');
-    if ((review as any).creatorSlug) revalidatePath(`/onlyfanssearch/${(review as any).creatorSlug}`);
+    if ((review as any).creatorSlug) revalidatePath(`/ofsearch/${(review as any).creatorSlug}`);
   } else {
     const review = await Post.findByIdAndUpdate(id, updateData, { new: true })
       .populate('groupId', 'slug')
@@ -258,7 +258,7 @@ export async function deleteReview(token: string, id: string, type?: string) {
     const comment = await ProfileFeedComment.findByIdAndDelete(id).populate('creatorId', 'slug');
     if (!comment) throw new Error('Comment not found');
     const slug = (comment as any).creatorId?.slug;
-    if (slug) revalidatePath(`/onlyfanssearch/${slug}`);
+    if (slug) revalidatePath(`/ofsearch/${slug}`);
     return { success: true };
   }
 
@@ -269,7 +269,7 @@ export async function deleteReview(token: string, id: string, type?: string) {
   } else if (type === 'creator') {
     const review = await CreatorReview.findByIdAndDelete(id);
     if (!review) throw new Error('Review not found');
-    if ((review as any).creatorSlug) revalidatePath(`/onlyfanssearch/${(review as any).creatorSlug}`);
+    if ((review as any).creatorSlug) revalidatePath(`/ofsearch/${(review as any).creatorSlug}`);
   } else {
     const review = await Post.findByIdAndDelete(id).populate('groupId', 'slug');
     if (!review) throw new Error('Review not found');

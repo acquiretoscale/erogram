@@ -1,4 +1,4 @@
-import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { ofCreatorProfileUrl } from '@/lib/ofsearch/creatorUrls';
 
 export type ProfileListingHrefInput = {
   type: 'group' | 'bot' | 'ainsfw' | 'onlyfans';

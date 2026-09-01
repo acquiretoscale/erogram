@@ -17,6 +17,10 @@ import {
   OF_RESULTS_PAGE_SIZE,
   type ProfilePremiumSearchFilters,
 } from '@/lib/actions/ofCreatorsBrowse.shared';
+import {
+  getPromotedCreatorUsernames,
+  isCreatorEligibleForProfilePage,
+} from '@/lib/ofsearch/creatorProfileEligibility';
 
 function buildR2AvatarMatch() {
   const raw = process.env.R2_PUBLIC_URL || '';
@@ -99,7 +103,7 @@ export async function browseCreators(excludeIds: string[] = [], limit = 80) {
 // ---------------------------------------------------------------------------
 
 const MAX_TOTAL = 1000;
-/** Public /onlyfanssearch — pool + max results per search. */
+/** Public /ofsearch — pool + max results per search. */
 const SEARCH_POOL = 100;
 /** Premium profile search — deeper pool, per-user rotation. */
 const PROFILE_PREMIUM_SEARCH_POOL = 400;
@@ -130,7 +134,7 @@ const HUB_BROWSE_PROJECT = {
   },
 };
 
-/** Paginated category browse for /onlyfanssearch/{slug} — stable clicks ranking. */
+/** Paginated category browse for /ofsearch/{slug} — stable clicks ranking. */
 export async function browseCategoryCreators(
   categorySlug: string,
   offset = 0,
@@ -470,7 +474,7 @@ async function runAdvancedSearchCreators(
   };
 }
 
-/** Free advanced search for /onlyfanssearch (no premium gate). */
+/** Free advanced search for /ofsearch (no premium gate). */
 export async function advancedSearchCreators(
   q: string,
   rotateSeed = 'default',
@@ -656,7 +660,7 @@ export async function getTopClickedOnlyfansCreators(
 }
 
 const COMMUNITY_CREATOR_SELECT =
-  'name username slug avatar header extraPhotos categories subscriberCount likesCount photosCount videosCount price isFree url clicks redirectToOF instagramUrl twitterUrl tiktokUrl telegramUrl fanslyUrl fanvueUrl redditUrl patreonUrl website linktreeUrl allmylinksUrl beaconsUrl createdAt';
+  'name username slug avatar header extraPhotos categories subscriberCount likesCount photosCount videosCount price isFree url clicks redirectToOF featured instagramUrl twitterUrl tiktokUrl telegramUrl fanslyUrl fanvueUrl redditUrl patreonUrl website linktreeUrl allmylinksUrl beaconsUrl createdAt';
 
 /** Always first in community block, with FEATURED badge in UI. */
 const COMMUNITY_FEATURED_TOP = ['abellaolsen', 'amelia_russo'] as const;
@@ -692,6 +696,7 @@ function buildTrendingFallbackProfile(
 function formatCommunityCreator(
   raw: Record<string, unknown>,
   saveMap: Map<string, number>,
+  promotedUsernames: ReadonlySet<string>,
 ): Record<string, unknown> {
   const id = String(raw._id);
   return {
@@ -699,6 +704,10 @@ function formatCommunityCreator(
     _id: id,
     extraPhotos: Array.isArray(raw.extraPhotos) ? raw.extraPhotos : [],
     erogramSaves: saveMap.get(id) || 0,
+    hasProfilePage: isCreatorEligibleForProfilePage(
+      { username: String(raw.username || ''), featured: !!raw.featured },
+      promotedUsernames,
+    ),
     ...(raw.isCommunityFeatured ? { isCommunityFeatured: true } : {}),
   };
 }
@@ -776,88 +785,27 @@ async function getRecentlyFeaturedUsernames(): Promise<{ username: string; featu
     .map(([username, featuredAt]) => ({ username, featuredAt }));
 }
 
-/** Newest profiles added to the directory — for /onlyfanssearch Community block. */
-export async function getNewestOnlyFansCreators(limit = 40) {
+/** User-submitted + admin public profiles for /ofsearch Creator Spotlight — newest first. */
+export async function getNewestOnlyFansCreators(limit = 100) {
   await connectDB();
 
-  const pageSize = Math.min(Math.max(1, limit), 40);
-  const poolSize = Math.max(pageSize * 4, 120);
+  const pageSize = Math.min(Math.max(1, limit), 100);
   const match: Record<string, unknown> = {
-    ...creatorQualityFilter,
-    categories: { $exists: true, $ne: [] },
+    avatar: buildR2AvatarMatch(),
+    gender: 'female',
+    deleted: { $ne: true },
+    ...whaleBrowseLikesFilter,
     submissionStatus: { $ne: 'pending' },
+    $or: [{ submittedByUser: true }, { publicPage: true }],
   };
 
-  const featuredUsers = await getRecentlyFeaturedUsernames();
-  const featuredUsernames = featuredUsers.map((f) => f.username);
-  const topFeaturedUsernames = new Set<string>(COMMUNITY_FEATURED_TOP);
+  const rows = await OnlyFansCreator.find(match)
+    .sort({ createdAt: -1 })
+    .limit(pageSize)
+    .select(COMMUNITY_CREATOR_SELECT)
+    .lean();
 
-  const [topFeatured, featuredRows, rows, trendingFallback] = await Promise.all([
-    loadCommunityTopFeatured(),
-    featuredUsernames.length
-      ? OnlyFansCreator.find({
-          username: { $in: featuredUsernames.map((u) => usernameRegex(u)) },
-          deleted: { $ne: true },
-        })
-          .select(COMMUNITY_CREATOR_SELECT)
-          .lean()
-      : Promise.resolve([]),
-    OnlyFansCreator.find(match)
-      .sort({ createdAt: -1 })
-      .limit(poolSize)
-      .select(COMMUNITY_CREATOR_SELECT)
-      .lean(),
-    featuredUsernames.length
-      ? TrendingOFCreator.find({
-          username: { $in: featuredUsernames.map((u) => usernameRegex(u)) },
-          active: true,
-        })
-          .select('username name avatar url bio createdAt')
-          .lean()
-      : Promise.resolve([]),
-  ]);
-
-  const featuredByUser = new Map<string, Record<string, unknown>>();
-  for (const raw of featuredRows as Record<string, unknown>[]) {
-    featuredByUser.set(String(raw.username || '').toLowerCase(), raw);
-  }
-  const trendingByUser = new Map<string, Record<string, unknown>>();
-  for (const raw of trendingFallback as Record<string, unknown>[]) {
-    trendingByUser.set(String(raw.username || '').toLowerCase(), raw);
-  }
-
-  const pinned: Record<string, unknown>[] = [...topFeatured];
-  for (const { username } of featuredUsers) {
-    if (topFeaturedUsernames.has(username)) continue;
-    const profile = featuredByUser.get(username);
-    if (profile) {
-      pinned.push(profile);
-      continue;
-    }
-    const trending = trendingByUser.get(username);
-    if (!trending) continue;
-    pinned.push(buildTrendingFallbackProfile(trending, username));
-  }
-
-  const ranked: Array<Record<string, unknown> & { extraPhotoCount: number }> = (rows as Record<string, unknown>[])
-    .map((raw) => ({
-      ...raw,
-      extraPhotoCount: countUniqueExtraPhotos({
-        avatar: raw.avatar as string | undefined,
-        header: raw.header as string | undefined,
-        extraPhotos: raw.extraPhotos as string[] | undefined,
-      }),
-    }))
-    .sort((a: Record<string, unknown> & { extraPhotoCount: number }, b: Record<string, unknown> & { extraPhotoCount: number }) => {
-      if (b.extraPhotoCount !== a.extraPhotoCount) return b.extraPhotoCount - a.extraPhotoCount;
-      const bTime = b.createdAt ? new Date(b.createdAt as string | Date).getTime() : 0;
-      const aTime = a.createdAt ? new Date(a.createdAt as string | Date).getTime() : 0;
-      return bTime - aTime;
-    });
-
-  const pinnedUsernames = new Set(pinned.map((p) => String(p.username || '').toLowerCase()));
-  const allRows = [...pinned, ...ranked.filter((r) => !pinnedUsernames.has(String(r.username || '').toLowerCase()))];
-  const ids = allRows.map((r) => r._id).filter(Boolean);
+  const ids = rows.map((r) => r._id).filter(Boolean);
   const saveMap = new Map<string, number>();
   if (ids.length > 0) {
     const saveCounts = await User.aggregate([
@@ -871,18 +819,10 @@ export async function getNewestOnlyFansCreators(limit = 40) {
     }
   }
 
-  const seen = new Set<string>();
-  const creators: Record<string, unknown>[] = [];
-  for (const raw of allRows) {
-    const username = String(raw.username || '').toLowerCase();
-    if (!username || seen.has(username)) continue;
-    seen.add(username);
-    const { extraPhotoCount: _extraPhotoCount, ...rest } = raw as Record<string, unknown> & { extraPhotoCount?: number };
-    creators.push(formatCommunityCreator(rest, saveMap));
-    if (creators.length >= pageSize) break;
-  }
-
-  return creators;
+  const promotedUsernames = await getPromotedCreatorUsernames();
+  return (rows as Record<string, unknown>[]).map((raw) =>
+    formatCommunityCreator(raw, saveMap, promotedUsernames),
+  );
 }
 
 /** Top bookmarked creators in the last 30 days — whales excluded via creatorQualityFilter. */

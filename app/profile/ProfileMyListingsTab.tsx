@@ -11,7 +11,7 @@ import {
   type ListingItem,
 } from '@/lib/actions/myListings';
 import { getProfileListingHref } from '@/lib/profileListingUrls';
-import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { ofCreatorProfileUrl } from '@/lib/ofsearch/creatorUrls';
 import { createFeaturedCreatorInvoice } from '@/lib/actions/submitCreator';
 import { compressImage } from '@/lib/utils/compressImage';
 import { useProfileTheme } from './ProfileThemeContext';
@@ -141,7 +141,7 @@ function OnlyfansBoostCheckout({
     <div className="mt-3 rounded-xl border p-3 sm:p-4" style={{ borderColor: tokens.border, backgroundColor: tokens.bg }}>
       <p className="text-xs font-bold" style={{ color: tokens.text }}>Boosted listing · $197 for 1 week</p>
       <p className="mt-1 text-[11px] leading-relaxed" style={{ color: tokens.muted }}>
-        Top 10 ranking pages + OnlyFans Search feed placement.
+        Top 10 ranking pages + OFsearch feed placement.
       </p>
       <button
         type="button"

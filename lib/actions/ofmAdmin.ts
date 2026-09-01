@@ -6,7 +6,7 @@ import { User, OnlyFansCreator, TrendingOFCreator, ScrapeRun, SearchQuery, OFMSe
 import { getApifyCredentials, markKeyBurned } from '@/lib/apify-key';
 import { processCreatorImages } from '@/lib/actions/creatorImages';
 import { revalidateCreatorPage } from '@/lib/actions/ofCreatorProfile';
-import { isCreatorBlacklisted } from '@/lib/onlyfanssearch/creatorBlacklist';
+import { isCreatorBlacklisted } from '@/lib/ofsearch/creatorBlacklist';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 

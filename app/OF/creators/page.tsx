@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { OF_CATEGORIES, OF_CATEGORY_MAP } from '@/app/onlyfanssearch/constants';
+import { OF_CATEGORIES, OF_CATEGORY_MAP } from '@/app/ofsearch/constants';
 import {
   getOFMCreators,
   deleteOFMCreator,
   bulkDeleteOFMCreators,
 } from '@/lib/actions/ofm';
-import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { ofCreatorProfileUrl } from '@/lib/ofsearch/creatorUrls';
 import { importOFMCreator } from '@/lib/actions/ofmAdmin';
 import { importCreatorToOFMAgency } from '@/lib/actions/ofClients';
 import { PROMOTE_OF_CREATOR_PLACEMENTS } from '@/lib/adPlacements';

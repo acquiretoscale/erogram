@@ -1,7 +1,7 @@
 /* eslint-disable */
 /**
  * Hard-delete DMCA-blacklisted OnlyFans creators + their R2 images.
- * Forever blocklist lives in lib/onlyfanssearch/creatorBlacklist.ts
+ * Forever blocklist lives in lib/ofsearch/creatorBlacklist.ts
  *
  *   node scripts/eradicate-dmca-creators.js --dry-run
  *   node scripts/eradicate-dmca-creators.js
@@ -59,6 +59,33 @@ const TARGETS = [
   'finesse_ahhxxx', 'finesseahhxxx', 'vanessahh',
   'bbgumbitchh', 'bbgumbitch', 'feyaquinn', 'feyaquinnvip',
   'rosierendallx', 'rosierendallxo', 'itsrosierendallfree', 'itsrosierendall', 'rosierendall',
+  // Aug 15–17 2026 Google DMCA notices
+  'fallenthorns', 'zalconz', 'kaythorns', 'kay-thorns', 'kay thorns',
+  'cherrykath18', 'cherrykath', 'cherryflavors', 'cherryflavor',
+  'merisiel', 'merisiell', 'merisiel_irum', 'm3risiel', 'merisielirum',
+  'marjo_sg', 'marjosg', 'marjo.sg', 'marjo-sg',
+  'sassyandreaa', 'sassyandrea',
+  // Aug 18–31 2026 Google DMCA notices
+  'emilywyoming', 'emily wyoming', 'emily-wyoming',
+  'jenflix01', 'jenflix', 'jen flix', 'cremedelajen', 'creme de la jen',
+  'marilyn marie', 'marilynmarie', 'marilynmarie23', 'marilynmarievip',
+  'emma rose', 'emmarose', 'gardenofemmarose', 'ohitsemmarose',
+  'sabreezyy', 'sabreezy',
+  'alana blaire', 'alanablaire', 'xoalana', 'alana naked news', 'alananakednews',
+  'miss nerezza', 'missnerezza', 'missnerezzavip', 'goddessnerezza', 'nerezza',
+  'praew phatcharin', 'praewasian', 'praew asian', 'asianparadiseee', 'asianparadiseee-official',
+  'misueevee', 'misseevee', 'miss eevee', 'misu eevee', 'ev studios', 'evstudios',
+  'puckbuddy', 'officialpuckbuddy', 'puckbuddyof', 'puckbuddyofficial', 'puckbuddyvip',
+  'eviemayy', 'noteviemay', 'evie may',
+  'jocibaker', 'joci baker', 'joci-baker',
+  // Aug 16–20 2026 Google DMCA notices (batch 2)
+  'swedish emma', 'swedishemma', 'missemmaswitch', 'swedish_emma2', 'swedish-emma2',
+  'mandy sweet', 'mandy-sweet', 'mandysweet',
+  'satiiellafree', 'satiellacosplay', 'satiiella', 'satiella',
+  'cuporose', 'cuporoselive', 'red-hotz', 'redhotz',
+  'mommycarter', 'mommycartertv', 'mommycarterxo', 'sugarplumsmilley',
+  'berrydoll', 'berrydoll.vip', 'berrydollvip', 'loopy lovely', 'loopylovely',
+  'lena polanski', 'lena-polanski', 'lenapolanski',
 ];
 
 if (!MONGO_URI) {
@@ -191,8 +218,62 @@ async function main() {
 
     const res = await col.deleteMany({ _id: { $in: ids } });
     console.log(`\nDeleted ${res.deletedCount} OnlyFansCreator documents.`);
+  }
+
+  const leftoverNames = [
+    'fallenthorns', 'zalconz', 'kaythorns', 'kay-thorns', 'kay thorns',
+    'cherrykath18', 'cherrykath', 'cherryflavors', 'cherryflavor',
+    'merisiel', 'merisiell', 'merisiel_irum', 'm3risiel', 'merisielirum',
+    'marjo_sg', 'marjosg', 'marjo.sg', 'marjo-sg',
+    'sassyandreaa', 'sassyandrea',
+    'emilywyoming', 'jenflix01', 'jenflix', 'cremedelajen',
+    'marilynmarie', 'marilynmarie23', 'marilynmarievip',
+    'ohitsemmarose', 'gardenofemmarose', 'emmarose',
+    'sabreezyy', 'sabreezy', 'xoalana', 'alanablaire',
+    'missnerezza', 'missnerezzavip', 'goddessnerezza', 'nerezza',
+    'praewasian', 'asianparadiseee', 'asianparadiseee-official',
+    'misueevee', 'misseevee',
+    'puckbuddy', 'puckbuddyvip', 'officialpuckbuddy', 'puckbuddyof', 'puckbuddyofficial',
+    'eviemayy', 'noteviemay', 'jocibaker', 'joci-baker',
+    'missemmaswitch', 'swedish_emma2', 'swedishemma',
+    'mandy-sweet', 'mandysweet',
+    'satiiellafree', 'satiellacosplay', 'satiiella',
+    'cuporose', 'cuporoselive', 'red-hotz', 'redhotz',
+    'mommycarter', 'mommycartertv', 'mommycarterxo', 'sugarplumsmilley',
+    'berrydoll', 'berrydollvip', 'loopylovely',
+    'lena-polanski', 'lenapolanski',
+  ];
+  const leftoverRx = leftoverNames.map((u) => new RegExp(u.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
+  if (!DRY_RUN) {
+    const likes = await db.collection('profilefeedlikes').deleteMany({
+      $or: leftoverRx.flatMap((rx) => [{ mediaKey: rx }, { creatorUsername: rx }]),
+    });
+    console.log(`ProfileFeedLikes deleted: ${likes.deletedCount}`);
+    const queries = await db.collection('searchqueries').deleteMany({
+      $or: leftoverRx.flatMap((rx) => [{ query: rx }, { queryNormalized: rx }]),
+    });
+    console.log(`SearchQueries deleted: ${queries.deletedCount}`);
+    for (const s of leftoverNames.map(slugify).filter(Boolean)) {
+      await deleteR2Prefix(r2, `onlyfanssearch/${s}`);
+      await deleteR2Prefix(r2, `onlyfanssearch/${s}-onlyfans`);
+    }
+
+    // Telegram group claimed via asianparadiseee-official
+    const groupSlugs = ['asianparadiseee-official', 'asianparadiseee', 'jocibaker-onlyfans', 'jocibaker'];
+    const groups = await db.collection('groups').find({ slug: { $in: groupSlugs } }).toArray();
+    for (const g of groups) {
+      console.log(`Group wipe: ${g.slug} image=${g.image || 'none'}`);
+      if (g.image) await deleteR2Url(r2, g.image);
+      await deleteR2Prefix(r2, `uploads/${g.slug}`);
+    }
+    if (groups.length) {
+      const gdel = await db.collection('groups').deleteMany({ _id: { $in: groups.map((g) => g._id) } });
+      console.log(`Groups deleted: ${gdel.deletedCount}`);
+    } else {
+      console.log('Groups deleted: 0');
+    }
   } else {
-    console.log(`\nWould delete ${unique.length} Mongo documents + related reviews/saves/trending/campaigns.`);
+    console.log(`\nWould delete ${unique.length} Mongo documents + related reviews/saves/trending/campaigns + asianparadiseee group.`);
   }
 
   console.log(`R2 object delete attempts: ${r2Deleted}${DRY_RUN ? ' (dry)' : ''}`);

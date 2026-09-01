@@ -80,7 +80,7 @@ const TARGET_MAX_BYTES = 150 * 1024;
 const QUALITY_STEPS = [90, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40];
 const DOWNLOAD_TIMEOUT_MS = 20000;
 
-// Forever DMCA / purged blacklist — keep in sync with lib/onlyfanssearch/creatorBlacklist.ts
+// Forever DMCA / purged blacklist — keep in sync with lib/ofsearch/creatorBlacklist.ts
 const PURGED = new Set([
   'francety', 'ashleyyyreyyy', 'gem101', 'stellabrooks', 'babydollll',
   'amibuefree', 'amibuexo', 'amibue', 'amibuexx', 'pennylondon', 'pennylondon_x',

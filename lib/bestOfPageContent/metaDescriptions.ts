@@ -1,3 +1,5 @@
+import { rankingCopyForSlug } from './top50Rankings';
+
 export interface MetaDescriptionSet { en: string; de?: string; es?: string; pt?: string; }
 export const META_DESCRIPTIONS: Record<string, MetaDescriptionSet> = {
   "ahegao": {
@@ -684,5 +686,7 @@ export const META_DESCRIPTIONS: Record<string, MetaDescriptionSet> = {
 export function getMetaDescription(slug: string, locale: 'en' | 'de' | 'es' | 'pt'): string | null {
   const entry = META_DESCRIPTIONS[slug];
   if (!entry) return null;
-  return entry[locale] || entry.en || null;
+  const raw = entry[locale] || entry.en || null;
+  if (raw) return rankingCopyForSlug(raw, slug);
+  return raw;
 }

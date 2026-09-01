@@ -13,6 +13,8 @@ import {
 import {
   bestOfSlugFromPublicPath,
   hottestRankingPublicPath,
+  parseEnglishRankingHub,
+  rankingEnglishPublicPath,
 } from '@/lib/bestOfPageContent/hottestUrls';
 import { bestTgCategoryPublicPath, bestTgCategoryFromPublicSegment } from '@/lib/bestTelegramGroups/btgUrls';
 import { ofCategoryPublicPath, ofCategoryFromPublicSegment, bestHubPublicPath } from '@/lib/bestOnlyfansAccounts/boaUrls';
@@ -55,11 +57,15 @@ export function internalPathFromPublicRest(rest: string): string {
   if (ENGLISH_ONLY_HUBS.has(hubKey)) return `/${hubKey}${parts.length > 1 ? `/${parts.slice(1).join('/')}` : ''}`;
 
   if (hubKey === 'onlyfans') {
-    if (parts.length === 1) return '/onlyfanssearch';
+    if (parts.length === 1) return '/ofsearch';
+    if (parts.length >= 3) {
+      const parsed = parseEnglishRankingHub(parts[1], parts[2]);
+      if (parsed) return rankingEnglishPublicPath(parsed.slug, parsed.kind);
+    }
     const seg = parts[1];
     const bestOf = bestOfSlugFromPublicPath(seg);
-    if (bestOf) return `/onlyfanssearch/top-10-${bestOf}-onlyfans-models`;
-    return `/onlyfanssearch/${parts.slice(1).join('/')}`;
+    if (bestOf) return rankingEnglishPublicPath(bestOf, 'top');
+    return `/ofsearch/${parts.slice(1).join('/')}`;
   }
 
   if (hubKey === 'best-telegram-groups') {
@@ -72,7 +78,7 @@ export function internalPathFromPublicRest(rest: string): string {
   if (hubKey === 'best' || hubKey === 'best-onlyfans-accounts') {
     if (parts.length === 1) return '/best-onlyfans-accounts';
     const enCat = ofCategoryFromPublicSegment(parts[1]) || parts[1];
-    return `/best-onlyfans-accounts/${enCat}`;
+    return rankingEnglishPublicPath(enCat, 'best');
   }
 
   return `/${hubKey}/${parts.slice(1).join('/')}`;
@@ -110,16 +116,24 @@ export function publicPathFromInternal(internal: string, locale: Locale): string
     return localePath(normalized, locale);
   }
 
-  if (hub === 'onlyfans' || hub === 'onlyfanssearch') {
+  if (hub === 'onlyfans' || hub === 'onlyfanssearch' || hub === 'ofsearch') {
     if (parts.length === 1) {
-      return locale === DEFAULT_LOCALE ? '/onlyfanssearch' : `/${locale}/${OF_SEARCH_HUB[locale]}`;
+      return locale === DEFAULT_LOCALE ? '/ofsearch' : `/${locale}/${OF_SEARCH_HUB[locale]}`;
+    }
+    if (parts.length >= 3) {
+      const parsed = parseEnglishRankingHub(parts[1], parts[2]);
+      if (parsed) {
+        return parsed.kind === 'best'
+          ? ofCategoryPublicPath(parsed.slug, locale)
+          : hottestRankingPublicPath(parsed.slug, locale);
+      }
     }
     const seg = parts[1];
-    const top10 = seg.match(/^top-10-(.+)-onlyfans-models$/);
-    if (top10) return hottestRankingPublicPath(top10[1], locale);
+    const topN = seg.match(/^top-(?:10|25|50)-(.+)-onlyfans-models$/);
+    if (topN) return hottestRankingPublicPath(topN[1], locale);
     const resolved = bestOfSlugFromPublicPath(seg);
     if (resolved) return hottestRankingPublicPath(resolved, locale);
-    if (locale === DEFAULT_LOCALE) return `/onlyfanssearch/${parts.slice(1).join('/')}`;
+    if (locale === DEFAULT_LOCALE) return `/ofsearch/${parts.slice(1).join('/')}`;
     return `/${locale}/${OF_SEARCH_HUB[locale]}/${parts.slice(1).join('/')}`;
   }
 

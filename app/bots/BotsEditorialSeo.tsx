@@ -53,7 +53,7 @@ export default function BotsEditorialSeo() {
         is the larger half of the site, the{' '}
         <Link href="/best-telegram-groups/onlyfans" className="text-[#ff7a3d] hover:text-[#ff9432] underline underline-offset-2 transition-colors">OnlyFans Telegram groups</Link>{' '}
         ranking is our busiest page, and{' '}
-        <Link href="/onlyfanssearch" className="text-[#ff7a3d] hover:text-[#ff9432] underline underline-offset-2 transition-colors">OnlyFans Search</Link>{' '}
+        <Link href="/ofsearch" className="text-[#ff7a3d] hover:text-[#ff9432] underline underline-offset-2 transition-colors">OFsearch</Link>{' '}
         finds creators directly by name or country.
       </p>
 

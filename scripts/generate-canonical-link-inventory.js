@@ -18,7 +18,7 @@ function extractStringArray(src, varName) {
 }
 
 const groupsConst = read('app/groups/constants.ts');
-const ofConst = read('app/onlyfanssearch/constants.ts');
+const ofConst = read('app/ofsearch/constants.ts');
 const bestOf = read('app/best-onlyfans-accounts/bestOfPages.ts');
 
 const categoryCount = extractStringArray(groupsConst, 'allCategories').filter((c) => c !== 'All').length;

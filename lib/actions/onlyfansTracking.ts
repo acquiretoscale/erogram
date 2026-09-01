@@ -80,7 +80,7 @@ function ofPlacement(albumIdx?: number): string {
 }
 
 /**
- * Click on a creator from /onlyfanssearch profile/grid. Receives the OnlyFansCreator _id
+ * Click on a creator from /ofsearch profile/grid. Receives the OnlyFansCreator _id
  * OR slug. Resolves the linked OF campaign (by username) and logs to the unified store.
  */
 export async function trackCreatorClick(idOrSlug: string) {

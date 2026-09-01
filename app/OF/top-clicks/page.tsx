@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getTopClickedCreators, type TopCreator } from '@/lib/actions/ofmCreators';
-import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { ofCreatorProfileUrl } from '@/lib/ofsearch/creatorUrls';
 
 export default function TopClicksPage() {
   const [creators, setCreators] = useState<TopCreator[]>([]);

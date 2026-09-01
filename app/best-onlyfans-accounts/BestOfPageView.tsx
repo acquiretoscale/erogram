@@ -8,6 +8,7 @@ import { hottestRankingPublicPath } from '@/lib/bestOfPageContent/hottestUrls';
 import { ofCategoryPublicPath } from '@/lib/bestOnlyfansAccounts/boaUrls';
 import { getLocale } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, LOCALE_HREFLANG, localePath } from '@/lib/i18n';
+import { rankingCopyForSlug, rankingListSize } from '@/lib/bestOfPageContent/top50Rankings';
 import type { Locale } from '@/lib/i18n';
 import { getKeywordPlacementCampaigns } from '@/lib/actions/campaigns';
 import { getBestOfRankingOrganicWithClusterFill, getBestOfRankingOrganicCap } from '@/lib/actions/bestOfCreators';
@@ -15,12 +16,13 @@ import { getFeaturedCreatorFeedItems } from '@/lib/actions/publicData';
 import BestPageAdBlock from '@/app/best-onlyfans-accounts/BestPageAdBlock';
 import BestOfDeleteButton from '@/app/best-onlyfans-accounts/BestOfDeleteButton';
 import BestOfProfileButton from '@/app/best-onlyfans-accounts/BestOfProfileButton';
+import BestOfBookmarkButton from '@/app/best-onlyfans-accounts/BestOfBookmarkButton';
 import { BestOfHeroIntro, BestOfEditorialBody } from '@/app/best-onlyfans-accounts/BestOfEditorial';
 import { getBestOfPageContent, type BestOfPageContent } from '@/lib/bestOfPageContent';
 import { getBodyTranslation } from '@/lib/bestOfPageContent/bodyTranslations';
 import { getMetaDescription } from '@/lib/bestOfPageContent/metaDescriptions';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
-import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { ofOutboundUrlFromErogram } from '@/lib/ofsearch/creatorUrls';
 import { getTagLabel } from '@/lib/tags/labelTranslations';
 import { resolveBestOfPage } from '@/lib/onlyfans/categoryComboPills';
 import RelatedRankingLinks from '@/app/best-onlyfans-accounts/RelatedRankingLinks';
@@ -64,7 +66,7 @@ function bioSnippet(bio?: string, max = 144): string {
 
 /**
  * Page metadata for a Top-10 OnlyFans category page, served at the public URL
- * /onlyfanssearch/top-10-{slug}-onlyfans-models. Returns {} if slug isn't a known best-of page.
+ * /ofsearch/top-10-{slug}-onlyfans-models. Returns {} if slug isn't a known best-of page.
  */
 /** Per-niche adjective that reads naturally in the hook meta description. Fallback = captivating/exótica/verführerisch. */
 const HOOK_ADJECTIVES: Record<string, { en: string; de: string; es: string }> = {
@@ -138,18 +140,26 @@ function rankingPublicPath(slug: string, locale: Locale, variant: RankingVariant
   return variant === 'best' ? ofCategoryPublicPath(slug, locale) : hottestRankingPublicPath(slug, locale);
 }
 
-function applyRankingVariantContent(content: BestOfPageContent, variant: RankingVariant): BestOfPageContent {
-  if (variant === 'top10') return content;
-  return {
-    heroIntro: content.heroIntro
+function applyRankingVariantContent(
+  content: BestOfPageContent,
+  variant: RankingVariant,
+  slug: string,
+): BestOfPageContent {
+  let heroIntro = content.heroIntro;
+  let bottomBody = content.bottomBody;
+  if (variant !== 'top10') {
+    heroIntro = heroIntro
       .replace(/\*\*Top 10 /g, '**Best ')
       .replace(/Top 10 /g, 'Best ')
-      .replace(/top 10 /g, 'best '),
-    bottomBody: content.bottomBody
+      .replace(/top 10 /g, 'best ');
+    bottomBody = bottomBody
       .replace(/\*\*Top 10 /g, '**Best ')
       .replace(/Top 10 /g, 'Best ')
-      .replace(/top 10 /g, 'best '),
-  };
+      .replace(/top 10 /g, 'best ');
+  }
+  heroIntro = rankingCopyForSlug(heroIntro, slug);
+  bottomBody = rankingCopyForSlug(bottomBody, slug);
+  return { heroIntro, bottomBody };
 }
 
 function resolveBestOfContent(slug: string, locale: Locale, variant: RankingVariant): BestOfPageContent | null {
@@ -161,32 +171,36 @@ function resolveBestOfContent(slug: string, locale: Locale, variant: RankingVari
         heroIntro: getBodyTranslation(slug, locale)?.heroIntro?.trim() || en.heroIntro,
         bottomBody: '',
       };
-  return applyRankingVariantContent(base, variant);
+  return applyRankingVariantContent(base, variant, slug);
 }
 
 /** Localized ranking title. Single source of truth for meta title, H1 + JSON-LD. */
-function top10RankingTitle(label: string, year: number, locale: Locale): string {
+function top10RankingTitle(label: string, year: number, locale: Locale, slug: string): string {
+  const n = rankingListSize(slug);
   const map: Record<Locale, string> = {
-    en: `Top 10 ${label} OnlyFans Models In ${year}`,
-    de: `Top 10 ${label} OnlyFans-Models ${year}`,
-    es: `Top 10 modelos ${label} de OnlyFans en ${year}`,
-    pt: `Top 10 modelos ${label} de OnlyFans em ${year}`,
+    en: `Top ${n} ${label} OnlyFans Models In ${year}`,
+    de: `Top ${n} ${label} OnlyFans-Models ${year}`,
+    es: `Top ${n} modelos ${label} de OnlyFans en ${year}`,
+    pt: `Top ${n} modelos ${label} de OnlyFans em ${year}`,
   };
   return map[locale] || map.en;
 }
 
-function bestRankingTitle(label: string, year: number, locale: Locale): string {
+function bestRankingTitle(label: string, year: number, locale: Locale, slug: string): string {
+  const n = rankingListSize(slug);
   const map: Record<Locale, string> = {
-    en: `10 Best ${label} OnlyFans Accounts & Creators (${year})`,
-    de: `Die 10 besten ${label} OnlyFans-Accounts & Creator (${year})`,
-    es: `Las 10 mejores cuentas ${label} de OnlyFans (${year})`,
-    pt: `As 10 melhores contas ${label} de OnlyFans (${year})`,
+    en: `${n} Best ${label} OnlyFans Accounts & Creators (${year})`,
+    de: `Die ${n} besten ${label} OnlyFans-Accounts & Creator (${year})`,
+    es: `Las ${n} mejores cuentas ${label} de OnlyFans (${year})`,
+    pt: `As ${n} melhores contas ${label} de OnlyFans (${year})`,
   };
   return map[locale] || map.en;
 }
 
-function rankingTitle(label: string, year: number, locale: Locale, variant: RankingVariant): string {
-  return variant === 'best' ? bestRankingTitle(label, year, locale) : top10RankingTitle(label, year, locale);
+function rankingTitle(label: string, year: number, locale: Locale, variant: RankingVariant, slug: string): string {
+  return variant === 'best'
+    ? bestRankingTitle(label, year, locale, slug)
+    : top10RankingTitle(label, year, locale, slug);
 }
 
 export async function buildBestOfMetadata(slug: string, variant: RankingVariant = 'top10'): Promise<Metadata> {
@@ -201,22 +215,26 @@ export async function buildBestOfMetadata(slug: string, variant: RankingVariant 
   const blogPath = rankingPublicPath(slug, locale, variant);
 
   // Meta title — PimpBunny replica. The layout template ("%s | Erogram") appends the brand,
-  // producing "Top 10 {Label} OnlyFans Models In {year} | Erogram" — do NOT add it here.
+  // producing "Top {10|50} {Label} OnlyFans Models In {year} | Erogram" — do NOT add it here.
+  const n = rankingListSize(slug);
   const titleMap: Record<Locale, string> = {
-    en: top10RankingTitle(label, year, 'en'),
-    de: top10RankingTitle(label, year, 'de'),
-    es: top10RankingTitle(label, year, 'es'),
-    pt: top10RankingTitle(label, year, 'pt'),
+    en: rankingTitle(label, year, 'en', variant, slug),
+    de: rankingTitle(label, year, 'de', variant, slug),
+    es: rankingTitle(label, year, 'es', variant, slug),
+    pt: rankingTitle(label, year, 'pt', variant, slug),
   };
   // Meta description — unique per-page (DeepSeek, stored) with hook-formula fallback.
   const descMap: Record<Locale, string> = {
-    en: getMetaDescription(slug, 'en') || `Searching for girls with that ${adj} ${l} energy? Our Top 10 ${l} OnlyFans models are here to deliver exactly what you crave.`,
-    de: getMetaDescription(slug, 'de') || `Auf der Suche nach Girls mit dieser ${adj}en ${l} Energie? Unsere Top 10 ${l} OnlyFans-Models liefern genau das, wonach du dich sehnst.`,
-    es: getMetaDescription(slug, 'es') || `¿Buscas chicas con esa energía ${l} ${adj}? Nuestro Top 10 de modelos ${l} de OnlyFans te dan justo lo que deseas.`,
-    pt: getMetaDescription(slug, 'pt') || `Procurando garotas com aquela energia ${l} ${adj}? Nosso Top 10 de modelos ${l} de OnlyFans entrega exatamente o que você quer.`,
+    en: getMetaDescription(slug, 'en') || `Searching for girls with that ${adj} ${l} energy? Our Top ${n} ${l} OnlyFans models are here to deliver exactly what you crave.`,
+    de: getMetaDescription(slug, 'de') || `Auf der Suche nach Girls mit dieser ${adj}en ${l} Energie? Unsere Top ${n} ${l} OnlyFans-Models liefern genau das, wonach du dich sehnst.`,
+    es: getMetaDescription(slug, 'es') || `¿Buscas chicas con esa energía ${l} ${adj}? Nuestro Top ${n} de modelos ${l} de OnlyFans te dan justo lo que deseas.`,
+    pt: getMetaDescription(slug, 'pt') || `Procurando garotas com aquela energia ${l} ${adj}? Nosso Top ${n} de modelos ${l} de OnlyFans entrega exatamente o que você quer.`,
   };
   const ogTitleMap = titleMap;
-  const canonical = `${SITE_URL}${blogPath}`;
+  const blogUrl = `${SITE_URL}${blogPath}`;
+  const canonical = locale === 'en'
+    ? `${CANONICAL_BASE}/ofsearch/${variant === 'best' ? 'best' : 'top'}-${n}-onlyfans-models/${slug}`
+    : blogUrl;
 
   return {
     title: titleMap[locale] || titleMap.en,
@@ -227,14 +245,14 @@ export async function buildBestOfMetadata(slug: string, variant: RankingVariant 
     ...buildSocialMeta({
       title: ogTitleMap[locale] || ogTitleMap.en,
       description: descMap[locale] || descMap.en,
-      url: canonical,
+      url: blogUrl,
       type: 'website',
     }),
   };
 }
 
 /**
- * The Top-10 OnlyFans category ranking page (served at /onlyfanssearch/top-10-{slug}-onlyfans-models).
+ * The Top-10 OnlyFans category ranking page (served at /ofsearch/top-10-{slug}-onlyfans-models).
  * Ranking spots 1–3 = keyword-targeted best-of campaigns, then top-by-clicks, then fill.
  * Followed by the TRENDING ON EROGRAM featured block + FAQ.
  */
@@ -344,8 +362,6 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
   const INK = '#FDFDFD';     // on-plum typo
   const MUTED = '#6B6568';   // secondary body
   const OF_BLUE = '#00AFF0'; // OnlyFans blue — CTA buttons + trending markers
-  const PREMIUM_PINK = '#ff2d8a';
-  const PREMIUM_PINK_BTN = { background: PREMIUM_PINK, color: '#fff', borderColor: 'transparent', boxShadow: '0 4px 16px rgba(255,45,138,0.38)' };
 
   const faqItems = (dict.bestOnlyfans.rankingFaq as Array<{q: string; a: string}>).map((item) => ({
     q: item.q.replace('{label}', label),
@@ -363,7 +379,7 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
             __html: JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'Article',
-              headline: rankingTitle(label, year, locale, variant),
+              headline: rankingTitle(label, year, locale, variant, slug),
               description: pageContent.heroIntro.replace(/\*\*/g, '').slice(0, 160),
               author: { '@type': 'Organization', name: 'Erogram', url: SITE_URL },
               publisher: { '@type': 'Organization', name: 'Erogram', url: SITE_URL },
@@ -394,7 +410,7 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
         <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-[11px] tracking-[0.12em] uppercase mb-6" style={{ color: MUTED }}>
           <Link href={localePath('/', locale)} className="hover:opacity-70 transition-opacity">{dict.bestOnlyfans.breadcrumbHome}</Link>
           <span style={{ color: 'rgba(43,27,40,0.25)' }}>/</span>
-          <Link href={localePath('/onlyfanssearch', locale)} className="hover:opacity-70 transition-opacity">{dict.bestOnlyfans.breadcrumbOfSearch}</Link>
+          <Link href={localePath('/ofsearch', locale)} className="hover:opacity-70 transition-opacity">{dict.bestOnlyfans.breadcrumbOfSearch}</Link>
           <span style={{ color: 'rgba(43,27,40,0.25)' }}>/</span>
           <span style={{ color: PLUM }}>{label}</span>
         </nav>
@@ -403,7 +419,7 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
         <header className="mb-8 pt-2">
           <h1 className="font-[family-name:var(--font-baloo)] font-extrabold text-[2.4rem] sm:text-[3.2rem] leading-[0.98] tracking-tight mb-3" style={{ color: PLUM }}>
             {(() => {
-              const t = rankingTitle(label, year, locale, variant);
+              const t = rankingTitle(label, year, locale, variant, slug);
               const parts = t.split(label);
               return parts.length === 2
                 ? <>{parts[0]}<span style={{ color: PLUM }}>{label}</span>{parts[1]}</>
@@ -464,11 +480,9 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
               if (videos > 0) stats.push({ label: 'Videos', value: fmt(videos) });
               if (posts > 0) stats.push({ label: 'Posts', value: fmt(posts) });
 
-              const erogramHref = creator.username
-                ? ofCreatorProfileUrl(creator.username)
-                : creator.slug
-                  ? ofCreatorProfileUrl(creator.slug)
-                  : '#';
+              const ofHref = (creator.username || creator.slug)
+                ? ofOutboundUrlFromErogram(creator.username || creator.slug, creator.url)
+                : '#';
               const deleteSlug = creator.slug
                 ? String(creator.slug).replace(/^\//, '')
                 : creator.username
@@ -585,10 +599,10 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                           </div>
                         ) : null}
 
-                        <div className="mt-4 sm:mt-auto pt-1">
+                        <div className="mt-4 sm:mt-auto pt-1 flex flex-row items-stretch gap-2">
                           {isPromo ? (
                               <a
-                                href={creator.url || '#'}
+                                href={ofHref}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl font-black uppercase text-white px-8 py-4 text-[16px] tracking-[0.14em] transition-opacity hover:opacity-95"
@@ -598,13 +612,14 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                                 {dict.bestOnlyfans.visitProfile}
                               </a>
                           ) : null}
+                          {isPromo ? <BestOfBookmarkButton /> : null}
                         </div>
 
                       </div>
                       </div>
                     ) : (
                       <BestOfProfileButton
-                        erogramHref={erogramHref}
+                        ofHref={ofHref}
                         className={`${cardRowClass} w-full text-left cursor-pointer appearance-none bg-transparent border-none p-0 m-0`}
                       >
                       {/* Avatar */}
@@ -699,6 +714,7 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                           >
                             Visit Profile
                           </span>
+                          <BestOfBookmarkButton />
                         </div>
                       </div>
                       </BestOfProfileButton>
@@ -708,17 +724,6 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
               );
             })}
           </ol>
-
-          {/* CTA: Explore more of this niche on OFSearch */}
-          <div className="mt-6 mb-10 text-center">
-            <Link
-              href={localePath(`/onlyfans?q=${encodeURIComponent(label)}`, locale)}
-              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full text-[13px] font-bold tracking-[0.06em] border transition-all hover:-translate-y-px hover:opacity-90 active:translate-y-0"
-              style={PREMIUM_PINK_BTN}
-            >
-              {dict.bestOnlyfans.exploreMoreNiche.replace('{label}', label)}
-            </Link>
-          </div>
         </>
         ) : (
           <div className="text-center py-12 mb-12 rounded-2xl border" style={{ borderColor: 'rgba(43,27,40,0.12)' }}>
@@ -745,7 +750,7 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                 </Link>
                 {', updated daily by the Erogram editorial team. Whether you are searching by niche, country, or U.S. state, each list spotlights '}
                 <Link
-                  href={localePath('/onlyfanssearch/categories', locale)}
+                  href={localePath('/ofsearch/categories', locale)}
                   className="font-semibold underline underline-offset-2 hover:text-[#00AFF0] transition-colors"
                   style={{ color: PLUM }}
                 >

@@ -90,8 +90,22 @@ export function AuthCard({
   children: ReactNode;
   wide?: boolean;
 }) {
+  if (isAinsfwTheme) {
+    return (
+      <div className="relative rounded-2xl border border-black/10 bg-white p-4 sm:p-5 shadow-2xl shadow-black/40">
+        {children}
+      </div>
+    );
+  }
+
   return (
-    <div className="relative rounded-2xl border border-black/10 bg-white p-4 sm:p-5 shadow-2xl shadow-black/40">
+    <div
+      className="relative rounded-2xl border border-[#00AFF0]/20 p-4 sm:p-5 shadow-2xl shadow-black/50"
+      style={{
+        background: 'linear-gradient(155deg, #060d17 0%, #0a1525 100%)',
+        boxShadow: '0 12px 32px -12px rgba(6, 13, 23, 0.55)',
+      }}
+    >
       {children}
     </div>
   );
@@ -107,7 +121,13 @@ export function AuthTabToggle({
   isAinsfwTheme: boolean;
 }) {
   return (
-    <div className="flex items-center rounded-lg bg-black/[0.05] border border-black/10 p-0.5 mb-3">
+    <div
+      className={`flex items-center rounded-lg p-0.5 mb-3 ${
+        isAinsfwTheme
+          ? 'bg-black/[0.05] border border-black/10'
+          : 'bg-white/[0.06] border border-white/10'
+      }`}
+    >
       {([
         { id: 'join' as const, label: 'Create account' },
         { id: 'signin' as const, label: 'Sign in' },
@@ -121,7 +141,9 @@ export function AuthTabToggle({
               ? isAinsfwTheme
                 ? 'bg-[#22c55e] text-black'
                 : 'bg-[#00AFF0] text-white'
-              : 'text-black/45 hover:text-black/70'
+              : isAinsfwTheme
+                ? 'text-black/45 hover:text-black/70'
+                : 'text-white/45 hover:text-white/70'
           }`}
         >
           {label}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { ofCreatorProfileUrl } from '@/lib/ofsearch/creatorUrls';
 import Link from 'next/link';
 import ProfileGridDensityToggle from './ProfileGridDensityToggle';
 import {
@@ -134,7 +134,7 @@ export default function SavedModelsTab({ editorial = false, themeMode }: { edito
         </h3>
         <p className={`text-sm max-w-sm mx-auto ${themed ? '' : 'text-white/30'}`} style={themed ? { color: muted } : undefined}>
           Browse the{' '}
-          <a href="/onlyfanssearch" className="text-[#00AFF0] hover:underline">
+          <a href="/ofsearch" className="text-[#00AFF0] hover:underline">
             OnlyFans directory
           </a>{' '}
           and tap the heart icon to save your favorite creators here.

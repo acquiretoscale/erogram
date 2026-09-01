@@ -1,4 +1,4 @@
-import { OF_CATEGORY_MAP } from '@/app/onlyfanssearch/constants';
+import { OF_CATEGORY_MAP } from '@/app/ofsearch/constants';
 
 export type InterestOption = { slug: string; name: string; count?: number };
 

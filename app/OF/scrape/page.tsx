@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
+import { OF_CATEGORIES } from '@/app/ofsearch/constants';
 import { browseOFMCreators, purgeOFMCreators } from '@/lib/actions/ofm';
 import LegalBlacklistPanel from '../components/LegalBlacklistPanel';
 

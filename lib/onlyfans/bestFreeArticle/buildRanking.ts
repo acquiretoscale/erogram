@@ -2,7 +2,7 @@
 
 import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator } from '@/lib/models';
-import { getCreatorBio } from '@/app/onlyfanssearch/creatorBios';
+import { getCreatorBio } from '@/app/ofsearch/creatorBios';
 import { buildR2AvatarMatch, whaleBrowseLikesFilter } from '@/lib/tags/creatorMatch';
 import type { BestFreeCreatorEntry, BestFreeCreatorFacts } from './types';
 import { bestFreeArticleCopy } from './copy';
@@ -40,7 +40,7 @@ function mapFacts(raw: Record<string, unknown>, rank: number): BestFreeCreatorFa
   };
 }
 
-/** Top free creators for the /onlyfanssearch/best editorial article. Sorted by Erogram clicks + likes. */
+/** Top free creators for the /ofsearch/best editorial article. Sorted by Erogram clicks + likes. */
 export async function buildBestFreeArticleRanking(
   limit = ARTICLE_LIMIT,
 ): Promise<BestFreeCreatorEntry[]> {

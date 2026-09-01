@@ -509,7 +509,7 @@ async function main() {
   const connectDB = (await import('../lib/db/mongodb.js')).default;
   const { processCreatorImages } = await import('../lib/actions/creatorImages.js');
   const { OnlyFansCreator, ScrapeRun } = await import('../lib/models/index.js');
-  const { isCreatorBlacklisted } = await import('../lib/onlyfanssearch/creatorBlacklist.js');
+  const { isCreatorBlacklisted } = await import('../lib/ofsearch/creatorBlacklist.js');
 
   const candidates = [];
   let blocked = 0;

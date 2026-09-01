@@ -3,10 +3,8 @@
 import connectDB from '@/lib/db/mongodb';
 import { AINsfwSubmission, Bot, Group, OnlyFansCreator } from '@/lib/models';
 import { AI_NSFW_TOOLS } from '@/app/ainsfw/data';
-import { OF_CATEGORY_SLUGS } from '@/app/onlyfanssearch/constants';
-import { getBestOfFillCreators, getBestOfPreviewAvatars, getBestOfTopByClicks } from '@/lib/actions/bestOfCreators';
-import { BEST_OF_PAGE_MAP, bestOfBlogSlug } from '@/app/best-onlyfans-accounts/bestOfPages';
-import { getKeywordCategoryPatterns } from '@/lib/onlyfanssearch/keywordCategories';
+import { OF_CATEGORY_SLUGS } from '@/app/ofsearch/constants';
+import { getKeywordCategoryPatterns } from '@/lib/ofsearch/keywordCategories';
 import {
   getAllTagDefinitions,
   getTagDefinition,
@@ -15,7 +13,7 @@ import {
 } from '@/lib/tags/registry';
 import { getTagLabel } from '@/lib/tags/labelTranslations';
 import type { Locale } from '@/lib/i18n';
-import { getRankingPagesForTag, type TagRankingPage } from '@/lib/tags/rankings';
+import { getRankingPagesForTag } from '@/lib/tags/rankings';
 import {
   buildBestOfCreatorMatch,
   buildSlugCreatorMatch,
@@ -93,55 +91,6 @@ export interface TagAiToolResult {
   image: string;
   category: string;
   description: string;
-}
-
-function serializeCreator(c: any): TagCreatorResult {
-  return {
-    _id: c._id.toString(),
-    name: c.name || '',
-    username: c.username || '',
-    slug: c.slug || c.username || '',
-    avatar: c.avatar || '',
-    header: c.header || '',
-    likesCount: c.likesCount || 0,
-    subscriberCount: c.subscriberCount || 0,
-    photosCount: c.photosCount || 0,
-    videosCount: c.videosCount || 0,
-    price: c.price || 0,
-    isFree: !!c.isFree,
-    url: c.url || '',
-    categories: c.categories || [],
-  };
-}
-
-async function loadTop10ForPage(page: NonNullable<TagDefinition['bestOfPage']>): Promise<TagTop10Block | null> {
-  const topByClicks = await getBestOfTopByClicks(page, 10);
-  const used = new Set<string>();
-  const organic: TagCreatorResult[] = [];
-
-  for (const c of topByClicks as any[]) {
-    if (organic.length >= 10) break;
-    const uname = (c.username || '').toLowerCase();
-    if (!uname || used.has(uname)) continue;
-    used.add(uname);
-    organic.push(serializeCreator(c));
-  }
-
-  if (organic.length < 10) {
-    const fill = await getBestOfFillCreators(page, [...used], 10 - organic.length);
-    for (const c of fill as any[]) {
-      organic.push(serializeCreator(c));
-    }
-  }
-
-  if (!organic.length) return null;
-
-  return {
-    label: page.label,
-    href: `/onlyfanssearch/${bestOfBlogSlug(page.slug)}`,
-    categorySlug: page.categorySlug || page.slug,
-    creators: organic.slice(0, 10),
-  };
 }
 
 function escapeRegex(s: string) {
@@ -378,13 +327,7 @@ export async function getTagDetail(slug: string, locale: Locale = 'en') {
   const botMatch = buildBotMatch(def);
   const aiDbMatch = buildAiDbMatch(def);
   const rankingPages = getRankingPagesForTag(def);
-  const primaryPage = def.bestOfPage;
   const staticAiTools = filterStaticAiTools(def);
-
-  const rankingSlugs = rankingPages.map((p) => p.slug);
-  const rankingPageDefs = rankingSlugs
-    .map((s) => BEST_OF_PAGE_MAP.get(s))
-    .filter(Boolean) as NonNullable<TagDefinition['bestOfPage']>[];
 
   const [
     groupCount,
@@ -392,9 +335,6 @@ export async function getTagDetail(slug: string, locale: Locale = 'en') {
     botCount,
     aiDbCount,
     groups,
-    top10,
-    previewAvatars,
-    browseCreatorsRaw,
     botsRaw,
     aiDbRaw,
   ] = await Promise.all([
@@ -407,19 +347,6 @@ export async function getTagDetail(slug: string, locale: Locale = 'en') {
           .sort({ memberCount: -1, createdAt: -1 })
           .limit(24)
           .select('name slug image category memberCount description description_de description_es')
-          .lean()
-      : Promise.resolve([]),
-    primaryPage ? loadTop10ForPage(primaryPage) : Promise.resolve(null),
-    rankingPageDefs.length
-      ? getBestOfPreviewAvatars(rankingPageDefs, 4).catch(() => ({} as Record<string, string[]>))
-      : Promise.resolve({} as Record<string, string[]>),
-    creatorMatch
-      ? OnlyFansCreator.find(creatorMatch)
-          .sort({ clicks: -1, likesCount: -1 })
-          .limit(48)
-          .select(
-            'name username slug avatar header likesCount subscriberCount photosCount videosCount price isFree url categories',
-          )
           .lean()
       : Promise.resolve([]),
     botMatch
@@ -437,20 +364,6 @@ export async function getTagDetail(slug: string, locale: Locale = 'en') {
           .lean()
       : Promise.resolve([]),
   ]);
-
-  const top10Usernames = new Set(
-    (top10?.creators || []).map((c) => c.username.toLowerCase()).filter(Boolean),
-  );
-
-  const browseCreators = (browseCreatorsRaw as any[])
-    .filter((c) => !top10Usernames.has((c.username || '').toLowerCase()))
-    .slice(0, 24)
-    .map(serializeCreator);
-
-  const rankingPagesWithAvatars = rankingPages.map((rp) => ({
-    ...rp,
-    previewAvatars: previewAvatars[rp.slug] || [],
-  }));
 
   const aiTools: TagAiToolResult[] = [
     ...staticAiTools,
@@ -476,8 +389,9 @@ export async function getTagDetail(slug: string, locale: Locale = 'en') {
     botCount,
     aiCount,
     total,
-    rankingPages: rankingPagesWithAvatars,
-    top10,
+    rankingPages,
+    top10: null,
+    creators: [],
     groups: (groups as any[]).map((g) => ({
       _id: g._id.toString(),
       name: g.name || '',
@@ -496,6 +410,5 @@ export async function getTagDetail(slug: string, locale: Locale = 'en') {
       description: (b.description || '').slice(0, 120),
     })) as TagBotResult[],
     aiTools,
-    creators: browseCreators,
   };
 }

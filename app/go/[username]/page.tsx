@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator } from '@/lib/models';
 import { getCreatorByUsername } from '@/lib/actions/ofCreatorProfile';
-import { onlyFansExternalUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { onlyFansExternalUrl } from '@/lib/ofsearch/creatorUrls';
 
 export const revalidate = 300;
 

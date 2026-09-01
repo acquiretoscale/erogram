@@ -6,10 +6,11 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import SubmitPartnershipStats from '@/app/submit/SubmitPartnershipStats';
+import SubmitErogramReachBlock from '@/app/submit/SubmitErogramReachBlock';
 import SubmitPromoAudienceProof from '@/app/submit/SubmitPromoAudienceProof';
 import SubmitContactBlock from '@/app/submit/SubmitContactBlock';
 import SubmitHowItWorks from '@/app/submit/SubmitHowItWorks';
+import OfmAgenciesPricingSection from '@/app/ofm-agencies/OfmAgenciesPricingSection';
 import TrustedByLeaders, { TRUSTED_SPONSORS } from '@/app/advertise/TrustedByLeaders';
 import { saveSubmitCreatorPlan } from '@/lib/submitCreatorDraft';
 
@@ -41,14 +42,47 @@ const sectionLabel = 'text-[10px] font-black uppercase tracking-[0.2em] text-[#0
 const h2Class = 'text-2xl sm:text-3xl font-black text-gray-900 mb-4 tracking-tight';
 const bodyClass = 'text-[15px] sm:text-base leading-relaxed text-gray-600';
 const cardClass = 'rounded-2xl border border-[#00AFF0]/20 bg-white p-6 sm:p-8 shadow-[0_8px_30px_-12px_rgba(0,175,240,0.18)]';
-const agencySurface = '#0a1628';
 const agencyHeaderBg = 'linear-gradient(160deg, #041828 0%, #0a2840 55%, #0d3550 100%)';
-const agencyCardClass =
-  'overflow-hidden rounded-2xl border border-[#00AFF0]/30 shadow-[0_20px_50px_-24px_rgba(0,80,140,0.65)] scroll-mt-28';
 const mainSectionTitleClass =
   'text-2xl sm:text-3xl md:text-4xl font-black uppercase tracking-[0.08em] text-center mb-6 sm:mb-8 leading-tight';
 
-export default function SubmitLandingPage() {
+const outlineCtaStyle = {
+  background: '#fff',
+  border: `2px solid ${OF_DARKER}`,
+} as const;
+
+function AudienceSwitchCtas() {
+  return (
+    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4 w-full max-w-2xl mx-auto">
+      <Link
+        href="/ofm-agencies"
+        className={`${submitHeroCta} w-full sm:flex-1`}
+        style={primaryCtaStyle}
+      >
+        For agencies
+      </Link>
+      <Link
+        href="#pricing"
+        className={`${submitHeroCta} w-full sm:flex-1`}
+        style={outlineCtaStyle}
+      >
+        <span className="text-[#0077B3]">For solo creators</span>
+      </Link>
+    </div>
+  );
+}
+export default function SubmitLandingPage({
+  variant = 'submit',
+  aiNsfwCount,
+  groupsAndBotsCount,
+  totalUsers,
+}: {
+  variant?: 'submit' | 'ofm-agencies';
+  aiNsfwCount: number;
+  groupsAndBotsCount: number;
+  totalUsers: number;
+}) {
+  const isOfmAgencies = variant === 'ofm-agencies';
   const router = useRouter();
 
   const startCreatorFlow = useCallback((plan: 'free' | 'boosted') => {
@@ -61,38 +95,17 @@ export default function SubmitLandingPage() {
       <Navbar variant="onlyfans" />
 
       <div className="pt-[68px] sm:pt-[80px]">
-        <div className="w-full bg-black border-b border-[#00AFF0]/20 flex justify-center">
-          <Image
-            src="/assets/erogram-discovery-hub-banner.webp"
-            alt=""
-            width={1024}
-            height={225}
-            className="w-full max-w-3xl h-auto block"
-            priority
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 sm:pt-10 pb-12 sm:pb-16 space-y-14 sm:space-y-16">
+        <div className="relative left-1/2 w-[min(100vw-2rem,64rem)] max-w-5xl -translate-x-1/2">
+          <SubmitErogramReachBlock
+            aiNsfwCount={aiNsfwCount}
+            groupsAndBotsCount={groupsAndBotsCount}
+            totalUsers={totalUsers}
           />
         </div>
 
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 sm:pt-10 pb-12 sm:pb-16 space-y-14 sm:space-y-16">
         {/* HERO */}
         <section className="text-center max-w-2xl mx-auto">
-          <h1 className="mb-6 sm:mb-8 px-1">
-            <span className="block text-[2rem] sm:text-5xl md:text-[3.25rem] font-black tracking-tight leading-[1.08] text-gray-900">
-              We have{' '}
-              <span
-                className="bg-clip-text text-transparent"
-                style={{
-                  backgroundImage: 'linear-gradient(135deg, #0077B3 0%, #009AD6 50%, #00AFF0 100%)',
-                }}
-              >
-                your fans
-              </span>
-            </span>
-          </h1>
-
-          <div className="mb-5 sm:mb-6">
-            <SubmitPartnershipStats />
-          </div>
-
           <div
             className="rounded-2xl border border-[#00AFF0]/30 px-6 py-8 sm:px-9 sm:py-10 shadow-[0_16px_40px_-20px_rgba(0,40,80,0.55)] mb-8 sm:mb-9"
             style={{ background: agencyHeaderBg }}
@@ -102,9 +115,7 @@ export default function SubmitLandingPage() {
             </p>
           </div>
 
-          <Link href="#pricing" className={submitHeroCta} style={primaryCtaStyle}>
-            Get Listed on Erogram
-          </Link>
+          {!isOfmAgencies && <AudienceSwitchCtas />}
 
           <div className="mt-8 sm:mt-10 overflow-hidden rounded-2xl border border-[#00AFF0]/25 shadow-[0_16px_40px_-20px_rgba(0,40,80,0.35)] ring-1 ring-black/[0.04]">
             <Image
@@ -118,6 +129,7 @@ export default function SubmitLandingPage() {
           </div>
         </section>
 
+        {isOfmAgencies && (
         <section>
           <div className="mb-6 sm:mb-8 text-center px-1 sm:px-2">
             <h2 className="text-lg sm:text-2xl md:text-3xl lg:text-[2rem] font-black uppercase tracking-tight text-gray-900 leading-snug max-w-4xl mx-auto">
@@ -126,13 +138,18 @@ export default function SubmitLandingPage() {
           </div>
           <SubmitPromoAudienceProof />
         </section>
+        )}
 
+        {!isOfmAgencies && (
         <div className="text-center">
           <Link href="#pricing" className={submitCta} style={primaryCtaStyle}>
             SUBMIT
           </Link>
         </div>
+        )}
 
+        {isOfmAgencies && (
+        <>
         {/* THE SECRET */}
         <section>
           <p className={sectionLabel}>The secret</p>
@@ -186,6 +203,8 @@ export default function SubmitLandingPage() {
             Why pay to reach broke scrollers when you can reach the whales who came to buy?
           </p>
         </section>
+        </>
+        )}
 
         {/* Why Erogram */}
         <section className={cardClass}>
@@ -229,6 +248,7 @@ export default function SubmitLandingPage() {
         </div>
 
         {/* FOR SOLO CREATORS */}
+        {!isOfmAgencies && (
         <section
           id="pricing"
           className="scroll-mt-28 relative left-1/2 w-[min(100vw-2rem,64rem)] max-w-5xl -translate-x-1/2"
@@ -340,7 +360,7 @@ export default function SubmitLandingPage() {
                       <button
                         type="button"
                         className="inline-flex h-4 w-4 sm:h-[18px] sm:w-[18px] items-center justify-center rounded-full border border-[#00AFF0]/50 bg-[#0077B3] text-[10px] font-black leading-none text-white cursor-help"
-                        aria-label="OnlyFans Search feed info"
+                        aria-label="OFsearch feed info"
                       >
                         i
                       </button>
@@ -348,7 +368,7 @@ export default function SubmitLandingPage() {
                         role="tooltip"
                         className="pointer-events-none absolute left-1/2 bottom-[calc(100%+8px)] z-30 w-[min(20rem,calc(100vw-3rem))] -translate-x-1/2 rounded-xl border border-[#00AFF0]/40 bg-[#0a2840] px-3 py-2.5 text-left text-[13px] leading-snug text-white/90 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.55)] opacity-0 invisible transition-opacity duration-150 group-hover/info-of-feed:opacity-100 group-hover/info-of-feed:visible group-focus-within/info-of-feed:opacity-100 group-focus-within/info-of-feed:visible"
                       >
-                        OnlyFans Search feed
+                        OFsearch feed
                         <span className="block mt-2 text-white/80">
                           When users search for Ahegao, MILF, etc., you&apos;ll appear more often than regular results, giving you higher chances of gaining new fans.
                         </span>
@@ -398,74 +418,13 @@ export default function SubmitLandingPage() {
             <SubmitContactBlock />
           </div>
         </section>
+        )}
 
         <SubmitHowItWorks />
 
-        {/* FOR AGENCIES */}
-        <section id="agencies" className={agencyCardClass} style={{ backgroundColor: agencySurface }}>
-          <div className="px-6 sm:px-8 pt-6 sm:pt-8 pb-5 border-b border-white/[0.08]" style={{ background: agencyHeaderBg }}>
-            <h2 className={`${mainSectionTitleClass} text-[#00AFF0] mb-4 sm:mb-5`}>For agencies</h2>
-            <p className="text-xl sm:text-2xl font-black text-white mb-3 tracking-tight leading-tight text-center sm:text-left">
-              Run every model from one dashboard, on traffic built to convert.
-            </p>
-            <p className="text-[15px] sm:text-base leading-relaxed text-white/90 font-semibold">
-              Up to 1,500 daily clicks per agency account, across up to 20 creators.
-            </p>
-          </div>
+        {isOfmAgencies ? <OfmAgenciesPricingSection /> : null}
 
-          <div className="px-6 sm:px-8 py-6 sm:py-8">
-            <ul className="space-y-3 mb-8 list-none text-[15px] sm:text-base leading-relaxed text-white/70">
-              <li className="flex gap-3"><span className="text-[#00AFF0] shrink-0">✓</span> Self service agency account with full tracking reports</li>
-              <li className="flex gap-3"><span className="text-[#00AFF0] shrink-0">✓</span> Positions across dozens of niches on our top ranked Google pages, up to 180 categories (Asian, MILF, JOI, Petite, and more)</li>
-              <li className="flex gap-3"><span className="text-[#00AFF0] shrink-0">✓</span> When a fan searches &quot;Top MILF OnlyFans creators&quot; and lands on Erogram, your creators show in the first results</li>
-              <li className="flex gap-3"><span className="text-[#00AFF0] shrink-0">✓</span> Placement on the main OnlyFans Search, the creator feeds, and every niche page your models belong to</li>
-            </ul>
-            <div className="space-y-3">
-              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#00AFF0]">
-                Get in touch
-              </p>
-              <div className="flex flex-col sm:flex-row items-stretch gap-2 sm:gap-3 max-w-lg">
-                <a
-                  href="mailto:isabella@erogram.biz"
-                  className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-white px-3 py-2.5 text-center transition-transform hover:-translate-y-px border border-[#00AFF0]/20 min-w-0"
-                >
-                  <span className="text-sm leading-none shrink-0" aria-hidden="true">✉️</span>
-                  <span className="text-[11px] sm:text-xs font-bold text-black truncate">isabella@erogram.biz</span>
-                </a>
-                <a
-                  href="https://t.me/erogramDOTpro"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-center text-black transition-transform hover:-translate-y-px border border-[#0077B3] bg-gradient-to-br from-[#009AD6] to-[#00AFF0] min-w-0"
-                >
-                  <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.820 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
-                  </svg>
-                  <span className="text-[11px] sm:text-xs font-bold truncate">@erogramDOTpro</span>
-                </a>
-              </div>
-            </div>
-
-            <div className="mt-10 pt-8 border-t border-white/[0.08]">
-              <div className="mb-6 overflow-hidden rounded-xl border border-[#00AFF0]/30 shadow-[0_16px_40px_-20px_rgba(0,175,240,0.35)] ring-1 ring-white/[0.06]">
-                <Image
-                  src="/assets/submit/agency-dashboard-preview.jpg"
-                  alt="Agency dashboard preview"
-                  width={960}
-                  height={716}
-                  className="w-full h-auto"
-                  priority={false}
-                />
-              </div>
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#00AFF0] mb-4">The dashboard</p>
-              <ul className="space-y-2.5 list-none text-[15px] sm:text-base leading-relaxed text-white/70">
-                <li className="flex gap-3"><span className="text-[#00AFF0] shrink-0">✓</span> Edit and update any profile in seconds</li>
-                <li className="flex gap-3"><span className="text-[#00AFF0] shrink-0">✓</span> Swap models in and out as your roster changes</li>
-                <li className="flex gap-3"><span className="text-[#00AFF0] shrink-0">✓</span> Track daily clicks for every creator</li>
-              </ul>
-            </div>
-          </div>
-        </section>
+        {!isOfmAgencies && <AudienceSwitchCtas />}
 
         <SubmitContactBlock />
       </div>

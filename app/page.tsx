@@ -7,7 +7,7 @@ import { getPublishedBlogArticles } from '@/lib/actions/blog';
 import { Group, Bot, OnlyFansCreator, User } from '@/lib/models';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary } from '@/lib/i18n';
-import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
+import { OF_CATEGORIES } from '@/app/ofsearch/constants';
 import { AI_NSFW_TOOLS } from '@/app/ainsfw/data';
 import { pickRecentTools, RECENT_POOL_LIMIT } from '@/app/ainsfw/recentCategoryTools';
 import { getAllToolStats, getApprovedSubmissions } from '@/lib/actions/ainsfw';

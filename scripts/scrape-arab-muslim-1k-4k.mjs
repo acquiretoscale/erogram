@@ -213,7 +213,7 @@ async function main() {
   const connectDB = (await import('../lib/db/mongodb.js')).default;
   const { OnlyFansCreator } = await import('../lib/models/index.js');
   const { processCreatorImages } = await import('../lib/actions/creatorImages.js');
-  const { isCreatorBlacklisted } = await import('../lib/onlyfanssearch/creatorBlacklist.js');
+  const { isCreatorBlacklisted } = await import('../lib/ofsearch/creatorBlacklist.js');
 
   const candidates = loadCandidates();
   console.log(`candidates ${candidates.length}`);

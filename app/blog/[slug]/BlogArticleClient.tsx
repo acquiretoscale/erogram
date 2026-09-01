@@ -74,7 +74,7 @@ const RELATED_EROGRAM: Record<string, { label: string; href: string; sub: string
   ],
   'onlyfans-creators': [
     { label: 'Best OnlyFans Accounts', href: '/best-onlyfans-accounts', sub: 'Ranked by category' },
-    { label: 'OnlyFans', href: '/onlyfanssearch', sub: 'Search 1.8M+ creators' },
+    { label: 'OFsearch', href: '/ofsearch', sub: 'Search 1.8M+ creators' },
     { label: 'Top AI NSFW Tools', href: '/ainsfw', sub: 'AI companions & generators' },
   ],
   'adult-entertainment': [

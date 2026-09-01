@@ -1,3 +1,5 @@
+import { rankingCopyForSlug } from '@/lib/bestOfPageContent/top50Rankings';
+
 export interface OfCategoryMetaSet { en: string; de?: string; es?: string; pt?: string; }
 
 export const META_DESCRIPTIONS: Record<string, OfCategoryMetaSet> = {
@@ -174,5 +176,7 @@ export const META_DESCRIPTIONS: Record<string, OfCategoryMetaSet> = {
 export function getMetaDescription(slug: string, locale: 'en' | 'de' | 'es' | 'pt'): string | null {
   const entry = META_DESCRIPTIONS[slug];
   if (!entry) return null;
-  return entry[locale] || entry.en || null;
+  const raw = entry[locale] || entry.en || null;
+  if (raw) return rankingCopyForSlug(raw, slug);
+  return raw;
 }

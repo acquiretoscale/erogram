@@ -1,4 +1,4 @@
-import { OF_CATEGORY_MAP } from '@/app/onlyfanssearch/constants';
+import { OF_CATEGORY_MAP } from '@/app/ofsearch/constants';
 
 /** Category slugs with 100+ free creators in DB (Jul 2026 scan). */
 export const FREE_MAJOR_SLUGS = [
@@ -34,7 +34,7 @@ export function parseBestFreeCategorySlug(routeSlug: string): string | null {
 }
 
 export function bestFreeCategoryPath(catSlug: string) {
-  return `/onlyfanssearch/${catSlug}`;
+  return `/ofsearch/${catSlug}`;
 }
 
 export function getFreeMajorSubCategories() {

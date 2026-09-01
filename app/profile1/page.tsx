@@ -358,7 +358,7 @@ function HomeTab({
 
       <div className="grid grid-cols-3 gap-2 mb-6">
         {[
-          { label: 'Creators', url: '/onlyfanssearch', color: '#00AFF0' },
+          { label: 'Creators', url: '/ofsearch', color: '#00AFF0' },
           { label: 'Groups', url: '/', color: '#26A5E4' },
           { label: 'AI Tools', url: '/ainsfw', color: '#7C3AED' },
         ].map(a => (

@@ -9,8 +9,7 @@ import {
 } from '@/lib/models';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import NotFoundSearch from './NotFoundSearch';
-import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { ofCreatorProfileUrl } from '@/lib/ofsearch/creatorUrls';
 
 type TopPick = {
   id: string;
@@ -253,11 +252,9 @@ export default async function NotFoundPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-10">
           <TopPickSection title="Top 4 AINSFW" emoji="✨" viewAllHref="/ainsfw" items={ainsfw} accent="#a855f7" />
           <TopPickSection title="Top 4 Telegram bots" emoji="🤖" viewAllHref="/bots" items={bots} accent="#3b82f6" />
-          <TopPickSection title="Top 4 OnlyFans creators" emoji="🔥" viewAllHref="/onlyfanssearch" items={creators} accent="#00AFF0" />
+          <TopPickSection title="Top 4 OnlyFans creators" emoji="🔥" viewAllHref="/ofsearch" items={creators} accent="#00AFF0" />
           <TopPickSection title="Top 4 Telegram groups" emoji="💬" viewAllHref="/groups" items={groups} accent="#22c55e" />
         </div>
-
-        <NotFoundSearch />
       </main>
 
       <Footer />

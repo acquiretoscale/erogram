@@ -18,7 +18,7 @@ import {
   clearSubmitCreatorPlan,
   type SubmitCreatorDraft,
 } from '@/lib/submitCreatorDraft';
-import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { ofCreatorProfileUrl } from '@/lib/ofsearch/creatorUrls';
 import { useTranslation } from '@/lib/i18n/client';
 
 const inputClass =

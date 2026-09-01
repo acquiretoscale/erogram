@@ -2,7 +2,7 @@
 
 import connectDB from '@/lib/db/mongodb';
 import { User, OnlyFansCreator } from '@/lib/models';
-import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { ofCreatorProfileUrl } from '@/lib/ofsearch/creatorUrls';
 import { SACRED_COMMUNITY_CREATORS } from '@/lib/community/sacredCreators';
 
 export interface CommunityMember {
@@ -14,7 +14,7 @@ export interface CommunityMember {
   gender: 'M' | 'F' | '';
   joinedLabel: string;
   premium: boolean;
-  /** Profile path: /profiles/... or /onlyfanssearch/... */
+  /** Profile path: /profiles/... or /ofsearch/... */
   href: string;
   isCreator: boolean;
 }
@@ -87,6 +87,13 @@ function normalizeCountryCode(value: string | undefined | null): string {
   return '';
 }
 
+const HIDDEN_COMMUNITY_COUNTRY_CODES = new Set(['DZ', 'BD']);
+const HIDDEN_COMMUNITY_COUNTRY_VALUES = ['DZ', 'BD', 'dz', 'bd'];
+
+function isHiddenCommunityCountry(code: string): boolean {
+  return HIDDEN_COMMUNITY_COUNTRY_CODES.has(code);
+}
+
 function formatJoinedLabelFromDate(d: Date): string {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return `${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
@@ -103,6 +110,17 @@ function formatJoinedLabel(createdAt: unknown, id: { getTimestamp?: () => Date }
   }
   if (!d) return '';
   return formatJoinedLabelFromDate(d);
+}
+
+/** First name + last-name initial only. "Karterr Barlow" → "Karterr B". Handle untouched. */
+function abbreviateDisplayName(name: string | undefined | null): string {
+  const trimmed = (name || '').trim();
+  if (!trimmed) return '';
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0];
+  const initial = parts[1].charAt(0).toUpperCase();
+  if (!initial) return parts[0];
+  return `${parts[0]} ${initial}`;
 }
 
 function formatGender(sex: string | undefined | null): 'M' | 'F' | '' {
@@ -174,7 +192,7 @@ function toPublicMember(m: RankedMember): CommunityMember {
     username: m.username,
     displayName: m.displayName,
     photoUrl: m.photoUrl,
-    countryCode: m.countryCode,
+    countryCode: m.countryCode || 'US',
     gender: m.gender,
     joinedLabel: m.joinedLabel,
     premium: m.premium,
@@ -244,6 +262,7 @@ async function loadSacredCreatorMembers(): Promise<RankedMember[]> {
   usernames.forEach((username) => {
     const raw = byUser.get(username.toLowerCase());
     if (!raw) return;
+    if (isHiddenCommunityCountry(normalizeCountryCode(raw.location as string))) return;
     const joinedAt = communitySpreadDate(username.toLowerCase());
     members.push({
       id: `of:${username.toLowerCase()}`,
@@ -265,87 +284,142 @@ async function loadSacredCreatorMembers(): Promise<RankedMember[]> {
 const PER_PAGE = 40;
 /** Guaranteed creator slots on page 1 (0-based indexes). */
 const FIRST_PAGE_CREATOR_SLOTS = [2, 8, 15, 23, 32] as const;
+const USER_SELECT = 'username firstName photoUrl country sex createdAt premium premiumExpiresAt email telegramId';
 
-export async function getCommunityMembers(page = 1): Promise<CommunityPage> {
-  await connectDB();
-  const safePage = Math.max(1, page);
-  const allCreators = await loadSacredCreatorMembers();
-  const pinnedCreators = allCreators.slice(0, FIRST_PAGE_CREATOR_SLOTS.length);
-  const pinnedIds = new Set(pinnedCreators.map((c) => c.id));
-  const timelineCreators = allCreators.filter((c) => !pinnedIds.has(c.id));
+const REAL_USER_FILTER = {
+  isProfileVisible: { $ne: false },
+  country: { $nin: HIDDEN_COMMUNITY_COUNTRY_VALUES },
+  $or: [{ telegramId: { $ne: null } }, { email: { $gt: '' } }],
+};
 
-  const visibleUsers = await User.find({ isProfileVisible: { $ne: false } })
-    .select('username firstName photoUrl country sex createdAt premium premiumExpiresAt email telegramId')
-    .lean();
+const INJECTED_USER_FILTER = {
+  isProfileVisible: { $ne: false },
+  country: { $nin: HIDDEN_COMMUNITY_COUNTRY_VALUES },
+  $and: [
+    { $or: [{ telegramId: null }, { telegramId: { $exists: false } }] },
+    { $or: [{ email: null }, { email: '' }, { email: { $exists: false } }] },
+  ],
+};
 
-  const realMembers: RankedMember[] = [];
-  const injectedMembers: RankedMember[] = [];
-
-  for (const u of visibleUsers as any[]) {
-    const created = u.createdAt ? new Date(u.createdAt) : null;
-    const sortAt =
-      created && !Number.isNaN(created.getTime())
-        ? created.getTime()
-        : u._id && typeof u._id.getTimestamp === 'function'
-          ? u._id.getTimestamp().getTime()
-          : 0;
-    const member: RankedMember = {
-      id: String(u._id),
-      username: u.username,
-      displayName: u.firstName || u.username || 'Member',
-      photoUrl: u.photoUrl || null,
-      countryCode: normalizeCountryCode(u.country),
-      gender: formatGender(u.sex),
-      joinedLabel: formatJoinedLabel(u.createdAt, u._id),
-      premium: isActivePremium(u.premium, u.premiumExpiresAt),
-      href: `/profiles/${encodeURIComponent(u.username)}`,
-      isCreator: false,
-      sortAt,
-    };
-
-    if (isInjectedCommunityUser(u)) {
-      const spread = communitySpreadDate(String(u.username).toLowerCase());
-      member.sortAt = spread.getTime();
-      member.joinedLabel = formatJoinedLabelFromDate(spread);
-      injectedMembers.push(member);
-    } else {
-      realMembers.push(member);
-    }
+function userToRankedMember(u: any, injected: boolean): RankedMember {
+  const created = u.createdAt ? new Date(u.createdAt) : null;
+  const sortAt =
+    created && !Number.isNaN(created.getTime())
+      ? created.getTime()
+      : u._id && typeof u._id.getTimestamp === 'function'
+        ? u._id.getTimestamp().getTime()
+        : 0;
+  const member: RankedMember = {
+    id: String(u._id),
+    username: u.username,
+    displayName: abbreviateDisplayName(u.firstName) || u.username || 'Member',
+    photoUrl: u.photoUrl || null,
+    countryCode: normalizeCountryCode(u.country),
+    gender: formatGender(u.sex),
+    joinedLabel: formatJoinedLabel(u.createdAt, u._id),
+    premium: isActivePremium(u.premium, u.premiumExpiresAt),
+    href: `/profiles/${encodeURIComponent(u.username)}`,
+    isCreator: false,
+    sortAt,
+  };
+  if (injected) {
+    const spread = communitySpreadDate(String(u.username).toLowerCase());
+    member.sortAt = spread.getTime();
+    member.joinedLabel = formatJoinedLabelFromDate(spread);
   }
+  return member;
+}
 
-  realMembers.sort((a, b) => b.sortAt - a.sortAt);
-  const merged = [
-    ...realMembers,
-    ...interleaveByMonth([...injectedMembers, ...timelineCreators]),
-  ];
-
-  // Bake page-1 pins into the full feed so later pages stay aligned, then
-  // rewrite model dates to match the neighbors they sit between.
+function assembleCommunityPage(
+  mergedSlice: RankedMember[],
+  pinnedCreators: RankedMember[],
+  page: number,
+  hasMore: boolean,
+): CommunityPage {
   let feed: RankedMember[];
-  if (pinnedCreators.length > 0) {
+  if (page === 1 && pinnedCreators.length > 0) {
     feed = [];
     let ri = 0;
     for (let i = 0; i < PER_PAGE; i++) {
       const pinAt = FIRST_PAGE_CREATOR_SLOTS.findIndex((s) => s === i);
       if (pinAt >= 0 && pinnedCreators[pinAt]) {
         feed.push(pinnedCreators[pinAt]);
-      } else if (merged[ri]) {
-        feed.push(merged[ri++]);
+      } else if (mergedSlice[ri]) {
+        feed.push(mergedSlice[ri++]);
       }
     }
-    while (ri < merged.length) feed.push(merged[ri++]);
   } else {
-    feed = merged;
+    feed = mergedSlice.slice(0, PER_PAGE);
   }
   feed = syncCreatorDatesToNeighbors(feed);
-
-  const start = (safePage - 1) * PER_PAGE;
-  const slice = feed.slice(start, start + PER_PAGE + 1);
-  const hasMore = slice.length > PER_PAGE;
-
   return {
-    members: (hasMore ? slice.slice(0, PER_PAGE) : slice).map(toPublicMember),
-    page: safePage,
+    members: feed.map(toPublicMember),
+    page,
     hasMore,
   };
+}
+
+export async function getCommunityMembers(page = 1): Promise<CommunityPage> {
+  await connectDB();
+  const safePage = Math.max(1, page);
+  const pinCount = FIRST_PAGE_CREATOR_SLOTS.length;
+  const mergedStart = safePage === 1 ? 0 : (safePage - 1) * PER_PAGE - pinCount;
+  const mergedSlots = safePage === 1 ? PER_PAGE - pinCount : PER_PAGE;
+  const fetchLimit = mergedSlots + 1;
+
+  const realDocsPromise = User.find(REAL_USER_FILTER)
+    .select(USER_SELECT)
+    .sort({ createdAt: -1 })
+    .skip(mergedStart)
+    .limit(fetchLimit)
+    .lean();
+
+  const creatorsPromise =
+    safePage === 1 ? loadSacredCreatorMembers() : Promise.resolve([] as RankedMember[]);
+
+  const [realDocs, pageCreators] = await Promise.all([realDocsPromise, creatorsPromise]);
+
+  if (realDocs.length >= fetchLimit) {
+    const realMembers = (realDocs as any[])
+      .map((u) => userToRankedMember(u, false))
+      .filter((m) => !isHiddenCommunityCountry(m.countryCode))
+      .slice(0, mergedSlots);
+    const pinned = pageCreators
+      .filter((m) => !isHiddenCommunityCountry(m.countryCode))
+      .slice(0, pinCount);
+    return assembleCommunityPage(realMembers, pinned, safePage, true);
+  }
+
+  const [injectedDocs, allCreators, realCount] = await Promise.all([
+    User.find(INJECTED_USER_FILTER).select(USER_SELECT).lean(),
+    loadSacredCreatorMembers(),
+    realDocs.length === 0 && mergedStart > 0
+      ? User.countDocuments(REAL_USER_FILTER)
+      : Promise.resolve(mergedStart + realDocs.length),
+  ]);
+
+  const injectedMembers = (injectedDocs as any[])
+    .map((u) => userToRankedMember(u, true))
+    .filter((m) => !isHiddenCommunityCountry(m.countryCode));
+  const pinnedCreators = allCreators
+    .filter((m) => !isHiddenCommunityCountry(m.countryCode))
+    .slice(0, pinCount);
+  const pinnedIds = new Set(pinnedCreators.map((c) => c.id));
+  const timelineCreators = allCreators.filter(
+    (c) => !pinnedIds.has(c.id) && !isHiddenCommunityCountry(c.countryCode),
+  );
+  const tail = interleaveByMonth([...injectedMembers, ...timelineCreators]);
+  const tailOffset = Math.max(0, mergedStart - realCount);
+  const realMembers = (realDocs as any[])
+    .map((u) => userToRankedMember(u, false))
+    .filter((m) => !isHiddenCommunityCountry(m.countryCode));
+  const mergedWithExtra = [...realMembers, ...tail.slice(tailOffset)];
+  const hasMore = mergedWithExtra.length > mergedSlots;
+
+  return assembleCommunityPage(
+    mergedWithExtra.slice(0, mergedSlots),
+    safePage === 1 ? pinnedCreators : [],
+    safePage,
+    hasMore,
+  );
 }

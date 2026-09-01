@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import axios from 'axios';
 import { compressImage } from '@/lib/utils/compressImage';
-import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
+import { OF_CATEGORIES } from '@/app/ofsearch/constants';
 import {
   getOFMTrending,
   createOFMTrendingSlot,

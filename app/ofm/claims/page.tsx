@@ -10,7 +10,7 @@ import {
   rejectProfileClaim,
   type ProfileClaimRow,
 } from '@/lib/actions/creatorProfileClaim';
-import { ofCreatorProfileUrl } from '@/lib/onlyfanssearch/creatorUrls';
+import { ofCreatorProfileUrl } from '@/lib/ofsearch/creatorUrls';
 
 function tok() {
   return typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '';

@@ -1,4 +1,4 @@
-import { OF_CATEGORIES } from '@/app/onlyfanssearch/constants';
+import { OF_CATEGORIES } from '@/app/ofsearch/constants';
 import { BEST_OF_PAGES, type BestOfPage } from '@/app/best-onlyfans-accounts/bestOfPages';
 import { visibleCategories } from '@/app/groups/constants';
 
