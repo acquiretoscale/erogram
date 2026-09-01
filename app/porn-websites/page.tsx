@@ -110,8 +110,8 @@ async function loadExploreCategories(): Promise<ExploreCategory[]> {
     })
       .select('name slug image telegramLink')
       .sort({ createdAt: -1 })
-      .lean();
-    paidBots = bots.map((bot: { name: string; slug: string; image?: string; telegramLink?: string }) => ({
+      .lean<{ name: string; slug: string; image?: string; telegramLink?: string }[]>();
+    paidBots = bots.map((bot) => ({
       name: bot.name,
       url: `/${bot.slug}`,
       externalUrl: bot.telegramLink || undefined,

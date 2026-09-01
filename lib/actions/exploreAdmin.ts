@@ -63,7 +63,7 @@ async function removeSiteKeyFromOrder(categorySlug: string, siteKey: string) {
   if (!doc?.siteKeys?.length) return;
   await ExploreCategoryOrder.findOneAndUpdate(
     { categorySlug },
-    { siteKeys: doc.siteKeys.map(String).filter((key) => key !== siteKey) },
+    { siteKeys: doc.siteKeys.map(String).filter((key: string) => key !== siteKey) },
   );
 }
 
@@ -242,7 +242,7 @@ export async function removeExploreSite(
   if (!admin) throw new Error('Unauthorized');
 
   await connectDB();
-  const row = await ExploreSiteOverride.findOne({ categorySlug, siteKey }).lean();
+  const row = await ExploreSiteOverride.findOne({ categorySlug, siteKey }).lean<{ isCustom?: boolean } | null>();
 
   if (row?.isCustom) {
     await ExploreSiteOverride.deleteOne({ categorySlug, siteKey });
