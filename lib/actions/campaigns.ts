@@ -8,6 +8,7 @@ import { BOOST_WEIGHT, getAdKeywordAliasesForPage } from '@/lib/adPlacements';
 import { getExpiredOFAgencyTargets } from '@/lib/actions/onlyfansTracking';
 import { dropExpiredOFAgencyAds } from '@/lib/ofExpiry';
 import { campaignNotExpired } from '@/lib/campaignDates';
+import { enforceAdAndBoostExpiry } from '@/lib/campaignLifecycle';
 import { assertValidAdVideoUrl } from '@/lib/adVideoR2';
 import { isAdTrackingPaused } from '@/lib/adTrackingKillSwitch';
 
@@ -511,6 +512,7 @@ async function computeActiveCampaigns(
   slot: string,
   opts?: { page?: string; device?: 'mobile' | 'desktop' },
 ) {
+  await enforceAdAndBoostExpiry();
   await connectDB();
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -589,6 +591,7 @@ async function computeActiveCampaigns(
  * Honors dates + visibility + per-campaign and per-advertiser daily caps.
  */
 export async function getPlacementFeedCampaigns(placement: string, max = 4) {
+  await enforceAdAndBoostExpiry();
   await connectDB();
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -681,6 +684,7 @@ export async function getTrendingErogramCampaigns(max = 4) {
   const { unstable_noStore } = await import('next/cache');
   unstable_noStore();
 
+  await enforceAdAndBoostExpiry();
   await connectDB();
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -782,6 +786,7 @@ export async function getTrendingErogramCampaigns(max = 4) {
  * SEO-safe: callers render the result client-side; pages stay static/SSG.
  */
 export async function getKeywordPlacementCampaigns(placement: string, categorySlug: string, max = 4) {
+  await enforceAdAndBoostExpiry();
   await connectDB();
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -1040,6 +1045,7 @@ export interface GroupSidebarSlot {
 export async function getGroupSidebarSlot(): Promise<GroupSidebarSlot> {
   const { unstable_noStore } = await import('next/cache');
   unstable_noStore();
+  await enforceAdAndBoostExpiry();
   await connectDB();
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -1311,6 +1317,7 @@ export async function getActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ain
 }
 
 async function computeActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ainsfw') {
+  await enforceAdAndBoostExpiry();
   await connectDB();
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -1643,6 +1650,7 @@ async function computeActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ainsfw
 export async function isPremiumHouseAdLive(): Promise<boolean> {
   const { unstable_noStore } = await import('next/cache');
   unstable_noStore();
+  await enforceAdAndBoostExpiry();
   await connectDB();
   const now = new Date();
   const count = await Campaign.countDocuments({

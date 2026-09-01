@@ -6,6 +6,7 @@ import { Group, Bot, User, Post, SystemConfig, Article } from '@/lib/models';
 import { slugify } from '@/lib/utils/slugify';
 import { getR2PublicUrl, isR2Configured } from '@/lib/r2';
 import { processAndUploadGroupImage } from '@/lib/images/processGroupImage';
+import { enforceAdAndBoostExpiry } from '@/lib/campaignLifecycle';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 
@@ -243,15 +244,11 @@ export async function GET(req: NextRequest) {
         } catch (err) { console.error('[API] Error checking/resetting views:', err); }
       })();
 
+      await enforceAdAndBoostExpiry();
+
       const topLimit = parseInt(searchParams.get('limit') || '3', 10);
       const CANDIDATE_SCAN = 120;
       const now = new Date();
-
-      // Expire old boosts
-      await Group.updateMany(
-        { boosted: true, boostExpiresAt: { $lte: now } },
-        { $set: { boosted: false, boostExpiresAt: null, boostDuration: null, featured: false } }
-      );
 
       // Boosted groups (paid) get priority placement in Top Groups
       const boostedGroups = await Group.find({

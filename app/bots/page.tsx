@@ -5,6 +5,7 @@ import { Bot, Advert } from '@/lib/models';
 import BotsClient from './BotsClient';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { getActiveFeedCampaigns } from '@/lib/actions/campaigns';
+import { enforceAdAndBoostExpiry } from '@/lib/campaignLifecycle';
 import { getAllBotStats } from '@/lib/actions/botVotes';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
@@ -66,12 +67,9 @@ function mapBotDoc(bot: any) {
 
 export async function getTopBots(limit = 10) {
   try {
+    await enforceAdAndBoostExpiry();
     await connectDB();
     const now = new Date();
-    await Bot.updateMany(
-      { boosted: true, boostExpiresAt: { $ne: null, $lte: now } },
-      { $set: { boosted: false, boostExpiresAt: null, boostDuration: null, featured: false } },
-    );
     const bots = await Bot.find({
       status: 'approved',
       $or: [

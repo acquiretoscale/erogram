@@ -6,9 +6,9 @@ import { ainsfwCtaButtonClass } from '@/lib/ainsfw/ctaButton';
 import { useLocalePath, useTranslation } from '@/lib/i18n/client';
 
 type AinsfwHeaderActionsProps = {
-  shareText: string;
-  emailSubject: string;
-  fallbackUrl: string;
+  shareText?: string;
+  emailSubject?: string;
+  fallbackUrl?: string;
   part?: 'all' | 'submit' | 'share';
 };
 
@@ -20,7 +20,7 @@ export default function AinsfwHeaderActions({
 }: AinsfwHeaderActionsProps) {
   const { t } = useTranslation();
   const lp = useLocalePath();
-  const showShare = part === 'all' || part === 'share';
+  const showShare = (part === 'all' || part === 'share') && !!shareText && !!emailSubject && !!fallbackUrl;
   const showSubmit = part === 'all' || part === 'submit';
 
   return (

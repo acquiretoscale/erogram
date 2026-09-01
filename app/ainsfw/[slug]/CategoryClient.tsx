@@ -12,8 +12,6 @@ import TopAINsfwBlock from '@/app/ainsfw/TopAINsfwBlock';
 import type { AINsfwTool } from '@/app/ainsfw/types';
 import type { ToolStatsData } from '@/lib/actions/ainsfw';
 import AinsfwHeaderActions from '@/components/AinsfwHeaderActions';
-import { CANONICAL_BASE } from '@/lib/seo/socialMeta';
-import { categoryToSlug } from '@/app/ainsfw/data';
 
 interface Props {
   category: string;
@@ -68,11 +66,7 @@ export default function CategoryClient({
             <span className="shrink-0">/</span>
             <span className="text-white font-semibold truncate">{catLabel(category)}</span>
           </nav>
-          <AinsfwHeaderActions
-            shareText={`Check out ${category} AI NSFW tools on Erogram`}
-            emailSubject={`${category} AI NSFW Tools on Erogram`}
-            fallbackUrl={`${CANONICAL_BASE}/ainsfw/${categoryToSlug(category)}`}
-          />
+          <AinsfwHeaderActions part="submit" />
         </div>
       </div>
 

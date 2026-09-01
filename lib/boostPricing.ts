@@ -84,15 +84,20 @@ export function buildBoostPaymentUpdate(
   return update;
 }
 
-export function entityShowsVerifiedBadge(entity: {
-  paidBoost?: boolean;
-  paidBoostStars?: number | null;
+/** True only while an organic boost is live (paid history alone does not qualify). */
+export function isListingBoostLive(entity: {
   boosted?: boolean;
   boostExpiresAt?: string | Date | null;
 }): boolean {
-  if (entity.paidBoost) return true;
-  if ((entity.paidBoostStars ?? 0) > 0) return true;
   if (!entity.boosted) return false;
   if (!entity.boostExpiresAt) return true;
   return new Date(entity.boostExpiresAt) > new Date();
+}
+
+/** Verified badge = actively boosted listing, not expired paid customers. */
+export function entityShowsVerifiedBadge(entity: {
+  boosted?: boolean;
+  boostExpiresAt?: string | Date | null;
+}): boolean {
+  return isListingBoostLive(entity);
 }

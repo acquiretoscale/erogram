@@ -330,12 +330,21 @@ export async function setBoostLifecycle(
   let update: Record<string, unknown>;
   if (action === 'pause') update = { boosted: false };
   else if (action === 'resume') update = { boosted: true };
-  else if (action === 'end') update = { boosted: false, boostExpiresAt: now };
+  else if (action === 'end') update = { boosted: false, boostExpiresAt: now, featured: false };
   else if (action === 'lifetime') {
     update = { boosted: true, boostExpiresAt: null };
     if (entityType === 'bot' || entityType === 'group') update.boostDuration = 'lifetime';
   } else update = { boosted: true, boostExpiresAt: new Date(now.getTime() + (days || 7) * 24 * 60 * 60 * 1000), boostDuration: days && days >= 28 ? '30d' : '7d' };
   await Model.findByIdAndUpdate(listingId, { $set: update });
+
+  if (action === 'pause' || action === 'end') {
+    const { Campaign } = await import('@/lib/models');
+    await Campaign.updateMany(
+      { internalName: `boost-converted:${entityType}:${listingId}`, status: 'active' },
+      { $set: { status: 'ended', endDate: now } },
+    );
+  }
+
   return { ok: true };
 }
 

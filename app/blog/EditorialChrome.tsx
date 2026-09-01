@@ -165,23 +165,24 @@ function LiveVisitorBar() {
   return (
     <div
       className="w-full bg-white/[0.03] border-b border-white/[0.06]"
-      aria-label={count > 0 ? `${count.toLocaleString('en-US')} people browsing right now` : 'People browsing right now'}
+      aria-label={count > 0 ? `${count.toLocaleString('en-US')} browsing right now` : 'Browsing right now'}
       role="status"
       aria-live="polite"
     >
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-8 h-[24px] flex items-center justify-center relative">
-        <span className="text-[10px] sm:text-[11px] font-semibold text-white/55 uppercase tracking-[0.08em] whitespace-nowrap leading-none flex items-center gap-1.5">
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-8 h-[24px] grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+        <span aria-hidden />
+        <span className="text-[10px] sm:text-[11px] font-semibold text-white/55 uppercase tracking-[0.06em] sm:tracking-[0.08em] whitespace-nowrap leading-none flex items-center justify-center gap-1.5">
           <span className="relative flex h-1.5 w-1.5 shrink-0">
             {live && count > 0 && (
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
             )}
             <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${live && count > 0 ? 'bg-emerald-400' : 'bg-white/20'}`} />
           </span>
-          {count > 0 ? count.toLocaleString('en-US') : '—'} {t('ainsfw.peopleBrowsing', 'people browsing right now')}
+          {count > 0 ? count.toLocaleString('en-US') : '—'} {t('ainsfw.peopleBrowsing', 'browsing right now')}
         </span>
         <Link
           href="/advertise"
-          className="absolute right-4 sm:right-8 text-[10px] sm:text-[11px] font-bold text-white hover:text-white/85 uppercase tracking-[0.12em] whitespace-nowrap leading-none transition-colors"
+          className="justify-self-end text-[10px] sm:text-[11px] font-bold text-white hover:text-white/85 uppercase tracking-[0.12em] whitespace-nowrap leading-none transition-colors"
         >
           ADVERTISE
         </Link>

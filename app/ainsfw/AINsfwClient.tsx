@@ -17,7 +17,6 @@ import type { AuthorProfile } from '@/lib/actions/authors';
 import { AINSFW_PAGE_SIZE } from './constants';
 import { getPlacementFeedCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
 import AinsfwHeaderActions from '@/components/AinsfwHeaderActions';
-import { CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import TopAINsfwBlock, { loadAllScores } from './TopAINsfwBlock';
 import RecentAdditionsBlock from './RecentAdditionsBlock';
 import AinsfwToolsFilterBar from './AinsfwToolsFilterBar';
@@ -185,11 +184,7 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
             <span className="shrink-0">/</span>
             <span className="text-white font-semibold truncate">{t('ainsfw.breadcrumbHub', 'AI NSFW Tools')}</span>
           </nav>
-          <AinsfwHeaderActions
-            shareText="Check out the best AI NSFW tools on Erogram"
-            emailSubject="AI NSFW Tools on Erogram"
-            fallbackUrl={`${CANONICAL_BASE}/ainsfw`}
-          />
+          <AinsfwHeaderActions part="submit" />
         </div>
       </div>
 
