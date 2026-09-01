@@ -116,11 +116,9 @@ const nextConfig: NextConfig = {
               "https://www.googletagmanager.com " +
               "https://www.google-analytics.com " +
               "https://*.google-analytics.com " +
-              "https://analytics.ahrefs.com " +
-              "https://static.ahrefs.com " +
-              "https://static.cloudflareinsights.com " +
-              "https://a.pemsrv.com " +
-              "https://*.pemsrv.com",
+              "https://www.clarity.ms " +
+              "https://*.clarity.ms " +
+              "https://static.cloudflareinsights.com",
 
               // Styles
               "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com",
@@ -143,11 +141,9 @@ const nextConfig: NextConfig = {
               "https://*.google-analytics.com " +
               "https://analytics.google.com " +
               "https://stats.g.doubleclick.net " +
-              "https://analytics.ahrefs.com " +
-              "https://static.ahrefs.com " +
-              "https://static.cloudflareinsights.com " +
-              "https://a.pemsrv.com " +
-              "https://*.pemsrv.com",
+              "https://www.clarity.ms " +
+              "https://*.clarity.ms " +
+              "https://static.cloudflareinsights.com",
 
               // Workers / blobs / misc
               "worker-src 'self' blob:",

@@ -1043,7 +1043,7 @@ export default function AINSFWPricingClient({
       <main
         className={
           isAdvertise
-            ? 'flex w-full flex-col px-4 sm:px-6 lg:px-8 pt-[4.75rem] sm:pt-20 pb-12 sm:pb-16'
+            ? 'flex w-full flex-col px-4 sm:px-6 lg:px-8 pt-24 sm:pt-[6.5rem] pb-12 sm:pb-16'
             : 'max-w-5xl xl:max-w-7xl 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-12 pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-16'
         }
       >

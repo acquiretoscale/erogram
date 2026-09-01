@@ -1,8 +1,15 @@
 'use client';
 
 import Script from 'next/script';
+import { usePathname } from 'next/navigation';
+
+/** Clarity runs only on premium and profile pages, never site-wide. */
+const CLARITY_PATHS = /^(?:\/(?:de|es|pt))?\/(?:premium|profile|profiles)(?:\/|$)/;
 
 export default function ClarityScript() {
+  const pathname = usePathname() || '';
+  if (!CLARITY_PATHS.test(pathname)) return null;
+
   return (
     <Script id="microsoft-clarity" strategy="afterInteractive">
       {`

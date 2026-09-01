@@ -141,9 +141,14 @@ function OFsearchNav() {
 }
 
 function LiveVisitorBar() {
-  const { t } = useTranslation();
   const [count, setCount] = useState(0);
   const [live, setLive] = useState(false);
+  const [announcing, setAnnouncing] = useState(true);
+
+  useEffect(() => {
+    const id = setTimeout(() => setAnnouncing((v) => !v), announcing ? 15000 : 10000);
+    return () => clearTimeout(id);
+  }, [announcing]);
 
   useEffect(() => {
     const fetchCount = () => {
@@ -163,20 +168,52 @@ function LiveVisitorBar() {
   }, []);
 
   return (
-    <div className="w-full bg-white/[0.03] border-b border-white/[0.06]" aria-label={count > 0 ? `${count.toLocaleString('en-US')} people browsing right now` : 'People browsing right now'}>
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-8 h-[24px] flex items-center justify-center gap-1.5">
-        <span className="relative flex h-1.5 w-1.5 shrink-0">
-          {live && count > 0 && (
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+    <div
+      className="w-full bg-white/[0.03] border-b border-white/[0.06]"
+      aria-label={announcing ? 'EROGRAM.PRO is becoming EROGRAMX.COM' : count > 0 ? `${count.toLocaleString('en-US')} people browsing right now` : 'People browsing right now'}
+      role="status"
+      aria-live="polite"
+    >
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-8 h-[24px] flex items-center justify-center relative overflow-hidden">
+        <AnimatePresence mode="wait" initial={false}>
+          {announcing ? (
+            <motion.div
+              key="announcement"
+              initial={{ opacity: 0, x: -48 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -48 }}
+              transition={{ duration: 0.35, ease: 'easeInOut' }}
+              className="absolute inset-0 flex items-center justify-center px-14 sm:px-20"
+            >
+              <span className="text-[10px] sm:text-[11px] font-semibold text-white/55 uppercase tracking-[0.08em] whitespace-nowrap leading-none">
+                <span className="font-bold text-white">EROGRAM.PRO</span>
+                {' '}IS BECOMING{' '}
+                <span className="font-bold text-white tracking-normal">EROGRAM<span className="text-[#ff3b30]">X</span></span>
+                <span className="font-bold text-white">.COM</span>.
+              </span>
+            </motion.div>
+          ) : (
+            <motion.span
+              key="visitors"
+              initial={{ opacity: 0, x: 48 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 48 }}
+              transition={{ duration: 0.35, ease: 'easeInOut' }}
+              className="absolute inset-0 flex items-center justify-center text-[10px] sm:text-[11px] font-semibold text-white/55 uppercase tracking-[0.08em] whitespace-nowrap leading-none gap-1.5 px-14 sm:px-20"
+            >
+              <span className="relative flex h-1.5 w-1.5 shrink-0">
+                {live && count > 0 && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+                )}
+                <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${live && count > 0 ? 'bg-emerald-400' : 'bg-white/20'}`} />
+              </span>
+              {count > 0 ? count.toLocaleString('en-US') : '—'} people browsing right now
+            </motion.span>
           )}
-          <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${live && count > 0 ? 'bg-emerald-400' : 'bg-white/20'}`} />
-        </span>
-        <span className="text-[9px] sm:text-[10px] font-semibold text-white/55 uppercase tracking-[0.08em] whitespace-nowrap leading-none">
-          {count > 0 ? count.toLocaleString('en-US') : '—'} {t('ainsfw.peopleBrowsing', 'people browsing right now')}
-        </span>
+        </AnimatePresence>
         <Link
           href="/advertise"
-          className="ml-1 sm:ml-2 text-[8px] sm:text-[9px] font-bold text-white hover:text-white/85 uppercase tracking-[0.14em] whitespace-nowrap leading-none transition-colors"
+          className="absolute right-4 sm:right-8 text-[10px] sm:text-[11px] font-bold text-white hover:text-white/85 uppercase tracking-[0.12em] whitespace-nowrap leading-none transition-colors"
         >
           ADVERTISE
         </Link>
