@@ -643,10 +643,6 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
           transition={{ duration: 0.5 }}
           className="text-center mb-6 sm:mb-8"
         >
-          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#ff5e2a]/10 border border-[#ff5e2a]/30 text-[#ff7a3d] text-[9px] sm:text-[10px] font-bold uppercase tracking-[1.5px] mb-2">
-            <span className="w-1 h-1 rounded-full bg-[#ff7a3d] animate-pulse" />
-            Curated &amp; Verified
-          </div>
           <h1 className="text-[32px] sm:text-[50px] md:text-[58px] font-black leading-[1.05] tracking-tight text-white mb-3">
             {t('groups.title')}
           </h1>

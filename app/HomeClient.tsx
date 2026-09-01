@@ -447,15 +447,18 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
       {/* Hero Section */}
       <main className="relative z-10 max-w-7xl mx-auto px-5 sm:px-6 pt-20 sm:pt-28 pb-14">
         <div className="text-center max-w-4xl mx-auto">
-          {/* Badge pill */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#ff8a00]/30 bg-[#ff8a00]/[0.06] mb-7 sm:mb-8"
+            className="mb-1 sm:mb-1.5"
           >
-            <span className="relative flex h-1.5 w-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff8a00] opacity-75" /><span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#ff8a00]" /></span>
-            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.2em] text-[#ff8a00]">#1 Porn Telegram &amp; AI NSFW Hub</span>
+            <p
+              className="text-[1.6rem] sm:text-4xl md:text-5xl tracking-tight leading-[0.95] uppercase text-[#c0392f]"
+              style={{ fontFamily: 'var(--font-bebas), sans-serif' }}
+            >
+              #1 Porn Telegram &amp; AI NSFW Hub
+            </p>
           </motion.div>
 
           {/* Hero title */}
@@ -472,31 +475,17 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
             {t('home.heroTitle1', 'Your #1 hub for Adult Entertainment.')}
           </motion.h1>
 
-          {/* Subtitle + mascote */}
+          {/* Subtitle */}
           <motion.div
             className="mb-10 sm:mb-12 max-w-2xl sm:max-w-3xl mx-auto px-4"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.2 }}
           >
-            <div className="flex flex-row items-center justify-center gap-2 sm:gap-2.5">
-              <p className="text-center text-sm sm:text-lg md:text-xl text-white/45 leading-relaxed">
-                {t('home.heroDesc1', 'Porn Telegram groups & NSFW bots, AI companions & tools, OnlyFans creators.')}{' '}
-                {t('home.heroDesc2', 'Explore and save your favorites all in one place.')}
-              </p>
-              <div className="shrink-0 flex items-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/assets/erogram-pro-mascote.png"
-                  alt="erogram pro mascote"
-                  width={167}
-                  height={300}
-                  className="w-10 sm:w-12 md:w-14 h-auto object-contain block"
-                  loading="eager"
-                  decoding="async"
-                />
-              </div>
-            </div>
+            <p className="text-center text-sm sm:text-lg md:text-xl text-white/45 leading-relaxed">
+              {t('home.heroDesc1', 'Porn Telegram groups & NSFW bots, AI companions & tools, OnlyFans creators.')}{' '}
+              {t('home.heroDesc2', 'Explore and save your favorites all in one place.')}
+            </p>
           </motion.div>
 
           {/* 2x2 Glass nav cards */}

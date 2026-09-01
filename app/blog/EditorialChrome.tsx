@@ -141,14 +141,9 @@ function OFsearchNav() {
 }
 
 function LiveVisitorBar() {
+  const { t } = useTranslation();
   const [count, setCount] = useState(0);
   const [live, setLive] = useState(false);
-  const [announcing, setAnnouncing] = useState(true);
-
-  useEffect(() => {
-    const id = setTimeout(() => setAnnouncing((v) => !v), announcing ? 15000 : 10000);
-    return () => clearTimeout(id);
-  }, [announcing]);
 
   useEffect(() => {
     const fetchCount = () => {
@@ -170,47 +165,20 @@ function LiveVisitorBar() {
   return (
     <div
       className="w-full bg-white/[0.03] border-b border-white/[0.06]"
-      aria-label={announcing ? 'EROGRAM.PRO is becoming EROGRAMX.COM' : count > 0 ? `${count.toLocaleString('en-US')} people browsing right now` : 'People browsing right now'}
+      aria-label={count > 0 ? `${count.toLocaleString('en-US')} people browsing right now` : 'People browsing right now'}
       role="status"
       aria-live="polite"
     >
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-8 h-[24px] flex items-center justify-center relative overflow-hidden">
-        <AnimatePresence mode="wait" initial={false}>
-          {announcing ? (
-            <motion.div
-              key="announcement"
-              initial={{ opacity: 0, x: -48 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -48 }}
-              transition={{ duration: 0.35, ease: 'easeInOut' }}
-              className="absolute inset-0 flex items-center justify-center px-14 sm:px-20"
-            >
-              <span className="text-[10px] sm:text-[11px] font-semibold text-white/55 uppercase tracking-[0.08em] whitespace-nowrap leading-none">
-                <span className="font-bold text-white">EROGRAM.PRO</span>
-                {' '}IS BECOMING{' '}
-                <span className="font-bold text-white tracking-normal">EROGRAM<span className="text-[#ff3b30]">X</span></span>
-                <span className="font-bold text-white">.COM</span>.
-              </span>
-            </motion.div>
-          ) : (
-            <motion.span
-              key="visitors"
-              initial={{ opacity: 0, x: 48 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 48 }}
-              transition={{ duration: 0.35, ease: 'easeInOut' }}
-              className="absolute inset-0 flex items-center justify-center text-[10px] sm:text-[11px] font-semibold text-white/55 uppercase tracking-[0.08em] whitespace-nowrap leading-none gap-1.5 px-14 sm:px-20"
-            >
-              <span className="relative flex h-1.5 w-1.5 shrink-0">
-                {live && count > 0 && (
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
-                )}
-                <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${live && count > 0 ? 'bg-emerald-400' : 'bg-white/20'}`} />
-              </span>
-              {count > 0 ? count.toLocaleString('en-US') : '—'} people browsing right now
-            </motion.span>
-          )}
-        </AnimatePresence>
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-8 h-[24px] flex items-center justify-center relative">
+        <span className="text-[10px] sm:text-[11px] font-semibold text-white/55 uppercase tracking-[0.08em] whitespace-nowrap leading-none flex items-center gap-1.5">
+          <span className="relative flex h-1.5 w-1.5 shrink-0">
+            {live && count > 0 && (
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+            )}
+            <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${live && count > 0 ? 'bg-emerald-400' : 'bg-white/20'}`} />
+          </span>
+          {count > 0 ? count.toLocaleString('en-US') : '—'} {t('ainsfw.peopleBrowsing', 'people browsing right now')}
+        </span>
         <Link
           href="/advertise"
           className="absolute right-4 sm:right-8 text-[10px] sm:text-[11px] font-bold text-white hover:text-white/85 uppercase tracking-[0.12em] whitespace-nowrap leading-none transition-colors"
@@ -728,29 +696,42 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
 
+  // Fixed pages already pad for the 58px nav row (pt-20/24/28). The live visitor
+  // strip (+5px gap) sits below that and was never in those pads — reserve it here
+  // so every Navbar page clears the bar without editing dozens of pages.
+  const FIXED_EXTRA_OFFSET = 24 + 5;
+
   return (
+    <>
     <header className={`${fixed ? 'fixed top-0 left-0 right-0' : 'relative'} z-50 bg-black/95 backdrop-blur-md border-b border-white/[0.08]`}>
       <div className="max-w-[1280px] mx-auto px-4 sm:px-8 h-[58px] flex items-center gap-2 sm:gap-6">
         {/* Wordmark — EROGRAMX (red X via ErogramWordmark). */}
-        <Link
-          href="/"
-          aria-label="ErogramX"
-          className={`shrink-0 flex items-baseline uppercase tracking-tighter leading-none select-none mr-2 sm:mr-6 lg:mr-8 ${
-            wordmarkMode === 'pornhub'
-              ? 'text-[1.75rem] sm:text-[1.86rem] font-black gap-0'
-              : 'text-[1.86rem] font-black'
-          }`}
-          style={{ fontFamily: wordmarkMode === 'pornhub' ? 'var(--font-inter-tight), Arial Black, sans-serif' : 'var(--font-inter-tight), sans-serif' }}
-        >
-          {wordmarkMode === 'pornhub' ? (
-            <>
-              <span className="text-white profile-ph-wordmark-main">Ero</span>
-              <span className="profile-ph-wordmark-hub">gram</span>
-            </>
-          ) : (
-            <ErogramWordmark accent="#c0392f" />
+        <div className="shrink-0 inline-flex flex-col items-stretch mr-2 sm:mr-6 lg:mr-8">
+          <Link
+            href="/"
+            aria-label="ErogramX"
+            className={`flex items-baseline uppercase tracking-tighter leading-none select-none ${
+              wordmarkMode === 'pornhub'
+                ? 'text-[2.01rem] sm:text-[2.14rem] font-black gap-0'
+                : 'text-[2.14rem] font-black'
+            }`}
+            style={{ fontFamily: wordmarkMode === 'pornhub' ? 'var(--font-inter-tight), Arial Black, sans-serif' : 'var(--font-inter-tight), sans-serif' }}
+          >
+            {wordmarkMode === 'pornhub' ? (
+              <>
+                <span className="text-white profile-ph-wordmark-main">Ero</span>
+                <span className="profile-ph-wordmark-hub">gram</span>
+              </>
+            ) : (
+              <ErogramWordmark accent="#c0392f" />
+            )}
+          </Link>
+          {wordmarkMode !== 'pornhub' && (
+            <span className="block w-full text-left text-[10px] sm:text-[11px] font-semibold text-white leading-none mt-1 tracking-[0.18em] sm:tracking-[0.22em]">
+              Previously Erogram.pro
+            </span>
           )}
-        </Link>
+        </div>
 
         {/* Desktop nav — uppercase, letter-spaced, muted. Only at lg+ where it fits;
             tablet falls back to the burger menu so no items get cut off. */}
@@ -848,6 +829,12 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
       <MobileNavMenu open={mobileOpen} lp={lp} onClose={() => setMobileOpen(false)} />
       <MobileUserMenu open={userOpen} auth={auth} lp={lp} onClose={() => setUserOpen(false)} />
     </header>
+    {fixed ? (
+      <div aria-hidden className="w-full shrink-0 pointer-events-none" style={{ height: FIXED_EXTRA_OFFSET }} />
+    ) : (
+      <div aria-hidden className="w-full shrink-0 h-[5px] pointer-events-none" />
+    )}
+    </>
   );
 }
 

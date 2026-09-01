@@ -438,10 +438,6 @@ export default function BotsClient({ initialBots, initialTopBots = [], initialAd
           transition={{ duration: 0.5 }}
           className="text-center mb-6 sm:mb-8"
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#ff5e2a]/10 border border-[#ff5e2a]/30 text-[#ff7a3d] text-xs font-bold uppercase tracking-[2px] mb-4">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#ff7a3d] animate-pulse" />
-            Curated &amp; Verified
-          </div>
           <h1 className="text-[32px] sm:text-[50px] md:text-[58px] font-black leading-[1.05] tracking-tight text-white mb-3">
             {t('bots.title')}
           </h1>

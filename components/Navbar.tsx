@@ -18,7 +18,8 @@ interface NavbarProps {
 /**
  * Global top navigation. This is now a thin fixed-position wrapper around the
  * editorial masthead so every page across Erogram shares the same /blog menu.
- * It preserves the legacy fixed layout (pages still pad with pt-20/24/28).
+ * It preserves the legacy fixed layout (pages still pad with pt-20/24/28 for the
+ * 58px nav row). EditorialMasthead also reserves space for the live visitor strip.
  */
 export default function Navbar({ variant, accent }: NavbarProps) {
   const resolvedAccent = accent ?? (variant === 'onlyfans' ? '#00AFF0' : undefined);

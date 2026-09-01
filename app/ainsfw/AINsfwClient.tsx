@@ -201,10 +201,6 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
           transition={{ duration: 0.6 }}
           className="text-center mb-8 sm:mb-10"
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/30 text-[#22c55e] text-xs font-bold uppercase tracking-[2px] mb-5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse" />
-            {t('ainsfw.curatedReviewed', 'Curated & Reviewed')}
-          </div>
           <h1 className="ainsfw-hero-title text-[44px] sm:text-[64px] md:text-[76px] mb-4">
             {t('ainsfw.heroTitle', 'Best AI NSFW Tools')}
           </h1>
