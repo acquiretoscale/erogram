@@ -373,15 +373,21 @@ function GetListedPricingButton({
 function CompactHeroStats({
   views,
   last30dAdClicks,
+  compact = false,
 }: {
   views: number | null;
   last30dAdClicks: number | null;
+  compact?: boolean;
 }) {
   return (
     <div className="flex justify-center w-full">
       <div
-        className="w-full max-w-xl sm:max-w-2xl rounded-lg bg-white overflow-hidden"
-        style={{ border: BORDER, boxShadow: SHADOW_LG }}
+        className={
+          compact
+            ? 'w-full max-w-[16.5rem] sm:max-w-[19rem] rounded-lg bg-white overflow-hidden mx-auto'
+            : 'w-full max-w-xl sm:max-w-2xl rounded-lg bg-white overflow-hidden'
+        }
+        style={{ border: BORDER, boxShadow: compact ? SHADOW : SHADOW_LG }}
       >
         <div style={{ borderBottom: BORDER }}>
           <div className="w-full overflow-hidden bg-black">
@@ -394,31 +400,73 @@ function CompactHeroStats({
             />
           </div>
           <div
-            className="px-3 py-2.5 sm:px-6 sm:py-4"
+            className={compact ? 'px-2 py-2 sm:px-3 sm:py-2.5' : 'px-3 py-2.5 sm:px-6 sm:py-4'}
             style={{ background: 'linear-gradient(160deg, #04140c 0%, #0a2e1a 60%, #064e3b 100%)' }}
           >
-            <p className="text-center text-base sm:text-lg md:text-xl lg:text-2xl font-black uppercase tracking-wide text-[#4ade80] leading-snug px-1">
+            <p
+              className={
+                compact
+                  ? 'text-center text-[11px] sm:text-xs font-black uppercase tracking-wide text-[#4ade80] leading-snug px-1'
+                  : 'text-center text-base sm:text-lg md:text-xl lg:text-2xl font-black uppercase tracking-wide text-[#4ade80] leading-snug px-1'
+              }
+            >
               AD CLICKS THE LAST 30 DAYS.
             </p>
-            <p className="text-center text-[9px] sm:text-[10px] text-white/40 mt-1.5 px-2 leading-snug">
+            <p
+              className={
+                compact
+                  ? 'text-center text-[7px] sm:text-[8px] text-white/40 mt-1 px-1 leading-snug'
+                  : 'text-center text-[9px] sm:text-[10px] text-white/40 mt-1.5 px-2 leading-snug'
+              }
+            >
               Total traffic delivered to our partners and sponsors.
             </p>
           </div>
         </div>
-        <div className="px-3 py-4 sm:py-8 text-center bg-gradient-to-br from-[#ecfdf5] via-white to-[#f0fdf4]">
-          <div className="flex flex-wrap items-baseline justify-center gap-x-2 gap-y-1">
-            <p className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tabular-nums text-black leading-none">
+        <div
+          className={
+            compact
+              ? 'px-2 py-3 sm:py-4 text-center bg-gradient-to-br from-[#ecfdf5] via-white to-[#f0fdf4]'
+              : 'px-3 py-4 sm:py-8 text-center bg-gradient-to-br from-[#ecfdf5] via-white to-[#f0fdf4]'
+          }
+        >
+          <div className="flex flex-wrap items-baseline justify-center gap-x-1.5 gap-y-0.5">
+            <p
+              className={
+                compact
+                  ? 'text-2xl sm:text-3xl md:text-4xl font-black tabular-nums text-black leading-none'
+                  : 'text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tabular-nums text-black leading-none'
+              }
+            >
               {last30dAdClicks != null ? last30dAdClicks.toLocaleString() : '—'}
             </p>
-            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wide text-black/40 leading-tight">
+            <span
+              className={
+                compact
+                  ? 'text-[8px] sm:text-[9px] font-bold uppercase tracking-wide text-black/40 leading-tight'
+                  : 'text-[10px] sm:text-xs font-bold uppercase tracking-wide text-black/40 leading-tight'
+              }
+            >
               clicks last 30 days
             </span>
           </div>
         </div>
-        <div className="flex items-center justify-center border-t border-black/10 px-3 py-2 sm:py-3">
+        <div
+          className={
+            compact
+              ? 'flex items-center justify-center border-t border-black/10 px-2 py-1.5 sm:py-2'
+              : 'flex items-center justify-center border-t border-black/10 px-3 py-2 sm:py-3'
+          }
+        >
           <div className="flex flex-col items-center justify-center text-center min-w-0">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-black/45 mb-0.5">Page views</span>
-            <span className="text-lg sm:text-xl font-black tabular-nums text-[#16a34a] leading-none">
+            <span className="text-[8px] sm:text-[9px] font-bold uppercase tracking-wider text-black/45 mb-0.5">Page views</span>
+            <span
+              className={
+                compact
+                  ? 'text-sm sm:text-base font-black tabular-nums text-[#16a34a] leading-none'
+                  : 'text-lg sm:text-xl font-black tabular-nums text-[#16a34a] leading-none'
+              }
+            >
               {views != null ? views.toLocaleString() : '—'}
             </span>
           </div>
@@ -995,7 +1043,7 @@ export default function AINSFWPricingClient({
       <main
         className={
           isAdvertise
-            ? 'flex w-full flex-col justify-center px-4 sm:px-6 lg:px-8 min-h-[calc(100svh-5.75rem)] sm:min-h-[calc(100svh-6.25rem)] pt-32 sm:pt-36 pb-12 sm:pb-16'
+            ? 'flex w-full flex-col px-4 sm:px-6 lg:px-8 pt-[4.75rem] sm:pt-20 pb-12 sm:pb-16'
             : 'max-w-5xl xl:max-w-7xl 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-12 pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-16'
         }
       >
@@ -1012,25 +1060,15 @@ export default function AINSFWPricingClient({
         )}
 
         {/* HERO */}
-        <div className={isAdvertise ? 'w-full max-w-3xl mx-auto flex flex-col gap-8 sm:gap-10' : 'mb-10 flex flex-col gap-8 sm:gap-10'}>
-          {!isAdvertise && (
-            <CompactHeroStats views={visitorStats.views} last30dAdClicks={visitorStats.last30dAdClicks} />
-          )}
+        <div className={isAdvertise ? 'w-full max-w-md mx-auto flex flex-col items-center gap-6 sm:gap-8' : 'mb-10 flex flex-col gap-8 sm:gap-10'}>
+          <CompactHeroStats
+            views={visitorStats.views}
+            last30dAdClicks={visitorStats.last30dAdClicks}
+            compact={isAdvertise}
+          />
 
           {isAdvertise ? (
             <>
-              <motion.h1
-                initial={{ opacity: 0, y: 18 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-                className="text-center px-2 pt-4 sm:pt-5 pb-1 leading-[1]"
-              >
-                <span className="ainsfw-hero-title text-[clamp(1.35rem,6.8vw,3.5rem)] sm:text-5xl md:text-6xl">
-                  WE HAVE YOUR{' '}
-                  <span className="ainsfw-hero-customers">AUDIENCE.</span>
-                </span>
-              </motion.h1>
-
               <div className="flex flex-col gap-5 sm:gap-6 justify-center items-stretch w-full">
                 <h2 className="text-center text-2xl sm:text-3xl font-black uppercase tracking-tight text-white flex flex-wrap items-baseline justify-center gap-x-2">
                   <span>ADVERTISE ON</span>
@@ -1055,7 +1093,7 @@ export default function AINSFWPricingClient({
                     <span className="shrink-0 inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-md border-2 border-black/35 bg-black/10 text-xs sm:text-sm font-black leading-none tracking-tight">
                       18+
                     </span>
-                    AI, Bots &amp; Adult products
+                    AI, Bots &amp; Adult Websites
                   </span>
                 </Link>
               <Link
@@ -1081,6 +1119,18 @@ export default function AINSFWPricingClient({
               </Link>
                 </div>
               </div>
+
+              <motion.h1
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+                className="text-center px-2 pb-1 leading-[1]"
+              >
+                <span className="ainsfw-hero-title text-[clamp(1.35rem,6.8vw,3.5rem)] sm:text-5xl md:text-6xl">
+                  WE HAVE YOUR{' '}
+                  <span className="ainsfw-hero-customers">AUDIENCE.</span>
+                </span>
+              </motion.h1>
             </>
           ) : (
             <>

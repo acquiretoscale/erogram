@@ -520,11 +520,6 @@ function MobileNavMenu({ open, lp, onClose }: { open: boolean; lp: (p: string) =
         <div className="bg-[#161412] border border-white/10 rounded-xl overflow-hidden py-1">
           <div className="px-4 py-2.5 text-[13px] font-semibold text-white/50 border-b border-white/[0.06]">{t('nav.explore', 'Explore')}</div>
 
-          <Link href={lp('/porn-websites')} onClick={onClose} className={item}>
-            {navIcon('/porn-websites')}
-            <span className="flex-1">Porn Websites</span>
-          </Link>
-
           {NAV_PRE.map((n) => (
             <Link key={n.href} href={lp(n.href)} onClick={onClose} className={item}>
               {navIcon(n.href)}
@@ -532,6 +527,11 @@ function MobileNavMenu({ open, lp, onClose }: { open: boolean; lp: (p: string) =
               {n.badge && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#c0392f] text-white">{n.badge}</span>}
             </Link>
           ))}
+
+          <Link href={lp('/porn-websites')} onClick={onClose} className={item}>
+            {navIcon('/porn-websites')}
+            <span className="flex-1">Porn Websites</span>
+          </Link>
 
           {/* Onlyfans */}
           <Link href={lp('/ofsearch')} onClick={onClose} className={item}>
