@@ -20,6 +20,12 @@ const G = { gold: '#00aff0', goldLight: '#00d4ff', goldDim: 'rgba(255,255,255,0.
 const PREMIUM_BEIGE = '#ffffff';
 const ORDER_GREEN = '#16a34a';
 const CHECKOUT_BLUE = '#1e3a8a';
+const PREMIUM_GOLD = {
+  background: 'linear-gradient(135deg, #f5d061 0%, #c9973a 45%, #a67c00 100%)',
+  color: '#2a1f00',
+  border: '1px solid #e8c547',
+  boxShadow: '0 0 10px rgba(201,151,58,0.45)',
+};
 const checkoutBtnClass =
   'shrink-0 px-3.5 py-2.5 rounded-lg font-black text-white border-2 border-[#111] shadow-[3px_3px_0_0_#111] transition-all duration-150 hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_0_#111] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0_0_#111] disabled:opacity-50 flex flex-col items-center';
 
@@ -274,7 +280,7 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
               Exclusive groups, rare niches, and leak communities you won&apos;t find anywhere else.
             </p>
             {!isPremium && (
-              <a href="#pricing" className="inline-flex items-center justify-center mt-3 px-3.5 py-2.5 rounded-lg text-sm font-black text-white uppercase tracking-wide transition-all active:scale-95 hover:opacity-90" style={{ background: ORDER_GREEN }}>
+              <a href="#pricing" className="inline-flex items-center justify-center mt-3 px-3.5 py-2.5 rounded-lg text-sm font-black uppercase tracking-wide transition-all active:scale-95 hover:opacity-90" style={PREMIUM_GOLD}>
                 Access Now
               </a>
             )}
@@ -442,7 +448,7 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
                       onClick={() => handlePurchase('quarterly')}
                       disabled={!!loading}
                       className={checkoutBtnClass}
-                      style={{ background: CHECKOUT_BLUE, whiteSpace: 'nowrap' }}
+                      style={{ ...PREMIUM_GOLD, whiteSpace: 'nowrap' }}
                     >
                       {loading === 'quarterly' ? (
                         <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
@@ -473,7 +479,7 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
                         onClick={() => handlePurchase('yearly')}
                         disabled={!!loading}
                         className={checkoutBtnClass}
-                        style={{ background: CHECKOUT_BLUE, whiteSpace: 'nowrap' }}
+                        style={{ ...PREMIUM_GOLD, whiteSpace: 'nowrap' }}
                       >
                         {loading === 'yearly' ? (
                           <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
