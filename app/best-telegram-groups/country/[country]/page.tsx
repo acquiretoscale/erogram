@@ -56,7 +56,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         isAdvertisement: false,
     });
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogramx.com';
     const canonical = `${siteUrl}/best-telegram-groups/country/${decodedSlug}`;
     // "in {Country}" keeps this distinct from the same-named category page
     // (e.g. /best-telegram-groups/japan vs /best-telegram-groups/country/japan).

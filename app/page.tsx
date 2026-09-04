@@ -21,7 +21,7 @@ const COUNTRY_FILTERS = new Set([
   'Mexico', 'Philippines', 'Russian', 'Spain', 'UK', 'Ukraine', 'USA', 'Vietnam',
 ]);
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogramx.com';
 
 // Display bases so totals read closer to real-world scale, then grow dynamically.
 const AI_BOTS_BASE = 400;

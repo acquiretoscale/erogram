@@ -13,9 +13,9 @@ if (!MONGODB_URI) {
 }
 
 const INDEXNOW_CONFIG = {
-  host: 'erogram.pro',
+  host: 'erogramx.com',
   key: 'f8f91525268a439b8ae6ce03d362f9bc',
-  keyLocation: 'https://erogram.pro/f8f91525268a439b8ae6ce03d362f9bc.txt',
+  keyLocation: 'https://erogramx.com/f8f91525268a439b8ae6ce03d362f9bc.txt',
 };
 
 async function main() {
@@ -27,7 +27,7 @@ async function main() {
 
   const urls = allArticles
     .filter((a: any) => a.status === 'published' || !a.status)
-    .map((a: any) => `https://erogram.pro/articles/${a.slug}`);
+    .map((a: any) => `https://erogramx.com/articles/${a.slug}`);
 
   console.log(`Submitting ${urls.length} article URLs to IndexNow:\n`);
   urls.forEach((url) => console.log(`  ${url}`));

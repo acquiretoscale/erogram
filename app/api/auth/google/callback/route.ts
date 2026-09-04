@@ -5,18 +5,19 @@ import { User } from '@/lib/models';
 import { notifyAdminsOfNewUser } from '@/lib/utils/notifyAdmins';
 import { geoUpdateFields } from '@/lib/utils/geo';
 import { randomPresetAvatarUrl } from '@/lib/userAvatars';
+import { getAuthOrigin } from '@/lib/auth';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code');
   const error = req.nextUrl.searchParams.get('error');
   const state = req.nextUrl.searchParams.get('state') || '';
-  const loginPage = `${SITE_URL}/login`;
-  const callbackPage = `${SITE_URL}/auth/callback`;
+  const siteUrl = getAuthOrigin(req);
+  const loginPage = `${siteUrl}/login`;
+  const callbackPage = `${siteUrl}/auth/callback`;
 
   if (error) {
     return NextResponse.redirect(`${loginPage}?error=google_denied`);
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const redirectUri = `${SITE_URL}/api/auth/google/callback`;
+    const redirectUri = `${siteUrl}/api/auth/google/callback`;
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

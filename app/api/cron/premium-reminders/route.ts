@@ -10,7 +10,7 @@ const BOT_TOKEN = process.env.TELEGRAM_PAYMENT_BOT_TOKEN || '';
 const REMINDER_TEXT = [
   'Your Erogram VIP access expires tomorrow. Renew now to keep your Vault, bookmarks, and all premium features.',
   '',
-  'Renew here: https://erogram.pro/premium',
+  'Renew here: https://erogramx.com/premium',
 ].join('\n');
 
 async function sendTelegramMessage(chatId: number, text: string) {

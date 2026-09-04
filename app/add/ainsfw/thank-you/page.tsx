@@ -34,7 +34,7 @@ function ThankYouContent() {
                 href={liveUrl}
                 className="text-sky-400 text-sm font-bold underline hover:text-sky-300 break-all"
               >
-                erogram.pro/ainsfw
+                erogramx.com/ainsfw
               </Link>
               <p className="text-white/30 text-xs mt-2">
                 Your tool appears in the Featured / Top AI NSFW section.

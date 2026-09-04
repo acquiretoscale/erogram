@@ -5,6 +5,32 @@ import { User } from '@/lib/models';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
+const AUTH_HOSTS = new Set([
+  'erogramx.com',
+  'www.erogramx.com',
+  'erogram.pro',
+  'www.erogram.pro',
+  'localhost:3000',
+  'localhost:3939',
+  '127.0.0.1:3000',
+  '127.0.0.1:3939',
+]);
+
+/** Origin for OAuth redirects. Uses the host the user actually hit, not a stale env domain. */
+export function getAuthOrigin(req: NextRequest): string {
+  const raw = (req.headers.get('x-forwarded-host') || req.headers.get('host') || '')
+    .split(',')[0]
+    .trim()
+    .toLowerCase();
+  if (raw && AUTH_HOSTS.has(raw)) {
+    const proto = raw.startsWith('localhost') || raw.startsWith('127.0.0.1')
+      ? 'http'
+      : (req.headers.get('x-forwarded-proto') || 'https').split(',')[0].trim();
+    return `${proto}://${raw}`;
+  }
+  return 'https://erogramx.com';
+}
+
 export interface AuthUser {
   _id: string;
   username: string;

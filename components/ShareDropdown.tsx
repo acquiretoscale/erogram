@@ -63,7 +63,7 @@ export default function ShareDropdown({ title, slug, itemType = 'group', classNa
     return () => document.removeEventListener('keydown', handler);
   }, [open, close]);
 
-  const url = pageUrl || `https://erogram.pro/${slug}`;
+  const url = pageUrl || `https://erogramx.com/${slug}`;
   const kind = itemType === 'bot' ? 'Telegram bot' : 'Telegram group';
   const text = `Check out ${title} — ${kind} on Erogram`;
 

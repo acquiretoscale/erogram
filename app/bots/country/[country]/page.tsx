@@ -5,7 +5,7 @@ import BotsClient from '../../BotsClient';
 import { getActiveFeedCampaigns } from '@/lib/actions/campaigns';
 import { buildSocialMeta } from '@/lib/seo/socialMeta';
 
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogramx.com';
 
 // ISR: allow caching for crawl speed (randomized content may be cached within the window)
 export const revalidate = 300;

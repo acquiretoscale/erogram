@@ -180,7 +180,7 @@ export async function PUT(
           } else if (notificationResult?.success) {
             console.log('[Group Update] Telegram notification sent successfully');
           }
-          pingIndexNow(`https://erogram.pro/${group.slug}`);
+          pingIndexNow(`https://erogramx.com/${group.slug}`);
         } else {
           // Premium group: post ONLY to Erogram Plus channel (never public)
           console.log(`[Group Update] Premium vault group approved — sending to Plus channel only`);

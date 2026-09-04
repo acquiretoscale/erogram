@@ -260,7 +260,7 @@ function IndividualPageContent({ activeId, setActiveId, group, mobile }: { activ
                 <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] text-gray-300">#All</span>
                 <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] text-gray-300">Telegram Group</span>
               </div>
-              <p className="text-[13px] text-gray-300 leading-relaxed mb-6">Join the official erogram.pro telegram group for up to date groups, events and announcements!</p>
+              <p className="text-[13px] text-gray-300 leading-relaxed mb-6">Join the official erogramx.com telegram group for up to date groups, events and announcements!</p>
             </div>
 
             {/* Primary action area */}

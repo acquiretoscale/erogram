@@ -111,11 +111,11 @@ async function sendNewGroupTelegramNotification(group: any = {}, sendToPlus: boo
   const description = escapeHTML(group.description || 'No description provided');
   const slug = group.slug || '';
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogramx.com';
   const isDevelopment = siteUrl.includes('localhost') || siteUrl.startsWith('http://');
 
   // Use production URL for buttons since Telegram requires HTTPS
-  const productionUrl = 'https://erogram.pro';
+  const productionUrl = 'https://erogramx.com';
   const url = isDevelopment
     ? `${productionUrl}/${slug}/?utm_source=telegram&utm_medium=button&utm_campaign=group_notification`
     : `${siteUrl}/${slug}/?utm_source=telegram&utm_medium=button&utm_campaign=group_notification`;
@@ -521,11 +521,11 @@ async function sendNewBotTelegramNotification(bot: any = {}) {
   const description = escapeHTML(bot.description || 'No description provided');
   const slug = bot.slug || '';
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogramx.com';
   const isDevelopment = siteUrl.includes('localhost') || siteUrl.startsWith('http://');
 
   // Use production URL for buttons since Telegram requires HTTPS
-  const productionUrl = 'https://erogram.pro';
+  const productionUrl = 'https://erogramx.com';
   const url = isDevelopment
     ? `${productionUrl}/${slug}/?utm_source=telegram&utm_medium=button&utm_campaign=bot_notification`
     : `${siteUrl}/${slug}/?utm_source=telegram&utm_medium=button&utm_campaign=bot_notification`;
@@ -914,11 +914,11 @@ async function sendPremiumGroupTelegramNotification(group: any = {}) {
   const country = escapeHTML(group.country || 'Unknown');
   const description = escapeHTML(group.description || 'No description provided');
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogramx.com';
   const isDevelopment = siteUrl.includes('localhost') || siteUrl.startsWith('http://');
 
   // Use production URL for buttons since Telegram requires HTTPS
-  const productionUrl = 'https://erogram.pro';
+  const productionUrl = 'https://erogramx.com';
   const browseUrl = isDevelopment
     ? `${productionUrl}/?utm_source=telegram&utm_medium=button&utm_campaign=see_all_groups`
     : `${siteUrl}/?utm_source=telegram&utm_medium=button&utm_campaign=see_all_groups`;

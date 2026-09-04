@@ -54,7 +54,7 @@ async function getArticleCampaignId(advertiserName: string = EROGRAM_ADVERTISER_
       name: advertiserName === EROGRAM_ADVERTISER_NAME ? 'Article Links' : `Article CTA — ${advertiserName}`,
       slot: 'article-link',
       creative: '',
-      destinationUrl: 'https://erogram.pro/blog',
+      destinationUrl: 'https://erogramx.com/blog',
       startDate: new Date('2024-01-01'),
       endDate: new Date('2030-12-31'),
       status: 'active',

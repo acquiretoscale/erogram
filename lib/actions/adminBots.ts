@@ -169,7 +169,7 @@ export async function updateBot(token: string, id: string, data: Record<string, 
     } catch (err) {
       console.error('Failed to send Telegram notification:', err);
     }
-    pingIndexNow(`https://erogram.pro/${bot.slug}`);
+    pingIndexNow(`https://erogramx.com/${bot.slug}`);
   }
 
   revalidateBotPage(bot.slug);

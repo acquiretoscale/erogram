@@ -783,7 +783,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       ...prev,
       name: bot.name,
       creative: bot.image || '',
-      destinationUrl: bot.telegramLink || `https://erogram.pro/bots/${bot.slug}`,
+      destinationUrl: bot.telegramLink || `https://erogramx.com/bots/${bot.slug}`,
       description: bot.description || '',
       buttonText: 'Open Bot',
     }));

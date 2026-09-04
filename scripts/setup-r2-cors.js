@@ -32,7 +32,7 @@ async function main() {
     CORSConfiguration: {
       CORSRules: [
         {
-          AllowedOrigins: ['https://erogram.pro', 'https://www.erogram.pro', 'http://localhost:3000'],
+          AllowedOrigins: ['https://erogramx.com', 'https://www.erogramx.com', 'https://erogram.pro', 'https://www.erogram.pro', 'http://localhost:3000'],
           AllowedMethods: ['PUT', 'GET', 'HEAD'],
           AllowedHeaders: ['*'],
           ExposeHeaders: ['ETag'],

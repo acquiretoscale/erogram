@@ -23,7 +23,7 @@ import { getLocale, getPathname } from '@/lib/i18n/server';
 // 5 minutes (ISR): stable server HTML for Google, fresh stats/ads for users.
 export const revalidate = 300;
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogramx.com';
 
 function submissionSlugCandidates(slug: string): string[] {
   const out = new Set<string>([slug]);

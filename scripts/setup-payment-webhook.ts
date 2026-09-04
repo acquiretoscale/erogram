@@ -5,7 +5,7 @@
  *   npx tsx scripts/setup-payment-webhook.ts
  *
  * This tells Telegram to send payment events (pre_checkout_query, successful_payment)
- * to https://erogram.pro/api/payments/webhook
+ * to https://erogramx.com/api/payments/webhook
  *
  * You only need to run this once (or again if you change the domain).
  */
@@ -21,7 +21,7 @@ if (!WEBHOOK_SECRET) {
   console.error('TELEGRAM_WEBHOOK_SECRET is not set. Aborting — the webhook must be secured.');
   process.exit(1);
 }
-const WEBHOOK_URL = 'https://erogram.pro/api/payments/webhook';
+const WEBHOOK_URL = 'https://erogramx.com/api/payments/webhook';
 
 async function main() {
   console.log('Setting up Telegram webhook for payments...');

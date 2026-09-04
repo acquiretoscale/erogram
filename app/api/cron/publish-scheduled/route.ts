@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
       }
 
       try {
-        pingIndexNow(`https://erogram.pro/${group.slug}`);
+        pingIndexNow(`https://erogramx.com/${group.slug}`);
       } catch (err) {
         console.error(`[Cron] IndexNow ping failed for ${group.slug}:`, err);
       }

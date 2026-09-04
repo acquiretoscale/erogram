@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthOrigin } from '@/lib/auth';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
 export async function GET(req: NextRequest) {
   if (!GOOGLE_CLIENT_ID) {
@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const redirectUri = `${SITE_URL}/api/auth/google/callback`;
+  const redirectUri = `${getAuthOrigin(req)}/api/auth/google/callback`;
   const state = req.nextUrl.searchParams.get('state') || '';
   const url = `https://accounts.google.com/o/oauth2/v2/auth?` + new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,

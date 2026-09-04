@@ -4,7 +4,7 @@ import { PremiumEvent } from '@/lib/models';
 import { getPremiumPricing, getPlanConfig } from '@/lib/premiumPricing';
 
 const API_KEY = process.env.NOWPAYMENTS_API_KEY || '';
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogramx.com';
 const NP_BASE = 'https://api.nowpayments.io/v1';
 
 function logEvent(data: Record<string, any>) {

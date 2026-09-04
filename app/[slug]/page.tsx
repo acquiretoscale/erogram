@@ -52,7 +52,7 @@ export async function generateStaticParams() {
   }
 }
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogramx.com';
 const PLACEHOLDER_REL = process.env.NEXT_PUBLIC_PLACEHOLDER_IMAGE_URL || '/assets/placeholder-no-image.png';
 const PLACEHOLDER_ABS = PLACEHOLDER_REL.startsWith('http') ? PLACEHOLDER_REL : `${BASE_URL}/assets/placeholder-no-image.png`;
 

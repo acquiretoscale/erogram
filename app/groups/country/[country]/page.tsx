@@ -9,7 +9,7 @@ import { buildSocialMeta } from '@/lib/seo/socialMeta';
 import { getGroupMetaDescription } from '@/lib/groups/metaDescriptions';
 import { getLocale } from '@/lib/i18n/server';
 
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogramx.com';
 
 export const dynamic = 'force-dynamic';
 

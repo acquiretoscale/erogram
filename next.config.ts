@@ -51,6 +51,16 @@ const nextConfig: NextConfig = {
         hostname: '*.erogram.pro',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'erogramx.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.erogramx.com',
+        pathname: '/**',
+      },
       // OnlyFans CDN thumbnails (used for creator avatars/images pulled from OF)
       {
         protocol: 'https',

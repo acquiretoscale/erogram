@@ -7,7 +7,7 @@ import { buildBoostPaymentUpdate, cryptoUsdFromStars, SCALE_STARS, SCALE_USD } f
 
 const BOT_TOKEN = process.env.TELEGRAM_PAYMENT_BOT_TOKEN || '';
 const NP_API_KEY = process.env.NOWPAYMENTS_API_KEY || '';
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogramx.com';
 const NP_BASE = 'https://api.nowpayments.io/v1';
 
 export type SubmissionType = 'normal_listing' | 'instant_approval' | 'boost_week' | 'boost_month' | 'scale_month';

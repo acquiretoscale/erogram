@@ -9,7 +9,7 @@ import { toolSlug } from '@/app/ainsfw/data';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 const API_KEY = process.env.NOWPAYMENTS_API_KEY || '';
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogramx.com';
 const NP_BASE = 'https://api.nowpayments.io/v1';
 
 const PLAN_DESCRIPTIONS: Record<AINSFWPlan, string> = {

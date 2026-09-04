@@ -559,7 +559,7 @@ function paymentSiteUrl(): string {
   if (process.env.NODE_ENV === 'development') {
     return process.env.NEXT_PUBLIC_DEV_SITE_URL || 'http://127.0.0.1:3939';
   }
-  return process.env.NEXT_PUBLIC_SITE_URL || 'https://erogram.pro';
+  return process.env.NEXT_PUBLIC_SITE_URL || 'https://erogramx.com';
 }
 
 export async function createFeaturedCreatorInvoice(creatorId: string, token: string) {

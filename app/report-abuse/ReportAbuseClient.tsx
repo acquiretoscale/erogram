@@ -139,7 +139,7 @@ export default function ReportAbuseClient() {
                 type="text"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://erogram.pro/..."
+                placeholder="https://erogramx.com/..."
                 className="w-full p-3 rounded-xl bg-white/[0.03] border border-white/[0.08] text-[#f5f5f5] placeholder:text-gray-500 focus:ring-2 focus:ring-[#b31b1b] focus:border-transparent outline-none"
               />
             </div>

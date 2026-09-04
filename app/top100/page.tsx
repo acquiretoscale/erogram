@@ -89,12 +89,12 @@ export default async function Top100Page() {
               </td>
               <td style={{ padding: '8px 4px' }}>
                 <a
-                  href={`https://erogram.pro/${c.slug}`}
+                  href={`https://erogramx.com/${c.slug}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ color: '#0077cc', fontSize: 12 }}
                 >
-                  erogram.pro/{c.slug}
+                  erogramx.com/{c.slug}
                 </a>
               </td>
             </tr>

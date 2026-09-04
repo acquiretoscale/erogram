@@ -378,7 +378,7 @@ export async function convertBoostToPlacedCampaign(
 
   const adType = entityType === 'bot' ? 'featured-bot' : entityType === 'ainsfw' ? 'featured-nsfw' : 'advertiser';
   const basePath = entityType === 'bot' ? 'bots' : entityType === 'ainsfw' ? 'ai-nsfw' : 'groups';
-  const destinationUrl = listing.telegramLink || (listing.slug ? `https://erogram.pro/${basePath}/${listing.slug}` : 'https://erogram.pro');
+  const destinationUrl = listing.telegramLink || (listing.slug ? `https://erogramx.com/${basePath}/${listing.slug}` : 'https://erogramx.com');
 
   const adnet: any = await Advertiser.findOne({ name: 'EROGRAM' }).select('_id').lean();
   if (!adnet) return { error: 'Ad-network advertiser "EROGRAM" not found' };

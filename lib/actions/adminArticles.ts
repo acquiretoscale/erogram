@@ -314,7 +314,7 @@ export async function createArticle(token: string, data: Record<string, any>) {
     };
 
     if (articleStatus === 'published') {
-      pingIndexNow(`https://erogram.pro/blog/${slug}`);
+      pingIndexNow(`https://erogramx.com/blog/${slug}`);
     }
   } catch (err) {
     console.error('Error fetching author:', err);
@@ -502,7 +502,7 @@ export async function updateArticle(token: string, id: string, data: Record<stri
   };
 
   if (setFields.status === 'published' || (oldArticle.status === 'published' && setFields.status !== 'draft')) {
-    pingIndexNow(`https://erogram.pro/blog/${article.slug}`);
+    pingIndexNow(`https://erogramx.com/blog/${article.slug}`);
   }
 
   revalidatePath('/blog');
