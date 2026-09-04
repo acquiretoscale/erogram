@@ -9,7 +9,6 @@ import { ToastProvider, useToast } from '@/components/Toast';
 import SavedTab from './SavedTab';
 import VaultTab from './VaultTab';
 import PremiumCompareBlock from '@/components/PremiumCompareBlock';
-import ProfileHomeSetupSteps from './ProfileHomeSetupSteps';
 import { profileHomeSetupComplete } from '@/lib/profileHomeSetup';
 import AvatarPicker from '@/components/AvatarPicker';
 import ProfileEditSection from '@/components/ProfileEditSection';
@@ -632,6 +631,22 @@ function ProfileThemedShell(props: any) {
             />
           ) : activeTab === 'vault' ? (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+              {!effectivePremium && (
+                <Link
+                  href="/premium"
+                  className="mb-6 w-full rounded-xl px-4 py-3 sm:py-4 text-center transition-all hover:opacity-95 active:scale-[0.995] border block"
+                  style={{
+                    background: PREMIUM_MEMBER_GOLD.background,
+                    color: PREMIUM_MEMBER_GOLD.color,
+                    border: PREMIUM_MEMBER_GOLD.border,
+                    boxShadow: PREMIUM_MEMBER_GOLD.boxShadow,
+                  }}
+                >
+                  <span className="text-[11px] sm:text-[16px] font-black uppercase tracking-[0.06em] leading-none">
+                    UPGRADE TO PREMIUM
+                  </span>
+                </Link>
+              )}
               <div className="mb-6">
                 <ProfileHeading size="md" className="!mt-0 leading-snug tracking-[0.04em]">
                   PREMIUM TELEGRAM GROUPS
@@ -827,20 +842,6 @@ function HomeTab({
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
       <ProfileMyListingsPreview highlight={creatorLiveHighlight} onManageListings={() => onNavigate('listings')} />
-      <ProfileHomeSetupSteps
-        photoUrl={photoUrl}
-        interests={interests}
-        preferredPlatforms={preferredPlatforms}
-        aiInterests={aiInterests}
-        tagOptions={tagOptions}
-        aiOptions={aiOptions}
-        themeMode={themeMode}
-        onNavigate={onNavigate}
-        onAvatarSaved={onAvatarSaved}
-        onAvatarError={onAvatarError}
-        onInterestsSaved={onInterestsSaved}
-        onInterestsError={onInterestsError}
-      />
 
       {setupComplete && (
         <section className="mb-8 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
@@ -859,25 +860,27 @@ function HomeTab({
         </section>
       )}
 
+      {!isPremium && (
+        <Link
+          href="/premium"
+          className="mb-6 w-full rounded-xl px-4 py-3 sm:py-4 text-center transition-all hover:opacity-95 active:scale-[0.995] border block"
+          style={{
+            background: PREMIUM_MEMBER_GOLD.background,
+            color: PREMIUM_MEMBER_GOLD.color,
+            border: PREMIUM_MEMBER_GOLD.border,
+            boxShadow: PREMIUM_MEMBER_GOLD.boxShadow,
+          }}
+        >
+          <span className="text-[11px] sm:text-[16px] font-black uppercase tracking-[0.06em] leading-none">
+            UPGRADE TO PREMIUM
+          </span>
+        </Link>
+      )}
+
       {!isPremium && <PremiumCompareBlock className="mb-10" />}
 
       {!isPremium && (
       <>
-      <Link
-        href="/premium"
-        className="mb-6 w-full rounded-xl px-5 py-4 sm:py-5 text-center transition-all hover:opacity-95 active:scale-[0.995] border block"
-        style={{
-          background: PREMIUM_MEMBER_GOLD.background,
-          color: PREMIUM_MEMBER_GOLD.color,
-          border: PREMIUM_MEMBER_GOLD.border,
-          boxShadow: PREMIUM_MEMBER_GOLD.boxShadow,
-        }}
-      >
-        <span className="text-[16px] sm:text-[20px] font-black uppercase tracking-[0.06em] leading-none">
-          UPGRADE TO PREMIUM
-        </span>
-      </Link>
-
       <section className="mb-10">
         <div className="border-b pb-4 mb-5" style={{ borderColor: tokens.border }}>
           <ProfileHeading size="md" as="h3" className="!mt-0">Recently Added Premium Groups</ProfileHeading>

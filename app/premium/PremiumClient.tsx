@@ -14,35 +14,11 @@ function trackPremiumEvent(event: string, extra?: Record<string, string | null>)
 }
 
 
-const TIMER_KEY = 'erogram_premium_timer_expiry';
-function getOrCreateExpiry(): number {
-  if (typeof window === 'undefined') return Date.now() + 5400_000;
-  const stored = localStorage.getItem(TIMER_KEY);
-  const now = Date.now();
-  if (stored) { const expiry = parseInt(stored, 10); if (expiry > now) return expiry; }
-  const ms = (480 + Math.floor(Math.random() * 48)) * 60_000;
-  const newExpiry = now + ms;
-  localStorage.setItem(TIMER_KEY, String(newExpiry));
-  return newExpiry;
-}
-
-function formatTime(ms: number) {
-  if (ms <= 0) return '00:00:00';
-  const totalSec = Math.floor(ms / 1000);
-  const h = Math.floor(totalSec / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-  const s = totalSec % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
-
 interface VaultTeaserItem { _id: string; name: string; image: string; category: string; country: string; memberCount: number; vaultCategories?: string[]; }
 
 const G = { gold: '#00aff0', goldLight: '#00d4ff', goldDim: 'rgba(255,255,255,0.4)', goldText: 'rgba(255,255,255,0.55)', border: 'rgba(255,255,255,0.08)', borderLight: 'rgba(255,255,255,0.12)', innerBg: 'rgba(255,255,255,0.03)' };
 const PREMIUM_BEIGE = '#ffffff';
 const ORDER_GREEN = '#16a34a';
-const ORDER_GREEN_DARK = '#15803d';
-const CRYPTO_ORANGE = '#f7931a';
-const TELEGRAM_BLUE = '#1877b8';
 const CHECKOUT_BLUE = '#1e3a8a';
 const checkoutBtnClass =
   'shrink-0 px-3.5 py-2.5 rounded-lg font-black text-white border-2 border-[#111] shadow-[3px_3px_0_0_#111] transition-all duration-150 hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_0_#111] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0_0_#111] disabled:opacity-50 flex flex-col items-center';
@@ -175,10 +151,8 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
   const [premiumPlan, setPremiumPlan] = useState<string | null>(null);
   const [premiumSince, setPremiumSince] = useState<string | null>(null);
   const [premiumExpiresAt, setPremiumExpiresAt] = useState<string | null>(null);
-  const [timeLeft, setTimeLeft] = useState<number>(0);
   const [awaitingPayment, setAwaitingPayment] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
-  const [paymentMethodUsed, setPaymentMethodUsed] = useState<'stars' | 'crypto'>('crypto');
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [paymentJustCompleted, setPaymentJustCompleted] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -187,13 +161,11 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isIOSDevice, setIsIOSDevice] = useState(false);
   const [appInstalled, setAppInstalled] = useState(false);
-  const [payMethod, setPayMethod] = useState<'stars' | 'crypto'>('stars');
-  const isStars = payMethod === 'stars';
 
   const planDisplay = useMemo(() => ({
     quarterly: {
       label: '3 Months',
-      stars: formatStars(500),
+      stars: formatStars(750),
       usd: formatUsd(pricing.quarterly.priceUsd),
       listUsd: formatUsd(launchListPrice(pricing.quarterly.priceUsd)),
       perMo: formatPerMonth(pricing.quarterly.priceUsd, 3),
@@ -202,7 +174,7 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
     },
     yearly: {
       label: '1 Year',
-      stars: formatStars(1000),
+      stars: formatStars(1500),
       usd: formatUsd(pricing.yearly.priceUsd),
       listUsd: formatUsd(launchListPrice(pricing.yearly.priceUsd)),
       perMo: formatPerMonth(pricing.yearly.priceUsd, 12),
@@ -247,36 +219,15 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
 
   useEffect(() => {
     if (!tracked.current) { tracked.current = true; trackPremiumEvent('page_view'); }
-    const isCryptoReturn = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('payment') === 'crypto_success';
-    if (isCryptoReturn) {
-      setAwaitingPayment(true);
-      setPaymentMethodUsed('crypto');
-      window.history.replaceState({}, '', '/premium');
-    }
     const token = localStorage.getItem('token');
     if (token) {
       setIsLoggedIn(true); setAuthChecked(true); checkPremiumStatus();
       fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(d => { if (d.isAdmin) setIsAdmin(true); }).catch(() => {});
-      if (isCryptoReturn) {
-        if (pollRef.current) clearInterval(pollRef.current);
-        let a = 0;
-        pollRef.current = setInterval(async () => {
-          a++;
-          const confirmed = await checkPremiumStatus(true);
-          if (confirmed || a >= 120) {
-            clearInterval(pollRef.current!);
-            pollRef.current = null;
-            if (!confirmed) setAwaitingPayment(false);
-          }
-        }, 5000);
-      }
     } else {
       setAuthChecked(true);
     }
     fetch('/api/payments/slots').then(r => r.json()).then(d => { if (d.remaining === 0) setSoldOut(true); }).catch(() => {});
-    const expiry = getOrCreateExpiry(); setTimeLeft(Math.max(0, expiry - Date.now()));
-    const tick = setInterval(() => { const r = Math.max(0, getOrCreateExpiry() - Date.now()); setTimeLeft(r); if (r === 0) localStorage.removeItem(TIMER_KEY); }, 1000);
-    return () => { clearInterval(tick); if (pollRef.current) clearInterval(pollRef.current); };
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [checkPremiumStatus]);
 
   useEffect(() => {
@@ -290,11 +241,10 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
 
   const handlePurchase = async (plan: 'monthly' | 'quarterly' | 'yearly' | 'lifetime') => {
     if (!isLoggedIn) { window.location.href = '/login?redirect=/premium'; return; }
-    trackPremiumEvent('plan_click', { plan, method: payMethod }); setLoading(plan); setError('');
+    trackPremiumEvent('plan_click', { plan, method: 'stars' }); setLoading(plan); setError('');
     try {
       const token = localStorage.getItem('token');
-      const endpoint = payMethod === 'crypto' ? '/api/payments/nowpayments' : '/api/payments/stars';
-      const res = await axios.post(endpoint, { plan }, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await axios.post('/api/payments/stars', { plan }, { headers: { Authorization: `Bearer ${token}` } });
       if (res.data?.url) {
         window.location.assign(res.data.url);
         return;
@@ -314,23 +264,6 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
     <div className="min-h-screen relative">
       <PremiumMosaicBackground items={vaultTeaser} />
       <div className="relative z-10 max-w-[520px] mx-auto px-3 sm:px-4 pt-5 pb-16">
-        {/* ━━━ TIMER — at top of page (logged-in only) ━━━ */}
-        {!isPremium && !soldOut && timeLeft > 0 && !isStars && (
-          <div className="mb-5 rounded-xl p-3" style={{ background: '#F6C744' }}>
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-gray-800">20% OFF ON USDT payment. (Limited Time Offer)</span>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
-                </svg>
-                <span className="text-red-600 text-lg font-black tabular-nums tracking-tight font-mono">{formatTime(timeLeft)}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* ━━━ UNLOCK VAULT + Features ━━━ */}
         <div className="mb-6 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm" style={{ backgroundColor: PREMIUM_BEIGE, border: '1px solid rgba(0,0,0,0.06)' }}>
           <div className="text-center">
@@ -405,23 +338,6 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
           )}
 
         </div>
-
-        {/* ━━━ TIMER — above checkout ━━━ */}
-        {!isPremium && !soldOut && timeLeft > 0 && !isStars && (
-          <div className="mb-4 rounded-xl p-3" style={{ background: '#F6C744' }}>
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-gray-800">20% OFF ON USDT payment. (Limited Time Offer)</span>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
-                </svg>
-                <span className="text-red-600 text-lg font-black tabular-nums tracking-tight font-mono">{formatTime(timeLeft)}</span>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* ━━━ UPGRADE CARD — after Inner Circle ━━━ */}
         <div
@@ -503,60 +419,11 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
               </div>
             )}
 
-            {awaitingPayment && !paymentUrl && !isPremium && (
-              <div className="mb-4 rounded-xl px-4 py-4 text-center space-y-2" style={{ background: 'rgba(247,147,26,0.08)', border: '1px solid rgba(247,147,26,0.25)' }}>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide text-white" style={{ background: CRYPTO_ORANGE }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                  Secure payment via NOWPayments
-                </div>
-                <p className="text-sm font-bold text-gray-900">Confirming your crypto payment...</p>
-                <p className="text-[10px] text-gray-600">This page updates automatically · After payment you will be redirected back to Erogram</p>
-                <div className="flex justify-center pt-1">
-                  <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none" stroke={CRYPTO_ORANGE} strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                </div>
-              </div>
-            )}
-
             {/* Pricing */}
             {!isPremium && !soldOut && !paymentUrl && !awaitingPayment && (
               <div className="rounded-xl p-3 space-y-2.5">
 
-                <div className="grid grid-cols-2 gap-1 p-1 rounded-2xl" style={{ background: '#f3f4f6', border: '1px solid #e5e7eb' }}>
-                  <button
-                    type="button"
-                    onClick={() => setPayMethod('stars')}
-                    className="rounded-xl px-2.5 py-2.5 text-left transition-all"
-                    style={payMethod === 'stars'
-                      ? { background: '#fff', boxShadow: '0 1px 3px rgba(17,24,39,0.12)', border: `1px solid ${TELEGRAM_BLUE}` }
-                      : { background: 'transparent', border: '1px solid transparent' }}
-                  >
-                    <div className="text-[12px] font-black text-gray-900 leading-none">⭐ Telegram Stars</div>
-                    <div className="text-[9px] mt-1 text-gray-500 leading-none">Pay via Telegram</div>
-                    <img src="/assets/stars-card-logos.png" alt="" className="h-5 w-full max-w-[150px] mt-1.5 object-contain object-left" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPayMethod('crypto')}
-                    className="rounded-xl px-2.5 py-2.5 text-left transition-all flex items-center"
-                    style={payMethod === 'crypto'
-                      ? { background: '#fff', boxShadow: '0 1px 3px rgba(17,24,39,0.12)', border: '1px solid #f7931a' }
-                      : { background: 'transparent', border: '1px solid transparent' }}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <img src="https://aislutbot.com/payments/usdt-icon.png" alt="" className="h-5 w-5 shrink-0 object-contain" />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1 flex-wrap">
-                          <div className="text-[12px] font-black text-gray-900 leading-none">₿ Crypto</div>
-                          <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wide bg-red-600 text-white">20% OFF</span>
-                        </div>
-                        <div className="text-[9px] mt-1 text-gray-500 leading-none">USDT, BTC, ETH & more</div>
-                      </div>
-                    </div>
-                  </button>
-                </div>
-                {isStars && (
-                  <p className="text-[10px] text-gray-900 text-center font-semibold">You'll be redirected to Telegram app, to pay using TG Stars using Debit/Credit Card.</p>
-                )}
+                <p className="text-[10px] text-gray-900 text-center font-semibold">You'll be redirected to Telegram app, to pay using TG Stars using Debit/Credit Card.</p>
                 <p className="text-[10px] text-gray-900 text-center font-semibold">One-time payment · No auto-renewal</p>
 
                 <div className="space-y-2">
@@ -567,14 +434,7 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
                         <span className="font-black text-gray-900 text-[13px]">3 Months</span>
                       </div>
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        {isStars ? (
                           <span className="font-black text-[20px] leading-none text-gray-900">{planDisplay.quarterly.stars}</span>
-                        ) : (
-                          <>
-                            <span className="line-through text-[14px] font-bold text-red-500">{planDisplay.quarterly.listUsd}</span>
-                            <span className="font-black text-[20px] leading-none text-gray-900">{planDisplay.quarterly.usd}</span>
-                          </>
-                        )}
                       </div>
                       <p className="text-[9px] mt-1 text-gray-900 font-semibold">One-time payment · No auto-renewal</p>
                     </div>
@@ -589,12 +449,6 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
                       ) : (
                         <>
                           <span className="text-[11px] uppercase tracking-wide">Get 3 Months</span>
-                          {!isStars && (
-                            <>
-                              <span className="text-[9px] font-bold text-white/50 line-through">{planDisplay.quarterly.listPerMo}</span>
-                              <span className="text-[9px] font-bold text-white/70">{planDisplay.quarterly.perMoShort}</span>
-                            </>
-                          )}
                         </>
                       )}
                     </button>
@@ -611,14 +465,7 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
                     <div className="px-3 py-3 flex items-center gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          {isStars ? (
                             <span className="font-black text-[20px] leading-none text-gray-900">{planDisplay.yearly.stars}</span>
-                          ) : (
-                            <>
-                              <span className="line-through text-[14px] font-bold text-red-500">{planDisplay.yearly.listUsd}</span>
-                              <span className="font-black text-[20px] leading-none text-gray-900">{planDisplay.yearly.usd}</span>
-                            </>
-                          )}
                         </div>
                         <p className="text-[9px] mt-1 text-gray-900 font-semibold">One-time payment · No auto-renewal</p>
                       </div>
@@ -633,27 +480,15 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
                         ) : (
                           <>
                           <span className="text-[11px] uppercase tracking-wide">Get Yearly</span>
-                          {!isStars && (
-                            <>
-                              <span className="text-[9px] font-bold text-white/50 line-through">{planDisplay.yearly.listPerMo}</span>
-                              <span className="text-[9px] font-bold text-white/70">{planDisplay.yearly.perMoShort}</span>
-                            </>
-                          )}
                           </>
                         )}
                       </button>
                     </div>
                   </div>
                 </div>
-                {payMethod === 'crypto' ? (
-                <div className="flex justify-center pt-1">
-                  <img src="https://aislutbot.com/payments/nowpayments-logo.png" alt="" className="h-8 w-auto max-w-[220px] object-contain" />
-                </div>
-                ) : (
                 <div className="flex justify-center pt-1">
                   <img src="/assets/stars-card-logos.png" alt="" className="h-9 w-auto max-w-full object-contain" />
                 </div>
-                )}
               </div>
             )}
 
@@ -661,7 +496,6 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
               const planKey = (selectedPlan || 'quarterly') as ValidPlan;
               const p = planDisplay[planKey] || planDisplay.quarterly;
               const starsAmount = pricing[planKey]?.starsAmount;
-              const isCrypto = paymentMethodUsed === 'crypto';
               const payBtnBg = ORDER_GREEN;
               const payBtnShadow = '0 6px 18px rgba(22,163,74,0.4)';
               return (
@@ -676,13 +510,6 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
                 </button>
 
                 <div className="rounded-xl p-4 space-y-3" style={{ backgroundColor: 'rgba(255,255,255,0.45)', border: '1px solid rgba(0,0,0,0.06)' }}>
-                  {isCrypto && (
-                    <div className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide text-white" style={{ background: CRYPTO_ORANGE }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                      Secure payment via NOWPayments
-                    </div>
-                  )}
-
                   <p className="text-[11px] font-bold text-gray-900 uppercase tracking-wider text-center">Order Summary</p>
 
                   <div className="rounded-lg px-4 py-3" style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}>
@@ -690,15 +517,11 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
                       <span className="font-black text-gray-900 text-[14px]">Erogram VIP — {p.label}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      {isCrypto ? (
-                        <span className="text-gray-900 text-[12px] font-bold">{p.usd}</span>
-                      ) : (
                         <div className="flex items-center gap-1 flex-wrap">
                           <span className="font-black text-[14px] leading-none text-gray-900">{starsAmount?.toLocaleString('en-US')}</span>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="#111827"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
                           <span className="font-black text-[14px] leading-none text-gray-900 ml-1">{p.usd}</span>
                         </div>
-                      )}
                       <span className="font-bold text-gray-900 text-[13px]">{p.perMo === 'forever' ? 'Pay once, use forever' : p.perMo + ' only'}</span>
                     </div>
                   </div>
@@ -713,13 +536,11 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
                     </svg>
-                    {isCrypto ? `PAY ${p.usd}` : `PAY ${starsAmount?.toLocaleString('en-US')} ★ ${p.usd}`}
+                    {`PAY ${starsAmount?.toLocaleString('en-US')} ★ ${p.usd}`}
                   </a>
 
                   <p className="text-[10px] text-gray-900 text-center">
-                    {isCrypto
-                      ? 'Complete payment on NOWPayments · This page updates automatically · After payment you will be redirected back to Erogram'
-                      : 'Complete payment in Telegram · This page updates automatically · After payment you will be redirected back to Erogram'}
+                    Complete payment in Telegram · This page updates automatically · After payment you will be redirected back to Erogram
                   </p>
                   <p className="text-[10px] text-gray-900 text-center">
                     Need help? Telegram: <a href="https://t.me/erogramDOTpro" target="_blank" rel="noopener noreferrer" className="font-bold underline">@erogramDOTpro</a> · <a href="mailto:support@erogram.biz" className="font-bold underline">support@erogram.biz</a>
@@ -731,7 +552,7 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
 
             {!isPremium && (
             <div className="mt-4 space-y-0.5">
-              <p className="text-center text-[9px] text-gray-900">{isStars ? 'Complete payment in Telegram · This page updates automatically · After payment you will be redirected back to Erogram' : 'Complete payment on NOWPayments · This page updates automatically · After payment you will be redirected back to Erogram'}</p>
+              <p className="text-center text-[9px] text-gray-900">Complete payment in Telegram · This page updates automatically · After payment you will be redirected back to Erogram</p>
               <p className="text-center text-[9px] text-gray-900">
                 Need help? Telegram: <a href="https://t.me/erogramDOTpro" target="_blank" rel="noopener noreferrer" className="font-bold underline">@erogramDOTpro</a> · <a href="mailto:support@erogram.biz" className="font-bold underline">support@erogram.biz</a>
               </p>

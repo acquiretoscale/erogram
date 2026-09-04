@@ -26,8 +26,8 @@ export function fullPriceUsd(saleUsd: number): number {
 }
 
 export const STARS_CHECKOUT_AMOUNT = {
-  quarterly: 500,
-  yearly: 1000,
+  quarterly: 750,
+  yearly: 1500,
 } as const;
 
 /** Checkout USD only. Does not change days or anyone already Premium. */
@@ -39,8 +39,8 @@ const CHECKOUT_PRICE_USD = {
 
 const DEFAULTS: PremiumPricing = {
   monthly: { priceUsd: 8.99, starsAmount: 600, days: 30, label: 'Erogram VIP (1 Month)', description: '30-day unlimited access — Secret Vault, bookmarks & more' },
-  quarterly: { priceUsd: CHECKOUT_PRICE_USD.quarterly, starsAmount: 660, days: 90, label: 'Erogram VIP (3 Months)', description: '3-month unlimited access — Secret Vault, bookmarks & more' },
-  yearly: { priceUsd: CHECKOUT_PRICE_USD.yearly, starsAmount: null, days: 365, label: 'Erogram VIP (1 Year)', description: '1-year unlimited access — Secret Vault, bookmarks & more' },
+  quarterly: { priceUsd: CHECKOUT_PRICE_USD.quarterly, starsAmount: 750, days: 90, label: 'Erogram VIP (3 Months)', description: '3-month unlimited access — Secret Vault, bookmarks & more' },
+  yearly: { priceUsd: CHECKOUT_PRICE_USD.yearly, starsAmount: 1500, days: 365, label: 'Erogram VIP (1 Year)', description: '1-year unlimited access — Secret Vault, bookmarks & more' },
   lifetime: { priceUsd: CHECKOUT_PRICE_USD.lifetime, starsAmount: null, days: 36500, label: 'Erogram VIP (Lifetime)', description: 'Lifetime unlimited access — Secret Vault, bookmarks & more' },
   offerBadge: '80% OFF',
   offerText: 'Launch price ends soon',
