@@ -11,7 +11,7 @@ import ToolDetailClient from '@/app/ainsfw/[slug]/ToolDetailClient';
 import { getFullReview, getVerifiedSlugs, isPaidClientTool } from '@/app/ainsfw/fullReviews';
 import { getListingBlocks } from '@/app/ainsfw/listingBlocks';
 import { getToolStats, getAllToolStats, getApprovedSubmissions } from '@/lib/actions/ainsfw';
-import { getFeaturedHubSlugs } from '@/lib/ainsfw/featuredHub';
+import { resolveFeaturedHubSlugs } from '@/lib/ainsfw/featuredHub';
 import { pickRecentCategoryTools } from '@/app/ainsfw/recentCategoryTools';
 import { getAuthorBySlug } from '@/lib/actions/authors';
 import { getAinsfwCategoryMeta, getAinsfwMetaDescription, getAinsfwMetaTitle } from '@/lib/ainsfw/metaDescriptions';
@@ -177,7 +177,7 @@ export default async function AINsfwToolPage({ params }: PageProps) {
     );
     const recentStats = await getAllToolStats(recentTools.map((t) => t.slug));
     const verifiedSlugs = getVerifiedSlugs(paidSubmissions.map((t) => t.slug));
-    const featuredHubSlugs = getFeaturedHubSlugs();
+    const featuredHubSlugs = await resolveFeaturedHubSlugs();
     const featuredCatalogTools = [
       ...AI_NSFW_TOOLS,
       ...paidSubmissions.filter((t) => !staticSlugs.has(t.slug)),
@@ -227,7 +227,7 @@ export default async function AINsfwToolPage({ params }: PageProps) {
     getBlogArticlesByCategory('ai-nsfw', 4),
   ]);
 
-  const featuredHubSlugs = getFeaturedHubSlugs();
+  const featuredHubSlugs = await resolveFeaturedHubSlugs();
   const featuredToolsBySlug = new Map([
     ...AI_NSFW_TOOLS.map((t) => [t.slug, t] as const),
     ...paidSubmissions.map((t) => [t.slug, t] as const),

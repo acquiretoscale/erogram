@@ -217,7 +217,7 @@ export default async function Home() {
     getApprovedSubmissions(staticSlugs),
   ]);
   const newestAINsfw = pickRecentTools(
-    new Map(),
+    new Map(AI_NSFW_TOOLS.map((t) => [t.slug, t])),
     paidSubmissions as Array<(typeof paidSubmissions)[number] & { createdAt?: string }>,
     { limit: RECENT_POOL_LIMIT },
   );

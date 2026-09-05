@@ -12,7 +12,7 @@ import { getActiveCampaigns, getPlacementFeedCampaigns, getActiveFeedCampaigns }
 import { getAuthorBySlug } from '@/lib/actions/authors';
 import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import { getVerifiedSlugs } from '@/app/ainsfw/fullReviews';
-import { getFeaturedHubSlugs } from '@/lib/ainsfw/featuredHub';
+import { resolveFeaturedHubSlugs } from '@/lib/ainsfw/featuredHub';
 
 const BASE_URL = CANONICAL_BASE;
 
@@ -73,7 +73,7 @@ export async function AINsfwPageView({ page = 1 }: { page?: number }) {
         .map((t) => mergeToolContent(t, allStats[t.slug]))
     : [];
   const featuredSlugs = featuredInfos.map(f => f.slug);
-  const featuredHubSlugs = getFeaturedHubSlugs();
+  const featuredHubSlugs = await resolveFeaturedHubSlugs();
   const verifiedSlugs = getVerifiedSlugs(paidSubmissions.map((t) => t.slug));
   const featuredCampaignMap: Record<string, string> = {};
   for (const f of featuredInfos) {

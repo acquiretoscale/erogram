@@ -103,12 +103,41 @@ function ProfileContent() {
   const [viewBarOpen, setViewBarOpen] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [emailVerifiedSuccess, setEmailVerifiedSuccess] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isIOSDevice, setIsIOSDevice] = useState(false);
+  const [appInstalled, setAppInstalled] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const [headerHeight, setHeaderHeight] = useState(82);
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setIsIOSDevice(/iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as Window & { MSStream?: unknown }).MSStream);
+    if (window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone) {
+      setAppInstalled(true);
+    }
+    const onPrompt = (e: Event) => { e.preventDefault(); setDeferredPrompt(e); };
+    const onInstalled = () => setAppInstalled(true);
+    window.addEventListener('beforeinstallprompt', onPrompt as EventListener);
+    window.addEventListener('appinstalled', onInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onPrompt as EventListener);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
+  }, []);
+
+  const installApp = () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((r: any) => { if (r.outcome === 'accepted') setAppInstalled(true); });
+      setDeferredPrompt(null);
+    } else if (isIOSDevice) {
+      alert('Tap the Share button (box with arrow) at the bottom of Safari, then tap "Add to Home Screen".');
+    }
+  };
 
   useEffect(() => {
     const el = headerRef.current;
@@ -265,7 +294,7 @@ function ProfileContent() {
     isAdmin, viewMode, viewBarOpen, deletingAccount, userData, tagOptions, aiOptions, activeTab, menuCollapsed, headerHeight,
     headerRef, effectivePremium, effectiveAdmin, selectTab, setMenuCollapsed, setViewBarOpen, setViewMode, handleLogout, handleDeleteAccount,
     getRemainingDays, toast, router, setFirstName, setBio, setPhotoUrl, setUserData, currentUserId,
-    emailVerifiedSuccess, handleDismissEmailVerifiedSuccess,
+    emailVerifiedSuccess, handleDismissEmailVerifiedSuccess, installApp, appInstalled,
   }} />;
 }
 
@@ -277,7 +306,7 @@ function ProfileThemedShell(props: any) {
     isAdmin, viewMode, viewBarOpen, deletingAccount, userData, tagOptions, aiOptions, activeTab, menuCollapsed, headerHeight,
     headerRef, effectivePremium, effectiveAdmin, selectTab, setMenuCollapsed, setViewBarOpen, setViewMode, handleLogout, handleDeleteAccount,
     getRemainingDays, toast, router, setFirstName, setBio, setPhotoUrl, setUserData, currentUserId,
-    emailVerifiedSuccess, handleDismissEmailVerifiedSuccess,
+    emailVerifiedSuccess, handleDismissEmailVerifiedSuccess, installApp, appInstalled,
   } = props;
   const creatorLiveHighlight = searchParams.get('creatorLive') === '1';
 
@@ -546,6 +575,26 @@ function ProfileThemedShell(props: any) {
             );
           })}
         </nav>
+        {!appInstalled && (
+          <div className="shrink-0 border-t px-1 py-1.5 sm:px-2 sm:py-2" style={{ borderColor: tokens.border }}>
+            <button
+              type="button"
+              onClick={installApp}
+              title={menuCollapsed ? 'Download App' : undefined}
+              className={`flex w-full items-center rounded-md transition-all duration-150 ${
+                menuCollapsed ? 'h-8 justify-center px-0 sm:h-9' : 'h-9 gap-2.5 px-3'
+              }`}
+              style={{ color: tokens.text, backgroundColor: tokens.hover }}
+            >
+              <span className="shrink-0 scale-90 sm:scale-100" aria-hidden>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              </span>
+              {!menuCollapsed && (
+                <span className="text-[12px] font-bold tracking-[0.06em] uppercase truncate">Download App</span>
+              )}
+            </button>
+          </div>
+        )}
       </aside>
 
       <main

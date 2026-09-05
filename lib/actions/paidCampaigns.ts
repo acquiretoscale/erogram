@@ -1,7 +1,7 @@
 'use server';
 
 import connectDB from '@/lib/db/mongodb';
-import { Group, Bot, AINsfwSubmission, User } from '@/lib/models';
+import { Group, Bot, AINsfwSubmission, User, PremiumEvent } from '@/lib/models';
 import { getR2PublicUrl } from '@/lib/r2';
 import jwt from 'jsonwebtoken';
 
@@ -401,4 +401,102 @@ export async function convertBoostToPlacedCampaign(
   });
 
   return { ok: true, campaignId: String(created._id), existed: false };
+}
+
+const BOOST_INVOICE_EVENTS = [
+  'submission_invoice_created',
+  'submission_crypto_invoice_created',
+  'submission_invoice_error',
+  'submission_crypto_invoice_error',
+  'submission_pre_checkout',
+  'submission_payment_success',
+] as const;
+
+export type BoostInvoiceLog = {
+  _id: string;
+  event: string;
+  entityType: string | null;
+  listingType: string | null;
+  username: string | null;
+  paymentMethod: string | null;
+  createdAt: string;
+};
+
+export type BoostInvoiceStats = {
+  lifetime: { invoices: number; confirms: number; sales: number; errors: number };
+  last30: { invoices: number; confirms: number; sales: number };
+  groups: { invoices: number; sales: number };
+  bots: { invoices: number; sales: number };
+  recent: BoostInvoiceLog[];
+};
+
+function countBy(rows: { _id: string; n: number }[], keys: string[]) {
+  return rows.filter((r) => keys.includes(r._id)).reduce((s, r) => s + r.n, 0);
+}
+
+export async function getBoostInvoiceStats(token: string): Promise<{ stats?: BoostInvoiceStats; error?: string }> {
+  if (!verifyAdmin(token)) return { error: 'Unauthorized' };
+  await connectDB();
+
+  const since = new Date();
+  since.setDate(since.getDate() - 30);
+  const invoiceEvents = ['submission_invoice_created', 'submission_crypto_invoice_created'];
+  const errorEvents = ['submission_invoice_error', 'submission_crypto_invoice_error'];
+
+  const [lifetime, last30, byEntity, recent] = await Promise.all([
+    PremiumEvent.aggregate([
+      { $match: { event: { $in: [...BOOST_INVOICE_EVENTS] } } },
+      { $group: { _id: '$event', n: { $sum: 1 } } },
+    ]),
+    PremiumEvent.aggregate([
+      { $match: { event: { $in: [...BOOST_INVOICE_EVENTS] }, createdAt: { $gte: since } } },
+      { $group: { _id: '$event', n: { $sum: 1 } } },
+    ]),
+    PremiumEvent.aggregate([
+      { $match: { event: { $in: [...invoiceEvents, 'submission_payment_success'] }, entityType: { $in: ['group', 'bot'] } } },
+      { $group: { _id: { event: '$event', entityType: '$entityType' }, n: { $sum: 1 } } },
+    ]),
+    PremiumEvent.find({ event: { $in: [...BOOST_INVOICE_EVENTS] } })
+      .sort({ createdAt: -1 })
+      .limit(30)
+      .select('event entityType listingType username paymentMethod createdAt')
+      .lean(),
+  ]);
+
+  const pick = (entity: 'group' | 'bot', event: string) =>
+    (byEntity as { _id: { event: string; entityType: string }; n: number }[])
+      .find((r) => r._id.event === event && r._id.entityType === entity)?.n || 0;
+
+  return {
+    stats: {
+      lifetime: {
+        invoices: countBy(lifetime, invoiceEvents),
+        confirms: countBy(lifetime, ['submission_pre_checkout']),
+        sales: countBy(lifetime, ['submission_payment_success']),
+        errors: countBy(lifetime, errorEvents),
+      },
+      last30: {
+        invoices: countBy(last30, invoiceEvents),
+        confirms: countBy(last30, ['submission_pre_checkout']),
+        sales: countBy(last30, ['submission_payment_success']),
+      },
+      groups: {
+        invoices: pick('group', 'submission_invoice_created') + pick('group', 'submission_crypto_invoice_created'),
+        sales: pick('group', 'submission_payment_success'),
+      },
+      bots: {
+        invoices: pick('bot', 'submission_invoice_created') + pick('bot', 'submission_crypto_invoice_created'),
+        sales: pick('bot', 'submission_payment_success'),
+      },
+      recent: (recent as any[]).map((e) => ({
+        _id: String(e._id),
+        event: e.event,
+        entityType: e.entityType || null,
+        listingType: e.listingType || null,
+        username: e.username || null,
+        paymentMethod: e.paymentMethod || null,
+        createdAt: e.createdAt ? new Date(e.createdAt).toISOString() : '',
+      })),
+    },
+  };
 }

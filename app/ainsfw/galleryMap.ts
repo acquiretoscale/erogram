@@ -236,6 +236,14 @@ export const AINSFW_GALLERY: Record<string, string[]> = {
     "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/joi-ai-nude-generator-5.webp",
     "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/joi-ai-nude-generator-6.webp",
   ],
+  "aislutbot-ai-nude-generator": [
+    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/aislutbot-ai-nude-generator-combined-01.webp",
+    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/aislutbot-ai-nude-generator-combined-02.webp",
+    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/aislutbot-ai-nude-generator-combined-03.webp",
+    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/aislutbot-ai-nude-generator-combined-04.webp",
+    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/aislutbot-ai-nude-generator-combined-05.webp",
+    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/aislutbot-ai-nude-generator-combined-06.webp",
+  ],
   "undressing-ai-undress-ai": [
     "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/undressing-ai-undress-ai-1.webp",
     "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/undressing-ai-undress-ai-2.webp",

@@ -51,6 +51,7 @@ function docToStats(doc: any, admin = false): ToolStatsData {
     campaignId: doc.campaignId?.toString() || undefined,
     descriptionOverride: doc.descriptionOverride || '',
     imageOverride: doc.imageOverride || '',
+    tryNowUrlOverride: doc.tryNowUrlOverride || '',
     customGallery: doc.customGallery || [],
     hiddenGalleryUrls: doc.hiddenGalleryUrls || [],
     galleryManaged: !!doc.galleryManaged || (doc.hiddenGalleryUrls?.length ?? 0) > 0 || (doc.customGallery?.length ?? 0) > 0,
@@ -66,6 +67,7 @@ export interface ToolStatsData {
   campaignId?: string;
   descriptionOverride?: string;
   imageOverride?: string;
+  tryNowUrlOverride?: string;
   customGallery?: string[];
   hiddenGalleryUrls?: string[];
   galleryManaged?: boolean;
@@ -164,13 +166,29 @@ export async function adminSetToolVotes(
   slug: string,
   upvotes: number,
   downvotes: number,
+  tryNowUrl?: string,
 ): Promise<{ upvotes: number; downvotes: number }> {
   await connectDB();
+  const set: Record<string, unknown> = {
+    upvotes: Math.max(0, upvotes),
+    downvotes: Math.max(0, downvotes),
+  };
+  if (tryNowUrl !== undefined) {
+    const url = tryNowUrl.trim();
+    if (!url.startsWith('http')) throw new Error('Enter a valid URL starting with https://');
+    set.tryNowUrlOverride = url;
+  }
   const doc = await AINsfwToolStats.findOneAndUpdate(
     { slug },
-    { $set: { upvotes: Math.max(0, upvotes), downvotes: Math.max(0, downvotes) } },
+    { $set: set },
     { upsert: true, new: true },
   ).lean() as any;
+  if (typeof set.tryNowUrlOverride === 'string') {
+    await AINsfwSubmission.updateMany(
+      { slug: slugQuery(slug) },
+      { $set: { tryNowUrl: set.tryNowUrlOverride } },
+    );
+  }
   return { upvotes: doc.upvotes || 0, downvotes: doc.downvotes || 0 };
 }
 
@@ -417,6 +435,7 @@ export interface AdminSubmission {
   description: string;
   image: string;
   websiteUrl: string;
+  tryNowUrl: string;
   contactEmail: string;
   contactTelegram: string;
   status: string;
@@ -439,6 +458,7 @@ export async function getAdminSubmissions(): Promise<AdminSubmission[]> {
     _id: d._id.toString(),
     name: d.name, slug: d.slug, category: d.category, vendor: d.vendor || '',
     description: d.description, image: d.image || '', websiteUrl: d.websiteUrl || '',
+    tryNowUrl: d.tryNowUrl || d.websiteUrl || '',
     contactEmail: d.contactEmail || '', contactTelegram: d.contactTelegram || '', status: d.status, submissionTier: d.submissionTier || 'basic',
     paymentStatus: d.paymentStatus || 'none', featured: !!d.featured,
     featuredExpiresAt: d.featuredExpiresAt ? new Date(d.featuredExpiresAt).toISOString() : null,
@@ -452,13 +472,18 @@ export async function getAdminSubmissions(): Promise<AdminSubmission[]> {
 
 export async function adminUpdateSubmission(
   id: string,
-  updates: { description?: string; status?: string; featured?: boolean; featuredDays?: number; unlisted?: boolean },
+  updates: { description?: string; status?: string; featured?: boolean; featuredDays?: number; unlisted?: boolean; tryNowUrl?: string },
 ): Promise<AdminSubmission | null> {
   await connectDB();
   const set: Record<string, any> = {};
   if (updates.description !== undefined) set.description = updates.description;
   if (updates.status !== undefined) set.status = updates.status;
   if (updates.unlisted !== undefined) set.unlisted = updates.unlisted;
+  if (updates.tryNowUrl !== undefined) {
+    const url = updates.tryNowUrl.trim();
+    if (!url.startsWith('http')) throw new Error('Enter a valid URL starting with https://');
+    set.tryNowUrl = url;
+  }
   if (updates.featured !== undefined) {
     set.featured = updates.featured;
     if (updates.featured && updates.featuredDays) {
@@ -471,10 +496,20 @@ export async function adminUpdateSubmission(
   }
   const doc = await AINsfwSubmission.findByIdAndUpdate(id, { $set: set }, { new: true }).lean() as any;
   if (!doc) return null;
+  if (set.tryNowUrl) {
+    const slug = doc.slug as string;
+    const existing = await AINsfwToolStats.findOne({ slug: slugQuery(slug) }).select('slug').lean() as { slug?: string } | null;
+    await AINsfwToolStats.findOneAndUpdate(
+      { slug: existing?.slug || slug },
+      { $set: { tryNowUrlOverride: set.tryNowUrl } },
+      { upsert: true },
+    );
+  }
   return {
     _id: doc._id.toString(),
     name: doc.name, slug: doc.slug, category: doc.category, vendor: doc.vendor || '',
     description: doc.description, image: doc.image || '', websiteUrl: doc.websiteUrl || '',
+    tryNowUrl: doc.tryNowUrl || doc.websiteUrl || '',
     contactEmail: doc.contactEmail || '', contactTelegram: doc.contactTelegram || '', status: doc.status, submissionTier: doc.submissionTier || 'basic',
     paymentStatus: doc.paymentStatus || 'none', featured: !!doc.featured,
     featuredExpiresAt: doc.featuredExpiresAt ? new Date(doc.featuredExpiresAt).toISOString() : null,

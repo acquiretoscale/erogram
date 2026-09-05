@@ -28,6 +28,7 @@ export default function AINsfwTab() {
   const [editSlug, setEditSlug] = useState<string | null>(null);
   const [editUp, setEditUp] = useState(0);
   const [editDown, setEditDown] = useState(0);
+  const [editUrl, setEditUrl] = useState('');
   const [toast, setToast] = useState('');
 
   // Submissions state
@@ -35,6 +36,7 @@ export default function AINsfwTab() {
   const [subsLoading, setSubsLoading] = useState(true);
   const [editSub, setEditSub] = useState<AdminSubmission | null>(null);
   const [editSubDesc, setEditSubDesc] = useState('');
+  const [editSubUrl, setEditSubUrl] = useState('');
   const [editSubFeatured, setEditSubFeatured] = useState(false);
   const [editSubFeaturedDays, setEditSubFeaturedDays] = useState(30);
   const [editSubStatus, setEditSubStatus] = useState('pending');
@@ -73,7 +75,7 @@ export default function AINsfwTab() {
     .map((s) => ({
       slug: s.slug, name: s.name, category: s.category as AINsfwTool['category'],
       vendor: s.vendor || s.name, description: s.description, image: s.image || '/assets/image.jpg',
-      tags: [], subscription: '', payment: [], tryNowUrl: s.websiteUrl, sourceUrl: s.websiteUrl,
+      tags: [], subscription: '', payment: [], tryNowUrl: s.tryNowUrl || s.websiteUrl, sourceUrl: s.websiteUrl,
     }));
   const allAdminTools = [...AI_NSFW_TOOLS, ...paidSubTools];
 
@@ -99,6 +101,7 @@ export default function AINsfwTab() {
   const openEditSub = (sub: AdminSubmission) => {
     setEditSub(sub);
     setEditSubDesc(sub.description);
+    setEditSubUrl(sub.tryNowUrl || sub.websiteUrl || '');
     setEditSubFeatured(sub.featured);
     setEditSubFeaturedDays(30);
     setEditSubStatus(sub.status);
@@ -111,6 +114,7 @@ export default function AINsfwTab() {
     try {
       const result = await adminUpdateSubmission(editSub._id, {
         description: editSubDesc,
+        tryNowUrl: editSubUrl,
         status: editSubStatus,
         featured: editSubFeatured,
         featuredDays: editSubFeaturedDays,
@@ -159,19 +163,25 @@ export default function AINsfwTab() {
     setEditSlug(tool.slug);
     setEditUp(s.upvotes);
     setEditDown(s.downvotes);
+    setEditUrl((s.tryNowUrlOverride || tool.tryNowUrl || '').trim());
   };
 
   const saveVotes = async () => {
     if (!editSlug) return;
     setSaving(editSlug);
     try {
-      const result = await adminSetToolVotes(editSlug, editUp, editDown);
+      const result = await adminSetToolVotes(editSlug, editUp, editDown, editUrl);
       setStats((prev) => ({
         ...prev,
-        [editSlug]: { ...getStats(editSlug), upvotes: result.upvotes, downvotes: result.downvotes },
+        [editSlug]: {
+          ...getStats(editSlug),
+          upvotes: result.upvotes,
+          downvotes: result.downvotes,
+          tryNowUrlOverride: editUrl.trim(),
+        },
       }));
       setEditSlug(null);
-      showToast('Votes updated');
+      showToast('Saved');
     } catch {
       showToast('Failed to save');
     } finally {
@@ -395,7 +405,7 @@ export default function AINsfwTab() {
                         onClick={() => openEdit(tool)}
                         className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-500/20 transition-all"
                       >
-                        Edit Votes
+                        Edit
                       </button>
                     </td>
                   </tr>
@@ -565,6 +575,11 @@ export default function AINsfwTab() {
               </div>
 
               <div>
+                <label className="text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-1.5 block">Link</label>
+                <input type="url" value={editSubUrl} onChange={(e) => setEditSubUrl(e.target.value)} placeholder="https://" className="w-full px-3 py-2.5 rounded-lg bg-white/[0.06] border border-white/[0.10] text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+              </div>
+
+              <div>
                 <label className="text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-1.5 block">Description</label>
                 <textarea value={editSubDesc} onChange={(e) => setEditSubDesc(e.target.value)} rows={5} className="w-full px-3 py-2.5 rounded-lg bg-white/[0.06] border border-white/[0.10] text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none" />
               </div>
@@ -592,7 +607,7 @@ export default function AINsfwTab() {
                 <p>Tier: <span className="text-white/60 font-semibold">{editSub.submissionTier}</span> · Payment: <span className="text-white/60 font-semibold">{editSub.paymentStatus}</span></p>
                 <p>Email: <span className="text-white/60">{editSub.contactEmail || '—'}</span></p>
                 <p>Telegram: <span className="text-white/60">{editSub.contactTelegram || '—'}</span></p>
-                <p>Website: <a href={editSub.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">{editSub.websiteUrl}</a></p>
+                <p>Website: <a href={editSubUrl || editSub.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">{editSubUrl || editSub.websiteUrl}</a></p>
               </div>
             </div>
 
@@ -607,15 +622,25 @@ export default function AINsfwTab() {
       {/* Edit modal */}
       {editSlug && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={() => setEditSlug(null)}>
-          <div className="bg-[#141414] rounded-2xl border border-white/[0.10] shadow-2xl p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[#141414] rounded-2xl border border-white/[0.10] shadow-2xl p-6 w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-white font-bold text-base mb-1">
-              Edit Votes
+              Edit
             </h3>
             <p className="text-white/40 text-sm mb-5">
               {allAdminTools.find((t) => t.slug === editSlug)?.name}
             </p>
 
             <div className="space-y-4">
+              <div>
+                <label className="text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-1.5 block">Link</label>
+                <input
+                  type="url"
+                  value={editUrl}
+                  onChange={(e) => setEditUrl(e.target.value)}
+                  placeholder="https://"
+                  className="w-full px-3 py-2.5 rounded-lg bg-white/[0.06] border border-white/[0.10] text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                />
+              </div>
               <div>
                 <label className="text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-1.5 block">Upvotes</label>
                 <input

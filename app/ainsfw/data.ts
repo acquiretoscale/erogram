@@ -17,6 +17,7 @@ const LEGACY_TOOL_SLUGS: Record<string, string> = {
   'dreamyporn-ai-ai-porn-generator': 'undress-ai-dreamyporn-ai',
   'xmodelsai-ai-companion': 'ai-girlfriend-xmodelsai',
   'porncreate-ai-porn-generator': 'porncreate-undress-ai',
+  'ai-slutbot-ai-porn-generator': 'aislutbot-ai-nude-generator',
 };
 
 export function getLegacyToolSlugRedirect(slug: string): string | null {
@@ -2120,6 +2121,19 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
     payment: ['Credit Cards', 'Crypto'],
     tryNowUrl: 'https://rprp.ai',
     sourceUrl: 'https://rprp.ai',
+  },
+  {
+    slug: 'aislutbot-ai-nude-generator',
+    name: 'AI SLUTBOT',
+    category: 'Undress AI',
+    vendor: 'Aislutbot.com',
+    description: 'AI SLUTBOT (also known as SLUTBOT AI) is an AI nude generator that turns a single uploaded photo into hyper-realistic AI generated nudes and short adult video clips. The tool is built around one idea: realistic output with almost no friction. You upload a photo, pick your settings, and the result comes back in seconds. There is no editing timeline, no brushwork, and no steep learning curve. What sets it apart from most undress tools is the quality of its AI nude generation. It runs on a well-trained LLM tuned specifically for human anatomy, lighting, and skin, so the results look convincing rather than plasticky.',
+    image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/aislutbot-ai-nude-generator-logo.webp',
+    tags: ['ai nude generator', 'aislutbot', 'ai porn generator', 'ai nsfw image generator', 'ai video generator', 'ai undress', 'ai face swap', 'undress ai', 'nude ai'],
+    subscription: 'Paid',
+    payment: ['Credit Cards', 'Debit Cards', 'Crypto', 'Telegram Stars'],
+    tryNowUrl: 'https://aislutbot.com',
+    sourceUrl: 'https://aislutbot.com',
   },
 ];
 

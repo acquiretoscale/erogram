@@ -3,11 +3,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   getPaidCampaigns,
+  getBoostInvoiceStats,
   setCampaignStatus,
   markCampaignPaid,
   searchUsersForAssign,
   assignCampaignOwner,
   type PaidCampaignRow,
+  type BoostInvoiceStats,
 } from '@/lib/actions/paidCampaigns';
 
 const TYPE_LABEL: Record<string, string> = { group: 'Group', bot: 'Bot', ainsfw: 'AI NSFW' };
@@ -29,6 +31,7 @@ function StatusPill({ status }: { status: string }) {
 
 export default function PaidCampaignsTab() {
   const [rows, setRows] = useState<PaidCampaignRow[]>([]);
+  const [invoiceStats, setInvoiceStats] = useState<BoostInvoiceStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
   const [filter, setFilter] = useState<'all' | 'group' | 'bot' | 'ainsfw'>('all');
@@ -45,9 +48,13 @@ export default function PaidCampaignsTab() {
 
   const load = async () => {
     setLoading(true);
-    const res = await getPaidCampaigns(token());
+    const [res, inv] = await Promise.all([
+      getPaidCampaigns(token()),
+      getBoostInvoiceStats(token()),
+    ]);
     if (res.rows) setRows(res.rows);
     else if (res.error) flash(res.error);
+    if (inv.stats) setInvoiceStats(inv.stats);
     setLoading(false);
   };
 
@@ -127,6 +134,53 @@ export default function PaidCampaignsTab() {
             </div>
           ))}
         </div>
+
+        {invoiceStats && (
+          <div className="mb-6">
+            <div className="text-white/40 text-[11px] font-bold uppercase tracking-wide mb-2">Boost / promo invoices</div>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
+              {[
+                { label: 'Invoices lifetime', value: invoiceStats.lifetime.invoices },
+                { label: 'Confirms', value: invoiceStats.lifetime.confirms },
+                { label: 'Sales', value: invoiceStats.lifetime.sales },
+                { label: 'Group invoices', value: invoiceStats.groups.invoices },
+                { label: 'Bot invoices', value: invoiceStats.bots.invoices },
+              ].map((s) => (
+                <div key={s.label} className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4">
+                  <div className="text-white/40 text-[11px] font-bold uppercase tracking-wide">{s.label}</div>
+                  <div className="text-xl font-black mt-1">{s.value}</div>
+                </div>
+              ))}
+            </div>
+            {invoiceStats.recent.length > 0 && (
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl overflow-hidden">
+                <div className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-white/40 border-b border-white/[0.06]">Recent invoice logs</div>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-white/40 text-[11px] uppercase tracking-wide border-b border-white/[0.06]">
+                      <th className="px-4 py-2 font-bold">When</th>
+                      <th className="px-4 py-2 font-bold">Event</th>
+                      <th className="px-4 py-2 font-bold">Listing</th>
+                      <th className="px-4 py-2 font-bold">Type</th>
+                      <th className="px-4 py-2 font-bold">Product</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.04]">
+                    {invoiceStats.recent.map((e) => (
+                      <tr key={e._id}>
+                        <td className="px-4 py-2 text-white/50 text-[12px]">{e.createdAt ? new Date(e.createdAt).toLocaleString() : '—'}</td>
+                        <td className="px-4 py-2 text-[12px] font-bold">{e.event.replace('submission_', '').replace(/_/g, ' ')}</td>
+                        <td className="px-4 py-2 truncate max-w-[180px]">{e.username || '—'}</td>
+                        <td className="px-4 py-2 text-white/60">{e.entityType || '—'}</td>
+                        <td className="px-4 py-2 text-white/60">{e.listingType || e.paymentMethod || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Filters */}
         <div className="flex gap-2 mb-4">

@@ -720,6 +720,12 @@ export const premiumEventSchema = new Schema(
         'crypto_webhook_expired',
         'already_premium',
         'slots_full',
+        'submission_invoice_created',
+        'submission_invoice_error',
+        'submission_crypto_invoice_created',
+        'submission_crypto_invoice_error',
+        'submission_pre_checkout',
+        'submission_payment_success',
       ],
     },
     userId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
@@ -734,12 +740,15 @@ export const premiumEventSchema = new Schema(
     paymentId: { type: String, default: null },
     ip: { type: String, default: null },
     userAgent: { type: String, default: null },
+    entityType: { type: String, default: null },
+    listingType: { type: String, default: null },
   },
   { timestamps: true }
 );
 premiumEventSchema.index({ event: 1, createdAt: -1 });
 premiumEventSchema.index({ userId: 1, createdAt: -1 });
 premiumEventSchema.index({ createdAt: -1 });
+premiumEventSchema.index({ event: 1, entityType: 1, createdAt: -1 });
 
 // Stars Rate (USD/USDT per Star) — one row per UTC day
 export const starsRateSchema = new Schema(
@@ -920,7 +929,7 @@ export const Campaign = freshModel('Campaign', campaignSchema);
 export const CampaignClick = models.CampaignClick || model('CampaignClick', campaignClickSchema);
 export const CampaignImpressionDaily = models.CampaignImpressionDaily || model('CampaignImpressionDaily', campaignImpressionDailySchema);
 export const StorySlideContent = models.StorySlideContent || model('StorySlideContent', storySlideContentSchema);
-export const PremiumEvent = models.PremiumEvent || model('PremiumEvent', premiumEventSchema);
+export const PremiumEvent = freshModel('PremiumEvent', premiumEventSchema);
 export const StarsRate = models.StarsRate || model('StarsRate', starsRateSchema);
 export const Bookmark = models.Bookmark || model('Bookmark', bookmarkSchema);
 export const BookmarkFolder = models.BookmarkFolder || model('BookmarkFolder', bookmarkFolderSchema);
@@ -1335,6 +1344,7 @@ const ainsfwToolStatsSchema = new Schema(
     ],
     descriptionOverride: { type: String, default: '' },
     imageOverride: { type: String, default: '' },
+    tryNowUrlOverride: { type: String, default: '' },
     customGallery: { type: [String], default: [] },
     hiddenGalleryUrls: { type: [String], default: [] },
     galleryManaged: { type: Boolean, default: false },
@@ -1346,6 +1356,9 @@ const ainsfwToolStatsSchema = new Schema(
 );
 
 export const AINsfwToolStats = models.AINsfwToolStats || model('AINsfwToolStats', ainsfwToolStatsSchema);
+if (!AINsfwToolStats.schema.path('tryNowUrlOverride')) {
+  AINsfwToolStats.schema.add({ tryNowUrlOverride: { type: String, default: '' } });
+}
 
 // AI NSFW Submission — user-submitted AI tools for listing
 const ainsfwSubmissionSchema = new Schema(

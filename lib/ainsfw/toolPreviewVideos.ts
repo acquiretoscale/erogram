@@ -24,10 +24,23 @@ export const AINSFW_TOOL_PREVIEW_VIDEOS: Record<string, { mp4: string; poster?: 
     mp4: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/videos/porncreate-undress-ai-preview.mp4',
     poster: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/videos/porncreate-undress-ai-preview-poster.webp',
   },
-  'joi-ai-nude-generator': {
-    mp4: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/joi-ai-promo-v112.mp4',
-    poster: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/joi-ai-promo-v111-poster.webp',
+  'aislutbot-ai-nude-generator': {
+    mp4: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/videos/aislutbot-ai-nude-generator-example-1.mp4',
+    poster: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/videos/aislutbot-ai-nude-generator-example-1-poster.webp',
   },
+};
+
+export const AINSFW_REVIEW_EXAMPLE_VIDEOS: Record<string, { mp4: string; poster?: string }[]> = {
+  'aislutbot-ai-nude-generator': [
+    {
+      mp4: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/videos/aislutbot-ai-nude-generator-example-2.mp4',
+      poster: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/videos/aislutbot-ai-nude-generator-example-2-poster.webp',
+    },
+    {
+      mp4: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/videos/aislutbot-ai-nude-generator-example-3.mp4',
+      poster: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/videos/aislutbot-ai-nude-generator-example-3-poster.webp',
+    },
+  ],
 };
 
 export function getAinsfwToolPreviewVideo(slug: string) {

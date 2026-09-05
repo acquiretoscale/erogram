@@ -3,7 +3,7 @@
 import jwt from 'jsonwebtoken';
 import sharp from 'sharp';
 import connectDB from '@/lib/db/mongodb';
-import { User, AINsfwToolStats } from '@/lib/models';
+import { User, AINsfwToolStats, AINsfwSubmission } from '@/lib/models';
 import { uploadToR2, isR2Configured, deleteFromR2 } from '@/lib/r2';
 import { AINSFW_GALLERY } from '@/app/ainsfw/galleryMap';
 import { resolveGallery, type ToolContentFields } from '@/lib/ainsfw/toolContent';
@@ -51,6 +51,7 @@ function fieldsFromDoc(doc?: any): ToolContentFields {
   return {
     descriptionOverride: doc.descriptionOverride || '',
     imageOverride: doc.imageOverride || '',
+    tryNowUrlOverride: doc.tryNowUrlOverride || '',
     customGallery: doc.customGallery || [],
     hiddenGalleryUrls: doc.hiddenGalleryUrls || [],
     galleryManaged: !!doc.galleryManaged || (doc.hiddenGalleryUrls?.length ?? 0) > 0 || (doc.customGallery?.length ?? 0) > 0,
@@ -87,6 +88,7 @@ export async function adminSaveToolContent(
     upvotes?: number;
     downvotes?: number;
     imageOverride?: string;
+    tryNowUrl?: string;
   },
 ): Promise<ToolContentFields & { upvotes: number; downvotes: number }> {
   await requireAdmin(token);
@@ -97,6 +99,11 @@ export async function adminSaveToolContent(
     set.imageOverride = data.imageOverride.trim();
     set.coverManaged = true;
   }
+  if (data.tryNowUrl !== undefined) {
+    const url = data.tryNowUrl.trim();
+    if (!url.startsWith('http')) throw new Error('Enter a valid URL starting with https://');
+    set.tryNowUrlOverride = url;
+  }
   if (data.upvotes !== undefined) set.upvotes = Math.max(0, data.upvotes);
   if (data.downvotes !== undefined) set.downvotes = Math.max(0, data.downvotes);
 
@@ -105,6 +112,13 @@ export async function adminSaveToolContent(
     { $set: set },
     { upsert: true, new: true },
   ).lean() as any;
+
+  if (typeof set.tryNowUrlOverride === 'string') {
+    await AINsfwSubmission.updateMany(
+      { slug: slugKey(slug) },
+      { $set: { tryNowUrl: set.tryNowUrlOverride } },
+    );
+  }
 
   return {
     ...fieldsFromDoc(doc),
@@ -248,4 +262,23 @@ export async function adminDeleteToolCoverImage(
 export async function getPublicToolGallery(slug: string): Promise<string[]> {
   const doc = await getStatsDoc(slug);
   return resolveGallery(slug, fieldsFromDoc(doc));
+}
+
+export async function adminSetFeaturedHubSlugs(
+  token: string,
+  slugs: string[],
+): Promise<{ slugs: string[] }> {
+  await requireAdmin(token);
+  const { normalizeFeaturedHubSlugs } = await import('@/lib/ainsfw/featuredHub');
+  const { SiteConfig } = await import('@/lib/models');
+  const next = normalizeFeaturedHubSlugs(slugs);
+  if (next.length !== 2 && next.length !== 4) {
+    throw new Error('Pick 2 or 4 tools');
+  }
+  await SiteConfig.findOneAndUpdate(
+    {},
+    { $set: { 'generalSettings.ainsfwFeaturedHubSlugs': next } },
+    { upsert: true },
+  );
+  return { slugs: next };
 }

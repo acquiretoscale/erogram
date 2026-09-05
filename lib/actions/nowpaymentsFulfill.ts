@@ -63,11 +63,11 @@ async function handleSubmissionPayment(
     await logCryptoEvent({
       event: 'submission_payment_success',
       entityType,
-      entityId,
-      tier,
+      listingType: tier,
       paymentId,
       paymentMethod: 'crypto',
       username: fulfilled.name || 'Unknown',
+      reason: `${entityType}:${tier}:${entityId}`,
     });
     await notifyAdminsOfSale({
       plan: `${entityType}_${tier}`,
@@ -109,11 +109,11 @@ async function handleSubmissionPayment(
   await logCryptoEvent({
     event: 'submission_payment_success',
     entityType,
-    entityId,
-    tier: normalizedTier,
+    listingType: normalizedTier,
     paymentId,
     paymentMethod: 'crypto',
     username: entityName,
+    reason: `${entityType}:${normalizedTier}:${entityId}`,
   });
 
   await notifyAdminsOfSale({

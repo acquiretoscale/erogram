@@ -44,6 +44,10 @@ export const META_DESCRIPTIONS: Record<string, AinsfwMetaEntry> = {
     title: 'SoulGen: Best AI NSFW Image Generator & Art Maker (2026)',
     en: 'Describe her and she appears. SoulGen turns text into photoreal and anime NSFW art. Explore SoulGen and other AI image generator tools on Erogram.pro.',
   },
+  'aislutbot-ai-nude-generator': {
+    title: 'AISLUTBOT: Best AI Nude Generator & NSFW Video (2026)',
+    en: 'Upload a photo, get uncensored AI nudes and short videos. AISLUTBOT runs undress, face swap, and nude AI with Stars. Explore AISLUTBOT and other AI nude generators on Erogram.pro.',
+  },
 };
 
 /** Custom SEO meta for /ainsfw/{category-slug} hub pages */

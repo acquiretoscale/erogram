@@ -72,6 +72,15 @@ export async function POST(req: NextRequest) {
             await answerPreCheckoutQuery(query.id, false, 'Submission not found');
             return NextResponse.json({ ok: true });
           }
+          const entityType = payload.entityType === 'bot' ? 'bot' : 'group';
+          logEvent({
+            event: 'submission_pre_checkout',
+            username: (entity as { name?: string }).name || null,
+            paymentMethod: 'stars',
+            entityType,
+            listingType: payload.type,
+            reason: `${entityType}:${payload.type}:${payload.groupId}`,
+          });
           await answerPreCheckoutQuery(query.id, true);
           return NextResponse.json({ ok: true });
         }
@@ -192,6 +201,16 @@ export async function POST(req: NextRequest) {
           };
           const typeLabel = boostLabels[payload.type] || payload.type;
           console.log(`[Webhook] ${entityLabel} ${payload.groupId} approved via ${typeLabel}`);
+
+          logEvent({
+            event: 'submission_payment_success',
+            username: entity.name || null,
+            paymentMethod: 'stars',
+            chargeId: chargeId || null,
+            entityType: entityLabel,
+            listingType: payload.type,
+            reason: `${entityLabel}:${payload.type}:${payload.groupId}`,
+          });
 
           notifyAdminsOfSale({
             plan: `${entityLabel}_${payload.type}`,

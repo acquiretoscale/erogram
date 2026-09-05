@@ -22,7 +22,7 @@ import FlameReviewSection from '@/components/FlameReviewSection';
 import { CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import { VerifiedByErogramLabel } from '@/components/VerifiedBadge';
 import { pickTagHashtagAlt } from '@/lib/ainsfw/imageAlt';
-import { AINSFW_TOOL_PREVIEW_VIDEOS } from '@/lib/ainsfw/toolPreviewVideos';
+import { AINSFW_REVIEW_EXAMPLE_VIDEOS, AINSFW_TOOL_PREVIEW_VIDEOS } from '@/lib/ainsfw/toolPreviewVideos';
 import { ainsfwCtaButtonClass } from '@/lib/ainsfw/ctaButton';
 import ToolProsConsSkeleton from '@/components/ainsfw/ToolProsConsSkeleton';
 import ToolKeyFeatures from '@/components/ainsfw/ToolKeyFeatures';
@@ -39,9 +39,12 @@ function useAinsfwChrome() {
     t,
     lp,
     catLabel: (cat: string) => t(`ainsfw.categories.${cat}`, cat),
-    tryFree: (name: string) => t('ainsfw.tryFree', 'TRY {name} FREE').replace(/\{name\}/g, name),
-    tryForFree: (name: string) => t('ainsfw.tryForFree', 'TRY {name} for free').replace(/\{name\}/g, name),
-    tryName: (name: string) => t('ainsfw.tryName', 'TRY {name}').replace(/\{name\}/g, name),
+    tryFree: (name: string) =>
+      name === 'AI SLUTBOT' || name === 'AISLUTBOT' ? 'TRY AI SLUTBOT' : t('ainsfw.tryFree', 'TRY {name} FREE').replace(/\{name\}/g, name),
+    tryForFree: (name: string) =>
+      name === 'AI SLUTBOT' || name === 'AISLUTBOT' ? 'TRY AI SLUTBOT' : t('ainsfw.tryForFree', 'TRY {name} for free').replace(/\{name\}/g, name),
+    tryName: (name: string) =>
+      name === 'AI SLUTBOT' || name === 'AISLUTBOT' ? 'TRY AI SLUTBOT' : t('ainsfw.tryName', 'TRY {name}').replace(/\{name\}/g, name),
     reviewsLabel: (count: number) =>
       (count === 1
         ? t('ainsfw.reviewOne', '{count} review')
@@ -86,8 +89,10 @@ const CATEGORY_BADGE: Record<string, string> = {
 
 const PAYMENT_ICON: Record<string, string> = {
   'Credit Cards': '💳',
+  'Debit Cards': '💳',
   'Crypto': '₿',
   'PayPal': '🅿',
+  'Telegram Stars': '⭐',
 };
 
 function getBookmarkKey(slug: string) { return `ainsfw_bookmark_${slug}`; }
@@ -155,6 +160,122 @@ function ReviewAuthorBox({ author }: { author: AuthorProfile }) {
   );
 }
 
+function AislutCryptoOffer({ className = '' }: { className?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText('EROGRAM25OFF');
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = 'EROGRAM25OFF';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  };
+
+  return (
+    <div className={`flex justify-center ${className}`}>
+      <div className="inline-flex flex-col items-center rounded-xl bg-[#22c55e] px-6 py-3 shadow-lg shadow-[#22c55e]/40">
+        <p className="text-sm font-black leading-tight text-black text-center whitespace-nowrap">
+          Erogram exclusive · 25% off USDT · First 20
+        </p>
+        <button
+          type="button"
+          onClick={copyCode}
+          aria-label={copied ? 'Coupon code copied' : 'Copy coupon code EROGRAM25OFF'}
+          className="mt-1.5 inline-flex items-center justify-center gap-2 rounded-lg bg-yellow-400 hover:bg-yellow-300 px-4 py-1.5 transition-colors"
+        >
+          <span className="text-sm font-black tracking-wide text-black whitespace-nowrap">EROGRAM25OFF</span>
+          <span className="text-[10px] font-black uppercase text-black/75 whitespace-nowrap">
+            {copied ? 'Copied' : 'Copy'}
+          </span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AislutPricingBlock() {
+  const tiers = [
+    { name: 'The Starter', bonus: '', output: '72 images or 36 videos', stars: '750 Stars', price: '~$9.97' },
+    { name: 'The novice', bonus: 'GET 4% MORE', output: '156 images or 78 videos', stars: '1,500 Stars', price: '~$19.94' },
+    { name: 'The Player', bonus: 'GET 8% MORE', output: '280 images or 140 videos', stars: '2,500 Stars', price: '~$33.23' },
+    { name: 'The Aislutboss', bonus: 'GET 20% MORE', output: '672 images or 336 videos', stars: '5,000 Stars', price: '~$66.47' },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <p className="text-gray-300 text-base sm:text-lg leading-relaxed">
+        <strong className="font-bold text-white">AI SLUTBOT</strong> skips subscriptions entirely. You buy Telegram Stars once and spend them as needed, and Stars never expire. Crucially, the higher tiers don&apos;t just hand you more credit, they unlock better value per Star, so the more you buy, the more generations you get for free.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {tiers.map((tier) => (
+          <div
+            key={tier.name}
+            className={`rounded-xl border px-4 py-3.5 ${
+              tier.name === 'The Aislutboss'
+                ? 'border-[#22c55e]/50 bg-[#0a1f12]'
+                : 'border-[#22c55e]/20 bg-[#071a10]'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <p className="text-sm font-black text-white">{tier.name}</p>
+              {tier.bonus ? (
+                <span className="shrink-0 rounded-md bg-[#22c55e] px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-black">
+                  {tier.bonus}
+                </span>
+              ) : null}
+            </div>
+            <p className="text-sm font-bold text-[#86efac]">{tier.output}</p>
+            <p className="mt-1 text-xs text-white/60">{tier.stars} · {tier.price}</p>
+          </div>
+        ))}
+      </div>
+      <p className="text-gray-300 text-base sm:text-lg leading-relaxed">
+        In practice, the novice tier hands you a handful of bonus generations, the Player adds around 20 extra images (or 10 videos), and the Aislutboss stacks nearly 100 extra images (or ~48 extra videos) on top of the base rate, plus 1080p, up to 20-second clips, and priority access.
+      </p>
+      <p className="text-gray-300 text-base sm:text-lg leading-relaxed">
+        Payment is smooth and safe. You can pay by credit or debit card straight through Telegram Stars. No sketchy processors and no adult descriptor on your bank statement. USDT crypto checkout is cheaper still. Erogram readers get 25% off with code EROGRAM25OFF, limited to the first 20 users, first come first served.
+      </p>
+    </div>
+  );
+}
+
+function AislutReviewIntro() {
+  const link = 'text-[#22c55e] hover:underline';
+  return (
+    <div className="space-y-4 mb-2">
+      <p className="text-gray-200 text-lg sm:text-xl leading-relaxed">
+        <strong className="font-bold text-white">AI SLUTBOT</strong> is listed among Erogram&apos;s{' '}
+        <Link href="/ainsfw" className={link}>AI NSFW tools</Link>
+        {' '}as an <strong className="font-bold text-white">AI SLUTBOT</strong> nude generator that turns one photo into{' '}
+        <strong className="font-bold text-white">AI nude</strong> images and short adult clips. It sits with the rest of the{' '}
+        <Link href="/ainsfw/undress-ai" className={link}>undress AI</Link>
+        {' '}category, and people comparing still-image options usually also check the{' '}
+        <Link href="/ainsfw/ai-nsfw-image-generator" className={link}>AI NSFW image generator</Link>
+        {' '}listings.
+      </p>
+      <p className="text-gray-200 text-lg sm:text-xl leading-relaxed">
+        The model behind <strong className="font-bold text-white">AI SLUTBOT</strong> is a purpose-trained{' '}
+        <a
+          href="https://en.wikipedia.org/wiki/Large_language_model"
+          target="_blank"
+          rel="noopener"
+          className={link}
+        >
+          LLM
+        </a>
+        , tuned for anatomy, lighting, and skin.
+      </p>
+    </div>
+  );
+}
+
 function ReviewCta({
   onClick,
   disabled,
@@ -178,7 +299,7 @@ function ReviewCta({
   );
 }
 
-type ReviewInsertCtx = { galleryIdx: number; paragraphCount: number };
+type ReviewInsertCtx = { galleryIdx: number; paragraphCount: number; exampleVideoIdx: number };
 
 function splitDescriptionParagraphs(text: string): string[] {
   const trimmed = text.trim();
@@ -289,12 +410,8 @@ function ToolPreviewVideoBlock({
   return (
     <div
       ref={containerRef}
-      className={`relative rounded-xl overflow-hidden border border-white/10 cursor-pointer ${className}`.trim()}
-      onClick={onVisit}
-      role="link"
-      tabIndex={0}
+      className={`relative rounded-xl overflow-hidden border border-white/10 ${className}`.trim()}
       title={hoverTitle}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onVisit(); } }}
     >
       <div className="relative w-full bg-black" style={{ aspectRatio: '360 / 608' }}>
         {poster ? (
@@ -353,8 +470,10 @@ function renderReviewParagraphs(
     keyPrefix: string;
     textClassName: string;
     onVisit: () => void;
+    onPreviewImage: (src: string) => void;
     isRedirecting: boolean;
     previewVideo?: { mp4: string; poster?: string };
+    exampleVideos?: { mp4: string; poster?: string }[];
   },
 ): ReactNode[] {
   const nodes: ReactNode[] = [];
@@ -362,7 +481,7 @@ function renderReviewParagraphs(
     ctx.paragraphCount += 1;
     nodes.push(
       <p key={`${opts.keyPrefix}-p-${i}`} className={opts.textClassName}>
-        {para}
+        {tool.name === 'AI SLUTBOT' ? boldAislutName(para) : para}
       </p>,
     );
     if (ctx.paragraphCount % 2 === 0) {
@@ -383,6 +502,25 @@ function renderReviewParagraphs(
             </div>
           </ReviewInsertBlock>,
         );
+      } else if (opts.exampleVideos && ctx.exampleVideoIdx < opts.exampleVideos.length) {
+        const example = opts.exampleVideos[ctx.exampleVideoIdx];
+        ctx.exampleVideoIdx += 1;
+        nodes.push(
+          <ReviewInsertBlock key={`${opts.keyPrefix}-example-video-${i}`}>
+            <div className="w-[60vw] max-w-[60vw] flex-none mx-auto lg:w-full lg:max-w-sm">
+              <ToolPreviewVideoBlock
+                mp4={example.mp4}
+                poster={example.poster}
+                toolName={tool.name}
+                toolCategory={tool.category}
+                posterAlt={pickTagHashtagAlt(tool.tags, ctx.exampleVideoIdx)}
+                onVisit={opts.onVisit}
+                isRedirecting={opts.isRedirecting}
+                largeReviewCta
+              />
+            </div>
+          </ReviewInsertBlock>,
+        );
       } else if (gallery.length > 0) {
       const imgIdx = ctx.galleryIdx % gallery.length;
       ctx.galleryIdx += 1;
@@ -390,8 +528,8 @@ function renderReviewParagraphs(
         <ReviewInsertBlock key={`${opts.keyPrefix}-insert-${i}`}>
           <button
             type="button"
-            onClick={opts.onVisit}
-            className="relative w-full aspect-video rounded-xl overflow-hidden bg-[#1a1a1a] border border-white/10 hover:border-[#22c55e]/40 transition-all cursor-pointer"
+            onClick={() => opts.onPreviewImage(gallery[imgIdx])}
+            className="relative w-full aspect-video rounded-xl overflow-hidden bg-[#1a1a1a] border border-white/10 hover:border-[#22c55e]/40 transition-all cursor-zoom-in"
           >
             <img
               src={gallery[imgIdx]}
@@ -414,6 +552,14 @@ function renderReviewParagraphs(
     }
   });
   return nodes;
+}
+
+function boldAislutName(text: string): ReactNode[] {
+  return text.split(/(AI SLUTBOT)/g).map((part, i) =>
+    part === 'AI SLUTBOT'
+      ? <strong key={i} className="font-bold text-white">{part}</strong>
+      : part,
+  );
 }
 
 function reviewSectionId(toolSlug: string, heading: string): string {
@@ -468,6 +614,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
       ? tool.image : placeholder
   );
   const [description, setDescription] = useState(tool.description);
+  const [visitUrl, setVisitUrl] = useState(tool.tryNowUrl);
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminEdit, setAdminEdit] = useState(false);
@@ -482,6 +629,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
   // Gallery
   const [gallery, setGallery] = useState<string[]>([]);
   const [galleryLoading, setGalleryLoading] = useState(true);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   // Reviews
   const [reviews, setReviews] = useState<ToolReviewData[]>(
@@ -514,12 +662,13 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
         ? tool.image : placeholder
     );
     setDescription(tool.description);
-  }, [tool.image, tool.description]);
+    setVisitUrl(tool.tryNowUrl);
+  }, [tool.image, tool.description, tool.tryNowUrl]);
 
   const handleVisit = () => {
     setIsRedirecting(true);
     void trackAinsfwToolClick(tool.slug);
-    window.open(tool.tryNowUrl, '_blank', 'noopener');
+    window.open(visitUrl, '_blank', 'noopener');
   };
 
   const handleVote = async (dir: 'up' | 'down') => {
@@ -558,18 +707,23 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
   const catBadge = CATEGORY_BADGE[tool.category] || 'bg-gray-700 text-white';
   const imageHoverTitle = `${tool.name} - ${tool.category}`;
   const reviewGallery = gallery;
+  const reviewInsertGallery = tool.slug === 'aislutbot-ai-nude-generator' ? [] : reviewGallery;
   const previewVideo = AINSFW_TOOL_PREVIEW_VIDEOS[tool.slug];
-  const reviewInsertCtx = useRef<ReviewInsertCtx>({ galleryIdx: 0, paragraphCount: 0 });
+  const reviewInsertCtx = useRef<ReviewInsertCtx>({ galleryIdx: 0, paragraphCount: 0, exampleVideoIdx: 0 });
+  const exampleVideos = AINSFW_REVIEW_EXAMPLE_VIDEOS[tool.slug];
 
   if (fullReview) {
     reviewInsertCtx.current.galleryIdx = 0;
     reviewInsertCtx.current.paragraphCount = 0;
+    reviewInsertCtx.current.exampleVideoIdx = 0;
   }
 
   const reviewInsertOpts = {
     onVisit: handleVisit,
+    onPreviewImage: setLightboxSrc,
     isRedirecting,
-    previewVideo,
+    previewVideo: tool.slug === 'aislutbot-ai-nude-generator' ? undefined : previewVideo,
+    exampleVideos: tool.slug === 'aislutbot-ai-nude-generator' ? exampleVideos?.slice(0, 1) : exampleVideos,
   };
 
   return (
@@ -823,8 +977,8 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                         <button
                           key={i}
                           type="button"
-                          onClick={handleVisit}
-                          className="relative aspect-video rounded-xl overflow-hidden bg-[#1a1a1a] border border-white/5 hover:border-white/20 transition-all group cursor-pointer"
+                          onClick={() => setLightboxSrc(src)}
+                          className="relative aspect-video rounded-xl overflow-hidden bg-[#1a1a1a] border border-white/5 hover:border-white/20 transition-all group cursor-zoom-in"
                         >
                           <img
                             src={src}
@@ -879,6 +1033,9 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                   <p key={i}>{para}</p>
                 ))}
               </div>
+              {tool.slug === 'aislutbot-ai-nude-generator' && (
+                <AislutCryptoOffer className="mb-6" />
+              )}
 
               {(() => {
                 const memoryPeers = getMemoryPeers(tool.slug);
@@ -986,12 +1143,14 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                   />
 
                   <div className="space-y-8">
-                    {fullReview.sections.length > 0 && (
+                    {tool.slug === 'aislutbot-ai-nude-generator' ? (
+                      <AislutReviewIntro />
+                    ) : fullReview.sections.length > 0 && fullReview.sections[0].body.trim() ? (
                       <div className="space-y-4 mb-2">
                         {renderReviewParagraphs(
                           fullReview.sections[0].body.split(/\n\n+/).filter(Boolean),
                           reviewInsertCtx.current,
-                          reviewGallery,
+                          reviewInsertGallery,
                           tool,
                           {
                             ...reviewInsertOpts,
@@ -1000,7 +1159,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                           },
                         )}
                       </div>
-                    )}
+                    ) : null}
 
                     <ReviewGlossary
                       toolSlug={tool.slug}
@@ -1018,17 +1177,17 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                         <div className="space-y-3">
                           {renderReviewParagraphs(
                             item.body.split(/\n\n+/).filter(Boolean),
-                            reviewInsertCtx.current,
-                            reviewGallery,
-                            tool,
-                            {
-                              ...reviewInsertOpts,
-                              keyPrefix: `${tool.slug}-${sectionId}`,
-                              textClassName: 'text-gray-300 text-base sm:text-lg leading-relaxed',
-                            },
-                          )}
-                        </div>
-                        {item.title === 'What Lovescape Does' &&
+                          reviewInsertCtx.current,
+                          reviewInsertGallery,
+                          tool,
+                          {
+                            ...reviewInsertOpts,
+                            keyPrefix: `${tool.slug}-${sectionId}`,
+                            textClassName: 'text-gray-300 text-base sm:text-lg leading-relaxed',
+                          },
+                        )}
+                      </div>
+                      {item.title === 'What Lovescape Does' &&
                           listingBlocks?.keyFeatures &&
                           listingBlocks.keyFeatures.length > 0 && (
                           <ToolKeyFeatures features={listingBlocks.keyFeatures} />
@@ -1039,8 +1198,27 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                     {fullReview.sections.slice(1).map((section) => {
                       const sectionId = reviewSectionId(tool.slug, section.heading);
                       const isFinalVerdict = /final verdict/i.test(section.heading);
+                      const aislutLastVideo = tool.slug === 'aislutbot-ai-nude-generator' && section.heading === 'Privacy'
+                        ? exampleVideos?.[1]
+                        : undefined;
                       return (
                       <div key={sectionId}>
+                        {aislutLastVideo && (
+                          <ReviewInsertBlock>
+                            <div className="w-[60vw] max-w-[60vw] flex-none mx-auto lg:w-full lg:max-w-sm">
+                              <ToolPreviewVideoBlock
+                                mp4={aislutLastVideo.mp4}
+                                poster={aislutLastVideo.poster}
+                                toolName={tool.name}
+                                toolCategory={tool.category}
+                                posterAlt={pickTagHashtagAlt(tool.tags, 2)}
+                                onVisit={handleVisit}
+                                isRedirecting={isRedirecting}
+                                largeReviewCta
+                              />
+                            </div>
+                          </ReviewInsertBlock>
+                        )}
                         {isFinalVerdict && listingBlocks && hasProsCons(tool.slug) && (
                           <ToolProsConsSkeleton pros={listingBlocks.pros} cons={listingBlocks.cons} />
                         )}
@@ -1057,11 +1235,14 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                         )}
                         <section id={sectionId} className="scroll-mt-28">
                           <h2 className="text-2xl sm:text-3xl font-black text-white mb-4">{section.heading}</h2>
+                          {tool.slug === 'aislutbot-ai-nude-generator' && section.heading === 'Pricing and Stars' ? (
+                            <AislutPricingBlock />
+                          ) : (
                           <div className="space-y-3">
                             {renderReviewParagraphs(
                               section.body.split(/\n\n+/).filter(Boolean),
                               reviewInsertCtx.current,
-                              reviewGallery,
+                              reviewInsertGallery,
                               tool,
                               {
                                 ...reviewInsertOpts,
@@ -1070,6 +1251,10 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                               },
                             )}
                           </div>
+                          )}
+                          {tool.slug === 'aislutbot-ai-nude-generator' && section.heading === 'Pricing and Stars' && (
+                            <AislutCryptoOffer className="mt-4" />
+                          )}
                         </section>
                       </div>
                       );
@@ -1182,17 +1367,40 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
 
       <Footer />
 
+      {lightboxSrc && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm cursor-zoom-out"
+          onClick={() => setLightboxSrc(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxSrc(null)}
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+            aria-label="Close"
+          >
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+          <img
+            src={lightboxSrc}
+            alt={pickTagHashtagAlt(tool.tags, 0)}
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+
       {isAdmin && !adminEdit && <ToolDetailAdminFab onEdit={() => setAdminEdit(true)} />}
 
       {isAdmin && adminEdit && (
         <ToolDetailAdminPanel
-          tool={tool}
+          tool={{ ...tool, tryNowUrl: visitUrl }}
           initialStats={initialStats}
           gallery={gallery}
           featuredImage={imageSrc === placeholder ? '' : imageSrc}
           onGalleryChange={setGallery}
           onFeaturedChange={(url) => setImageSrc(url || placeholder)}
           onDescriptionChange={setDescription}
+          onTryNowUrlChange={setVisitUrl}
           onVotesChange={(up, down) => setVotes({ up, down })}
           onClose={() => setAdminEdit(false)}
         />

@@ -365,12 +365,6 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
     } catch {}
   }, []);
 
-  const fadeInUp = {
-    initial: { opacity: 0, y: 60 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.6, ease: 'easeOut' },
-  };
-
   // ── Navigation cards — white-bg rows with icon ring, title, subtitle, arrow ──
   const navCards: { title: string; href: string; icon: React.ReactNode; iconColor: string; bareIcon?: boolean; bgColor?: string }[] = [
     {
@@ -501,14 +495,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
 
         {/* Newest AI NSFW Tools additions */}
         {newestAINsfw.length > 0 && (
-          <motion.div
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true, margin: '-100px' }}
-            variants={fadeInUp}
-            className="mt-12 sm:mt-16 max-w-7xl mx-auto px-4"
-            style={{ willChange: 'transform, opacity' }}
-          >
+          <div className="mt-12 sm:mt-16 max-w-7xl mx-auto px-4">
             <SectionTitle accent="AI NSFW Tools" suffix="Additions">Newest</SectionTitle>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {newestAINsfw.map((tool, i) => (
@@ -531,19 +518,12 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
               </Link>
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* Newest Telegram AI NSFW Bots additions */}
         {newestBots.length > 0 && (
-          <motion.div
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true, margin: '-100px' }}
-            variants={fadeInUp}
-            className="mt-10 sm:mt-14 max-w-7xl mx-auto px-4"
-            style={{ willChange: 'transform, opacity' }}
-          >
+          <div className="mt-10 sm:mt-14 max-w-7xl mx-auto px-4">
             <SectionTitle accent="Telegram AI NSFW Bots" suffix="Additions" className="!text-2xl sm:!text-3xl mb-4 sm:mb-5">Newest</SectionTitle>
             <NewestRow
               compact
@@ -566,19 +546,12 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
               </Link>
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* New Additions Section */}
         {newGroups.length > 0 && (
-          <motion.div
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true, margin: '-100px' }}
-            variants={fadeInUp}
-            className="mt-10 sm:mt-14 max-w-7xl mx-auto px-4"
-            style={{ willChange: 'transform, opacity' }}
-          >
+          <div className="mt-10 sm:mt-14 max-w-7xl mx-auto px-4">
             <SectionTitle accent={t('home.freshTitle2', 'New Additions')} className="!text-2xl sm:!text-3xl mb-4 sm:mb-5">
               {t('home.freshTitle1', 'Fresh')}
             </SectionTitle>
@@ -606,19 +579,12 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
               </Link>
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* Top Lists Section — top 16 categories by group count (same logic as /groups trending) */}
         {topGroupCategories.length > 0 && (
-          <motion.div
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true, margin: '-100px' }}
-            variants={fadeInUp}
-            className="mt-20 sm:mt-40 max-w-7xl mx-auto px-4"
-            style={{ willChange: 'transform, opacity' }}
-          >
+          <div className="mt-20 sm:mt-40 max-w-7xl mx-auto px-4">
             <SectionTitle accent={t('home.curatedTitle2', 'Top Lists')}>
               {t('home.curatedTitle1', 'Curated')}
             </SectionTitle>
@@ -646,7 +612,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                 {t('home.viewAllCategories', 'View all categories')}
               </Link>
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* Articles Section — English only */}
@@ -678,14 +644,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
         )}
 
         {/* FAQ Section */}
-        <motion.div
-          initial="initial"
-          whileInView="animate"
-          viewport={{ once: true, margin: '-100px' }}
-          variants={fadeInUp}
-          className="mt-20 sm:mt-40 max-w-4xl mx-auto px-4"
-          style={{ willChange: 'transform, opacity' }}
-        >
+        <div className="mt-20 sm:mt-40 max-w-4xl mx-auto px-4">
           <SectionTitle accent={t('home.faqTitle2', 'Questions')}>
             {t('home.faqTitle1', 'Frequently Asked')}
           </SectionTitle>
@@ -700,35 +659,23 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
                 <div key={section.id} className="space-y-6">
                   <h3 className="text-xl sm:text-2xl font-bold text-center text-white/90 tracking-tight">{section.title}</h3>
                   {section.items.map((faq, idx) => (
-                    <motion.div
+                    <div
                       key={`${section.id}-${idx}`}
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.5, delay: idx * 0.1 }}
                       className={`p-6 ${CARD}`}
-                      style={{ willChange: 'transform, opacity' }}
                     >
                       <h4 className="text-lg sm:text-xl font-bold mb-3 text-white">{faq.q}</h4>
                       <p className="text-white/55 text-sm sm:text-base leading-relaxed">
                         {renderFaqAnswer(faq.a, section.id, lp)}
                       </p>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               ))}
           </div>
-        </motion.div>
+        </div>
 
         {/* Best OnlyFans by Category — internal links to curated SEO pages */}
-        <motion.div
-          initial="initial"
-          whileInView="animate"
-          viewport={{ once: true, margin: '-100px' }}
-          variants={fadeInUp}
-          className="mt-20 sm:mt-40 max-w-5xl mx-auto px-4"
-          style={{ willChange: 'transform, opacity' }}
-        >
+        <div className="mt-20 sm:mt-40 max-w-5xl mx-auto px-4">
           <SectionTitle accent={t('home.bestOfTitle2', 'by Category')} className="mb-3">
             {t('home.bestOfTitle1', 'Best OnlyFans Creators')}
           </SectionTitle>
@@ -782,7 +729,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
               </motion.button>
             </Link>
           </div>
-        </motion.div>
+        </div>
       </main>
 
       <Footer />

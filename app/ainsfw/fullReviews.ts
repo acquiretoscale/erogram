@@ -161,6 +161,49 @@ export const AINSFW_FULL_REVIEWS: Record<string, AINsfwFullReview> = {
       { name: "Free Nudifier", slug: "free-nudifier-undress-ai" },
     ],
   },
+  "aislutbot-ai-nude-generator": {
+    shortDescription: "AI SLUTBOT (also known as SLUTBOT AI) is an AI nude generator that turns a single uploaded photo into hyper-realistic AI generated nudes and short adult video clips. The tool is built around one idea: realistic output with almost no friction. You upload a photo, pick your settings, and the result comes back in seconds. There is no editing timeline, no brushwork, and no steep learning curve. What sets it apart from most undress tools is the quality of its AI nude generation. It runs on a well-trained LLM tuned specifically for human anatomy, lighting, and skin, so the results look convincing rather than plasticky.",
+    featureHighlights: [
+      {
+        title: "AI Nude Generator / What AI SLUTBOT Does",
+        body: "At its core, AI SLUTBOT reads the clothed regions of a photo and regenerates them as realistic skin that matches the original pose, lighting, and body shape. As an AI nude maker it goes beyond stills: it animates a single image into a short adult video with natural motion, a feature many competitors still lack. Videos are offered in 480p, 720p, and 1080p, with clip lengths running from around 5 seconds on the lower tiers up to 20 seconds on the top Aislutboss plan. The whole thing runs privately in your browser.",
+      },
+      {
+        title: "AI Nude Maker / How AI SLUTBOT Works",
+        body: "Getting started takes three steps.\n\nCreate an account.\n\nLoad credit (Telegram Stars) into your wallet.\n\nUpload a photo and generate. Pick your resolution and length, and the result downloads to your device.\n\nUnlike other tools, where you must upload top quality images to get a good result, I was able to test with low light and low quality images and still got a stunning result.",
+      },
+      {
+        title: "AI Generated Nudes / Image & Video Quality",
+        body: "This is where AI SLUTBOT genuinely leads. The purpose-trained model produces some of the most realistic AI generated nudes on the market. Clean skin rendering, believable lighting, and natural body contours. The move into 1080p video and longer 20-second clips on higher tiers is rare in this space, and the motion holds together far better than the twitchy output of cheaper tools.",
+      },
+    ],
+    sections: [
+      {
+        heading: "AI SLUTBOT Overview",
+        body: "",
+      },
+      {
+        heading: "Pricing and Stars",
+        body: "AI SLUTBOT skips subscriptions entirely. You buy Telegram Stars once and spend them as needed, and Stars never expire. Crucially, the higher tiers don't just hand you more credit, they unlock better value per Star, so the more you buy, the more generations you get for free.\n\nThe Starter: 72 images or 36 videos. 750 Stars (~$9.97).\n\nThe novice: 156 images or 78 videos. GET 4% MORE. 1,500 Stars (~$19.94).\n\nThe Player: 280 images or 140 videos. GET 8% MORE. 2,500 Stars (~$33.23).\n\nThe Aislutboss: 672 images or 336 videos. GET 20% MORE. 5,000 Stars (~$66.47).\n\nIn practice, the novice tier hands you a handful of bonus generations, the Player adds around 20 extra images (or 10 videos), and the Aislutboss stacks nearly 100 extra images (or ~48 extra videos) on top of the base rate, plus 1080p, up to 20-second clips, and priority access.\n\nPayment is smooth and safe. You can pay by credit or debit card straight through Telegram Stars. No sketchy processors and no adult descriptor on your bank statement. USDT crypto checkout is cheaper still. Erogram readers get 25% off with code EROGRAM25OFF, limited to the first 20 users, first come first served.",
+      },
+      {
+        heading: "Privacy",
+        body: "Privacy is treated as a priority. Generated videos are not kept longer than 48 hours, so anything you want to keep should be downloaded to your own hard drive before it's cleared. The one-time payment model and Telegram-based checkout also mean the service needs very little personal data to begin with.",
+      },
+      {
+        heading: "Where AI SLUTBOT Falls Short",
+        body: "The main limitation is scope. AI SLUTBOT is built for realistic human content only. It does not generate Hentai, cartoon, or anime-style art. If you're after stylized or illustrated output, this isn't the tool. It's laser-focused on lifelike people and realistic video, which is exactly why the realism is so strong, but it does narrow who it's for.",
+      },
+      {
+        heading: "Who AI SLUTBOT Is For",
+        body: "It fits anyone who wants fast, hyper-realistic AI nude generation without editing skills, who values card payments through Telegram or discounted crypto top-ups, and who prefers paying once over a subscription. Hobbyists and creators running lots of quick experiments will get the most from the Stars model and the higher-tier bonuses.",
+      },
+      {
+        heading: "Final Verdict",
+        body: "AI SLUTBOT does one thing and does it exceptionally well: it produces realistic AI generated nudes and short videos from a single photo, fast, privately, and at a genuinely low entry price. It won't draw anime and it clears videos after 48 hours, but for immediate, no-fuss, true-to-life results, AI SLUTBOT is one of the best and cheapest undress tools on the market. Strictly 18+.",
+      },
+    ],
+  },
   "genesis-porn-ai-image": {
     shortDescription: "Genesis Porn is an AI porn generator that creates NSFW images and videos from text prompts and button presets. Users describe a scene or click through options for body type, pose, clothing, and explicit action, then generate and download the result in seconds. Genesis Porn also converts photos into video and hosts a community gallery where members can browse and copy other users' settings with a repeat button. The platform runs on VIP coins with one-time payments and no subscription, and publishing popular content earns coins back. Free browsing is open to everyone, and paid packs start at $2. It works on desktop, mobile, and dedicated Android and iOS apps.",
     featureHighlights: [
@@ -268,6 +311,7 @@ export function getFullReview(slug: string): AINsfwFullReview | undefined {
  * Add every new paying client here with goLive — single source of truth for badge + recent pool.
  */
 export const AINSFW_PAID_CLIENTS = [
+  { slug: 'aislutbot-ai-nude-generator', goLive: '2026-09-05T12:00:00.000Z' },
   { slug: 'flick-ai-ai-porn-generator', goLive: '2026-08-12T00:00:00.000Z' },
   { slug: 'clothoff-undress-ai', goLive: '2026-08-05T00:00:00.000Z' },
   { slug: 'nudiva-undress-ai', goLive: '2026-08-05T00:00:00.000Z' },

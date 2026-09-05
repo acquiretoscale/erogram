@@ -3,6 +3,7 @@ import { AINSFW_GALLERY } from '@/app/ainsfw/galleryMap';
 export type ToolContentFields = {
   descriptionOverride?: string;
   imageOverride?: string;
+  tryNowUrlOverride?: string;
   customGallery?: string[];
   hiddenGalleryUrls?: string[];
   galleryManaged?: boolean;
@@ -28,6 +29,7 @@ export function contentFromStats(doc?: ToolContentFields | null): ToolContentFie
   return {
     descriptionOverride: doc.descriptionOverride || '',
     imageOverride: doc.imageOverride || '',
+    tryNowUrlOverride: doc.tryNowUrlOverride || '',
     customGallery: doc.customGallery || [],
     hiddenGalleryUrls: doc.hiddenGalleryUrls || [],
     galleryManaged: !!doc.galleryManaged || (doc.hiddenGalleryUrls?.length ?? 0) > 0 || (doc.customGallery?.length ?? 0) > 0,
@@ -35,12 +37,13 @@ export function contentFromStats(doc?: ToolContentFields | null): ToolContentFie
   };
 }
 
-export function mergeToolContent<T extends { description: string; image: string }>(
+export function mergeToolContent<T extends { description: string; image: string; tryNowUrl?: string }>(
   tool: T,
   content?: ToolContentFields | null,
 ): T {
   if (!content) return tool;
   const description = content.descriptionOverride?.trim();
+  const tryNowUrl = content.tryNowUrlOverride?.trim();
   let image: string | undefined;
   if (content.coverManaged) {
     image = content.imageOverride?.trim() || '/assets/image.jpg';
@@ -51,5 +54,6 @@ export function mergeToolContent<T extends { description: string; image: string 
     ...tool,
     ...(description ? { description } : {}),
     ...(image !== undefined ? { image } : {}),
+    ...(tryNowUrl ? { tryNowUrl } : {}),
   };
 }

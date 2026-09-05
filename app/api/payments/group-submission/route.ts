@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
-import { Group, Bot } from '@/lib/models';
+import { Group, Bot, PremiumEvent } from '@/lib/models';
 import { validateCoupon, recordCouponUsage } from '@/lib/actions/coupons';
 import { authenticateUser } from '@/lib/auth';
 import { buildBoostPaymentUpdate, cryptoUsdFromStars, SCALE_STARS, SCALE_USD } from '@/lib/boostPricing';
@@ -9,6 +9,10 @@ const BOT_TOKEN = process.env.TELEGRAM_PAYMENT_BOT_TOKEN || '';
 const NP_API_KEY = process.env.NOWPAYMENTS_API_KEY || '';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogramx.com';
 const NP_BASE = 'https://api.nowpayments.io/v1';
+
+function logSubmission(data: Record<string, unknown>) {
+  PremiumEvent.create({ source: 'server', ...data }).catch(() => {});
+}
 
 export type SubmissionType = 'normal_listing' | 'instant_approval' | 'boost_week' | 'boost_month' | 'scale_month';
 export type EntityType = 'group' | 'bot';
@@ -137,12 +141,44 @@ export async function POST(req: NextRequest) {
       const data = await res.json();
       if (!res.ok || !data.invoice_url) {
         console.error('NowPayments boost renewal invoice error:', data);
+        logSubmission({
+          event: 'submission_crypto_invoice_error',
+          username: entity.name || null,
+          userId: user._id,
+          paymentMethod: 'crypto',
+          entityType,
+          listingType: type,
+          orderId,
+          reason: `${entityType}:${type}:${groupId}`,
+          errorMessage: JSON.stringify(data),
+        });
         return NextResponse.json({ message: data?.message || 'Failed to create crypto invoice.' }, { status: 500 });
       }
 
+      logSubmission({
+        event: 'submission_crypto_invoice_created',
+        username: entity.name || null,
+        userId: user._id,
+        paymentMethod: 'crypto',
+        entityType,
+        listingType: type,
+        orderId,
+        reason: `${entityType}:${type}:${groupId}`,
+      });
       return NextResponse.json({ url: data.invoice_url, paymentMethod: 'crypto' });
     } catch (err) {
       console.error('NowPayments boost renewal error:', err);
+      logSubmission({
+        event: 'submission_crypto_invoice_error',
+        username: entity.name || null,
+        userId: user._id,
+        paymentMethod: 'crypto',
+        entityType,
+        listingType: type,
+        orderId,
+        reason: `${entityType}:${type}:${groupId}`,
+        errorMessage: String(err),
+      });
       return NextResponse.json({ message: 'Server error' }, { status: 500 });
     }
   }
@@ -203,15 +239,44 @@ export async function POST(req: NextRequest) {
     });
 
     const data = await res.json();
+    const payer = await authenticateUser(req);
 
     if (!data.ok) {
       console.error('Telegram createInvoiceLink failed:', data);
+      logSubmission({
+        event: 'submission_invoice_error',
+        username: entity.name || null,
+        userId: payer?._id || null,
+        paymentMethod: 'stars',
+        entityType,
+        listingType: type,
+        reason: `${entityType}:${type}:${groupId}`,
+        errorMessage: JSON.stringify(data),
+      });
       return NextResponse.json({ message: 'Failed to create invoice. Please try again.' }, { status: 500 });
     }
 
+    logSubmission({
+      event: 'submission_invoice_created',
+      username: entity.name || null,
+      userId: payer?._id || null,
+      paymentMethod: 'stars',
+      entityType,
+      listingType: type,
+      reason: `${entityType}:${type}:${groupId}`,
+    });
     return NextResponse.json({ url: data.result, paymentMethod: 'stars' });
   } catch (err) {
     console.error('Group submission payment error:', err);
+    logSubmission({
+      event: 'submission_invoice_error',
+      username: entity.name || null,
+      paymentMethod: 'stars',
+      entityType,
+      listingType: type,
+      reason: `${entityType}:${type}:${groupId}`,
+      errorMessage: String(err),
+    });
     return NextResponse.json({ message: 'Server error' }, { status: 500 });
   }
 }

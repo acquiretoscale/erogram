@@ -28,6 +28,7 @@ interface ToolDetailAdminPanelProps {
   onGalleryChange: (gallery: string[]) => void;
   onFeaturedChange: (url: string) => void;
   onDescriptionChange: (description: string) => void;
+  onTryNowUrlChange: (url: string) => void;
   onVotesChange: (up: number, down: number) => void;
   onClose: () => void;
 }
@@ -40,12 +41,14 @@ export default function ToolDetailAdminPanel({
   onGalleryChange,
   onFeaturedChange,
   onDescriptionChange,
+  onTryNowUrlChange,
   onVotesChange,
   onClose,
 }: ToolDetailAdminPanelProps) {
   const galleryUploadRef = useRef<HTMLInputElement>(null);
   const coverUploadRef = useRef<HTMLInputElement>(null);
   const [description, setDescription] = useState(tool.description);
+  const [tryNowUrl, setTryNowUrl] = useState(tool.tryNowUrl);
   const [cover, setCover] = useState(featuredImage);
   const [upvotes, setUpvotes] = useState(initialStats?.upvotes ?? 0);
   const [downvotes, setDownvotes] = useState(initialStats?.downvotes ?? 0);
@@ -62,11 +65,13 @@ export default function ToolDetailAdminPanel({
     try {
       const result = await adminSaveToolContent(token(), tool.slug, {
         description,
+        tryNowUrl,
         upvotes,
         downvotes,
         imageOverride: cover,
       });
       onDescriptionChange(description);
+      onTryNowUrlChange(tryNowUrl.trim());
       onVotesChange(result.upvotes, result.downvotes);
       onFeaturedChange(result.imageOverride || cover || PLACEHOLDER);
       onClose();
@@ -292,6 +297,17 @@ export default function ToolDetailAdminPanel({
               })}
             </div>
           )}
+        </div>
+
+        <div>
+          <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Link</label>
+          <input
+            type="url"
+            value={tryNowUrl}
+            onChange={(e) => setTryNowUrl(e.target.value)}
+            placeholder="https://"
+            className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-white text-sm focus:outline-none focus:border-[#22c55e]/50"
+          />
         </div>
 
         <div>
