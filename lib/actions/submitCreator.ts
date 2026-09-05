@@ -595,7 +595,6 @@ export async function createFeaturedCreatorInvoice(creatorId: string, token: str
       body: JSON.stringify({
         price_amount: 197,
         price_currency: 'usd',
-        pay_currency: 'usdttrc20',
         order_id: orderId,
         order_description: `Boosted listing (1 week) for ${creator.name} on Erogram`,
         ipn_callback_url: `${SITE_URL}/api/payments/nowpayments/webhook`,

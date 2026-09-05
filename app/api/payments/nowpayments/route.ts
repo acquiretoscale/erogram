@@ -42,7 +42,6 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         price_amount: p.priceUsd,
         price_currency: 'usd',
-        pay_currency: 'usdttrc20',
         order_id: orderId,
         order_description: p.description,
         ipn_callback_url: `${SITE_URL}/api/payments/nowpayments/webhook`,
