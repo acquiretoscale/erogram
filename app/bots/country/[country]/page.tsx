@@ -3,6 +3,7 @@ import connectDB from '@/lib/db/mongodb';
 import { Bot, Advert } from '@/lib/models';
 import BotsClient from '../../BotsClient';
 import { getActiveFeedCampaigns } from '@/lib/actions/campaigns';
+import { getServerVisitorCountries } from '@/lib/adGeo.server';
 import { buildSocialMeta } from '@/lib/seo/socialMeta';
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogramx.com';
@@ -330,10 +331,11 @@ export default async function CountryBotsPage({ params }: PageProps) {
   const { country: rawCountry } = await params;
   const country = normalizeCountryParam(rawCountry);
 
+  const visitorCountry = await getServerVisitorCountries();
   const [bots, adverts, feedCampaigns] = await Promise.all([
     getBotsByCountry(country),
     getAdverts(),
-    getActiveFeedCampaigns('bots'),
+    getActiveFeedCampaigns('bots', visitorCountry),
   ]);
 
   return (

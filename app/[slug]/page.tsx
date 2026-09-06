@@ -27,6 +27,15 @@ import {
   resolveEntityMetaDescription,
 } from '@/lib/seo/entityMetaDescription';
 import { isBlacklistedPublicPathSegment } from '@/lib/ofsearch/creatorBlacklist';
+import { getServerVisitorCountries } from '@/lib/adGeo.server';
+
+/** Legacy OF URLs: /{username}-onlyfans → /ofsearch/{username}. Only when no group/bot exists. */
+function legacyOnlyfansCreatorPath(slug: string, locale: Locale): string | null {
+  const m = slug.match(/^(.+)-onlyfans$/);
+  if (!m) return null;
+  if (isBlacklistedPublicPathSegment(m[1]) || isBlacklistedPublicPathSegment(slug)) return null;
+  return localePath(`/ofsearch/${m[1]}`, locale);
+}
 
 // Pre-built at deploy (all approved groups + bots via generateStaticParams below)
 // + background refresh every 5 minutes (ISR): Google sees stable server HTML like
@@ -615,6 +624,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     permanentRedirect(`/ainsfw/${aiTool.slug}`);
   }
 
+  const legacyOf = legacyOnlyfansCreatorPath(slug, locale);
+  if (legacyOf) {
+    permanentRedirect(legacyOf);
+  }
+
   // If nothing found
   const notFoundTitle = 'Not Found - Discover NSFW Telegram Communities';
   const notFoundDescription = 'The requested NSFW Telegram community or bot could not be found. Discover thousands of adult communities and bots on Erogram.pro.';
@@ -716,13 +730,14 @@ export default async function JoinPage({ params }: PageProps) {
       };
     }
 
+    const visitorCountry = await getServerVisitorCountries();
     const [joinCtaCampaigns, topBannerCampaigns, vaultTeaser, featuredCreators, sidebarAdsAgnostic, rankingCoverImages] = await Promise.all([
       getActiveCampaigns('join-cta'),
       getActiveCampaigns('top-banner', { page: 'join', device: isMobile ? 'mobile' : 'desktop' }),
       getVaultTeaser(),
       getTrendingCreators().catch(() => []),
       // Agnostic group-sidebar ads (any adType: OF creator, advertiser, …) — up to 4, like Top Groups.
-      getPlacementFeedCampaigns('group-sidebar', 4).catch(() => []),
+      getPlacementFeedCampaigns('group-sidebar', 4, visitorCountry).catch(() => []),
       getRankingCoverImages(),
     ]);
     const joinCtaCampaign = joinCtaCampaigns[0] ?? null;
@@ -828,13 +843,14 @@ export default async function JoinPage({ params }: PageProps) {
       } : {}),
     };
 
+    const visitorCountry2 = await getServerVisitorCountries();
     const [joinCtaCampaigns2, topBannerCampaigns2, vaultTeaser2, featuredCreators2, botStatsData, sidebarAdsAgnostic2] = await Promise.all([
       getActiveCampaigns('join-cta'),
       getActiveCampaigns('top-banner', { page: 'join', device: isMobile ? 'mobile' : 'desktop' }),
       getVaultTeaser(),
       getTrendingCreators().catch(() => []),
       getBotStats(bot.slug),
-      getPlacementFeedCampaigns('group-sidebar', 4).catch(() => []),
+      getPlacementFeedCampaigns('group-sidebar', 4, visitorCountry2).catch(() => []),
     ]);
     const joinCtaCampaign = joinCtaCampaigns2[0] ?? null;
     const topBannerForPage =
@@ -864,6 +880,11 @@ export default async function JoinPage({ params }: PageProps) {
   const aiTool = getToolBySlug(slug) || await getSubmissionTool(slug);
   if (aiTool) {
     permanentRedirect(`/ainsfw/${aiTool.slug}`);
+  }
+
+  const legacyOf = legacyOnlyfansCreatorPath(slug, locale);
+  if (legacyOf) {
+    permanentRedirect(legacyOf);
   }
 
   // If nothing found, show not found

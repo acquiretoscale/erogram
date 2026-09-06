@@ -140,7 +140,7 @@ const nextConfig: NextConfig = {
               "img-src 'self' data: blob: https:",
 
               // Frames
-              "frame-src 'self' https://telegram.org https://*.telegram.org",
+              "frame-src 'self' https://telegram.org https://*.telegram.org https://creative.whitetrafsa.com",
               "frame-ancestors 'self' https://telegram.org https://*.telegram.org",
 
               // Network connections

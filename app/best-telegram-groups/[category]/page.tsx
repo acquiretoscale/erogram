@@ -11,8 +11,10 @@ import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, localePath } from '@/lib/i18n';
 import { getKeywordPlacementCampaigns } from '@/lib/actions/campaigns';
+import { getServerVisitorCountries } from '@/lib/adGeo.server';
 import BestGroupsAds from '@/app/best-telegram-groups/BestGroupsAds';
 import BestGroupRankCard from '@/app/best-telegram-groups/BestGroupRankCard';
+import BestGroupsSlotAd from '@/app/best-telegram-groups/BestGroupsSlotAd';
 import { getMetaDescription } from '@/lib/bestTelegramGroups/metaDescriptions';
 import {
   buildTop10Ranking,
@@ -222,6 +224,8 @@ export default async function BestGroupsPage({ params }: PageProps) {
     const freeGroups = [...curatedGroups, ...autoGroups];
     const premiumGroups = await fetchNichePremiumGroups(categoryPremiumFilter(realCategory), 3);
     const ranking = buildTop10Ranking(freeGroups, premiumGroups);
+    const freeEntries = ranking.filter((e) => !e.isPremium);
+    const premiumEntries = ranking.filter((e) => e.isPremium);
 
     // If very few groups overall, show some from other categories
     let otherGroups: any[] = [];
@@ -245,7 +249,7 @@ export default async function BestGroupsPage({ params }: PageProps) {
     }
 
     // Ad network: one agnostic ad for this Top-10 page (keyword-targeted to this category).
-    const bestGroupsAds = await getKeywordPlacementCampaigns('best-groups', decodedSlug, 1).catch(() => []);
+    const bestGroupsAds = await getKeywordPlacementCampaigns('best-groups', decodedSlug, 1, await getServerVisitorCountries()).catch(() => []);
     const topGroupAd = (bestGroupsAds as any[])[0] || null;
 
     return (
@@ -283,7 +287,7 @@ export default async function BestGroupsPage({ params }: PageProps) {
                         {topGroupAd && (
                             <BestGroupsAds variant="top" ads={[topGroupAd as any]} />
                         )}
-                        {ranking.filter((e) => !e.isPremium).map((entry) => (
+                        {freeEntries.slice(0, 5).map((entry) => (
                             <BestGroupRankCard
                                 key={`${entry.group._id}-${entry.rank}`}
                                 entry={entry}
@@ -293,7 +297,18 @@ export default async function BestGroupsPage({ params }: PageProps) {
                                 pageCategory={realCategory}
                             />
                         ))}
-                        {ranking.filter((e) => e.isPremium).map((entry) => (
+                        <BestGroupsSlotAd />
+                        {freeEntries.slice(5).map((entry) => (
+                            <BestGroupRankCard
+                                key={`${entry.group._id}-${entry.rank}`}
+                                entry={entry}
+                                joinLabel={`${dict.bestGroups.joinGroup} 🚀`}
+                                viewsLabel={dict.common.views}
+                                localePath={(path) => localePath(path, locale)}
+                                pageCategory={realCategory}
+                            />
+                        ))}
+                        {premiumEntries.map((entry) => (
                             <BestGroupRankCard
                                 key={`${entry.group._id}-${entry.rank}`}
                                 entry={entry}

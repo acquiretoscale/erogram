@@ -148,6 +148,53 @@ export async function updateSiteConfig(token: string, body: Record<string, any>)
   return JSON.parse(JSON.stringify(config));
 }
 
+/** Public read for Top-10 mid-slot (avoids stale static page cache). */
+export type BestGroupsMidAdData = {
+  mode: 'code' | 'image';
+  code: string;
+  height: number;
+  image: string;
+  url: string;
+  clicks: number;
+  lastClickAt: string;
+  placementKey: string;
+};
+
+export async function getBestGroupsMidAd(): Promise<BestGroupsMidAdData> {
+  await connectDB();
+  const config = await SiteConfig.findOne().lean();
+  const mid = (config as any)?.generalSettings?.bestGroupsMidAd || {};
+  return {
+    mode: mid.mode === 'image' ? 'image' : 'code',
+    code: typeof mid.code === 'string' ? mid.code : '',
+    height: Number(mid.height) || 520,
+    image: typeof mid.image === 'string' ? mid.image : '',
+    url: typeof mid.url === 'string' ? mid.url : '',
+    clicks: Number(mid.clicks) || 0,
+    lastClickAt: typeof mid.lastClickAt === 'string' ? mid.lastClickAt : '',
+    placementKey: typeof mid.placementKey === 'string' ? mid.placementKey : 'best-groups-mid',
+  };
+}
+
+export async function trackBestGroupsMidAdClick(): Promise<number> {
+  await connectDB();
+  const config = await SiteConfig.findOne();
+  if (!config) return 0;
+  const gs = (config as any).generalSettings || {};
+  const mid = gs.bestGroupsMidAd || {};
+  const clicks = (Number(mid.clicks) || 0) + 1;
+  gs.bestGroupsMidAd = {
+    ...mid,
+    clicks,
+    lastClickAt: new Date().toISOString(),
+    placementKey: mid.placementKey || 'best-groups-mid',
+  };
+  (config as any).generalSettings = gs;
+  config.markModified('generalSettings');
+  await config.save();
+  return clicks;
+}
+
 export async function getButtonConfig(token: string) {
   const admin = await authenticateAdmin(token);
   if (!admin) throw new Error('Unauthorized');

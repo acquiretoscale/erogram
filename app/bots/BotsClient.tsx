@@ -16,6 +16,7 @@ import { useTranslation, useLocalePath } from '@/lib/i18n';
 import { voteOnBot, unvoteOnBot, getAllBotStats } from '@/lib/actions/botVotes';
 import type { BotStatsData } from '@/lib/actions/botVotes';
 import { getActiveFeedCampaigns } from '@/lib/actions/campaigns';
+import { readVisitorCountriesForAds } from '@/lib/adGeo';
 import { BOOST_WEIGHT } from '@/lib/adPlacements';
 // Removed react-window import as virtualization is no longer used
 
@@ -155,7 +156,8 @@ export default function BotsClient({ initialBots, initialTopBots = [], initialAd
   const [feedCampaigns, setFeedCampaigns] = useState<FeedCampaign[]>(initialFeedCampaigns);
 
   useEffect(() => {
-    getActiveFeedCampaigns('bots').catch(() => [] as FeedCampaign[])
+    const cc = readVisitorCountriesForAds();
+    getActiveFeedCampaigns('bots', cc).catch(() => [] as FeedCampaign[])
       .then((feed) => {
         if (feed.length > 0) setFeedCampaigns(feed);
       }).catch(() => {});

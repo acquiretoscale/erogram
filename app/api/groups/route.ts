@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import connectDB from '@/lib/db/mongodb';
-import { Group, Bot, User, Post, SystemConfig, Article } from '@/lib/models';
+import { Group, Bot, User, Post, SystemConfig, Article, Campaign } from '@/lib/models';
 import { slugify } from '@/lib/utils/slugify';
 import { getR2PublicUrl, isR2Configured } from '@/lib/r2';
 import { processAndUploadGroupImage } from '@/lib/images/processGroupImage';
@@ -44,6 +44,16 @@ function shuffleInPlace<T>(arr: T[]): T[] {
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
+}
+
+function sumClickCountByDay(byDay: unknown): number {
+  if (!byDay || typeof byDay !== 'object') return 0;
+  const map = byDay instanceof Map ? Object.fromEntries(byDay) : (byDay as Record<string, number>);
+  return Object.values(map).reduce((sum, n) => sum + (Number(n) || 0), 0);
+}
+
+function groupEntityClicks(g: { clickCount?: number; clickCountByDay?: unknown }): number {
+  return Math.max(g.clickCount || 0, sumClickCountByDay(g.clickCountByDay));
 }
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
@@ -260,7 +270,7 @@ export async function GET(req: NextRequest) {
       })
         .sort({ boostExpiresAt: 1 })
         .limit(topLimit)
-        .select('name slug category country categories description description_de description_es image telegramLink clickCount views memberCount verified paidBoost paidBoostStars weeklyClicks boosted boostExpiresAt')
+        .select('name slug category country categories description description_de description_es image telegramLink clickCount clickCountByDay views memberCount verified paidBoost paidBoostStars weeklyClicks boosted boostExpiresAt')
         .lean();
 
       const boostedIds = new Set((boostedGroups as any[]).map(g => g._id.toString()));
@@ -271,7 +281,7 @@ export async function GET(req: NextRequest) {
         topGroupSlot: { $in: [1, 2] },
         _id: { $nin: Array.from(boostedIds) },
       })
-        .select('name slug category country categories description description_de description_es image telegramLink clickCount views memberCount verified weeklyClicks topGroupSlot')
+        .select('name slug category country categories description description_de description_es image telegramLink clickCount clickCountByDay views memberCount verified weeklyClicks topGroupSlot')
         .lean();
 
       const manualSlotMap = new Map((manualSlotted as any[]).map(g => [g.topGroupSlot, g]));
@@ -318,10 +328,23 @@ export async function GET(req: NextRequest) {
 
       const topReviewMap = await getReviewStatsMap(finalGroups.map((g: any) => g._id));
 
+      const telegramLinks = [...new Set(finalGroups.map((g: any) => g.telegramLink).filter(Boolean))];
+      const linkedCampaigns = telegramLinks.length > 0
+        ? await Campaign.find({ destinationUrl: { $in: telegramLinks } }).select('destinationUrl clicks').lean()
+        : [];
+      const campaignClicksByUrl = new Map<string, number>();
+      for (const c of linkedCampaigns as any[]) {
+        const url = c.destinationUrl as string;
+        campaignClicksByUrl.set(url, (campaignClicksByUrl.get(url) || 0) + (c.clicks || 0));
+      }
+
       return NextResponse.json({
         groups: finalGroups.map((g: any) => {
           const cats = g.categories?.length ? g.categories : [g.category, g.country].filter(Boolean);
           const rs = topReviewMap.get(g._id.toString()) || { reviewCount: 0, averageRating: 0 };
+          const entityClicks = groupEntityClicks(g);
+          const linkedClicks = g.telegramLink ? (campaignClicksByUrl.get(g.telegramLink) || 0) : 0;
+          const totalClicks = entityClicks + linkedClicks;
           return {
             _id: g._id.toString(),
             name: (g.name || '').slice(0, 150),
@@ -336,6 +359,7 @@ export async function GET(req: NextRequest) {
             advertisementUrl: null,
             pinned: false,
             clickCount: g.clickCount || 0,
+            totalClicks,
             views: g.views || 0,
             memberCount: g.memberCount || 0,
             verified: g.verified || false,

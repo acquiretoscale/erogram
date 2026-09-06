@@ -6,6 +6,7 @@ import { compressImage } from '@/lib/utils/compressImage';
 import { Group } from './types';
 import { cardEntryProps } from './cardEntry';
 import { useTranslation } from '@/lib/i18n/client';
+import { getGroupTotalClicks } from '@/lib/actions/publicData';
 
 interface GroupCardProps {
     group: Group;
@@ -22,6 +23,20 @@ interface GroupCardProps {
     directLink?: string;
     growthPercent?: number;
     inFeed?: boolean;
+    /** Top Groups row: clicks as views, fixed 4.9 / 12 reviews (advertiser card). */
+    topFeaturedStats?: boolean;
+}
+
+/** Seeded, varied social proof per card (stable per id, different across cards). */
+function topFeaturedSocialProof(id: string): { rating: string; reviews: number } {
+    let seed = 0;
+    for (let i = 0; i < id.length; i++) seed = ((seed << 5) - seed + id.charCodeAt(i)) | 0;
+    seed = Math.abs(seed);
+    const ratings = ['4.8', '4.85', '4.9', '4.95', '5.0'];
+    return {
+        rating: ratings[seed % ratings.length],
+        reviews: 8 + (seed % 137), // 8..144
+    };
 }
 
 function getPremiumSocialProof(groupId: string) {
@@ -52,8 +67,32 @@ function inFeedGroupBtnStyle(groupId: string): React.CSSProperties {
     };
 }
 
-export default function GroupCard({ group, isFeatured = false, isIndex = 0, shouldPreload = false, onVisible, onOpenReviewModal, onOpenReportModal, isBookmarked = false, bookmarkId = null, itemType = 'group', lockedPremium = false, directLink, growthPercent, inFeed = false }: GroupCardProps) {
+export default function GroupCard({ group, isFeatured = false, isIndex = 0, shouldPreload = false, onVisible, onOpenReviewModal, onOpenReportModal, isBookmarked = false, bookmarkId = null, itemType = 'group', lockedPremium = false, directLink, growthPercent, inFeed = false, topFeaturedStats = false }: GroupCardProps) {
     const { t } = useTranslation();
+    const topProof = useMemo(() => topFeaturedSocialProof(group._id), [group._id]);
+    const cardRating = topFeaturedStats ? topProof.rating : (group.averageRating || 0).toFixed(1);
+    const [cardViews, setCardViews] = useState(() =>
+        topFeaturedStats ? (group.totalClicks ?? group.clickCount ?? 0) : (group.views || 0),
+    );
+
+    useEffect(() => {
+        if (!topFeaturedStats) {
+            setCardViews(group.views || 0);
+            return;
+        }
+        setCardViews(group.totalClicks ?? group.clickCount ?? 0);
+        getGroupTotalClicks(group._id).then(setCardViews).catch(() => {});
+    }, [group._id, group.views, group.totalClicks, group.clickCount, topFeaturedStats]);
+
+    const trackTopFeaturedClick = () => {
+        if (!topFeaturedStats || !group._id) return;
+        fetch('/api/groups/track', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ groupId: group._id }),
+        }).catch(() => {});
+        setCardViews((v) => v + 1);
+    };
     const [isAdmin, setIsAdmin] = useState(false);
     const [deleted, setDeleted] = useState(false);
     const [showEdit, setShowEdit] = useState(false);
@@ -287,11 +326,14 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                             <>
                                 <div className="flex items-center gap-0.5 shrink-0">
                                     <span className="text-yellow-400 text-[9px]">⭐</span>
-                                    <span className="text-white font-bold text-[9px] leading-none">{(group.averageRating || 0).toFixed(1)}</span>
+                                    <span className="text-white font-bold text-[9px] leading-none">{cardRating}</span>
+                                    {topFeaturedStats && (
+                                        <span className="text-white/40 text-[8px] leading-none">({topProof.reviews})</span>
+                                    )}
                                 </div>
                                 <span className="text-white/20 text-[8px] shrink-0">·</span>
                                 <div className="flex items-center gap-0.5 shrink-0">
-                                    <span className="text-white font-bold text-[9px] leading-none">{(group.views || 0).toLocaleString()}</span>
+                                    <span className="text-white font-bold text-[9px] leading-none">{cardViews.toLocaleString()}</span>
                                     <span className="text-white/40 text-[8px] leading-none">views</span>
                                 </div>
                                 {(group.memberCount || 0) > 0 && (
@@ -398,6 +440,7 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                                             : `/${group.slug}`}
                             target="_blank"
                             rel={group.isAdvertisement ? "sponsored noopener noreferrer" : "noopener noreferrer"}
+                            onClick={topFeaturedStats ? trackTopFeaturedClick : undefined}
                             className={`group/btn relative flex-1 flex items-center justify-center gap-1.5 overflow-hidden font-black active:scale-[0.98] ${
                                 lockedPremium
                                     ? 'rounded-xl py-2 sm:py-2.5 px-3'

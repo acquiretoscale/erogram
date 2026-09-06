@@ -5,6 +5,7 @@ import { Group } from '@/lib/models';
 import GroupsClient from '../../GroupsClient';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import { getActiveCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
+import { getServerVisitorCountries } from '@/lib/adGeo.server';
 import { buildSocialMeta } from '@/lib/seo/socialMeta';
 import { getGroupMetaDescription } from '@/lib/groups/metaDescriptions';
 import { getLocale } from '@/lib/i18n/server';
@@ -275,9 +276,10 @@ export default async function CountryGroupsPage({ params }: PageProps) {
   const { country: rawCountry } = await params;
   const country = normalizeCountryParam(rawCountry);
 
+  const visitorCountry = await getServerVisitorCountries();
   const [groups, feedCampaigns, topBannerCampaigns] = await Promise.all([
     getGroupsByCountry(country),
-    getActiveFeedCampaigns('groups'),
+    getActiveFeedCampaigns('groups', visitorCountry),
     getActiveCampaigns('top-banner', { page: 'groups', device: isMobile ? 'mobile' : 'desktop' }),
   ]);
 

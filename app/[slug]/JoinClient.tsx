@@ -13,6 +13,7 @@ import ShareDropdown from '@/components/ShareDropdown';
 import { categorySlug } from '@/app/groups/constants';
 import { getButtonConfig, trackEntityView } from '@/lib/actions/publicData';
 import { getActiveCampaigns, getPlacementFeedCampaigns } from '@/lib/actions/campaigns';
+import { readVisitorCountriesForAds } from '@/lib/adGeo';
 import { trackTrendingClick } from '@/lib/actions/onlyfansTracking';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 import { getCreatorReviews, submitCreatorReview, type CreatorReviewData } from '@/lib/actions/ofCreatorProfile';
@@ -287,9 +288,10 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
       .then(() => setViewCount((v) => v + 1))
       .catch(() => {});
 
+    const cc = readVisitorCountriesForAds();
     Promise.all([
       getActiveCampaigns('top-banner', { page: 'join' }).catch(() => []),
-      getPlacementFeedCampaigns('group-sidebar', 4).catch(() => []),
+      getPlacementFeedCampaigns('group-sidebar', 4, cc).catch(() => []),
     ]).then(([banners, sidebar]) => {
       const b = banners as any[];
       if (b.length > 0 && b[0].creative) setLiveTopBanners(b as any);

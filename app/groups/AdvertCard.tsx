@@ -4,6 +4,7 @@ import { Advert, FeedCampaign } from './types';
 import { cardEntryProps } from './cardEntry';
 import { useIsTelegramBrowser } from '../hooks/useIsTelegramBrowser';
 import { trackClick as trackCampaignClick, trackImpression } from '@/lib/actions/campaigns';
+import { getCampaignTotalClicks } from '@/lib/actions/publicData';
 import { trackTrendingClick } from '@/lib/actions/onlyfansTracking';
 import { useTranslation } from '@/lib/i18n/client';
 import { isGroupsInFeedPlacement } from '@/lib/adPlacements';
@@ -26,6 +27,100 @@ interface AdvertCardProps {
      *  (e.g. 'group-sidebar', 'ainsfw-featured', 'best-of', 'best-groups', 'of-cat'). */
     placementOverride?: string;
     growthPercent?: number;
+    /** Top Groups row: campaign clicks as views, fixed 4.9 / 12 reviews. */
+    topFeaturedStats?: boolean;
+}
+
+/** Seeded, varied social proof per card (stable per id, different across cards). */
+function topFeaturedSocialProof(id: string): { rating: string; reviews: number } {
+    let seed = 0;
+    for (let i = 0; i < id.length; i++) seed = ((seed << 5) - seed + id.charCodeAt(i)) | 0;
+    seed = Math.abs(seed);
+    const ratings = ['4.8', '4.85', '4.9', '4.95', '5.0'];
+    return {
+        rating: ratings[seed % ratings.length],
+        reviews: 8 + (seed % 137), // 8..144
+    };
+}
+
+/** Full ad name on card — uses full row width (no empty right column). */
+const AD_TITLE_SIZE_CLASS = 'text-[11px] sm:text-sm';
+
+function VerifiedCheck({ className = 'w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0' }: { className?: string }) {
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="#1D9BF0" aria-label="Verified">
+            <path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z" />
+        </svg>
+    );
+}
+
+function AdCardTitle({
+    name,
+    showVerified = true,
+    growthPercent,
+    className = '',
+    center = false,
+    dropShadow = false,
+}: {
+    name: string;
+    showVerified?: boolean;
+    growthPercent?: number;
+    className?: string;
+    center?: boolean;
+    dropShadow?: boolean;
+}) {
+    return (
+        <h3
+            className={`w-full font-black text-white leading-snug ${AD_TITLE_SIZE_CLASS} ${dropShadow ? 'drop-shadow-lg' : ''} ${center ? 'text-center' : ''} ${className}`}
+        >
+            <span className={`inline-flex flex-wrap items-center gap-x-1 gap-y-0.5 w-full min-w-0 ${center ? 'justify-center' : ''}`}>
+                <span className="min-w-0 break-words">{name}</span>
+                {showVerified && <VerifiedCheck />}
+                {typeof growthPercent === 'number' && <GrowthTrendBadge growthPercent={growthPercent} />}
+            </span>
+        </h3>
+    );
+}
+
+/** Live "X visiting" badge, same look/behavior as the video ad card. */
+function useVisitingCount(seedId: string) {
+    let seed = 0;
+    for (let i = 0; i < seedId.length; i++) seed = ((seed << 5) - seed + seedId.charCodeAt(i)) | 0;
+    const initial = Math.floor(300 + (Math.abs(seed) / 2147483647) * 350);
+    const [count, setCount] = useState(initial);
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCount((prev) => Math.max(300, prev + (Math.floor(Math.random() * 9) - 3)));
+        }, 3000 + Math.random() * 2000);
+        return () => clearInterval(interval);
+    }, []);
+    return count;
+}
+
+function VisitingBadge({ count }: { count: number }) {
+    return (
+        <div className="absolute top-3 left-3 z-20 bg-black/80 backdrop-blur-md border border-white/10 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg flex items-center gap-1 sm:gap-1.5 shadow-lg">
+            <span className="text-[10px] sm:text-xs text-red-400">⚡</span>
+            <span className="text-[10px] sm:text-xs font-bold text-white">{count} visiting</span>
+        </div>
+    );
+}
+
+function TopFeaturedStatsStrip({ views, rating, reviews }: { views: number; rating: string; reviews: number }) {
+    return (
+        <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center gap-2 px-2.5 py-1.5 bg-gradient-to-t from-black/70 to-transparent overflow-hidden">
+            <div className="flex items-center gap-0.5 shrink-0">
+                <span className="text-yellow-400 text-[9px]">⭐</span>
+                <span className="text-white font-bold text-[9px] leading-none">{rating}</span>
+                <span className="text-white/40 text-[8px] leading-none">({reviews})</span>
+            </div>
+            <span className="text-white/20 text-[8px] shrink-0">·</span>
+            <div className="flex items-center gap-0.5 shrink-0">
+                <span className="text-white font-bold text-[9px] leading-none">{views.toLocaleString()}</span>
+                <span className="text-white/40 text-[8px] leading-none">views</span>
+            </div>
+        </div>
+    );
 }
 
 /**
@@ -48,6 +143,12 @@ function seededRandomVideo(seed: string) {
     return Math.abs(hash) / 2147483647;
 }
 
+const AD_RATING_MIN = 4.8;
+
+function clampAdRating(value: number): number {
+    return Math.max(AD_RATING_MIN, Math.min(5, value));
+}
+
 function displayAdRating(
     campaign: { adRating?: number | null; adReviewCount?: number | null },
     seedFn: (s: string) => number,
@@ -55,12 +156,12 @@ function displayAdRating(
 ): { rating: string; reviews: number } {
     if (campaign.adRating != null && campaign.adRating > 0) {
         return {
-            rating: Number(campaign.adRating).toFixed(1),
+            rating: clampAdRating(Number(campaign.adRating)).toFixed(1),
             reviews: campaign.adReviewCount ?? 0,
         };
     }
     return {
-        rating: (seedFn(seed + 'rating') * 0.7 + 4.2).toFixed(1),
+        rating: clampAdRating(seedFn(seed + 'rating') * 0.1 + 4.9).toFixed(1),
         reviews: Math.floor(seedFn(seed + 'reviews') * 38 + 5),
     };
 }
@@ -248,13 +349,7 @@ function OnlyFansCreatorAdCard({ campaign, handleClick, growthPercent, isIndex =
                     <span className="text-[8px] sm:text-[9px] font-bold text-white/50 uppercase tracking-wider">Featured Onlyfans Creator</span>
 
                     {/* Name + verified + trending % */}
-                    <h3 className="font-black text-white leading-tight drop-shadow-lg flex items-center gap-1.5 min-w-0 text-lg sm:text-2xl">
-                        <span className="truncate min-w-0">{displayName}</span>
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" viewBox="0 0 24 24" fill="#1D9BF0" aria-label="Verified"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
-                        {typeof growthPercent === 'number' && (
-                            <span className="shrink-0"><GrowthTrendBadge growthPercent={growthPercent} /></span>
-                        )}
-                    </h3>
+                    <AdCardTitle name={displayName} growthPercent={growthPercent} dropShadow className="text-xs sm:text-sm" />
 
                     {/* Total likes */}
                     {likesCount > 0 && (
@@ -372,15 +467,7 @@ function VideoAdCard({ campaign, handleClick, hidePromoted = false, growthPercen
                             <span className="text-[10px] sm:text-xs font-bold text-white">{visitingCount} visiting</span>
                         </div>
                     </div>
-                    <h3 className={`font-black text-white leading-tight drop-shadow-lg flex items-center justify-between gap-2 ${typeof growthPercent === 'number' ? 'text-sm sm:text-lg' : 'text-sm sm:text-xl'}`}>
-                        <span className="flex items-center gap-1 min-w-0">
-                            <span className="truncate min-w-0">{campaign.name}</span>
-                            <svg className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" viewBox="0 0 24 24" fill="#1D9BF0" aria-label="Verified"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
-                        </span>
-                        <span className="shrink-0">
-                            <GrowthTrendBadge growthPercent={growthPercent} />
-                        </span>
-                    </h3>
+                    <AdCardTitle name={campaign.name} growthPercent={growthPercent} dropShadow />
 
                     {campaign.description && (
                         <p className="text-gray-300 text-xs sm:text-sm line-clamp-1 sm:line-clamp-2 leading-relaxed drop-shadow">
@@ -525,12 +612,7 @@ function PremiumMosaicCard({ campaign, handleClick, growthPercent }: { campaign:
                                 </div>
                             </div>
                         )}
-                        <h3 className={`font-black text-white mb-1 sm:mb-2 leading-tight flex items-center justify-between gap-2 ${typeof growthPercent === 'number' ? 'text-sm sm:text-lg' : 'text-sm sm:text-xl'}`}>
-                            <span className="truncate min-w-0">🔒 {campaign.name || `Premium ${catLabel}`}</span>
-                            <span className="shrink-0">
-                                <GrowthTrendBadge growthPercent={growthPercent} />
-                            </span>
-                        </h3>
+                        <AdCardTitle name={`🔒 ${campaign.name || `Premium ${catLabel}`}`} growthPercent={growthPercent} className="mb-1 sm:mb-2" />
                         <div className="mb-3 sm:mb-6 flex-grow">
                             <p className="text-gray-400 text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed">
                                 {campaign.description || `Unlock the best ${catLabel} groups`}
@@ -552,7 +634,7 @@ function PremiumMosaicCard({ campaign, handleClick, growthPercent }: { campaign:
     );
 }
 
-export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreload = false, onVisible, forceVisible = false, hidePromoted = false, placementOverride, growthPercent }: AdvertCardProps) {
+export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreload = false, onVisible, forceVisible = false, hidePromoted = false, placementOverride, growthPercent, topFeaturedStats = false }: AdvertCardProps) {
     const isTelegram = useIsTelegramBrowser();
     const { t } = useTranslation();
 
@@ -587,6 +669,15 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
     const impressionFiredRef = useRef(false);
     const imgRef = useRef<HTMLDivElement>(null);
     const [liveCount, setLiveCount] = useState<number>(0);
+    const [topFeaturedViews, setTopFeaturedViews] = useState(() =>
+        topFeaturedStats ? (campaign?.clicks ?? 0) : 0,
+    );
+
+    useEffect(() => {
+        if (!topFeaturedStats || !campaign?._id) return;
+        setTopFeaturedViews(campaign.clicks ?? 0);
+        getCampaignTotalClicks(campaign._id).then(setTopFeaturedViews).catch(() => {});
+    }, [campaign?._id, campaign?.clicks, topFeaturedStats]);
 
     // Button text variations
     // Curated fallback labels — sentence-case, clean, no gimmicks.
@@ -614,10 +705,15 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
     // Use ad ID + index as seed for consistent random selection (same on server and client)
     const seed = `${ad._id}-${isIndex}`;
 
+    const topProof = topFeaturedSocialProof(ad._id || seed);
+    const visitingCount = useVisitingCount(ad._id || seed);
+
     // CTA button: use only buttonText from the ad (never description)
     const { rating: cardRating, reviews: cardReviews } = campaign
-        ? displayAdRating(campaign, seededRandom, seed)
-        : { rating: (seededRandom(seed + 'rating') * 0.7 + 4.2).toFixed(1), reviews: Math.floor(seededRandom(seed + 'reviews') * 38 + 5) };
+        ? (topFeaturedStats
+            ? topProof
+            : displayAdRating(campaign, seededRandom, seed))
+        : { rating: clampAdRating(seededRandom(seed + 'rating') * 0.1 + 4.9).toFixed(1), reviews: Math.floor(seededRandom(seed + 'reviews') * 38 + 5) };
 
     const displayButtonText = (ad.buttonText && String(ad.buttonText).trim()) ? String(ad.buttonText).trim() : (buttonTexts[Math.floor(seededRandom(seed) * buttonTexts.length)]);
 
@@ -714,6 +810,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
             const vIdx = typeof shownVariantIdx === 'number' ? shownVariantIdx : -1;
             if (vIdx >= 0) placementName = `${placementName}:v${vIdx}`;
             trackCampaignClick(ad._id, placementName);
+            if (topFeaturedStats) setTopFeaturedViews((v) => v + 1);
         } else {
             fetch('/api/adverts/track', {
                 method: 'POST',
@@ -815,17 +912,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                     </div>
                     {/* Content */}
                     <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
-                        <h3 className={`font-black text-white mb-2 sm:mb-3 leading-tight flex items-center justify-between gap-2 ${typeof growthPercent === 'number' ? 'text-sm sm:text-lg' : 'text-sm sm:text-xl'}`}>
-                            <span className="flex items-center gap-1 min-w-0">
-                                <span className="truncate min-w-0">{ad.name}</span>
-                                {showVerified && (
-                                    <svg className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" viewBox="0 0 24 24" fill="#1D9BF0" aria-label="Verified"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
-                                )}
-                            </span>
-                            <span className="shrink-0">
-                                <GrowthTrendBadge growthPercent={growthPercent} />
-                            </span>
-                        </h3>
+                        <AdCardTitle name={ad.name} growthPercent={growthPercent} className="mb-2 sm:mb-3" />
                         <div className="mb-3 sm:mb-6 flex-grow">
                             <p className="text-gray-400 text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed">{ad.description}</p>
                         </div>
@@ -872,22 +959,14 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                             onError={() => setImageSrc('/assets/image.jpg')}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent opacity-80" />
+                        {topFeaturedStats && <VisitingBadge count={visitingCount} />}
+                        {topFeaturedStats && <TopFeaturedStatsStrip views={topFeaturedViews} rating={topProof.rating} reviews={topProof.reviews} />}
                     </div>
 
                     {/* Card Content */}
                     <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
                         {/* Title */}
-                        <h3 className={`font-black text-white mb-2 sm:mb-3 leading-tight flex items-center justify-between gap-2 ${typeof growthPercent === 'number' ? 'text-sm sm:text-lg' : 'text-sm sm:text-xl'}`}>
-                            <span className="flex items-center gap-1 min-w-0">
-                                <span className="truncate min-w-0">{ad.name}</span>
-                                {showVerified && (
-                                    <svg className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" viewBox="0 0 24 24" fill="#1D9BF0" aria-label="Verified"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
-                                )}
-                            </span>
-                            <span className="shrink-0">
-                                <GrowthTrendBadge growthPercent={growthPercent} />
-                            </span>
-                        </h3>
+                        <AdCardTitle name={ad.name} growthPercent={growthPercent} className="mb-2 sm:mb-3" />
 
                         {/* Description */}
                         <div className="mb-3 sm:mb-6 flex-grow">
@@ -898,7 +977,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
                         {/* Footer Actions */}
                         <div className="mt-auto space-y-2 sm:space-y-3">
-                            {/* Rating Row */}
+                            {!topFeaturedStats && (
                             <div className="flex items-center justify-between px-1">
                                 <div className="flex items-center gap-1">
                                     <span className="text-yellow-500 text-[10px] sm:text-sm">⭐</span>
@@ -906,6 +985,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                                     <span className="text-gray-500 text-[10px] sm:text-xs">({cardReviews})</span>
                                 </div>
                             </div>
+                            )}
 
                             {/* Main Button */}
                             <button
@@ -942,30 +1022,29 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                     />
                     {/* Gradient Overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent opacity-80"></div>
-                    {/* Social Proof Overlay */}
-                    {fakeCount && (
+                    {topFeaturedStats ? (
+                        <>
+                            <VisitingBadge count={visitingCount} />
+                            <TopFeaturedStatsStrip views={topFeaturedViews} rating={topProof.rating} reviews={topProof.reviews} />
+                        </>
+                    ) : fakeCount ? (
                         <div className="absolute bottom-3 left-3 flex gap-2">
                             <div className="bg-black/60 backdrop-blur-md border border-white/20 px-2 py-1 rounded-lg flex items-center gap-1.5 shadow-lg">
                                 <span className="text-xs text-red-400">⚡</span>
                                 <span className="text-xs font-bold text-white">{fakeCount}</span>
                             </div>
                         </div>
-                    )}
+                    ) : null}
                 </div>
 
                 {/* Card Content */}
                 <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
-                    <h3 className={`font-black text-white mb-2 sm:mb-3 flex items-center justify-between gap-2 ${typeof growthPercent === 'number' ? 'text-sm sm:text-lg' : 'text-sm sm:text-xl md:text-2xl'} ${typeof growthPercent === 'number' ? 'text-left' : 'text-center'}`}>
-                        <span className={`flex items-center gap-1 min-w-0 ${typeof growthPercent === 'number' ? '' : 'justify-center w-full'}`}>
-                            <span className="truncate min-w-0">{ad.name}</span>
-                            {showVerified && (
-                                <svg className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" viewBox="0 0 24 24" fill="#1D9BF0" aria-label="Verified"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
-                            )}
-                        </span>
-                        <span className="shrink-0">
-                            <GrowthTrendBadge growthPercent={growthPercent} />
-                        </span>
-                    </h3>
+                    <AdCardTitle
+                        name={ad.name}
+                        growthPercent={growthPercent}
+                        center={typeof growthPercent !== 'number'}
+                        className="mb-2 sm:mb-3"
+                    />
 
                     {/* Description */}
                     <div className="mb-3 sm:mb-6 flex-grow">

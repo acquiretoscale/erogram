@@ -7,6 +7,7 @@ import OnlyFansClient from '@/app/ofsearch/OnlyFansClient';
 import { getLocale } from '@/lib/i18n/server';
 import { mainOfMeta } from '@/app/ofsearch/ofMeta';
 import { getActiveCampaigns, getPlacementFeedCampaigns } from '@/lib/actions/campaigns';
+import { getServerVisitorCountries } from '@/lib/adGeo.server';
 import { whaleBrowseLikesFilter } from '@/lib/tags/creatorMatch';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import { getTrendingOnErogram } from '@/lib/actions/publicData';
@@ -50,9 +51,10 @@ export default async function OnlyFansPage({ searchParams }: PageProps) {
     console.error('Failed to fetch OF creators:', e);
   }
 
+  const visitorCountry = await getServerVisitorCountries();
   const [topBannerCampaigns, ofSearchFeaturedRaw, trendingOnErogram, communityCreators, topBookmarkedRecent, topLikedCreators, topLikedPhotos] = await Promise.all([
     getActiveCampaigns('top-banner', { page: 'onlyfans', device: isMobile ? 'mobile' : 'desktop' }).catch(() => []),
-    getPlacementFeedCampaigns('of-search-featured', 8).catch(() => []),
+    getPlacementFeedCampaigns('of-search-featured', 8, visitorCountry).catch(() => []),
     getTrendingOnErogram().catch(() => []),
     getNewestOnlyFansCreators(100).catch(() => []),
     getTopCommunityLikedCreators(20).catch(() => []),

@@ -5,6 +5,13 @@ import mongoose, { type PipelineStage } from 'mongoose';
 import connectDB from '@/lib/db/mongodb';
 import { User, Campaign, CampaignClick, CampaignImpressionDaily, Advertiser, Article, Group, Bot, OnlyFansCreator, TrendingOFCreator } from '@/lib/models';
 import { BOOST_WEIGHT, getAdKeywordAliasesForPage } from '@/lib/adPlacements';
+import {
+  applyGeoToPlacementPool,
+  campaignMatchesVisitorGeo,
+  isGeoPinnedCampaign,
+  normalizeTargetCountries,
+  normalizeVisitorCountry,
+} from '@/lib/adGeo';
 import { getExpiredOFAgencyTargets } from '@/lib/actions/onlyfansTracking';
 import { dropExpiredOFAgencyAds } from '@/lib/ofExpiry';
 import { campaignNotExpired } from '@/lib/campaignDates';
@@ -196,6 +203,8 @@ export async function createCampaign(
     weight?: number | null;
     dailyClickCap?: number | null;
     priority?: 'normal' | 'boost';
+    targetCountries?: string[];
+    geoPinned?: boolean;
   }
 ) {
   const admin = await authenticateAdmin(token);
@@ -313,6 +322,8 @@ export async function createCampaign(
     weight: data.weight ?? null,
     dailyClickCap: data.dailyClickCap ?? null,
     priority: data.priority === 'boost' ? 'boost' : 'normal',
+    targetCountries: normalizeTargetCountries(data.targetCountries),
+    geoPinned: Boolean(data.geoPinned) && normalizeTargetCountries(data.targetCountries).length > 0,
   });
 
   // Keep feed positions gap-free after a new ad is created
@@ -366,6 +377,8 @@ export async function updateCampaign(
     weight: number | null;
     dailyClickCap: number | null;
     priority: 'normal' | 'boost';
+    targetCountries?: string[];
+    geoPinned?: boolean;
   }>
 ) {
   const admin = await authenticateAdmin(token);
@@ -420,6 +433,17 @@ export async function updateCampaign(
   if ('weight' in data) updateData.weight = data.weight ?? null;
   if ('dailyClickCap' in data) updateData.dailyClickCap = data.dailyClickCap ?? null;
   if ('priority' in data) updateData.priority = data.priority === 'boost' ? 'boost' : 'normal';
+  if ('targetCountries' in data) {
+    const tc = normalizeTargetCountries(data.targetCountries);
+    updateData.targetCountries = tc;
+    if (!tc.length) updateData.geoPinned = false;
+  }
+  if ('geoPinned' in data) {
+    const targets: string[] = 'targetCountries' in data
+      ? normalizeTargetCountries(data.targetCountries)
+      : normalizeTargetCountries((await Campaign.findById(id).select('targetCountries').lean() as any)?.targetCountries);
+    updateData.geoPinned = Boolean(data.geoPinned) && targets.length > 0;
+  }
 
   if (Object.keys(updateData).length === 0) {
     const doc = await Campaign.findById(id).lean();
@@ -590,7 +614,7 @@ async function computeActiveCampaigns(
  * Used by surfaces that render AdvertCards outside the groups/bots feed (brain: ad-engine-unify).
  * Honors dates + visibility + per-campaign and per-advertiser daily caps.
  */
-export async function getPlacementFeedCampaigns(placement: string, max = 4) {
+export async function getPlacementFeedCampaigns(placement: string, max = 4, visitorCountry?: string | string[]) {
   await enforceAdAndBoostExpiry();
   await connectDB();
   const now = new Date();
@@ -607,20 +631,22 @@ export async function getPlacementFeedCampaigns(placement: string, max = 4) {
     ...campaignNotExpired(startOfToday),
     placements: placement,
   })
-    .select('_id creative destinationUrl slot description category country buttonText name videoUrl badgeText verified adType ofUsername advertiserId priority blockFormat')
+    .select('_id creative destinationUrl slot description category country buttonText name videoUrl badgeText verified adType ofUsername advertiserId priority blockFormat targetCountries geoPinned')
     .sort({ priority: -1, createdAt: -1 })
     .lean();
 
   const expiredOF = await getExpiredOFAgencyTargets();
-  const eligible = dropExpiredOFAgencyAds(
+  const geoFiltered = dropExpiredOFAgencyAds(
     (docs as any[])
       .filter((c) =>
         !cappedCampaigns.has(c._id.toString()) &&
-        (!c.advertiserId || !cappedAdvertisers.has(c.advertiserId.toString())),
-      )
-      .slice(0, max),
+        (!c.advertiserId || !cappedAdvertisers.has(c.advertiserId.toString())) &&
+        campaignMatchesVisitorGeo(c, visitorCountry),
+      ),
     expiredOF,
   );
+  const pinned = geoFiltered.filter((c) => isGeoPinnedCampaign(c) && campaignMatchesVisitorGeo(c, visitorCountry));
+  const eligible = pinned.length > 0 ? pinned.slice(0, 1) : geoFiltered.slice(0, max);
 
   // Enrich OF-creator campaigns with stats + trending link so AdvertCard renders them fully.
   const ofUsernames = eligible
@@ -785,7 +811,12 @@ export async function getTrendingErogramCampaigns(max = 4) {
  * Reuses the same active/visible/in-date + daily-cap filtering and OF enrichment as getPlacementFeedCampaigns.
  * SEO-safe: callers render the result client-side; pages stay static/SSG.
  */
-export async function getKeywordPlacementCampaigns(placement: string, categorySlug: string, max = 4) {
+export async function getKeywordPlacementCampaigns(
+  placement: string,
+  categorySlug: string,
+  max = 4,
+  visitorCountry?: string | string[],
+) {
   await enforceAdAndBoostExpiry();
   await connectDB();
   const now = new Date();
@@ -806,41 +837,52 @@ export async function getKeywordPlacementCampaigns(placement: string, categorySl
     placements: placement,
     targetKeywords: { $in: keywordAliases },
   })
-    .select('_id creative destinationUrl slot description category country buttonText name videoUrl badgeText verified adType ofUsername advertiserId priority targetKeywords')
+    .select('_id creative destinationUrl slot description category country buttonText name videoUrl badgeText verified adType ofUsername advertiserId priority targetKeywords targetCountries geoPinned createdAt')
     .sort({ priority: -1, createdAt: -1 })
     .lean();
 
   const filtered = (docs as any[])
     .filter((c) =>
       !cappedCampaigns.has(c._id.toString()) &&
-      (!c.advertiserId || !cappedAdvertisers.has(c.advertiserId.toString())),
+      (!c.advertiserId || !cappedAdvertisers.has(c.advertiserId.toString())) &&
+      campaignMatchesVisitorGeo(c, visitorCountry),
     );
 
-  // ROTATION (brain: inc-top-groups-rotation): every assigned ad must rotate, not just the
-  // top-priority one. Boost-weighted shuffle — boosted ads get BOOST_WEIGHT draws (more visibility)
-  // but non-boosted ads still rotate in. Same law as Top Groups. Without this, .slice() froze on [0].
-  // Tracking kill switch: equal weight for all ads (still rotate, no boost advantage).
-  const trackingOff = await isAdTrackingPaused();
-  const weightedPool: any[] = [];
-  for (const c of filtered) {
-    const draws = !trackingOff && c.priority === 'boost' ? BOOST_WEIGHT : 1;
-    for (let k = 0; k < draws; k++) weightedPool.push(c);
-  }
-  for (let i = weightedPool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [weightedPool[i], weightedPool[j]] = [weightedPool[j], weightedPool[i]];
-  }
-  const eligible: any[] = [];
-  const seen = new Set<string>();
-  for (const c of weightedPool) {
-    const id = c._id.toString();
-    if (seen.has(id)) continue;
-    seen.add(id);
-    eligible.push(c);
-    if (eligible.length >= max) break;
+  const expiredOF = await getExpiredOFAgencyTargets();
+  const pinned = filtered.filter((c) => isGeoPinnedCampaign(c) && campaignMatchesVisitorGeo(c, visitorCountry));
+  let eligible: any[];
+  if (pinned.length > 0) {
+    eligible = pinned.sort((a, b) => {
+      if (a.priority === 'boost' && b.priority !== 'boost') return -1;
+      if (b.priority === 'boost' && a.priority !== 'boost') return 1;
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    }).slice(0, 1);
+  } else {
+    // ROTATION (brain: inc-top-groups-rotation): every assigned ad must rotate, not just the
+    // top-priority one. Boost-weighted shuffle — boosted ads get BOOST_WEIGHT draws (more visibility)
+    // but non-boosted ads still rotate in. Same law as Top Groups. Without this, .slice() froze on [0].
+    // Tracking kill switch: equal weight for all ads (still rotate, no boost advantage).
+    const trackingOff = await isAdTrackingPaused();
+    const weightedPool: any[] = [];
+    for (const c of filtered) {
+      const draws = !trackingOff && c.priority === 'boost' ? BOOST_WEIGHT : 1;
+      for (let k = 0; k < draws; k++) weightedPool.push(c);
+    }
+    for (let i = weightedPool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [weightedPool[i], weightedPool[j]] = [weightedPool[j], weightedPool[i]];
+    }
+    eligible = [];
+    const seen = new Set<string>();
+    for (const c of weightedPool) {
+      const id = c._id.toString();
+      if (seen.has(id)) continue;
+      seen.add(id);
+      eligible.push(c);
+      if (eligible.length >= max) break;
+    }
   }
 
-  const expiredOF = await getExpiredOFAgencyTargets();
   const serving = dropExpiredOFAgencyAds(eligible, expiredOF);
 
   // Enrich OF-creator campaigns with stats + trending link so AdvertCard renders them fully.
@@ -954,11 +996,11 @@ function mapOfCampaignsToFeaturedCreators(campaigns: any[]) {
 }
 
 /** Paid OF creators for hub search results — keyword of-cat matches first, then of-search-featured pool. */
-export async function getSearchResultFeaturedCampaigns(query = '', max = 8) {
+export async function getSearchResultFeaturedCampaigns(query = '', max = 8, visitorCountry?: string | string[]) {
   const trimmed = (query || '').trim();
   const [keywordRaw, generalRaw] = await Promise.all([
-    trimmed ? getKeywordPlacementCampaigns('of-cat', trimmed, max) : Promise.resolve([]),
-    getPlacementFeedCampaigns('of-search-featured', max),
+    trimmed ? getKeywordPlacementCampaigns('of-cat', trimmed, max, visitorCountry) : Promise.resolve([]),
+    getPlacementFeedCampaigns('of-search-featured', max, visitorCountry),
   ]);
   const seen = new Set<string>();
   const out: any[] = [];
@@ -1312,11 +1354,21 @@ async function computeCappedCampaignIds(): Promise<Set<string>> {
   return capped;
 }
 
-export async function getActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ainsfw') {
-  return ttlCachedResult(`feedCampaigns:${placement}`, () => computeActiveFeedCampaigns(placement));
+export async function getActiveFeedCampaigns(
+  placement: 'groups' | 'bots' | 'ainsfw',
+  visitorCountry?: string | string[],
+) {
+  const list = Array.isArray(visitorCountry) ? visitorCountry : (visitorCountry ? [visitorCountry] : []);
+  const cc = list.map((c) => normalizeVisitorCountry(c)).filter(Boolean).sort().join('-') || 'ALL';
+  return ttlCachedResult(`feedCampaigns:${placement}:${cc}`, () =>
+    computeActiveFeedCampaigns(placement, visitorCountry),
+  );
 }
 
-async function computeActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ainsfw') {
+async function computeActiveFeedCampaigns(
+  placement: 'groups' | 'bots' | 'ainsfw',
+  visitorCountry?: string | string[],
+) {
   await enforceAdAndBoostExpiry();
   await connectDB();
   const now = new Date();
@@ -1339,7 +1391,7 @@ async function computeActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ainsfw
       { tierSlot: null, placements: { $in: [null, []] } },
     ],
   })
-    .select('_id creative destinationUrl slot feedTier tierSlot position description category country buttonText name videoUrl badgeText verified adType premiumCategory premiumGroupIds socialProof ofUsername placements advertiserId priority')
+    .select('_id creative destinationUrl slot feedTier tierSlot position description category country buttonText name videoUrl badgeText verified adType premiumCategory premiumGroupIds socialProof ofUsername placements advertiserId priority targetCountries geoPinned createdAt')
     .lean();
 
   // Daily caps: drop campaigns whose advertiser OR whose own campaign cap is hit today.
@@ -1437,18 +1489,22 @@ async function computeActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ainsfw
     const variants = slotGroups.get(s);
     if (!variants || variants.length === 0) continue;
 
-    // AGNOSTIC SLOT LAW (brain: versatile-slots / ad-vision): EVERY ad assigned to a slot
-    // is returned so the client rotates through ALL of them. Boosted ads are NOT exclusive —
-    // they're listed first so the client weights them heavier (more visibility), but
-    // non-boosted ads in the same slot still rotate in. If one advertiser/agency puts 5
-    // creators in a slot, all 5 rotate. No collapsing, no one-per-advertiser.
-    // Tracking kill switch: equal order (no boost-first), priority forced to normal for clients.
-    const boosted = trackingOff ? [] : variants.filter((v) => v.campaign.priority === 'boost');
-    const orderedAll = boosted.length > 0
-      ? [...boosted, ...variants.filter((v) => v.campaign.priority !== 'boost')]
-      : variants;
-    const picks = orderedAll;
-    for (const { campaign: pick, placement } of picks) {
+    const byPlacement = new Map<string, typeof variants>();
+    for (const v of variants) {
+      const pl = v.placement || 'feed';
+      if (!byPlacement.has(pl)) byPlacement.set(pl, []);
+      byPlacement.get(pl)!.push(v);
+    }
+
+    for (const [, pool] of byPlacement) {
+      const geoPool = applyGeoToPlacementPool(pool, visitorCountry);
+      if (geoPool.length === 0) continue;
+
+      const boosted = trackingOff ? [] : geoPool.filter((v) => v.campaign.priority === 'boost');
+      const orderedAll = boosted.length > 0
+        ? [...boosted, ...geoPool.filter((v) => v.campaign.priority !== 'boost')]
+        : geoPool;
+      for (const { campaign: pick, placement } of orderedAll) {
       const ofData = (pick as any).adType === 'onlyfans-creator'
         ? ofCreatorMap.get(((pick as any).ofUsername || '').toLowerCase())
         : undefined;
@@ -1472,6 +1528,7 @@ async function computeActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ainsfw
         verified: Boolean(pick.verified),
         adRating: pick.adRating ?? null,
         adReviewCount: pick.adReviewCount ?? null,
+        clicks: pick.clicks || 0,
         adType: pick.adType || 'advertiser',
         premiumCategory: pick.premiumCategory || '',
         socialProof: pick.socialProof || 'random',
@@ -1489,6 +1546,7 @@ async function computeActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ainsfw
           ofAlbumIdx: ofData.albumIdx,
         } : {}),
       });
+      }
     }
   }
 
@@ -1500,6 +1558,7 @@ async function computeActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ainsfw
     for (const p of rawPls) {
       if (!placementMatchesFeedPage(p, placement)) continue;
       if (placementToTierSlot(p) != null) continue;
+      if (!campaignMatchesVisitorGeo(c, visitorCountry)) continue;
       const key = `${c._id}:${p}`;
       if (seenUntiered.has(key)) continue;
       seenUntiered.add(key);
@@ -1525,6 +1584,7 @@ async function computeActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ainsfw
         verified: Boolean(c.verified),
         adRating: c.adRating ?? null,
         adReviewCount: c.adReviewCount ?? null,
+        clicks: c.clicks || 0,
         adType: c.adType || 'advertiser',
         premiumCategory: c.premiumCategory || '',
         socialProof: c.socialProof || 'random',

@@ -620,6 +620,10 @@ export const campaignSchema = new Schema(
     dailyClickCap: { type: Number, default: null },
     // Priority tier for slot resolution. 'normal' | 'boost' (boost = higher fill priority). Logic later.
     priority: { type: String, enum: ['normal', 'boost'], default: 'normal' },
+    // ISO country codes (e.g. DE, NL). Empty = all visitors. Non-empty = restricted audience.
+    targetCountries: { type: [String], default: [] },
+    // When true + targetCountries set: matched visitors see only this ad in its placement (no rotation).
+    geoPinned: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
@@ -800,6 +804,20 @@ export const adminPushSubscriptionSchema = new Schema(
   { timestamps: true }
 );
 
+// User Push Subscription — PWA / browser push for app users (not admin sale alerts)
+export const userPushSubscriptionSchema = new Schema(
+  {
+    endpoint: { type: String, required: true, unique: true },
+    keys: {
+      p256dh: { type: String, required: true },
+      auth: { type: String, required: true },
+    },
+    userId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  },
+  { timestamps: true }
+);
+userPushSubscriptionSchema.index({ userId: 1 });
+
 // PWA install events — one per browser (guest or logged-in)
 export const pwaInstallSchema = new Schema(
   {
@@ -934,6 +952,7 @@ export const StarsRate = models.StarsRate || model('StarsRate', starsRateSchema)
 export const Bookmark = models.Bookmark || model('Bookmark', bookmarkSchema);
 export const BookmarkFolder = models.BookmarkFolder || model('BookmarkFolder', bookmarkFolderSchema);
 export const AdminPushSubscription = models.AdminPushSubscription || model('AdminPushSubscription', adminPushSubscriptionSchema);
+export const UserPushSubscription = models.UserPushSubscription || model('UserPushSubscription', userPushSubscriptionSchema);
 export const PwaInstall = models.PwaInstall || model('PwaInstall', pwaInstallSchema);
 export const PremiumConfig = models.PremiumConfig || model('PremiumConfig', premiumConfigSchema);
 export const ManualRevenue = models.ManualRevenue || model('ManualRevenue', manualRevenueSchema);

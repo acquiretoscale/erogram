@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { getPwaInstalls } from '@/lib/actions/pwaInstall';
+import { broadcastUserPush, getUserPushCount } from '@/lib/actions/userPush';
 
 type InstallRow = {
   id: string;
@@ -23,6 +24,11 @@ export default function AppTab() {
   const [paid, setPaid] = useState(0);
   const [free, setFree] = useState(0);
   const [installs, setInstalls] = useState<InstallRow[]>([]);
+  const [pushCount, setPushCount] = useState(0);
+  const [pushTitle, setPushTitle] = useState('');
+  const [pushBody, setPushBody] = useState('');
+  const [pushSending, setPushSending] = useState(false);
+  const [pushResult, setPushResult] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -36,6 +42,8 @@ export default function AppTab() {
       setFree(data.free || 0);
       setInstalls(data.installs as InstallRow[]);
       setError('');
+      const push = await getUserPushCount(token);
+      setPushCount(push.total);
     } catch (e: any) {
       setError(e.message || 'Failed to load');
     } finally {
@@ -46,6 +54,21 @@ export default function AppTab() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const sendPush = async () => {
+    const token = localStorage.getItem('token') || '';
+    setPushSending(true);
+    setPushResult('');
+    try {
+      const r = await broadcastUserPush(token, pushTitle, pushBody, '/');
+      if (r.ok) setPushResult(`Sent ${r.sent} of ${r.total}`);
+      else setPushResult(r.error || 'Failed');
+    } catch (e: any) {
+      setPushResult(e.message || 'Failed');
+    } finally {
+      setPushSending(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -61,6 +84,36 @@ export default function AppTab() {
         >
           Refresh
         </button>
+      </div>
+
+      <div className="bg-[#141414] border border-white/[0.07] rounded-xl p-4 space-y-3">
+        <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">Push to app users · {pushCount.toLocaleString()} subscribed</p>
+        <input
+          value={pushTitle}
+          onChange={(e) => setPushTitle(e.target.value)}
+          placeholder="Title"
+          maxLength={80}
+          className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/25"
+        />
+        <textarea
+          value={pushBody}
+          onChange={(e) => setPushBody(e.target.value)}
+          placeholder="Message"
+          maxLength={240}
+          rows={3}
+          className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/25 resize-none"
+        />
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={sendPush}
+            disabled={pushSending || !pushTitle.trim() || !pushBody.trim()}
+            className="px-4 py-2 text-xs font-bold uppercase tracking-wide rounded-lg bg-[#b31b1b] text-white disabled:opacity-40"
+          >
+            {pushSending ? 'Sending…' : 'Send push'}
+          </button>
+          {pushResult && <p className="text-xs text-white/50">{pushResult}</p>}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">

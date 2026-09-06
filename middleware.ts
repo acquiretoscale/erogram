@@ -97,12 +97,12 @@ export function middleware(request: NextRequest) {
   }
 
   function attachVisitorCountry(response: NextResponse) {
-    const country =
+    const ipCountry =
       request.headers.get('x-vercel-ip-country') ||
       request.headers.get('cf-ipcountry') ||
       request.headers.get('cloudfront-viewer-country');
-    if (country && /^[A-Za-z]{2}$/.test(country)) {
-      response.cookies.set('__ero_cc', country.toUpperCase(), {
+    if (ipCountry && /^[A-Za-z]{2}$/.test(ipCountry)) {
+      response.cookies.set('__ero_cc', ipCountry.toUpperCase(), {
         maxAge: 3600,
         path: '/',
         sameSite: 'lax',
@@ -223,21 +223,9 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Legacy OF creator URLs: /{username}-onlyfans → /ofsearch/{username}
-  // (DMCA-blacklisted usernames already 404 above — never redirect those.)
-  {
-    const legacyOf = pathname.match(/^(\/(?:de|es|pt))?\/([^/]+)-onlyfans\/?$/);
-    if (legacyOf) {
-      const localePrefix = legacyOf[1] || '';
-      const username = legacyOf[2];
-      if (isBlacklistedPublicPathSegment(username) || isBlacklistedPublicPathSegment(`${username}-onlyfans`)) {
-        return new NextResponse(null, { status: 404 });
-      }
-      const url = request.nextUrl.clone();
-      url.pathname = `${localePrefix}/ofsearch/${username}`;
-      return NextResponse.redirect(url, 301);
-    }
-  }
+  // Legacy OF creator URLs ({username}-onlyfans → /ofsearch/{username}) are handled in
+  // app/[slug]/page.tsx AFTER a group/bot lookup so group slugs like ayla-korea-onlyfans
+  // are not hijacked into OF search.
 
   // ── Best Telegram Groups slug normalization ────────────────────────────────
   // Old category URLs used spaces / %20 (e.g. /best-telegram-groups/big%20ass,
