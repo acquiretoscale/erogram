@@ -3,12 +3,15 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   getBestGroupsMidAd,
+  saveBestGroupsMidAd,
   trackBestGroupsMidAdClick,
-  updateSiteConfig,
   type BestGroupsMidAdData,
 } from '@/lib/actions/adminConfig';
 
 const DEFAULT_HEIGHT = 520;
+const DEFAULT_TITLE_BEFORE = 'COMMAND AND THEY ';
+const DEFAULT_TITLE_ACCENT = 'OBEY';
+const DEFAULT_BUTTON_TEXT = 'Try it';
 
 const EMPTY: BestGroupsMidAdData = {
   mode: 'code',
@@ -16,6 +19,9 @@ const EMPTY: BestGroupsMidAdData = {
   height: DEFAULT_HEIGHT,
   image: '',
   url: '',
+  titleBefore: '',
+  titleAccent: '',
+  buttonText: '',
   clicks: 0,
   lastClickAt: '',
   placementKey: 'best-groups-mid',
@@ -65,7 +71,11 @@ function isHttpsUrl(value: string) {
   }
 }
 
-export default function BestGroupsSlotAd() {
+interface BestGroupsSlotAdProps {
+  pageKey: string;
+}
+
+export default function BestGroupsSlotAd({ pageKey }: BestGroupsSlotAdProps) {
   const [ready, setReady] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [saved, setSaved] = useState<BestGroupsMidAdData>(EMPTY);
@@ -90,7 +100,7 @@ export default function BestGroupsSlotAd() {
         })
         .catch(() => {});
     }
-    getBestGroupsMidAd()
+    getBestGroupsMidAd(pageKey)
       .then((live) => {
         setSaved(live);
         setDraft(live);
@@ -100,7 +110,7 @@ export default function BestGroupsSlotAd() {
         if (hasLive) setEditing(false);
       })
       .catch(() => {});
-  }, []);
+  }, [pageKey]);
 
   const active = isAdmin && editing ? draft : saved;
   const parsed = active.mode === 'code' ? parseIframeSrc(active.code) : null;
@@ -129,17 +139,21 @@ export default function BestGroupsSlotAd() {
     setMsg('');
     try {
       const p = parseIframeSrc(next.code);
+      const placementKey = `best-groups-mid:${pageKey.toLowerCase().trim().replace(/[\s_]+/g, '-')}`;
       const payload: BestGroupsMidAdData = {
         mode: next.mode,
         code: next.mode === 'code' ? next.code : '',
         height: p?.height || next.height || DEFAULT_HEIGHT,
         image: next.mode === 'image' ? next.image : '',
         url: isHttpsUrl(next.url) ? next.url : '',
+        titleBefore: next.titleBefore,
+        titleAccent: next.titleAccent,
+        buttonText: next.buttonText,
         clicks: saved.clicks,
         lastClickAt: saved.lastClickAt,
-        placementKey: 'best-groups-mid',
+        placementKey,
       };
-      await updateSiteConfig(token, { generalSettings: { bestGroupsMidAd: payload } });
+      await saveBestGroupsMidAd(token, pageKey, payload);
       setSaved(payload);
       setDraft(payload);
       if (!empty) {
@@ -161,7 +175,7 @@ export default function BestGroupsSlotAd() {
 
   const outboundClick = (url: string) => {
     if (!isHttpsUrl(url)) return;
-    trackBestGroupsMidAdClick()
+    trackBestGroupsMidAdClick(pageKey)
       .then((n) => {
         const now = new Date().toISOString();
         setSaved((s) => ({ ...s, clicks: n, lastClickAt: now }));
@@ -189,10 +203,15 @@ export default function BestGroupsSlotAd() {
   const outboundUrl = getOutboundUrl(isAdmin && editing ? draft : saved);
   const showTryIt = !!outboundUrl && !(isAdmin && editing);
 
+  const titleBefore = (active.titleBefore || '').trim() || DEFAULT_TITLE_BEFORE;
+  const titleAccent = (active.titleAccent || '').trim() || DEFAULT_TITLE_ACCENT;
+  const buttonLabel = (active.buttonText || '').trim() || DEFAULT_BUTTON_TEXT;
+
   const slotTitle = (
     <div className="mb-3 px-1 w-full flex items-center gap-3 md:gap-4">
       <h3 className="text-lg md:text-2xl font-black uppercase tracking-wide text-black">
-        COMMAND AND THEY <span className="text-[#c0392f]">OBEY</span>
+        {titleBefore}
+        <span className="text-[#c0392f]">{titleAccent}</span>
       </h3>
       {showTryIt ? (
         <button
@@ -200,7 +219,7 @@ export default function BestGroupsSlotAd() {
           onClick={() => outboundClick(outboundUrl)}
           className="ml-auto min-w-[140px] md:min-w-[196px] px-7 md:px-10 py-2.5 md:py-3 rounded-lg border-2 border-black bg-[#c0392f] text-white text-base md:text-lg font-black uppercase tracking-widest shadow-[4px_4px_0_0_#000] hover:bg-[#a93226] hover:-translate-x-px hover:-translate-y-px hover:shadow-[5px_5px_0_0_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0_0_#000] transition-all duration-150 shrink-0"
         >
-          Try it
+          {buttonLabel}
         </button>
       ) : null}
     </div>
@@ -277,6 +296,29 @@ export default function BestGroupsSlotAd() {
 
       {isAdmin && editing ? (
         <div className="mt-3 space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <input
+              type="text"
+              value={draft.titleBefore}
+              onChange={(e) => setDraft((d) => ({ ...d, titleBefore: e.target.value }))}
+              placeholder={`Headline (default: ${DEFAULT_TITLE_BEFORE.trim()})`}
+              className="w-full bg-[#f5f5f5] border border-black/10 rounded-xl px-3 py-2 text-xs text-black"
+            />
+            <input
+              type="text"
+              value={draft.titleAccent}
+              onChange={(e) => setDraft((d) => ({ ...d, titleAccent: e.target.value }))}
+              placeholder={`Red word (default: ${DEFAULT_TITLE_ACCENT})`}
+              className="w-full bg-[#f5f5f5] border border-black/10 rounded-xl px-3 py-2 text-xs text-black"
+            />
+          </div>
+          <input
+            type="text"
+            value={draft.buttonText}
+            onChange={(e) => setDraft((d) => ({ ...d, buttonText: e.target.value }))}
+            placeholder={`Button (default: ${DEFAULT_BUTTON_TEXT})`}
+            className="w-full bg-[#f5f5f5] border border-black/10 rounded-xl px-3 py-2 text-xs text-black"
+          />
           <div className="flex gap-2">
             <button
               type="button"

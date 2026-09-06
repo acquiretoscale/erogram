@@ -155,40 +155,109 @@ export type BestGroupsMidAdData = {
   height: number;
   image: string;
   url: string;
+  titleBefore: string;
+  titleAccent: string;
+  buttonText: string;
   clicks: number;
   lastClickAt: string;
   placementKey: string;
 };
 
-export async function getBestGroupsMidAd(): Promise<BestGroupsMidAdData> {
-  await connectDB();
-  const config = await SiteConfig.findOne().lean();
-  const mid = (config as any)?.generalSettings?.bestGroupsMidAd || {};
+function normalizeBestGroupsPageKey(pageKey: string) {
+  return (pageKey || '').toLowerCase().trim().replace(/[\s_]+/g, '-');
+}
+
+function emptyBestGroupsMidAd(placementKey: string): BestGroupsMidAdData {
+  return {
+    mode: 'code',
+    code: '',
+    height: 520,
+    image: '',
+    url: '',
+    titleBefore: '',
+    titleAccent: '',
+    buttonText: '',
+    clicks: 0,
+    lastClickAt: '',
+    placementKey,
+  };
+}
+
+function readBestGroupsMidAdEntry(raw: any, placementKey: string): BestGroupsMidAdData {
+  const mid = raw || {};
   return {
     mode: mid.mode === 'image' ? 'image' : 'code',
     code: typeof mid.code === 'string' ? mid.code : '',
     height: Number(mid.height) || 520,
     image: typeof mid.image === 'string' ? mid.image : '',
     url: typeof mid.url === 'string' ? mid.url : '',
+    titleBefore: typeof mid.titleBefore === 'string' ? mid.titleBefore : '',
+    titleAccent: typeof mid.titleAccent === 'string' ? mid.titleAccent : '',
+    buttonText: typeof mid.buttonText === 'string' ? mid.buttonText : '',
     clicks: Number(mid.clicks) || 0,
     lastClickAt: typeof mid.lastClickAt === 'string' ? mid.lastClickAt : '',
-    placementKey: typeof mid.placementKey === 'string' ? mid.placementKey : 'best-groups-mid',
+    placementKey: typeof mid.placementKey === 'string' ? mid.placementKey : placementKey,
   };
 }
 
-export async function trackBestGroupsMidAdClick(): Promise<number> {
+/** Public read for Top-10 mid-slot on one page (category or country slug). */
+export async function getBestGroupsMidAd(pageKey: string): Promise<BestGroupsMidAdData> {
   await connectDB();
+  const key = normalizeBestGroupsPageKey(pageKey);
+  const placementKey = `best-groups-mid:${key}`;
+  const config = await SiteConfig.findOne().lean();
+  const gs = (config as any)?.generalSettings || {};
+  const perPage = gs.bestGroupsMidAds?.[key];
+  if (perPage) return readBestGroupsMidAdEntry(perPage, placementKey);
+  return emptyBestGroupsMidAd(placementKey);
+}
+
+export async function saveBestGroupsMidAd(
+  token: string,
+  pageKey: string,
+  data: BestGroupsMidAdData,
+): Promise<BestGroupsMidAdData> {
+  const admin = await authenticateAdmin(token);
+  if (!admin) throw new Error('Unauthorized');
+
+  await connectDB();
+  const key = normalizeBestGroupsPageKey(pageKey);
+  const placementKey = `best-groups-mid:${key}`;
+  let config = await SiteConfig.findOne();
+  if (!config) {
+    config = await SiteConfig.create({ generalSettings: {} });
+  }
+  const gs = (config as any).generalSettings || {};
+  const map = { ...(gs.bestGroupsMidAds || {}) };
+  map[key] = {
+    ...readBestGroupsMidAdEntry(data, placementKey),
+    placementKey,
+  };
+  gs.bestGroupsMidAds = map;
+  (config as any).generalSettings = gs;
+  config.markModified('generalSettings');
+  await config.save();
+  return map[key];
+}
+
+export async function trackBestGroupsMidAdClick(pageKey: string): Promise<number> {
+  await connectDB();
+  const key = normalizeBestGroupsPageKey(pageKey);
+  const placementKey = `best-groups-mid:${key}`;
   const config = await SiteConfig.findOne();
   if (!config) return 0;
   const gs = (config as any).generalSettings || {};
-  const mid = gs.bestGroupsMidAd || {};
+  const map = { ...(gs.bestGroupsMidAds || {}) };
+  const mid = map[key];
+  if (!mid) return 0;
   const clicks = (Number(mid.clicks) || 0) + 1;
-  gs.bestGroupsMidAd = {
-    ...mid,
+  map[key] = {
+    ...readBestGroupsMidAdEntry(mid, placementKey),
     clicks,
     lastClickAt: new Date().toISOString(),
-    placementKey: mid.placementKey || 'best-groups-mid',
+    placementKey,
   };
+  gs.bestGroupsMidAds = map;
   (config as any).generalSettings = gs;
   config.markModified('generalSettings');
   await config.save();

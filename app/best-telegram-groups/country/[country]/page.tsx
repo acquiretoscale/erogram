@@ -208,7 +208,7 @@ export default async function BestCountryGroupsPage({ params }: PageProps) {
                                 localePath={(path) => path}
                             />
                         ))}
-                        <BestGroupsSlotAd />
+                        <BestGroupsSlotAd pageKey={`country-${decodedSlug}`} />
                         {freeEntries.slice(5).map((entry) => (
                             <BestGroupRankCard
                                 key={`${entry.group._id}-${entry.rank}`}
