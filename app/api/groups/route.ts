@@ -49,7 +49,7 @@ function shuffleInPlace<T>(arr: T[]): T[] {
 function sumClickCountByDay(byDay: unknown): number {
   if (!byDay || typeof byDay !== 'object') return 0;
   const map = byDay instanceof Map ? Object.fromEntries(byDay) : (byDay as Record<string, number>);
-  return Object.values(map).reduce((sum, n) => sum + (Number(n) || 0), 0);
+  return Object.values(map).reduce((sum: number, n) => sum + (Number(n) || 0), 0);
 }
 
 function groupEntityClicks(g: { clickCount?: number; clickCountByDay?: unknown }): number {
