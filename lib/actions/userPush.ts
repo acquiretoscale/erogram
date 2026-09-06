@@ -72,7 +72,7 @@ export async function broadcastUserPush(token: string, title: string, body: stri
   let path = typeof url === 'string' ? url.trim() : '/';
   if (!path.startsWith('/')) path = '/';
 
-  const subs = await UserPushSubscription.find({}).lean() as Array<{
+  const subs = await UserPushSubscription.find({}).lean() as unknown as Array<{
     endpoint: string;
     keys: { p256dh: string; auth: string };
   }>;
