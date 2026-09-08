@@ -6,7 +6,6 @@ import { Group, Bot, StorySlideContent, SiteConfig } from '@/lib/models';
 import GroupsClient from './GroupsClient';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { getActiveCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
-import { getServerVisitorCountries } from '@/lib/adGeo.server';
 import { getFeaturedCreatorFeedItems, getLinkedOFCreatorClaimKeys } from '@/lib/actions/publicData';
 import { getStoryCategories, DEFAULT_STORY_CATEGORIES, type StoryCategoryConfig } from '@/lib/actions/siteConfig';
 import { listR2Files } from '@/lib/r2';
@@ -542,10 +541,9 @@ export async function GroupsPageView({ page = 1 }: { page?: number }) {
   if (storyConfig.length === 0) storyConfig = DEFAULT_STORY_CATEGORIES;
 
   // In-feed ads + story data + featured creators + filter options — all in parallel
-  const visitorCountry = await getServerVisitorCountries();
   const [topBannerCampaigns, feedCampaignsRaw, storyData, featuredCreatorItems, filterOpts, linkedOfKeys] = await Promise.all([
     getActiveCampaigns('top-banner', { page: 'groups' }),
-    getActiveFeedCampaigns('groups', visitorCountry),
+    getActiveFeedCampaigns('groups'),
     storiesEnabled ? getCachedStoryData(storyConfig, locale) : Promise.resolve([] as StoryCategory[]),
     getFeaturedCreatorFeedItems().catch(() => []),
     getCachedFilterOptions(),

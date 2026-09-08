@@ -5,7 +5,6 @@ import { getBlogFeaturedCreator } from '@/lib/actions/blogFeatured';
 import { getTopAINsfwForBlog } from '@/lib/actions/ainsfw';
 import { getTopBotsForBlog } from '@/lib/actions/botVotes';
 import { getPlacementFeedCampaigns } from '@/lib/actions/campaigns';
-import { getServerVisitorCountries } from '@/lib/adGeo.server';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 export const revalidate = 60;
@@ -31,14 +30,13 @@ export const metadata: Metadata = {
 };
 
 export default async function TrendingPage() {
-  const visitorCountry = await getServerVisitorCountries();
   const [articles, featuredCreator, topAINsfw, topBots, homeBlock1Ads, homeBlock2Ads] = await Promise.all([
     getPublishedBlogArticles(12),
     getBlogFeaturedCreator(),
     getTopAINsfwForBlog(5),
     getTopBotsForBlog(5),
-    getPlacementFeedCampaigns('home-block-1', 16, visitorCountry).catch(() => []),
-    getPlacementFeedCampaigns('home-block-2', 16, visitorCountry).catch(() => []),
+    getPlacementFeedCampaigns('home-block-1', 16).catch(() => []),
+    getPlacementFeedCampaigns('home-block-2', 16).catch(() => []),
   ]);
 
   return (

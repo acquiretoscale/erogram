@@ -27,7 +27,6 @@ import {
   resolveEntityMetaDescription,
 } from '@/lib/seo/entityMetaDescription';
 import { isBlacklistedPublicPathSegment } from '@/lib/ofsearch/creatorBlacklist';
-import { getServerVisitorCountries } from '@/lib/adGeo.server';
 
 /** Legacy OF URLs: /{username}-onlyfans → /ofsearch/{username}. Only when no group/bot exists. */
 function legacyOnlyfansCreatorPath(slug: string, locale: Locale): string | null {
@@ -730,14 +729,13 @@ export default async function JoinPage({ params }: PageProps) {
       };
     }
 
-    const visitorCountry = await getServerVisitorCountries();
     const [joinCtaCampaigns, topBannerCampaigns, vaultTeaser, featuredCreators, sidebarAdsAgnostic, rankingCoverImages] = await Promise.all([
       getActiveCampaigns('join-cta'),
       getActiveCampaigns('top-banner', { page: 'join', device: isMobile ? 'mobile' : 'desktop' }),
       getVaultTeaser(),
       getTrendingCreators().catch(() => []),
       // Agnostic group-sidebar ads (any adType: OF creator, advertiser, …) — up to 4, like Top Groups.
-      getPlacementFeedCampaigns('group-sidebar', 4, visitorCountry).catch(() => []),
+      getPlacementFeedCampaigns('group-sidebar', 4).catch(() => []),
       getRankingCoverImages(),
     ]);
     const joinCtaCampaign = joinCtaCampaigns[0] ?? null;
@@ -843,14 +841,13 @@ export default async function JoinPage({ params }: PageProps) {
       } : {}),
     };
 
-    const visitorCountry2 = await getServerVisitorCountries();
     const [joinCtaCampaigns2, topBannerCampaigns2, vaultTeaser2, featuredCreators2, botStatsData, sidebarAdsAgnostic2] = await Promise.all([
       getActiveCampaigns('join-cta'),
       getActiveCampaigns('top-banner', { page: 'join', device: isMobile ? 'mobile' : 'desktop' }),
       getVaultTeaser(),
       getTrendingCreators().catch(() => []),
       getBotStats(bot.slug),
-      getPlacementFeedCampaigns('group-sidebar', 4, visitorCountry2).catch(() => []),
+      getPlacementFeedCampaigns('group-sidebar', 4).catch(() => []),
     ]);
     const joinCtaCampaign = joinCtaCampaigns2[0] ?? null;
     const topBannerForPage =

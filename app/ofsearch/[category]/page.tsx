@@ -5,7 +5,6 @@ import { OF_CATEGORY_SLUGS, OF_CATEGORY_MAP, ofCategoryUrl } from '@/app/ofsearc
 import { getLocale } from '@/lib/i18n/server';
 import { categoryOfMeta } from '@/app/ofsearch/ofMeta';
 import { getKeywordPlacementCampaigns } from '@/lib/actions/campaigns';
-import { getServerVisitorCountries } from '@/lib/adGeo.server';
 import { browseCategoryCreators } from '@/lib/actions/ofCreatorsBrowse';
 import { bestOfSlugFromPublicPath, rankingEnglishPublicPath } from '@/lib/bestOfPageContent/hottestUrls';
 import { isReservedOnlyfanssearchSegment, ofCreatorProfileUrl } from '@/lib/ofsearch/creatorUrls';
@@ -117,7 +116,7 @@ export default async function OnlyFansSlugPage({ params }: PageProps) {
   // Unified Ad Network: keyword-targeted of-cat campaigns for this category.
   // onlyfans-creator ads → the paid featured strip (route straight to OnlyFans);
   // any adType → the agnostic 4-ad block injected every 80 results.
-  const ofCatAds = await getKeywordPlacementCampaigns('of-cat', rawSlug, 8, await getServerVisitorCountries()).catch(() => []);
+  const ofCatAds = await getKeywordPlacementCampaigns('of-cat', rawSlug, 8).catch(() => []);
   const paidFeatured = (ofCatAds as any[])
     .filter((c) => c.adType === 'onlyfans-creator' && (c.creative || c.ofUsername))
     .map((c) => ({

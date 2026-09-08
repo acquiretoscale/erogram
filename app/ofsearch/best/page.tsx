@@ -5,7 +5,6 @@ import { getFreeMajorSubCategories } from '@/lib/onlyfans/freeMajorCategories';
 import { buildBestFreeArticleRanking } from '@/lib/onlyfans/bestFreeArticle/buildRanking';
 import { bestFreeArticleCopy } from '@/lib/onlyfans/bestFreeArticle/copy';
 import { getPlacementFeedCampaigns } from '@/lib/actions/campaigns';
-import { getServerVisitorCountries } from '@/lib/adGeo.server';
 import BestFreeClient from './BestFreeClient';
 
 const PAGE_PATH = '/ofsearch/best';
@@ -33,8 +32,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function BestFreeOnlyFansPage() {
   const subCategories = getFreeMajorSubCategories();
   const articleRanking = await buildBestFreeArticleRanking(20);
-  const visitorCountry = await getServerVisitorCountries();
-  const ofSearchFeaturedRaw = await getPlacementFeedCampaigns('of-search-featured', 8, visitorCountry).catch(() => []);
+  const ofSearchFeaturedRaw = await getPlacementFeedCampaigns('of-search-featured', 8).catch(() => []);
   const paidFeatured = (ofSearchFeaturedRaw as any[])
     .filter((c) => c.adType === 'onlyfans-creator' && (c.creative || c.ofUsername))
     .map((c) => ({

@@ -11,7 +11,6 @@ import { getDictionary, LOCALES, LOCALE_HREFLANG, localePath } from '@/lib/i18n'
 import { rankingCopyForSlug, rankingListSize } from '@/lib/bestOfPageContent/top50Rankings';
 import type { Locale } from '@/lib/i18n';
 import { getKeywordPlacementCampaigns } from '@/lib/actions/campaigns';
-import { getServerVisitorCountries } from '@/lib/adGeo.server';
 import { getBestOfRankingOrganicWithClusterFill, getBestOfRankingOrganicCap } from '@/lib/actions/bestOfCreators';
 import { getFeaturedCreatorFeedItems } from '@/lib/actions/publicData';
 import BestPageAdBlock from '@/app/best-onlyfans-accounts/BestPageAdBlock';
@@ -270,7 +269,7 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
   const label = getTagLabel(slug, page.label, locale);
 
   const [bestOfAds, trendingFeatured] = await Promise.all([
-    getKeywordPlacementCampaigns('best-of', slug, 6, await getServerVisitorCountries()).catch(() => []),
+    getKeywordPlacementCampaigns('best-of', slug, 6).catch(() => []),
     page.match === 'category' && page.categorySlug
       ? getFeaturedCreatorFeedItems(page.categorySlug).catch(() => [])
       : Promise.resolve([]),

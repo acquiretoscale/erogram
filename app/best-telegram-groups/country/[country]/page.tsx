@@ -8,7 +8,6 @@ import { Group, BestGroupPick } from '@/lib/models';
 import { countries } from '@/app/groups/constants';
 import Navbar from '@/components/Navbar';
 import BestGroupRankCard from '@/app/best-telegram-groups/BestGroupRankCard';
-import BestGroupsSlotAd from '@/app/best-telegram-groups/BestGroupsSlotAd';
 import { buildSocialMeta } from '@/lib/seo/socialMeta';
 import { getLocale } from '@/lib/i18n/server';
 import type { Locale } from '@/lib/i18n';
@@ -153,8 +152,6 @@ export default async function BestCountryGroupsPage({ params }: PageProps) {
     const freeGroups = [...curatedGroups, ...autoGroups];
     const premiumGroups = await fetchNichePremiumGroups(countryPremiumFilter(realCountry), 3);
     const ranking = buildTop10Ranking(freeGroups, premiumGroups);
-    const freeEntries = ranking.filter((e) => !e.isPremium);
-    const premiumEntries = ranking.filter((e) => e.isPremium);
 
     // If very few groups overall, show some from other countries
     let otherGroups: any[] = [];
@@ -199,26 +196,7 @@ export default async function BestCountryGroupsPage({ params }: PageProps) {
                 {/* Main List */}
                 {ranking.length > 0 ? (
                     <div className="space-y-12 mb-20">
-                        {freeEntries.slice(0, 5).map((entry) => (
-                            <BestGroupRankCard
-                                key={`${entry.group._id}-${entry.rank}`}
-                                entry={entry}
-                                joinLabel="Join Group 🚀"
-                                viewsLabel="Views"
-                                localePath={(path) => path}
-                            />
-                        ))}
-                        <BestGroupsSlotAd pageKey={`country-${decodedSlug}`} />
-                        {freeEntries.slice(5).map((entry) => (
-                            <BestGroupRankCard
-                                key={`${entry.group._id}-${entry.rank}`}
-                                entry={entry}
-                                joinLabel="Join Group 🚀"
-                                viewsLabel="Views"
-                                localePath={(path) => path}
-                            />
-                        ))}
-                        {premiumEntries.map((entry) => (
+                        {ranking.map((entry) => (
                             <BestGroupRankCard
                                 key={`${entry.group._id}-${entry.rank}`}
                                 entry={entry}
