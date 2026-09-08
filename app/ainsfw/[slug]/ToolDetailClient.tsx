@@ -22,7 +22,7 @@ import FlameReviewSection from '@/components/FlameReviewSection';
 import { CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import { VerifiedByErogramLabel } from '@/components/VerifiedBadge';
 import { pickTagHashtagAlt } from '@/lib/ainsfw/imageAlt';
-import { AINSFW_REVIEW_EXAMPLE_VIDEOS, AINSFW_TOOL_PREVIEW_VIDEOS } from '@/lib/ainsfw/toolPreviewVideos';
+import { AINSFW_REVIEW_EXAMPLE_VIDEOS, getAinsfwToolPreviewVideo } from '@/lib/ainsfw/toolPreviewVideos';
 import { ainsfwCtaButtonClass } from '@/lib/ainsfw/ctaButton';
 import ToolProsConsSkeleton from '@/components/ainsfw/ToolProsConsSkeleton';
 import ToolKeyFeatures from '@/components/ainsfw/ToolKeyFeatures';
@@ -708,7 +708,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
   const imageHoverTitle = `${tool.name} - ${tool.category}`;
   const reviewGallery = gallery;
   const reviewInsertGallery = tool.slug === 'aislutbot-ai-nude-generator' ? [] : reviewGallery;
-  const previewVideo = AINSFW_TOOL_PREVIEW_VIDEOS[tool.slug];
+  const previewVideo = getAinsfwToolPreviewVideo(tool.slug, initialStats?.previewVideoUrl);
   const reviewInsertCtx = useRef<ReviewInsertCtx>({ galleryIdx: 0, paragraphCount: 0, exampleVideoIdx: 0 });
   const exampleVideos = AINSFW_REVIEW_EXAMPLE_VIDEOS[tool.slug];
 

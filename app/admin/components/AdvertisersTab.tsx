@@ -68,11 +68,6 @@ const LAUNCH_TIERS: { tier: string; hint: string; sections: { label: string; pla
   },
 ];
 
-const GEO_AUDIENCE_OPTIONS = [
-  { code: 'DE', label: 'Germany' },
-  { code: 'NL', label: 'Netherlands' },
-] as const;
-
 // CORE NETWORK BLAST — the one-click "show everywhere that matters" set.
 // Top Groups (4) + Top Bots (4) + Top AI NSFW + ALL In-Feed + In-Page block.
 // Deliberately EXCLUDES: Top-10s (hand-picked), OnlyFans-cat feed, Banners & CTA (different ad type),
@@ -754,8 +749,6 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
     ofUsername: '',
     placements: [] as string[],
     dailyClickCap: '' as string,
-    targetCountries: [] as string[],
-    geoPinned: false,
   });
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
@@ -1090,8 +1083,6 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       ofUsername: '',
       placements: [],
       dailyClickCap: '',
-      targetCountries: [],
-      geoPinned: false,
     });
     setView('editCampaign');
   };
@@ -1138,8 +1129,6 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
       ofUsername: (camp as any).ofUsername || '',
       placements: Array.isArray((camp as any).placements) ? (camp as any).placements : [],
       dailyClickCap: (camp as any).dailyClickCap != null && (camp as any).dailyClickCap > 0 ? String((camp as any).dailyClickCap) : '',
-      targetCountries: Array.isArray((camp as any).targetCountries) ? (camp as any).targetCountries : [],
-      geoPinned: Boolean((camp as any).geoPinned),
     });
     const savedIds: string[] = (camp as any).premiumGroupIds || [];
     setSelectedGroupIds(new Set(savedIds));
@@ -1324,8 +1313,6 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
         bannerDevice: isBannerSlot ? (campForm.bannerDevice || 'all') : 'all',
         placements: Array.isArray(campForm.placements) ? campForm.placements : [],
         dailyClickCap: campForm.dailyClickCap?.trim() ? Math.max(0, Math.floor(Number(campForm.dailyClickCap))) : null,
-        targetCountries: Array.isArray(campForm.targetCountries) ? campForm.targetCountries : [],
-        geoPinned: Boolean(campForm.geoPinned) && campForm.targetCountries.length > 0,
         // A cap means "show this MORE until it burns" → mark boost so it wins its slot.
         priority: campForm.dailyClickCap?.trim() && Number(campForm.dailyClickCap) > 0 ? 'boost' : 'normal',
       };
@@ -1391,8 +1378,6 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
         ofUsername: '',
         placements: [],
         dailyClickCap: '',
-        targetCountries: [],
-        geoPinned: false,
       });
       setSaveError('');
       setView('list');
@@ -1790,45 +1775,6 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                 );
               })}
             </div>
-          </div>
-
-          <div className="pb-4 border-b border-white/10">
-            <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider mb-1">Geo audience</h3>
-            <p className="text-[11px] text-[#666] mb-3">Leave all off = every country. Pick countries to restrict who sees this ad.</p>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {GEO_AUDIENCE_OPTIONS.map(({ code, label }) => {
-                const on = campForm.targetCountries.includes(code);
-                return (
-                  <button
-                    key={code}
-                    type="button"
-                    onClick={() => setCampForm((prev) => ({
-                      ...prev,
-                      targetCountries: on
-                        ? prev.targetCountries.filter((c) => c !== code)
-                        : [...prev.targetCountries, code],
-                      geoPinned: on && prev.targetCountries.length === 1 ? false : prev.geoPinned,
-                    }))}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${on ? 'bg-[#b31b1b] text-white border-[#b31b1b]' : 'bg-[#1a1a1a] text-[#999] border-white/10 hover:border-white/25'}`}
-                  >
-                    {label} ({code})
-                  </button>
-                );
-              })}
-            </div>
-            <label className={`flex items-start gap-2 text-sm ${campForm.targetCountries.length === 0 ? 'opacity-40' : 'text-white/80'}`}>
-              <input
-                type="checkbox"
-                disabled={campForm.targetCountries.length === 0}
-                checked={campForm.geoPinned}
-                onChange={(e) => setCampForm((prev) => ({ ...prev, geoPinned: e.target.checked }))}
-                className="mt-0.5"
-              />
-              <span>
-                <span className="font-semibold block">Pin in slot for matched visitors</span>
-                <span className="text-[11px] text-[#666]">DE/NL visitors always see this ad in its placement. No rotation with other ads in that slot. Other countries never see it.</span>
-              </span>
-            </label>
           </div>
 
           {/* ─── OnlyFans Creator: slot picker + creator multi-picker ───────── */}

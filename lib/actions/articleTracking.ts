@@ -16,7 +16,11 @@ const DOMAIN_TO_ADVERTISER: { domain: string; advertiser: string }[] = [
 function advertiserForUrl(url?: string): string | null {
   if (!url) return null;
   try {
-    const host = new URL(url).hostname.toLowerCase();
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    if (host.includes('go.cm-trk6.com') && parsed.searchParams.get('offer_id') === '12422') {
+      return 'Lovescape';
+    }
     for (const { domain, advertiser } of DOMAIN_TO_ADVERTISER) {
       if (host.includes(domain)) return advertiser;
     }

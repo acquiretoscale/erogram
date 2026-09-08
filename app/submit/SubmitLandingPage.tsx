@@ -17,6 +17,7 @@ import { saveSubmitCreatorPlan } from '@/lib/submitCreatorDraft';
 const ONLYFANS_TRUSTED_SPONSORS = [
   ...TRUSTED_SPONSORS,
   { name: 'JOI AI', logo: '/assets/sponsors/joi-ai.webp', width: 200, height: 118, slug: 'joi-ai-nude-generator' },
+  { name: 'Clothoff', logo: '/assets/sponsors/clothoff.webp', width: 400, height: 89, slug: 'clothoff-undress-ai' },
 ];
 
 const OF_DARK = '#009AD6';

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 const THEMES = {
   green: {
@@ -22,20 +22,61 @@ const THEMES = {
 } as const;
 
 type StatDef =
-  | { id: string; label: string; type: 'text'; text: string; live?: boolean }
-  | { id: string; label: string; type: 'count'; target: number; format: (n: number) => string; live?: boolean };
+  | { id: string; label: ReactNode; type: 'text'; text: string; live?: boolean }
+  | { id: string; label: ReactNode; type: 'count'; target: number; format: (n: number) => string; live?: boolean };
 
-function buildStatDefs(aiNsfwCount: number, groupsAndBotsCount: number, totalUsers: number): StatDef[] {
-  return [
+const TOP_GEO_FLAGS = (
+  <span
+    className="text-[17px] leading-none"
+    style={{
+      color: 'black',
+      fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',
+    }}
+  >
+    🇺🇸 🇩🇪 🇧🇷 🇳🇱 🇪🇸 🇬🇧 🇨🇦
+  </span>
+);
+
+function buildStatDefs(
+  aiNsfwCount: number,
+  groupsAndBotsCount: number,
+  totalUsers: number,
+  pageViews?: number | null,
+  geo?: { text: string; label: ReactNode },
+  combineListings?: boolean,
+): StatDef[] {
+  const listingStats: StatDef[] = combineListings
+    ? [{
+        id: 'listings',
+        label: 'Total AI NSFW tools, TG groups & bots and adult websites listing.',
+        type: 'count',
+        target: aiNsfwCount + groupsAndBotsCount,
+        format: (n) => `${Math.round(n).toLocaleString()}+`,
+        live: true,
+      }]
+    : [
+        { id: 'ainsfw', label: 'AI NSFW Tools Listed', type: 'count', target: aiNsfwCount, format: (n) => `${Math.round(n).toLocaleString()}+`, live: true },
+        { id: 'groups', label: 'Adult Groups & Bots', type: 'count', target: groupsAndBotsCount, format: (n) => `${Math.round(n).toLocaleString()}+`, live: true },
+      ];
+  const stats: StatDef[] = [
     { id: 'growth', label: 'Month-over-Month Google Growth', type: 'count', target: 40, format: (n) => `${Math.round(n)}%+` },
-    { id: 'visits', label: 'Monthly Visits', type: 'count', target: 180, format: (n) => `${Math.round(n)}K+` },
-    { id: 'tier1', label: 'US, UK, DE, NL, AU, CA & IT', type: 'text', text: 'Tier 1' },
-    { id: 'users', label: 'EROgram users', type: 'count', target: totalUsers, format: (n) => Math.round(n).toLocaleString('en-US'), live: true },
+    { id: 'visits', label: 'Monthly Visits', type: 'count', target: 280, format: (n) => `${Math.round(n)}K+` },
+    { id: 'tier1', label: geo?.label ?? TOP_GEO_FLAGS, type: 'text', text: geo?.text ?? 'TOP GEOS:' },
+    { id: 'users', label: <><span className="font-black text-white">EROGRAM</span><span className="font-black text-red-500">X</span> users</>, type: 'count', target: totalUsers, format: (n) => Math.round(n).toLocaleString('en-US'), live: true },
     { id: 'telegram', label: 'Subscribers across our Telegram network', type: 'count', target: 30, format: (n) => `${Math.round(n)}K+` },
-    { id: 'creators', label: 'Listed Content Creators', type: 'count', target: 1.8, format: (n) => `${n.toFixed(1)}M+` },
-    { id: 'ainsfw', label: 'AI NSFW Tools Listed', type: 'count', target: aiNsfwCount, format: (n) => `${Math.round(n).toLocaleString()}+`, live: true },
-    { id: 'groups', label: 'Adult Groups & Bots', type: 'count', target: groupsAndBotsCount, format: (n) => `${Math.round(n).toLocaleString()}+`, live: true },
+    ...listingStats,
   ];
+  if (pageViews !== undefined) {
+    stats.push({
+      id: 'pageviews',
+      label: 'Page views',
+      type: 'count',
+      target: pageViews ?? 0,
+      format: (n) => (pageViews == null ? '—' : Math.round(n).toLocaleString('en-US')),
+      live: true,
+    });
+  }
+  return stats;
 }
 
 function useCountUp(target: number, active: boolean, duration = 1000) {
@@ -67,18 +108,20 @@ function CountStatValue({
   active,
   live = false,
   accent,
+  staticColor,
 }: {
   target: number;
   format: (n: number) => string;
   active: boolean;
   live?: boolean;
   accent: string;
+  staticColor: string;
 }) {
   const value = useCountUp(target, active);
   return (
     <span
       className="font-black text-[1.05rem] sm:text-[1.15rem] leading-none tabular-nums shrink-0 min-w-[4.25rem] sm:min-w-[4.75rem]"
-      style={{ color: live ? accent : '#fff' }}
+      style={{ color: live ? accent : staticColor }}
     >
       {active ? format(value) : '—'}
     </span>
@@ -89,49 +132,84 @@ function StatValue({
   stat,
   active,
   accent,
+  staticColor,
+  valueTextClass,
 }: {
   stat: StatDef;
   active: boolean;
   accent: string;
+  staticColor: string;
+  valueTextClass: string;
 }) {
   if (stat.type === 'text') {
     return (
       <span
-        className={`font-black text-[1.05rem] sm:text-[1.15rem] leading-none text-white shrink-0 w-[4.25rem] sm:w-[4.75rem] transition-opacity duration-500 ${active ? 'opacity-100' : 'opacity-0'}`}
+        className={`font-black text-[1.05rem] sm:text-[1.15rem] leading-none shrink-0 whitespace-nowrap min-w-[4.25rem] sm:min-w-[4.75rem] transition-opacity duration-500 ${valueTextClass} ${active ? 'opacity-100' : 'opacity-0'}`}
       >
         {stat.text}
       </span>
     );
   }
 
-  return <CountStatValue target={stat.target} format={stat.format} active={active} live={stat.live} accent={accent} />;
+  return (
+    <CountStatValue
+      target={stat.target}
+      format={stat.format}
+      active={active}
+      live={stat.live}
+      accent={accent}
+      staticColor={staticColor}
+    />
+  );
 }
 
-function StatSkeleton() {
-  return <div className="h-4 w-14 rounded bg-white/10 animate-pulse shrink-0" />;
+function StatSkeleton({ whiteBg }: { whiteBg: boolean }) {
+  return <div className={`h-4 w-14 rounded animate-pulse shrink-0 ${whiteBg ? 'bg-black/10' : 'bg-white/10'}`} />;
 }
 
 export default function PartnershipStats({
   aiNsfwCount,
   groupsAndBotsCount,
   totalUsers,
+  pageViews,
   variant = 'green',
   embedded = false,
+  redBrandX = false,
+  whiteBg = false,
+  geo,
+  combineListings = false,
 }: {
   aiNsfwCount: number;
   groupsAndBotsCount: number;
   totalUsers: number;
+  pageViews?: number | null;
   variant?: keyof typeof THEMES;
   embedded?: boolean;
+  redBrandX?: boolean;
+  whiteBg?: boolean;
+  geo?: { text: string; label: ReactNode };
+  combineListings?: boolean;
 }) {
   const theme = THEMES[variant];
-  const stats = buildStatDefs(aiNsfwCount, groupsAndBotsCount, totalUsers);
+  const stats = buildStatDefs(aiNsfwCount, groupsAndBotsCount, totalUsers, pageViews, geo, combineListings);
   const [active, setActive] = useState(false);
 
   useEffect(() => {
     const t = window.setTimeout(() => setActive(true), 120);
     return () => window.clearTimeout(t);
   }, []);
+
+  const surfaceBg = whiteBg ? '#ffffff' : theme.surface;
+  const headerBg = whiteBg ? '#ffffff' : theme.headerBg;
+  const statBg = whiteBg ? '#ffffff' : theme.statBg;
+  const liveStatBg = whiteBg ? '#ffffff' : theme.liveStatBg;
+  const staticColor = whiteBg ? '#111827' : '#fff';
+  const valueTextClass = whiteBg ? 'text-black' : 'text-white';
+  const labelClass = whiteBg ? 'text-black/60' : 'text-white/65';
+  const headerTextClass = whiteBg ? 'text-black' : 'text-white';
+  const cellBorderClass = whiteBg
+    ? 'border-b border-black/[0.06] sm:[&:nth-child(odd)]:border-r sm:[&:nth-child(odd)]:border-black/[0.06]'
+    : 'border-b border-white/[0.06] sm:[&:nth-child(odd)]:border-r sm:[&:nth-child(odd)]:border-white/[0.06]';
 
   return (
     <section
@@ -140,17 +218,25 @@ export default function PartnershipStats({
           ? 'overflow-hidden'
           : `mb-6 overflow-hidden rounded-2xl border ${theme.borderClass} shadow-[0_16px_40px_-20px_rgba(0,0,0,0.55)]`
       }
-      style={{ backgroundColor: theme.surface }}
+      style={{ backgroundColor: surfaceBg }}
     >
       <div
-        className={`flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-2.5 sm:px-5 border-b ${theme.borderClass}`}
-        style={{ background: theme.headerBg }}
+        className={`flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-3 sm:px-5 border-b ${theme.borderClass}`}
+        style={{ background: headerBg }}
       >
         <span className="text-[9px] font-bold tracking-[0.28em] uppercase" style={{ color: theme.accent }}>
           Reach
         </span>
-        <h2 className="font-black text-[1rem] sm:text-[1.1rem] leading-none tracking-tight text-white">
-          EROGRAM in Numbers
+        <h2 className={`font-black text-[1rem] sm:text-[1.1rem] leading-none tracking-tight ${headerTextClass}`}>
+          {redBrandX ? (
+            <>
+              <span className="font-black text-white">EROGRAM</span>
+              <span className="font-black text-red-500">X</span>
+              .com (Previously Erogram.pro)
+            </>
+          ) : (
+            'EROGRAMX.com (Previously Erogram.pro)'
+          )}
         </h2>
       </div>
 
@@ -158,13 +244,23 @@ export default function PartnershipStats({
         {stats.map((stat) => (
           <div
             key={stat.id}
-            className="flex items-center gap-2.5 px-3 py-2 sm:px-4 border-b border-white/[0.06] sm:[&:nth-child(odd)]:border-r sm:[&:nth-child(odd)]:border-white/[0.06]"
+            className={`flex items-center gap-2.5 px-3 py-2 sm:px-4 ${cellBorderClass}`}
             style={{
-              background: stat.live ? theme.liveStatBg : theme.statBg,
+              background: stat.live ? liveStatBg : statBg,
             }}
           >
-            {active ? <StatValue stat={stat} active={active} accent={theme.accent} /> : <StatSkeleton />}
-            <p className="text-[11px] sm:text-[12px] leading-snug text-white/65 min-w-0">{stat.label}</p>
+            {active ? (
+              <StatValue
+                stat={stat}
+                active={active}
+                accent={theme.accent}
+                staticColor={staticColor}
+                valueTextClass={valueTextClass}
+              />
+            ) : (
+              <StatSkeleton whiteBg={whiteBg} />
+            )}
+            <p className={`text-[11px] sm:text-[12px] leading-snug min-w-0 ${stat.id === 'tier1' ? '' : labelClass}`}>{stat.label}</p>
           </div>
         ))}
       </div>

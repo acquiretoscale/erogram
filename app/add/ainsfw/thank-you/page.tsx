@@ -8,6 +8,8 @@ function ThankYouContent() {
   const params = useSearchParams();
   const plan = params.get('plan');
   const slug = params.get('slug');
+  const isFree = plan === 'free';
+  const isPaid = plan === 'basic' || plan === 'boost' || plan === 'startup';
   const isFeaturedPlan = plan === 'boost' || plan === 'startup';
   const liveUrl = slug ? `/ainsfw/${slug}` : '/ainsfw';
 
@@ -19,14 +21,25 @@ function ThankYouContent() {
         </div>
 
         <h1 className="text-3xl font-black text-white mb-3">
-          {isFeaturedPlan ? 'You\'re Live!' : 'Payment Confirmed!'}
+          {isFree ? 'Submitted!' : isPaid ? 'You\'re Live!' : 'Payment Confirmed!'}
         </h1>
 
-        {isFeaturedPlan ? (
+        {isFree ? (
+          <p className="text-white/50 text-base leading-relaxed mb-8">
+            Your AI tool listing will be reviewed and
+            approved within <strong className="text-white">24 hours</strong>.
+            We&apos;ll contact you at the email you provided.
+          </p>
+        ) : isPaid ? (
           <>
             <p className="text-white/50 text-base leading-relaxed mb-4">
-              Your AI tool has been <strong className="text-emerald-400">instantly approved</strong> and is now
-              <strong className="text-white"> featured in Top AI NSFW</strong> for the next 30 days.
+              Your AI tool has been <strong className="text-emerald-400">instantly approved</strong>
+              {isFeaturedPlan ? (
+                <>
+                  {' '}and is now
+                  <strong className="text-white"> featured in Top AI NSFW</strong> for the next 30 days.
+                </>
+              ) : '.'}
             </p>
             <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-xl px-5 py-4 mb-8">
               <p className="text-emerald-400 text-sm font-bold mb-1">Your tool is live now</p>
@@ -36,9 +49,11 @@ function ThankYouContent() {
               >
                 erogramx.com/ainsfw
               </Link>
-              <p className="text-white/30 text-xs mt-2">
-                Your tool appears in the Featured / Top AI NSFW section.
-              </p>
+              {isFeaturedPlan ? (
+                <p className="text-white/30 text-xs mt-2">
+                  Your tool appears in the Featured / Top AI NSFW section.
+                </p>
+              ) : null}
             </div>
           </>
         ) : (
@@ -54,7 +69,7 @@ function ThankYouContent() {
             href="/ainsfw"
             className="px-6 py-3 rounded-xl bg-white/10 text-white font-bold text-sm hover:bg-white/15 transition-colors"
           >
-            {isFeaturedPlan ? 'See Your Live Listing' : 'Browse AI NSFW Tools'}
+            {isPaid ? 'See Your Live Listing' : 'Browse AI NSFW Tools'}
           </Link>
           <Link
             href="/"

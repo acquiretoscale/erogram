@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
-import { User, PremiumEvent, Group, Bot } from '@/lib/models';
+import { User, PremiumEvent, Group, Bot, AINsfwSubmission } from '@/lib/models';
 import { recordCouponUsage } from '@/lib/actions/coupons';
 import { notifyAdminsOfSale } from '@/lib/utils/notifyAdmins';
 import { getPremiumPricing } from '@/lib/premiumPricing';
 import { buildBoostPaymentUpdate, SCALE_STARS } from '@/lib/boostPricing';
-import { fulfillSlutbotStarsPayment, getSlutbotPack, isSlutbotPayload } from '@/lib/slutbotStars';
+import { fulfillAINSFWListingPayment } from '@/lib/actions/ainsfwPayment';
+import { isAINSFWPlan, AINSFW_PLAN_PRICES } from '@/lib/ainsfw/planPrices';
+import { isSlutbotPayload, getSlutbotPack, fulfillSlutbotStarsPayment } from '@/lib/slutbotStars';
 
 const GROUP_SUBMISSION_TYPES = new Set(['normal_listing', 'instant_approval', 'boost_week', 'boost_month', 'scale_month']);
 
@@ -59,6 +61,25 @@ export async function POST(req: NextRequest) {
         // SLUTBOT Desire packs on this same bot. Never grants Erogram VIP.
         if (isSlutbotPayload(payload)) {
           logEvent({ event: 'pre_checkout', username: `SLUTBOT ${payload.plan}`, paymentMethod: 'stars' });
+          await answerPreCheckoutQuery(query.id, true);
+          return NextResponse.json({ ok: true });
+        }
+
+        if (payload.ainsfwSubmissionId && payload.plan && isAINSFWPlan(payload.plan) && payload.plan !== 'free') {
+          await connectDB();
+          const listing = await AINsfwSubmission.findById(payload.ainsfwSubmissionId).lean();
+          if (!listing) {
+            await answerPreCheckoutQuery(query.id, false, 'Submission not found');
+            return NextResponse.json({ ok: true });
+          }
+          logEvent({
+            event: 'submission_pre_checkout',
+            username: (listing as { name?: string }).name || null,
+            paymentMethod: 'stars',
+            entityType: 'ainsfw',
+            listingType: payload.plan,
+            reason: `ainsfw:${payload.plan}:${payload.ainsfwSubmissionId}`,
+          });
           await answerPreCheckoutQuery(query.id, true);
           return NextResponse.json({ ok: true });
         }
@@ -139,6 +160,34 @@ export async function POST(req: NextRequest) {
               method: 'stars',
               username: pack.label,
               usd: pack.usd,
+            }).catch(() => {});
+          }
+          return NextResponse.json({ ok: true });
+        }
+
+        if (payload.ainsfwSubmissionId && payload.plan && isAINSFWPlan(payload.plan) && payload.plan !== 'free') {
+          await connectDB();
+          const chargeId = payment.telegram_payment_charge_id || payment.provider_payment_charge_id || '';
+          const fulfilled = await fulfillAINSFWListingPayment(
+            payload.ainsfwSubmissionId,
+            payload.plan,
+            chargeId || `stars__${Date.now()}`,
+          );
+          if (fulfilled) {
+            logEvent({
+              event: 'submission_payment_success',
+              username: fulfilled.name,
+              paymentMethod: 'stars',
+              chargeId,
+              entityType: 'ainsfw',
+              listingType: payload.plan,
+              reason: `ainsfw:${payload.plan}:${payload.ainsfwSubmissionId}`,
+            });
+            notifyAdminsOfSale({
+              plan: `ainsfw_${payload.plan}`,
+              method: 'stars',
+              username: fulfilled.name,
+              usd: AINSFW_PLAN_PRICES[payload.plan as keyof typeof AINSFW_PLAN_PRICES],
             }).catch(() => {});
           }
           return NextResponse.json({ ok: true });

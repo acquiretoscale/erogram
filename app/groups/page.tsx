@@ -20,7 +20,8 @@ const canonicalBase = CANONICAL_BASE;
 // Which filter entries are countries vs content categories (countries live in the same list).
 const COUNTRY_FILTERS = new Set([
   'Argentina', 'Brazil', 'China', 'Colombia', 'France', 'Germany', 'Italy', 'Japan',
-  'Mexico', 'Philippines', 'Russian', 'Spain', 'UK', 'Ukraine', 'USA', 'Vietnam',
+  'Korea', 'Malaysia', 'Mexico', 'Philippines', 'Portugal', 'Russian', 'Spain', 'Turkey',
+  'UK', 'Ukraine', 'USA', 'Venezuela', 'Vietnam',
 ]);
 
 // Build the category + country filter options, keeping only entries that have ≥1 listing.

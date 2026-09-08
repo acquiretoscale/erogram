@@ -212,38 +212,59 @@ export default function SavedTab({
   const headers = { Authorization: `Bearer ${token}` };
 
   const loadData = useCallback(async () => {
+    setLoading(true);
+    setAinsfwSlugs(loadAinsfwBookmarkSlugs());
+
+    // 1) Saved groups/bots first — this is what the user came to see. Show it instantly.
     try {
-      setLoading(true);
-      setAinsfwSlugs(loadAinsfwBookmarkSlugs());
-      const [bkRes, flRes, allRes, orderRes, creatorsRes] = await Promise.all([
-        axios.get('/api/bookmarks', { headers, params: activeFolder ? { folderId: activeFolder } : {} }),
-        axios.get('/api/bookmarks/folders', { headers }),
-        activeFolder ? axios.get('/api/bookmarks', { headers }) : Promise.resolve(null),
-        token ? getSavedLikesOrder(token).catch(() => []) : Promise.resolve([]),
-        fetch('/api/onlyfans/save/creators', { headers }).then((r) => (r.ok ? r.json() : { creators: [] })).catch(() => ({ creators: [] })),
-      ]);
+      const bkRes = await axios.get('/api/bookmarks', { headers, params: activeFolder ? { folderId: activeFolder } : {} });
       setBookmarks(bkRes.data);
-      setFolders(flRes.data);
-      setAllBookmarks(allRes ? allRes.data : bkRes.data);
-      setSavedCreators(Array.isArray(creatorsRes?.creators) ? creatorsRes.creators : []);
-      setLikesOrder(Array.isArray(orderRes) ? orderRes.map(normalizeBookmarkOrderKey) : []);
-      const creators = Array.isArray(creatorsRes?.creators) ? creatorsRes.creators : [];
-      if (token && creators.length) {
-        const likeRes = await getBookmarkCreatorLikeStatus(token, creators.map((c: SavedCreator) => c._id));
-        if (likeRes.ok) {
-          setLikedCreatorIds(new Set(
-            Object.entries(likeRes.likedByCreatorId)
-              .filter(([, liked]) => liked)
-              .map(([id]) => id),
-          ));
-        }
-      } else {
-        setLikedCreatorIds(new Set());
-      }
+      if (!activeFolder) setAllBookmarks(bkRes.data);
     } catch {
       toast('Failed to load saved items', 'error');
+    } finally {
+      setLoading(false);
     }
-    finally { setLoading(false); }
+
+    // 2) Everything else loads in the background and never blocks the list.
+    axios.get('/api/bookmarks/folders', { headers })
+      .then((flRes) => setFolders(flRes.data))
+      .catch(() => {});
+
+    if (activeFolder) {
+      axios.get('/api/bookmarks', { headers })
+        .then((allRes) => setAllBookmarks(allRes.data))
+        .catch(() => {});
+    }
+
+    if (token) {
+      getSavedLikesOrder(token)
+        .then((orderRes) => setLikesOrder(Array.isArray(orderRes) ? orderRes.map(normalizeBookmarkOrderKey) : []))
+        .catch(() => {});
+    }
+
+    fetch('/api/onlyfans/save/creators', { headers })
+      .then((r) => (r.ok ? r.json() : { creators: [] }))
+      .catch(() => ({ creators: [] }))
+      .then((creatorsRes) => {
+        const creators = Array.isArray(creatorsRes?.creators) ? creatorsRes.creators : [];
+        setSavedCreators(creators);
+        if (token && creators.length) {
+          getBookmarkCreatorLikeStatus(token, creators.map((c: SavedCreator) => c._id))
+            .then((likeRes) => {
+              if (likeRes.ok) {
+                setLikedCreatorIds(new Set(
+                  Object.entries(likeRes.likedByCreatorId)
+                    .filter(([, liked]) => liked)
+                    .map(([id]) => id),
+                ));
+              }
+            })
+            .catch(() => {});
+        } else {
+          setLikedCreatorIds(new Set());
+        }
+      });
   }, [activeFolder]);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -1396,18 +1417,12 @@ export default function SavedTab({
                     </svg>
                   </button>
                 )}
-                <span
-                  className="absolute bottom-2 right-2 z-[2] pointer-events-none text-[9px] font-bold tracking-[0.14em] uppercase px-2 py-0.5 rounded-full"
-                  style={{ backgroundColor: kindBadgeBg(item.kind), color: '#fff' }}
-                >
-                  {kindLabel(item.kind)}
-                </span>
+                <Link href={item.href} className="absolute inset-x-0 bottom-0 z-[2] block p-2.5 pt-8 bg-gradient-to-t from-black/85 via-black/45 to-transparent" draggable={false} {...(item.kind === 'creator' ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+                  <p className="text-[15px] font-black leading-tight truncate text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">{item.name}</p>
+                  <p className="text-[13px] font-bold truncate mt-0.5 text-white/90 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">{subtitle}</p>
+                </Link>
                 <DragHint />
               </div>
-              <Link href={item.href} className="block p-2.5">
-                <p className="text-xs font-bold truncate" style={{ color: profileTokens.text }}>{item.name}</p>
-                <p className="text-[10px] truncate mt-0.5" style={{ color: profileTokens.muted }}>{subtitle}</p>
-              </Link>
             </div>
             );
           })}

@@ -28,14 +28,6 @@ import {
 } from '@/lib/seo/entityMetaDescription';
 import { isBlacklistedPublicPathSegment } from '@/lib/ofsearch/creatorBlacklist';
 
-/** Legacy OF URLs: /{username}-onlyfans → /ofsearch/{username}. Only when no group/bot exists. */
-function legacyOnlyfansCreatorPath(slug: string, locale: Locale): string | null {
-  const m = slug.match(/^(.+)-onlyfans$/);
-  if (!m) return null;
-  if (isBlacklistedPublicPathSegment(m[1]) || isBlacklistedPublicPathSegment(slug)) return null;
-  return localePath(`/ofsearch/${m[1]}`, locale);
-}
-
 // Pre-built at deploy (all approved groups + bots via generateStaticParams below)
 // + background refresh every 5 minutes (ISR): Google sees stable server HTML like
 // /best-telegram-groups, while new groups, view counts, stats and ads stay fresh.
@@ -623,11 +615,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     permanentRedirect(`/ainsfw/${aiTool.slug}`);
   }
 
-  const legacyOf = legacyOnlyfansCreatorPath(slug, locale);
-  if (legacyOf) {
-    permanentRedirect(legacyOf);
-  }
-
   // If nothing found
   const notFoundTitle = 'Not Found - Discover NSFW Telegram Communities';
   const notFoundDescription = 'The requested NSFW Telegram community or bot could not be found. Discover thousands of adult communities and bots on Erogram.pro.';
@@ -877,11 +864,6 @@ export default async function JoinPage({ params }: PageProps) {
   const aiTool = getToolBySlug(slug) || await getSubmissionTool(slug);
   if (aiTool) {
     permanentRedirect(`/ainsfw/${aiTool.slug}`);
-  }
-
-  const legacyOf = legacyOnlyfansCreatorPath(slug, locale);
-  if (legacyOf) {
-    permanentRedirect(legacyOf);
   }
 
   // If nothing found, show not found

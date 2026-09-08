@@ -80,8 +80,6 @@ export async function adminCreateCampaign(token: string, body: Record<string, an
     placements: Array.isArray(body.placements) ? body.placements : undefined,
     dailyClickCap: body.dailyClickCap != null ? body.dailyClickCap : undefined,
     priority: body.priority ?? undefined,
-    targetCountries: Array.isArray(body.targetCountries) ? body.targetCountries : undefined,
-    geoPinned: body.geoPinned ?? undefined,
   });
   revalidatePublicFeeds();
   return result;
@@ -127,8 +125,6 @@ export async function adminUpdateCampaign(token: string, id: string, body: Recor
     bannerPages: c.bannerPages ?? [],
     bannerDevice: c.bannerDevice ?? 'all',
     ofUsername: c.ofUsername ?? '',
-    targetCountries: c.targetCountries ?? [],
-    geoPinned: Boolean(c.geoPinned),
   };
 }
 

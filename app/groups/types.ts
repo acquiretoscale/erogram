@@ -18,8 +18,6 @@ export interface Group {
     paidBoost?: boolean;
     paidBoostStars?: number | null;
     clickCount?: number;
-    /** Top Groups: group clicks + linked campaign clicks (server-computed). */
-    totalClicks?: number;
     views?: number;
     createdBy?: {
         username?: string;
@@ -77,8 +75,6 @@ export interface FeedCampaign {
     /** Fixed star rating (overrides random when set) */
     adRating?: number | null;
     adReviewCount?: number | null;
-    /** All-time campaign clicks (for Top Groups display). */
-    clicks?: number;
     /** Tier slot (1-3): determines which section the ad appears in */
     tierSlot?: number;
     /** Canonical ad-space name for click tracking (top-groups-1..4, top-bots-1..4, feed-2..5).

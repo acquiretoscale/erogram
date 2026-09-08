@@ -6,27 +6,22 @@ import Image from 'next/image';
 import { AnimatePresence, motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { saveAINSFWListingDraft, checkoutAINSFWListing, type AINSFWFormData } from '@/lib/actions/ainsfwPayment';
-import { AINSFW_PLAN_PRICES, type AINSFWPlan } from '@/lib/ainsfw/planPrices';
+import { saveAINSFWListingDraft, type AINSFWFormData } from '@/lib/actions/ainsfwPayment';
+import { type AINSFWPlan } from '@/lib/ainsfw/planPrices';
+import { normalizeWebsiteUrl } from '@/lib/ainsfw/websiteUrl';
 import { AINSFW_CATEGORIES } from '@/app/ainsfw/types';
-import { validateCoupon } from '@/lib/actions/coupons';
 import TrustedByLeaders from '@/app/advertise/TrustedByLeaders';
-import PromoAudienceProof from '@/app/promo/PromoAudienceProof';
-import InFeedAdFormatComparison from './InFeedAdFormatComparison';
 import PartnershipStats from '@/app/partnership/PartnershipStats';
 import ErogramWordmark from '@/components/ErogramWordmark';
-
-function planCheckoutPrice(plan: AINSFWPlan | null, couponResult: { valid?: boolean; discountedStars?: number } | null): number {
-  if (couponResult?.valid && couponResult.discountedStars != null) {
-    return Math.round(couponResult.discountedStars * 0.013 * 100) / 100;
-  }
-  if (!plan) return 0;
-  return AINSFW_PLAN_PRICES[plan];
-}
+import { ainsfwCtaButtonClass } from '@/lib/ainsfw/ctaButton';
 
 // Match the /ainsfw directory vibe: green accent on dark-green surfaces
 const ACCENT      = '#22c55e';
 const ACCENT_DARK = '#16a34a';
+const SUBMIT_ACCENT = '#00AFF0';
+const SUBMIT_NAVY = '#0a1628';
+const SUBMIT_NAVY_BORDER = '#0a2840';
+const SUBMIT_NAVY_HEADER = 'linear-gradient(160deg, #041828 0%, #0a2840 55%, #0d3550 100%)';
 const SHADOW      = '4px 4px 0px #000000';
 const SHADOW_LG   = '6px 6px 0px #000000';
 const BORDER      = '3px solid #000000';
@@ -41,15 +36,6 @@ const CTA_SHADOW_HOVER = '10px 10px 0px #000000';
 const CTA_SHADOW_ACTIVE = '2px 2px 0px #000000';
 const PLAN_HEADER_BG = 'linear-gradient(160deg, #04140c 0%, #0a2e1a 60%, #064e3b 100%)';
 
-const TOP_COUNTRIES = [
-  { c: 'US', p: '29%' }, { c: 'Germany', p: '7%' }, { c: 'Netherlands', p: '4%' },
-  { c: 'UK', p: '4%' }, { c: 'Canada', p: '4%' }, { c: 'Italy', p: '3%' },
-  { c: 'Spain', p: '2.5%' }, { c: 'Australia', p: '2%' }, { c: 'Turkey', p: '2%' },
-  { c: 'Singapore', p: '2%' }, { c: 'Malaysia', p: '2%' },
-] as const;
-
-const TOP_COUNTRIES_PHRASE = TOP_COUNTRIES.map(({ c, p }) => `${c} ${p}`).join(', ');
-
 function countryCodeToFlag(code: string): string {
   const upper = code.toUpperCase();
   if (!/^[A-Z]{2}$/.test(upper)) return '';
@@ -61,30 +47,19 @@ const SUBMIT_FAQ: { q: string; a: ReactNode }[] = [
     q: 'Can you list our AI tool for free or in exchange for a high affiliate commission?',
     a: (
       <>
-        <p>We receive dozens of requests daily to list AI tools for free in exchange for high affiliate commissions. Unfortunately, we don&apos;t offer commission-based listings.</p>
-        <p className="mt-3">To keep EROGRAM fair and accessible to everyone, we&apos;ve intentionally priced our Basic plan as low as possible so great projects of all sizes can get listed.</p>
-        <p className="mt-3">If you&apos;re looking for a free option, we also offer free standard listings for eligible AI tools that display a small{' '}
-          <Link href="/partnership" className="text-[#4ade80] hover:underline">&quot;Featured on EROGRAM&quot; badge</Link>
-          {' '}on their website&apos;s Footer or sidebar. All submissions are subject to editorial review.</p>
+        <p>You can get a free Basic listing in exchange of adding our &quot;Featured on EROGRAMX&quot; badge to your footer, or sidebar. More details could be found{' '}
+          <Link href="/partnership" className="text-[#4ade80] hover:underline">here</Link>
+          . Once it&apos;s live, send us an email at{' '}
+          <a href="mailto:isabella@erogram.biz" className="text-[#4ade80] hover:underline">isabella@erogram.biz</a>
+          . If approved, we&apos;ll happily return the favor with your free Basic listing.</p>
       </>
     ),
   },
   {
-    q: 'I\'m scaling and need a lot of traffic. What\'s the maximum traffic EROGRAM can deliver?',
+    q: 'I\'m scaling and need a lot of traffic. What\'s the maximum traffic EROGRAMX can deliver?',
     a: (
       <>
-        <p>If you&apos;re looking to scale aggressively, our custom advertising packages can deliver significantly more traffic than our standard listing plans.</p>
-        <p className="mt-3">Campaigns starting at $1,800/month typically begin around 20,000 monthly clicks. Depending on your budget, campaign performance, and available inventory, we can currently scale up to 80,000 clicks per month.</p>
-        <p className="mt-3">Traffic is delivered across the EROGRAM ecosystem, including our website, native placements, banner inventory, and our Telegram network with over 30,000 subscribers.</p>
-      </>
-    ),
-  },
-  {
-    q: 'How much traffic can I expect?',
-    a: (
-      <>
-        <p>Traffic depends on your package, category, and the quality of your listing.</p>
-        <p className="mt-3">Standard listings typically receive ongoing organic traffic from Google and EROGRAM visitors, while featured placements generate significantly more visibility. Larger advertising campaigns can deliver anywhere from a few thousand monthly visitors to tens of thousands of targeted clicks.</p>
+        <p>If you&apos;re looking to scale aggressively, our custom advertising packages can deliver significantly more traffic than our standard listing plans. Visit <Link href="/promo" className="text-[#4ade80] hover:underline">Promo page</Link> for more details</p>
       </>
     ),
   },
@@ -92,7 +67,7 @@ const SUBMIT_FAQ: { q: string; a: ReactNode }[] = [
     q: 'What happens when my featured campaign ends?',
     a: (
       <>
-        <p>Your permanent listing will remain live on EROGRAM.</p>
+        <p>Your permanent listing will remain live on EROGRAMX.</p>
         <p className="mt-3">Only your featured placements and promotional campaign expire. You can renew or upgrade your campaign at any time through the <Link href="/my-listings" className="text-[#4ade80] hover:underline">My Campaigns</Link> dashboard.</p>
         <p className="mt-3">
           If you need help choosing the right package, contact us at{' '}
@@ -104,46 +79,10 @@ const SUBMIT_FAQ: { q: string; a: ReactNode }[] = [
     ),
   },
   {
-    q: 'What are In-Feed Ads?',
+    q: 'I purchased Basic or BOOST. How long before my tool is live?',
     a: (
       <>
-        <p>In-Feed Ads are native promotional cards displayed throughout EROGRAM&apos;s highest-traffic pages, including AI Tools, Bots, Groups, and other discovery feeds.</p>
-        <p className="mt-3">They blend naturally with our content while giving your project premium visibility.</p>
-      </>
-    ),
-  },
-  {
-    q: 'What does an editorial blog post look like?',
-    a: (
-      <>
-        <p>You can see an example here:</p>
-        <p className="mt-3">
-          <Link href="/blog/why-millions-are-switching-to-ai-companionship-lately" className="text-[#4ade80] hover:underline">
-            Why Millions Are Switching to AI Companionship Lately
-          </Link>
-        </p>
-      </>
-    ),
-  },
-  {
-    q: 'What does a listing with a review look like?',
-    a: (
-      <>
-        <p>Here&apos;s an example of one of our SEO-optimized product reviews:</p>
-        <p className="mt-3">
-          <Link href="/ainsfw/joi-ai-nude-generator" className="text-[#4ade80] hover:underline">
-            Listing with review example
-          </Link>
-        </p>
-      </>
-    ),
-  },
-  {
-    q: 'I purchased Boost or Authority. How long before my tool is featured?',
-    a: (
-      <>
-        <p>Your listing is usually approved immediately after submission.</p>
-        <p className="mt-3">Featured placements, homepage promotion, editorial reviews, and advertising campaigns are configured manually by our team to maximize visibility and performance. Most campaigns go live within a few hours, and always within 24 hours.</p>
+        <p>Most listings go live in less than 24h. All listings get reviewed and optimized by our team for better result.</p>
       </>
     ),
   },
@@ -166,7 +105,11 @@ const SUBMIT_FAQ: { q: string; a: ReactNode }[] = [
       <>
         <p>Yes.</p>
         <p className="mt-3">We offer banner advertising, native placements, homepage takeovers, sponsored editorial content, Telegram promotions, video ads, launch campaigns, and fully customized advertising packages for brands looking to scale.</p>
-        <p className="mt-3">If you&apos;re planning a product launch or want to maximize exposure, we&apos;d be happy to build a custom campaign around your goals.</p>
+        <p className="mt-3">If you want to maximize exposure, we&apos;d be happy to build a custom campaign around your goals. Feel free to reach out at{' '}
+          <a href="https://t.me/erogramDOTpro" target="_blank" rel="noopener noreferrer" className="text-[#4ade80] hover:underline">@EROGRAMDOTPRO</a>
+          {' '}on Telegram or{' '}
+          <a href="mailto:isabella@erogram.biz" className="text-[#4ade80] hover:underline">isabella@erogram.biz</a>
+        </p>
       </>
     ),
   },
@@ -176,14 +119,39 @@ const SUBMIT_FAQ: { q: string; a: ReactNode }[] = [
       <>
         <p>Yes.</p>
         <p className="mt-3">Eligible AI tools can receive a free permanent listing by displaying a small{' '}
-          <Link href="/partnership" className="text-[#4ade80] hover:underline">&quot;Featured on EROGRAM&quot; badge</Link>
-          {' '}on their website that links back to EROGRAM.</p>
+          <Link href="/partnership" className="text-[#4ade80] hover:underline">&quot;Featured on EROGRAMX&quot; badge</Link>
+          {' '}on their website that links back to EROGRAMX.</p>
         <p className="mt-3">This helps support our platform while giving your project long-term visibility at no cost. All free submissions are manually reviewed before approval.</p>
         <p className="mt-3">Free listings include a standard listing only. Featured placements, editorial reviews, homepage promotion, and premium advertising are available exclusively through our paid plans.</p>
       </>
     ),
   },
 ];
+
+export function AinsfwSubmitFaq({ tone = 'green', lightPage = false }: { tone?: 'green' | 'blue'; lightPage?: boolean }) {
+  const blue = tone === 'blue';
+  return (
+    <section className="mt-8 mb-10 max-w-3xl mx-auto">
+      <h2 className={`text-xl sm:text-2xl font-black mb-6 text-center ${lightPage ? 'text-black' : 'text-white'}`}>Frequently Asked Questions</h2>
+      <div className="space-y-3">
+        {SUBMIT_FAQ.map((faq) => (
+          <details
+            key={faq.q}
+            className={`group rounded-xl overflow-hidden ${
+              blue ? 'border border-[#00AFF0]/20 bg-[#111B2E]' : 'border border-[#22c55e]/15 bg-[#0a1f12]'
+            }`}
+          >
+            <summary className="flex items-center justify-between gap-4 cursor-pointer px-5 py-4 text-white font-semibold text-base sm:text-base list-none [&::-webkit-details-marker]:hidden">
+              <span>{faq.q}</span>
+              <svg className="w-5 h-5 sm:w-4 sm:h-4 shrink-0 text-white/50 transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
+            </summary>
+            <div className={`px-5 pb-5 text-white/70 text-base sm:text-sm leading-relaxed ${blue ? '[&_a]:text-[#00AFF0]' : ''}`}>{faq.a}</div>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 // Same main categories as /ainsfw (sans "All")
 const MAIN_CATEGORIES = AINSFW_CATEGORIES.filter((c) => c !== 'All');
@@ -195,15 +163,10 @@ function isMainCategory(item: string): boolean {
 
 /** Max main categories + subcategory tags selectable per plan (matches pricing cards). */
 const PLAN_SELECTION_LIMITS: Record<AINSFWPlan, number> = {
-  basic: 3,
-  boost: 6,
+  basic: 2,
+  boost: 8,
   startup: 8,
-};
-
-const PLAN_TIER_NAMES: Record<AINSFWPlan, string> = {
-  basic: 'BASIC',
-  boost: 'BOOST',
-  startup: 'SCALE',
+  free: 2,
 };
 
 const MAX_DESCRIPTION_WORDS = 1000;
@@ -229,7 +192,7 @@ function trimSelectedItems(items: string[], plan: AINSFWPlan): string[] {
   return [...trimmedMains, ...tags.slice(0, roomForTags)];
 }
 const SUBSCRIPTION_OPTIONS = ['Free', 'Freemium & Paid', 'Paid'] as const;
-const PAYMENT_OPTIONS = ['Credit Cards', 'Crypto', 'PayPal'] as const;
+const PAYMENT_OPTIONS = ['Credit Cards', 'Crypto', 'PayPal', 'Telegram Payment'] as const;
 
 function formatVisitAgo(ts: string): string {
   const sec = Math.max(0, Math.floor((Date.now() - new Date(ts).getTime()) / 1000));
@@ -374,20 +337,32 @@ function CompactHeroStats({
   views,
   last30dAdClicks,
   compact = false,
+  flush = false,
+  flushBlue = false,
 }: {
   views: number | null;
   last30dAdClicks: number | null;
   compact?: boolean;
+  flush?: boolean;
+  flushBlue?: boolean;
 }) {
   return (
-    <div className="flex justify-center w-full">
+    <div className={flush ? 'w-full' : 'flex justify-center w-full'}>
       <div
         className={
-          compact
-            ? 'w-full max-w-[16.5rem] sm:max-w-[19rem] rounded-lg bg-white overflow-hidden mx-auto'
+          flush
+            ? `w-full overflow-hidden ${flushBlue ? '' : 'bg-white'}`
+            : compact
+            ? `w-full max-w-[16.5rem] sm:max-w-[19rem] rounded-lg overflow-hidden mx-auto ${flushBlue ? '' : 'bg-white'}`
             : 'w-full max-w-xl sm:max-w-2xl rounded-lg bg-white overflow-hidden'
         }
-        style={{ border: BORDER, boxShadow: compact ? SHADOW : SHADOW_LG }}
+        style={
+          flushBlue
+            ? { background: SUBMIT_NAVY, ...(flush ? {} : { border: BORDER, boxShadow: compact ? SHADOW : SHADOW_LG }) }
+            : flush
+            ? undefined
+            : { border: BORDER, boxShadow: compact ? SHADOW : SHADOW_LG }
+        }
       >
         <div style={{ borderBottom: BORDER }}>
           <div className="w-full overflow-hidden bg-black">
@@ -401,13 +376,13 @@ function CompactHeroStats({
           </div>
           <div
             className={compact ? 'px-2 py-2 sm:px-3 sm:py-2.5' : 'px-3 py-2.5 sm:px-6 sm:py-4'}
-            style={{ background: 'linear-gradient(160deg, #04140c 0%, #0a2e1a 60%, #064e3b 100%)' }}
+            style={{ background: flushBlue ? SUBMIT_NAVY_HEADER : flush ? '#ffffff' : 'linear-gradient(160deg, #04140c 0%, #0a2e1a 60%, #064e3b 100%)' }}
           >
             <p
               className={
                 compact
-                  ? 'text-center text-[11px] sm:text-xs font-black uppercase tracking-wide text-[#4ade80] leading-snug px-1'
-                  : 'text-center text-base sm:text-lg md:text-xl lg:text-2xl font-black uppercase tracking-wide text-[#4ade80] leading-snug px-1'
+                  ? `text-center text-[11px] sm:text-xs font-black uppercase tracking-wide leading-snug px-1 ${flushBlue ? 'text-[#00AFF0]' : flush ? 'text-[#0099db]' : 'text-[#4ade80]'}`
+                  : `text-center text-base sm:text-lg md:text-xl lg:text-2xl font-black uppercase tracking-wide leading-snug px-1 ${flushBlue ? 'text-[#00AFF0]' : flush ? 'text-[#0099db]' : 'text-[#4ade80]'}`
               }
             >
               AD CLICKS THE LAST 30 DAYS.
@@ -415,8 +390,8 @@ function CompactHeroStats({
             <p
               className={
                 compact
-                  ? 'text-center text-[7px] sm:text-[8px] text-white/40 mt-1 px-1 leading-snug'
-                  : 'text-center text-[9px] sm:text-[10px] text-white/40 mt-1.5 px-2 leading-snug'
+                  ? `text-center text-[7px] sm:text-[8px] mt-1 px-1 leading-snug ${flushBlue || !flush ? 'text-white/40' : 'text-black/45'}`
+                  : `text-center text-[9px] sm:text-[10px] mt-1.5 px-2 leading-snug ${flushBlue || !flush ? 'text-white/40' : 'text-black/45'}`
               }
             >
               Total traffic delivered to our partners and sponsors.
@@ -426,16 +401,17 @@ function CompactHeroStats({
         <div
           className={
             compact
-              ? 'px-2 py-3 sm:py-4 text-center bg-gradient-to-br from-[#ecfdf5] via-white to-[#f0fdf4]'
-              : 'px-3 py-4 sm:py-8 text-center bg-gradient-to-br from-[#ecfdf5] via-white to-[#f0fdf4]'
+              ? `px-2 py-3 sm:py-4 text-center ${flushBlue ? '' : 'bg-gradient-to-br from-[#ecfdf5] via-white to-[#f0fdf4]'}`
+              : `px-3 py-4 sm:py-8 text-center ${flushBlue ? '' : 'bg-gradient-to-br from-[#ecfdf5] via-white to-[#f0fdf4]'}`
           }
+          style={flushBlue ? { background: SUBMIT_NAVY } : undefined}
         >
           <div className="flex flex-wrap items-baseline justify-center gap-x-1.5 gap-y-0.5">
             <p
               className={
                 compact
-                  ? 'text-2xl sm:text-3xl md:text-4xl font-black tabular-nums text-black leading-none'
-                  : 'text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tabular-nums text-black leading-none'
+                  ? `text-2xl sm:text-3xl md:text-4xl font-black tabular-nums ${flushBlue ? 'text-white' : 'text-black'} leading-none`
+                  : `text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tabular-nums ${flushBlue ? 'text-white' : 'text-black'} leading-none`
               }
             >
               {last30dAdClicks != null ? last30dAdClicks.toLocaleString() : '—'}
@@ -443,14 +419,15 @@ function CompactHeroStats({
             <span
               className={
                 compact
-                  ? 'text-[8px] sm:text-[9px] font-bold uppercase tracking-wide text-black/40 leading-tight'
-                  : 'text-[10px] sm:text-xs font-bold uppercase tracking-wide text-black/40 leading-tight'
+                  ? `text-[8px] sm:text-[9px] font-bold uppercase tracking-wide ${flushBlue ? 'text-white/40' : 'text-black/40'} leading-tight`
+                  : `text-[10px] sm:text-xs font-bold uppercase tracking-wide ${flushBlue ? 'text-white/40' : 'text-black/40'} leading-tight`
               }
             >
               clicks last 30 days
             </span>
           </div>
         </div>
+        {!flush && (
         <div
           className={
             compact
@@ -459,18 +436,19 @@ function CompactHeroStats({
           }
         >
           <div className="flex flex-col items-center justify-center text-center min-w-0">
-            <span className="text-[8px] sm:text-[9px] font-bold uppercase tracking-wider text-black/45 mb-0.5">Page views</span>
+            <span className={`text-[8px] sm:text-[9px] font-bold uppercase tracking-wider mb-0.5 ${flushBlue ? 'text-white/45' : 'text-black/45'}`}>Page views</span>
             <span
               className={
                 compact
-                  ? 'text-sm sm:text-base font-black tabular-nums text-[#16a34a] leading-none'
-                  : 'text-lg sm:text-xl font-black tabular-nums text-[#16a34a] leading-none'
+                  ? `text-sm sm:text-base font-black tabular-nums ${flushBlue ? 'text-[#00AFF0]' : 'text-[#16a34a]'} leading-none`
+                  : `text-lg sm:text-xl font-black tabular-nums ${flushBlue ? 'text-[#00AFF0]' : 'text-[#16a34a]'} leading-none`
               }
             >
               {views != null ? views.toLocaleString() : '—'}
             </span>
           </div>
         </div>
+        )}
       </div>
     </div>
   );
@@ -479,8 +457,8 @@ function CompactHeroStats({
 function MobileSubmitStickyBar({ onSubmit }: { onSubmit: () => void }) {
   return (
     <div
-      className="fixed bottom-0 inset-x-0 z-40 md:hidden border-t border-[#22c55e]/30"
-      style={{ background: 'linear-gradient(160deg, #04140c 0%, #0a2e1a 60%, #064e3b 100%)' }}
+      className="fixed bottom-0 inset-x-0 z-40 md:hidden border-t border-[#00AFF0]/30"
+      style={{ background: 'linear-gradient(160deg, #0B1220 0%, #0a2840 60%, #0d3550 100%)' }}
     >
       <div className="flex items-center px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         <div className="flex-1 min-w-0">
@@ -573,7 +551,7 @@ const BOOST_FEATURES: PlanFeature[] = [
   { text: '30 days featured in your categories' },
   {
     text: 'Qualify for our Top 10 Rankings',
-    info: 'Your AI tool becomes eligible to appear in our highest-traffic pages after the homepage: the Top 10 AI NSFW Tools rankings for each category. The more upvotes and engagement your tool receives from the EROGRAM community, the higher it can climb in the rankings.',
+    info: 'Your AI tool becomes eligible to appear in our highest-traffic pages after the homepage: the Top 10 AI NSFW Tools rankings for each category. The more upvotes and engagement your tool receives from the EROGRAMX community, the higher it can climb in the rankings.',
   },
 ];
 
@@ -650,81 +628,8 @@ const emptyForm: AINSFWFormData = {
   tags: '',
   subscription: 'Freemium & Paid',
   paymentMethods: [],
+  videoUrl: '',
 };
-
-function ListingContentReview({
-  name,
-  description,
-  imageUrl,
-  websiteUrl,
-  categories,
-  subscription,
-  paymentMethods,
-  planPrice,
-}: {
-  name: string;
-  description: string;
-  imageUrl: string;
-  websiteUrl: string;
-  categories: string[];
-  subscription: string;
-  paymentMethods: string[];
-  planPrice: number;
-}) {
-  return (
-    <div
-      id="listing-preview"
-      className="rounded-lg border border-white/15 bg-white/[0.03] p-5 sm:p-6 space-y-5 text-left"
-    >
-      <div className="flex items-start gap-3">
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt=""
-            className="w-12 h-12 shrink-0 rounded object-cover border border-white/10"
-          />
-        ) : (
-          <div className="w-12 h-12 shrink-0 rounded bg-white/10 border border-white/10" />
-        )}
-        <div className="min-w-0">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-white/40">Tool name</p>
-          <p className="text-base font-semibold text-white break-words">{name}</p>
-        </div>
-      </div>
-
-      <div>
-        <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 mb-1">Description</p>
-        <p className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap break-words">{description}</p>
-      </div>
-
-      <div>
-        <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 mb-1">Pricing</p>
-        <p className="text-sm text-white/80">{subscription}</p>
-        <p className="text-sm text-white/60 mt-1">Package: ${planPrice}</p>
-        {paymentMethods.length > 0 && (
-          <p className="text-sm text-white/60 mt-1">Accepts: {paymentMethods.join(', ')}</p>
-        )}
-      </div>
-
-      <div>
-        <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 mb-1">Categories</p>
-        <p className="text-sm text-white/80 break-words">{categories.join(', ')}</p>
-      </div>
-
-      <div>
-        <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 mb-1">Website</p>
-        <a
-          href={websiteUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm text-[#4ade80] break-all hover:underline"
-        >
-          {websiteUrl}
-        </a>
-      </div>
-    </div>
-  );
-}
 
 const AUTOSAVE_KEY = 'erogram-ainsfw-submit-draft';
 
@@ -734,7 +639,6 @@ type SubmitAutosave = {
   selectedPlan: AINSFWPlan | null;
   draftSubmissionId: string | null;
   savedLogoUrl: string | null;
-  formStep: 'edit' | 'preview';
 };
 
 export default function AINSFWPricingClient({
@@ -751,26 +655,25 @@ export default function AINSFWPricingClient({
   const isAdvertise = pageVariant === 'advertise';
   const [advertiseSection, setAdvertiseSection] = useState<'ai-tg' | 'onlyfans'>('ai-tg');
   const [username, setUsername] = useState<string | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<AINSFWPlan | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<AINSFWPlan | null>('basic');
   const [form, setForm] = useState<AINSFWFormData>({ ...emptyForm });
   // unified selection — main categories + tags in one list
   const [selectedItems, setSelectedItems] = useState<string[]>(['AI Companion']);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [couponCode, setCouponCode] = useState('');
-  const [couponResult, setCouponResult] = useState<{ valid: boolean; discountedStars?: number; savedStars?: number; error?: string } | null>(null);
-  const [validatingCoupon, setValidatingCoupon] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [formStep, setFormStep] = useState<'edit' | 'preview'>('edit');
   const [draftSubmissionId, setDraftSubmissionId] = useState<string | null>(null);
-  const [previewSlug, setPreviewSlug] = useState<string | null>(null);
   const [savedLogoUrl, setSavedLogoUrl] = useState<string | null>(null);
   const [autosaveRestored, setAutosaveRestored] = useState(false);
+  const [urlHelpOpen, setUrlHelpOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const screenshotRef = useRef<HTMLInputElement>(null);
+  const videoFileRef = useRef<HTMLInputElement>(null);
+  const [screenshotItems, setScreenshotItems] = useState<{ preview: string; file?: File; url?: string }[]>([]);
+  const [videoItem, setVideoItem] = useState<{ preview: string; file?: File; url?: string } | null>(null);
 
-  const checkoutPrice = planCheckoutPrice(selectedPlan, couponResult);
   const visitorStats = useLiveVisitorFeed(60_000);
 
   useEffect(() => {
@@ -780,20 +683,17 @@ export default function AINSFWPricingClient({
         setAutosaveRestored(true);
         return;
       }
-      const token = localStorage.getItem('token');
       const parsed = JSON.parse(raw) as SubmitAutosave;
       if (parsed.form) setForm(parsed.form);
       if (parsed.selectedItems?.length) setSelectedItems(parsed.selectedItems);
-      if (token) {
-        if (parsed.selectedPlan) setSelectedPlan(parsed.selectedPlan);
-        if (parsed.draftSubmissionId) setDraftSubmissionId(parsed.draftSubmissionId);
-        if (parsed.savedLogoUrl) {
-          setSavedLogoUrl(parsed.savedLogoUrl);
-          setImagePreview(parsed.savedLogoUrl);
-        }
-        if (parsed.formStep === 'preview' && parsed.draftSubmissionId) {
-          setFormStep('preview');
-        }
+      if (parsed.selectedPlan) setSelectedPlan(parsed.selectedPlan);
+      if (parsed.draftSubmissionId) setDraftSubmissionId(parsed.draftSubmissionId);
+      if (parsed.savedLogoUrl) {
+        setSavedLogoUrl(parsed.savedLogoUrl);
+        setImagePreview(parsed.savedLogoUrl);
+      }
+      if (parsed.form?.videoUrl) {
+        setVideoItem({ preview: parsed.form.videoUrl, url: parsed.form.videoUrl });
       }
     } catch {
       /* ignore corrupt autosave */
@@ -812,12 +712,11 @@ export default function AINSFWPricingClient({
         selectedPlan,
         draftSubmissionId,
         savedLogoUrl,
-        formStep,
       };
       localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(payload));
     }, 600);
     return () => window.clearTimeout(t);
-  }, [autosaveRestored, form, selectedItems, selectedPlan, draftSubmissionId, savedLogoUrl, formStep]);
+  }, [autosaveRestored, form, selectedItems, selectedPlan, draftSubmissionId, savedLogoUrl]);
 
   const clearAutosave = () => {
     try {
@@ -827,20 +726,12 @@ export default function AINSFWPricingClient({
     }
   };
 
-  const requireLoginForSubmit = () => {
-    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
-    if (token) return true;
-    window.location.href = `/login?redirect=${encodeURIComponent('/add/ainsfw')}`;
-    return false;
-  };
-
   const openForm = (plan: AINSFWPlan) => {
-    if (!requireLoginForSubmit()) return;
     setSelectedPlan(plan);
-    setFormStep('edit');
     setDraftSubmissionId(null);
-    setPreviewSlug(null);
     setSavedLogoUrl(null);
+    setScreenshotItems([]);
+    setVideoItem(null);
     setSelectedItems((prev) => trimSelectedItems(prev, plan));
     setError('');
     setTimeout(() => {
@@ -850,21 +741,16 @@ export default function AINSFWPricingClient({
 
   const closeForm = () => {
     setSelectedPlan(null);
-    setFormStep('edit');
     setDraftSubmissionId(null);
-    setPreviewSlug(null);
     setSavedLogoUrl(null);
+    setScreenshotItems([]);
+    setVideoItem(null);
     setError('');
   };
 
   const scrollToPricing = () => {
-    const isMobile = window.matchMedia('(max-width: 767px)').matches;
     const target = document.getElementById(
-      isAdvertise
-        ? 'advertise-sections'
-        : isMobile
-          ? 'pricing-boost'
-          : 'pricing-grid',
+      isAdvertise ? 'advertise-sections' : 'submit-form',
     );
     target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -878,7 +764,7 @@ export default function AINSFWPricingClient({
     }));
   };
 
-  const selectionLimit = selectedPlan ? PLAN_SELECTION_LIMITS[selectedPlan] : 3;
+  const selectionLimit = 8;
 
   const toggleItem = (item: string) => {
     const isMainCat = isMainCategory(item);
@@ -910,6 +796,45 @@ export default function AINSFWPricingClient({
     setError('');
   };
 
+  const handleScreenshotChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!files.length) return;
+    const room = 4 - screenshotItems.length;
+    if (room <= 0) { setError('You can upload up to 4 screenshots.'); return; }
+    const next = files.slice(0, room);
+    for (const file of next) {
+      if (!file.type.startsWith('image/')) { setError('Please select an image file.'); return; }
+      if (file.size > 5 * 1024 * 1024) { setError('Image must be under 5 MB.'); return; }
+    }
+    setScreenshotItems((prev) => [
+      ...prev,
+      ...next.map((file) => ({ preview: URL.createObjectURL(file), file })),
+    ]);
+    setError('');
+  };
+
+  const removeScreenshot = (index: number) => {
+    setScreenshotItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|mov)$/i.test(file.name);
+    if (!isVideo) { setError('Please select an MP4, WebM, or MOV file.'); return; }
+    if (file.size > 2 * 1024 * 1024) { setError('Video must be under 2 MB.'); return; }
+    setVideoItem({ preview: URL.createObjectURL(file), file });
+    setForm((f) => ({ ...f, videoUrl: '' }));
+    setError('');
+  };
+
+  const removeVideo = () => {
+    setVideoItem(null);
+    setForm((f) => ({ ...f, videoUrl: '' }));
+  };
+
   const uploadImage = async (category: string): Promise<string> => {
     if (!imageFile) return '';
     const fd = new FormData();
@@ -923,14 +848,53 @@ export default function AINSFWPricingClient({
     return data.url;
   };
 
+  const uploadScreenshotFile = async (file: File, category: string, index: number): Promise<string> => {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('folder', 'ainsfw');
+    fd.append('name', `${form.toolName.trim()}-screenshot-${index + 1}-${Date.now()}`);
+    fd.append('category', category);
+    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok || !data.url) throw new Error(data.message || 'Upload failed');
+    return data.url;
+  };
+
+  const uploadListingVideo = async (file: File, category: string): Promise<string> => {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('folder', 'ainsfw');
+    fd.append('name', `${form.toolName.trim()}-video-${Date.now()}`);
+    fd.append('category', category);
+    const res = await fetch('/api/upload/video', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok || !data.url) throw new Error(data.message || 'Upload failed');
+    return data.url;
+  };
+
   const buildSubmissionPayload = async () => {
     const mainCatsSelected = selectedItems.filter((i) => isMainCategory(i));
     const category = mainCatsSelected[0] ?? 'AI Companion';
+    setUploading(true);
+    try {
     let logoUrl = savedLogoUrl || '';
     if (imageFile) {
-      setUploading(true);
       logoUrl = await uploadImage(category);
-      setUploading(false);
+    }
+    const screenshots: string[] = [];
+    for (let i = 0; i < screenshotItems.length; i++) {
+      const item = screenshotItems[i];
+      if (item.url) {
+        screenshots.push(item.url);
+        continue;
+      }
+      if (item.file) {
+        screenshots.push(await uploadScreenshotFile(item.file, category, i));
+      }
+    }
+    let videoUrl = videoItem?.url || form.videoUrl || '';
+    if (videoItem?.file) {
+      videoUrl = await uploadListingVideo(videoItem.file, category);
     }
     if (!logoUrl) throw new Error('Logo is required.');
     return {
@@ -939,57 +903,54 @@ export default function AINSFWPricingClient({
       logoUrl,
       payload: {
         ...form,
+        websiteUrl: normalizeWebsiteUrl(form.websiteUrl),
         logoUrl,
         category,
         tags: mainCatsSelected.flatMap((c) => [c, c.toLowerCase()]).join(', '),
         extraCategories: mainCatsSelected,
+        screenshots,
+        videoUrl,
       } satisfies AINSFWFormData,
     };
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSavePreview = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPlan) return;
     if (!form.toolName.trim()) { setError('Tool name is required.'); return; }
-    if (!form.websiteUrl.trim() || !form.websiteUrl.startsWith('http')) { setError('Enter a valid URL starting with https://'); return; }
-    const hasEmail = form.email.trim() && form.email.includes('@');
-    const hasTelegram = !!form.contactTelegram?.trim();
-    if (!hasEmail && !hasTelegram) { setError('Provide a contact email or Telegram so we can reach you.'); return; }
+    const websiteUrl = normalizeWebsiteUrl(form.websiteUrl);
+    if (!websiteUrl) {
+      setUrlHelpOpen(true);
+      return;
+    }
+    setForm((f) => ({ ...f, websiteUrl }));
     if (!form.description.trim()) { setError('Description is required.'); return; }
     if (countWords(form.description) > MAX_DESCRIPTION_WORDS) {
       setError('Description cannot exceed 1000 words.');
       return;
     }
     if (!imageFile && !savedLogoUrl) { setError('Please upload a logo / image for your tool.'); return; }
+    if (!form.email.trim() || !form.email.includes('@')) { setError('Please provide a contact email.'); return; }
 
-    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) {
-      setError('Please log in to submit — your listing will be saved to your account.');
-      window.location.href = `/login?redirect=${encodeURIComponent('/add/ainsfw')}`;
-      return;
-    }
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : undefined;
 
     setLoading(true);
     setError('');
     try {
       const { payload, logoUrl } = await buildSubmissionPayload();
       const result = await saveAINSFWListingDraft(
-        selectedPlan,
+        selectedPlan || 'basic',
         payload,
-        token,
+        token || undefined,
         draftSubmissionId || undefined,
       );
       if (!result.success || !result.submissionId) {
         setError(result.error || 'Something went wrong. Please try again.');
         return;
       }
-      setDraftSubmissionId(result.submissionId);
-      setPreviewSlug(result.slug || null);
-      setSavedLogoUrl(logoUrl);
-      setFormStep('preview');
-      setTimeout(() => {
-        document.getElementById('listing-preview')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 80);
+      window.location.href = `/add/ainsfw/preview?draft=${result.submissionId}`;
     } catch {
       setError('Failed to process. Please try again.');
       setUploading(false);
@@ -998,74 +959,75 @@ export default function AINSFWPricingClient({
     }
   };
 
-  const handleCheckout = async () => {
-    if (!selectedPlan || !draftSubmissionId) return;
-    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) {
-      setError('Please log in to continue.');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-    try {
-      const result = await checkoutAINSFWListing(
-        draftSubmissionId,
-        selectedPlan,
-        couponCode.trim() || undefined,
-        token,
-      );
-      if (result.freeApproval) {
-        clearAutosave();
-        window.location.href = `/add/ainsfw/thank-you?plan=${selectedPlan}&slug=${result.slug}`;
-      } else if (result.success && result.invoiceUrl) {
-        clearAutosave();
-        window.location.href = result.invoiceUrl;
-      } else {
-        setError(result.error || 'Something went wrong. Please try again.');
-      }
-    } catch {
-      setError('Failed to start checkout. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /* shared input style — white bg for contrast on dark form */
-  const inputCls = 'w-full px-4 py-3.5 text-base sm:text-sm font-semibold bg-white text-black placeholder-black/30 focus:outline-none focus:ring-2 focus:ring-[#22c55e]/60 rounded-none';
-  const formHintCls = 'text-sm sm:text-base font-medium text-white';
-  const formFieldHintCls = 'text-sm sm:text-base text-white/70 leading-snug';
+  /* shared input style — white form card */
+  const inputCls = 'w-full px-4 py-3.5 text-base sm:text-sm font-semibold bg-white text-black placeholder-black/30 focus:outline-none focus:ring-2 focus:ring-[#00AFF0]/60 rounded-none';
+  const formHintCls = 'text-sm sm:text-base font-medium text-black/80';
+  const formFieldHintCls = 'text-sm sm:text-base text-black/55 leading-snug';
 
   return (
-    <div className="ainsfw-page ainsfw-bg min-h-screen text-white">
+    <div
+      className={`ainsfw-page min-h-screen ${isAdvertise ? 'text-white' : 'bg-white text-black'}`}
+      style={
+        isAdvertise
+          ? {
+              backgroundColor: '#0B1220',
+              backgroundImage:
+                'radial-gradient(900px circle at 12% -10%, rgba(0,175,240,0.16), transparent 55%), radial-gradient(800px circle at 100% 0%, rgba(0,175,240,0.10), transparent 50%), linear-gradient(180deg, #0B1220 0%, #0a1018 40%, #070c14 100%)',
+              backgroundAttachment: 'fixed',
+            }
+          : undefined
+      }
+    >
       <Navbar username={username} setUsername={setUsername} />
 
       <main
         className={
           isAdvertise
             ? 'flex w-full flex-col px-4 sm:px-6 lg:px-8 pt-[4.75rem] sm:pt-20 pb-12 sm:pb-16'
-            : 'max-w-5xl xl:max-w-7xl 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-12 pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-16'
+            : 'max-w-5xl xl:max-w-7xl 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-[4.75rem] sm:pt-20 pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-16'
         }
       >
 
         {/* Breadcrumb */}
         {!isAdvertise && (
-        <div className="flex items-center gap-2 text-sm font-bold text-white/30 mb-6 uppercase tracking-widest">
-          <Link href="/" className="hover:text-white/60 transition-colors">Home</Link>
-          <span className="text-white/20">/</span>
-          <Link href="/add" className="hover:text-white/60 transition-colors">Add</Link>
-          <span className="text-white/20">/</span>
-          <span style={{ color: ACCENT }}>AI NSFW Tool</span>
+        <div className="flex items-center gap-2 text-sm font-bold text-black/35 mb-4 uppercase tracking-widest">
+          <Link href="/" className="hover:text-black/70 transition-colors">Home</Link>
+          <span className="text-black/20">/</span>
+          <Link href="/add" className="hover:text-black/70 transition-colors">Add</Link>
+          <span className="text-black/20">/</span>
+          <span style={{ color: SUBMIT_ACCENT }}>AI NSFW Tool</span>
         </div>
         )}
 
         {/* HERO */}
-        <div className={isAdvertise ? 'w-full max-w-md mx-auto flex flex-col items-center gap-6 sm:gap-8' : 'mb-10 flex flex-col gap-8 sm:gap-10'}>
-          <CompactHeroStats
-            views={visitorStats.views}
-            last30dAdClicks={visitorStats.last30dAdClicks}
-            compact={isAdvertise}
-          />
+        <div className={isAdvertise ? 'w-full max-w-3xl mx-auto flex flex-col items-center gap-6 sm:gap-8' : 'mb-10 flex flex-col gap-8 sm:gap-10'}>
+          {!isAdvertise ? (
+            <div className="w-full max-w-xl sm:max-w-2xl mx-auto overflow-hidden rounded-2xl border shadow-[0_16px_40px_-20px_rgba(0,40,80,0.55)]" style={{ borderColor: SUBMIT_NAVY_BORDER, background: SUBMIT_NAVY }}>
+              <CompactHeroStats
+                views={visitorStats.views}
+                last30dAdClicks={visitorStats.last30dAdClicks}
+                flush
+                flushBlue
+              />
+              <PartnershipStats
+                aiNsfwCount={aiNsfwCount}
+                groupsAndBotsCount={groupsAndBotsCount}
+                totalUsers={totalUsers}
+                pageViews={visitorStats.views}
+                variant="onlyfans"
+                embedded
+                redBrandX
+              />
+              <TrustedByLeaders variant="onlyfans" embedded />
+            </div>
+          ) : (
+            <CompactHeroStats
+              views={visitorStats.views}
+              last30dAdClicks={visitorStats.last30dAdClicks}
+              compact={isAdvertise}
+              flushBlue
+            />
+          )}
 
           {isAdvertise ? (
             <>
@@ -1074,10 +1036,10 @@ export default function AINSFWPricingClient({
                   <span>ADVERTISE ON</span>
                   <ErogramWordmark className="text-2xl sm:text-3xl" />
                 </h2>
-                <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 items-stretch">
+                <div className="flex flex-col gap-4 items-stretch w-full max-w-xl mx-auto">
                 <Link
                   href="/add/ainsfw"
-                  className="relative w-full sm:flex-1 font-black uppercase text-black transition-all duration-150 ease-out hover:-translate-y-1 hover:brightness-105 active:translate-x-[6px] active:translate-y-[6px] active:brightness-100 px-5 sm:px-6 py-4 sm:py-5 text-sm sm:text-base tracking-[0.1em] sm:tracking-[0.12em] text-center"
+                  className="relative w-full font-black uppercase text-black transition-all duration-150 ease-out hover:-translate-y-1 hover:brightness-105 active:translate-x-[6px] active:translate-y-[6px] active:brightness-100 px-4 sm:px-5 py-3.5 sm:py-4 text-sm sm:text-base tracking-wide text-center whitespace-nowrap"
                   style={{
                     background: `linear-gradient(180deg, #fef08a 0%, ${CTA} 38%, ${CTA_DARK} 100%)`,
                     border: CTA_BORDER,
@@ -1089,8 +1051,8 @@ export default function AINSFWPricingClient({
                     style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.45) 0%, transparent 100%)' }}
                     aria-hidden
                   />
-                  <span className="relative inline-flex items-center justify-center gap-3">
-                    <span className="shrink-0 inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-md border-2 border-black/35 bg-black/10 text-xs sm:text-sm font-black leading-none tracking-tight">
+                  <span className="relative inline-flex items-center justify-center gap-2 whitespace-nowrap">
+                    <span className="shrink-0 inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-md border-2 border-black/35 bg-black/10 text-[10px] sm:text-xs font-black leading-none tracking-tight">
                       18+
                     </span>
                     AI, Bots &amp; Adult Websites
@@ -1098,7 +1060,7 @@ export default function AINSFWPricingClient({
                 </Link>
               <Link
                 href="/ofm-agencies"
-                className="relative w-full sm:flex-1 font-black uppercase text-black transition-all duration-150 ease-out hover:-translate-y-1 hover:brightness-105 active:translate-x-[6px] active:translate-y-[6px] active:brightness-100 px-5 sm:px-6 py-4 sm:py-5 text-sm sm:text-base tracking-[0.1em] sm:tracking-[0.12em] text-center"
+                className="relative w-full font-black uppercase text-black transition-all duration-150 ease-out hover:-translate-y-1 hover:brightness-105 active:translate-x-[6px] active:translate-y-[6px] active:brightness-100 px-4 sm:px-5 py-3.5 sm:py-4 text-sm sm:text-base tracking-wide text-center whitespace-nowrap"
                 style={{
                   background: `linear-gradient(180deg, #fef08a 0%, ${CTA} 38%, ${CTA_DARK} 100%)`,
                   border: CTA_BORDER,
@@ -1110,8 +1072,8 @@ export default function AINSFWPricingClient({
                   style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.45) 0%, transparent 100%)' }}
                   aria-hidden
                 />
-                <span className="relative inline-flex items-center justify-center gap-3">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden className="shrink-0 sm:w-8 sm:h-8">
+                <span className="relative inline-flex items-center justify-center gap-2 whitespace-nowrap">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden className="shrink-0 sm:w-7 sm:h-7">
                     <path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z" />
                   </svg>
                   ONLYFANS AGENCIES
@@ -1124,434 +1086,122 @@ export default function AINSFWPricingClient({
                 initial={{ opacity: 0, y: 18 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-                className="text-center px-2 pb-1 leading-[1]"
+                className="text-center px-2 pb-1 leading-none w-full"
               >
-                <span className="ainsfw-hero-title text-[clamp(1.35rem,6.8vw,3.5rem)] sm:text-5xl md:text-6xl">
+                <span className="ainsfw-hero-title whitespace-nowrap inline-block text-[clamp(1.15rem,5.4vw,3.25rem)] sm:text-5xl md:text-6xl">
                   WE HAVE YOUR{' '}
-                  <span className="ainsfw-hero-customers">AUDIENCE.</span>
+                  <span className="ainsfw-hero-customers-blue">AUDIENCE.</span>
                 </span>
               </motion.h1>
             </>
           ) : (
             <>
-          <PartnershipStats
-            aiNsfwCount={aiNsfwCount}
-            groupsAndBotsCount={groupsAndBotsCount}
-            totalUsers={totalUsers}
-          />
-
-          <motion.h1
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-            className="text-center mt-6 sm:mt-8 px-2 leading-[0.92]"
-          >
-            <span className="ainsfw-hero-title text-[clamp(1.35rem,6.8vw,3.5rem)] sm:text-5xl md:text-6xl">
-              WE HAVE YOUR{' '}
-              <span className="ainsfw-hero-customers">CUSTOMERS.</span>
-            </span>
-          </motion.h1>
+          <div className="flex justify-center mt-4 sm:mt-6">
+            <GetListedPricingButton onClick={scrollToPricing}>
+              GET LISTED ON EROGRAMX
+            </GetListedPricingButton>
+          </div>
             </>
           )}
 
-          {!isAdvertise && (
-          <>
-          <div className="hidden sm:flex justify-center -mt-2 sm:mt-0">
-            <GetListedPricingButton onClick={scrollToPricing}>
-              GET LISTED ON EROGRAM
-            </GetListedPricingButton>
-          </div>
-
-          <div className="max-w-4xl flex flex-col gap-8 mt-4 sm:mt-6">
-              <p className="text-lg sm:text-xl text-white/70 leading-relaxed">
-                Stop paying for cold traffic. <strong className="text-white">EROGRAM</strong> connects your AI tool with users actively searching for premium AI experiences. Get discovered by thousands of high-intent buyers every day while your listing keeps generating visibility through our rapidly growing Google presence.
-              </p>
-              <ul className="space-y-3.5">
-                <li className="flex items-start gap-3">
-                  <span className="shrink-0" style={{ color: ACCENT }}><Check /></span>
-                  <span className="text-lg sm:text-xl text-white/70 leading-relaxed">
-                    Get featured on one of the fastest-growing AI discovery platforms with <strong className="text-[#22c55e]">40% month-over-month organic growth</strong>.
-                  </span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="shrink-0" style={{ color: ACCENT }}><Check /></span>
-                  <span className="text-lg sm:text-xl text-white/70 leading-relaxed">
-                    Reach <strong className="text-white">180,000+ Monthly Visitors</strong> Ready to Buy.
-                  </span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="shrink-0" style={{ color: ACCENT }}><Check /></span>
-                  <span className="text-lg sm:text-xl text-white/70 leading-relaxed">
-                    <strong className="text-white">1.8M+ content creators</strong>
-                  </span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="shrink-0" style={{ color: ACCENT }}><Check /></span>
-                  <span className="text-lg sm:text-xl text-white/70 leading-relaxed">
-                    <strong className="text-white">Our top 10 countries:</strong> {TOP_COUNTRIES_PHRASE}.
-                  </span>
-                </li>
-              </ul>
-              <div className="flex justify-center mt-4 sm:mt-5">
-                <Image
-                  src="/assets/ainsfw/ai-authority-badge.png"
-                  alt=""
-                  width={530}
-                  height={502}
-                  className="h-20 w-auto sm:h-24 md:h-28 object-contain"
-                />
-              </div>
-          </div>
-
-          <TrustedByLeaders variant="green" />
-
-          <div className="w-full">
-            <div
-              className="rounded-xl px-4 py-4 sm:px-6 sm:py-4"
-              style={{
-                background: 'linear-gradient(180deg, rgba(10,31,18,0.95) 0%, rgba(4,20,12,0.98) 100%)',
-                border: `2px solid rgba(34,197,94,0.2)`,
-                boxShadow: '0 12px 40px rgba(0,0,0,0.25)',
-              }}
-            >
-              <ul className="space-y-2.5 sm:space-y-3">
-                <li className="flex items-center gap-3">
-                  <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-[#22c55e]/15" style={{ color: ACCENT }}>
-                    <Check />
-                  </span>
-                  <p className="text-base sm:text-lg text-white/75 leading-snug lg:whitespace-nowrap">
-                    Get your AI tool in front of an audience <strong className="text-white">already searching, comparing, and ready to spend</strong>.
-                  </p>
-                </li>
-                <li className="flex items-center gap-3">
-                  <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-[#22c55e]/15" style={{ color: ACCENT }}>
-                    <Check />
-                  </span>
-                  <p className="text-base sm:text-lg text-white/75 leading-snug lg:whitespace-nowrap">
-                    <strong className="text-white">Every day you&apos;re not listed</strong> is another day users choose someone else.
-                  </p>
-                </li>
-                <li className="flex items-center gap-3">
-                  <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-[#22c55e]/15" style={{ color: ACCENT }}>
-                    <Check />
-                  </span>
-                  <p className="text-base sm:text-lg text-white/75 leading-snug lg:whitespace-nowrap">
-                    Don&apos;t let <strong className="text-[#4ade80]">competitors capture users</strong> searching for your category.
-                  </p>
-                </li>
-              </ul>
-              <div className="mt-4 hidden sm:flex justify-center">
-                <GetListedPricingButton onClick={scrollToPricing}>
-                  Get Listed on Erogram
-                </GetListedPricingButton>
-              </div>
-              <div className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs font-semibold text-white/45">
-                <span>Need help? Have a question? Don&apos;t hesitate to get in touch:</span>
-                <span className="text-white/20">·</span>
-                <a href="mailto:isabella@erogram.biz" className="text-[#4ade80] hover:underline">
-                  isabella@erogram.biz
-                </a>
-                <span className="text-white/20">·</span>
-                <span>
-                  Telegram :{' '}
-                  <a
-                    href="https://t.me/erogramDOTpro"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[#4ade80] hover:underline"
-                  >
-                    @erogramDOTpro
-                  </a>
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8 mb-5">
-            <div className="mb-6 sm:mb-8 text-center px-1 sm:px-2">
-              <h2 className="text-lg sm:text-2xl md:text-3xl lg:text-[2rem] font-black uppercase tracking-tight text-white leading-snug max-w-4xl mx-auto">
-                GET LISTED ON THE FASTEST GROWING ADULT ENTRETAINEMENT DISCOVERY HUB.
-              </h2>
-            </div>
-            <PromoAudienceProof />
-          </div>
-
-          <div className="mt-5">
-            <TrustedByLeaders variant="green" />
-          </div>
-          </>
-          )}
         </div>
-
-        {/* PRICING GRID */}
-        {!isAdvertise && (
-        <>
-        <div id="pricing-grid" className="mb-5 scroll-mt-24">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-7 items-stretch mb-6 lg:mb-8">
-
-          {/* BOOST · $147 */}
-          <div
-            id="pricing-boost"
-            className="relative flex flex-col bg-white overflow-hidden scroll-mt-24 h-full"
-            style={{ border: `3px solid ${ACCENT}`, boxShadow: `6px 6px 0px ${ACCENT}`, color: '#000' }}
-          >
-            <div className="px-6 py-4" style={{ background: PLAN_HEADER_BG }}>
-              <p className="font-black uppercase leading-none tracking-tight text-[1.625rem] sm:text-[1.75rem] text-white">
-                BOOST
-              </p>
-              <p className="text-lg sm:text-base font-black uppercase tracking-wide text-white/45 mt-1">Get More Visibility</p>
-            </div>
-            <div className="px-6 pb-6 pt-4 flex flex-col flex-1">
-            <div className="mb-3">
-              <span className="text-5xl sm:text-4xl font-black text-black">$147</span>
-              <p className="text-xs sm:text-sm font-bold text-black/40 mt-1">One-time payment</p>
-            </div>
-            <p className="text-base sm:text-sm text-black/55 leading-relaxed mb-4">
-              Perfect for getting your AI tool indexed, discoverable, and visible to thousands of high-intent users.
-            </p>
-            <ul className="space-y-2.5 mb-4 flex-1">
-              {BOOST_BASE_FEATURES.map((f) => (
-                <li key={f} className="flex items-start gap-2.5 text-lg sm:text-base font-semibold text-black/80">
-                  <span style={{ color: ACCENT }} className="mt-0.5 shrink-0"><Check /></span>
-                  {f}
-                </li>
-              ))}
-              {BOOST_FEATURES.map((f) => (
-                <PlanFeatureItem key={f.text} {...f} usePlus />
-              ))}
-            </ul>
-            <p className="text-base sm:text-sm font-bold text-black/45 mb-4">Best for: Growing products that want more traffic.</p>
-            <button
-              onClick={() => openForm('boost')}
-              className="w-full py-4 text-lg sm:text-base font-black uppercase tracking-widest transition-all active:translate-x-[2px] active:translate-y-[2px] mt-auto"
-              style={selectedPlan === 'boost'
-                ? { background: CTA_DARK, color: '#000', border: BORDER, boxShadow: 'none', transform: 'translate(2px,2px)' }
-                : { background: CTA, color: '#000', border: BORDER, boxShadow: SHADOW }}
-            >
-              {selectedPlan === 'boost' ? '✓ Selected · scroll down' : 'Boost My Tool · $147'}
-            </button>
-            </div>
-          </div>
-
-          {/* STARTUP (enterprise) */}
-          <div
-            className="relative flex flex-col overflow-hidden min-w-0 h-full"
-            style={{
-              background: PLAN_HEADER_BG,
-              border: `3px solid ${ACCENT}`,
-              boxShadow: `6px 6px 0px ${ACCENT}`,
-            }}
-          >
-            <div className="px-6 py-6 sm:px-8 sm:py-8 flex flex-col flex-1 space-y-2 sm:space-y-2.5">
-              <h2 className="font-black uppercase leading-none tracking-tight text-[2rem] sm:text-[2.25rem] lg:text-[2.5rem] text-white">
-                STARTUP
-              </h2>
-              <p className="text-lg sm:text-xl font-black uppercase tracking-wide text-white/50">
-                Maximum Exposure
-              </p>
-              <p className="text-base sm:text-lg text-white/60 leading-snug pt-1">
-                For companies that want the highest visibility across EROGRAM.
-              </p>
-              <p className="text-base sm:text-lg font-bold text-white/80 leading-snug">
-                Budget above $1500/Month.
-              </p>
-              <p className="text-base sm:text-lg font-bold text-white/80 leading-snug">
-                Up to 10× more exposure across EROGRAM compared to SCALE.
-              </p>
-              <ul className="pt-2 space-y-2.5 sm:space-y-3 flex-1">
-                {[
-                  'Display banners & video advertising',
-                  'Up to 40× more exposure across EROGRAM',
-                  'Placement across our highest-traffic pages',
-                  'A/B testing of headlines, creatives & messaging',
-                  'Campaign analytics & reporting',
-                  'Launch and growth consulting',
-                  'Custom campaign strategy',
-                  'Dedicated account support',
-                ].map((f) => (
-                  <li key={f} className="flex items-start gap-2.5 text-base sm:text-sm font-semibold text-white/90">
-                    <span style={{ color: '#34d399' }} className="mt-0.5 shrink-0"><Check /></span>
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="px-6 pb-6 sm:px-8 sm:pb-8 pt-0 mt-auto">
-              <a
-                href="mailto:isabella@erogram.biz?subject=Startup%20Package%20Inquiry"
-                className="block w-full py-4 text-lg sm:text-base font-black uppercase tracking-widest text-center text-black transition-all hover:opacity-95 active:translate-x-[2px] active:translate-y-[2px]"
-                style={{ background: CTA, border: BORDER, boxShadow: SHADOW }}
-              >
-                Contact us for pricing
-              </a>
-            </div>
-          </div>
-
-          </div>
-
-        {/* À LA CARTE ADD-ONS */}
-        <section className="mb-12 min-w-0 max-w-2xl mx-auto">
-          <div
-            className="overflow-hidden bg-white"
-            style={{ border: BORDER, boxShadow: SHADOW_LG, color: '#000' }}
-          >
-            <div className="px-4 py-3.5 sm:px-5" style={{ background: PLAN_HEADER_BG }}>
-              <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight text-white leading-none">
-                À La Carte
-              </h2>
-              <p className="mt-0.5 text-sm sm:text-base font-black uppercase tracking-wide text-white/45">
-                Growth Add-ons
-              </p>
-            </div>
-            <ul className="divide-y divide-black/10">
-              {A_LA_CARTE_ADDONS.map((addon) => (
-                <li key={addon.title} className="py-3 px-4 sm:px-5">
-                  <div className="flex items-baseline justify-between gap-3 mb-1">
-                    <p className="text-sm sm:text-base font-black text-black leading-snug min-w-0">{addon.title}</p>
-                    <p className="text-base sm:text-lg font-black text-[#16a34a] leading-none shrink-0 tabular-nums">{addon.price}</p>
-                  </div>
-                  {addon.description ? (
-                    <p className="text-xs sm:text-sm font-semibold text-black/60 leading-snug">
-                      {addon.description}
-                    </p>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        </div>
-        </>
-        )}
 
         {!isAdvertise && (
         <>
-        <InFeedAdFormatComparison />
-
-        {/* Need help */}
-        <section className="mb-12 max-w-2xl mx-auto">
-          <div
-            className="rounded-xl px-6 py-8 sm:px-8 sm:py-10 text-center"
-            style={{
-              background: PLAN_HEADER_BG,
-              border: `3px solid ${ACCENT}`,
-              boxShadow: `6px 6px 0px ${ACCENT}`,
-            }}
-          >
-            <p className="text-base sm:text-lg text-white/70 leading-relaxed mb-7 max-w-lg mx-auto">
-              Need help? Have a question? Don&apos;t hesitate to get in touch:
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl mx-auto">
-              <a
-                href="mailto:isabella@erogram.biz"
-                className="group flex flex-col items-center justify-center gap-2 rounded-lg bg-white px-5 py-5 text-center transition-transform hover:-translate-y-0.5"
-                style={{ border: BORDER, boxShadow: SHADOW }}
-              >
-                <span className="text-2xl leading-none" aria-hidden="true">✉️</span>
-                <span className="text-xs font-black uppercase tracking-[0.18em] text-black/40">Email</span>
-                <span className="text-base sm:text-lg font-black text-black break-all">isabella@erogram.biz</span>
-              </a>
-              <a
-                href="https://t.me/erogramDOTpro"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex flex-col items-center justify-center gap-2 rounded-lg px-5 py-5 text-center text-black transition-transform hover:-translate-y-0.5"
-                style={{ background: CTA, border: BORDER, boxShadow: SHADOW }}
-              >
-                <svg className="w-7 h-7 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.820 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-                <span className="text-xs font-black uppercase tracking-[0.18em] text-black/50">Telegram</span>
-                <span className="text-base sm:text-lg font-black text-black">@erogramDOTpro</span>
-              </a>
-            </div>
-          </div>
-        </section>
-
         {/* ── SUBMISSION FORM ── */}
-        {!isAdvertise && selectedPlan && (
+        {!isAdvertise && (
           <div
             id="submit-form"
-            className="max-w-2xl mx-auto p-8 mb-5"
+            className="max-w-2xl mx-auto p-8 mb-5 bg-white"
             style={{
-              background: 'linear-gradient(180deg, #062416 0%, #04140c 100%)',
-              border: `3px solid ${ACCENT}`,
-              boxShadow: `6px 6px 0px ${ACCENT}`,
+              border: `3px solid ${SUBMIT_NAVY_BORDER}`,
+              boxShadow: `6px 6px 0px ${SUBMIT_NAVY_BORDER}`,
             }}
           >
-            <div className="flex items-start justify-between mb-6">
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] text-[#4ade80] mb-2">Your selected package</p>
-                <h2 className="text-4xl sm:text-5xl font-black uppercase leading-none tracking-tight text-white">
-                  {selectedPlan === 'basic' && 'Basic'}
-                  {selectedPlan === 'boost' && 'Boost'}
-                  {selectedPlan === 'startup' && 'Scale'}
-                </h2>
-                <p className="text-lg sm:text-xl font-black uppercase tracking-wide text-white/45 mt-1.5">
-                  {selectedPlan === 'basic' && 'Get Seen'}
-                  {selectedPlan === 'boost' && 'Get More Visibility'}
-                  {selectedPlan === 'startup' && 'Own Your Category'}
-                </p>
-              </div>
-              <button
-                onClick={closeForm}
-                className="w-8 h-8 flex items-center justify-center text-xl text-white/40 hover:text-white transition-colors"
-              >
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={formStep === 'preview' ? (e) => e.preventDefault() : handleSavePreview} className="space-y-5">
-
-              {formStep === 'edit' && (
-              <>
-              <p className="text-sm sm:text-base text-white/60 leading-relaxed -mt-1 mb-1">
+            <form onSubmit={handleSavePreview} className="space-y-5" noValidate>
+              <p className="text-sm sm:text-base text-black/60 leading-relaxed -mt-1 mb-1">
                 All the details can be updated later from your listing management page.
               </p>
               {/* Tool Name */}
               <div>
-                <label className="block text-sm sm:text-xs font-black uppercase tracking-widest text-[#4ade80] mb-1.5">Tool Name *</label>
+                <label className="block text-sm sm:text-xs font-black uppercase tracking-widest text-[#0099db] mb-1.5">Tool Name *</label>
                 <input
                   type="text"
                   value={form.toolName}
                   onChange={(e) => setForm(f => ({ ...f, toolName: e.target.value }))}
                   placeholder="e.g. DreamGF"
                   className={inputCls}
-                  style={{ border: `2px solid ${ACCENT}` }}
+                  style={{ border: `2px solid ${SUBMIT_NAVY_BORDER}` }}
                 />
               </div>
 
               {/* Website URL */}
               <div>
-                <label className="block text-sm sm:text-xs font-black uppercase tracking-widest text-[#4ade80] mb-1.5">Website URL *</label>
+                <label className="block text-sm sm:text-xs font-black uppercase tracking-widest text-[#0099db] mb-1.5">Website URL *</label>
                 <input
-                  type="url"
+                  type="text"
+                  inputMode="url"
+                  autoComplete="url"
                   value={form.websiteUrl}
                   onChange={(e) => setForm(f => ({ ...f, websiteUrl: e.target.value }))}
-                  placeholder="https://yourtool.com"
+                  onBlur={() => {
+                    const next = normalizeWebsiteUrl(form.websiteUrl);
+                    if (next) setForm((f) => ({ ...f, websiteUrl: next }));
+                  }}
+                  placeholder="www.name.com or name.com or https://name.com"
                   className={inputCls}
-                  style={{ border: `2px solid ${ACCENT}` }}
+                  style={{ border: `2px solid ${SUBMIT_NAVY_BORDER}` }}
                 />
+                <p className={`${formFieldHintCls} mt-1.5`}>
+                  www.name.com or name.com or https://name.com
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm sm:text-xs font-black uppercase tracking-widest text-[#0099db] mb-1.5">Contact Email *</label>
+                  <input
+                    type="email"
+                    autoComplete="email"
+                    value={form.email}
+                    onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
+                    placeholder="you@email.com"
+                    className={inputCls}
+                    style={{ border: `2px solid ${SUBMIT_NAVY_BORDER}` }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm sm:text-xs font-black uppercase tracking-widest text-[#0099db] mb-1.5">Contact Telegram (optional)</label>
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    value={form.contactTelegram || ''}
+                    onChange={(e) => setForm(f => ({ ...f, contactTelegram: e.target.value }))}
+                    placeholder="@telegram"
+                    className={inputCls}
+                    style={{ border: `2px solid ${SUBMIT_NAVY_BORDER}` }}
+                  />
+                </div>
               </div>
 
               {/* Logo Upload */}
               <div>
-                <label className="block text-sm sm:text-xs font-black uppercase tracking-widest text-[#4ade80] mb-1.5">Logo / Image *</label>
+                <label className="block text-sm sm:text-xs font-black uppercase tracking-widest text-[#0099db] mb-1.5">Logo / Image *</label>
                 <div
                   onClick={() => fileRef.current?.click()}
-                  className="relative cursor-pointer flex flex-col items-center justify-center gap-2 py-6 transition-colors hover:bg-white/[0.06]"
-                  style={{ border: `2px dashed ${ACCENT}`, background: 'rgba(14,165,233,0.06)' }}
+                  className="relative cursor-pointer flex flex-col items-center justify-center gap-2 py-6 transition-colors hover:bg-black/[0.03]"
+                  style={{ border: `2px dashed ${SUBMIT_NAVY_BORDER}`, background: 'rgba(10,40,64,0.06)' }}
                 >
                   {imagePreview ? (
-                    <img src={imagePreview} alt="Preview" className="w-24 h-24 object-cover rounded border-2 border-[#22c55e]/40" />
+                    <img src={imagePreview} alt="Preview" className="w-24 h-24 object-cover rounded border-2" style={{ borderColor: SUBMIT_NAVY_BORDER }} />
                   ) : (
-                    <div className="w-16 h-16 rounded bg-white/[0.08] flex items-center justify-center">
-                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-[#4ade80]">
+                    <div className="w-16 h-16 rounded bg-black/[0.05] flex items-center justify-center">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-[#0099db]">
                         <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
                       </svg>
                     </div>
                   )}
-                  <p className={`${formHintCls} text-white/85`}>
+                  <p className={`${formHintCls}`}>
                     {imagePreview ? 'Click to change' : 'Click to upload (JPG, PNG, WebP — max 5 MB)'}
                   </p>
                 </div>
@@ -1562,21 +1212,86 @@ export default function AINSFWPricingClient({
                   onChange={handleImageChange}
                   className="hidden"
                 />
-                {selectedPlan && PLANS_WITH_SCREENSHOTS.includes(selectedPlan) && (
-                  <div
-                    className="mt-3 rounded-lg px-4 py-3"
-                    style={{ border: `1px solid ${ACCENT}40`, background: 'rgba(34,197,94,0.08)' }}
-                  >
-                    <p className="text-sm sm:text-base font-semibold text-white leading-snug">
-                      SCREENSHOTS CAN BE UPLOADED LATER
-                    </p>
-                  </div>
+              </div>
+
+              {/* Screenshots */}
+              <div>
+                <label className="block text-sm sm:text-xs font-black uppercase tracking-widest text-[#0099db] mb-1.5">Screenshots (optional)</label>
+                <p className={`${formFieldHintCls} mb-2`}>Up to 4. JPG, PNG, WebP — max 5 MB each.</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {screenshotItems.map((item, i) => (
+                    <div key={item.preview} className="relative aspect-video overflow-hidden" style={{ border: `2px solid ${SUBMIT_NAVY_BORDER}` }}>
+                      <img src={item.preview} alt="" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removeScreenshot(i)}
+                        className="absolute top-1 right-1 w-6 h-6 bg-black text-white text-sm font-black leading-none"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  {screenshotItems.length < 4 && (
+                    <button
+                      type="button"
+                      onClick={() => screenshotRef.current?.click()}
+                      className="aspect-video flex flex-col items-center justify-center gap-1 hover:bg-black/[0.03]"
+                      style={{ border: `2px dashed ${SUBMIT_NAVY_BORDER}`, background: 'rgba(10,40,64,0.06)' }}
+                    >
+                      <span className="text-lg font-black text-[#0099db]">+</span>
+                      <span className={`${formHintCls}`}>Add</span>
+                    </button>
+                  )}
+                </div>
+                <input
+                  ref={screenshotRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleScreenshotChange}
+                  className="hidden"
+                />
+              </div>
+
+              {/* Video */}
+              <div>
+                <label className="block text-sm sm:text-xs font-black uppercase tracking-widest text-[#0099db] mb-1.5">Video (optional)</label>
+                <p className={`${formFieldHintCls} mb-2`}>MP4, WebM, MOV - max 2 MB.</p>
+                <div
+                  onClick={() => videoFileRef.current?.click()}
+                  className="relative cursor-pointer flex flex-col items-center justify-center gap-2 py-6 transition-colors hover:bg-black/[0.03]"
+                  style={{ border: `2px dashed ${SUBMIT_NAVY_BORDER}`, background: 'rgba(10,40,64,0.06)' }}
+                >
+                  {videoItem ? (
+                    <video src={videoItem.preview} muted playsInline className="w-full max-h-40 object-cover" />
+                  ) : (
+                    <div className="w-16 h-16 rounded bg-black/[0.05] flex items-center justify-center">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-[#0099db]">
+                        <polygon points="5 3 19 12 5 21 5 3" />
+                      </svg>
+                    </div>
+                  )}
+                  <p className={`${formHintCls}`}>
+                    {videoItem ? 'Click to change' : 'Click to upload'}
+                  </p>
+                </div>
+                {videoItem && (
+                  <button type="button" onClick={removeVideo} className="mt-2 text-sm font-bold text-black/60">
+                    Remove
+                  </button>
                 )}
+                <input
+                  ref={videoFileRef}
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime"
+                  onChange={handleVideoChange}
+                  className="hidden"
+                />
               </div>
 
               {/* Description */}
               <div>
-                <label className="block text-sm sm:text-xs font-black uppercase tracking-widest text-[#4ade80] mb-1">
+                <label className="block text-sm sm:text-xs font-black uppercase tracking-widest text-[#0099db] mb-1">
                   Description *
                 </label>
                 <p className={`${formFieldHintCls} mb-1`}>This can be edited later.</p>
@@ -1587,25 +1302,20 @@ export default function AINSFWPricingClient({
                   placeholder="Describe your AI tool — what it does, pricing, key features..."
                   rows={4}
                   className={inputCls + ' resize-y'}
-                  style={{ border: `2px solid ${ACCENT}` }}
+                  style={{ border: `2px solid ${SUBMIT_NAVY_BORDER}` }}
                 />
               </div>
 
               {/* Categories */}
               <div>
-                <label className="block text-sm sm:text-xs font-black uppercase tracking-widest text-[#4ade80] mb-3">
+                <label className="block text-sm sm:text-xs font-black uppercase tracking-widest text-[#0099db] mb-3">
                   Categories *
                 </label>
-                {selectedPlan && (
-                  <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border border-[#22c55e]/25 bg-[#22c55e]/10 px-3 py-2.5">
-                    <span className="text-xs font-black uppercase tracking-wide text-[#4ade80]">
-                      {PLAN_TIER_NAMES[selectedPlan]}
-                    </span>
-                    <span className="text-sm font-semibold text-white">
+                <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md px-3 py-2.5" style={{ border: `1px solid ${SUBMIT_NAVY_BORDER}`, background: 'rgba(10,40,64,0.06)' }}>
+                    <span className="text-sm font-semibold text-black/80">
                       You have up to {selectionLimit} categories
                     </span>
                   </div>
-                )}
                 <div className="flex flex-wrap gap-2">
                   {MAIN_CATEGORIES.map((item) => {
                     const active = selectedItems.includes(item);
@@ -1618,9 +1328,9 @@ export default function AINSFWPricingClient({
                         disabled={disabled}
                         className="px-3 py-1.5 text-sm sm:text-[11px] font-black transition-all disabled:opacity-30"
                         style={{
-                          background: active ? ACCENT : 'rgba(255,255,255,0.08)',
-                          color: active ? '#fff' : 'rgba(255,255,255,0.85)',
-                          border: active ? `2px solid ${ACCENT}` : '2px solid rgba(255,255,255,0.2)',
+                          background: active ? SUBMIT_ACCENT : 'rgba(0,0,0,0.04)',
+                          color: active ? '#fff' : 'rgba(0,0,0,0.75)',
+                          border: active ? `2px solid ${SUBMIT_ACCENT}` : '2px solid rgba(0,0,0,0.15)',
                         }}
                       >
                         {active ? '✓ ' : ''}{item}
@@ -1632,20 +1342,20 @@ export default function AINSFWPricingClient({
 
               {/* Subscription */}
               <div>
-                <label className="block text-sm sm:text-xs font-black uppercase tracking-widest text-[#4ade80] mb-1.5">Pricing Model</label>
+                <label className="block text-sm sm:text-xs font-black uppercase tracking-widest text-[#0099db] mb-1.5">Pricing Model (optional)</label>
                 <select
                   value={form.subscription}
                   onChange={(e) => setForm(f => ({ ...f, subscription: e.target.value }))}
                   className={inputCls + ' cursor-pointer appearance-none'}
-                  style={{ border: `2px solid ${ACCENT}` }}
+                  style={{ border: `2px solid ${SUBMIT_NAVY_BORDER}` }}
                 >
-                  {SUBSCRIPTION_OPTIONS.map((s) => <option key={s} value={s} className="bg-[#0a1929]">{s}</option>)}
+                  {SUBSCRIPTION_OPTIONS.map((s) => <option key={s} value={s} className="bg-white">{s}</option>)}
                 </select>
               </div>
 
               {/* Payment methods */}
               <div>
-                <label className="block text-sm sm:text-xs font-black uppercase tracking-widest text-[#4ade80] mb-2">What payment do you accept?</label>
+                <label className="block text-sm sm:text-xs font-black uppercase tracking-widest text-[#0099db] mb-2">What payment do you accept? (optional)</label>
                 <div className="flex flex-wrap gap-2">
                   {PAYMENT_OPTIONS.map((pm) => (
                     <button
@@ -1654,63 +1364,16 @@ export default function AINSFWPricingClient({
                       onClick={() => togglePayment(pm)}
                       className="px-3 py-2 text-sm sm:text-xs font-bold transition-all"
                       style={{
-                        background: form.paymentMethods.includes(pm) ? ACCENT : 'rgba(255,255,255,0.06)',
-                        color: form.paymentMethods.includes(pm) ? '#fff' : 'rgba(255,255,255,0.5)',
-                        border: form.paymentMethods.includes(pm) ? `2px solid ${ACCENT}` : '2px solid rgba(255,255,255,0.12)',
+                        background: form.paymentMethods.includes(pm) ? SUBMIT_ACCENT : 'rgba(0,0,0,0.04)',
+                        color: form.paymentMethods.includes(pm) ? '#fff' : 'rgba(0,0,0,0.55)',
+                        border: form.paymentMethods.includes(pm) ? `2px solid ${SUBMIT_ACCENT}` : '2px solid rgba(0,0,0,0.12)',
                       }}
                     >
-                      {pm === 'Credit Cards' ? '💳' : pm === 'Crypto' ? '₿' : 'P'} {pm}
+                      {pm === 'Credit Cards' ? '💳' : pm === 'Crypto' ? '₿' : pm === 'Telegram Payment' ? '✈' : 'P'} {pm}
                     </button>
                   ))}
                 </div>
               </div>
-
-              {/* Contact — email OR telegram required */}
-              <div>
-                <label className="block text-sm sm:text-xs font-black uppercase tracking-widest text-[#4ade80] mb-1.5">Contact — Email or Telegram *</label>
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
-                  placeholder="you@example.com"
-                  className={inputCls}
-                  style={{ border: `2px solid ${ACCENT}` }}
-                />
-                <input
-                  type="text"
-                  value={form.contactTelegram || ''}
-                  onChange={(e) => setForm(f => ({ ...f, contactTelegram: e.target.value }))}
-                  placeholder="@yourtelegram"
-                  className={`${inputCls} mt-2`}
-                  style={{ border: `2px solid ${ACCENT}` }}
-                />
-                <p className="text-sm sm:text-[11px] font-bold text-white/40 mt-1.5">We&apos;ll only use this to reach you about your listing. At least one is required.</p>
-              </div>
-              </>
-              )}
-
-              {formStep === 'preview' && selectedPlan && (
-                <div className="space-y-4">
-                  <ListingContentReview
-                    name={form.toolName}
-                    description={form.description}
-                    imageUrl={savedLogoUrl || imagePreview || ''}
-                    websiteUrl={form.websiteUrl}
-                    categories={selectedItems.filter((i) => isMainCategory(i))}
-                    subscription={form.subscription}
-                    paymentMethods={form.paymentMethods}
-                    planPrice={AINSFW_PLAN_PRICES[selectedPlan]}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => { setFormStep('edit'); setError(''); }}
-                    className="w-full py-3 text-sm font-black uppercase tracking-widest text-white/80 hover:text-white transition-colors"
-                    style={{ border: `2px solid rgba(255,255,255,0.2)` }}
-                  >
-                    Edit
-                  </button>
-                </div>
-              )}
 
               {error && (
                 <div className="px-4 py-3 text-sm font-bold text-white bg-red-600" style={{ border: BORDER }}>
@@ -1718,70 +1381,6 @@ export default function AINSFWPricingClient({
                 </div>
               )}
 
-              {formStep === 'preview' && (
-              <>
-              {/* Crypto notice — bottom */}
-              <div
-                className="flex items-center gap-2.5 px-3 py-2.5"
-                style={{ background: 'rgba(14,165,233,0.10)', border: `2px solid ${ACCENT}` }}
-              >
-                <span className="text-lg">₿</span>
-                <span className="text-sm sm:text-xs font-bold text-[#4ade80]">
-                  Secure payment via <strong className="text-white">NowPayments</strong> — BTC, ETH, USDT &amp; 100+ coins
-                </span>
-              </div>
-
-              {/* Coupon code */}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={couponCode}
-                  onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponResult(null); }}
-                  placeholder="Coupon code"
-                  className="flex-1 px-3 py-3 bg-white/[0.06] border-2 border-black text-white text-sm sm:text-xs font-bold placeholder:text-white/25 outline-none focus:border-[#22c55e] transition"
-                />
-                <button
-                  type="button"
-                  disabled={!couponCode.trim() || validatingCoupon}
-                  onClick={async () => {
-                    setValidatingCoupon(true);
-                    const priceUsd = AINSFW_PLAN_PRICES[selectedPlan!];
-                    const starsEquiv = Math.round(priceUsd / 0.013);
-                    const res = await validateCoupon(couponCode.trim(), 'ainsfw', starsEquiv);
-                    setCouponResult(res);
-                    setValidatingCoupon(false);
-                  }}
-                  className="px-4 py-3 bg-white/[0.1] hover:bg-white/[0.15] border-2 border-black text-white/70 text-sm sm:text-xs font-black uppercase tracking-wider disabled:opacity-30 transition"
-                >
-                  {validatingCoupon ? '...' : 'Apply'}
-                </button>
-              </div>
-              {couponResult && (
-                <p className={`text-sm sm:text-xs font-bold ${couponResult.valid ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {couponResult.valid
-                    ? `✓ Coupon applied! Discount active.`
-                    : couponResult.error}
-                </p>
-              )}
-
-              <button
-                type="button"
-                disabled={loading || !draftSubmissionId}
-                onClick={handleCheckout}
-                className="w-full py-4 text-base sm:text-sm font-black uppercase tracking-widest text-black transition-all disabled:opacity-50 active:translate-x-[2px] active:translate-y-[2px]"
-                style={{ background: CTA, border: BORDER, boxShadow: SHADOW }}
-              >
-                {loading
-                  ? 'Processing...'
-                  : checkoutPrice <= 0 && couponResult?.valid
-                    ? 'Confirm Free Listing →'
-                    : `Pay $${checkoutPrice} in Crypto →`}
-              </button>
-              </>
-              )}
-
-              {formStep === 'edit' && (
-              <>
               <button
                 type="submit"
                 disabled={loading || uploading}
@@ -1794,21 +1393,19 @@ export default function AINSFWPricingClient({
                     ? 'Saving preview...'
                     : 'Preview listing →'}
               </button>
-              </>
-              )}
 
               {/* Support */}
-              <div className={`pt-2 border-t border-white/10 flex flex-col sm:flex-row items-center justify-center gap-3 ${formHintCls} text-white/80`}>
+              <div className={`pt-2 border-t border-black/10 flex flex-nowrap items-center justify-center gap-x-1.5 whitespace-nowrap text-xs sm:text-sm overflow-x-auto ${formHintCls}`}>
                 <span>Questions? Reach us at:</span>
-                <a href="mailto:isabella@erogram.biz" className="text-[#4ade80] hover:text-[#4ade80] transition-colors">
+                <a href="mailto:isabella@erogram.biz" className="text-[#0099db] hover:text-[#0099db] transition-colors">
                   isabella@erogram.biz
                 </a>
-                <span className="hidden sm:inline text-white/15">·</span>
+                <span className="text-black/30">·</span>
                 <a
                   href="https://t.me/erogramDOTpro"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[#4ade80] hover:text-[#4ade80] transition-colors"
+                  className="text-[#0099db] hover:text-[#0099db] transition-colors"
                 >
                   @erogramDOTpro on Telegram
                 </a>
@@ -1817,27 +1414,40 @@ export default function AINSFWPricingClient({
           </div>
         )}
 
-        {/* FAQ */}
-        <section className="mt-8 mb-10 max-w-3xl mx-auto">
-          <h2 className="text-xl sm:text-2xl font-black text-white mb-6 text-center">Frequently Asked Questions</h2>
-          <div className="space-y-3">
-            {SUBMIT_FAQ.map((faq) => (
-              <details key={faq.q} className="group rounded-xl border border-[#22c55e]/15 bg-[#0a1f12] overflow-hidden">
-                <summary className="flex items-center justify-between gap-4 cursor-pointer px-5 py-4 text-white font-semibold text-base sm:text-base list-none [&::-webkit-details-marker]:hidden">
-                  <span>{faq.q}</span>
-                  <svg className="w-5 h-5 sm:w-4 sm:h-4 shrink-0 text-white/50 transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
-                </summary>
-                <div className="px-5 pb-5 text-white/70 text-base sm:text-sm leading-relaxed">{faq.a}</div>
-              </details>
-            ))}
-          </div>
-        </section>
+        <AinsfwSubmitFaq tone="blue" lightPage />
         </>
         )}
 
       </main>
 
       {!isAdvertise && <MobileSubmitStickyBar onSubmit={scrollToPricing} />}
+
+      {urlHelpOpen && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/70"
+          onClick={() => setUrlHelpOpen(false)}
+        >
+          <div
+            className="w-full max-w-md bg-white p-6 text-black"
+            style={{ border: BORDER, boxShadow: SHADOW_LG }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-sm font-black uppercase tracking-widest text-[#0099db] mb-2">Website URL</p>
+            <p className="text-lg font-black mb-3">Enter your website:</p>
+            <p className="text-base font-bold leading-relaxed mb-1">www.name.com</p>
+            <p className="text-base font-bold leading-relaxed mb-1">name.com</p>
+            <p className="text-base font-bold leading-relaxed mb-5">https://name.com</p>
+            <button
+              type="button"
+              onClick={() => setUrlHelpOpen(false)}
+              className="w-full py-3 text-sm font-black uppercase tracking-widest text-black"
+              style={{ background: CTA, border: BORDER }}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

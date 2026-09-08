@@ -31,11 +31,11 @@ const PREMIUM_GOLD = {
 const checkoutBtnClass =
   'shrink-0 px-4 py-2.5 rounded-full font-black transition-all hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] disabled:opacity-50 flex flex-col items-center';
 const ctaClass =
-  'inline-flex items-center justify-center px-5 py-2.5 rounded-full text-sm font-black uppercase tracking-wide transition-all hover:brightness-110 active:scale-95';
+  'inline-flex items-center justify-center px-5 py-2.5 rounded-full text-[17px] font-black uppercase tracking-wide transition-all hover:brightness-110 active:scale-95';
 
 const CHECKOUT_PROMO_VIDEO = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/premium/checkout/EROGRAMX-PREMIUM-ADULT-ENTRETAINEMENT.mp4';
 const CHECKOUT_PROMO_POSTER = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/premium/checkout/swipey-promo.jpg';
-const MOSAIC_WEBP = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/premium/mosaic/groups-mosaic-hq.webp';
+const MOSAIC_WEBP = '/assets/promo/premium-x-mosaic.jpg';
 
 function TgIcon({ className }: { className?: string }) {
   return (
@@ -73,7 +73,7 @@ function CheckoutPromoVideo() {
         }}
       />
       <div className="absolute left-4 right-4 bottom-4 z-[2] select-none">
-        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white mb-2 drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)]">Premium Highlights</p>
+        <p className="text-[13px] font-black uppercase tracking-[0.18em] text-white mb-2 drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)]">Premium Highlights</p>
         <ul className="space-y-1">
           {[
             '4800 UNLISTED/RARE GROUPS',
@@ -81,13 +81,13 @@ function CheckoutPromoVideo() {
             'WEEKLY DROPS OF NEW GROUPS',
             'ADVANCED FILTERS TO FIND FASTER',
           ].map((line) => (
-            <li key={line} className="flex items-center gap-1.5 text-[16px] leading-[20px] text-white tracking-[0.02em] drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)]">
+            <li key={line} className="flex items-center gap-1.5 text-[19px] leading-[23px] text-white tracking-[0.02em] drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)]">
               <TgIcon className="w-4 h-4 shrink-0 text-white" />
               <span>{line}</span>
             </li>
           ))}
         </ul>
-        <p className="mt-3 w-fit whitespace-nowrap text-[28px] sm:text-[40px] leading-none font-black uppercase tracking-[0.01em] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]">
+        <p className="mt-3 w-fit whitespace-nowrap text-[23px] sm:text-[31px] leading-none font-black uppercase tracking-[0.01em] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]">
           JOIN EROGRAM<span className="inline-block origin-bottom text-[#e30613] tracking-normal" style={{ fontSize: '1.1em' }}>X</span> PREMIUM
         </p>
       </div>
@@ -196,15 +196,17 @@ const PREMIUM_FAQ: { q: string; a: ReactNode }[] = [
 /* ─── Full-page premium groups mosaic (fixed behind content) ─── */
 function PremiumMosaicBackground() {
   return (
-    <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none" aria-hidden="true">
-      <img
-        src={MOSAIC_WEBP}
-        alt=""
-        className="absolute inset-0 w-full h-full object-cover object-center"
-        decoding="async"
-        fetchPriority="low"
-      />
-      <div className="absolute inset-0 bg-black/78" />
+    <div
+      className="fixed inset-0 z-0 overflow-hidden pointer-events-none"
+      aria-hidden="true"
+      style={{
+        backgroundImage: `url(${MOSAIC_WEBP})`,
+        backgroundRepeat: 'repeat',
+        backgroundSize: '723px 1024px',
+        backgroundPosition: 'top center',
+      }}
+    >
+      <div className="absolute inset-0 bg-black/18" />
     </div>
   );
 }
@@ -237,15 +239,15 @@ function VaultPreview({ items, whiteCaption = false }: { items: VaultTeaserItem[
                   <img src={g.image || '/assets/placeholder-no-image.png'} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-[10px] truncate leading-tight mb-0.5 select-none pointer-events-none" aria-hidden="true">
+                  <div className="font-bold text-[13px] truncate leading-tight mb-0.5 select-none pointer-events-none" aria-hidden="true">
                     <span className="text-white">{g.name.slice(0, 4)}</span><span style={{ filter: 'blur(4px)', color: '#fff' }}>{g.name.slice(4) || '····'}</span>
                   </div>
                   <div className="flex items-center gap-1 flex-wrap">
                     {cats.map((c: string, i: number) => (
-                      <span key={c} className="text-[7px] font-black uppercase tracking-[0.06em] px-1 py-0.5 rounded shrink-0" style={{ background: i === 0 ? '#1a1408' : '#12100a', border: `1px solid ${G.gold}22`, color: i === 0 ? G.gold : G.goldDim }}>{c}</span>
+                      <span key={c} className="text-[10px] font-black uppercase tracking-[0.06em] px-1 py-0.5 rounded shrink-0" style={{ background: i === 0 ? '#1a1408' : '#12100a', border: `1px solid ${G.gold}22`, color: i === 0 ? G.gold : G.goldDim }}>{c}</span>
                     ))}
-                    {g.country && <span className="text-[8px] font-semibold truncate" style={{ color: '#5a4830' }}>{g.country}</span>}
-                    {fmt && <span className="text-[8px] font-semibold shrink-0" style={{ color: '#4a3820' }}>· {fmt}</span>}
+                    {g.country && <span className="text-[11px] font-semibold truncate" style={{ color: '#5a4830' }}>{g.country}</span>}
+                    {fmt && <span className="text-[11px] font-semibold shrink-0" style={{ color: '#4a3820' }}>· {fmt}</span>}
                   </div>
                 </div>
                 <svg className="shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={`${G.gold}55`} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -258,7 +260,7 @@ function VaultPreview({ items, whiteCaption = false }: { items: VaultTeaserItem[
 
         <div className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none" style={{ background: 'linear-gradient(to bottom, transparent, #0f0d09)' }} />
       </div>
-      <p className={`text-center text-[10px] mt-2 font-semibold ${whiteCaption ? 'text-white' : ''}`} style={whiteCaption ? undefined : { color: '#4a3820' }}>4800 exclusive groups · Updated daily</p>
+      <p className={`text-center text-[13px] mt-2 font-semibold ${whiteCaption ? 'text-white' : ''}`} style={whiteCaption ? undefined : { color: '#4a3820' }}>4800 exclusive groups · Updated daily</p>
     </div>
   );
 }
@@ -387,7 +389,7 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 z-[1]"
-        style={{ background: `linear-gradient(180deg, ${TG_DARK}aa 0%, transparent 32%, transparent 68%, ${TG_DARK}88 100%)` }}
+        style={{ background: `linear-gradient(180deg, ${TG_DARK}55 0%, transparent 32%, transparent 68%, ${TG_DARK}40 100%)` }}
       />
       <div
         aria-hidden="true"
@@ -412,15 +414,15 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
             {paymentJustCompleted && isPremium && (
               <div className="mb-4 rounded-xl overflow-hidden border border-emerald-500/25 bg-emerald-50">
                 <div className="px-4 py-4 text-center space-y-2">
-                  <div className="text-3xl">🎉</div>
-                  <h3 className="text-lg font-black text-gray-900">Payment Successful!</h3>
-                  <p className="text-emerald-600 text-sm font-semibold">Welcome to Erogram Premium</p>
-                  <p className="text-gray-500 text-xs">Your Erogram Premium access is now active. Enjoy all Premium features.</p>
+                  <div className="text-[33px]">🎉</div>
+                  <h3 className="text-[21px] font-black text-gray-900">Payment Successful!</h3>
+                  <p className="text-emerald-600 text-[17px] font-semibold">Welcome to Erogram Premium</p>
+                  <p className="text-gray-500 text-[15px]">Your Erogram Premium access is now active. Enjoy all Premium features.</p>
                 </div>
               </div>
             )}
 
-            {error && <div className="mb-3 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center">{error}</div>}
+            {error && <div className="mb-3 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-[15px] text-center">{error}</div>}
 
             {isPremium && (
               <div className="py-4 px-4 rounded-xl mb-3 space-y-2.5 border border-emerald-200 bg-emerald-50">
@@ -428,27 +430,27 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
                   <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-green-100">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="#16a34a"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
                   </div>
-                  <span className="font-bold text-sm text-green-700">You&apos;re Premium</span>
-                  {premiumPlan && <span className="ml-auto px-2 py-0.5 rounded-full text-[9px] font-black uppercase capitalize bg-green-50 text-green-700 border border-green-200">{premiumPlan}</span>}
+                  <span className="font-bold text-[17px] text-green-700">You&apos;re Premium</span>
+                  {premiumPlan && <span className="ml-auto px-2 py-0.5 rounded-full text-[12px] font-black uppercase capitalize bg-green-50 text-green-700 border border-green-200">{premiumPlan}</span>}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                     {premiumSince && (
                       <div className="rounded-lg px-2.5 py-1.5 bg-gray-50 border border-gray-100">
-                        <p className="text-[8px] uppercase font-bold tracking-wider mb-0.5 text-gray-400">Member since</p>
-                        <p className="text-[11px] font-semibold text-gray-700">{new Date(premiumSince).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                        <p className="text-[11px] uppercase font-bold tracking-wider mb-0.5 text-gray-400">Member since</p>
+                        <p className="text-[14px] font-semibold text-gray-700">{new Date(premiumSince).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                       </div>
                     )}
                     <div className="rounded-lg px-2.5 py-1.5 bg-gray-50 border border-gray-100">
-                      <p className="text-[8px] uppercase font-bold tracking-wider mb-0.5 text-gray-400">Valid until</p>
+                      <p className="text-[11px] uppercase font-bold tracking-wider mb-0.5 text-gray-400">Valid until</p>
                       {premiumExpiresAt ? (
                         <>
-                          <p className="text-[11px] font-semibold text-gray-700">{new Date(premiumExpiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-                          {(() => { const dl = Math.ceil((new Date(premiumExpiresAt).getTime() - Date.now()) / 86_400_000); return <p className={`text-[8px] font-bold mt-0.5 ${dl <= 7 ? 'text-red-500' : 'text-gray-400'}`}>{dl > 0 ? `${dl} day${dl === 1 ? '' : 's'} left` : 'Expired'}</p>; })()}
+                          <p className="text-[14px] font-semibold text-gray-700">{new Date(premiumExpiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                          {(() => { const dl = Math.ceil((new Date(premiumExpiresAt).getTime() - Date.now()) / 86_400_000); return <p className={`text-[11px] font-bold mt-0.5 ${dl <= 7 ? 'text-red-500' : 'text-gray-400'}`}>{dl > 0 ? `${dl} day${dl === 1 ? '' : 's'} left` : 'Expired'}</p>; })()}
                         </>
-                      ) : <p className="text-[11px] font-bold text-purple-600">Lifetime ♾</p>}
+                      ) : <p className="text-[14px] font-bold text-purple-600">Lifetime ♾</p>}
                     </div>
                   </div>
-                <Link href="/profile?tab=vault" className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-full text-sm font-bold text-white bg-[#2AABEE] shadow-[0_6px_18px_rgba(42,171,238,0.4)] transition-all hover:bg-[#229ED9] hover:scale-[1.02]">
+                <Link href="/profile?tab=vault" className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-full text-[17px] font-bold text-white bg-[#2AABEE] shadow-[0_6px_18px_rgba(42,171,238,0.4)] transition-all hover:bg-[#229ED9] hover:scale-[1.02]">
                   🔒 Open Erogram Premium
                 </Link>
                 {!appInstalled && (deferredPrompt || isIOSDevice) && (
@@ -462,7 +464,7 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
                         alert('Tap the Share button (box with arrow) at the bottom of Safari, then tap "Add to Home Screen".');
                       }
                     }}
-                    className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-lg text-sm font-bold transition-all hover:scale-[1.02] bg-gray-100 border border-gray-200 text-gray-800"
+                    className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-lg text-[17px] font-bold transition-all hover:scale-[1.02] bg-gray-100 border border-gray-200 text-gray-800"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
                     📱 Download App
@@ -473,9 +475,9 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
 
             {soldOut && !isPremium && (
               <div className="text-center py-4 rounded-xl mb-3 bg-gray-50 border border-gray-200">
-                <div className="text-xl mb-1">🔥</div>
-                <div className="text-gray-900 font-bold text-sm mb-0.5">All 100 spots are taken!</div>
-                <div className="text-[11px] text-gray-500">More slots opening soon.</div>
+                <div className="text-[23px] mb-1">🔥</div>
+                <div className="text-gray-900 font-bold text-[17px] mb-0.5">All 100 spots are taken!</div>
+                <div className="text-[14px] text-gray-500">More slots opening soon.</div>
               </div>
             )}
 
@@ -492,12 +494,12 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
                     <div aria-hidden="true" className={`shrink-0 w-[18px] h-[18px] rounded-full ${selectedPlan === 'quarterly' ? 'border-[5px] border-[#c9973a] bg-[#c9973a]' : 'border-2 border-gray-300'}`} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                        <span className="font-black text-gray-900 text-[13px]">3 Months</span>
+                        <span className="font-black text-gray-900 text-[16px]">3 Months</span>
                       </div>
                       <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-black text-[20px] leading-none text-gray-900">{planDisplay.quarterly.stars}</span>
+                          <span className="font-black text-[23px] leading-none text-gray-900">{planDisplay.quarterly.stars}</span>
                       </div>
-                      <p className="text-[9px] mt-1 text-gray-600 font-semibold">One-time payment · No auto-renewal</p>
+                      <p className="text-[12px] mt-1 text-gray-600 font-semibold">One-time payment · No auto-renewal</p>
                     </div>
                     <button
                       onClick={() => handlePurchase('quarterly')}
@@ -509,7 +511,7 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
                         <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
                       ) : (
                         <>
-                          <span className="text-[11px] uppercase tracking-wide">Get 3 Months</span>
+                          <span className="text-[14px] uppercase tracking-wide">Get 3 Months</span>
                         </>
                       )}
                     </button>
@@ -523,13 +525,13 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
                     <div aria-hidden="true" className={`shrink-0 w-[18px] h-[18px] rounded-full ${selectedPlan === 'yearly' ? 'border-[5px] border-[#c9973a] bg-[#c9973a]' : 'border-2 border-gray-300'}`} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                        <span className="font-black text-gray-900 text-[13px]">1 Year</span>
-                        <span className="text-[8px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded-full" style={PREMIUM_GOLD}>BESTSELLER</span>
+                        <span className="font-black text-gray-900 text-[16px]">1 Year</span>
+                        <span className="text-[11px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded-full" style={PREMIUM_GOLD}>BESTSELLER</span>
                       </div>
                       <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-black text-[20px] leading-none text-gray-900">{planDisplay.yearly.stars}</span>
+                            <span className="font-black text-[23px] leading-none text-gray-900">{planDisplay.yearly.stars}</span>
                       </div>
-                      <p className="text-[9px] mt-1 text-gray-600 font-semibold">One-time payment · No auto-renewal</p>
+                      <p className="text-[12px] mt-1 text-gray-600 font-semibold">One-time payment · No auto-renewal</p>
                     </div>
                       <button
                         onClick={() => handlePurchase('yearly')}
@@ -541,14 +543,14 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
                           <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
                         ) : (
                           <>
-                          <span className="text-[11px] uppercase tracking-wide">Get Yearly</span>
+                          <span className="text-[14px] uppercase tracking-wide">Get Yearly</span>
                           </>
                         )}
                       </button>
                   </div>
                 </div>
                 </div>
-                <p className="text-[10px] text-gray-900 text-center font-semibold px-1">
+                <p className="text-[13px] text-gray-900 text-center font-semibold px-1">
                   <svg className="inline-block w-3.5 h-3.5 mr-1 -mt-0.5 align-middle text-[#2AABEE]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/>
                   </svg>
@@ -557,7 +559,7 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
                 <div className="flex justify-center pt-1">
                   <img src="/assets/stars-card-logos.png" alt="" className="h-9 w-auto max-w-full object-contain" />
                 </div>
-                <p className="text-[10px] text-gray-900 text-center font-semibold px-1">Secure · No adult line on your bank statement · No hidden fees</p>
+                <p className="text-[13px] text-gray-900 text-center font-semibold px-1">Secure · No adult line on your bank statement · No hidden fees</p>
               </div>
             )}
 
@@ -569,26 +571,26 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
               <div className="space-y-3">
                 <button
                   onClick={() => { setPaymentUrl(null); setSelectedPlan(null); setAwaitingPayment(false); if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } }}
-                  className="w-full py-2.5 rounded-full text-[13px] font-bold text-white bg-[#2AABEE] shadow-[0_4px_16px_rgba(42,171,238,0.4)] transition-all hover:bg-[#229ED9] flex items-center justify-center gap-1.5"
+                  className="w-full py-2.5 rounded-full text-[16px] font-bold text-white bg-[#2AABEE] shadow-[0_4px_16px_rgba(42,171,238,0.4)] transition-all hover:bg-[#229ED9] flex items-center justify-center gap-1.5"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
                   Change Plan
                 </button>
 
                 <div className={`${WHITE_INSET} p-4 space-y-3`}>
-                  <p className="text-[11px] font-bold text-gray-900 uppercase tracking-wider text-center">Order Summary</p>
+                  <p className="text-[14px] font-bold text-gray-900 uppercase tracking-wider text-center">Order Summary</p>
 
                   <div className="rounded-lg px-4 py-3 bg-gray-50 border border-gray-200">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-black text-gray-900 text-[14px]">Erogram Premium {p.label}</span>
+                      <span className="font-black text-gray-900 text-[17px]">Erogram Premium {p.label}</span>
                     </div>
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1 flex-wrap">
-                          <span className="font-black text-[14px] leading-none text-gray-900">{starsAmount?.toLocaleString('en-US')}</span>
+                          <span className="font-black text-[17px] leading-none text-gray-900">{starsAmount?.toLocaleString('en-US')}</span>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="#111827"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                          <span className="font-black text-[14px] leading-none text-gray-900 ml-1">{p.usd}</span>
+                          <span className="font-black text-[17px] leading-none text-gray-900 ml-1">{p.usd}</span>
                         </div>
-                      <span className="font-bold text-gray-700 text-[13px]">{p.perMo === 'forever' ? 'Pay once, use forever' : p.perMo + ' only'}</span>
+                      <span className="font-bold text-gray-700 text-[16px]">{p.perMo === 'forever' ? 'Pay once, use forever' : p.perMo + ' only'}</span>
                     </div>
                   </div>
 
@@ -596,7 +598,7 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
                     href={paymentUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full py-4 rounded-full font-black text-base tracking-wide transition-all hover:brightness-110 hover:scale-[1.02] active:scale-[0.97]"
+                    className="flex items-center justify-center gap-2 w-full py-4 rounded-full font-black text-[19px] tracking-wide transition-all hover:brightness-110 hover:scale-[1.02] active:scale-[0.97]"
                     style={PREMIUM_GOLD}
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -605,10 +607,10 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
                     {`PAY ${starsAmount?.toLocaleString('en-US')} ★ ${p.usd}`}
                   </a>
 
-                  <p className="text-[10px] text-gray-700 text-center">
+                  <p className="text-[13px] text-gray-700 text-center">
                     Complete payment in Telegram · This page updates automatically · After payment you will be redirected back to Erogram
                   </p>
-                  <p className="text-[10px] text-gray-700 text-center">
+                  <p className="text-[13px] text-gray-700 text-center">
                     <Link href="#faq" className="font-bold text-[#2AABEE] underline">Telegram Payment Tutorial</Link>
                   </p>
                 </div>
@@ -618,8 +620,8 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
 
             {!isPremium && (
             <div className="mt-4 space-y-0.5">
-              <p className="text-center text-[9px] text-gray-900">Complete payment in Telegram · This page updates automatically · After payment you will be redirected back to Erogram</p>
-              <p className="text-center text-[9px] text-gray-900">
+              <p className="text-center text-[12px] text-gray-900">Complete payment in Telegram · This page updates automatically · After payment you will be redirected back to Erogram</p>
+              <p className="text-center text-[12px] text-gray-900">
                 <Link href="#faq" className="font-bold text-[#2AABEE] underline">Telegram Payment Tutorial</Link>
               </p>
             </div>
@@ -645,41 +647,41 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
           <section className={`mb-6 mt-4 p-4 sm:p-5 ${MODAL_SHELL}`}>
             <div className={`${WHITE_INSET} p-4 space-y-4`}>
               <div>
-                <h3 className="text-sm font-black text-gray-900 mb-2">
+                <h3 className="text-[17px] font-black text-gray-900 mb-2">
                   Only Active, High-Quality Groups
                 </h3>
-                <p className="text-xs mb-1.5 text-gray-600">We filter everything manually. Premium listings include only groups that are:</p>
+                <p className="text-[15px] mb-1.5 text-gray-600">We filter everything manually. Premium listings include only groups that are:</p>
                 <div className="space-y-1 pl-6">
-                  <p className="text-xs text-gray-700">• Real leaks & real communities</p>
-                  <p className="text-xs text-gray-700">• No spam or fake channels</p>
+                  <p className="text-[15px] text-gray-700">• Real leaks & real communities</p>
+                  <p className="text-[15px] text-gray-700">• No spam or fake channels</p>
                 </div>
               </div>
 
               <div>
-                <h3 className="text-sm font-black text-gray-900 mb-1.5">
+                <h3 className="text-[17px] font-black text-gray-900 mb-1.5">
                   Enhanced Experience
                 </h3>
                 <div className="space-y-1 pl-6">
-                  <p className="text-xs text-gray-700">• Advanced filtering by niche</p>
-                  <p className="text-xs text-gray-700">• Smart bookmarks & private folders</p>
+                  <p className="text-[15px] text-gray-700">• Advanced filtering by niche</p>
+                  <p className="text-[15px] text-gray-700">• Smart bookmarks & private folders</p>
                 </div>
-                <p className="text-xs font-semibold mt-1 pl-6 text-gray-900">Find exactly what you want in seconds.</p>
+                <p className="text-[15px] font-semibold mt-1 pl-6 text-gray-900">Find exactly what you want in seconds.</p>
               </div>
 
               <div>
-                <h3 className="text-sm font-black text-gray-900 mb-1.5">
+                <h3 className="text-[17px] font-black text-gray-900 mb-1.5">
                   Daily Premium Drops
                 </h3>
-                <p className="text-xs pl-6 text-gray-700">Every day we add new hidden Telegram groups discovered by our system.</p>
-                <p className="text-xs pl-6 mt-0.5 text-gray-700">Premium members get exclusive daily drops <span className="font-bold text-gray-900">before the public sees them.</span></p>
-                <p className="text-xs font-bold pl-6 mt-0.5 text-gray-600">Never miss the next big leak source.</p>
+                <p className="text-[15px] pl-6 text-gray-700">Every day we add new hidden Telegram groups discovered by our system.</p>
+                <p className="text-[15px] pl-6 mt-0.5 text-gray-700">Premium members get exclusive daily drops <span className="font-bold text-gray-900">before the public sees them.</span></p>
+                <p className="text-[15px] font-bold pl-6 mt-0.5 text-gray-600">Never miss the next big leak source.</p>
               </div>
 
               <div>
-                <h3 className="text-sm font-black text-gray-900 mb-1.5">
+                <h3 className="text-[17px] font-black text-gray-900 mb-1.5">
                   INSTANT Unlock Premium Mega Lists
                 </h3>
-                <p className="text-xs pl-6 text-gray-700">Instant Access to our curated lists with <span className="font-bold text-gray-900">4800+ hand-picked Telegram groups.</span></p>
+                <p className="text-[15px] pl-6 text-gray-700">Instant Access to our curated lists with <span className="font-bold text-gray-900">4800+ hand-picked Telegram groups.</span></p>
               </div>
 
               <div className="text-center pt-1">
@@ -693,29 +695,29 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
 
         {!isPremium && !soldOut && (
           <div className="mb-5 flex justify-center px-4">
-            <a href="#pricing" className={`text-xs sm:text-sm ${ctaClass}`} style={PREMIUM_GOLD}>
+            <a href="#pricing" className={`text-[15px] sm:text-[17px] ${ctaClass}`} style={PREMIUM_GOLD}>
               Unlock Erogram Premium
             </a>
           </div>
         )}
 
         <section id="faq" className={`mb-6 p-4 sm:p-5 ${MODAL_SHELL}`}>
-          <h2 className="text-lg sm:text-xl font-black text-white text-center mb-3">FAQ</h2>
+          <h2 className="text-[21px] sm:text-[23px] font-black text-white text-center mb-3">FAQ</h2>
           <div className={`${WHITE_INSET} overflow-hidden divide-y divide-gray-200`}>
             {PREMIUM_FAQ.map((item) => (
               <details key={item.q} className="group">
                 <summary className="flex items-center justify-between gap-3 cursor-pointer px-3.5 py-3 text-left list-none [&::-webkit-details-marker]:hidden">
-                  <span className="text-[12px] sm:text-[13px] font-bold text-gray-900 leading-snug">{item.q}</span>
+                  <span className="text-[15px] sm:text-[16px] font-bold text-gray-900 leading-snug">{item.q}</span>
                   <svg className="w-4 h-4 shrink-0 text-gray-400 transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
                 </summary>
-                <div className="px-3.5 pb-3.5 text-[12px] leading-relaxed text-gray-600">{item.a}</div>
+                <div className="px-3.5 pb-3.5 text-[15px] leading-relaxed text-gray-600">{item.a}</div>
               </details>
             ))}
           </div>
         </section>
 
         <div className="mt-5 flex justify-center">
-          <Link href="/" className="px-3.5 py-1.5 rounded-lg text-xs font-medium transition hover:opacity-80" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.4)' }}>&larr; Back to site</Link>
+          <Link href="/" className="px-3.5 py-1.5 rounded-lg text-[15px] font-medium transition hover:opacity-80" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.4)' }}>&larr; Back to site</Link>
         </div>
 
         </div>

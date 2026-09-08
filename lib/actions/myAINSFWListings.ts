@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import { AINsfwSubmission } from '@/lib/models';
 import { getR2PublicUrl } from '@/lib/r2';
+import { normalizeWebsiteUrl } from '@/lib/ainsfw/websiteUrl';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -124,8 +125,8 @@ export async function updateMyAINSFWListing(
       set.description = desc;
     }
     if (updates.websiteUrl !== undefined) {
-      const url = updates.websiteUrl.trim();
-      if (!url.startsWith('http')) return { success: false, error: 'Enter a valid URL starting with https://' };
+      const url = normalizeWebsiteUrl(updates.websiteUrl);
+      if (!url) return { success: false, error: 'Enter your website: www.name.com or name.com or https://name.com' };
       set.websiteUrl = url;
       set.tryNowUrl = url;
     }

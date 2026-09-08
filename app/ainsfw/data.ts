@@ -57,8 +57,8 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
     tags: ['ai girlfriend', 'ai companion', 'ai sexting', 'ai virtual girlfriend', 'ai chat', 'ai nsfw chat'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards', 'Crypto'],
-    tryNowUrl: 'https://lovescape.com/create-ai-sex-girlfriend/style?userId=5ebe4f139af9bcff39155f3e9f06fbce233415fd82fd4da2a9c51ea0921d4c0e&sourceId=Erogram&creativeId=6step_hent&p1=test',
-    sourceUrl: 'https://lovescape.com',
+    tryNowUrl: 'https://go.cm-trk6.com/aff_c?offer_id=12422&aff_id=93961&url_id=0&aff_sub5=native&source=blog',
+    sourceUrl: 'https://go.cm-trk6.com/aff_c?offer_id=12422&aff_id=93961&url_id=0&aff_sub5=native&source=blog',
   },
   {
     slug: slugify('AI Girlfriend', 'DreamGF'),

@@ -43,6 +43,8 @@ export const AINSFW_REVIEW_EXAMPLE_VIDEOS: Record<string, { mp4: string; poster?
   ],
 };
 
-export function getAinsfwToolPreviewVideo(slug: string) {
+export function getAinsfwToolPreviewVideo(slug: string, customUrl?: string) {
+  const custom = customUrl?.trim();
+  if (custom) return { mp4: custom };
   return AINSFW_TOOL_PREVIEW_VIDEOS[slug];
 }

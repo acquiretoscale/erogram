@@ -141,6 +141,30 @@ function OFsearchNav() {
 }
 
 function LiveVisitorBar() {
+  return (
+    <div
+      className="w-full bg-white/[0.03] border-b border-white/[0.06]"
+      aria-label="Site status"
+    >
+      <div className="relative max-w-[1280px] mx-auto px-4 sm:px-8 h-[24px] flex items-center justify-end">
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+          <LiveVisitorCount />
+        </div>
+        <div className="relative z-10 flex items-center gap-2 sm:gap-3 h-full">
+          <Link
+            href="/advertise"
+            className="text-[10px] sm:text-[11px] font-bold text-white hover:text-white/85 uppercase tracking-[0.12em] whitespace-nowrap leading-none transition-colors"
+          >
+            ADVERTISE
+          </Link>
+          <AddToolNav />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LiveVisitorCount() {
   const { t } = useTranslation();
   const [count, setCount] = useState(0);
   const [live, setLive] = useState(false);
@@ -163,31 +187,20 @@ function LiveVisitorBar() {
   }, []);
 
   return (
-    <div
-      className="w-full bg-white/[0.03] border-b border-white/[0.06]"
+    <span
+      className="text-[10px] sm:text-[11px] font-semibold text-white/55 uppercase tracking-[0.06em] sm:tracking-[0.08em] whitespace-nowrap leading-none flex items-center justify-center gap-1.5"
       aria-label={count > 0 ? `${count.toLocaleString('en-US')} browsing right now` : 'Browsing right now'}
       role="status"
       aria-live="polite"
     >
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-8 h-[24px] grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-        <span aria-hidden />
-        <span className="text-[10px] sm:text-[11px] font-semibold text-white/55 uppercase tracking-[0.06em] sm:tracking-[0.08em] whitespace-nowrap leading-none flex items-center justify-center gap-1.5">
-          <span className="relative flex h-1.5 w-1.5 shrink-0">
-            {live && count > 0 && (
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
-            )}
-            <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${live && count > 0 ? 'bg-emerald-400' : 'bg-white/20'}`} />
-          </span>
-          {count > 0 ? count.toLocaleString('en-US') : '—'} {t('ainsfw.peopleBrowsing', 'browsing right now')}
-        </span>
-        <Link
-          href="/advertise"
-          className="justify-self-end text-[10px] sm:text-[11px] font-bold text-white hover:text-white/85 uppercase tracking-[0.12em] whitespace-nowrap leading-none transition-colors"
-        >
-          ADVERTISE
-        </Link>
-      </div>
-    </div>
+      <span className="relative flex h-1.5 w-1.5 shrink-0">
+        {live && count > 0 && (
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+        )}
+        <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${live && count > 0 ? 'bg-emerald-400' : 'bg-white/20'}`} />
+      </span>
+      {count > 0 ? count.toLocaleString('en-US') : '—'} {t('ainsfw.peopleBrowsing', 'browsing right now')}
+    </span>
   );
 }
 
@@ -195,25 +208,35 @@ function AddToolNav() {
   const { t } = useTranslation();
   const lp = useLocalePath();
   const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const timer = setTimeout(() => document.addEventListener('mousedown', handler, true), 100);
+    return () => { clearTimeout(timer); document.removeEventListener('mousedown', handler, true); };
+  }, [open]);
+
   return (
-    <div className="relative hidden sm:block" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
-      <Link
-        href={lp('/add')}
-        className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.12em] uppercase text-black bg-white hover:bg-white/90 px-3.5 py-2 rounded-[5px] transition-colors"
+    <div className="relative h-full flex items-center" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-0.5 text-[9px] sm:text-[10px] font-bold tracking-[0.1em] uppercase text-black bg-white hover:bg-white/90 px-1.5 sm:px-2 h-[18px] rounded-[3px] transition-colors leading-none"
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="shrink-0 -ml-0.5"><path d="M12 5v14M5 12h14" /></svg>
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="shrink-0"><path d="M12 5v14M5 12h14" /></svg>
         {t('nav.submit', 'Submit')}
-        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`shrink-0 opacity-50 transition-transform ${open ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6" /></svg>
-      </Link>
+        <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`shrink-0 opacity-50 transition-transform ${open ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6" /></svg>
+      </button>
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.97 }}
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.97 }}
-            transition={{ duration: 0.18, ease: 'easeOut' }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
             style={{ transformOrigin: 'top right' }}
-            className="absolute right-0 mt-2 w-[230px] bg-[#161412] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden p-1.5"
+            className="absolute right-0 top-full mt-1.5 w-[230px] bg-[#161412] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden p-1.5"
           >
             <div className="px-3 py-2 text-[9px] font-black uppercase tracking-[0.2em] text-white/35">{t('nav.whatAdding', 'What are you adding?')}</div>
             {ADD_ITEMS.map((it, i) => (
@@ -221,7 +244,7 @@ function AddToolNav() {
                 key={it.href}
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.05 + i * 0.05, duration: 0.2 }}
+                transition={{ delay: 0.03 + i * 0.04, duration: 0.18 }}
               >
                 <Link
                   href={lp(it.href)}
@@ -766,28 +789,15 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
           </Link>
         </nav>
 
-        {/* Desktop right — ad slot + Add Tool + user menu + language (far right) */}
+        {/* Desktop right — ad slot + user menu + language (far right) */}
         <div className="hidden lg:flex items-center gap-2.5 shrink-0 ml-auto">
           <MastheadAdSlot />
-          <AddToolNav />
           <MastheadUserMenu accent={resolvedAccent} auth={auth} lp={lp} />
           <MastheadLangSwitcher />
         </div>
 
-        {/* Mobile + tablet — Submit stays a real, legible pill (it's the #1 conversion action);
-            burger / avatar / flag share one ghost 32px tap target so they read as one compact
-            group instead of three mismatched shapes. Live visitor count moved to its own strip
-            below — see LiveVisitorBar — so it never has to fight this row for space. */}
+        {/* Mobile + tablet — burger / avatar / flag share one ghost 32px tap target */}
         <div className="lg:hidden ml-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {!mobileOpen && !userOpen && (
-            <Link
-              href="/add"
-              className="inline-flex items-center gap-1 text-[10px] font-bold tracking-[0.1em] uppercase text-black bg-white hover:bg-white/90 px-2.5 py-1.5 rounded-[5px] transition-colors shrink-0"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="shrink-0 -ml-0.5"><path d="M12 5v14M5 12h14" /></svg>
-              {t('nav.submit', 'Submit')}
-            </Link>
-          )}
           <button
             onClick={() => { setMobileOpen((v) => !v); setUserOpen(false); }}
             aria-label="Toggle menu"

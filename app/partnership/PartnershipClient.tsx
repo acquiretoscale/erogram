@@ -1,17 +1,25 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import ErogramDiscoveryBanner from '@/components/ErogramDiscoveryBanner';
-import PartnershipStats from './PartnershipStats';
 import { CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 const CTA = '#facc15';
 const BORDER = '3px solid #000000';
 const SHADOW = '4px 4px 0px #000000';
+
+function BrandX() {
+  return (
+    <>
+      <span className="font-black text-white">EROGRAM</span>
+      <span className="font-black text-red-500">X</span>
+    </>
+  );
+}
 
 /** Horizontal banner badges — native 1024×347 at 160px wide. */
 const BANNER_BADGE_WIDTH = 160;
@@ -58,19 +66,19 @@ const BADGES = [
 function buildEmbedCode(src: string, width: number, height: number) {
   const url = `${CANONICAL_BASE}${src}`;
   return `<a href="${CANONICAL_BASE}" target="_blank" rel="noopener noreferrer">
-  <img src="${url}" alt="Featured on EROGRAM" width="${width}" height="${height}" style="display:block;border:0;width:${width}px;height:${height}px;" />
+  <img src="${url}" alt="Featured on EROGRAMX" width="${width}" height="${height}" style="display:block;border:0;width:${width}px;height:${height}px;" />
 </a>`;
 }
 
-const BENEFITS = [
-  'Permanent BOOST listing in the EROGRAM directory (regular price: $147).',
+const BENEFITS: ReactNode[] = [
+  <>Permanent BASIC listing in the <BrandX /> directory (regular price: $49).</>,
   "Dofollow backlink to strengthen your website's authority.",
   'Additional mentions across guides, rankings, and category pages whenever relevant.',
   'Exposure to a growing audience actively searching for premium adult products and services.',
-] as const;
+];
 
-const APPLICANTS = [
-  'Existing EROGRAM clients looking for permanent extra exposure.',
+const APPLICANTS: ReactNode[] = [
+  <>Existing <BrandX /> clients looking for permanent extra exposure.</>,
   'AI NSFW platforms and companion apps',
   'Creator economy platforms and subscription services',
   'VR and immersive adult experiences',
@@ -78,7 +86,7 @@ const APPLICANTS = [
   'Adult communities and forums',
   'Adult blogs, review websites, and directories',
   'Established adult technology companies',
-] as const;
+];
 
 function SectionCard({
   eyebrow,
@@ -145,7 +153,7 @@ function BadgeBlock({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
-          alt="Featured on EROGRAM"
+          alt="Featured on EROGRAMX"
           width={width}
           height={height}
           style={{ display: 'block', width: `${width}px`, height: `${height}px` }}
@@ -168,15 +176,7 @@ function BadgeBlock({
   );
 }
 
-export default function PartnershipClient({
-  aiNsfwCount,
-  groupsAndBotsCount,
-  totalUsers,
-}: {
-  aiNsfwCount: number;
-  groupsAndBotsCount: number;
-  totalUsers: number;
-}) {
+export default function PartnershipClient() {
   const [username, setUsername] = useState<string | null>(null);
 
   useEffect(() => {
@@ -194,7 +194,7 @@ export default function PartnershipClient({
         <div className="max-w-6xl mx-auto flex items-center text-xs text-gray-500 gap-1.5">
           <Link href="/" className="hover:text-white transition-colors shrink-0">Home</Link>
           <span className="shrink-0">/</span>
-          <span className="text-white font-semibold truncate">EROgram Badge</span>
+          <span className="text-white font-semibold truncate"><BrandX /> Badge</span>
         </div>
       </div>
 
@@ -212,19 +212,17 @@ export default function PartnershipClient({
             Partnership Program
           </div>
           <h1 className="ainsfw-hero-title text-[44px] sm:text-[64px] md:text-[76px] mb-4">
-            EROgram Badge.
+            <BrandX /> Badge.
           </h1>
           <p className="text-white/50 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
-            Display a small Featured on EROGRAM badge on your website and unlock free exposure across one of the fastest-growing adult discovery platforms.
+            Display a small Featured on <BrandX /> badge on your website and unlock free exposure across one of the fastest-growing adult discovery platforms.
           </p>
         </motion.div>
 
-        <PartnershipStats aiNsfwCount={aiNsfwCount} groupsAndBotsCount={groupsAndBotsCount} totalUsers={totalUsers} />
-
         <SectionCard eyebrow="Benefits" title="What You Get">
           <ul className="space-y-3">
-            {BENEFITS.map((item) => (
-              <li key={item} className="flex items-start gap-3 text-[15px] leading-[1.65] text-white/70">
+            {BENEFITS.map((item, i) => (
+              <li key={i} className="flex items-start gap-3 text-[15px] leading-[1.65] text-white/70">
                 <span className="mt-[7px] shrink-0 w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
                 <span>{item}</span>
               </li>
@@ -237,8 +235,8 @@ export default function PartnershipClient({
             This program is open to businesses across the adult digital ecosystem, including:
           </p>
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3">
-            {APPLICANTS.map((item) => (
-              <li key={item} className="flex items-start gap-2.5 text-[14px] sm:text-[15px] leading-snug text-white/70">
+            {APPLICANTS.map((item, i) => (
+              <li key={i} className="flex items-start gap-2.5 text-[14px] sm:text-[15px] leading-snug text-white/70">
                 <span className="mt-0.5 shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-[#22c55e]/15 text-[#22c55e]">
                   <CheckIcon />
                 </span>
@@ -250,7 +248,7 @@ export default function PartnershipClient({
 
         <SectionCard eyebrow="Get started" title="How to Apply">
           <p className="text-[15px] leading-[1.75] mb-8 text-white/70">
-            Choose one of the Featured on EROGRAM badges below and add the embedded code to your footer, sidebar, or Partners page (recommended for larger websites). Once it&apos;s live, send us an email at{' '}
+            Choose one of the Featured on <BrandX /> badges below and add the embedded code to your footer, sidebar, or Partners page (recommended for larger websites). Once it&apos;s live, send us an email at{' '}
             <a href="mailto:isabella@erogram.biz" className="font-semibold text-[#4ade80] underline underline-offset-2 transition-opacity hover:opacity-70">
               isabella@erogram.biz
             </a>
@@ -269,7 +267,7 @@ export default function PartnershipClient({
         <section className="bg-[#0a1f12] rounded-2xl border border-[#22c55e]/15 p-5 sm:p-7 mb-16 sm:mb-20">
           <h2 className="text-xl sm:text-2xl font-black text-white mb-2">Eligibility</h2>
           <p className="text-[14px] sm:text-[15px] leading-[1.7] text-white/70">
-            We reserve the right to decline any application that we believe could negatively impact the EROGRAM brand or our users.
+            We reserve the right to decline any application that we believe could negatively impact the <BrandX /> brand or our users.
           </p>
         </section>
       </main>

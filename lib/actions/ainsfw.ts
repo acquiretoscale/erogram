@@ -56,6 +56,7 @@ function docToStats(doc: any, admin = false): ToolStatsData {
     hiddenGalleryUrls: doc.hiddenGalleryUrls || [],
     galleryManaged: !!doc.galleryManaged || (doc.hiddenGalleryUrls?.length ?? 0) > 0 || (doc.customGallery?.length ?? 0) > 0,
     coverManaged: !!doc.coverManaged,
+    previewVideoUrl: doc.previewVideoUrl || '',
     reviews: filtered.map((r: any) => mapReview(r, admin)),
   };
 }
@@ -72,6 +73,7 @@ export interface ToolStatsData {
   hiddenGalleryUrls?: string[];
   galleryManaged?: boolean;
   coverManaged?: boolean;
+  previewVideoUrl?: string;
   reviews: ToolReviewData[];
 }
 

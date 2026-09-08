@@ -8,6 +8,7 @@ import ReportModal from '@/app/groups/ReportModal';
 import { useToast } from '@/components/Toast';
 import { useProfileTheme } from './ProfileThemeContext';
 import { getVaultTabColors } from './profileTheme';
+import { vaultHiddenPills, vaultPillMore, vaultPillPrimary, vaultTeaserPills } from '@/app/groups/constants';
 
 interface VaultGroup {
   _id: string;
@@ -49,6 +50,19 @@ function VaultUnlockButton({ onClick, className = '' }: { onClick: () => void; c
 const FREE_BLUR_IMG = 'blur(14px)';
 const FREE_BLUR_TEXT = 'blur(10px)';
 
+function BlurredName({ name, className, color }: { name: string; className?: string; color: string }) {
+  const chars = Array.from(name || '');
+  const keep = Math.min(4, Math.max(1, chars.length));
+  const shown = chars.slice(0, keep).join('');
+  const hidden = chars.slice(keep).join('');
+  return (
+    <p className={className} style={{ color }}>
+      <span>{shown}</span>
+      {hidden ? <span className="select-none" style={{ filter: FREE_BLUR_TEXT }}>{hidden}</span> : null}
+    </p>
+  );
+}
+
 const VaultStar = ({ fill }: { fill: string }) => (
   <svg width="12" height="12" viewBox="0 0 24 24" fill={fill}>
     <path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/>
@@ -67,6 +81,7 @@ export default function VaultTab({ isPremium, isAdmin, onUpgrade }: { isPremium:
   const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
+  const [pillsExpanded, setPillsExpanded] = useState(false);
   const [country, setCountry] = useState('All');
   const [sortBy, setSortBy] = useState('random');
   const [featuredOnly, setFeaturedOnly] = useState(false);
@@ -130,6 +145,7 @@ export default function VaultTab({ isPremium, isAdmin, onUpgrade }: { isPremium:
       if (data.vaultTotal != null) setVaultTotal(data.vaultTotal);
       if (data.topLiked?.length) setTopLiked(data.topLiked);
     } catch {
+      if (reset) setGroups([]);
       toast('Failed to load vault groups', 'error');
     } finally {
       setLoading(false);
@@ -144,16 +160,23 @@ export default function VaultTab({ isPremium, isAdmin, onUpgrade }: { isPremium:
   
 
   useEffect(() => {
-    if (topLiked.length <= 4) return;
+    if (!isPremium || topLiked.length <= 4) return;
     const interval = setInterval(() => {
       setTopIdx(prev => (prev + 4) % topLiked.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, [topLiked.length]);
+  }, [topLiked.length, isPremium]);
 
-  const visibleTop = topLiked.length > 0
-    ? Array.from({ length: Math.min(4, topLiked.length) }, (_, i) => topLiked[(topIdx + i) % topLiked.length])
-    : [];
+  const topByMembers = useMemo(() => {
+    const pool = topLiked.length > 0 ? topLiked : groups;
+    return [...pool].sort((a, b) => (b.memberCount || 0) - (a.memberCount || 0));
+  }, [topLiked, groups]);
+
+  const visibleTop = useMemo(() => {
+    if (topByMembers.length === 0) return [];
+    if (!isPremium) return topByMembers.slice(0, 4);
+    return Array.from({ length: Math.min(4, topByMembers.length) }, (_, i) => topByMembers[(topIdx + i) % topByMembers.length]);
+  }, [topByMembers, topIdx, isPremium]);
 
   const [catEditId, setCatEditId] = useState<string | null>(null);
 
@@ -315,8 +338,12 @@ export default function VaultTab({ isPremium, isAdmin, onUpgrade }: { isPremium:
                     onError={e => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }}
                   />
                   <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 30%, #0a0908dd 75%, #0a0908 100%)' }} />
-                  <div className="absolute bottom-0 left-0 right-0 p-1.5">
-                    <p className="text-[10px] font-bold text-white leading-tight truncate select-none" style={{ filter: FREE_BLUR_TEXT }}>{g.name || '████████'}</p>
+                  <div className="absolute bottom-0 left-0 right-0 p-1.5 text-center">
+                    {g.memberCount ? (
+                      <p className="text-[11px] font-black leading-none" style={{ color: T.gold }}>
+                        {formatNum(g.memberCount)} <span className="text-[9px] font-bold" style={{ color: T.catDim }}>subs</span>
+                      </p>
+                    ) : null}
                   </div>
                 </div>
                 )
@@ -348,62 +375,50 @@ export default function VaultTab({ isPremium, isAdmin, onUpgrade }: { isPremium:
                 >★ Featured</button>
               )}
               {(() => {
-                const EXTRA_CATS = [
-                  'Brazil', 'China', 'Colombia', 'Cosplay',
-                  'Anal', 'Masturbation', 'Big Ass', 'UK', 'Japan', 'Glory Hole',
-                ];
-                const HIDDEN = ['Blonde', 'Big Tits', 'Italy', 'Telegram-Porn', 'USA'];
-                const TEASER_CATS = ['Threesome', 'Creampie', 'Fantasy', 'Hardcore', 'Cuckold', 'Free-use'];
-                const filtered = quickCategories.filter(q => !HIDDEN.includes(q.category));
-                const shown = filtered.filter(q => !TEASER_CATS.includes(q.category));
-                const extraFromApi = EXTRA_CATS.filter(c => !shown.some(q => q.category === c));
+                const HIDDEN = new Set<string>(vaultHiddenPills);
+                const TEASER = new Set<string>(vaultTeaserPills);
+                const primary = vaultPillPrimary.filter(c => !HIDDEN.has(c));
+                const extra = vaultPillMore.filter(c => !HIDDEN.has(c));
+                const renderCatBtn = (c: string) => {
+                  const isActive = category === c;
+                  const btnStyle = isActive
+                    ? { background: T.pillActive, color: T.pillActiveText }
+                    : { background: T.pillBg, border: `1px solid ${T.pillBorder}`, color: T.pillText };
+                  if (TEASER.has(c) && !isPremium) {
+                    return (
+                      <span
+                        key={c}
+                        className="px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide cursor-not-allowed select-none"
+                        style={{ ...btnStyle, filter: 'blur(3px)', opacity: 0.4 }}
+                      >{c}</span>
+                    );
+                  }
+                  return (
+                    <button
+                      key={c}
+                      onClick={() => setCategory(isActive ? 'All' : c)}
+                      className="px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-all hover:scale-[1.04]"
+                      style={btnStyle}
+                    >{c}</button>
+                  );
+                };
                 return (
                   <>
-                    {shown.map(q => {
-                      const isActive = category === q.category;
-                      return (
-                        <button
-                          key={q.category}
-                          onClick={() => setCategory(isActive ? 'All' : q.category)}
-                          className="px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-all hover:scale-[1.04]"
-                          style={isActive
-                            ? { background: T.pillActive, color: T.pillActiveText }
-                            : { background: T.pillBg, border: `1px solid ${T.pillBorder}`, color: T.pillText }}
-                        >{q.category}</button>
-                      );
-                    })}
-                    {extraFromApi.map(c => {
-                      const isActive = category === c;
-                      return (
-                        <button
-                          key={c}
-                          onClick={() => setCategory(isActive ? 'All' : c)}
-                          className="px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-all hover:scale-[1.04]"
-                          style={isActive
-                            ? { background: T.pillActive, color: T.pillActiveText }
-                            : { background: T.pillBg, border: `1px solid ${T.pillBorder}`, color: T.pillText }}
-                        >{c}</button>
-                      );
-                    })}
-                    {TEASER_CATS.map(c => {
-                      const isActive = category === c;
-                      return isPremium ? (
-                        <button
-                          key={c}
-                          onClick={() => setCategory(isActive ? 'All' : c)}
-                          className="px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-all hover:scale-[1.04]"
-                          style={isActive
-                            ? { background: T.pillActive, color: T.pillActiveText }
-                            : { background: T.pillBg, border: `1px solid ${T.pillBorder}`, color: T.pillText }}
-                        >{c}</button>
-                      ) : (
-                        <span
-                          key={c}
-                          className="px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide cursor-not-allowed select-none"
-                          style={{ background: T.pillBg, border: `1px solid ${T.pillBorder}`, color: T.pillText, filter: 'blur(3px)', opacity: 0.4 }}
-                        >{c}</span>
-                      );
-                    })}
+                    {primary.map(renderCatBtn)}
+                    {isPremium && !pillsExpanded && (
+                      <button
+                        onClick={() => setPillsExpanded(true)}
+                        className="px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-all hover:scale-[1.04]"
+                        style={{ background: T.pillBg, border: `1px solid ${T.pillBorder}`, color: T.gold }}
+                      >VIEW MORE</button>
+                    )}
+                    {!isPremium && (
+                      <span
+                        className="px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide cursor-not-allowed select-none"
+                        style={{ background: T.pillBg, border: `1px solid ${T.pillBorder}`, color: T.gold, filter: 'blur(3px)', opacity: 0.4 }}
+                      >VIEW MORE</span>
+                    )}
+                    {isPremium && pillsExpanded && extra.map(renderCatBtn)}
                   </>
                 );
               })()}
@@ -556,63 +571,70 @@ export default function VaultTab({ isPremium, isAdmin, onUpgrade }: { isPremium:
                     {/* Name + categories */}
                     <div className="flex-1 min-w-0">
                       {isPremium ? (
-                        <Link href={`/${group.slug}`} className="block font-bold text-[14px] truncate leading-tight transition-colors" style={{ color: T.text }} onMouseEnter={e => (e.currentTarget.style.color = T.gold)} onMouseLeave={e => (e.currentTarget.style.color = T.text)}>{group.name}</Link>
+                        <>
+                          <Link href={`/${group.slug}`} className="block font-bold text-[14px] truncate leading-tight transition-colors" style={{ color: T.text }} onMouseEnter={e => (e.currentTarget.style.color = T.gold)} onMouseLeave={e => (e.currentTarget.style.color = T.text)}>{group.name}</Link>
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            {cats.map((cat, i) => (
+                              isAdmin ? (
+                                <span
+                                  key={i}
+                                  className="text-[9px] font-black uppercase tracking-[0.12em] px-1.5 py-0.5 rounded cursor-pointer transition-colors hover:line-through hover:opacity-60 group/cat"
+                                  style={{ background: T.catBg, border: `1px solid ${T.catBorder}`, color: i === 0 ? T.catColor : T.catDim }}
+                                  title={`Remove "${cat}"`}
+                                  onClick={e => {
+                                    e.preventDefault(); e.stopPropagation();
+                                    saveGroupCats(group._id, cats.filter(c => c !== cat));
+                                  }}
+                                >{cat}</span>
+                              ) : (
+                                <span key={i} className="text-[9px] font-black uppercase tracking-[0.12em] px-1.5 py-0.5 rounded" style={{ background: T.catBg, border: `1px solid ${T.catBorder}`, color: i === 0 ? T.catColor : T.catDim }}>{cat}</span>
+                              )
+                            ))}
+                            {isAdmin && cats.length < 3 && (
+                              catEditId === group._id ? (
+                                <select
+                                  autoFocus
+                                  className="text-[9px] font-bold rounded px-1 py-0.5 outline-none"
+                                  style={{ background: T.adminSelectBg, border: `1px solid ${T.badgeBorder}`, color: T.gold }}
+                                  value=""
+                                  onChange={e => {
+                                    if (!e.target.value) return;
+                                    if (!cats.includes(e.target.value)) saveGroupCats(group._id, [...cats, e.target.value]);
+                                    setCatEditId(null);
+                                  }}
+                                  onBlur={() => setCatEditId(null)}
+                                  onClick={e => e.stopPropagation()}
+                                >
+                                  <option value="">+ Add...</option>
+                                  {CATEGORIES.filter(c => !cats.includes(c)).map(c => (
+                                    <option key={c} value={c}>{c}</option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <button
+                                  onClick={e => { e.preventDefault(); e.stopPropagation(); setCatEditId(group._id); }}
+                                  className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded transition-colors"
+                                  style={{ background: T.adminSelectBg, border: `1px dashed ${T.badgeBorder}`, color: `${T.catDim}88` }}
+                                  title="Add category"
+                                >+</button>
+                              )
+                            )}
+                          </div>
+                        </>
                       ) : (
-                        <p className="font-bold text-[14px] truncate leading-tight select-none" style={{ color: T.text, filter: FREE_BLUR_TEXT }}>{group.name}</p>
+                        <div>
+                          <BlurredName name={group.name} className="font-bold text-[14px] truncate leading-tight" color={T.text} />
+                          {group.memberCount ? (
+                            <div className="text-[8px] font-bold uppercase tracking-widest mt-0.5" style={{ color: T.textDim }}>{formatNum(group.memberCount)} subs</div>
+                          ) : null}
+                        </div>
                       )}
-                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                        {cats.map((cat, i) => (
-                          isPremium && isAdmin ? (
-                            <span
-                              key={i}
-                              className="text-[9px] font-black uppercase tracking-[0.12em] px-1.5 py-0.5 rounded cursor-pointer transition-colors hover:line-through hover:opacity-60 group/cat"
-                              style={{ background: T.catBg, border: `1px solid ${T.catBorder}`, color: i === 0 ? T.catColor : T.catDim }}
-                              title={`Remove "${cat}"`}
-                              onClick={e => {
-                                e.preventDefault(); e.stopPropagation();
-                                saveGroupCats(group._id, cats.filter(c => c !== cat));
-                              }}
-                            >{cat}</span>
-                          ) : (
-                            <span key={i} className={`font-black uppercase tracking-[0.12em] px-1.5 py-0.5 rounded ${isPremium ? 'text-[9px]' : 'text-[10px]'}`} style={{ background: T.catBg, border: `1px solid ${T.catBorder}`, color: i === 0 ? T.catColor : T.catDim }}>{cat}</span>
-                          )
-                        ))}
-                        {isPremium && isAdmin && cats.length < 3 && (
-                          catEditId === group._id ? (
-                            <select
-                              autoFocus
-                              className="text-[9px] font-bold rounded px-1 py-0.5 outline-none"
-                              style={{ background: T.adminSelectBg, border: `1px solid ${T.badgeBorder}`, color: T.gold }}
-                              value=""
-                              onChange={e => {
-                                if (!e.target.value) return;
-                                if (!cats.includes(e.target.value)) saveGroupCats(group._id, [...cats, e.target.value]);
-                                setCatEditId(null);
-                              }}
-                              onBlur={() => setCatEditId(null)}
-                              onClick={e => e.stopPropagation()}
-                            >
-                              <option value="">+ Add...</option>
-                              {CATEGORIES.filter(c => !cats.includes(c)).map(c => (
-                                <option key={c} value={c}>{c}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            <button
-                              onClick={e => { e.preventDefault(); e.stopPropagation(); setCatEditId(group._id); }}
-                              className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded transition-colors"
-                              style={{ background: T.adminSelectBg, border: `1px dashed ${T.badgeBorder}`, color: `${T.catDim}88` }}
-                              title="Add category"
-                            >+</button>
-                          )
-                        )}
-                      </div>
                     </div>
 
                     {/* Right side: subs + actions */}
                     <div className="flex items-center gap-2 shrink-0">
-                      {group.memberCount ? (
-                        <div className="text-right mr-1 select-none" style={!isPremium ? { filter: FREE_BLUR_TEXT } : undefined}>
+                      {isPremium && group.memberCount ? (
+                        <div className="text-right mr-1 select-none">
                           <div className="text-[15px] font-black leading-none" style={{ color: T.gold }}>{formatNum(group.memberCount)}</div>
                           <div className="text-[8px] font-bold uppercase tracking-widest" style={{ color: T.textDim }}>subs</div>
                         </div>
@@ -759,14 +781,9 @@ export default function VaultTab({ isPremium, isAdmin, onUpgrade }: { isPremium:
                         />
                         <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 30%, #0a0908dd 70%, #0a0908 100%)' }} />
                         <div className="absolute bottom-0 left-0 right-0 p-2">
-                          <p className="text-[11px] font-bold text-white leading-tight truncate mb-1 select-none" style={{ filter: FREE_BLUR_TEXT }}>{group.name}</p>
-                          <div className="flex flex-wrap gap-0.5 mb-1">
-                            {cats.map((cat, i) => (
-                              <span key={i} className="text-[8px] font-black uppercase tracking-wide px-1 py-px rounded" style={{ background: '#0a090866', border: `1px solid ${T.badgeBorder}`, color: i === 0 ? T.gold : T.catDim }}>{cat}</span>
-                            ))}
-                          </div>
+                          <BlurredName name={group.name} className="text-[11px] font-bold text-white leading-tight truncate mb-1" color="#fff" />
                           {group.memberCount ? (
-                            <p className="text-[9px] font-semibold select-none" style={{ color: '#9a8060', filter: FREE_BLUR_TEXT }}>{formatNum(group.memberCount)} subs</p>
+                            <p className="text-[9px] font-semibold" style={{ color: '#9a8060' }}>{formatNum(group.memberCount)} subs</p>
                           ) : null}
                         </div>
                       </div>

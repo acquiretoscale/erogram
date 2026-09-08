@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PROMO_BORDER, PROMO_SHADOW_LG } from './promoTheme';
 
@@ -62,7 +62,7 @@ function fmt(n: number): string {
 }
 
 function StatCard({ label, value, gradient, delay, ready, full, live, compact }: {
-  label: string; value: number; gradient: string; delay: number; ready: boolean; full?: boolean; live?: boolean; compact?: boolean;
+  label: ReactNode; value: number; gradient: string; delay: number; ready: boolean; full?: boolean; live?: boolean; compact?: boolean;
 }) {
   const animated = useCountUp(value, 2200, ready);
 
@@ -119,7 +119,7 @@ function AdClicksHero({ value, ready }: { value: number; ready: boolean }) {
         </div>
         <div className="min-w-0 flex-1">
           <h3 className="text-sm sm:text-base font-black uppercase tracking-wide text-white">Total ad clicks served</h3>
-          <p className="text-[10px] sm:text-xs text-white/45">Last 30 days · Erogram ad network</p>
+          <p className="text-[10px] sm:text-xs text-white/45">Last 30 days · EROGRAM<span className="text-red-500">X</span> ad network</p>
         </div>
         <span className="inline-flex items-center gap-1.5 text-[9px] sm:text-[10px] font-black px-2.5 py-1 uppercase tracking-wider shrink-0 text-[#4ade80] border border-[#22c55e]/30 bg-[#22c55e]/10">
           <span className="h-1.5 w-1.5 rounded-full bg-[#22c55e] animate-pulse" />
@@ -216,7 +216,7 @@ export default function AdvertiseStats() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
           <StatCard label="Total page views" value={data.totalViews} gradient="bg-gradient-to-br from-[#04140c] via-[#0a2e1a] to-[#064e3b]" delay={0.1} ready full live />
           {typeof data.activeVisitors === 'number' && data.activeVisitors > 0 && (
-            <StatCard label="People browsing Erogram right now" value={data.activeVisitors} gradient="bg-gradient-to-br from-[#0a2e1a] via-[#064e3b] to-[#04140c]" delay={0.21} ready full live />
+            <StatCard label={<>People browsing EROGRAM<span className="text-red-500">X</span> right now</>} value={data.activeVisitors} gradient="bg-gradient-to-br from-[#0a2e1a] via-[#064e3b] to-[#04140c]" delay={0.21} ready full live />
           )}
         </div>
       </div>

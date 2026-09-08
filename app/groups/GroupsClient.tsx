@@ -18,8 +18,6 @@ import { checkBookmarks } from '@/lib/actions/publicData';
 import GroupCardSkeleton from './GroupCardSkeleton';
 import { filterCategories } from './constants';
 import { BOOST_WEIGHT, isGroupsInFeedPlacement } from '@/lib/adPlacements';
-import { getActiveFeedCampaigns } from '@/lib/actions/campaigns';
-import { readVisitorCountriesForAds } from '@/lib/adGeo';
 import { useTranslation, useLocalePath, useLocale } from '@/lib/i18n';
 // Lazy load modals to reduce initial bundle size
 const ReviewModal = dynamic(() => import('./ReviewModal'), {
@@ -60,17 +58,8 @@ function groupsSessionStorageKey(page: number): string {
   return `erogram_groups_state_v5_p${page}`;
 }
 
-export default function GroupsClient({ initialGroups, feedCampaigns: initialFeedCampaigns = [], initialCountry, initialIsMobile = false, initialIsTelegram = false, topBannerCampaigns = [], storyData = [], trendingCategories = [], categoryOptions = [], countryOptions = [], paginationCurrentPage = 1, paginationTotalPages = 1, groupsPageSize = 32 }: GroupsClientProps) {
+export default function GroupsClient({ initialGroups, feedCampaigns = [], initialCountry, initialIsMobile = false, initialIsTelegram = false, topBannerCampaigns = [], storyData = [], trendingCategories = [], categoryOptions = [], countryOptions = [], paginationCurrentPage = 1, paginationTotalPages = 1, groupsPageSize = 32 }: GroupsClientProps) {
   const STORY_SEEN_KEY = 'erogram:stories:seen:v1';
-  const [feedCampaigns, setFeedCampaigns] = useState<FeedCampaign[]>(initialFeedCampaigns);
-
-  useEffect(() => {
-    const cc = readVisitorCountriesForAds();
-    getActiveFeedCampaigns('groups', cc)
-      .then((feed) => setFeedCampaigns(feed as FeedCampaign[]))
-      .catch(() => {});
-  }, []);
-
   const [username, setUsername] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState(initialCountry || 'All');
   const [selectedCountry, setSelectedCountry] = useState('All');
@@ -654,7 +643,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns: initialFeed
           transition={{ duration: 0.5 }}
           className="text-center mb-6 sm:mb-8"
         >
-          <h1 className="text-[16px] sm:text-[25px] md:text-[29px] font-black leading-[1.05] tracking-tight text-white mb-3">
+          <h1 className="text-[32px] sm:text-[50px] md:text-[58px] font-black leading-[1.05] tracking-tight text-white mb-3">
             {t('groups.title')}
           </h1>
           <p className="text-white/50 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
@@ -863,7 +852,6 @@ export default function GroupsClient({ initialGroups, feedCampaigns: initialFeed
                               isBookmarked={!!bookmarkedMap[g._id]}
                               bookmarkId={bookmarkedMap[g._id] || null}
                               directLink={tgLink}
-                              topFeaturedStats
                             />
                           );
                         };
@@ -880,7 +868,6 @@ export default function GroupsClient({ initialGroups, feedCampaigns: initialFeed
                                 isIndex={spot}
                                 shouldPreload={true}
                                 onVisible={undefined}
-                                topFeaturedStats
                               />,
                             );
                           } else {

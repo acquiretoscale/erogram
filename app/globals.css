@@ -1259,6 +1259,28 @@ body {
   animation: ainsfw-hero-shine 4s ease-in-out infinite;
 }
 
+.ainsfw-hero-customers-blue {
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  font-family: var(--font-archivo, 'Arial Black', 'Arial', sans-serif);
+  -webkit-text-fill-color: transparent;
+  background-image: linear-gradient(
+    90deg,
+    #00AFF0 0%,
+    #38bdf8 25%,
+    #7dd3fc 50%,
+    #38bdf8 75%,
+    #00AFF0 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 16px rgba(0, 175, 240, 0.45));
+  animation: ainsfw-hero-shine 4s ease-in-out infinite;
+}
+
 @keyframes ainsfw-hero-shine {
   0%,
   100% {

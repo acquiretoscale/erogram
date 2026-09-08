@@ -7,14 +7,19 @@ export type TrustedSponsor = {
   logo: string;
   width: number;
   height: number;
+  /** Full-color logo — show on white tile instead of white invert filter */
+  colored?: boolean;
   /** Erogram AI NSFW tool slug → /ainsfw/{slug} */
   slug?: string;
 };
 
 export const TRUSTED_SPONSORS: TrustedSponsor[] = [
   { name: 'Candy AI', logo: '/assets/sponsors/candy-ai.webp', width: 170, height: 36, slug: 'candy-ai-ai-girlfriend' },
-  { name: 'Instacam', logo: '/assets/sponsors/instacam.webp', width: 157, height: 44 },
+  { name: 'Instacam', logo: '/assets/sponsors/instacam.webp', width: 1024, height: 1024, colored: true },
   { name: 'Lovescape', logo: '/assets/sponsors/lovescape.webp', width: 119, height: 36, slug: 'lovescape-ai-girlfriend' },
+  { name: 'Clothoff', logo: '/assets/sponsors/clothoff.webp', width: 400, height: 89, colored: true, slug: 'clothoff-undress-ai' },
+  { name: 'FapHouse', logo: '/assets/sponsors/faphouse.png', width: 1024, height: 430, colored: true },
+  { name: 'StripChat', logo: '/assets/sponsors/stripchat.png', width: 1024, height: 256, colored: true },
 ];
 
 const GREEN_HEADER_BG = 'linear-gradient(160deg, #04140c 0%, #0a2e1a 60%, #064e3b 100%)';
@@ -26,6 +31,8 @@ type Props = {
   title?: string;
   titleClassName?: string;
   subtitle?: ReactNode;
+  embedded?: boolean;
+  whiteBg?: boolean;
 };
 
 export default function TrustedByLeaders({
@@ -34,28 +41,40 @@ export default function TrustedByLeaders({
   title = 'Trusted by industry leaders',
   titleClassName,
   subtitle,
+  embedded = false,
+  whiteBg = false,
 }: Props) {
   const isGreen = variant === 'green';
   const isOnlyfans = variant === 'onlyfans';
   const manySponsors = sponsors.length > 3;
 
   return (
-    <section className={isGreen || isOnlyfans ? '' : 'mb-12'}>
+    <section className={embedded ? '' : isGreen || isOnlyfans ? '' : 'mb-12'}>
       <div
         className={
-          isGreen
+          embedded
+            ? `px-4 py-4 sm:px-5 sm:py-5 border-t ${whiteBg ? 'border-black/10' : isOnlyfans ? 'border-[#00AFF0]/15' : 'border-white/[0.06]'}`
+            : isGreen
             ? 'rounded-lg border-[3px] border-black px-6 py-5 sm:px-10 sm:py-7'
             : isOnlyfans
               ? `rounded-2xl border border-[#00AFF0]/25 shadow-[0_16px_40px_-20px_rgba(0,40,80,0.55)] ${manySponsors ? 'px-4 py-8 sm:px-6 sm:py-10' : 'px-8 py-10 sm:px-16 sm:py-12'}`
               : `rounded-2xl bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_40px_rgba(0,0,0,0.08)] ${manySponsors ? 'px-4 py-8 sm:px-6 sm:py-10' : 'px-8 py-10 sm:px-16 sm:py-12'}`
         }
-        style={isGreen ? { background: GREEN_HEADER_BG } : isOnlyfans ? { background: ONLYFANS_HEADER_BG } : undefined}
+        style={
+          whiteBg
+            ? { background: '#ffffff' }
+            : isGreen || isOnlyfans
+              ? { background: isGreen ? GREEN_HEADER_BG : ONLYFANS_HEADER_BG }
+              : undefined
+        }
       >
         <p
           className={
             titleClassName ??
-            (isGreen || isOnlyfans
-              ? 'text-center text-[11px] sm:text-xs font-medium uppercase tracking-[0.22em] text-white/45 mb-4 sm:mb-5'
+            (whiteBg
+              ? 'text-center text-[11px] sm:text-xs font-medium uppercase tracking-[0.22em] text-neutral-400 mb-3 sm:mb-4'
+              : isGreen || isOnlyfans
+              ? 'text-center text-[11px] sm:text-xs font-medium uppercase tracking-[0.22em] text-white/45 mb-3 sm:mb-4'
               : 'text-center text-[11px] sm:text-xs font-medium uppercase tracking-[0.22em] text-neutral-400 mb-9 sm:mb-10')
           }
         >
@@ -64,18 +83,25 @@ export default function TrustedByLeaders({
 
         <div
           className={
-            manySponsors
-              ? `flex flex-row flex-wrap sm:flex-nowrap items-center justify-center w-full gap-2 sm:gap-2.5 md:gap-3 ${isGreen || isOnlyfans ? '' : 'gap-4'}`
-              : `flex flex-col items-center justify-center mx-auto sm:flex-row sm:justify-between max-w-2xl ${isGreen || isOnlyfans ? 'gap-5 sm:gap-4' : 'gap-10 sm:gap-8'}`
+            manySponsors && (isGreen || isOnlyfans)
+              ? 'grid grid-cols-6 gap-1.5 sm:gap-2 w-full items-center'
+              : manySponsors
+                ? 'flex flex-row flex-wrap items-center justify-center w-full gap-2 sm:gap-2.5 md:gap-3'
+                : `flex flex-col items-center justify-center mx-auto sm:flex-row sm:justify-between max-w-2xl ${isGreen || isOnlyfans ? 'gap-5 sm:gap-4' : 'gap-10 sm:gap-8'}`
           }
         >
           {sponsors.map((sponsor) => {
-            const tileClass =
-              isOnlyfans && manySponsors
-                ? 'rounded-lg bg-white px-3 py-2.5 sm:px-3.5 sm:py-3 shadow-[0_2px_10px_-2px_rgba(0,0,0,0.28)]'
-                : '';
+            const useWhiteTile = (isGreen || isOnlyfans) && manySponsors;
+            const tileClass = useWhiteTile
+              ? whiteBg
+                ? 'rounded-md bg-neutral-50 border border-black/[0.08] h-10 sm:h-12 w-full flex items-center justify-center p-1.5 sm:p-2'
+                : 'rounded-md bg-white h-10 sm:h-12 w-full flex items-center justify-center p-1.5 sm:p-2 shadow-[0_1px_6px_-1px_rgba(0,0,0,0.22)]'
+              : '';
 
-            const imageClass = isOnlyfans
+            const uniformTileImage = `max-h-full max-w-full object-contain object-center${sponsor.colored ? '' : ' brightness-0'}`;
+            const imageClass = useWhiteTile
+              ? uniformTileImage
+              : isOnlyfans
               ? manySponsors
                 ? 'h-7 sm:h-8 md:h-9 w-auto max-w-[108px] sm:max-w-[128px] md:max-w-[152px] object-contain object-center'
                 : 'h-7 sm:h-8 w-auto max-w-[140px] sm:max-w-[168px] object-contain object-center brightness-0 invert opacity-75 transition-opacity duration-300 group-hover:opacity-100'
@@ -104,10 +130,10 @@ export default function TrustedByLeaders({
             return (
               <div
                 key={sponsor.name}
-                className={`group flex items-center justify-center shrink-0 ${manySponsors ? 'px-0.5' : 'flex-1 min-w-0 px-1'} ${tileClass}`}
+                className={`group flex items-center justify-center shrink-0 ${manySponsors && !useWhiteTile ? 'px-0.5' : ''} ${!useWhiteTile ? 'flex-1 min-w-0 px-1' : ''} ${tileClass}`}
               >
                 {href ? (
-                  <Link href={href} className="flex items-center justify-center" aria-label={sponsor.name}>
+                  <Link href={href} className="flex items-center justify-center w-full h-full" aria-label={sponsor.name}>
                     {inner}
                   </Link>
                 ) : (
@@ -121,7 +147,9 @@ export default function TrustedByLeaders({
           <p
             className={
               isGreen || isOnlyfans
-                ? 'text-center text-sm sm:text-base text-white/70 mt-5 sm:mt-6 px-2 leading-relaxed'
+                ? whiteBg
+                  ? 'text-center text-sm sm:text-base text-neutral-600 mt-5 sm:mt-6 px-2 leading-relaxed'
+                  : 'text-center text-sm sm:text-base text-white/70 mt-5 sm:mt-6 px-2 leading-relaxed'
                 : 'text-center text-sm sm:text-base text-neutral-600 mt-6 sm:mt-8'
             }
           >

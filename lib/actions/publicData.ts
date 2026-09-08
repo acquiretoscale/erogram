@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import { campaignNotExpired } from '@/lib/campaignDates';
 import {
-  Campaign, CampaignClick, TrendingOFCreator, OnlyFansCreator,
+  Campaign, TrendingOFCreator, OnlyFansCreator,
   Bookmark, ButtonConfig, User, TrendingErogram,
   Group, Bot,
 } from '@/lib/models';
@@ -290,60 +290,6 @@ export async function checkBookmarks(token: string, ids: string[]) {
  * View-count ping from the browser (join pages are ISR-cached, so the server
  * no longer counts views per render — the client reports each real view).
  */
-function sumClickCountByDay(byDay: unknown): number {
-  if (!byDay || typeof byDay !== 'object') return 0;
-  const map = byDay instanceof Map ? Object.fromEntries(byDay) : (byDay as Record<string, number>);
-  return Object.values(map).reduce((sum: number, n) => sum + (Number(n) || 0), 0);
-}
-
-/** Lifetime group clicks + linked feed-campaign clicks (same destination URL). */
-export async function getGroupTotalClicks(groupId: string): Promise<number> {
-  try {
-    if (!groupId || !/^[0-9a-fA-F]{24}$/.test(groupId)) return 0;
-    await connectDB();
-    const group = await Group.findById(groupId)
-      .select('clickCount clickCountByDay telegramLink')
-      .lean() as { clickCount?: number; clickCountByDay?: unknown; telegramLink?: string } | null;
-    if (!group) return 0;
-
-    let total = Math.max(group.clickCount || 0, sumClickCountByDay(group.clickCountByDay));
-    if (group.telegramLink) {
-      total += await sumCampaignClicksForDestination(group.telegramLink);
-    }
-    return total;
-  } catch {
-    return 0;
-  }
-}
-
-/** Campaign.clicks with CampaignClick row fallback. */
-export async function getCampaignTotalClicks(campaignId: string): Promise<number> {
-  try {
-    if (!campaignId || !/^[0-9a-fA-F]{24}$/.test(campaignId)) return 0;
-    await connectDB();
-    const camp = await Campaign.findById(campaignId).select('clicks').lean() as { clicks?: number } | null;
-    if (!camp) return 0;
-    const stored = camp.clicks || 0;
-    if (stored > 0) return stored;
-    return CampaignClick.countDocuments({ campaignId });
-  } catch {
-    return 0;
-  }
-}
-
-async function sumCampaignClicksForDestination(destinationUrl: string): Promise<number> {
-  const camps = await Campaign.find({ destinationUrl }).select('_id clicks').lean() as { _id: unknown; clicks?: number }[];
-  let total = 0;
-  for (const c of camps) {
-    let n = c.clicks || 0;
-    if (n === 0) {
-      n = await CampaignClick.countDocuments({ campaignId: c._id });
-    }
-    total += n;
-  }
-  return total;
-}
-
 export async function trackEntityView(entityId: string, type: 'group' | 'bot') {
   try {
     if (!entityId || !/^[0-9a-fA-F]{24}$/.test(entityId)) return;

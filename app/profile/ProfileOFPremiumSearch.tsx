@@ -17,7 +17,6 @@ import {
 } from '@/lib/actions/ofCreatorsBrowse';
 import { getFreeOnlyfansCreators } from '@/lib/actions/freeOnlyfansCreators';
 import { getSearchResultFeaturedCampaigns, trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
-import { readVisitorCountriesForAds } from '@/lib/adGeo';
 import {
   getRelatedRankingSlugs,
   resolveClusterSlugFromQuery,
@@ -413,7 +412,7 @@ export default function ProfileOFPremiumSearch({
 
   const loadFeedFeatured = useCallback(async (q: string) => {
     try {
-      const list = await getSearchResultFeaturedCampaigns(q, 8, readVisitorCountriesForAds());
+      const list = await getSearchResultFeaturedCampaigns(q, 8);
       setFeedFeatured(list.length ? list : paidFeatured);
     } catch {
       setFeedFeatured(paidFeatured);

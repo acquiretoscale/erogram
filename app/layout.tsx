@@ -119,11 +119,11 @@ export default async function RootLayout({
         <meta name="theme-color" content="#111111" />
         <meta name="generator" content="Next.js 16" />
 
-        <link rel="manifest" href="/manifest.json?v=8" />
-        <link rel="apple-touch-icon" href="/icons/icon-192.png?v=6" />
+        <link rel="manifest" href="/manifest.json?v=5" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png?v=5" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="EROGRAMX" />
+        <meta name="apple-mobile-web-app-title" content="Erogram" />
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

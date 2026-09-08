@@ -1,6 +1,5 @@
 import { Metadata } from 'next';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
-import { getPartnershipCounts } from '@/lib/partnershipCounts';
 import PartnershipClient from './PartnershipClient';
 
 const title = 'EROgram Badge | Erogram.pro';
@@ -22,12 +21,7 @@ export const metadata: Metadata = {
 export const revalidate = 300;
 
 export default async function PartnershipPage() {
-  const { aiNsfwCount, groupsAndBotsCount, totalUsers } = await getPartnershipCounts();
   return (
-    <PartnershipClient
-      aiNsfwCount={aiNsfwCount}
-      groupsAndBotsCount={groupsAndBotsCount}
-      totalUsers={totalUsers}
-    />
+    <PartnershipClient />
   );
 }

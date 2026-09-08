@@ -2,15 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { recordPwaInstall } from '@/lib/actions/pwaInstall';
-import { subscribeUserPush } from '@/lib/actions/userPush';
 
 const DISMISS_KEY = 'pwa_install_dismissed';
 const CLIENT_KEY = 'pwa_install_client';
 const RECORDED_KEY = 'pwa_install_recorded';
-const PUSH_KEY = 'pwa_push_subscribed';
 const DISMISS_DAYS = 14;
-const SW_URL = '/sw.js?v=8';
-const APP_NAME = 'EROGRAMX ADULT ENTRETAINEMENT HUB';
+const SW_URL = '/sw.js?v=7';
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -58,18 +55,10 @@ function getClientId(): string {
   }
 }
 
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const raw = atob(base64);
-  const arr = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; ++i) arr[i] = raw.charCodeAt(i);
-  return arr;
-}
-
 function recordInstall() {
   try {
     if (localStorage.getItem(RECORDED_KEY) === '1') {
+      // Still sync user link if they log in later after a guest install
       const token = localStorage.getItem('token');
       if (token) recordPwaInstall(token, getClientId()).catch(() => {});
       return;
@@ -84,36 +73,6 @@ function recordInstall() {
   } catch {}
 }
 
-async function subscribePush() {
-  try {
-    if (localStorage.getItem(PUSH_KEY) === '1') return;
-    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return;
-    await navigator.serviceWorker.register(SW_URL);
-    const reg = await navigator.serviceWorker.ready;
-    const existing = await reg.pushManager.getSubscription();
-    let sub = existing;
-    if (!sub) {
-      const perm = await Notification.requestPermission();
-      if (perm !== 'granted') return;
-      const res = await fetch('/api/admin/push/vapid-key');
-      if (!res.ok) return;
-      const { publicKey } = await res.json();
-      if (!publicKey) return;
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
-      });
-    }
-    const token = localStorage.getItem('token');
-    const json = sub.toJSON();
-    const r = await subscribeUserPush(token, {
-      endpoint: json.endpoint || '',
-      keys: { p256dh: json.keys?.p256dh || '', auth: json.keys?.auth || '' },
-    });
-    if (r?.ok) localStorage.setItem(PUSH_KEY, '1');
-  } catch {}
-}
-
 export default function PwaInstallBanner() {
   const [visible, setVisible] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -124,13 +83,12 @@ export default function PwaInstallBanner() {
     if (typeof window === 'undefined') return;
     if (isStandalone()) {
       recordInstall();
-      subscribePush();
       return;
     }
 
+    // Install detection runs even when the banner is hidden or dismissed.
     const onInstalled = () => {
       recordInstall();
-      subscribePush();
       setVisible(false);
     };
     window.addEventListener('appinstalled', onInstalled);
@@ -187,7 +145,6 @@ export default function PwaInstallBanner() {
       setDeferredPrompt(null);
       if (choice.outcome === 'accepted') {
         recordInstall();
-        subscribePush();
         setVisible(false);
         return;
       }
@@ -202,47 +159,41 @@ export default function PwaInstallBanner() {
   return (
     <div
       role="dialog"
-      aria-label={APP_NAME}
+      aria-label="Install Erogram"
       className="fixed bottom-0 inset-x-0 z-[9998] safe-bottom pointer-events-none"
     >
       <div className="pointer-events-auto mx-auto max-w-lg px-3 pb-3">
-        <div
-          className="overflow-hidden rounded-3xl border border-[#2AABEE]/30 shadow-[0_0_40px_rgba(42,171,238,0.18)]"
-          style={{ background: 'linear-gradient(180deg, #17212b 0%, #0e1621 100%)' }}
-        >
-          <div className="h-1 w-full" style={{ background: 'linear-gradient(90deg, #f5d061, #c9973a, #2AABEE)' }} />
+        <div className="rounded-2xl border border-black/10 bg-white shadow-2xl px-4 py-3.5">
           {showIosTip ? (
-            <div className="px-4 py-4 space-y-3">
-              <p className="text-[13px] text-white/80 leading-relaxed">
+            <div className="space-y-3">
+              <p className="text-[13px] text-[#333] leading-relaxed">
                 Tap the Share button (box with arrow) at the bottom of Safari, then tap &quot;Add to Home Screen&quot;.
               </p>
               <button
                 type="button"
                 onClick={dismiss}
-                className="w-full py-2.5 text-sm font-black uppercase tracking-wide rounded-full text-[#2a1f00]"
-                style={{ background: 'linear-gradient(135deg, #f5d061 0%, #c9973a 45%, #a67c00 100%)' }}
+                className="w-full py-2.5 text-sm font-semibold text-white bg-[#b31b1b] active:bg-[#cc2222] rounded-xl transition-colors"
               >
                 Got it
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-3 px-4 py-3.5">
+            <div className="flex items-center gap-3">
               <img
                 src="/icons/icon-192.png?v=6"
                 alt=""
-                width={52}
-                height={52}
-                className="rounded-2xl shrink-0 ring-1 ring-white/15"
+                width={44}
+                height={44}
+                className="rounded-xl shrink-0"
               />
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-black uppercase tracking-[0.12em] text-[#2AABEE] leading-none mb-1">Download App</p>
-                <p className="text-[13px] font-black text-white leading-tight">{APP_NAME}</p>
+                <p className="text-sm font-semibold text-[#111] leading-tight">Erogram</p>
+                <p className="text-[12px] text-[#666] mt-0.5">Download App</p>
               </div>
               <button
                 type="button"
                 onClick={install}
-                className="shrink-0 px-4 py-2.5 text-[11px] font-black uppercase tracking-wide rounded-full text-[#2a1f00]"
-                style={{ background: 'linear-gradient(135deg, #f5d061 0%, #c9973a 45%, #a67c00 100%)' }}
+                className="shrink-0 px-4 py-2 text-sm font-semibold text-white bg-[#b31b1b] active:bg-[#cc2222] rounded-xl transition-colors"
               >
                 Install
               </button>
@@ -250,7 +201,7 @@ export default function PwaInstallBanner() {
                 type="button"
                 onClick={dismiss}
                 aria-label="Dismiss"
-                className="shrink-0 w-8 h-8 flex items-center justify-center text-white/40 active:text-white"
+                className="shrink-0 w-8 h-8 flex items-center justify-center text-[#999] active:text-[#111]"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M18 6L6 18M6 6l12 12" />

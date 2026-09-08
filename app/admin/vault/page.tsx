@@ -32,12 +32,16 @@ interface CategoryConfig {
 const ALL_CATEGORIES = [
   'Adult', 'AI NSFW', 'Amateur', 'Anal', 'Anime', 'Argentina',
   'Asian', 'BDSM', 'Big Ass', 'Big Tits', 'Black', 'Blonde', 'Blowjob',
-  'Brazil', 'Brunette', 'China', 'Colombia', 'Cosplay', 'Creampie',
-  'Cuckold', 'Ebony', 'Fantasy', 'Feet', 'Fetish', 'France', 'Free-use',
-  'Germany', 'Hardcore', 'Italy',
-  'Japan', 'Latina', 'Lesbian', 'Masturbation', 'Mexico', 'MILF',
-  'NSFW-Telegram', 'Onlyfans', 'Onlyfans Leaks', 'Petite', 'Philippines', 'Privacy', 'Public', 'Red Hair', 'Russian',
-  'Spain', 'Telegram-Porn', 'Threesome', 'UK', 'Ukraine', 'USA', 'Vietnam',
+  'Boosty', 'Bondage', 'Brazil', 'Brunette', 'China', 'Colombia', 'Cosplay', 'Creampie',
+  'Cuckold', 'Cumshot', 'DDLG', 'Ebony', 'Ecchi', 'Exhibitionism', 'Fantasy', 'Feet', 'Fetish', 'Findom',
+  'Fisting', 'France', 'Free-use', 'Futanari', 'Gamer Girl', 'Germany', 'Granny', 'Handjob',
+  'Hardcore', 'Italy', 'JVid', 'Japan', 'Korea', 'Latina', 'Lesbian', 'Lingerie', 'MMD', 'Manhwa',
+  'Malaysia', 'Masturbation', 'Mexico', 'MILF', 'Mixed Race', 'NSFW-Telegram', 'Onlyfans', 'Onlyfans Leaks',
+  'Persian', 'Petite', 'Philippines', 'Portugal', 'Privacy', 'Public', 'Red Hair', 'Redhead', 'Russian',
+  'SFM', 'Sensual', 'Sissy', 'Soles', 'Spain', 'Streamer', 'Submissive', 'Telegram-Porn', 'Threesome',
+  'Toes', 'Turkey', 'Twerk', 'UK', 'Ukraine', 'USA', 'VIP Channel', 'Vampire', 'Venezuela', 'Vietnam',
+  'Watersports', 'Webcam', 'Yaoi', 'Yuri', '69', 'Chastity', 'Onlyfans Russian', 'Latex', 'ASMR Erotic',
+  'TikTok', 'JOI', 'Nylon & Pantyhose',
 ];
 
 export default function AdminVaultPage() {

@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 
 const INFEED_IMAGE_EXAMPLE = '/assets/promo/infeed-image-ad-example.webp';
@@ -41,12 +40,12 @@ function InFeedImageAdTemplate() {
           {VERIFIED_BADGE}
         </h3>
         <p className="text-gray-400 text-sm line-clamp-3 leading-relaxed flex-1">
-          Native in-feed image placement. Same card format users see across EROGRAM feed and pages.
+          Native in-feed image placement. Same card format users see across EROGRAM<span className="text-red-500">X</span> feed and pages.
         </p>
         <div className="mt-auto space-y-3 pt-3">
           <div className="flex items-center gap-1 px-1">
             <span className="text-yellow-500 text-sm">⭐</span>
-            <span className="text-white font-bold text-sm">4.7</span>
+            <span className="text-white font-bold text-sm">4.9</span>
             <span className="text-gray-500 text-xs">(19)</span>
           </div>
           <div className="w-full py-3.5 px-4 rounded-xl font-black text-white text-sm uppercase tracking-wide bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg text-center">
@@ -59,19 +58,6 @@ function InFeedImageAdTemplate() {
 }
 
 export default function InFeedAdFormatComparison() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    const el = videoRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([e]) => { e.isIntersecting ? el.play().catch(() => {}) : el.pause(); },
-      { threshold: 0.3 },
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-
   return (
     <section className="mb-12">
       <div className="overflow-hidden bg-white" style={{ border: '3px solid #000', boxShadow: '6px 6px 0px #000', color: '#000' }}>
@@ -83,55 +69,9 @@ export default function InFeedAdFormatComparison() {
 
         <div className="px-4 sm:px-8 py-6 sm:py-8 bg-gray-50">
           <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center sm:items-start">
-
-            {/* Video ad */}
-            <div className="w-full max-w-[280px] sm:w-[280px] shrink-0">
-              <div className="relative rounded-3xl p-[2px] bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 shadow-[0_0_30px_rgba(245,158,11,0.25)]">
-                <div className="rounded-[22px] overflow-hidden bg-[#0a0a0a] flex flex-col" style={{ height: CARD_HEIGHT }}>
-                  <div className="relative flex-1 h-full overflow-hidden bg-gradient-to-br from-[#1a1020] via-[#1a0a1a] to-[#0d0d18]">
-                    <video
-                      ref={videoRef}
-                      src="https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/tgempire/booty-bazaar/wmremove-transformed.mp4"
-                      muted
-                      playsInline
-                      loop
-                      preload="metadata"
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/10 pointer-events-none" />
-                    <div className="absolute bottom-0 left-0 right-0 p-5 z-10 flex flex-col gap-2.5">
-                      <div className="flex justify-start">
-                        <div className="bg-black/80 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-lg">
-                          <span className="text-xs text-red-400">⚡</span>
-                          <span className="text-xs font-bold text-white">412 visiting now</span>
-                        </div>
-                      </div>
-                      <h3 className="text-xl font-black text-white leading-tight drop-shadow-lg flex items-center gap-1.5">
-                        <span className="truncate min-w-0">Your Brand Here</span>
-                        {VERIFIED_BADGE}
-                      </h3>
-                      <p className="text-gray-300 text-sm line-clamp-2 leading-relaxed drop-shadow">
-                        Autoplay video ad. Motion captures attention as users scroll through the feed.
-                      </p>
-                      <div className="flex items-center gap-1">
-                        <span className="text-yellow-500 text-sm">⭐</span>
-                        <span className="text-white font-bold text-sm drop-shadow">4.8</span>
-                        <span className="text-gray-400 text-xs drop-shadow">(24)</span>
-                      </div>
-                      <div className="w-full py-3.5 px-4 rounded-xl font-black text-white text-sm uppercase tracking-wide bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg text-center">
-                        Visit Site
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Image ad — static in-feed template */}
             <div className="w-full max-w-[280px] sm:w-[280px] shrink-0 pointer-events-none select-none">
               <InFeedImageAdTemplate />
             </div>
-
           </div>
         </div>
       </div>

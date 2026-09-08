@@ -12,7 +12,7 @@ import type { ToolStatsData } from '@/lib/actions/ainsfw';
 import { trackClick, trackImpression } from '@/lib/actions/campaigns';
 import { pickTagHashtagAlt } from '@/lib/ainsfw/imageAlt';
 import { resolveGallery } from '@/lib/ainsfw/toolContent';
-import { AINSFW_TOOL_PREVIEW_VIDEOS } from '@/lib/ainsfw/toolPreviewVideos';
+import { getAinsfwToolPreviewVideo } from '@/lib/ainsfw/toolPreviewVideos';
 import { requestHubVideoPlay, releaseHubVideoPlay } from '@/lib/ainsfw/hubVideoPlayManager';
 import VerifiedBadge, { AINSFW_VERIFIED_TOOLTIP } from '@/components/VerifiedBadge';
 import AinsfwVideoListingBadge from '@/components/ainsfw/AinsfwVideoListingBadge';
@@ -162,7 +162,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
   const placeholder = '/assets/image.jpg';
   const mainImg = tool.image && (tool.image.startsWith('https://') || tool.image.startsWith('/'))
     ? tool.image : placeholder;
-  const previewVideo = AINSFW_TOOL_PREVIEW_VIDEOS[tool.slug];
+  const previewVideo = getAinsfwToolPreviewVideo(tool.slug, initialStats?.previewVideoUrl);
   const curatedGallery = resolveGallery(tool.slug, {
     customGallery: initialStats?.customGallery,
     hiddenGalleryUrls: initialStats?.hiddenGalleryUrls,

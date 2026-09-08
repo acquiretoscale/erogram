@@ -1,4 +1,4 @@
-/* v=8 — push + installability (no network intercept) */
+/* v=7 — push + installability (no network intercept) */
 const NOTIFICATION_ICON = '/icons/notification-icon.png?v=6';
 const NOTIFICATION_BADGE = '/icons/notification-badge.png?v=6';
 
@@ -18,7 +18,7 @@ self.addEventListener('push', (event) => {
   try {
     const data = event.data.json();
     event.waitUntil(
-      self.registration.showNotification(data.title || 'EROGRAMX', {
+      self.registration.showNotification(data.title || 'Erogram', {
         body: data.body || '',
         icon: data.icon || NOTIFICATION_ICON,
         badge: data.badge || NOTIFICATION_BADGE,

@@ -97,12 +97,12 @@ export function middleware(request: NextRequest) {
   }
 
   function attachVisitorCountry(response: NextResponse) {
-    const ipCountry =
+    const country =
       request.headers.get('x-vercel-ip-country') ||
       request.headers.get('cf-ipcountry') ||
       request.headers.get('cloudfront-viewer-country');
-    if (ipCountry && /^[A-Za-z]{2}$/.test(ipCountry)) {
-      response.cookies.set('__ero_cc', ipCountry.toUpperCase(), {
+    if (country && /^[A-Za-z]{2}$/.test(country)) {
+      response.cookies.set('__ero_cc', country.toUpperCase(), {
         maxAge: 3600,
         path: '/',
         sameSite: 'lax',

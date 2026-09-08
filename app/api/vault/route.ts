@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
 import { Group } from '@/lib/models';
 import { authenticateUser } from '@/lib/auth';
+import { vaultNewCategoryRegex } from '@/app/groups/constants';
 
 export async function GET(req: NextRequest) {
   const user = await authenticateUser(req);
@@ -19,29 +20,78 @@ export async function GET(req: NextRequest) {
   const sortBy = searchParams.get('sort') || 'newest';
   const featuredOnly = searchParams.get('featured') === '1';
 
-  const baseQuery: any = { premiumOnly: true, status: 'approved' };
+  const newNicheRegex = category && category !== 'All' ? vaultNewCategoryRegex[category] : undefined;
+  const isOnlyfansRussian = category === 'Onlyfans Russian';
+  const skipTeaserFilter = !!(newNicheRegex || isOnlyfansRussian);
+
+  // Vault = every approved group (premium vault + free public groups), read-only.
+  // We do NOT flip premiumOnly on any group; the free site still queries
+  // premiumOnly: { $ne: true } and is unaffected. This only enriches what the
+  // premium vault surfaces. Hentai stays excluded like the rest of the vault.
+  const baseQuery: any = { status: 'approved', isAdvertisement: { $ne: true } };
   if (featuredOnly) baseQuery.showOnVaultTeaser = true;
 
   if (isPreview) {
-    baseQuery.showOnVaultTeaser = true;
+    // Non-premium users still only ever see the curated teaser set (locked),
+    // never the full free-group catalogue.
+    baseQuery.premiumOnly = true;
+    if (!skipTeaserFilter) baseQuery.showOnVaultTeaser = true;
     baseQuery.image = { $nin: [null, '', '/assets/image.jpg', '/assets/placeholder-no-image.png'] };
     baseQuery.memberCount = { $gt: 0 };
   }
 
   const query: any = { ...baseQuery };
   const conditions: any[] = [];
+  let categoryCondition: any = null;
 
   if (search) {
+    const q = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     conditions.push({ $or: [
-      { name: { $regex: search, $options: 'i' } },
-      { description: { $regex: search, $options: 'i' } },
+      { name: { $regex: q, $options: 'i' } },
+      { description: { $regex: q, $options: 'i' } },
+      { category: { $regex: q, $options: 'i' } },
+      { categories: { $regex: q, $options: 'i' } },
+      { vaultCategories: { $regex: q, $options: 'i' } },
     ]});
   }
-  if (category && category !== 'All') {
-    conditions.push({ $or: [{ categories: category }, { category: category }] });
-  } else {
-    conditions.push({ category: { $ne: 'Hentai' }, categories: { $nin: ['Hentai'] } });
+  if (isOnlyfansRussian) {
+    categoryCondition = {
+      $and: [
+        { $or: [
+          { categories: 'Onlyfans' },
+          { category: 'Onlyfans' },
+          { name: { $regex: 'onlyfans', $options: 'i' } },
+          { description: { $regex: 'onlyfans', $options: 'i' } },
+        ] },
+        { $or: [
+          { categories: 'Russian' },
+          { category: 'Russian' },
+          { name: { $regex: 'russian|русск|росси', $options: 'i' } },
+          { description: { $regex: 'russian|русск|росси', $options: 'i' } },
+        ] },
+      ],
+    };
+  } else if (category === 'Russian') {
+    // Vault Russian pill: name must be written in Russian (Cyrillic). Latin names tagged Russian stay out.
+    categoryCondition = {
+      $and: [
+        { $or: [{ categories: 'Russian' }, { category: 'Russian' }] },
+        { name: { $regex: `[${String.fromCharCode(0x0400)}-${String.fromCharCode(0x04FF)}]` } },
+      ],
+    };
+  } else if (newNicheRegex) {
+    categoryCondition = { $or: [
+      { categories: category },
+      { category: category },
+      { name: { $regex: newNicheRegex, $options: 'i' } },
+      { description: { $regex: newNicheRegex, $options: 'i' } },
+    ]};
+  } else if (category && category !== 'All') {
+    categoryCondition = { $or: [{ categories: category }, { category: category }] };
   }
+
+  if (categoryCondition) conditions.push(categoryCondition);
+  else conditions.push({ category: { $ne: 'Hentai' }, categories: { $nin: ['Hentai'] } });
   if (country && country !== 'All') {
     conditions.push({ country });
   }
@@ -54,59 +104,97 @@ export async function GET(req: NextRequest) {
 
   const isFirstLoad = skip === 0;
   const selectFields = { name: 1, slug: 1, image: 1, category: 1, categories: 1, country: 1, description: 1, memberCount: 1, telegramLink: 1, createdAt: 1, showOnVaultTeaser: 1 };
+  const previewSelect = 'name slug image category categories country description memberCount telegramLink createdAt showOnVaultTeaser';
+  const premiumSelect = `${previewSelect} likes dislikes`;
+  const sortOption: Record<string, 1 | -1> =
+    sortBy === 'members' ? { memberCount: -1 }
+    : sortBy === 'name' ? { name: 1 }
+    : { createdAt: -1 };
 
-  let groupsPromise: Promise<any>;
+  const excludeRaw = searchParams.get('exclude') || '';
+  const excludeIds = excludeRaw ? excludeRaw.split(',').filter(Boolean) : [];
+  const { Types } = await import('mongoose');
+  const excludeObjIds = excludeIds.map(id => new Types.ObjectId(id));
 
-  if (isPreview) {
-    groupsPromise = Group.find(query)
-      .sort({ memberCount: -1 })
-      .skip(skip)
-      .limit(effectiveLimit)
-      .select('name slug image category categories country description memberCount telegramLink createdAt showOnVaultTeaser')
-      .lean();
-  } else if (sortBy === 'random') {
-    const excludeRaw = searchParams.get('exclude') || '';
-    const excludeIds = excludeRaw ? excludeRaw.split(',').filter(Boolean) : [];
+  const fillWithRest = !isPreview && !search && !featuredOnly
+    && !!categoryCondition
+    && (!country || country === 'All');
+  const restQuery: any = fillWithRest ? {
+    ...baseQuery,
+    $and: [
+      { category: { $ne: 'Hentai' }, categories: { $nin: ['Hentai'] } },
+      { $nor: [categoryCondition] },
+    ],
+  } : null;
 
-    const matchStage: any = { ...query };
-    if (excludeIds.length > 0) {
-      const { Types } = await import('mongoose');
-      matchStage._id = { $nin: excludeIds.map(id => new Types.ObjectId(id)) };
+  async function loadSorted(q: any, skipN: number, limitN: number, extraExclude: any[] = []) {
+    if (isPreview) {
+      return Group.find(q).sort({ memberCount: -1 }).skip(skipN).limit(limitN).select(previewSelect).lean();
     }
+    if (sortBy === 'random') {
+      const matchStage: any = { ...q };
+      const nin = [...excludeObjIds, ...extraExclude];
+      if (nin.length) matchStage._id = { $nin: nin };
+      return Group.aggregate([
+        { $match: matchStage },
+        { $sample: { size: limitN } },
+        { $project: selectFields },
+      ]);
+    }
+    return Group.find(q).sort(sortOption).skip(skipN).limit(limitN).select(premiumSelect).lean();
+  }
 
-    groupsPromise = Group.aggregate([
-      { $match: matchStage },
-      { $sample: { size: effectiveLimit } },
-      { $project: selectFields },
+  let groups: any[] = [];
+  let total = 0;
+
+  if (fillWithRest && restQuery) {
+    const [catTotal, restTotal] = await Promise.all([
+      Group.countDocuments(query),
+      Group.countDocuments(restQuery),
     ]);
+    total = catTotal + restTotal;
+    if (sortBy === 'random') {
+      const catPart = await loadSorted(query, 0, effectiveLimit);
+      let restPart: any[] = [];
+      if (catPart.length < effectiveLimit) {
+        restPart = await loadSorted(restQuery, 0, effectiveLimit - catPart.length, catPart.map((g: any) => g._id));
+      }
+      groups = [...catPart, ...restPart];
+    } else if (skip < catTotal) {
+      const catPart = await loadSorted(query, skip, effectiveLimit);
+      let restPart: any[] = [];
+      if (catPart.length < effectiveLimit) {
+        restPart = await loadSorted(restQuery, 0, effectiveLimit - catPart.length);
+      }
+      groups = [...catPart, ...restPart];
+    } else {
+      groups = await loadSorted(restQuery, skip - catTotal, effectiveLimit);
+    }
   } else {
-    const sortOption: Record<string, 1 | -1> =
-      sortBy === 'members' ? { memberCount: -1 }
-      : sortBy === 'name' ? { name: 1 }
-      : { createdAt: -1 };
-
-    groupsPromise = Group.find(query)
-      .sort(sortOption)
-      .skip(skip)
-      .limit(effectiveLimit)
-      .select('name slug image category categories country description memberCount telegramLink createdAt likes dislikes showOnVaultTeaser')
-      .lean();
+    groups = await loadSorted(query, skip, effectiveLimit);
+    total = await Group.countDocuments(query);
   }
 
   const promises: Promise<any>[] = [
-    groupsPromise,
-    Group.countDocuments(query),
+    Promise.resolve(groups),
+    Promise.resolve(total),
   ];
 
   if (isFirstLoad) {
     promises.push(
       Group.aggregate([
         { $match: baseQuery },
-        { $project: { cats: { $ifNull: ['$categories', ['$category']] } } },
+        { $project: {
+          cats: {
+            $setUnion: [
+              { $ifNull: ['$categories', []] },
+              { $cond: [{ $and: [{ $ne: ['$category', null] }, { $ne: ['$category', ''] }] }, ['$category'], []] },
+            ],
+          },
+        } },
         { $unwind: '$cats' },
         { $match: { cats: { $nin: [null, ''] } } },
         { $group: { _id: '$cats', count: { $sum: 1 } } },
-        { $match: { count: { $gte: 10 } } },
         { $sort: { count: -1 } },
       ]),
       Group.aggregate([
@@ -124,7 +212,6 @@ export async function GET(req: NextRequest) {
   }
 
   const results = await Promise.all(promises);
-  const [groups, total] = results;
   const categoryCounts = isFirstLoad ? results[2] : null;
   const countryCounts = isFirstLoad ? results[3] : null;
   const vaultTotal = isFirstLoad ? results[4] : null;
@@ -151,12 +238,22 @@ export async function GET(req: NextRequest) {
       };
     }),
     total,
-    hasMore: isPreview ? false : skip + effectiveLimit < total,
+    hasMore: isPreview ? false : skip + groups.length < total,
     preview: isPreview || undefined,
   };
 
   if (categoryCounts) {
-    response.categoryCounts = categoryCounts.map((c: any) => ({ category: c._id, count: c.count }));
+    const ofRu = await Group.countDocuments({
+      ...baseQuery,
+      $and: [
+        { $or: [{ category: 'Onlyfans' }, { categories: 'Onlyfans' }] },
+        { $or: [{ category: 'Russian' }, { categories: 'Russian' }] },
+      ],
+    });
+    response.categoryCounts = [
+      { category: 'Onlyfans Russian', count: ofRu },
+      ...categoryCounts.map((c: any) => ({ category: c._id, count: c.count })),
+    ];
   }
   if (countryCounts) {
     response.countryCounts = countryCounts.map((c: any) => ({ country: c._id, count: c.count }));
