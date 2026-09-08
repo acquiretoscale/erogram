@@ -209,6 +209,10 @@ export default function AINSFWCheckoutClient() {
           <Link href="/add/ainsfw" className="hover:text-white/70 transition-colors">Add</Link>
         </div>
 
+        <h1 className="ainsfw-hero-title text-[13px] sm:text-[20px] md:text-[24px] leading-[0.92] uppercase text-center mb-6 sm:mb-8">
+          CHOSE THE PACKAGE THAT WORKS BEST FOR YOUR
+        </h1>
+
         {loading ? (
           <p className="text-center text-white/50 py-20">Loading...</p>
         ) : !draft ? (

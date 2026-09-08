@@ -71,7 +71,7 @@ function buildEmbedCode(src: string, width: number, height: number) {
 }
 
 const BENEFITS: ReactNode[] = [
-  <>Permanent BASIC listing in the <BrandX /> directory (regular price: $49).</>,
+  <>Permanent BASIC listing in the <BrandX /> directory (regular price: $97).</>,
   "Dofollow backlink to strengthen your website's authority.",
   'Additional mentions across guides, rankings, and category pages whenever relevant.',
   'Exposure to a growing audience actively searching for premium adult products and services.',

@@ -21,7 +21,7 @@ const NP_BASE = 'https://api.nowpayments.io/v1';
 const BOT_TOKEN = process.env.TELEGRAM_PAYMENT_BOT_TOKEN || '';
 
 const PLAN_DESCRIPTIONS: Record<AINSFWPlan, string> = {
-  basic: 'Basic AI NSFW Listing — $49',
+  basic: 'Basic AI NSFW Listing — $97',
   boost: 'Boosted AI NSFW Listing — $197',
   startup: 'Startup AI NSFW Listing — Own Your Category — $297',
   free: 'Free / Affiliate AI NSFW Listing',

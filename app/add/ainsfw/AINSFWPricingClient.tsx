@@ -339,12 +339,16 @@ function CompactHeroStats({
   compact = false,
   flush = false,
   flushBlue = false,
+  heroMascot = false,
+  hideTopVisual = false,
 }: {
   views: number | null;
   last30dAdClicks: number | null;
   compact?: boolean;
   flush?: boolean;
   flushBlue?: boolean;
+  heroMascot?: boolean;
+  hideTopVisual?: boolean;
 }) {
   return (
     <div className={flush ? 'w-full' : 'flex justify-center w-full'}>
@@ -365,19 +369,37 @@ function CompactHeroStats({
         }
       >
         <div style={{ borderBottom: BORDER }}>
-          <div className="w-full overflow-hidden bg-black">
-            <Image
-              src="/assets/erogram-discovery-hub-banner.webp"
-              alt=""
-              width={1024}
-              height={225}
-              className="w-full h-auto block"
-            />
-          </div>
+          {!hideTopVisual && (heroMascot ? (
+            <div className="flex justify-center py-4 sm:py-5">
+              <Image
+                src="/assets/erogram-gold-mascot.png"
+                alt=""
+                width={530}
+                height={502}
+                className="w-[140px] sm:w-[180px] h-auto"
+              />
+            </div>
+          ) : (
+            <div className="w-full overflow-hidden bg-black">
+              <Image
+                src="/assets/erogram-discovery-hub-banner.webp"
+                alt=""
+                width={1024}
+                height={225}
+                className="w-full h-auto block"
+              />
+            </div>
+          ))}
           <div
             className={compact ? 'px-2 py-2 sm:px-3 sm:py-2.5' : 'px-3 py-2.5 sm:px-6 sm:py-4'}
             style={{ background: flushBlue ? SUBMIT_NAVY_HEADER : flush ? '#ffffff' : 'linear-gradient(160deg, #04140c 0%, #0a2e1a 60%, #064e3b 100%)' }}
           >
+            {heroMascot ? (
+              <p className="text-center text-sm sm:text-base font-black leading-snug px-1 text-white">
+                Total traffic delivered to our partners and sponsors the last 30 days.
+              </p>
+            ) : (
+              <>
             <p
               className={
                 compact
@@ -396,22 +418,24 @@ function CompactHeroStats({
             >
               Total traffic delivered to our partners and sponsors.
             </p>
+              </>
+            )}
           </div>
         </div>
         <div
           className={
             compact
-              ? `px-2 py-3 sm:py-4 text-center ${flushBlue ? '' : 'bg-gradient-to-br from-[#ecfdf5] via-white to-[#f0fdf4]'}`
-              : `px-3 py-4 sm:py-8 text-center ${flushBlue ? '' : 'bg-gradient-to-br from-[#ecfdf5] via-white to-[#f0fdf4]'}`
+              ? `px-2 py-3 sm:py-4 text-center ${heroMascot ? 'bg-white' : flushBlue ? '' : 'bg-gradient-to-br from-[#ecfdf5] via-white to-[#f0fdf4]'}`
+              : `px-3 py-4 sm:py-8 text-center ${heroMascot ? 'bg-white' : flushBlue ? '' : 'bg-gradient-to-br from-[#ecfdf5] via-white to-[#f0fdf4]'}`
           }
-          style={flushBlue ? { background: SUBMIT_NAVY } : undefined}
+          style={flushBlue && !heroMascot ? { background: SUBMIT_NAVY } : undefined}
         >
           <div className="flex flex-wrap items-baseline justify-center gap-x-1.5 gap-y-0.5">
             <p
               className={
                 compact
-                  ? `text-2xl sm:text-3xl md:text-4xl font-black tabular-nums ${flushBlue ? 'text-white' : 'text-black'} leading-none`
-                  : `text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tabular-nums ${flushBlue ? 'text-white' : 'text-black'} leading-none`
+                  ? `text-2xl sm:text-3xl md:text-4xl font-black tabular-nums ${heroMascot || !flushBlue ? 'text-black' : 'text-white'} leading-none`
+                  : `text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tabular-nums ${heroMascot || !flushBlue ? 'text-black' : 'text-white'} leading-none`
               }
             >
               {last30dAdClicks != null ? last30dAdClicks.toLocaleString() : '—'}
@@ -419,8 +443,8 @@ function CompactHeroStats({
             <span
               className={
                 compact
-                  ? `text-[8px] sm:text-[9px] font-bold uppercase tracking-wide ${flushBlue ? 'text-white/40' : 'text-black/40'} leading-tight`
-                  : `text-[10px] sm:text-xs font-bold uppercase tracking-wide ${flushBlue ? 'text-white/40' : 'text-black/40'} leading-tight`
+                  ? `text-[8px] sm:text-[9px] font-bold uppercase tracking-wide ${heroMascot || !flushBlue ? 'text-black/40' : 'text-white/40'} leading-tight`
+                  : `text-[10px] sm:text-xs font-bold uppercase tracking-wide ${heroMascot || !flushBlue ? 'text-black/40' : 'text-white/40'} leading-tight`
               }
             >
               clicks last 30 days
@@ -966,17 +990,13 @@ export default function AINSFWPricingClient({
 
   return (
     <div
-      className={`ainsfw-page min-h-screen ${isAdvertise ? 'text-white' : 'bg-white text-black'}`}
-      style={
-        isAdvertise
-          ? {
-              backgroundColor: '#0B1220',
-              backgroundImage:
-                'radial-gradient(900px circle at 12% -10%, rgba(0,175,240,0.16), transparent 55%), radial-gradient(800px circle at 100% 0%, rgba(0,175,240,0.10), transparent 50%), linear-gradient(180deg, #0B1220 0%, #0a1018 40%, #070c14 100%)',
-              backgroundAttachment: 'fixed',
-            }
-          : undefined
-      }
+      className="ainsfw-page min-h-screen text-white"
+      style={{
+        backgroundColor: '#0B1220',
+        backgroundImage:
+          'radial-gradient(900px circle at 12% -10%, rgba(0,175,240,0.16), transparent 55%), radial-gradient(800px circle at 100% 0%, rgba(0,175,240,0.10), transparent 50%), linear-gradient(180deg, #0B1220 0%, #0a1018 40%, #070c14 100%)',
+        backgroundAttachment: 'fixed',
+      }}
     >
       <Navbar username={username} setUsername={setUsername} />
 
@@ -990,11 +1010,11 @@ export default function AINSFWPricingClient({
 
         {/* Breadcrumb */}
         {!isAdvertise && (
-        <div className="flex items-center gap-2 text-sm font-bold text-black/35 mb-4 uppercase tracking-widest">
-          <Link href="/" className="hover:text-black/70 transition-colors">Home</Link>
-          <span className="text-black/20">/</span>
-          <Link href="/add" className="hover:text-black/70 transition-colors">Add</Link>
-          <span className="text-black/20">/</span>
+        <div className="flex items-center gap-2 text-sm font-bold text-white/40 mb-4 uppercase tracking-widest">
+          <Link href="/" className="hover:text-white/80 transition-colors">Home</Link>
+          <span className="text-white/20">/</span>
+          <Link href="/add" className="hover:text-white/80 transition-colors">Add</Link>
+          <span className="text-white/20">/</span>
           <span style={{ color: SUBMIT_ACCENT }}>AI NSFW Tool</span>
         </div>
         )}
@@ -1008,17 +1028,42 @@ export default function AINSFWPricingClient({
                 last30dAdClicks={visitorStats.last30dAdClicks}
                 flush
                 flushBlue
+                heroMascot
+                hideTopVisual
               />
               <PartnershipStats
                 aiNsfwCount={aiNsfwCount}
                 groupsAndBotsCount={groupsAndBotsCount}
                 totalUsers={totalUsers}
-                pageViews={visitorStats.views}
                 variant="onlyfans"
                 embedded
                 redBrandX
+                combineListings
+                listingsCount={4800}
+                hideUsers
+                whiteStats
+                compact
+                liveAudience={
+                  visitorStats.views != null
+                    ? { pageViews: visitorStats.views, activeVisitors: visitorStats.liveNow ?? 0 }
+                    : null
+                }
+                geo={{
+                  text: 'TOP GEOS:',
+                  label: (
+                    <span
+                      className="text-[17px] leading-none"
+                      style={{
+                        color: 'black',
+                        fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',
+                      }}
+                    >
+                      🇺🇸 🇩🇪 🇧🇷 🇳🇱 🇪🇸 🇬🇧 🇨🇦
+                    </span>
+                  ),
+                }}
               />
-              <TrustedByLeaders variant="onlyfans" embedded />
+              <TrustedByLeaders variant="onlyfans" embedded whiteBg />
             </div>
           ) : (
             <CompactHeroStats
@@ -1094,20 +1139,21 @@ export default function AINSFWPricingClient({
                 </span>
               </motion.h1>
             </>
-          ) : (
-            <>
-          <div className="flex justify-center mt-4 sm:mt-6">
-            <GetListedPricingButton onClick={scrollToPricing}>
-              GET LISTED ON EROGRAMX
-            </GetListedPricingButton>
-          </div>
-            </>
-          )}
+          ) : null}
 
         </div>
 
         {!isAdvertise && (
         <>
+        <div className="flex justify-center mb-4">
+          <Image
+            src="/assets/erogram-gold-mascot.png"
+            alt=""
+            width={530}
+            height={502}
+            className="w-[140px] sm:w-[180px] h-auto"
+          />
+        </div>
         {/* ── SUBMISSION FORM ── */}
         {!isAdvertise && (
           <div
@@ -1414,7 +1460,16 @@ export default function AINSFWPricingClient({
           </div>
         )}
 
-        <AinsfwSubmitFaq tone="blue" lightPage />
+        <AinsfwSubmitFaq tone="blue" />
+        <div className="mt-8 mb-2 flex justify-center px-4">
+          <Image
+            src="/assets/erogram-discovery-hub-banner.webp"
+            alt=""
+            width={1024}
+            height={225}
+            className="w-full max-w-md sm:max-w-lg h-auto opacity-60"
+          />
+        </div>
         </>
         )}
 

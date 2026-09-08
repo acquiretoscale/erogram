@@ -6,7 +6,7 @@ import { getApprovedSubmissions } from '@/lib/actions/ainsfw';
 import AINSFWPricingClient from './AINSFWPricingClient';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-const title = 'Add AI NSFW Tool | Erogram';
+const title = 'GET LISTED ON EROGRAMX';
 const description = 'List your AI NSFW tool on Erogram. Get featured placement, instant approval, and reach 180K+ monthly visitors.';
 
 export const metadata: Metadata = {

@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
+import HeaderBanner from '@/components/HeaderBanner';
 import Footer from '@/components/Footer';
 import ToolCard from './ToolCard';
 import AdvertCard from '../groups/AdvertCard';
@@ -16,7 +17,6 @@ import type { ToolStatsData } from '@/lib/actions/ainsfw';
 import type { AuthorProfile } from '@/lib/actions/authors';
 import { AINSFW_PAGE_SIZE } from './constants';
 import { getPlacementFeedCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
-import AinsfwHeaderActions from '@/components/AinsfwHeaderActions';
 import TopAINsfwBlock, { loadAllScores } from './TopAINsfwBlock';
 import RecentAdditionsBlock from './RecentAdditionsBlock';
 import AinsfwToolsFilterBar from './AinsfwToolsFilterBar';
@@ -177,35 +177,34 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
     <div className="ainsfw-page ainsfw-bg min-h-screen text-white">
       <Navbar />
 
-      <div className="relative z-10 px-4 sm:px-6 py-3 sm:py-3.5 border-b border-[#22c55e]/15 bg-[#04140c]/80 backdrop-blur-xl mt-24 sm:mt-28">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
-          <nav className="flex items-center text-xs text-gray-500 gap-1.5 min-w-0">
+      <div className="relative z-10 px-3 sm:px-6 py-1.5 border-b border-[#22c55e]/15 bg-[#04140c]/80 backdrop-blur-xl mt-[58px]">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+          <nav className="flex items-center text-[11px] sm:text-xs text-gray-500 gap-1 min-w-0">
             <Link href={lp('/')} className="hover:text-white transition-colors shrink-0">{t('ainsfw.home', 'Home')}</Link>
             <span className="shrink-0">/</span>
             <span className="text-white font-semibold truncate">{t('ainsfw.breadcrumbHub', 'AI NSFW Tools')}</span>
           </nav>
-          <AinsfwHeaderActions part="submit" />
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-5 sm:px-8 lg:px-12 pt-8 sm:pt-10 pb-8">
+      <div className="max-w-6xl mx-auto px-3 sm:px-8 lg:px-12 pt-3 sm:pt-4 pb-8">
         {/* Hero — same content, futuristic condensed italic scanline design treatment */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-8 sm:mb-10"
+          transition={{ duration: 0.35 }}
+          className="text-center mb-3"
         >
-          <h1 className="ainsfw-hero-title text-[44px] sm:text-[64px] md:text-[76px] mb-4">
+          <h1 className="ainsfw-hero-title text-[26px] sm:text-[40px] md:text-[48px] mb-1.5 leading-[0.95]">
             {t('ainsfw.heroTitle', 'Best AI NSFW Tools')}
           </h1>
-          <p className="text-white/50 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
+          <p className="text-white/50 text-xs sm:text-sm max-w-xl mx-auto leading-snug">
             {t('ainsfw.heroSubtitle')}
           </p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-1">
             <Link
               href="/best-ai-nsfw-tools"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#22c55e] text-black text-xs font-black uppercase tracking-wide hover:bg-[#4ade80] transition-colors"
+              className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-[#22c55e] text-black text-[9px] sm:text-[10px] font-black uppercase tracking-wide hover:bg-[#4ade80] transition-colors leading-none"
             >
               {t('ainsfw.top10Rankings', 'TOP 10 Rankings')}
             </Link>
@@ -213,13 +212,17 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
               <Link
                 key={category}
                 href={`/ainsfw/${categoryToSlug(category)}`}
-                className="inline-flex items-center px-3 py-1.5 rounded-full bg-[#0a1f12] text-white/70 border border-[#22c55e]/20 hover:border-[#22c55e]/50 hover:text-white text-xs font-bold transition-all"
+                className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-[#0a1f12] text-white/70 border border-[#22c55e]/20 hover:border-[#22c55e]/50 hover:text-white text-[9px] sm:text-[10px] font-bold transition-all leading-none"
               >
                 {category}
               </Link>
             ))}
           </div>
         </motion.div>
+
+        <div className="w-full mb-3">
+          <HeaderBanner campaigns={topBannerCampaigns} />
+        </div>
 
         <div>
           {/* Main Content — full width now that the sidebar is gone */}

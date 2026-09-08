@@ -8,7 +8,7 @@ import { buildBoostPaymentUpdate, cryptoUsdFromStars, BOOST_STARS, SCALE_USD, ty
 import { fulfillAINSFWListingPayment } from '@/lib/actions/ainsfwPayment';
 import type { AINSFWPlan } from '@/lib/ainsfw/planPrices';
 
-const AINSFW_USD: Record<string, number> = { basic: 49, boost: 197, startup: 297, platinum: 297, free: 0 };
+const AINSFW_USD: Record<string, number> = { basic: 97, boost: 197, startup: 297, platinum: 297, free: 0 };
 const FEATURED_CREATOR_USD = 197;
 
 const VALID_PLANS = new Set(['monthly', 'quarterly', 'yearly', 'lifetime']);

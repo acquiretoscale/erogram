@@ -33,6 +33,7 @@ type Props = {
   subtitle?: ReactNode;
   embedded?: boolean;
   whiteBg?: boolean;
+  compact?: boolean;
 };
 
 export default function TrustedByLeaders({
@@ -43,6 +44,7 @@ export default function TrustedByLeaders({
   subtitle,
   embedded = false,
   whiteBg = false,
+  compact = false,
 }: Props) {
   const isGreen = variant === 'green';
   const isOnlyfans = variant === 'onlyfans';
@@ -53,7 +55,9 @@ export default function TrustedByLeaders({
       <div
         className={
           embedded
-            ? `px-4 py-4 sm:px-5 sm:py-5 border-t ${whiteBg ? 'border-black/10' : isOnlyfans ? 'border-[#00AFF0]/15' : 'border-white/[0.06]'}`
+            ? `border-t ${whiteBg ? 'border-black/10' : isOnlyfans ? 'border-[#00AFF0]/15' : 'border-white/[0.06]'} ${
+                compact ? 'px-3 py-2 sm:px-4 sm:py-2.5' : 'px-4 py-4 sm:px-5 sm:py-5'
+              }`
             : isGreen
             ? 'rounded-lg border-[3px] border-black px-6 py-5 sm:px-10 sm:py-7'
             : isOnlyfans
@@ -94,7 +98,9 @@ export default function TrustedByLeaders({
             const useWhiteTile = (isGreen || isOnlyfans) && manySponsors;
             const tileClass = useWhiteTile
               ? whiteBg
-                ? 'rounded-md bg-neutral-50 border border-black/[0.08] h-10 sm:h-12 w-full flex items-center justify-center p-1.5 sm:p-2'
+                ? compact
+                  ? 'rounded-md bg-neutral-50 border border-black/[0.08] h-8 sm:h-9 w-full flex items-center justify-center p-1 sm:p-1.5'
+                  : 'rounded-md bg-neutral-50 border border-black/[0.08] h-10 sm:h-12 w-full flex items-center justify-center p-1.5 sm:p-2'
                 : 'rounded-md bg-white h-10 sm:h-12 w-full flex items-center justify-center p-1.5 sm:p-2 shadow-[0_1px_6px_-1px_rgba(0,0,0,0.22)]'
               : '';
 

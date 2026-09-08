@@ -44,13 +44,17 @@ function buildStatDefs(
   pageViews?: number | null,
   geo?: { text: string; label: ReactNode },
   combineListings?: boolean,
+  whiteBg?: boolean,
+  listingsCount?: number,
+  hideUsers?: boolean,
+  liveAudience?: { pageViews: number; activeVisitors: number } | null,
 ): StatDef[] {
   const listingStats: StatDef[] = combineListings
     ? [{
         id: 'listings',
         label: 'Total AI NSFW tools, TG groups & bots and adult websites listing.',
         type: 'count',
-        target: aiNsfwCount + groupsAndBotsCount,
+        target: listingsCount ?? (aiNsfwCount + groupsAndBotsCount),
         format: (n) => `${Math.round(n).toLocaleString()}+`,
         live: true,
       }]
@@ -58,11 +62,35 @@ function buildStatDefs(
         { id: 'ainsfw', label: 'AI NSFW Tools Listed', type: 'count', target: aiNsfwCount, format: (n) => `${Math.round(n).toLocaleString()}+`, live: true },
         { id: 'groups', label: 'Adult Groups & Bots', type: 'count', target: groupsAndBotsCount, format: (n) => `${Math.round(n).toLocaleString()}+`, live: true },
       ];
+  const liveStats: StatDef[] = liveAudience
+    ? [
+        {
+          id: 'totalPageViews',
+          label: 'Total page views',
+          type: 'count',
+          target: liveAudience.pageViews,
+          format: (n) => Math.round(n).toLocaleString(),
+          live: true,
+        },
+        ...(liveAudience.activeVisitors > 0
+          ? [{
+              id: 'browsing',
+              label: <>People browsing EROGRAM<span className="font-black text-red-500">X</span> right now</>,
+              type: 'count' as const,
+              target: liveAudience.activeVisitors,
+              format: (n: number) => Math.round(n).toLocaleString(),
+              live: true,
+            }]
+          : []),
+      ]
+    : [];
   const stats: StatDef[] = [
-    { id: 'growth', label: 'Month-over-Month Google Growth', type: 'count', target: 40, format: (n) => `${Math.round(n)}%+` },
-    { id: 'visits', label: 'Monthly Visits', type: 'count', target: 280, format: (n) => `${Math.round(n)}K+` },
+    ...liveStats,
+    { id: 'visits', label: 'Monthly Visits', type: 'text', text: '250 to 300K' },
     { id: 'tier1', label: geo?.label ?? TOP_GEO_FLAGS, type: 'text', text: geo?.text ?? 'TOP GEOS:' },
-    { id: 'users', label: <><span className="font-black text-white">EROGRAM</span><span className="font-black text-red-500">X</span> users</>, type: 'count', target: totalUsers, format: (n) => Math.round(n).toLocaleString('en-US'), live: true },
+    ...(hideUsers
+      ? []
+      : [{ id: 'users', label: <><span className={`font-black ${whiteBg ? 'text-black' : 'text-white'}`}>EROGRAM</span><span className="font-black text-red-500">X</span> users</>, type: 'count' as const, target: totalUsers, format: (n: number) => Math.round(n).toLocaleString('en-US'), live: true }]),
     { id: 'telegram', label: 'Subscribers across our Telegram network', type: 'count', target: 30, format: (n) => `${Math.round(n)}K+` },
     ...listingStats,
   ];
@@ -178,6 +206,11 @@ export default function PartnershipStats({
   whiteBg = false,
   geo,
   combineListings = false,
+  listingsCount,
+  hideUsers = false,
+  liveAudience = null,
+  whiteStats = false,
+  compact = false,
 }: {
   aiNsfwCount: number;
   groupsAndBotsCount: number;
@@ -189,9 +222,14 @@ export default function PartnershipStats({
   whiteBg?: boolean;
   geo?: { text: string; label: ReactNode };
   combineListings?: boolean;
+  listingsCount?: number;
+  hideUsers?: boolean;
+  liveAudience?: { pageViews: number; activeVisitors: number } | null;
+  whiteStats?: boolean;
+  compact?: boolean;
 }) {
   const theme = THEMES[variant];
-  const stats = buildStatDefs(aiNsfwCount, groupsAndBotsCount, totalUsers, pageViews, geo, combineListings);
+  const stats = buildStatDefs(aiNsfwCount, groupsAndBotsCount, totalUsers, pageViews, geo, combineListings, whiteBg || whiteStats, listingsCount, hideUsers, liveAudience);
   const [active, setActive] = useState(false);
 
   useEffect(() => {
@@ -199,15 +237,16 @@ export default function PartnershipStats({
     return () => window.clearTimeout(t);
   }, []);
 
-  const surfaceBg = whiteBg ? '#ffffff' : theme.surface;
+  const lightStats = whiteBg || whiteStats;
+  const surfaceBg = whiteBg ? '#ffffff' : whiteStats ? '#ffffff' : theme.surface;
   const headerBg = whiteBg ? '#ffffff' : theme.headerBg;
-  const statBg = whiteBg ? '#ffffff' : theme.statBg;
-  const liveStatBg = whiteBg ? '#ffffff' : theme.liveStatBg;
-  const staticColor = whiteBg ? '#111827' : '#fff';
-  const valueTextClass = whiteBg ? 'text-black' : 'text-white';
-  const labelClass = whiteBg ? 'text-black/60' : 'text-white/65';
+  const statBg = lightStats ? '#ffffff' : theme.statBg;
+  const liveStatBg = lightStats ? '#ffffff' : theme.liveStatBg;
+  const staticColor = lightStats ? '#111827' : '#fff';
+  const valueTextClass = lightStats ? 'text-black' : 'text-white';
+  const labelClass = lightStats ? 'text-black/60' : 'text-white/65';
   const headerTextClass = whiteBg ? 'text-black' : 'text-white';
-  const cellBorderClass = whiteBg
+  const cellBorderClass = lightStats
     ? 'border-b border-black/[0.06] sm:[&:nth-child(odd)]:border-r sm:[&:nth-child(odd)]:border-black/[0.06]'
     : 'border-b border-white/[0.06] sm:[&:nth-child(odd)]:border-r sm:[&:nth-child(odd)]:border-white/[0.06]';
 
@@ -221,7 +260,9 @@ export default function PartnershipStats({
       style={{ backgroundColor: surfaceBg }}
     >
       <div
-        className={`flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-3 sm:px-5 border-b ${theme.borderClass}`}
+        className={`flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b ${theme.borderClass} ${
+          compact ? 'px-3 py-1.5 sm:px-4' : 'px-4 py-3 sm:px-5'
+        }`}
         style={{ background: headerBg }}
       >
         <span className="text-[9px] font-bold tracking-[0.28em] uppercase" style={{ color: theme.accent }}>
@@ -230,7 +271,7 @@ export default function PartnershipStats({
         <h2 className={`font-black text-[1rem] sm:text-[1.1rem] leading-none tracking-tight ${headerTextClass}`}>
           {redBrandX ? (
             <>
-              <span className="font-black text-white">EROGRAM</span>
+              <span className={`font-black ${whiteBg ? 'text-black' : 'text-white'}`}>EROGRAM</span>
               <span className="font-black text-red-500">X</span>
               .com (Previously Erogram.pro)
             </>
@@ -244,7 +285,9 @@ export default function PartnershipStats({
         {stats.map((stat) => (
           <div
             key={stat.id}
-            className={`flex items-center gap-2.5 px-3 py-2 sm:px-4 ${cellBorderClass}`}
+            className={`flex items-center gap-2.5 ${cellBorderClass} ${
+              compact ? 'px-3 py-1 sm:px-4 sm:py-1.5' : 'px-3 py-2 sm:px-4'
+            }`}
             style={{
               background: stat.live ? liveStatBg : statBg,
             }}

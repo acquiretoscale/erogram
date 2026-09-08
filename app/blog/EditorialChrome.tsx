@@ -146,13 +146,14 @@ function LiveVisitorBar() {
       className="w-full bg-white/[0.03] border-b border-white/[0.06]"
       aria-label="Site status"
     >
-      <div className="relative max-w-[1280px] mx-auto px-4 sm:px-8 h-[24px] flex items-center justify-end">
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+      <div className="max-w-[1280px] mx-auto px-3 sm:px-8 py-1 sm:py-0 sm:h-[24px] grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-4 sm:gap-x-6">
+        <div aria-hidden className="min-w-0" />
+        <div className="justify-self-center min-w-0 px-1 -translate-x-[5px]">
           <LiveVisitorCount />
         </div>
-        <div className="relative z-10 flex items-center gap-2 sm:gap-3 h-full">
+        <div className="justify-self-end flex items-center gap-3 sm:gap-3 shrink-0 min-w-0">
           <Link
-            href="/advertise"
+            href="/promo"
             className="text-[10px] sm:text-[11px] font-bold text-white hover:text-white/85 uppercase tracking-[0.12em] whitespace-nowrap leading-none transition-colors"
           >
             ADVERTISE
@@ -199,7 +200,9 @@ function LiveVisitorCount() {
         )}
         <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${live && count > 0 ? 'bg-emerald-400' : 'bg-white/20'}`} />
       </span>
-      {count > 0 ? count.toLocaleString('en-US') : '—'} {t('ainsfw.peopleBrowsing', 'browsing right now')}
+      {count > 0 ? count.toLocaleString('en-US') : '—'}{' '}
+      <span className="sm:hidden">{t('ainsfw.peopleBrowsingShort', 'browsing')}</span>
+      <span className="hidden sm:inline">{t('ainsfw.peopleBrowsing', 'browsing right now')}</span>
     </span>
   );
 }

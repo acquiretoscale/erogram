@@ -93,17 +93,17 @@ export default function RecentAdditionsBlock({
   if (orderedTools.length === 0) return null;
 
   return (
-    <section className="mb-10 sm:mb-14">
-      <div className="bg-white rounded-2xl border border-black/10 p-3 sm:p-5">
-        <div className="mb-3 sm:mb-5 flex items-center justify-between gap-2 sm:gap-3">
-          <h2 className="inline-block px-2.5 py-1 rounded-lg bg-[#22c55e] text-black text-sm sm:text-base font-black uppercase tracking-wider">
+    <section className="mb-2.5">
+      <div className="relative bg-white rounded-xl border border-black/10 px-1.5 pb-1.5 pt-3">
+        <div className="absolute -top-2.5 left-2 right-2 flex items-center justify-between gap-2 pointer-events-none">
+          <h2 className="pointer-events-auto inline-flex items-center h-5 px-2 rounded-md bg-[#22c55e] text-black text-[10px] font-black uppercase tracking-wide leading-none shadow-[0_1px_0_rgba(0,0,0,0.08)]">
             {t('ainsfw.recentAdditionsTitle')}
           </h2>
           <Link
             href="/add/ainsfw"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center h-9 sm:h-10 shrink-0 rounded-md px-3 sm:px-4 bg-rose-700 hover:bg-rose-800 active:bg-rose-900 text-white text-[9px] sm:text-[10px] font-black uppercase tracking-tight whitespace-nowrap transition-colors"
+            className="pointer-events-auto inline-flex items-center justify-center h-5 shrink-0 rounded-md px-1.5 bg-rose-700 hover:bg-rose-800 active:bg-rose-900 text-white text-[8px] font-black uppercase tracking-tight whitespace-nowrap transition-colors shadow-[0_1px_0_rgba(0,0,0,0.08)]"
           >
             Get Listed on EROgram
           </Link>
@@ -121,7 +121,7 @@ export default function RecentAdditionsBlock({
             </>
           ) : null}
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
             {visibleTools.map((tool, i) => (
               <ToolCard
                 key={tool.slug}
@@ -135,7 +135,7 @@ export default function RecentAdditionsBlock({
         </div>
 
         {showNav ? (
-          <div className="mt-3 sm:mt-4 flex items-center justify-center gap-2" role="tablist" aria-label="Recent additions pages">
+          <div className="mt-1 flex items-center justify-center gap-1.5" role="tablist" aria-label="Recent additions pages">
             {Array.from({ length: pageCount }, (_, i) => (
               <button
                 key={i}

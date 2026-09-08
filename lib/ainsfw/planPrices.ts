@@ -1,7 +1,7 @@
 export type AINSFWPlan = 'basic' | 'boost' | 'startup' | 'free';
 
 export const AINSFW_PLAN_PRICES: Record<AINSFWPlan, number> = {
-  basic: 49,
+  basic: 97,
   boost: 197,
   startup: 297,
   free: 0,

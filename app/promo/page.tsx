@@ -3,7 +3,7 @@ import MediaKitClient from './MediaKitClient';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import { getPartnershipCounts } from '@/lib/partnershipCounts';
 
-const title = 'Advertise with us | Erogram.pro';
+const title = 'ADVERTISE ON EROGRAMX';
 const description = 'Advertise on Erogram.pro — the largest NSFW Telegram directory. View live audience stats, ad packages, pricing, and reach thousands of engaged adult users daily.';
 
 export const metadata: Metadata = {

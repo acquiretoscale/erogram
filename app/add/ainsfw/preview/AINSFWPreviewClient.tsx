@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
@@ -177,6 +178,19 @@ export default function AINSFWPreviewClient() {
           <Link href="/" className="hover:text-white/60 transition-colors">Home</Link>
           <span className="text-white/20">/</span>
           <Link href="/add/ainsfw" className="hover:text-white/60 transition-colors">Add</Link>
+        </div>
+
+        <div className="flex items-center justify-center gap-2 sm:gap-4 mb-6 sm:mb-8">
+          <h1 className="ainsfw-hero-title text-[26px] sm:text-[40px] md:text-[48px] leading-[0.92] uppercase text-center">
+            PREVIEW OF YOUR LISTING
+          </h1>
+          <Image
+            src="/assets/ainsfw-listing-preview-trophy.png"
+            alt=""
+            width={1000}
+            height={1000}
+            className="h-12 w-12 sm:h-[72px] sm:w-[72px] object-contain shrink-0"
+          />
         </div>
 
         {loading ? (

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, type ReactNode } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import ErogramDiscoveryBanner from '@/components/ErogramDiscoveryBanner';
@@ -167,13 +168,13 @@ function CheckMark() {
 }
 
 const MOVED_A_LA_CARTE_ADDONS: { title: string; price: string; description?: string }[] = [
-  { title: 'Basic listing (AINSFW / ADULT WEBSITE)', price: '$49 (One time payment)' },
+  { title: 'Basic listing (AINSFW / ADULT WEBSITE)', price: '$97 (One time payment)' },
   { title: 'LONG Form Editorial Article', price: '$290', description: 'SEO and conversion-optimized editorial article (2,000–3,000 words).' },
   { title: 'Short Form Article / Review', price: '$190', description: 'SEO and conversion-optimized editorial article (1,000 words).' },
   { title: 'Banner Ad (AINSFW, Groups, or Bots)', price: '$190/M' },
   { title: 'Top Menu Button', price: '$290/M' },
-  { title: 'Integrated Ads', price: '(Starts at $197)', description: 'Native ads integrated in AI Tools, TG groups, and TG bots feeds. Seamless placements with excellent engagement.' },
-  { title: 'Featured on AINSFW / OnlyFans / Bots', price: 'Start at $147/Month', description: 'Featured on the main section page and on individual listing pages.' },
+  { title: 'Integrated Ads', price: '(Starts at $197)' },
+  { title: 'Featured on AINSFW / OnlyFans / Bots', price: 'Start at $147/Month' },
   { title: 'Telegram Boost', price: '$190/M', description: '30-day promotion across our NSFW Telegram network (9 groups, 30,000+ subscribers), with 3 sponsored posts per week.' },
   { title: 'Pinned Telegram Posts', price: '$290/M', description: 'Keep your promotion pinned for 30 days across our 8 NSFW Telegram groups, ensuring every new member sees your ad first.' },
 ];
@@ -227,6 +228,7 @@ export default function MediaKitClient({
   totalUsers: number;
 }) {
   const [username, setUsername] = useState<string | null>(null);
+  const [liveAudience, setLiveAudience] = useState<{ pageViews: number; activeVisitors: number } | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -238,49 +240,65 @@ export default function MediaKitClient({
   return (
     <div className="ainsfw-page ainsfw-bg min-h-screen text-white overflow-hidden">
         <Navbar username={username} setUsername={setUsername} />
-        <ErogramDiscoveryBanner />
-        <h1 className="text-center font-black leading-none tracking-tighter whitespace-nowrap text-[clamp(1.55rem,7.2vw,3.75rem)] sm:text-6xl mt-4 sm:mt-6 mb-6 px-4">
-          <span className="text-white">We have your </span>
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#22c55e] via-[#4ade80] to-[#86efac]">customers.</span>
-        </h1>
-
-        <div id="audience-stats" className="max-w-5xl mx-auto px-4 sm:px-8 mb-8">
-          <AdvertiseStats />
+        <div className="pt-[88px] sm:pt-[96px] pb-3 sm:pb-5">
+          <div className="flex items-center justify-center gap-3 sm:gap-4 px-4">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight leading-none">
+              ADVERTISE ON <BrandX />
+            </h1>
+            <ErogramDevilGirlFooter half />
+          </div>
         </div>
 
-        <div className="max-w-5xl mx-auto px-4 sm:px-8 mb-8">
-          <PartnershipStats
-            aiNsfwCount={aiNsfwCount}
-            groupsAndBotsCount={groupsAndBotsCount}
-            totalUsers={totalUsers}
-            redBrandX
-            combineListings
-            geo={{
-              text: 'TOP GEOS:',
-              label: (
-                <span
-                  className="text-[17px] leading-none"
-                  style={{
-                    color: 'black',
-                    fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',
-                  }}
-                >
-                  🇺🇸 🇩🇪 🇧🇷 🇳🇱 🇪🇸 🇬🇧 🇨🇦
-                </span>
-              ),
+        <div id="audience-stats" className="max-w-5xl mx-auto px-4 sm:px-8 mb-6">
+          <div
+            className="overflow-hidden rounded-lg"
+            style={{
+              backgroundColor: '#ffffff',
+              border: PROMO_BORDER,
+              boxShadow: PROMO_SHADOW,
             }}
-          />
-          <div className="mt-4">
-            <TrustedByLeaders variant="green" />
+          >
+            <AdvertiseStats onLiveAudience={setLiveAudience} />
+            <PartnershipStats
+              aiNsfwCount={aiNsfwCount}
+              groupsAndBotsCount={groupsAndBotsCount}
+              totalUsers={totalUsers}
+              redBrandX
+              combineListings
+              listingsCount={4800}
+              hideUsers
+              embedded
+              whiteStats
+              compact
+              liveAudience={liveAudience}
+              geo={{
+                text: 'TOP GEOS:',
+                label: (
+                  <span
+                    className="text-[17px] leading-none"
+                    style={{
+                      color: 'black',
+                      fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',
+                    }}
+                  >
+                    🇺🇸 🇩🇪 🇧🇷 🇳🇱 🇪🇸 🇬🇧 🇨🇦
+                  </span>
+                ),
+              }}
+            />
+            <TrustedByLeaders
+              variant="green"
+              embedded
+              whiteBg
+              compact
+              titleClassName="text-center text-[11px] sm:text-xs font-medium uppercase tracking-[0.22em] text-[#064e3b] mb-2"
+            />
           </div>
         </div>
 
         <div className="max-w-3xl mx-auto px-4 sm:px-8 mb-10 space-y-4 text-center">
           <p className="text-base sm:text-lg text-white/75 leading-relaxed">
-            Stop paying for cold traffic. <BrandX /> connects your AI tool with users actively searching for premium AI experiences. Get discovered by thousands of high-intent buyers every day while your listing keeps generating visibility through our rapidly growing Google presence.
-          </p>
-          <p className="text-xl sm:text-2xl font-black text-white leading-snug">
-            Reach 180,000+ Monthly Visitors Ready to Buy.
+            Stop paying for cold traffic. <BrandX /> connects your AI tool / Adult website with users actively searching for premium AI experiences. Get discovered by thousands of high-intent buyers every day while your listing keeps generating visibility through our rapidly growing Google presence.
           </p>
           <div className="pt-2 flex flex-col items-center gap-3">
             <PromoContactBlock id="contact" />
@@ -303,6 +321,13 @@ export default function MediaKitClient({
 
           <div className="mt-8 mb-5">
             <div className="mb-6 sm:mb-8 text-center px-1 sm:px-2">
+              <Image
+                src="/assets/erogram-gold-mascot.jpg"
+                alt=""
+                width={500}
+                height={500}
+                className="mx-auto mb-4 w-[200px] sm:w-[250px] h-auto mix-blend-screen"
+              />
               <h2 className="text-lg sm:text-2xl md:text-3xl lg:text-[2rem] font-black uppercase tracking-tight text-white leading-snug max-w-4xl mx-auto">
                 GET LISTED ON THE FASTEST GROWING ADULT ENTRETAINEMENT DISCOVERY HUB.
               </h2>
@@ -326,6 +351,9 @@ export default function MediaKitClient({
 
           {/* PRICING GRID */}
           <div className="mb-5 scroll-mt-24 mt-10">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-tight text-white text-center mb-6">
+              OUR DIFFERENT OFFERS
+            </h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-7 items-stretch mb-12">
               {/* À LA CARTE ADD-ONS */}
               <section className="min-w-0 h-full">
@@ -356,18 +384,46 @@ export default function MediaKitClient({
                 style={{ background: PLAN_HEADER_BG, border: `3px solid ${ACCENT}`, boxShadow: `6px 6px 0px ${ACCENT}` }}
               >
                 <div className="px-6 py-6 sm:px-8 sm:py-8 flex flex-col flex-1 space-y-2 sm:space-y-2.5">
-                  <h2 className="font-black uppercase leading-none tracking-tight text-[2rem] sm:text-[2.25rem] lg:text-[2.5rem] text-white">SCALE</h2>
+                  <h2 className="font-black uppercase leading-none tracking-tight text-[4rem] sm:text-[4.5rem] lg:text-[5rem] text-white">SCALE</h2>
                   <p className="text-lg sm:text-xl font-black uppercase tracking-wide text-white/50">Maximum Exposure</p>
-                  <p className="text-base sm:text-lg text-white/60 leading-snug pt-1">For companies that want the highest visibility across <BrandX />.</p>
-                  <p className="text-base sm:text-lg font-bold text-white/80 leading-snug">Budget above $1500</p>
-                  <p className="text-base sm:text-lg font-bold text-white/80 leading-snug">Up to 80× more exposure across <BrandX /> compared to Basic listing.</p>
+                  <p className="text-base sm:text-lg text-white/60 leading-snug pt-1">
+                    For companies that want the highest visibility across <BrandX />.
+                    {' '}You get placements across our highest-traffic pages and placements (Banners, Menu links, Intergrated ads)
+                  </p>
+                  <div className="pt-2">
+                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#4ade80] mb-2">Top tier packages</p>
+                    <div className="space-y-2">
+                      <div
+                        className="bg-white rounded-md px-3 py-2.5 sm:px-4 flex items-center justify-between gap-3"
+                        style={{ border: BORDER, boxShadow: SHADOW }}
+                      >
+                        <p className="text-xs sm:text-sm font-black uppercase tracking-wide text-black leading-tight min-w-0">
+                          20.000 Clicks / Month
+                        </p>
+                        <p className="text-base sm:text-lg font-black text-[#16a34a] tabular-nums shrink-0 leading-none">$1500</p>
+                      </div>
+                      <div
+                        className="bg-white rounded-md px-3 py-2.5 sm:px-4"
+                        style={{ border: BORDER, boxShadow: SHADOW }}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-xs sm:text-sm font-black uppercase tracking-wide text-black leading-tight min-w-0">
+                            60.000 Clicks / Month
+                          </p>
+                          <p className="text-base sm:text-lg font-black text-[#16a34a] tabular-nums shrink-0 leading-none">$3000</p>
+                        </div>
+                        <p className="text-[10px] sm:text-[11px] font-semibold text-black/45 leading-snug mt-1.5">
+                          Availability depends on our inventory
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                   <ul className="pt-2 space-y-2.5 sm:space-y-3 flex-1">
                     {[
                       'Display banners & video advertising',
                       'Placement across our highest-traffic pages',
                       'A/B testing of headlines, creatives & messaging',
                       'Campaign analytics & reporting',
-                      'Launch and growth consulting',
                       'Custom campaign strategy',
                       'Dedicated account support',
                     ].map((f) => (
@@ -384,7 +440,7 @@ export default function MediaKitClient({
                     className="block w-full py-4 text-lg sm:text-base font-black uppercase tracking-widest text-center text-black transition-all hover:opacity-95 active:translate-x-[2px] active:translate-y-[2px]"
                     style={{ background: CTA, border: BORDER, boxShadow: SHADOW }}
                   >
-                    Contact us for pricing
+                    Contact us for details
                   </a>
                 </div>
               </div>
@@ -393,7 +449,7 @@ export default function MediaKitClient({
 
           <InFeedAdFormatComparison />
 
-          <ErogramDevilGirlFooter />
+          <ErogramDiscoveryBanner embedded />
 
           <section className="mt-8 mb-10 max-w-3xl mx-auto">
             <h2 className="text-xl sm:text-2xl font-black mb-6 text-center text-white">Frequently Asked Questions</h2>

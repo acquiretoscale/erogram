@@ -2,6 +2,7 @@ import Image from 'next/image';
 
 type Props = {
   compact?: boolean;
+  half?: boolean;
   variant?: 'devil-girl' | 'mascot-blended';
   className?: string;
   /** Edge fade color — defaults to black. Use page background color to blend in. */
@@ -14,6 +15,7 @@ type Props = {
 
 export default function ErogramDevilGirlFooter({
   compact = false,
+  half = false,
   variant = 'devil-girl',
   className = '',
   fadeColor = '#000000',
@@ -151,9 +153,11 @@ export default function ErogramDevilGirlFooter({
         alt=""
         width={180}
         height={287}
-        sizes={compact ? '126px' : '(max-width: 640px) 120px, 160px'}
+        sizes={half ? '80px' : compact ? '126px' : '(max-width: 640px) 120px, 160px'}
         className={
-          compact
+          half
+            ? 'h-auto w-[50px] sm:w-[65px] md:w-[80px] object-contain opacity-95'
+            : compact
             ? 'h-auto w-[84px] sm:w-[105px] md:w-[126px] object-contain opacity-95'
             : 'h-auto w-[100px] sm:w-[130px] md:w-[160px] object-contain opacity-95'
         }

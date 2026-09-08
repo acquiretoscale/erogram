@@ -109,31 +109,31 @@ export default function TopAINsfwBlock({
 
   const gridCols =
     displayTools.length === 4
-      ? 'grid grid-cols-2 lg:grid-cols-4 gap-3'
-      : 'grid grid-cols-2 gap-3 max-w-xl mx-auto w-full';
+      ? 'grid grid-cols-2 lg:grid-cols-4 gap-2'
+      : 'grid grid-cols-2 gap-2 max-w-xl mx-auto w-full';
 
   return (
-    <section className="mb-10 sm:mb-14">
-      <div className="bg-white rounded-2xl border border-black/10 p-4 sm:p-5">
-        <div className="mb-4 sm:mb-5 flex items-center justify-between gap-3">
-          <h2 className="inline-block px-2.5 py-1 rounded-lg bg-[#22c55e] text-black text-sm sm:text-base font-black uppercase tracking-wider">
+    <section className="mb-2.5">
+      <div className="relative bg-white rounded-xl border border-black/10 px-1.5 pb-1.5 pt-3">
+        <div className="absolute -top-2.5 left-2 right-2 flex items-center justify-between gap-2 pointer-events-none">
+          <h2 className="pointer-events-auto inline-flex items-center h-5 px-2 rounded-md bg-[#22c55e] text-black text-[10px] font-black uppercase tracking-wide leading-none shadow-[0_1px_0_rgba(0,0,0,0.08)]">
             {t('ainsfw.featuredOn', 'Featured on Erogram')}
           </h2>
-          <div className="flex items-center gap-2">
+          <div className="pointer-events-auto flex items-center gap-1">
             {canEdit && (
               <button
                 type="button"
                 onClick={openEdit}
-                className="inline-flex items-center justify-center gap-1.5 h-9 sm:h-10 shrink-0 rounded-md px-3 sm:px-4 bg-[#22c55e] hover:bg-[#16a34a] text-black text-[9px] sm:text-[10px] font-black uppercase tracking-tight whitespace-nowrap transition-colors"
+                className="inline-flex items-center justify-center gap-1 h-5 shrink-0 rounded-md px-1.5 bg-[#22c55e] hover:bg-[#16a34a] text-black text-[8px] font-black uppercase tracking-tight whitespace-nowrap transition-colors shadow-[0_1px_0_rgba(0,0,0,0.08)]"
               >
-                <Pencil className="w-3.5 h-3.5" /> Edit
+                <Pencil className="w-3 h-3" /> Edit
               </button>
             )}
             <Link
               href={lp('/add/ainsfw')}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center h-9 sm:h-10 shrink-0 rounded-md px-3 sm:px-4 bg-rose-700 hover:bg-rose-800 active:bg-rose-900 text-white text-[9px] sm:text-[10px] font-black uppercase tracking-tight whitespace-nowrap transition-colors"
+              className="inline-flex items-center justify-center h-5 shrink-0 rounded-md px-1.5 bg-rose-700 hover:bg-rose-800 active:bg-rose-900 text-white text-[8px] font-black uppercase tracking-tight whitespace-nowrap transition-colors shadow-[0_1px_0_rgba(0,0,0,0.08)]"
             >
               {t('ainsfw.getFeatured', 'GET FEATURED')}
             </Link>
