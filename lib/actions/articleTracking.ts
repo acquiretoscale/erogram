@@ -11,6 +11,8 @@ const EROGRAM_ADVERTISER_NAME = 'EROGRAM';
 // Add new domains here as advertisers are added. Domain match is substring on the hostname.
 const DOMAIN_TO_ADVERTISER: { domain: string; advertiser: string }[] = [
   { domain: 'lovescape.com', advertiser: 'Lovescape' },
+  { domain: 'hornydreams.ai', advertiser: 'horneydream.com' },
+  { domain: 'horneydream.com', advertiser: 'horneydream.com' },
 ];
 
 function advertiserForUrl(url?: string): string | null {

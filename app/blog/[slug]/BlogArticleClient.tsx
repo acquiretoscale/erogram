@@ -207,8 +207,31 @@ function VideoBlock({ data, articleSlug }: { data: any; articleSlug: string }) {
   );
 }
 
+const HORNYDREAMS_ARTICLE_SLUG = 'the-ai-girlfriend-app-thousands-are-switching-to';
+const HORNYDREAMS_CTA = {
+  url: 'https://hornydreams.ai/?affiliate=erogramx',
+  text: 'Start free today',
+  style: 'neobrutal',
+};
+
 function CtaBlock({ data, articleSlug }: { data: any; articleSlug: string }) {
   if (!data.url || !data.text) return null;
+  const isNeo = data.style === 'neobrutal' || data.style === 'neo-brutalism' || String(data.url || '').includes('hornydreams.ai');
+  if (isNeo) {
+    return (
+      <div className="not-prose my-6 flex justify-center">
+        <a
+          href={data.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => trackArticleClick(articleSlug, data.url, 'cta').catch(() => {})}
+          className="inline-flex items-center justify-center px-8 py-4 font-black text-[15px] uppercase tracking-[0.08em] text-black bg-[#ff4d9a] border-[3px] border-black shadow-[5px_5px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[3px_3px_0_0_#000] active:translate-x-[5px] active:translate-y-[5px] active:shadow-none transition-[transform,box-shadow] duration-75"
+        >
+          {data.text}
+        </a>
+      </div>
+    );
+  }
   const heading = data.headline || 'Ready to continue?';
   return (
     <div className="not-prose my-14">
@@ -300,7 +323,7 @@ function buildMarkdownComponents(articleSlug: string, articleTitle: string) {
       const codeContent = String(child?.props?.children ?? '');
       if (lang === 'cta') {
         const d = parseFence(codeContent);
-        return <CtaBlock data={{ url: d.url, text: d.text, description: d.description, headline: d.headline || d.title }} articleSlug={articleSlug} />;
+        return <CtaBlock data={{ url: d.url, text: d.text, description: d.description, headline: d.headline || d.title, style: d.style }} articleSlug={articleSlug} />;
       }
       if (lang === 'video') {
         const d = parseFence(codeContent);
@@ -433,6 +456,9 @@ export default function BlogArticleClient({
               <img src={article.featuredImage} alt={article.title} fetchPriority="high" className="w-full" referrerPolicy="no-referrer" />
             )}
           </div>
+        )}
+        {article.slug === HORNYDREAMS_ARTICLE_SLUG && (
+          <CtaBlock data={HORNYDREAMS_CTA} articleSlug={article.slug} />
         )}
 
         {/* Body — full content rendered in one pass; inline CTA/video fences

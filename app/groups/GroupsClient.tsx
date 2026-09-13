@@ -643,7 +643,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
           transition={{ duration: 0.5 }}
           className="text-center mb-6 sm:mb-8"
         >
-          <h1 className="text-[32px] sm:text-[50px] md:text-[58px] font-black leading-[1.05] tracking-tight text-white mb-3">
+          <h1 className="text-lg sm:text-xl md:text-2xl font-black leading-tight tracking-tight text-white mb-2">
             {t('groups.title')}
           </h1>
           <p className="text-white/50 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">

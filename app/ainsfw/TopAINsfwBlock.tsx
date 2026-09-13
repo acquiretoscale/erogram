@@ -113,7 +113,7 @@ export default function TopAINsfwBlock({
       : 'grid grid-cols-2 gap-2 max-w-xl mx-auto w-full';
 
   return (
-    <section className="mb-2.5">
+    <section className="mb-6">
       <div className="relative bg-white rounded-xl border border-black/10 px-1.5 pb-1.5 pt-3">
         <div className="absolute -top-2.5 left-2 right-2 flex items-center justify-between gap-2 pointer-events-none">
           <h2 className="pointer-events-auto inline-flex items-center h-5 px-2 rounded-md bg-[#22c55e] text-black text-[10px] font-black uppercase tracking-wide leading-none shadow-[0_1px_0_rgba(0,0,0,0.08)]">

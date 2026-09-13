@@ -48,6 +48,13 @@ function seededRandomVideo(seed: string) {
     return Math.abs(hash) / 2147483647;
 }
 
+const LIVE_AD_RATINGS = [4.8, 4.9] as const;
+const LIVE_AD_RATING_FLOOR = 4.8;
+
+function seededLiveAdRating(seedFn: (s: string) => number, seed: string): string {
+    return LIVE_AD_RATINGS[Math.floor(seedFn(seed + 'rating') * LIVE_AD_RATINGS.length)].toFixed(1);
+}
+
 function displayAdRating(
     campaign: { adRating?: number | null; adReviewCount?: number | null },
     seedFn: (s: string) => number,
@@ -55,12 +62,12 @@ function displayAdRating(
 ): { rating: string; reviews: number } {
     if (campaign.adRating != null && campaign.adRating > 0) {
         return {
-            rating: Number(campaign.adRating).toFixed(1),
+            rating: Math.max(LIVE_AD_RATING_FLOOR, Number(campaign.adRating)).toFixed(1),
             reviews: campaign.adReviewCount ?? 0,
         };
     }
     return {
-        rating: (seedFn(seed + 'rating') * 0.7 + 4.2).toFixed(1),
+        rating: seededLiveAdRating(seedFn, seed),
         reviews: Math.floor(seedFn(seed + 'reviews') * 38 + 5),
     };
 }
@@ -341,41 +348,38 @@ function VideoAdCard({ campaign, handleClick, hidePromoted = false, growthPercen
         >
             <div
                 ref={cardRef}
-                className="rounded-2xl sm:rounded-3xl overflow-hidden h-full min-h-[280px] sm:min-h-[480px] relative cursor-pointer group border border-white/5 bg-[#0a0a0a]"
+                className="rounded-2xl sm:rounded-3xl overflow-hidden h-full min-h-[280px] sm:min-h-[480px] relative cursor-pointer group border border-white/5 bg-[#0a0a0a] flex flex-col"
                 onClick={handleClick}
                 role="link"
                 tabIndex={0}
                 onKeyDown={(e) => e.key === 'Enter' && handleClick()}
                 aria-label={campaign.name}
             >
-                {/* Video fills the entire card */}
-                <video
-                    ref={videoRef}
-                    poster={campaign.creative || undefined}
-                    muted
-                    playsInline
-                    loop
-                    preload="none"
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    style={campaign.creative ? undefined : { background: '#0a0a0a' }}
-                    aria-hidden="true"
-                />
-
-                {/* Gradient for text readability */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/10 pointer-events-none" />
-
-                {/* Bottom content */}
-                <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-5 z-10 flex flex-col gap-1.5 sm:gap-2.5">
-                    <div className="flex justify-start">
+                <div className="relative w-full flex-1 min-h-[11.2rem] sm:min-h-[16.8rem] overflow-hidden bg-[#0a0a0a]">
+                    <video
+                        ref={videoRef}
+                        poster={campaign.creative || undefined}
+                        muted
+                        playsInline
+                        loop
+                        preload="none"
+                        className="absolute inset-0 w-full h-full object-contain"
+                        style={campaign.creative ? undefined : { background: '#0a0a0a' }}
+                        aria-hidden="true"
+                    />
+                    <div className="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 z-10">
                         <div className="bg-black/80 backdrop-blur-md border border-white/10 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg flex items-center gap-1 sm:gap-1.5 shadow-lg">
                             <span className="text-[10px] sm:text-xs text-red-400">⚡</span>
                             <span className="text-[10px] sm:text-xs font-bold text-white">{visitingCount} visiting</span>
                         </div>
                     </div>
-                    <h3 className={`font-black text-white leading-tight drop-shadow-lg flex items-center justify-between gap-2 ${typeof growthPercent === 'number' ? 'text-sm sm:text-lg' : 'text-sm sm:text-xl'}`}>
-                        <span className="flex items-center gap-1 min-w-0">
-                            <span className="truncate min-w-0">{campaign.name}</span>
-                            <svg className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" viewBox="0 0 24 24" fill="#1D9BF0" aria-label="Verified"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
+                </div>
+
+                <div className="p-3 sm:p-5 flex flex-col gap-1.5 sm:gap-2.5 shrink-0">
+                    <h3 className="font-black text-white leading-tight flex items-start justify-between gap-2 text-[11px] sm:text-xs">
+                        <span className="flex items-start gap-1 min-w-0">
+                            <span className="min-w-0 break-words">{campaign.name}</span>
+                            <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="#1D9BF0" aria-label="Verified"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
                         </span>
                         <span className="shrink-0">
                             <GrowthTrendBadge growthPercent={growthPercent} />
@@ -383,17 +387,16 @@ function VideoAdCard({ campaign, handleClick, hidePromoted = false, growthPercen
                     </h3>
 
                     {campaign.description && (
-                        <p className="text-gray-300 text-xs sm:text-sm line-clamp-1 sm:line-clamp-2 leading-relaxed drop-shadow">
+                        <p className="text-gray-300 text-xs sm:text-sm line-clamp-1 sm:line-clamp-2 leading-relaxed">
                             {campaign.description}
                         </p>
                     )}
 
-                    {/* Star rating row */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1">
                             <span className="text-yellow-500 text-[10px] sm:text-sm">⭐</span>
-                            <span className="text-white font-bold text-[10px] sm:text-sm drop-shadow">{rating}</span>
-                            <span className="text-gray-400 text-[10px] sm:text-xs drop-shadow">({reviewCount})</span>
+                            <span className="text-white font-bold text-[10px] sm:text-sm">{rating}</span>
+                            <span className="text-gray-400 text-[10px] sm:text-xs">({reviewCount})</span>
                         </div>
                     </div>
 
@@ -617,7 +620,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
     // CTA button: use only buttonText from the ad (never description)
     const { rating: cardRating, reviews: cardReviews } = campaign
         ? displayAdRating(campaign, seededRandom, seed)
-        : { rating: (seededRandom(seed + 'rating') * 0.7 + 4.2).toFixed(1), reviews: Math.floor(seededRandom(seed + 'reviews') * 38 + 5) };
+        : { rating: seededLiveAdRating(seededRandom, seed), reviews: Math.floor(seededRandom(seed + 'reviews') * 38 + 5) };
 
     const displayButtonText = (ad.buttonText && String(ad.buttonText).trim()) ? String(ad.buttonText).trim() : (buttonTexts[Math.floor(seededRandom(seed) * buttonTexts.length)]);
 

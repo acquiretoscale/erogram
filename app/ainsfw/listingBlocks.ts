@@ -32,6 +32,20 @@ export const AINSFW_LISTING_BLOCKS: Record<string, AINsfwListingBlocks> = {
     bestFor: 'Creators who want undress, face swap, and video in one browser workflow',
     notIdealFor: 'Anyone who needs unlimited output before buying diamonds',
   },
+  'hornydreams-ai-ai-girlfriend': {
+    keyFeatures: [
+      'Free tier. Browse live characters, start chatting free',
+      'Uncensored chat. NSFW-friendly by default',
+      'Long-term memory of the story, preferences, and character',
+      'Character builder: ethnicity, body type, hair, eyes, voice, hobbies, kinks, personality',
+      'Thousands of AI girlfriends on Discover',
+      'Image and video generation inside the chat',
+      'Voice, Live Play, and Live Calls',
+      'Essential $4.99, Plus $9.99, Ultimate $24.99, half off',
+      'Card, crypto, Telegram Stars, Apple Pay, and Google Pay',
+      'Hornydreams AI does not sell user data',
+    ],
+  },
   'lovescape-ai-girlfriend': {
     keyFeatures: [
       'Photorealistic 2K and 4K image generation',

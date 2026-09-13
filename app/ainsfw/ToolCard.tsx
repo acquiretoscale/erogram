@@ -160,8 +160,9 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
   const imageHoverTitle = `${tool.name} - ${tool.category}`;
   const galleryImageAlt = (idx: number) => pickTagHashtagAlt(tool.tags, idx);
   const placeholder = '/assets/image.jpg';
-  const mainImg = tool.image && (tool.image.startsWith('https://') || tool.image.startsWith('/'))
-    ? tool.image : placeholder;
+  const featuredCover = (initialStats?.imageOverride || tool.image || '').trim();
+  const mainImg = featuredCover && (featuredCover.startsWith('https://') || featuredCover.startsWith('/'))
+    ? featuredCover : placeholder;
   const previewVideo = getAinsfwToolPreviewVideo(tool.slug, initialStats?.previewVideoUrl);
   const curatedGallery = resolveGallery(tool.slug, {
     customGallery: initialStats?.customGallery,
@@ -174,10 +175,12 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
   const [isInView, setIsInView] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Gallery carousel — curated R2 previews only (no auto-scrape)
-  const [gallery] = useState<string[]>(() =>
-    hasCuratedGallery ? curatedGallery : [mainImg],
-  );
+  // Featured cover first, then gallery shots (cards were ignoring featured and showing shot 1).
+  const [gallery] = useState<string[]>(() => {
+    const rest = curatedGallery.filter((u) => u !== mainImg);
+    if (mainImg !== placeholder) return [mainImg, ...rest];
+    return rest.length ? rest : [mainImg];
+  });
   const [slideIdx, setSlideIdx] = useState(0);
   const touchStartX = useRef(0);
 

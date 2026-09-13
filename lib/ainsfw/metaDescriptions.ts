@@ -28,6 +28,10 @@ export const META_DESCRIPTIONS: Record<string, AinsfwMetaEntry> = {
     title: 'CreatePorn: Best AI Porn Generator & NSFW Image Maker (2026)',
     en: 'No menus, no fluff, just filth. CreatePorn turns a plain prompt into explicit images. Explore CreatePorn and other AI porn generators on Erogram.pro.',
   },
+  'hornydreams-ai-ai-girlfriend': {
+    title: 'The AI Girlfriend App Thousands Are Switching To',
+    en: 'Hornydreams AI is the uncensored AI girlfriend app where users create companions, chat without limits, and generate photorealistic images and video in one private platform.',
+  },
   'lovescape-ai-girlfriend': {
     title: 'Lovescape: Best AI Girlfriend & AI Companion Chat (2026)',
     en: 'She remembers what you said yesterday. Lovescape brings voice, photos and a million characters. Explore Lovescape and other AI girlfriend tools on Erogram.pro.',

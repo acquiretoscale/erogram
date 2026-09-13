@@ -123,23 +123,6 @@ const ADD_ITEMS = [
   },
 ];
 
-function OFsearchNav() {
-  const { t } = useTranslation();
-  const lp = useLocalePath();
-  const pathname = usePathname() || '';
-  const isActive = pathname.includes('/ofsearch') || pathname.includes('/best-onlyfans-accounts');
-
-  return (
-    <Link
-      href={lp('/ofsearch')}
-      className={`shrink-0 inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.18em] uppercase transition-colors ${isActive ? 'text-[#38c0f5]' : 'text-white hover:text-white/80'}`}
-    >
-      {t('nav.onlyfans', 'OFsearch')}
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden className="shrink-0"><path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.430 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z"/></svg>
-    </Link>
-  );
-}
-
 function LiveVisitorBar() {
   return (
     <div
@@ -148,7 +131,7 @@ function LiveVisitorBar() {
     >
       <div className="max-w-[1280px] mx-auto px-3 sm:px-8 py-1 sm:py-0 sm:h-[24px] grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-4 sm:gap-x-6">
         <div aria-hidden className="min-w-0" />
-        <div className="justify-self-center min-w-0 px-1 -translate-x-[5px]">
+        <div className="justify-self-center min-w-0 px-1 -translate-x-[15px] sm:-translate-x-[5px]">
           <LiveVisitorCount />
         </div>
         <div className="justify-self-end flex items-center gap-3 sm:gap-3 shrink-0 min-w-0">
@@ -565,12 +548,7 @@ function MobileNavMenu({ open, lp, onClose }: { open: boolean; lp: (p: string) =
             <span className="flex-1">Porn Websites</span>
           </Link>
 
-          {/* Onlyfans */}
-          <Link href={lp('/ofsearch')} onClick={onClose} className={item}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="#00AFF0" aria-hidden className="shrink-0"><path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.430 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z"/></svg>
-            <span className="flex-1 font-semibold text-[#38c0f5]">{t('nav.onlyfans', 'OFsearch')}</span>
-          </Link>
-          <Link href={lp('/submit')} onClick={onClose} className={`${item} pl-10`}>
+          <Link href={lp('/submit')} onClick={onClose} className={item}>
             <span className="flex-1">{t('nav.submitCreator', 'Submit your Creator')}</span>
           </Link>
 
@@ -783,7 +761,6 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
           >
             Porn Websites
           </Link>
-          <OFsearchNav />
           <Link
             href="/blog"
             className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-[0.18em] uppercase text-white hover:text-white/80 transition-colors"

@@ -66,6 +66,15 @@ export const AINSFW_GALLERY: Record<string, string[]> = {
     "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/free-nudifier-undress-ai-2.webp",
     "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/free-nudifier-undress-ai-3.webp",
   ],
+  "hornydreams-ai-ai-girlfriend": [
+    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/horneydreams-ai-ai-girlfriend-app.webp",
+    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/horneydreams-ai-ai-girlfriend-app-creatjion.webp",
+    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/horneydreams-ai-ai-girlfriend-app-create.webp",
+    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/horneydreams-ai-ai-girlfriend-app-relationship-style.webp",
+    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/horneydreams-ai-ai-girlfriend-app-kink.webp",
+    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/horneydreams-ai-ai-girlfriend-app-voice.webp",
+    "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/horneydreams-ai-ai-girlfriend-app-ffee.webp",
+  ],
   "girlfriendgpt-ai-girlfriend": [
     "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/girlfriendgpt-ai-girlfriend-1.webp",
     "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/gallery/girlfriendgpt-ai-girlfriend-2.webp",

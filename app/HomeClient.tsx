@@ -387,12 +387,6 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
       iconColor: '#e0102b',
       icon: <img src="/assets/lips-icon.png" alt={dict.meta?.ainsfwTitle || 'AI NSFW Tools'} width="26" height="26" style={{ objectFit: 'contain', filter: 'brightness(0) saturate(100%) invert(13%) sepia(90%) saturate(4000%) hue-rotate(345deg) brightness(80%)' }} />,
     },
-    {
-      title: 'OFsearch',
-      href: '/ofsearch',
-      iconColor: '#00AFF0',
-      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="#00AFF0"><path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z"/></svg>,
-    },
   ];
 
   const renderCard = (c: typeof navCards[0]) => (
@@ -457,7 +451,7 @@ export default function HomeClient({ featuredArticles, heroCampaigns = [], newGr
 
           {/* Hero title */}
           <motion.h1
-            className="text-[3.2rem] sm:text-7xl md:text-8xl tracking-tight mb-6 sm:mb-7 leading-[0.95] uppercase bg-clip-text text-transparent"
+            className="text-[1.28rem] sm:text-[1.8rem] md:text-[2.4rem] tracking-tight mb-6 sm:mb-7 leading-[0.95] uppercase bg-clip-text text-transparent"
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.2, 0.8, 0.2, 1], delay: 0.1 }}

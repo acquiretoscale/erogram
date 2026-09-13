@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectCommand, CopyObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || 'erogramimages';
@@ -144,11 +144,83 @@ export async function listR2FilesWithDates(
 
 export async function deleteFromR2(publicUrl: string): Promise<void> {
   if (!isR2Configured() || !publicUrl) return;
-  const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || '';
-  if (!publicUrl.startsWith(R2_PUBLIC_URL)) return;
-  const key = publicUrl.replace(`${R2_PUBLIC_URL}/`, '');
+  const key = publicUrlToR2Key(publicUrl);
+  if (!key) return;
   const client = getR2Client();
   await client.send(new DeleteObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key }));
+}
+
+export function publicUrlToR2Key(publicUrl: string): string | null {
+  if (!isR2Configured() || !publicUrl) return null;
+  const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || '';
+  if (!publicUrl.startsWith(R2_PUBLIC_URL)) return null;
+  return publicUrl.slice(R2_PUBLIC_URL.length + 1);
+}
+
+export interface R2ObjectMeta {
+  key: string;
+  url: string;
+  size: number;
+  lastModified: string;
+}
+
+export async function listR2ObjectsWithMeta(
+  prefix: string,
+  exts: string[] = ['.mp4', '.webm', '.mov'],
+): Promise<R2ObjectMeta[]> {
+  if (!isR2Configured()) return [];
+  const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || '';
+  const client = getR2Client();
+  const results: R2ObjectMeta[] = [];
+  let continuationToken: string | undefined;
+
+  do {
+    const res = await client.send(
+      new ListObjectsV2Command({
+        Bucket: R2_BUCKET_NAME,
+        Prefix: prefix.endsWith('/') ? prefix : `${prefix}/`,
+        MaxKeys: 1000,
+        ContinuationToken: continuationToken,
+      }),
+    );
+    for (const obj of res.Contents ?? []) {
+      if (!obj.Key || obj.Size == null) continue;
+      const lower = obj.Key.toLowerCase();
+      if (!exts.some((ext) => lower.endsWith(ext))) continue;
+      results.push({
+        key: obj.Key,
+        url: `${R2_PUBLIC_URL}/${obj.Key}`,
+        size: obj.Size,
+        lastModified: obj.LastModified?.toISOString() || '',
+      });
+    }
+    continuationToken = res.IsTruncated ? res.NextContinuationToken : undefined;
+  } while (continuationToken);
+
+  return results.sort((a, b) => b.lastModified.localeCompare(a.lastModified));
+}
+
+/** Copy an R2 object to a new key. Returns the new public URL. */
+export async function copyR2Object(sourceKey: string, destKey: string): Promise<string> {
+  if (!isR2Configured()) throw new Error('R2 not configured');
+  const client = getR2Client();
+  const head = await client.send(new HeadObjectCommand({ Bucket: R2_BUCKET_NAME, Key: sourceKey }));
+  const encodedSource = `${R2_BUCKET_NAME}/${encodeURIComponent(sourceKey).replace(/%2F/g, '/')}`;
+  const filename = destKey.split('/').pop() || 'video.mp4';
+  await client.send(
+    new CopyObjectCommand({
+      Bucket: R2_BUCKET_NAME,
+      Key: destKey,
+      CopySource: encodedSource,
+      ContentType: head.ContentType || 'video/mp4',
+      ContentDisposition: `inline; filename="${filename}"`,
+      MetadataDirective: head.Metadata && Object.keys(head.Metadata).length > 0 ? 'COPY' : 'REPLACE',
+      ...(head.Metadata && Object.keys(head.Metadata).length > 0
+        ? {}
+        : { Metadata: { platform: 'erogram' } }),
+    }),
+  );
+  return `${getR2PublicUrl()}/${destKey}`;
 }
 
 export { R2_BUCKET_NAME };
