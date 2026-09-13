@@ -5,6 +5,7 @@ import { resolveOfCategorySlugFromPublicSegment } from '@/lib/bestOnlyfansAccoun
 import { resolveListingSlugFromPublicSegment } from '@/lib/i18n/listingSlugTranslations';
 import { getLocalizedHubSegment } from '@/lib/i18n/hubSlugTranslations';
 import { OF_SEARCH_HUB } from '@/lib/i18n/config';
+import { internalPathFromPublicRest } from '@/lib/i18n/switchLocalePath';
 import { isBlacklistedPublicPathSegment } from '@/lib/ofsearch/creatorBlacklist';
 import { OF_SEARCH_ENGINE_ENABLED } from '@/lib/ofsearch/featureFlags';
 import { OF_CATEGORY_SLUGS } from '@/app/ofsearch/constants';
@@ -15,9 +16,9 @@ import { rankingEnglishPublicPath, bestOfSlugFromPublicPath } from '@/lib/bestOf
  * Locale-aware middleware for Erogram.
  *
  * Behavior:
+ * - /pt/...  → 301 to the English URL
  * - /de/...  → rewrite to /... with x-locale: de
  * - /es/...  → rewrite to /... with x-locale: es
- * - /pt/...  → rewrite to /... with x-locale: pt
  * - /...     → pass through with x-locale: en  (UNCHANGED — zero impact on English)
  *
  * English URLs are NEVER modified or redirected. This guarantees
@@ -60,9 +61,10 @@ export function middleware(request: NextRequest) {
       const slug = decodeURIComponent(catBrowse[2]);
       if (slug !== 'best' && slug !== 'categories' && slug !== 'locations' && OF_CATEGORY_SLUGS.has(slug)) {
         const url = request.nextUrl.clone();
-        url.pathname = BEST_OF_PAGE_MAP.has(slug)
-          ? `${localePrefix}${rankingEnglishPublicPath(slug, 'top')}`
-          : `${localePrefix}/ofsearch`;
+        const dest = BEST_OF_PAGE_MAP.has(slug)
+          ? rankingEnglishPublicPath(slug, 'top')
+          : '/ofsearch';
+        url.pathname = localePrefix === '/pt' ? dest : `${localePrefix}${dest}`;
         return NextResponse.redirect(url, 308);
       }
     }
@@ -111,8 +113,12 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
-  // Helper: create a rewrite that forwards locale info via REQUEST headers
-  // so that headers() in server components can read them.
+  function redirectToEnglish(dest: string) {
+    const url = request.nextUrl.clone();
+    url.pathname = dest.startsWith('/') ? dest : `/${dest}`;
+    return attachVisitorCountry(NextResponse.redirect(url, 301));
+  }
+
   function rewriteWithLocale(dest: string, locale: string, originalPath: string) {
     const reqHeaders = new Headers(request.headers);
     reqHeaders.set('x-locale', locale);
@@ -120,6 +126,11 @@ export function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = dest;
     return attachVisitorCountry(NextResponse.rewrite(url, { request: { headers: reqHeaders } }));
+  }
+
+  function localeToEnglishOrRewrite(dest: string, loc: string, originalPath: string) {
+    if (loc === 'pt') return redirectToEnglish(dest);
+    return rewriteWithLocale(dest, loc, originalPath);
   }
 
   function nextWithLocale(locale: string, originalPath: string) {
@@ -133,7 +144,7 @@ export function middleware(request: NextRequest) {
   {
     const localeHub = pathname.match(/^\/(de|es|pt)\/onlyfanssearch\/?$/);
     if (localeHub) {
-      return rewriteWithLocale('/onlyfanssearch', localeHub[1], pathname);
+      return localeToEnglishOrRewrite('/onlyfanssearch', localeHub[1], pathname);
     }
   }
   if (/^(\/(?:de|es|pt))?\/onlyfanssearch\//.test(pathname)) {
@@ -161,7 +172,7 @@ export function middleware(request: NextRequest) {
           dest = `${rankingEnglishPublicPath(enSlug, 'top')}${catMatch[2] || ''}`;
         }
       }
-      return rewriteWithLocale(dest, loc, pathname);
+      return localeToEnglishOrRewrite(dest, loc, pathname);
     }
   }
 
@@ -174,7 +185,7 @@ export function middleware(request: NextRequest) {
       if (!m) continue;
       const enCat = resolveBestTgSlugFromPublicSegment(m[1]);
       if (enCat) {
-        return rewriteWithLocale(`/best-telegram-groups/${enCat}`, loc, pathname);
+        return localeToEnglishOrRewrite(`/best-telegram-groups/${enCat}`, loc, pathname);
       }
     }
   }
@@ -188,7 +199,7 @@ export function middleware(request: NextRequest) {
       if (!m) continue;
       const enCat = resolveOfCategorySlugFromPublicSegment(m[1]);
       if (enCat) {
-        return rewriteWithLocale(rankingEnglishPublicPath(enCat, 'best'), loc, pathname);
+        return localeToEnglishOrRewrite(rankingEnglishPublicPath(enCat, 'best'), loc, pathname);
       }
     }
   }
@@ -219,7 +230,7 @@ export function middleware(request: NextRequest) {
     if (RESERVED_LOCALE_SEGMENTS.has(seg)) continue;
     const hit = resolveListingSlugFromPublicSegment(seg);
     if (hit) {
-      return rewriteWithLocale(`/${hit.enSlug}`, loc, pathname);
+      return localeToEnglishOrRewrite(`/${hit.enSlug}`, loc, pathname);
     }
   }
 
@@ -243,13 +254,13 @@ export function middleware(request: NextRequest) {
         .replace(/(^-|-$)/g, '');
       if (rawSeg !== normalized) {
         const url = request.nextUrl.clone();
-        url.pathname = `${btgMatch[1] || ''}/best-telegram-groups/${normalized}`;
+        url.pathname = `${btgMatch[1] === '/pt' ? '' : (btgMatch[1] || '')}/best-telegram-groups/${normalized}`;
         return NextResponse.redirect(url, 301);
       }
     }
   }
 
-  // English-only URL slugs (articles) — 301 strip locale prefix. ainsfw/blog rewrite normally.
+  // English-only URL slugs (articles) — 301 strip locale prefix.
   const englishOnlySections = ['articles'];
   for (const locale of LOCALE_PREFIXES) {
     for (const section of englishOnlySections) {
@@ -262,10 +273,13 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Check if the path starts with a supported locale prefix
+  // /pt → English URL. /de and /es stay as rewrites.
   for (const locale of LOCALE_PREFIXES) {
     if (pathname === `/${locale}` || pathname.startsWith(`/${locale}/`)) {
       const strippedPath = pathname.replace(`/${locale}`, '') || '/';
+      if (locale === 'pt') {
+        return redirectToEnglish(internalPathFromPublicRest(strippedPath));
+      }
       return rewriteWithLocale(strippedPath, locale, pathname);
     }
   }

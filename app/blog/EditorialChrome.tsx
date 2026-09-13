@@ -77,7 +77,7 @@ function MastheadLangSwitcher({ compact = false }: { compact?: boolean }) {
             transition={{ duration: 0.12 }}
             className="absolute right-0 mt-2 w-36 bg-[#161412] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden py-1"
           >
-            {LOCALES.map((l) => (
+            {LOCALES.filter((l) => l !== 'pt').map((l) => (
               <a
                 key={l}
                 href={switchLocalePath(pathForSwitch, locale, l)}
@@ -561,7 +561,7 @@ function MobileNavMenu({ open, lp, onClose }: { open: boolean; lp: (p: string) =
         <div className="bg-[#161412] border border-white/10 rounded-xl overflow-hidden py-1">
           <div className="px-4 py-2.5 text-[13px] font-semibold text-white/50 border-b border-white/[0.06]">{t('nav.language', 'Language')}</div>
           <div className="grid grid-cols-3 gap-1.5 p-2">
-            {LOCALES.map((l) => (
+            {LOCALES.filter((l) => l !== 'pt').map((l) => (
               <a
                 key={l}
                 href={switchLocalePath(pathForSwitch, locale, l)}
