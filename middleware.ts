@@ -53,6 +53,48 @@ export function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // ── 410 GONE FOREVER (owner decree 2026-09-14) ──────────────────────────────
+  // These sections were deleted. Google burned crawl budget recrawling them and
+  // deranked critical pages. Serve a hard 410 (stronger than 404) in EVERY locale
+  // so Google drops them permanently. No redirect. No index.
+  //   /go/*                       (OnlyFans click-hop — the worst offender, 11K+ URLs)
+  //   /onlyfanssearch  + subpaths (decoy hub + everything under it)
+  //   /onlyfans-busca/*  (ES)     legacy localized OF search segment
+  //   /onlyfans-suche/*  (DE)     legacy localized OF search segment
+  //   /onlyfans-pesquisa/* (PT)   legacy localized OF search segment
+  // NOTE: bare /onlyfans is a LIVE group (slug "onlyfans"). It is NOT killed.
+  //       Only /onlyfans?q=... (the legacy search entry) is 410.
+  {
+    // Normalize a trailing slash so /go/ and /go/user/ are caught here (410),
+    // never handed to Next's 308 trailing-slash redirect. Nothing beyond /go
+    // survives — every depth, every locale, with or without a trailing slash.
+    const p410 = pathname !== '/' ? pathname.replace(/\/+$/, '') : pathname;
+    const gone410 = p410.match(
+      /^(?:\/(?:de|es|pt))?\/(?:go|onlyfanssearch|onlyfans-busca|onlyfans-suche|onlyfans-pesquisa)(?:\/.*)?$/,
+    );
+    const isOnlyfansQuery =
+      /^(?:\/(?:de|es|pt))?\/onlyfans$/.test(p410) &&
+      request.nextUrl.searchParams.has('q');
+    if (gone410 || isOnlyfansQuery) {
+      return new NextResponse('Gone', {
+        status: 410,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      });
+    }
+  }
+
+  // ── 301 to /best-onlyfans-accounts (owner decree 2026-09-14) ────────────────
+  // Localized best-of hubs (DE/PT) + their subpaths all collapse to the English hub.
+  {
+    const p = pathname.replace(/\/+$/, '') || '/';
+    if (/^(?:\/(?:de|es|pt))?\/(?:beste-onlyfans-accounts|melhores-contas-onlyfans)(?:\/.*)?$/.test(p)) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/best-onlyfans-accounts';
+      url.search = '';
+      return NextResponse.redirect(url, 301);
+    }
+  }
+
   // Category card grids off — send /ofsearch/{category} to Top 10 or hub
   if (!OF_SEARCH_ENGINE_ENABLED) {
     const catBrowse = pathname.match(/^(\/(?:de|es|pt))?\/ofsearch\/([^/]+)\/?$/);
