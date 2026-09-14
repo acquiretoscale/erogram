@@ -106,10 +106,12 @@ const VirtualizedGroupGrid = React.memo(function VirtualizedGroupGrid({
     bookmarkedMap = {},
 }: VirtualizedGroupGridProps) {
     const [items, setItems] = useState<Item[]>(() => buildFeedItems(groups, feedCampaigns));
+    const campKey = feedCampaigns.map((c) => c._id).join(',');
+    const groupKey = groups.map((g) => g._id).join(',');
 
     useEffect(() => {
         setItems(buildFeedItems(groups, feedCampaigns, (_seed, size) => Math.floor(Math.random() * size)));
-    }, [groups, feedCampaigns]);
+    }, [campKey, groupKey]);
 
     return (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">

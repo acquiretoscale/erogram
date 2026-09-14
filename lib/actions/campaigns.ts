@@ -229,7 +229,11 @@ export async function createCampaign(
     throw new Error('Creative image is required for this slot (or provide a video URL for feed ads)');
   }
   if (isCtaSlot && !(data.description != null && String(data.description).trim())) {
-    throw new Error('CTA text (button label) is required for CTA slots');
+    if (slot === 'join-cta') {
+      (data as any).description = 'CTA BUTTON';
+    } else {
+      throw new Error('CTA text (button label) is required for CTA slots');
+    }
   }
 
   const limit = SLOT_LIMITS[slot];
@@ -521,15 +525,16 @@ async function computeActiveCampaigns(
   // (old system) OR its named `placements` array contains this surface name (new system).
   // This makes one campaign assignable to banner/CTA/hero via the SAME placement picker
   // used for feed surfaces — placements[] is the single source of truth, slot is fallback.
+  // CTA buttons are dedicated slot campaigns (Advertisers → Buttons). Do not fill them
+  // from feed ads that happen to list the CTA in placements.
   const filter: Record<string, unknown> = {
     status: 'active',
     isVisible: { $ne: false },
     startDate: { $lte: now },
     ...campaignNotExpired(startOfToday),
-    $or: [
-      { slot },
-      { placements: slot },
-    ],
+    ...(slot === 'join-cta'
+      ? { slot }
+      : { $or: [{ slot }, { placements: slot }] }),
   };
 
   const andConditions: Record<string, unknown>[] = [];
@@ -816,28 +821,45 @@ export async function getKeywordPlacementCampaigns(placement: string, categorySl
       (!c.advertiserId || !cappedAdvertisers.has(c.advertiserId.toString())),
     );
 
-  // ROTATION (brain: inc-top-groups-rotation): every assigned ad must rotate, not just the
-  // top-priority one. Boost-weighted shuffle — boosted ads get BOOST_WEIGHT draws (more visibility)
-  // but non-boosted ads still rotate in. Same law as Top Groups. Without this, .slice() froze on [0].
-  // Tracking kill switch: equal weight for all ads (still rotate, no boost advantage).
-  const trackingOff = await isAdTrackingPaused();
-  const weightedPool: any[] = [];
-  for (const c of filtered) {
-    const draws = !trackingOff && c.priority === 'boost' ? BOOST_WEIGHT : 1;
-    for (let k = 0; k < draws; k++) weightedPool.push(c);
-  }
-  for (let i = weightedPool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [weightedPool[i], weightedPool[j]] = [weightedPool[j], weightedPool[i]];
-  }
-  const eligible: any[] = [];
-  const seen = new Set<string>();
-  for (const c of weightedPool) {
-    const id = c._id.toString();
-    if (seen.has(id)) continue;
-    seen.add(id);
-    eligible.push(c);
-    if (eligible.length >= max) break;
+  let eligible: any[];
+  if (placement === 'best-groups') {
+    // Best Telegram Groups: one frozen ad per URL. No Math.random. Same HTML every crawl.
+    const pool = [...filtered].sort((a, b) => String(a._id).localeCompare(String(b._id)));
+    if (pool.length === 0) {
+      eligible = [];
+    } else {
+      const key = `${placement}:${slug}`;
+      let hash = 0;
+      for (let i = 0; i < key.length; i++) {
+        hash = ((hash << 5) - hash) + key.charCodeAt(i);
+        hash |= 0;
+      }
+      eligible = [pool[Math.abs(hash) % pool.length]];
+    }
+  } else {
+    // ROTATION (brain: inc-top-groups-rotation): every assigned ad must rotate, not just the
+    // top-priority one. Boost-weighted shuffle - boosted ads get BOOST_WEIGHT draws (more visibility)
+    // but non-boosted ads still rotate in. Same law as Top Groups. Without this, .slice() froze on [0].
+    // Tracking kill switch: equal weight for all ads (still rotate, no boost advantage).
+    const trackingOff = await isAdTrackingPaused();
+    const weightedPool: any[] = [];
+    for (const c of filtered) {
+      const draws = !trackingOff && c.priority === 'boost' ? BOOST_WEIGHT : 1;
+      for (let k = 0; k < draws; k++) weightedPool.push(c);
+    }
+    for (let i = weightedPool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [weightedPool[i], weightedPool[j]] = [weightedPool[j], weightedPool[i]];
+    }
+    eligible = [];
+    const seen = new Set<string>();
+    for (const c of weightedPool) {
+      const id = c._id.toString();
+      if (seen.has(id)) continue;
+      seen.add(id);
+      eligible.push(c);
+      if (eligible.length >= max) break;
+    }
   }
 
   const expiredOF = await getExpiredOFAgencyTargets();

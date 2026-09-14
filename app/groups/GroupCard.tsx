@@ -383,9 +383,7 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                     </div>
 
 
-                    {/* Footer Actions — Join button + Review */}
-                    <div className="mt-auto flex items-stretch gap-2">
-                        {/* Main CTA */}
+                    <div className="mt-auto">
                         <a
                             href={directLink
                                 ? directLink
@@ -398,11 +396,7 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                                             : `/${group.slug}`}
                             target="_blank"
                             rel={group.isAdvertisement ? "sponsored noopener noreferrer" : "noopener noreferrer"}
-                            className={`group/btn relative flex-1 flex items-center justify-center gap-1.5 overflow-hidden font-black active:scale-[0.98] ${
-                                lockedPremium
-                                    ? 'rounded-xl py-2 sm:py-2.5 px-3'
-                                    : 'rounded-xl py-2 sm:py-2.5 px-3'
-                            }`}
+                            className={`group/btn relative w-full flex items-center justify-center gap-1.5 overflow-hidden font-black active:scale-[0.98] rounded-xl py-2 sm:py-2.5 px-3`}
                             style={lockedPremium
                                 ? {
                                     background: 'linear-gradient(135deg, #b8860b 0%, #ffd700 40%, #fff8b0 55%, #ffd700 70%, #b8860b 100%)',
@@ -424,22 +418,6 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                                 {lockedPremium ? 'ACCESS PREMIUM' : group.isAdvertisement ? t('groups.visit') : itemType === 'bot' ? t('groups.openBot') : t('groups.joinChannel')}
                             </span>
                         </a>
-
-                        {/* Review — text button */}
-                        {!lockedPremium && (
-                            <button
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    onOpenReviewModal?.(group);
-                                }}
-                                title={t('groups.review')}
-                                className="shrink-0 flex items-center justify-center gap-1 px-2.5 rounded-xl bg-white/[0.03] border border-white/[0.07] text-gray-400 hover:text-white hover:bg-white/[0.06] transition-colors text-[11px] font-semibold"
-                            >
-                                <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                                {t('groups.review')}
-                            </button>
-                        )}
                     </div>
                 </div>
             </div>

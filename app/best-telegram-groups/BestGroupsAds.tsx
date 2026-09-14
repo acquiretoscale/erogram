@@ -139,11 +139,24 @@ export default function BestGroupsAds({ ads, variant }: BestGroupsAdsProps) {
         <div className="flex flex-col md:flex-row gap-8 mt-4">
           <div className="w-full md:w-1/3 flex-shrink-0">
             <div className="relative aspect-square rounded-2xl overflow-hidden bg-gray-800 shadow-2xl">
-              <FallbackImage
-                src={ad.creative}
-                alt={ad.name || 'Featured'}
-                className="object-cover group-hover:scale-110 transition-transform duration-500"
-              />
+              {ad.creative ? (
+                <img
+                  src={ad.creative}
+                  alt={ad.name || 'Featured'}
+                  width={480}
+                  height={480}
+                  fetchPriority="high"
+                  loading="eager"
+                  decoding="async"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <FallbackImage
+                  src={ad.creative}
+                  alt={ad.name || 'Featured'}
+                  className="object-cover"
+                />
+              )}
             </div>
           </div>
           <div className="flex-grow flex flex-col justify-center">

@@ -85,7 +85,7 @@ export const PLACEMENTS: PlacementDef[] = [
   { id: 'top-bots-3', label: 'Top Bots — Spot 3', group: 'Top Bots', legacyTierSlot: 9 },
   { id: 'top-bots-4', label: 'Top Bots — Spot 4', group: 'Top Bots', legacyTierSlot: 10 },
 
-  { id: 'join-cta', label: 'Join CTA (group/bot pages)', group: 'Join Pages' },
+  { id: 'join-cta', label: 'Groups CTA Button', group: 'Join Pages' },
   { id: 'group-sidebar', label: 'Group/Bot Page — Sidebar Promo (up to 4 OF creators / ads)', group: 'Join Pages' },
   { id: 'ainsfw-featured', label: 'AI NSFW Featured', group: 'AI NSFW' },
   { id: 'ainsfw-feed', label: 'In-Feed — AI NSFW grid', group: 'In-Feed' },
@@ -120,6 +120,21 @@ export const PLACEMENTS: PlacementDef[] = [
  * Non-boosted ads still rotate in (never starved). Tune this one number to dial priority strength.
  */
 export const BOOST_WEIGHT = 10;
+
+/** Deterministic 0..1 from a string. Same seed = same result. No Math.random. */
+export function seededUnit(seed: string): number {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash) / 2147483647;
+}
+
+export function seededIndex(seed: string, size: number): number {
+  if (size <= 0) return 0;
+  return Math.floor(seededUnit(seed) * size);
+}
 
 /**
  * DEFAULT max-exposure placement set for a featured OnlyFans creator.

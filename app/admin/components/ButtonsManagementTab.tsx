@@ -8,13 +8,13 @@ type CtaSlot = (typeof CTA_SLOTS)[number];
 
 const SLOT_LABELS: Record<CtaSlot, string> = {
   'navbar-cta': 'Menu bar (top of every page)',
-  'join-cta': 'Join page (bottom CTA)',
+  'join-cta': 'Groups CTA Button',
   'filter-cta': 'Filter (Groups & Bots sidebar)',
 };
 
 const SLOT_WHERE: Record<CtaSlot, string> = {
   'navbar-cta': 'Shows in the top navbar next to Add / Advertisers.',
-  'join-cta': 'Shows at the bottom of the Join page.',
+  'join-cta': 'Shows to the right of Join Channel on group pages.',
   'filter-cta': 'Shows inside the filter panel, below Browse by Country (Groups and Bots pages).',
 };
 

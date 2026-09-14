@@ -17,7 +17,7 @@ import GroupsEditorialSeo from './GroupsEditorialSeo';
 import { checkBookmarks } from '@/lib/actions/publicData';
 import GroupCardSkeleton from './GroupCardSkeleton';
 import { filterCategories } from './constants';
-import { BOOST_WEIGHT, isGroupsInFeedPlacement } from '@/lib/adPlacements';
+import { BOOST_WEIGHT, isGroupsInFeedPlacement, seededIndex } from '@/lib/adPlacements';
 import { useTranslation, useLocalePath, useLocale } from '@/lib/i18n';
 // Lazy load modals to reduce initial bundle size
 const ReviewModal = dynamic(() => import('./ReviewModal'), {
@@ -141,6 +141,8 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   // Initialize device detection from server props to prevent hydration mismatches
   const [isMobile, setIsMobile] = useState(initialIsMobile);
   const [isTelegram, setIsTelegram] = useState(initialIsTelegram);
+  const [adsLive, setAdsLive] = useState(false);
+  useEffect(() => { setAdsLive(true); }, []);
   const lastVisibleIndexRef = useRef(-1);
 
 
@@ -472,12 +474,16 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
   // Top Groups: paid boosted groups + assigned ads rotate together per spot (same law as Top Bots).
   type TopGroupsSpot = { kind: 'ad'; campaign: FeedCampaign } | { kind: 'group'; group: Group };
+  const feedCampKey = feedCampaigns.map((c) => c._id).join(',');
+  const topGroupKey = topGroups.map((g) => `${g._id}:${g.boosted ? 1 : 0}`).join(',');
   const topSpotPicks = useMemo(() => {
     const empty = { 0: null, 1: null, 2: null, 3: null } as Record<number, TopGroupsSpot | null>;
     if (topGroupsLoading || topGroups.length === 0) return empty;
 
     const picks: Record<number, TopGroupsSpot | null> = { 0: null, 1: null, 2: null, 3: null };
     const usedKeys = new Set<string>();
+    const pickAt = (seed: string, size: number) =>
+      adsLive ? Math.floor(Math.random() * size) : seededIndex(seed, size);
     const boostedArr = topGroups.filter((g) => g.boosted);
     const nonBoosted = topGroups.filter((g) => !g.boosted);
     const manualBySpot: Record<number, Group | undefined> = {
@@ -520,7 +526,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
         );
         const available = fillerQueue.filter((g) => !usedKeys.has(`group:${g._id}`));
         if (available.length === 0) return null;
-        const g = available[Math.floor(Math.random() * available.length)];
+        const g = available[pickAt(`top-groups-fill:${spot}:${topGroupKey}`, available.length)];
         usedKeys.add(`group:${g._id}`);
         return { kind: 'group', group: g };
       }
@@ -535,7 +541,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
           );
         }
       }
-      const pick = expanded[Math.floor(Math.random() * expanded.length)];
+      const pick = expanded[pickAt(`top-groups:${spot}:${feedCampKey}`, expanded.length)];
       usedKeys.add(pick.kind === 'ad' ? `ad:${pick.campaign._id}` : `group:${pick.group._id}`);
       return pick;
     };
@@ -555,7 +561,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
     return picks;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feedCampaigns, topGroups, topGroupsLoading, isTelegram]);
+  }, [adsLive, feedCampKey, topGroupKey, topGroupsLoading, isTelegram]);
 
   const gridCampaigns = useMemo(() => {
     // Exclude only the exact slot ROWS consumed by Top Groups, not every row sharing that _id.

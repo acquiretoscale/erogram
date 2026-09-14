@@ -16,7 +16,7 @@ import { useTranslation, useLocalePath } from '@/lib/i18n';
 import { voteOnBot, unvoteOnBot, getAllBotStats } from '@/lib/actions/botVotes';
 import type { BotStatsData } from '@/lib/actions/botVotes';
 import { getActiveFeedCampaigns } from '@/lib/actions/campaigns';
-import { BOOST_WEIGHT } from '@/lib/adPlacements';
+import { BOOST_WEIGHT, seededIndex } from '@/lib/adPlacements';
 // Removed react-window import as virtualization is no longer used
 
 
@@ -153,11 +153,20 @@ export default function BotsClient({ initialBots, initialTopBots = [], initialAd
   // browser so every visitor gets current rotation and fresh advertisers.
   // These aliases keep the rest of the component using the same names.
   const [feedCampaigns, setFeedCampaigns] = useState<FeedCampaign[]>(initialFeedCampaigns);
+  const [adsLive, setAdsLive] = useState(false);
 
   useEffect(() => {
+    setAdsLive(true);
     getActiveFeedCampaigns('bots').catch(() => [] as FeedCampaign[])
       .then((feed) => {
-        if (feed.length > 0) setFeedCampaigns(feed);
+        if (feed.length > 0) {
+          const pool = [...feed];
+          for (let i = pool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [pool[i], pool[j]] = [pool[j], pool[i]];
+          }
+          setFeedCampaigns(pool);
+        }
       }).catch(() => {});
   }, []);
 
@@ -282,23 +291,28 @@ export default function BotsClient({ initialBots, initialTopBots = [], initialAd
   const advertPlacementsMap = useMemo(() => {
     if (!initialAdverts || initialAdverts.length === 0) return new Map<number, Advert>();
 
-    // Shuffle adverts cheaply on client
     const shuffled = [...initialAdverts];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    if (adsLive) {
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+    } else {
+      shuffled.sort((a, b) => String(a._id).localeCompare(String(b._id)));
     }
 
-    // Place adverts every 3–5 groups
     const map = new Map<number, Advert>();
     let advertIndex = 0;
-    for (let position = 2; position <= 100 && advertIndex < shuffled.length; position += 3 + Math.floor(Math.random() * 3)) {
+    let position = 2;
+    while (position <= 100 && advertIndex < shuffled.length) {
       map.set(position, shuffled[advertIndex]);
       advertIndex++;
+      const gap = adsLive ? 3 + Math.floor(Math.random() * 3) : 4;
+      position += gap;
     }
 
     return map;
-  }, [initialAdverts]);
+  }, [initialAdverts, adsLive]);
 
   const advertPositions = useMemo(() => {
     return new Set(advertPlacementsMap.keys());
@@ -306,9 +320,13 @@ export default function BotsClient({ initialBots, initialTopBots = [], initialAd
 
   // Top Bots: paid boosted bots + assigned ads rotate together per spot (same law as Top Groups).
   type TopBotsSpot = { kind: 'ad'; campaign: FeedCampaign } | { kind: 'bot'; bot: Bot };
+  const feedCampKey = (feedCampaigns ?? []).map((c) => c._id).join(',');
+  const topBotKey = topBots.map((b) => `${b._id}:${b.boosted ? 1 : 0}`).join(',');
   const topSpotPicks = useMemo(() => {
     const picks: Record<number, TopBotsSpot | null> = { 0: null, 1: null, 2: null, 3: null };
     const usedKeys = new Set<string>();
+    const pickAt = (seed: string, size: number) =>
+      adsLive ? Math.floor(Math.random() * size) : seededIndex(seed, size);
 
     const pickForSlot = (spot: number): TopBotsSpot | null => {
       const tierSlot = spot + 7;
@@ -342,7 +360,7 @@ export default function BotsClient({ initialBots, initialTopBots = [], initialAd
           expanded.push(entry.kind === 'ad' ? { kind: 'ad', campaign: entry.campaign } : { kind: 'bot', bot: entry.bot });
         }
       }
-      const pick = expanded[Math.floor(Math.random() * expanded.length)];
+      const pick = expanded[pickAt(`top-bots:${spot}:${feedCampKey}`, expanded.length)];
       usedKeys.add(pick.kind === 'ad' ? `ad:${pick.campaign._id}` : `bot:${pick.bot._id}`);
       return pick;
     };
@@ -368,7 +386,7 @@ export default function BotsClient({ initialBots, initialTopBots = [], initialAd
 
     return picks;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feedCampaigns, topBots]);
+  }, [adsLive, feedCampKey, topBotKey]);
 
   // Feed ads from Admin → Feed Ads (placement = Bots or Both). One ad every 5 entries at 5, 10, 15, ...
   const feedPlacementsMap = useMemo(() => {
@@ -926,13 +944,15 @@ const VirtualizedBotGrid = React.memo(function VirtualizedBotGrid({ bots, advert
     bots.map((bot, i) => ({ type: 'bot' as const, data: bot, index: i }))
   );
 
+  const botKey = bots.map((b) => b._id).join(',');
+  const campKey = feedCampaigns.map((c) => c._id).join(',');
   React.useEffect(() => {
     if (!isTelegram && feedCampaigns.length > 0) {
       setItems(buildBotFeedItems(bots, feedCampaigns));
     } else {
       setItems(bots.map((bot, i) => ({ type: 'bot' as const, data: bot, index: i })));
     }
-  }, [bots, feedCampaigns, isTelegram]);
+  }, [botKey, campKey, isTelegram]);
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">

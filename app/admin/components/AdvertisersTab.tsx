@@ -63,7 +63,7 @@ const LAUNCH_TIERS: { tier: string; hint: string; sections: { label: string; pla
     sections: [
       { label: 'Top Banner', placements: ['top-banner'] },
       { label: 'Navbar CTA', placements: ['navbar-cta'] },
-      { label: 'Join CTA (group/bot pages)', placements: ['join-cta'] },
+      { label: 'Groups CTA Button', placements: ['join-cta'] },
     ],
   },
 ];
@@ -164,7 +164,7 @@ const SLOT_LABELS: Record<string, string> = {
   'homepage-hero': 'Homepage Hero',
   feed: 'In-Feed',
   'navbar-cta': 'Navbar CTA',
-  'join-cta': 'Join CTA',
+  'join-cta': 'Groups CTA Button',
   'filter-cta': 'Filter CTA',
   'featured-groups': 'Featured Groups',
   'article-link': 'Article Link',
@@ -3426,7 +3426,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
             <h2 className="text-lg font-bold text-white p-4 border-b border-white/5">Buttons (text only)</h2>
             <p className="text-[#999] text-sm px-4 pb-3">Navbar and sidebar CTAs. Edit label and link; clicks are tracked.</p>
             <div className="divide-y divide-white/5">
-              {(['navbar-cta', 'filter-cta'] as const).map((slot) => {
+              {(['navbar-cta', 'join-cta', 'filter-cta'] as const).map((slot) => {
                 const camp = campaigns.filter((c) => c.slot === slot)[0];
                 const slotLabel = SLOT_LABELS[slot] || slot;
                 return (
@@ -3464,8 +3464,8 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                               name: slotLabel,
                               creative: '',
                               destinationUrl: '',
-                              description: '',
-                              buttonText: 'Visit',
+                              description: slot === 'join-cta' ? 'CTA BUTTON' : '',
+                              buttonText: slot === 'join-cta' ? 'CTA BUTTON' : 'Visit',
                               startDate: toInputDate(new Date().toISOString()),
                               endDate: toInputDate(new Date(Date.now() + 90 * 86400000).toISOString()),
                               endDateLifetime: false,

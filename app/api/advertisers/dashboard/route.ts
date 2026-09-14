@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
       'homepage-hero': 'Homepage Hero',
       feed: 'In-Feed Ad',
       'navbar-cta': 'Navbar CTA',
-      'join-cta': 'Join Page CTA',
+      'join-cta': 'Groups CTA Button',
       'filter-cta': 'Filter CTA',
     };
 

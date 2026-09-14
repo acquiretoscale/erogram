@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { trackClick } from '@/lib/actions/campaigns';
 
 export interface HeaderBannerCampaign {
@@ -30,9 +30,10 @@ const DEVICE_CLASS: Record<string, string> = {
  */
 export default function HeaderBanner({ campaigns = [], className = '', placement = 'top-banner' }: HeaderBannerProps) {
   const items = useMemo(() => (campaigns ?? []).filter((c) => c?.creative), [campaigns]);
-  const [currentIndex] = useState(() =>
-    items.length > 1 ? Math.floor(Math.random() * items.length) : 0
-  );
+  const [currentIndex, setCurrentIndex] = useState(0);
+  useEffect(() => {
+    if (items.length > 1) setCurrentIndex(Math.floor(Math.random() * items.length));
+  }, [items.length]);
 
   const current = items[currentIndex] ?? items[0];
 

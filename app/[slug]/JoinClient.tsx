@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import axios from 'axios';
@@ -12,7 +12,7 @@ import BookmarkButton from '@/components/BookmarkButton';
 import ShareDropdown from '@/components/ShareDropdown';
 import { categorySlug } from '@/app/groups/constants';
 import { getButtonConfig, trackEntityView } from '@/lib/actions/publicData';
-import { getActiveCampaigns, getPlacementFeedCampaigns } from '@/lib/actions/campaigns';
+import { getActiveCampaigns, getPlacementFeedCampaigns, trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
 import { trackTrendingClick } from '@/lib/actions/onlyfansTracking';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 import { getCreatorReviews, submitCreatorReview, type CreatorReviewData } from '@/lib/actions/ofCreatorProfile';
@@ -66,6 +66,45 @@ interface JoinCtaCampaign {
   destinationUrl: string;
   description: string;
   buttonText: string;
+}
+
+function groupsCtaLabel(campaign: JoinCtaCampaign) {
+  return (campaign.description || campaign.buttonText || '').trim();
+}
+
+function GroupsCtaButton({ campaign }: { campaign: JoinCtaCampaign }) {
+  const label = groupsCtaLabel(campaign);
+  if (!campaign.destinationUrl || !label) return null;
+  return (
+    <a
+      href={campaign.destinationUrl}
+      target="_blank"
+      rel="sponsored noopener noreferrer"
+      onClick={() => { void trackCampaignClick(campaign._id, 'join-cta'); }}
+      className="w-full h-full flex items-center justify-center px-3 sm:px-8 py-5 rounded-2xl bg-[#e0245e] hover:bg-[#c81e51] text-white font-bold text-xl text-center leading-tight transition-colors"
+    >
+      {label}
+    </a>
+  );
+}
+
+function JoinWithGroupsCta({
+  show,
+  campaign,
+  children,
+}: {
+  show: boolean;
+  campaign: JoinCtaCampaign | null;
+  children: ReactNode;
+}) {
+  const cta = show && campaign && campaign.destinationUrl && groupsCtaLabel(campaign) ? campaign : null;
+  if (!cta) return <>{children}</>;
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:gap-3 items-stretch">
+      <div className="min-w-0">{children}</div>
+      <GroupsCtaButton campaign={cta} />
+    </div>
+  );
 }
 
 interface VaultTeaserItem {
@@ -275,6 +314,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
   // the current campaigns (rotation, new advertisers, ended campaigns).
   const [liveTopBanners, setLiveTopBanners] = useState(topBannerCampaigns);
   const [liveSidebarAds, setLiveSidebarAds] = useState<FeedCampaign[]>(sidebarAds);
+  const [liveJoinCta, setLiveJoinCta] = useState(joinCtaCampaign);
   const [viewCount, setViewCount] = useState(entity.views || 0);
 
   useEffect(() => {
@@ -282,6 +322,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
   }, [entity._id, entity.views]);
 
   useEffect(() => {
+    setAdsReady(true);
     // View ping — counts every real visit (server no longer counts per render).
     trackEntityView(entity._id, type)
       .then(() => setViewCount((v) => v + 1))
@@ -290,10 +331,13 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
     Promise.all([
       getActiveCampaigns('top-banner', { page: 'join' }).catch(() => []),
       getPlacementFeedCampaigns('group-sidebar', 4).catch(() => []),
-    ]).then(([banners, sidebar]) => {
+      getActiveCampaigns('join-cta').catch(() => []),
+    ]).then(([banners, sidebar, joinCtas]) => {
       const b = banners as any[];
       if (b.length > 0 && b[0].creative) setLiveTopBanners(b as any);
       if ((sidebar as any[]).length > 0) setLiveSidebarAds(sidebar as any);
+      const join = (joinCtas as JoinCtaCampaign[])[0];
+      setLiveJoinCta(join?.destinationUrl ? join : null);
     }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entity._id]);
@@ -302,12 +346,13 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
   // shuffled per load for rotation. Falls back to EROGRAM PREMIUM when no ads are assigned.
   const sidebarAdsShuffled = useMemo(() => {
     const arr = [...liveSidebarAds];
+    if (!adsReady) return arr.slice(0, 4);
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [arr[i], arr[j]] = [arr[j], arr[i]];
     }
     return arr.slice(0, 4);
-  }, [liveSidebarAds]);
+  }, [liveSidebarAds, adsReady]);
   const showSidebarAds = sidebarAdsShuffled.length > 0 && !initialIsTelegram;
   const clickTrackedRef = useRef(false);
   const { t } = useTranslation();
@@ -964,6 +1009,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                 <h2 className="text-2xl font-bold text-white relative z-10 mb-2">{t('slug.readyToJoin')}</h2>
                 <p className="text-gray-400 mb-6 relative z-10">{t('slug.clickToAccess')}</p>
 
+                <JoinWithGroupsCta show={type === 'group'} campaign={liveJoinCta}>
                 {!userInteracted ? (
                   <button
                     onClick={handleStartCountdown}
@@ -1027,90 +1073,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                     </p>
                   </div>
                 )}
-
-                <a
-                  href="/premium"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="relative z-10 block w-full text-center font-black py-5 rounded-2xl text-lg uppercase tracking-widest transition-all duration-150 transform hover:-translate-y-1 hover:brightness-110 active:translate-y-0 mt-3"
-                  style={{
-                    background: 'linear-gradient(135deg, #f5d061 0%, #c9973a 45%, #a67c00 100%)',
-                    color: '#2a1f00',
-                    border: '1px solid #e8c547',
-                    boxShadow: '0 0 20px rgba(201,151,58,0.45)',
-                    letterSpacing: '0.08em',
-                  }}
-                >
-                  <span className="block text-lg uppercase tracking-widest">🔒 UNLOCK 4800 UNLISTED GROUPS</span>
-                  <span className="block mt-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.14em] opacity-90">
-                    DAILY UPDATED / NO DEAD LINKS / VERIFIED
-                  </span>
-                </a>
-
-                {vaultTeaser.length > 0 && (
-                  <Link
-                    href={lp('/premium')}
-                    className="block mt-6 group/premium cursor-pointer rounded-2xl"
-                  >
-                    <div className="relative p-[2px] rounded-2xl" style={{ background: 'linear-gradient(135deg, #f5d061, #c9973a, #a67c00)' }}>
-                      <div className="absolute -top-px right-3 z-10">
-                        <span
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-b-md text-[9px] font-black uppercase tracking-[0.15em]"
-                          style={{ background: 'linear-gradient(135deg, #f5d061, #c9973a)', color: '#2a1f00' }}
-                        >
-                          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                          </svg>
-                          PREMIUM
-                        </span>
-                      </div>
-                      <div className="relative rounded-[14px] bg-white p-2 transition-transform group-hover/premium:scale-[1.005]">
-                        <div className="grid grid-cols-3 gap-1.5">
-                          {vaultTeaser.slice(0, 12).map((g) => {
-                            const cats = g.vaultCategories && g.vaultCategories.length > 0 ? g.vaultCategories : [g.category];
-                            const fmt = g.memberCount >= 1_000_000 ? (g.memberCount/1_000_000).toFixed(1)+'M' : g.memberCount >= 1_000 ? (g.memberCount/1_000).toFixed(g.memberCount>=10_000?0:1)+'K' : g.memberCount > 0 ? String(g.memberCount) : null;
-                            return (
-                              <div
-                                key={g._id}
-                                className="relative rounded-lg flex items-center gap-2 px-2 py-1.5 select-none pointer-events-none"
-                                style={{ background: '#ffffff', border: '1px solid rgba(249,115,22,0.3)' }}
-                              >
-                                <div className="shrink-0 w-8 h-8 rounded-md overflow-hidden border border-orange-200">
-                                  <img src={g.image || '/assets/placeholder-no-image.png'} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = '/assets/placeholder-no-image.png'; }} />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-bold text-[10px] truncate leading-tight mb-0.5 select-none" aria-hidden="true">
-                                    <span className="text-black">{g.name.slice(0, 4)}</span><span style={{ filter: 'blur(4px)', color: '#000' }}>{g.name.slice(4) || '····'}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1 flex-wrap">
-                                    {cats.map((c: string, i: number) => (
-                                      <span key={c} className="text-[7px] font-black uppercase tracking-[0.06em] px-1 py-0.5 rounded shrink-0" style={{ background: i === 0 ? '#fff7ed' : '#f5f5f5', border: '1px solid rgba(249,115,22,0.2)', color: i === 0 ? '#ea580c' : '#9a3412' }}>{c}</span>
-                                    ))}
-                                    {fmt && <span className="text-[8px] font-semibold shrink-0 text-gray-400">· {fmt}</span>}
-                                  </div>
-                                </div>
-                                <svg className="shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(249,115,22,0.4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                                </svg>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none rounded-b-[14px]" style={{ background: 'linear-gradient(to bottom, transparent, #ffffff)' }} />
-                      </div>
-                    </div>
-                    <div
-                      className="mt-2 flex items-center justify-center gap-2 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all group-hover/premium:brightness-110"
-                      style={{ background: 'linear-gradient(135deg, #f5d061 0%, #c9973a 45%, #a67c00 100%)', color: '#2a1f00' }}
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                      </svg>
-                      UNLOCK 4800 UNLISTED GROUPS
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                    </div>
-                  </Link>
-                )}
+                </JoinWithGroupsCta>
 
                 {showSidebarAds && (
                   <div className="mt-6 rounded-2xl border border-[#00AFF0]/30 bg-white p-4 shadow-[0_18px_40px_-20px_rgba(0,175,240,0.45)]">

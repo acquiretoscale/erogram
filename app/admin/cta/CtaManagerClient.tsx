@@ -25,9 +25,9 @@ interface Advertiser {
 
 const SLOT_META = {
   'join-cta': {
-    label: 'Join Page CTA',
+    label: 'Groups CTA Button',
     icon: '💖',
-    description: 'Shown on every individual group & bot page below the join button',
+    description: 'Shown to the right of Join Channel on group pages',
     color: 'from-purple-600 via-pink-600 to-rose-600',
     badge: 'bg-pink-500/15 text-pink-400 border-pink-500/20',
     defaultText: 'Build your own AI girlfriend 💖',

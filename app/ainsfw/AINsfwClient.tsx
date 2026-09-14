@@ -16,7 +16,7 @@ import { renderAinsfwGuideText } from '@/lib/ainsfw/internalLinks';
 import type { ToolStatsData } from '@/lib/actions/ainsfw';
 import type { AuthorProfile } from '@/lib/actions/authors';
 import { AINSFW_PAGE_SIZE } from './constants';
-import { getPlacementFeedCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
+import { getActiveFeedCampaigns } from '@/lib/actions/campaigns';
 import TopAINsfwBlock, { loadAllScores } from './TopAINsfwBlock';
 import RecentAdditionsBlock from './RecentAdditionsBlock';
 import AinsfwToolsFilterBar from './AinsfwToolsFilterBar';
@@ -112,19 +112,24 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
   const { t } = useTranslation();
   const lp = useLocalePath();
 
-  // LIVE ADS: page HTML is ISR-cached (up to 5 min stale), so the browser
-  // refreshes ad campaigns right after load for real rotation.
-  const [liveTopAds, setLiveTopAds] = useState<FeedCampaign[]>(topAdCampaigns);
+  // ISR HTML keeps the server order. After load, shuffle once so this visitor
+  // gets a different ad without making the crawl HTML change.
   const [liveFeedAds, setLiveFeedAds] = useState<FeedCampaign[]>(feedCampaigns);
 
   useEffect(() => {
-    Promise.all([
-      getPlacementFeedCampaigns('ainsfw-featured', 4).catch(() => []),
-      getActiveFeedCampaigns('ainsfw').catch(() => []),
-    ]).then(([topAds, feed]) => {
-      if ((topAds as any[]).length > 0) setLiveTopAds(topAds as any);
-      if ((feed as any[]).length > 0) setLiveFeedAds(feed as any);
-    }).catch(() => {});
+    const shuffle = (list: FeedCampaign[]) => {
+      const pool = [...list];
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      return pool;
+    };
+    if (feedCampaigns.length > 0) setLiveFeedAds(shuffle(feedCampaigns));
+    getActiveFeedCampaigns('ainsfw').catch(() => [] as FeedCampaign[])
+      .then((feed) => {
+        if (feed.length > 0) setLiveFeedAds(shuffle(feed as FeedCampaign[]));
+      }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
