@@ -1,12 +1,27 @@
 'use server';
 
 import jwt from 'jsonwebtoken';
+import { revalidatePath } from 'next/cache';
 import connectDB from '@/lib/db/mongodb';
 import { AINsfwToolStats, Campaign, Advertiser, AINsfwSubmission, User } from '@/lib/models';
 import type { AINsfwTool } from '@/app/ainsfw/types';
 import { invertToolSlug, toolSlug } from '@/app/ainsfw/data';
+import { LOCALES } from '@/lib/i18n/config';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
+
+export async function revalidateAinsfwPublic(slug?: string) {
+  try {
+    for (const locale of LOCALES) {
+      const prefix = locale === 'en' ? '' : `/${locale}`;
+      revalidatePath(`${prefix}/ainsfw`);
+      if (slug) revalidatePath(`${prefix}/ainsfw/${slug}`);
+    }
+    revalidatePath('/ainsfw/[slug]', 'page');
+  } catch (err) {
+    console.error('[AINSFW] revalidatePath failed:', err);
+  }
+}
 
 function slugQuery(slug: string): string | { $in: string[] } {
   const alt = invertToolSlug(slug);
@@ -448,15 +463,15 @@ export interface AdminSubmission {
   boosted: boolean;
   boostExpiresAt: string | null;
   unlisted: boolean;
+  awaitingAdminReview: boolean;
   views: number;
   clickCount: number;
   createdAt: string;
+  paidAt: string | null;
 }
 
-export async function getAdminSubmissions(): Promise<AdminSubmission[]> {
-  await connectDB();
-  const docs = await AINsfwSubmission.find({}).sort({ createdAt: -1 }).lean() as any[];
-  return docs.map((d: any) => ({
+function toAdminSubmission(d: any): AdminSubmission {
+  return {
     _id: d._id.toString(),
     name: d.name, slug: d.slug, category: d.category, vendor: d.vendor || '',
     description: d.description, image: d.image || '', websiteUrl: d.websiteUrl || '',
@@ -467,9 +482,17 @@ export async function getAdminSubmissions(): Promise<AdminSubmission[]> {
     boosted: !!d.boosted,
     boostExpiresAt: d.boostExpiresAt ? new Date(d.boostExpiresAt).toISOString() : null,
     unlisted: !!d.unlisted,
+    awaitingAdminReview: !!d.awaitingAdminReview,
     views: d.views || 0, clickCount: d.clickCount || 0,
     createdAt: new Date(d.createdAt).toISOString(),
-  }));
+    paidAt: d.paidAt ? new Date(d.paidAt).toISOString() : null,
+  };
+}
+
+export async function getAdminSubmissions(): Promise<AdminSubmission[]> {
+  await connectDB();
+  const docs = await AINsfwSubmission.find({}).sort({ createdAt: -1 }).lean() as any[];
+  return docs.map(toAdminSubmission);
 }
 
 export async function adminUpdateSubmission(
@@ -496,6 +519,10 @@ export async function adminUpdateSubmission(
       set.featuredExpiresAt = null;
     }
   }
+  if (updates.status === 'approved') {
+    set.awaitingAdminReview = false;
+    if (updates.unlisted === undefined) set.unlisted = false;
+  }
   const doc = await AINsfwSubmission.findByIdAndUpdate(id, { $set: set }, { new: true }).lean() as any;
   if (!doc) return null;
   if (set.tryNowUrl) {
@@ -507,48 +534,94 @@ export async function adminUpdateSubmission(
       { upsert: true },
     );
   }
+  if (doc.status === 'approved' && doc.paymentStatus === 'paid' && !doc.unlisted) {
+    await revalidateAinsfwPublic(doc.slug);
+  }
+  return toAdminSubmission(doc);
+}
+
+export async function adminApprovePaidAinsfwListing(id: string): Promise<AdminSubmission | null> {
+  await connectDB();
+  const now = new Date();
+  const doc = await AINsfwSubmission.findByIdAndUpdate(
+    id,
+    {
+      $set: {
+        status: 'approved',
+        unlisted: false,
+        awaitingAdminReview: false,
+        paymentStatus: 'paid',
+        paidAt: now,
+      },
+    },
+    { new: true },
+  ).lean() as any;
+  if (!doc) return null;
+  if (doc.featured) {
+    await adminSetFeatured(doc.slug, true);
+  }
+  const plan = doc.submissionTier || 'basic';
+  const hasSaleEvent = await PremiumEvent.exists({
+    event: 'submission_payment_success',
+    reason: { $regex: new RegExp(id) },
+  });
+  if (!hasSaleEvent) {
+    const { AINSFW_PLAN_PRICES } = await import('@/lib/ainsfw/planPrices');
+    const usd = AINSFW_PLAN_PRICES[plan as keyof typeof AINSFW_PLAN_PRICES] ?? 97;
+    await PremiumEvent.create({
+      source: 'server',
+      event: 'submission_payment_success',
+      entityType: 'ainsfw',
+      listingType: plan,
+      paymentMethod: 'crypto',
+      username: doc.name || 'Unknown',
+      reason: `ainsfw:${plan}:${id}`,
+    }).catch(() => {});
+    const { notifyAdminsOfSale } = await import('@/lib/utils/notifyAdmins');
+    await notifyAdminsOfSale({
+      plan: `ainsfw_${plan}`,
+      method: 'crypto',
+      username: doc.name || 'Unknown',
+      usd,
+      url: '/admin/ainsfw',
+    }).catch(() => {});
+  }
+  await revalidateAinsfwPublic(doc.slug);
+  return toAdminSubmission(doc);
+}
+
+function mapPaidSubmission(d: any): AINsfwTool & { createdAt?: string } {
+  const at = d.paidAt || d.createdAt;
   return {
-    _id: doc._id.toString(),
-    name: doc.name, slug: doc.slug, category: doc.category, vendor: doc.vendor || '',
-    description: doc.description, image: doc.image || '', websiteUrl: doc.websiteUrl || '',
-    tryNowUrl: doc.tryNowUrl || doc.websiteUrl || '',
-    contactEmail: doc.contactEmail || '', contactTelegram: doc.contactTelegram || '', status: doc.status, submissionTier: doc.submissionTier || 'basic',
-    paymentStatus: doc.paymentStatus || 'none', featured: !!doc.featured,
-    featuredExpiresAt: doc.featuredExpiresAt ? new Date(doc.featuredExpiresAt).toISOString() : null,
-    boosted: !!doc.boosted,
-    boostExpiresAt: doc.boostExpiresAt ? new Date(doc.boostExpiresAt).toISOString() : null,
-    unlisted: !!doc.unlisted,
-    views: doc.views || 0, clickCount: doc.clickCount || 0,
-    createdAt: new Date(doc.createdAt).toISOString(),
+    slug: d.slug || toolSlug(d.category, d.name),
+    name: d.name,
+    category: d.category,
+    vendor: d.vendor || d.name,
+    description: d.description,
+    image: d.image || '/assets/image.jpg',
+    tags: d.tags || [],
+    subscription: d.subscription || '',
+    payment: d.payment || [],
+    tryNowUrl: d.tryNowUrl || d.websiteUrl,
+    sourceUrl: d.websiteUrl,
+    createdAt: at ? new Date(at).toISOString() : undefined,
   };
 }
 
-export async function getApprovedSubmissions(existingSlugs: Set<string>): Promise<AINsfwTool[]> {
+export async function getApprovedSubmissions(existingSlugs?: Set<string>): Promise<AINsfwTool[]> {
   await connectDB();
   const docs = await AINsfwSubmission.find(
     { status: 'approved', paymentStatus: 'paid', unlisted: { $ne: true } },
-    { slug: 1, name: 1, category: 1, vendor: 1, description: 1, image: 1, tags: 1, subscription: 1, payment: 1, tryNowUrl: 1, websiteUrl: 1, createdAt: 1 },
+    { slug: 1, name: 1, category: 1, vendor: 1, description: 1, image: 1, tags: 1, subscription: 1, payment: 1, tryNowUrl: 1, websiteUrl: 1, createdAt: 1, paidAt: 1 },
   ).lean() as any[];
 
   return docs
     .filter((d: any) => {
+      if (!existingSlugs) return true;
       const slug = d.slug || toolSlug(d.category, d.name);
       return !existingSlugs.has(slug);
     })
-    .map((d: any) => ({
-      slug: d.slug || toolSlug(d.category, d.name),
-      name: d.name,
-      category: d.category,
-      vendor: d.vendor || d.name,
-      description: d.description,
-      image: d.image || '/assets/image.jpg',
-      tags: d.tags || [],
-      subscription: d.subscription || '',
-      payment: d.payment || [],
-      tryNowUrl: d.tryNowUrl || d.websiteUrl,
-      sourceUrl: d.websiteUrl,
-      createdAt: d.createdAt ? new Date(d.createdAt).toISOString() : undefined,
-    }));
+    .map(mapPaidSubmission);
 }
 
 export interface BlogTopAITool {
