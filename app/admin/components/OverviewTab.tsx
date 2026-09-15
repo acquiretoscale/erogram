@@ -12,7 +12,7 @@ type Metric = { last24h?: number; lifetime?: number; trend30d?: TrendPoint[] };
 type MonitoringAlert = { level: 'critical' | 'warning' | 'info' | 'ok'; title: string; description: string; actionUrl?: string };
 type RecentSale = {
   _id: string;
-  type: 'subscription' | 'group_boost' | 'bot_boost';
+  type: 'subscription' | 'group_boost' | 'bot_boost' | 'ainsfw_listing';
   label: string;
   plan: string | null;
   paymentMethod: string;
@@ -44,7 +44,7 @@ export type DashboardData = {
     manualRevenueThisMonth?: number;
   };
   kpis?: { paidSubs?: Metric; adClicks?: Metric; traffic?: Metric; users?: { total: number; free: number; newUsersTrend30d: TrendPoint[]; byCountry30d?: { country: string; count: number }[] }; engagement?: { bookmarks: number; folders: number }; publishing?: { groupsTrend30d: TrendPoint[]; botsTrend30d: TrendPoint[]; scheduledCount?: number; nextScheduled?: { name: string; date: string } | null; lastScheduled?: { date: string } | null } };
-  pending?: { groups: number; bots: number; reviews: number; reports: number; total: number };
+  pending?: { groups: number; bots: number; reviews: number; reports: number; ainsfw?: number; total: number };
   recentSales?: RecentSale[];
   salesSummary?: { count: number; totalStars: number; totalUsd: number; last24hCount: number; last24hUsd: number };
   earningsByCategory?: { subscriptions: number; groups: number; bots: number; advertisers: AdvertiserEntry[] };
@@ -524,10 +524,11 @@ function StatCard({ label, value, sub, accent, live }: { label: string; value: s
   );
 }
 
-const TYPE_META = {
-  subscription: { dot: '#a78bfa', label: 'Premium', bg: 'rgba(124,58,237,0.12)', tx: '#c4b5fd' },
-  group_boost:  { dot: '#38bdf8', label: 'Group',   bg: 'rgba(2,132,199,0.12)',  tx: '#7dd3fc' },
-  bot_boost:    { dot: '#2dd4bf', label: 'Bot',      bg: 'rgba(13,148,136,0.12)', tx: '#5eead4' },
+const TYPE_META: Record<string, { dot: string; label: string; bg: string; tx: string }> = {
+  subscription:   { dot: '#a78bfa', label: 'Premium',  bg: 'rgba(124,58,237,0.12)', tx: '#c4b5fd' },
+  group_boost:    { dot: '#38bdf8', label: 'Group',    bg: 'rgba(2,132,199,0.12)',  tx: '#7dd3fc' },
+  bot_boost:      { dot: '#2dd4bf', label: 'Bot',      bg: 'rgba(13,148,136,0.12)', tx: '#5eead4' },
+  ainsfw_listing: { dot: '#f472b6', label: 'AI NSFW',  bg: 'rgba(236,72,153,0.12)', tx: '#f9a8d4' },
 };
 const PLAN_LABEL: Record<string, string> = { monthly:'1 Month', quarterly:'3 Months', yearly:'1 Year', lifetime:'Lifetime' };
 
@@ -586,7 +587,7 @@ function SectionHeader({ title, right }: { title: string; right?: React.ReactNod
 export default function OverviewTab({ data, loading, onRefresh }: Props) {
   const h       = data?.headline        ?? {};
   const kpis    = data?.kpis            ?? {};
-  const pending = data?.pending         ?? { groups:0, bots:0, reviews:0, reports:0, total:0 };
+  const pending = data?.pending         ?? { groups:0, bots:0, reviews:0, reports:0, ainsfw:0, total:0 };
   const sales   = data?.recentSales     ?? [];
   const summary = data?.salesSummary    ?? { count:0, totalStars:0, totalUsd:0, last24hCount:0, last24hUsd:0 };
   const earn    = data?.earningsByCategory ?? { subscriptions:0, groups:0, bots:0, advertisers:[] };
@@ -886,6 +887,7 @@ export default function OverviewTab({ data, loading, onRefresh }: Props) {
                 {([
                   { label:'Groups',  count:pending.groups,  href:'/admin/groups?tab=pending', color:'#f59e0b' },
                   { label:'Bots',    count:pending.bots,    href:'/admin/pending-bots',       color:'#7c3aed' },
+                  { label:'AI NSFW', count:pending.ainsfw || 0, href:'/admin/ainsfw',         color:'#22c55e' },
                   { label:'Comments & Reviews', count:pending.reviews, href:'/admin/reviews',            color:'#0284c7' },
                   { label:'Reports', count:pending.reports, href:'/admin/reports',            color:'#ef4444' },
                 ]).map(item => (
