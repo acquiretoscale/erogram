@@ -6,9 +6,7 @@ import { notifyAdminsOfSale } from '@/lib/utils/notifyAdmins';
 import { getPremiumPricing } from '@/lib/premiumPricing';
 import { buildBoostPaymentUpdate, cryptoUsdFromStars, BOOST_STARS, SCALE_USD, type BoostPaymentType } from '@/lib/boostPricing';
 import { fulfillAINSFWListingPayment } from '@/lib/actions/ainsfwPayment';
-import type { AINSFWPlan } from '@/lib/ainsfw/planPrices';
-
-const AINSFW_USD: Record<string, number> = { basic: 97, boost: 197, startup: 297, platinum: 297, free: 0 };
+import { ainsfwCryptoPrice, type AINSFWPlan } from '@/lib/ainsfw/planPrices';
 const FEATURED_CREATOR_USD = 197;
 
 const VALID_PLANS = new Set(['monthly', 'quarterly', 'yearly', 'lifetime']);
@@ -58,7 +56,7 @@ async function handleSubmissionPayment(
     }
     const fulfilled = await fulfillAINSFWListingPayment(entityId, plan, paymentId, {
       method: 'crypto',
-      usd: AINSFW_USD[plan] || 97,
+      usd: ainsfwCryptoPrice(plan),
     });
     if (!fulfilled) {
       throw new Error(`ainsfw fulfill failed: ${entityId}`);

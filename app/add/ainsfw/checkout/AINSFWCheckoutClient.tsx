@@ -15,6 +15,7 @@ import {
 } from '@/lib/actions/ainsfwPayment';
 import {
   AINSFW_PLAN_PRICES,
+  ainsfwCryptoPrice,
   type AINSFWPlan,
 } from '@/lib/ainsfw/planPrices';
 
@@ -177,26 +178,32 @@ export default function AINSFWCheckoutClient() {
     }
   };
 
-  const cryptoBtn = (plan: 'basic' | 'boost') => (
-    <button
-      type="button"
-      disabled={!!paying}
-      onClick={() => handlePay(plan)}
-      className="w-full py-3.5 sm:py-4 px-3 text-black disabled:opacity-50 flex flex-col items-center justify-center gap-1 transition-all hover:opacity-95 active:translate-x-[2px] active:translate-y-[2px]"
-      style={{ background: CTA, border: BORDER, boxShadow: SHADOW }}
-    >
-      {paying === plan ? (
-        <span className="text-base sm:text-sm font-black uppercase tracking-widest leading-none">Processing...</span>
-      ) : (
-        <>
-          <span className="text-sm sm:text-base font-black uppercase tracking-wide text-center leading-tight">
-            {plan === 'basic' ? `LIST MY TOOL for $${AINSFW_PLAN_PRICES.basic}` : `BOOST MY TOOL for $${AINSFW_PLAN_PRICES.boost}`}
-          </span>
-          <span className="text-[11px] sm:text-xs font-semibold leading-tight">(One-time payment - USDT/Crypto)</span>
-        </>
-      )}
-    </button>
-  );
+  const cryptoBtn = (plan: 'basic' | 'boost') => {
+    const cryptoPrice = ainsfwCryptoPrice(plan);
+    const fullPrice = AINSFW_PLAN_PRICES[plan];
+    return (
+      <button
+        type="button"
+        disabled={!!paying}
+        onClick={() => handlePay(plan)}
+        className="w-full py-3.5 sm:py-4 px-3 text-black disabled:opacity-50 flex flex-col items-center justify-center gap-1 transition-all hover:opacity-95 active:translate-x-[2px] active:translate-y-[2px]"
+        style={{ background: CTA, border: BORDER, boxShadow: SHADOW }}
+      >
+        {paying === plan ? (
+          <span className="text-base sm:text-sm font-black uppercase tracking-widest leading-none">Processing...</span>
+        ) : (
+          <>
+            <span className="text-sm sm:text-base font-black uppercase tracking-wide text-center leading-tight">
+              {plan === 'basic' ? `LIST MY TOOL for $${cryptoPrice}` : `BOOST MY TOOL for $${cryptoPrice}`}
+            </span>
+            <span className="text-[11px] sm:text-xs font-semibold leading-tight">
+              <span className="line-through opacity-60">${fullPrice}</span> Save 15% with Crypto
+            </span>
+          </>
+        )}
+      </button>
+    );
+  };
 
   return (
     <div className="ainsfw-page ainsfw-bg min-h-screen text-white">

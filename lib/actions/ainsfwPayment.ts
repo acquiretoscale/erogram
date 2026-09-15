@@ -6,6 +6,7 @@ import { validateCoupon, recordCouponUsage } from '@/lib/actions/coupons';
 import jwt from 'jsonwebtoken';
 import {
   AINSFW_PLAN_PRICES,
+  ainsfwCryptoPrice,
   ainsfwStarsAmount,
   isAINSFWPlan,
   type AINSFWPlan,
@@ -433,7 +434,7 @@ export async function checkoutAINSFWListing(
   }
 
   const orderId = `sub__ainsfw__${submission._id}__${plan}__${Date.now()}`;
-  let finalPrice = AINSFW_PLAN_PRICES[plan];
+  let finalPrice = ainsfwCryptoPrice(plan);
   let couponValidation: Awaited<ReturnType<typeof validateCoupon>> | null = null;
 
   if (couponCode) {
