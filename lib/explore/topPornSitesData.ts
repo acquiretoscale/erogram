@@ -4,6 +4,7 @@ import { PREMIUM_PORN_LISTINGS } from '@/lib/explore/premiumPornListings';
 import { LISTINGS as LIVE_SEX_CAMS_LISTINGS } from '@/lib/explore/liveSexCamsListings';
 import { LISTINGS as VR_PORN_LISTINGS } from '@/lib/explore/vrPornListings';
 import { LISTINGS as PREMIUM_ASIAN_PORN_LISTINGS } from '@/lib/explore/premiumAsianPornListings';
+import { LISTINGS as UNCENSORED_JAV_PORN_LISTINGS } from '@/lib/explore/uncensoredJavPornListings';
 import { exploreSitesForCategory, exploreSitesFromListings, getExploreSiteListing } from '@/lib/explore/exploreSiteListings';
 
 export type ExploreSite = {
@@ -25,15 +26,15 @@ function premiumAsianPornExploreSites(): ExploreSite[] {
 
   if (javhd) {
     ordered.push(
-      ...exploreSitesFromListings([{ ...javhd, name: 'JAVHD' }]),
+      ...exploreSitesFromListings([{ ...javhd, name: 'JAVHD' }], 'best-premium-asian-porn-sites'),
     );
   }
   for (const slug of ['erito', 'japanhdv', 'asian-sex-diary'] as const) {
     const listing = bySlug.get(slug);
-    if (listing) ordered.push(...exploreSitesFromListings([listing]));
+    if (listing) ordered.push(...exploreSitesFromListings([listing], 'best-premium-asian-porn-sites'));
   }
   if (zenra) {
-    ordered.push(...exploreSitesFromListings([zenra]));
+    ordered.push(...exploreSitesFromListings([zenra], 'best-premium-asian-porn-sites'));
   }
   return ordered;
 }
@@ -44,14 +45,14 @@ export const EXPLORE_CATEGORIES: ExploreCategory[] = [
     title: 'Best Premium Porn',
     description:
       'The top premium porn sites with the best full-length HD and 4K movies from famous studios. Stream exclusive adult DVDs with the hottest porn stars.',
-    sites: exploreSitesFromListings(PREMIUM_PORN_LISTINGS),
+    sites: exploreSitesFromListings(PREMIUM_PORN_LISTINGS, 'best-premium-porn'),
   },
   {
     slug: 'best-live-sex-cams',
     title: 'Best Live Sex Cams',
     description:
       'The top live sex cam sites with the hottest webcam girls stripping and chatting in HD. Free public shows or private sessions with your favorite model.',
-    sites: exploreSitesFromListings(LIVE_SEX_CAMS_LISTINGS),
+    sites: exploreSitesFromListings(LIVE_SEX_CAMS_LISTINGS, 'best-live-sex-cams'),
   },
   {
     slug: 'best-ai-porn-sites',
@@ -65,7 +66,7 @@ export const EXPLORE_CATEGORIES: ExploreCategory[] = [
     title: 'Best VR Porn',
     description:
       'The best VR porn sites with top full-length 4K virtual reality videos in 360 degrees. Stream immersive 3D adult content with no annoying ads.',
-    sites: exploreSitesFromListings(VR_PORN_LISTINGS),
+    sites: exploreSitesFromListings(VR_PORN_LISTINGS, 'best-vr-porn'),
   },
   {
     slug: 'best-ai-porn-generator-sites',
@@ -94,6 +95,13 @@ export const EXPLORE_CATEGORIES: ExploreCategory[] = [
     description:
       'Want full-length HD porn movies of JAV pornstars, Japanese Idols & Asian girls?',
     sites: premiumAsianPornExploreSites(),
+  },
+  {
+    slug: 'best-uncensored-jav-porn-websites',
+    title: 'Best Uncensored Jav Porn websites',
+    description:
+      'Uncensored JAV is easy to find. Uncensored JAV that actually delivers on a specific fetish is not. Most tubes and mainstream Japanese sites still hide the goods behind mosaics, recycle the same hotel-room templates, or bury the good parts inside 90-minute scenes padded with talking. If you search jav uncensored porn, jav blowjob, jav oil massage, or jav massage uncensored and keep landing on the same pixelated clips, the problem is not your taste. It is the format. The six sites below belong to the same production family. They shoot original, fully uncensored Japanese content with a narrow brief: one fetish, high-definition cameras, and models chosen for that fetish. Updates are slower than a megatube. The trade-off is footage you will not find elsewhere.',
+    sites: exploreSitesFromListings(UNCENSORED_JAV_PORN_LISTINGS, 'best-uncensored-jav-porn-websites'),
   },
   {
     slug: 'best-lesbian-porn-sites',

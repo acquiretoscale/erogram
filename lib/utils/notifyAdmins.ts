@@ -32,6 +32,7 @@ export interface SaleNotificationPayload {
   username?: string;
   /** USD amount shown in push/Telegram (crypto sales). */
   usd?: number;
+  url?: string;
 }
 
 export interface NewUserNotificationPayload {
@@ -107,7 +108,7 @@ export async function notifyAdminsOfSale(payload: SaleNotificationPayload) {
       icon: '/icons/notification-icon.png?v=6',
       badge: '/icons/notification-badge.png?v=6',
       tag: 'erogram-sale',
-      data: { url: '/admin' },
+      data: { url: payload.url || '/admin' },
     }),
     sendTelegramDM(`💰 <b>New Sale!</b>\n${body}`),
   ]);

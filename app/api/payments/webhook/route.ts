@@ -6,7 +6,7 @@ import { notifyAdminsOfSale } from '@/lib/utils/notifyAdmins';
 import { getPremiumPricing } from '@/lib/premiumPricing';
 import { buildBoostPaymentUpdate, SCALE_STARS } from '@/lib/boostPricing';
 import { fulfillAINSFWListingPayment } from '@/lib/actions/ainsfwPayment';
-import { isAINSFWPlan, AINSFW_PLAN_PRICES } from '@/lib/ainsfw/planPrices';
+import { isAINSFWPlan } from '@/lib/ainsfw/planPrices';
 import { isSlutbotPayload, getSlutbotPack, fulfillSlutbotStarsPayment } from '@/lib/slutbotStars';
 
 const GROUP_SUBMISSION_TYPES = new Set(['normal_listing', 'instant_approval', 'boost_week', 'boost_month', 'scale_month']);
@@ -168,28 +168,12 @@ export async function POST(req: NextRequest) {
         if (payload.ainsfwSubmissionId && payload.plan && isAINSFWPlan(payload.plan) && payload.plan !== 'free') {
           await connectDB();
           const chargeId = payment.telegram_payment_charge_id || payment.provider_payment_charge_id || '';
-          const fulfilled = await fulfillAINSFWListingPayment(
+          await fulfillAINSFWListingPayment(
             payload.ainsfwSubmissionId,
             payload.plan,
             chargeId || `stars__${Date.now()}`,
+            { method: 'stars' },
           );
-          if (fulfilled) {
-            logEvent({
-              event: 'submission_payment_success',
-              username: fulfilled.name,
-              paymentMethod: 'stars',
-              chargeId,
-              entityType: 'ainsfw',
-              listingType: payload.plan,
-              reason: `ainsfw:${payload.plan}:${payload.ainsfwSubmissionId}`,
-            });
-            notifyAdminsOfSale({
-              plan: `ainsfw_${payload.plan}`,
-              method: 'stars',
-              username: fulfilled.name,
-              usd: AINSFW_PLAN_PRICES[payload.plan as keyof typeof AINSFW_PLAN_PRICES],
-            }).catch(() => {});
-          }
           return NextResponse.json({ ok: true });
         }
 

@@ -543,8 +543,8 @@ function MobileNavMenu({ open, lp, onClose }: { open: boolean; lp: (p: string) =
             </Link>
           ))}
 
-          <Link href={lp('/porn-websites')} onClick={onClose} className={item}>
-            {navIcon('/porn-websites')}
+          <Link href={lp('/best-porn')} onClick={onClose} className={item}>
+            {navIcon('/best-porn')}
             <span className="flex-1">Porn Websites</span>
           </Link>
 
@@ -756,7 +756,7 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
             </Link>
           ))}
           <Link
-            href={lp('/porn-websites')}
+            href={lp('/best-porn')}
             className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-[0.18em] uppercase text-white hover:text-white/80 transition-colors"
           >
             Porn Websites
@@ -915,7 +915,7 @@ export function EditorialFooter() {
         {/* 4 columns */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-8 sm:gap-x-8 sm:gap-y-10 mb-8 pb-8 border-b border-white/[0.08]">
           <FooterCol label={t('footer.explore', 'Explore')}>
-            <FooterLink href={lp('/porn-websites')}>Porn Websites</FooterLink>
+            <FooterLink href={lp('/best-porn')}>Porn Websites</FooterLink>
             <FooterLink href={lp('/best-telegram-groups')}>{t('footer.telegramGroups', 'Telegram Groups')}</FooterLink>
             <FooterLink href={lp('/bots')}>{t('footer.telegramBots', 'Telegram Bots')}</FooterLink>
             <FooterLink href={lp('/ainsfw')}>{t('footer.aiNsfwTools', 'AI NSFW Tools')}</FooterLink>

@@ -27,16 +27,19 @@ const EXTRA_SITES: Record<string, ExploreSite[]> = {
       name: 'StripChat',
       url: exploreSiteListingPath('stripchat'),
       externalUrl: 'https://stripchat.com/',
+      image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/stripchat-best-live-sex-cams.webp',
     },
     {
       name: 'Instacam',
       url: exploreSiteListingPath('instacam'),
       externalUrl: 'https://instacams.com/',
+      image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/instacam-best-live-sex-cams.webp',
     },
     {
       name: 'JerkRoulette',
       url: exploreSiteListingPath('jerkroulette'),
       externalUrl: 'https://www.jerkroulette.com/',
+      image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/jerkroulette-best-live-sex-cams.webp',
     },
   ],
   'best-ai-porn-generator-sites': [

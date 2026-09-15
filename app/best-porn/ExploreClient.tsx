@@ -7,7 +7,6 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { EXPLORE_CATEGORIES, type ExploreCategory, type ExploreSite } from '@/lib/explore/topPornSitesData';
 import { exploreMascotFallbackSrc, exploreMascotSrc } from '@/lib/explore/mascotIcons';
-import { exploreFaviconUrl } from '@/lib/explore/siteIconDomain';
 import { pickLabelForFirstPick } from '@/lib/explore/pickLabels';
 import { exploreSiteKey } from '@/lib/explore/siteKey';
 import { addExploreSite, removeExploreSite, saveExploreCategoryOrder } from '@/lib/actions/exploreAdmin';
@@ -29,7 +28,7 @@ const FEATURED_SLUGS = new Set([
 const CATEGORY_GROUPS: string[][] = [
   ['best-premium-porn', 'best-live-sex-cams', 'best-ai-porn-sites', 'best-vr-porn'],
   ['best-telegram-porn-bots', 'best-ai-porn-generator-sites', 'best-ai-companion-websites'],
-  ['best-live-asian-sex-cams', 'best-asian-porn-sites', 'best-premium-asian-porn-sites'],
+  ['best-live-asian-sex-cams', 'best-asian-porn-sites', 'best-premium-asian-porn-sites', 'best-uncensored-jav-porn-websites'],
   [
     'best-lesbian-porn-sites',
     'best-premium-lesbian-porn-site',
@@ -50,10 +49,6 @@ const CATEGORY_GROUPS: string[][] = [
     'best-male-enhancement',
   ],
 ];
-
-function faviconUrl(site: ExploreSite): string {
-  return exploreFaviconUrl(site.name, site.externalUrl ?? site.url);
-}
 
 function isInternalExploreUrl(url: string): boolean {
   return url.startsWith('/');
@@ -89,20 +84,13 @@ function groupCategories(categories: ExploreCategory[]): ExploreCategory[][] {
   return groups;
 }
 
-function isExploreScreenshot(url?: string): boolean {
-  return Boolean(url && url.includes('.r2.dev/explore/'));
-}
-
 function featuredIndexBefore(sites: ExploreSite[], index: number): number {
   return sites.slice(0, index).filter((site) => site.featured).length;
 }
 
 function SiteFavicon({ site, large = false }: { site: ExploreSite; large?: boolean }) {
   const [imageFailed, setImageFailed] = useState(false);
-  const [faviconFailed, setFaviconFailed] = useState(false);
-  const listingLogo = site.image && !isExploreScreenshot(site.image) && !imageFailed ? site.image : '';
-  const favicon = faviconUrl(site);
-  const src = listingLogo || (!faviconFailed ? favicon : '');
+  const src = site.image && !imageFailed ? site.image : '';
   const size = large ? 32 : 24;
 
   if (!src) {
@@ -126,13 +114,10 @@ function SiteFavicon({ site, large = false }: { site: ExploreSite; large?: boole
       width={size}
       height={size}
       loading="lazy"
-      className={`shrink-0 rounded-md border border-gray-200 bg-white ${
+      className={`shrink-0 rounded-md border border-gray-200 bg-white object-cover ${
         large ? 'w-8 h-8' : 'w-6 h-6'
-      } ${listingLogo ? 'object-cover' : 'object-contain'}`}
-      onError={() => {
-        if (listingLogo) setImageFailed(true);
-        else setFaviconFailed(true);
-      }}
+      }`}
+      onError={() => setImageFailed(true)}
     />
   );
 }

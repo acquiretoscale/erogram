@@ -34,7 +34,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function BlogHubPage() {
   const [articles, topArticles] = await Promise.all([
-    getPublishedBlogArticles(60),
+    getPublishedBlogArticles(200),
     getTopBlogArticles(10),
   ]);
 

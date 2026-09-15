@@ -1,7 +1,7 @@
 'use server';
 
 import connectDB from '@/lib/db/mongodb';
-import { AINsfwSubmission, AINsfwToolStats, User } from '@/lib/models';
+import { AINsfwSubmission, AINsfwToolStats, PremiumEvent, User } from '@/lib/models';
 import { validateCoupon, recordCouponUsage } from '@/lib/actions/coupons';
 import jwt from 'jsonwebtoken';
 import {
@@ -12,6 +12,7 @@ import {
 } from '@/lib/ainsfw/planPrices';
 import { toolSlug } from '@/app/ainsfw/data';
 import { normalizeWebsiteUrl } from '@/lib/ainsfw/websiteUrl';
+import { notifyAdminsOfSale } from '@/lib/utils/notifyAdmins';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 const API_KEY = process.env.NOWPAYMENTS_API_KEY || '';
@@ -118,7 +119,12 @@ export async function fulfillAINSFWListingPayment(
   submissionId: string,
   plan: AINSFWPlan,
   paymentId: string,
-  options?: { status?: 'approved' | 'pending' },
+  options?: {
+    status?: 'approved' | 'pending';
+    method?: 'stars' | 'crypto';
+    usd?: number;
+    recordSale?: boolean;
+  },
 ): Promise<{ slug: string; name: string } | null> {
   await connectDB();
   const submission = await AINsfwSubmission.findById(submissionId).lean() as {
@@ -139,6 +145,9 @@ export async function fulfillAINSFWListingPayment(
   const now = new Date();
   const oneMonthLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const status = options?.status ?? 'approved';
+  const method = options?.method || 'crypto';
+  const usd = options?.usd ?? AINSFW_PLAN_PRICES[plan] ?? 0;
+  const recordSale = options?.recordSale !== false && usd > 0;
 
   await AINsfwSubmission.updateOne(
     { _id: submissionId },
@@ -153,6 +162,8 @@ export async function fulfillAINSFWListingPayment(
         boostExpiresAt: featured ? oneMonthLater : null,
         submissionTier: plan,
         paymentId: String(paymentId),
+        paidAt: now,
+        awaitingAdminReview: true,
       },
     },
   );
@@ -177,6 +188,29 @@ export async function fulfillAINSFWListingPayment(
       { upsert: true },
     );
   }
+
+  if (recordSale) {
+    await PremiumEvent.create({
+      source: 'server',
+      event: 'submission_payment_success',
+      entityType: 'ainsfw',
+      listingType: plan,
+      paymentMethod: method,
+      paymentId: String(paymentId),
+      username: submission.name,
+      reason: `ainsfw:${plan}:${submissionId}`,
+    }).catch(() => {});
+    await notifyAdminsOfSale({
+      plan: `ainsfw_${plan}`,
+      method,
+      username: submission.name,
+      usd,
+      url: '/admin/ainsfw',
+    }).catch(() => {});
+  }
+
+  const { revalidateAinsfwPublic } = await import('@/lib/actions/ainsfw');
+  await revalidateAinsfwPublic(submission.slug);
 
   return { slug: submission.slug, name: submission.name };
 }
@@ -416,7 +450,7 @@ export async function checkoutAINSFWListing(
       submission._id.toString(),
       plan,
       `coupon__${couponCode}__${Date.now()}`,
-      { status: 'approved' },
+      { status: 'approved', recordSale: false },
     );
     await recordCouponUsage(couponValidation.couponId, {
       service: 'ainsfw',

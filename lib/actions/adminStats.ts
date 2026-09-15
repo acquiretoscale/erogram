@@ -3,7 +3,7 @@
 import jwt from 'jsonwebtoken';
 import { revalidatePath } from 'next/cache';
 import connectDB from '@/lib/db/mongodb';
-import { User, Group, Bot, Post, Report, PremiumEvent } from '@/lib/models';
+import { User, Group, Bot, Post, Report, PremiumEvent, AINsfwSubmission } from '@/lib/models';
 import { countPendingReviewsAll } from '@/lib/actions/adminReviews';
 import mongoose from 'mongoose';
 
@@ -55,13 +55,14 @@ export async function getPendingCounts(token: string) {
   if (!admin) throw new Error('Unauthorized');
 
   await connectDB();
-  const [bots, reviews, reports] = await Promise.all([
+  const [bots, reviews, reports, ainsfw] = await Promise.all([
     Bot.countDocuments({ status: 'pending' }),
     countPendingReviewsAll(),
     Report.countDocuments({ status: 'pending' }),
+    AINsfwSubmission.countDocuments({ paymentStatus: 'paid', awaitingAdminReview: true }),
   ]);
 
-  return { bots, reviews, reports, total: bots + reviews + reports };
+  return { bots, reviews, reports, ainsfw, total: bots + reviews + reports + ainsfw };
 }
 
 export async function getLiveStats(token: string) {

@@ -52,24 +52,25 @@ export async function AINsfwPageView({ page = 1 }: { page?: number }) {
   const dict = await getDictionary(locale);
   const a = dict.ainsfw ?? {};
   const staticSlugs = new Set(AI_NSFW_TOOLS.map(t => t.slug));
-  const [featuredInfos, boostFeaturedSlugs, topBannerCampaigns, paidSubmissions, topAdCampaigns, feedCampaigns, guideAuthor] = await Promise.all([
+  const [featuredInfos, boostFeaturedSlugs, topBannerCampaigns, allPaidSubmissions, topAdCampaigns, feedCampaigns, guideAuthor] = await Promise.all([
     getFeaturedTools(),
     getBoostFeaturedSlugs(),
     getActiveCampaigns('top-banner', { page: 'ainsfw' }).catch(() => []),
-    getApprovedSubmissions(staticSlugs),
+    getApprovedSubmissions(),
     getPlacementFeedCampaigns('ainsfw-featured', 4).catch(() => []),
     getActiveFeedCampaigns('ainsfw').catch(() => []),
     getAuthorBySlug('eros'),
   ]);
+  const paidSubmissions = allPaidSubmissions.filter((t) => !staticSlugs.has(t.slug));
   const allTools = [...AI_NSFW_TOOLS, ...paidSubmissions];
   const paginationTotalPages = Math.max(1, Math.ceil(allTools.length / AINSFW_PAGE_SIZE));
   if (currentPage > paginationTotalPages) notFound();
-  const allStats = await getAllToolStats(allTools.map(t => t.slug));
+  const allStats = await getAllToolStats([...new Set([...allTools, ...allPaidSubmissions].map((t) => t.slug))]);
   const { mergeToolContent } = await import('@/lib/ainsfw/toolContent');
   const displayTools = allTools.map((t) => mergeToolContent(t, allStats[t.slug]));
-  const toolsBySlug = new Map(allTools.map((t) => [t.slug, t]));
+  const toolsBySlug = new Map([...allTools, ...allPaidSubmissions].map((t) => [t.slug, t]));
   const recentTools = currentPage === 1
-    ? pickRecentTools(toolsBySlug, paidSubmissions as Array<(typeof paidSubmissions)[number] & { createdAt?: string }>)
+    ? pickRecentTools(toolsBySlug, allPaidSubmissions as Array<(typeof allPaidSubmissions)[number] & { createdAt?: string }>)
         .map((t) => mergeToolContent(t, allStats[t.slug]))
     : [];
   const featuredSlugs = featuredInfos.map(f => f.slug);

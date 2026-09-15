@@ -228,7 +228,7 @@ export const articleSchema = new Schema(
     viewsByDay: { type: Map, of: Number, default: new Map() },
     advertiserId: { type: Schema.Types.ObjectId, ref: 'Advertiser', required: false },
     tags: [{ type: String }],
-    // Blog category slug: 'ai-nsfw' | 'telegram-groups-bots' | 'onlyfans-creators' | 'adult-entertainment'
+    // Blog category slug: 'ai-nsfw' | 'telegram-groups-bots' | 'onlyfans-creators' | 'adult-entertainment' | 'asian-porn' | 'jav-porn'
     blogCategory: { type: String, default: 'adult-entertainment' },
     // Byline author — references an Author doc by slug (see authorSchema). Default 'eros'.
     authorSlug: { type: String, default: 'eros' },
@@ -1394,6 +1394,8 @@ const ainsfwSubmissionSchema = new Schema(
     views: { type: Number, default: 0 },
     clickCount: { type: Number, default: 0 },
     unlisted: { type: Boolean, default: false },
+    paidAt: { type: Date, default: null },
+    awaitingAdminReview: { type: Boolean, default: false },
     screenshots: { type: [String], default: [] },
     videoUrl: { type: String, default: '' },
   },
@@ -1411,6 +1413,12 @@ if (!AINsfwSubmission.schema.path('screenshots')) {
 }
 if (!AINsfwSubmission.schema.path('videoUrl')) {
   AINsfwSubmission.schema.add({ videoUrl: { type: String, default: '' } });
+}
+if (!AINsfwSubmission.schema.path('paidAt')) {
+  AINsfwSubmission.schema.add({ paidAt: { type: Date, default: null } });
+}
+if (!AINsfwSubmission.schema.path('awaitingAdminReview')) {
+  AINsfwSubmission.schema.add({ awaitingAdminReview: { type: Boolean, default: false } });
 }
 
 // Bot Stats — votes (per-bot aggregate, mirrors AINsfwToolStats)

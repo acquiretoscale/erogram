@@ -56,25 +56,13 @@ async function handleSubmissionPayment(
     if (!['basic', 'boost', 'startup'].includes(plan)) {
       throw new Error(`Invalid ainsfw plan: ${tier}`);
     }
-    const fulfilled = await fulfillAINSFWListingPayment(entityId, plan, paymentId);
+    const fulfilled = await fulfillAINSFWListingPayment(entityId, plan, paymentId, {
+      method: 'crypto',
+      usd: AINSFW_USD[plan] || 97,
+    });
     if (!fulfilled) {
       throw new Error(`ainsfw fulfill failed: ${entityId}`);
     }
-    await logCryptoEvent({
-      event: 'submission_payment_success',
-      entityType,
-      listingType: tier,
-      paymentId,
-      paymentMethod: 'crypto',
-      username: fulfilled.name || 'Unknown',
-      reason: `${entityType}:${tier}:${entityId}`,
-    });
-    await notifyAdminsOfSale({
-      plan: `${entityType}_${tier}`,
-      method: 'crypto',
-      username: fulfilled.name || 'Unknown',
-      usd: AINSFW_USD[tier] || 49,
-    });
     return;
   }
 

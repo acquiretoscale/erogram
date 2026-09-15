@@ -857,7 +857,7 @@ export default function OverviewTab({ data, loading, onRefresh }: Props) {
                             {s.plan ? (PLAN_LABEL[s.plan] ?? s.plan) : (s.label ?? '—')}
                           </td>
                           <td className="px-4 py-2 text-right whitespace-nowrap">
-                            <span className="text-[12px] font-semibold text-white/90">{fmtUsd(s.usd)}</span>
+                            <span className="text-[13px] font-bold text-white tabular-nums">{fmtUsd(s.usd)}</span>
                             {s.stars > 0 && <p className="text-[9px] text-amber-400 leading-tight">{fmtNum(s.stars)} ⭐</p>}
                           </td>
                           <td className="px-4 py-2 text-right whitespace-nowrap">

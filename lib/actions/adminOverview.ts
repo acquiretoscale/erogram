@@ -6,7 +6,9 @@ import {
   User, Group, Bot, Post, Report,
   PremiumEvent, PremiumConfig, CampaignClick,
   ManualRevenue, StarsRate, Bookmark, BookmarkFolder,
+  AINsfwSubmission,
 } from '@/lib/models';
+import { AINSFW_PLAN_PRICES } from '@/lib/ainsfw/planPrices';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -155,6 +157,11 @@ export async function getAdminOverview(token: string) {
     Bot.countDocuments({ createdAt: { $gte: _24h }, paidBoost: true }),
   ]);
 
+  const pendingAinsfw = await AINsfwSubmission.countDocuments({
+    paymentStatus: 'paid',
+    awaitingAdminReview: true,
+  });
+
   const starsUsdRate = (latestRate as any)?.usdtPerStar || 0;
   const rate = starsUsdRate || 0.013;
   const totalPageviewsLifetime = totalPageviews[0]?.total || 0;
@@ -257,21 +264,27 @@ export async function getAdminOverview(token: string) {
     });
   }
 
-  // Crypto listing events: AI NSFW + featured creator only.
-  // Group/bot crypto boosts are already counted above via paidBoost docs (lastPaymentChargeId).
-  const cryptoPrices: Record<string, number> = { basic: 49, boost: 147, startup: 297, platinum: 297, featured_creator: 197 };
+  // AI NSFW + featured creator sales (Stars and crypto). Group/bot boosts counted above.
+  const ainsfwSaleUsd: Record<string, number> = {
+    basic: AINSFW_PLAN_PRICES.basic,
+    boost: AINSFW_PLAN_PRICES.boost,
+    startup: AINSFW_PLAN_PRICES.startup,
+    platinum: 297,
+    instant: 39,
+    featured_creator: 197,
+  };
   for (const ev of allCryptoSubmissionEvents as any[]) {
     const isFeatured = ev.event === 'featured_creator_payment_success';
     const entityType = ev.entityType || '';
     if (!isFeatured && entityType !== 'ainsfw') continue;
-    const tier = ev.tier || 'basic';
+    const tier = ev.listingType || ev.tier || 'basic';
     const label = isFeatured ? 'Featured Creator' : `AI NSFW ${tier}`;
-    const usd = isFeatured ? 197 : (cryptoPrices[tier] || 49);
+    const usd = isFeatured ? 197 : (ainsfwSaleUsd[tier] || AINSFW_PLAN_PRICES.basic);
     sales.push({
       _id: ev._id.toString(), type: 'ainsfw_listing', label, plan: isFeatured ? 'featured_creator' : tier,
-      paymentMethod: 'crypto', stars: 0, usd,
+      paymentMethod: ev.paymentMethod || 'crypto', stars: 0, usd,
       createdAt: new Date(ev.createdAt).toISOString(),
-      buyer: { username: ev.entityType || 'crypto', firstName: null, country: null, city: null, photoUrl: null, telegramUsername: null },
+      buyer: { username: ev.username || ev.entityType || 'crypto', firstName: null, country: null, city: null, photoUrl: null, telegramUsername: null },
     });
   }
 
@@ -303,10 +316,11 @@ export async function getAdminOverview(token: string) {
   const groupRevenue = sales.filter(s => s.type === 'group_boost').reduce((a, s) => a + s.usd, 0);
   const botRevenue = sales.filter(s => s.type === 'bot_boost').reduce((a, s) => a + s.usd, 0);
   const ainsfwRevenue = sales.filter(s => s.type === 'ainsfw_listing').reduce((a, s) => a + s.usd, 0);
-  const pendingTotal = pendingGroups + pendingBots + pendingReviews + pendingReports;
+  const pendingTotal = pendingGroups + pendingBots + pendingReviews + pendingReports + pendingAinsfw;
   const dbLatencyMs = Date.now() - start;
 
   const alerts: { level: string; title: string; description: string; actionUrl?: string }[] = [];
+  if (pendingAinsfw > 0) alerts.push({ level: 'critical', title: 'Paid AI NSFW listing', description: `${pendingAinsfw} waiting for approval`, actionUrl: '/admin/ainsfw' });
   if (pendingGroups > 20) alerts.push({ level: 'warning', title: 'High Pending Groups', description: `${pendingGroups} groups waiting`, actionUrl: '/admin/groups?tab=pending' });
   if (pendingReports > 5) alerts.push({ level: 'critical', title: 'Unresolved Reports', description: `${pendingReports} reports`, actionUrl: '/admin/reports' });
   if (pendingTotal === 0) alerts.push({ level: 'ok', title: 'All Clear', description: 'Queue is empty' });
@@ -344,7 +358,7 @@ export async function getAdminOverview(token: string) {
         lastScheduled: lastScheduledGroup ? { date: (lastScheduledGroup as any).scheduledPublishAt } : null,
       },
     },
-    pending: { groups: pendingGroups, bots: pendingBots, reviews: pendingReviews, reports: pendingReports, total: pendingTotal },
+    pending: { groups: pendingGroups, bots: pendingBots, reviews: pendingReviews, reports: pendingReports, ainsfw: pendingAinsfw, total: pendingTotal },
     recentSales: sales,
     salesSummary: { count: sales.length, totalStars: salesTotalStars, totalUsd: salesTotalUsd, last24hCount: sales24h.length, last24hUsd: sales24hUsd },
     earningsByCategory: { subscriptions: subRevenue, groups: groupRevenue, bots: botRevenue, ainsfw: ainsfwRevenue, advertisers },

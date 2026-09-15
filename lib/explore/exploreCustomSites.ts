@@ -22,6 +22,7 @@ export function slugifyExploreSiteKey(name: string): string {
 
 export function customRowToExploreSite(row: {
   siteKey: string;
+  categorySlug?: string;
   name?: string;
   externalUrl?: string;
   description?: string;
@@ -29,7 +30,7 @@ export function customRowToExploreSite(row: {
 }): ExploreSite {
   return {
     name: row.name || row.siteKey,
-    url: exploreSiteListingPath(row.siteKey),
+    url: exploreSiteListingPath(row.siteKey, row.categorySlug),
     externalUrl: row.externalUrl || undefined,
     description: row.description || undefined,
     image: row.image || undefined,

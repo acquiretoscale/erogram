@@ -77,7 +77,7 @@ export async function buildLlmsTxt(): Promise<string> {
   const generated = new Date().toISOString();
   const exploreLinks = EXPLORE_CATEGORIES
     .filter((c) => !/india/i.test(c.slug) && !/india/i.test(c.title))
-    .map((c) => link(c.title, `/porn-websites/${c.slug}`, c.description));
+    .map((c) => link(c.title, `/best-porn/${c.slug}`, c.description));
   const blogLinks = data.articles.map((a) =>
     link(a.title, `/blog/${a.slug}`, 'Erogram blog article'),
   );
@@ -101,7 +101,7 @@ export async function buildLlmsTxt(): Promise<string> {
     link('Groups Directory', '/groups', 'Browse thousands of porn and NSFW Telegram groups by category, country, and popularity'),
     link('Bots Directory', '/bots', 'Discover AI companion bots and adult Telegram bots'),
     link('Best Telegram Groups', '/best-telegram-groups', 'Curated top lists of porn and NSFW Telegram groups by category'),
-    link('Porn Websites', '/porn-websites', 'Adult website directory by category'),
+    link('Porn Websites', '/best-porn', 'Adult website directory by category'),
     link('Tags', '/tags', 'Alphabetical index of NSFW Telegram group and OnlyFans creator tags'),
     '',
     '## AI NSFW',

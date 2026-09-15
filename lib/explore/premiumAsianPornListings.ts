@@ -8,7 +8,7 @@ export const LISTINGS: ExploreSiteListingBase[] = [
     name: 'Erito',
     description:
       'Looking for top-shelf Japanese porn? Erito.com has what you need. Weekly updates feature the hott...',
-    image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/premium-asian-porn/erito.webp',
+    image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/erito-best-premium-asian-porn-sites.webp',
     externalUrl: 'https://www.erito.com/',
   },
   {
@@ -16,7 +16,7 @@ export const LISTINGS: ExploreSiteListingBase[] = [
     name: 'JapanHDV',
     description:
       "JapanHDV.com! Looking for uncensored Japanese porn? Japan HDV is where it's at! Finally, watch 18...",
-    image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/premium-asian-porn/japanhdv.webp',
+    image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/japanhdv-best-premium-asian-porn-sites.webp',
     externalUrl: 'https://www.japanhdv.com/',
   },
   {
@@ -24,7 +24,7 @@ export const LISTINGS: ExploreSiteListingBase[] = [
     name: 'Asian Sex Diary',
     description:
       "AsianSexDiary.com! Wife still won't let you go to Thailand? Live vicariously through AsianSexDiar...",
-    image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/premium-asian-porn/asian-sex-diary.webp',
+    image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/asian-sex-diary-best-premium-asian-porn-sites.webp',
     externalUrl: 'https://www.asiansexdiary.com/',
   },
 ];

@@ -6,26 +6,23 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import type { ExploreSiteListing, ExploreSiteListingBase } from '@/lib/explore/exploreSiteListings';
 import { exploreSiteListingPath } from '@/lib/explore/exploreSiteListings';
-import { exploreFaviconUrl } from '@/lib/explore/siteIconDomain';
 import { updateExploreSiteListing } from '@/lib/actions/exploreAdmin';
 
 const ACCENT = '#c0392f';
 
-function AlternativeCard({ site }: { site: ExploreSiteListingBase }) {
-  const favicon = exploreFaviconUrl(site.name, site.externalUrl);
-
+function AlternativeCard({ site, categorySlug }: { site: ExploreSiteListingBase; categorySlug: string }) {
   return (
     <Link
-      href={exploreSiteListingPath(site.slug)}
+      href={exploreSiteListingPath(site.slug, categorySlug)}
       className="flex items-center gap-3 rounded-xl border border-[#c0392f]/15 bg-white px-3 py-2.5 hover:border-[#c0392f]/40 hover:bg-red-50 transition-colors"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={favicon || site.image}
+        src={site.image}
         alt=""
         width={40}
         height={40}
-        className="shrink-0 w-10 h-10 rounded-md border border-gray-200 bg-white object-contain"
+        className="shrink-0 w-10 h-10 rounded-md border border-gray-200 bg-white object-cover"
       />
       <span className="min-w-0 text-[15px] font-semibold leading-tight text-gray-900 truncate">{site.name}</span>
     </Link>
@@ -39,7 +36,6 @@ export default function ExploreSiteListingClient({
   listing: ExploreSiteListing;
   alternatives: ExploreSiteListingBase[];
 }) {
-  const favicon = exploreFaviconUrl(listing.name, listing.externalUrl);
   const [isAdmin, setIsAdmin] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -114,9 +110,9 @@ export default function ExploreSiteListingClient({
       <div className="relative z-10 max-w-5xl mx-auto px-5 sm:px-8 py-8 sm:py-10 pb-16">
         <article className="rounded-2xl border border-[#c0392f]/20 bg-white overflow-hidden shadow-[0_8px_24px_-12px_rgba(0,0,0,0.35)]">
           <div className="px-5 py-4 border-b border-[#c0392f]/20 bg-[#1a0808] flex items-center gap-3">
-            {favicon ? (
+            {listing.image ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={favicon} alt="" width={32} height={32} className="w-8 h-8 rounded-md border border-white/10 bg-white object-contain" />
+              <img src={listing.image} alt="" width={32} height={32} className="w-8 h-8 rounded-md border border-white/10 bg-white object-cover" />
             ) : null}
             <h1 className="text-xl sm:text-2xl font-black tracking-[0.04em] uppercase text-white flex-1 min-w-0 truncate">
               {listing.name}
@@ -200,7 +196,7 @@ export default function ExploreSiteListingClient({
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {alternatives.map((site) => (
-                <AlternativeCard key={site.slug} site={site} />
+                <AlternativeCard key={site.slug} site={site} categorySlug={listing.categorySlug} />
               ))}
             </div>
           </section>

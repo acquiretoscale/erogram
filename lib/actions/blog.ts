@@ -2,7 +2,7 @@
 
 import connectDB from '@/lib/db/mongodb';
 import { Article } from '@/lib/models';
-import { DEFAULT_BLOG_CATEGORY } from '@/lib/blog/categories';
+import { DEFAULT_BLOG_CATEGORY, blogCategoryMatchSlugs } from '@/lib/blog/categories';
 import { getAuthors, getAuthorBySlug, type AuthorProfile } from '@/lib/actions/authors';
 import { getArticleCommentCounts } from '@/lib/actions/articleComments';
 
@@ -97,7 +97,7 @@ export async function getPublishedBlogArticles(limit = 60): Promise<BlogCard[]> 
 export async function getBlogArticlesByCategory(categorySlug: string, limit = 60): Promise<BlogCard[]> {
   try {
     await connectDB();
-    const rows = await Article.find({ status: 'published', blogCategory: categorySlug })
+    const rows = await Article.find({ status: 'published', blogCategory: { $in: blogCategoryMatchSlugs(categorySlug) } })
       .select(CARD_FIELDS)
       .sort({ publishedAt: -1, createdAt: -1 })
       .limit(limit)

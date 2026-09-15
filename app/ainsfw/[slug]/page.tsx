@@ -162,10 +162,11 @@ export default async function AINsfwToolPage({ params }: PageProps) {
   if (category) {
     const tools = getToolsByCategory(category);
     const staticSlugs = new Set(AI_NSFW_TOOLS.map((t) => t.slug));
-    const [allStats, paidSubmissions] = await Promise.all([
+    const [allStats, allPaidSubmissions] = await Promise.all([
       getAllToolStats(tools.map((t) => t.slug)),
-      getApprovedSubmissions(staticSlugs),
+      getApprovedSubmissions(),
     ]);
+    const paidSubmissions = allPaidSubmissions.filter((t) => !staticSlugs.has(t.slug));
     const catalogToolsBySlug = new Map([
       ...AI_NSFW_TOOLS.map((t) => [t.slug, t] as const),
       ...paidSubmissions.map((t) => [t.slug, t] as const),
@@ -173,7 +174,7 @@ export default async function AINsfwToolPage({ params }: PageProps) {
     const recentTools = pickRecentCategoryTools(
       category,
       catalogToolsBySlug,
-      paidSubmissions as Array<(typeof paidSubmissions)[number] & { createdAt?: string }>,
+      allPaidSubmissions as Array<(typeof allPaidSubmissions)[number] & { createdAt?: string }>,
     );
     const recentStats = await getAllToolStats(recentTools.map((t) => t.slug));
     const verifiedSlugs = getVerifiedSlugs(paidSubmissions.map((t) => t.slug));

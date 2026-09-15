@@ -13,6 +13,7 @@ import type { ArticleCommentData } from '@/lib/actions/articleComments';
 import type { BlogArticleFull, BlogCard } from '@/lib/actions/blog';
 import { BLOG_CATEGORY_MAP } from '@/lib/blog/categories';
 import { trackArticleClick } from '@/lib/actions/articleTracking';
+import InlineSocialShare from '@/components/InlineSocialShare';
 
 function fmtViews(n: number): string {
   return Math.max(0, n).toLocaleString();
@@ -82,9 +83,21 @@ const RELATED_EROGRAM: Record<string, { label: string; href: string; sub: string
     { label: 'Top AI NSFW Tools', href: '/ainsfw', sub: 'AI girlfriends & generators' },
     { label: 'Best OnlyFans Accounts', href: '/best-onlyfans-accounts', sub: 'Ranked by category' },
   ],
+  'asian-porn': [
+    { label: 'Best Premium Asian Porn Sites', href: '/best-premium-asian-porn-sites', sub: 'Ranked HD catalogs' },
+    { label: 'JAV Porn on the Blog', href: '/blog/category/jav-porn', sub: 'Uncensored Japanese adult video' },
+    { label: 'Top AI NSFW Tools', href: '/ainsfw', sub: 'AI girlfriends & generators' },
+  ],
+  'jav-porn': [
+    { label: 'Best Premium Asian Porn Sites', href: '/best-premium-asian-porn-sites', sub: 'Asian porn hubs ranked' },
+    { label: 'Asian Porn on the Blog', href: '/blog/category/asian-porn', sub: 'More Asian porn features' },
+    { label: 'Top AI NSFW Tools', href: '/ainsfw', sub: 'AI girlfriends & generators' },
+  ],
 };
 
 const ARTICLE_TAG_HREFS: Record<string, string> = {
+  'JAV Porn': '/blog/category/jav-porn',
+  'Asian Porn': '/blog/category/asian-porn',
   'AI Porn Generator': '/ainsfw/ai-image',
   'PornCreate': '/ainsfw/porncreate-undress-ai',
   'AI Undress': '/ainsfw/undress-ai',
@@ -301,8 +314,15 @@ function buildMarkdownComponents(articleSlug: string, articleTitle: string) {
       }
       // External links (advertisers etc.) — new tab + tracked.
       if (/^https?:\/\//.test(h)) {
+        const isJavhd = /javhd\.com/i.test(h);
         return (
-          <a href={h} target="_blank" rel="noopener noreferrer" onClick={() => trackArticleClick(articleSlug, h, 'cta').catch(() => {})} className={linkClass}>
+          <a
+            href={h}
+            target="_blank"
+            rel={isJavhd ? 'nofollow noopener noreferrer' : 'noopener noreferrer'}
+            onClick={() => trackArticleClick(articleSlug, h, 'cta').catch(() => {})}
+            className={linkClass}
+          >
             {children}
           </a>
         );
@@ -443,6 +463,15 @@ export default function BlogArticleClient({
               )}
             </span>
           </div>
+        </div>
+
+        <div className="flex items-center rounded-[4px] bg-[#16110f] px-5 py-3 mb-2">
+          <InlineSocialShare
+            shareText={`Check out ${article.title} on Erogram`}
+            emailSubject={`${article.title} - Erogram Blog`}
+            fallbackUrl={`https://erogramx.com/blog/${article.slug}`}
+            accentColor="#c0392f"
+          />
         </div>
 
         {/* Featured image */}

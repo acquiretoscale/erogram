@@ -27,6 +27,9 @@ import {
   resolveEntityMetaDescription,
 } from '@/lib/seo/entityMetaDescription';
 import { isBlacklistedPublicPathSegment } from '@/lib/ofsearch/creatorBlacklist';
+import ExploreSiteListingClient from '@/app/best-porn/[slug]/ExploreSiteListingClient';
+import { getExploreSiteAlternatives, exploreSiteListingPath } from '@/lib/explore/exploreSiteListings';
+import { resolveExploreListingByRootSlug } from '@/lib/actions/exploreAdmin';
 
 // Pre-built at deploy (all approved groups + bots via generateStaticParams below)
 // + background refresh every 5 minutes (ISR): Google sees stable server HTML like
@@ -508,6 +511,26 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // Static-safe canonical: derive from slug + locale (BTG pattern), not the request path.
   const pathname = localePath(`/${slug}`, locale);
 
+  const exploreListing = await resolveExploreListingByRootSlug(slug);
+  if (exploreListing) {
+    const title = `${exploreListing.name} | Explore | Erogram`;
+    const description = exploreListing.description;
+    const url = `${CANONICAL_BASE}${exploreSiteListingPath(exploreListing.slug, exploreListing.categorySlug)}`;
+    return {
+      title,
+      description,
+      other: { rating: 'adult' },
+      alternates: { canonical: url },
+      ...buildSocialMeta({
+        title,
+        description,
+        url,
+        type: 'website',
+        image: exploreListing.image,
+      }),
+    };
+  }
+
   // Try to find a group first
   const group = await getGroup(slug, locale);
   if (group) {
@@ -641,6 +664,12 @@ export default async function JoinPage({ params }: PageProps) {
     notFound();
   }
   const locale = await getLocale();
+
+  const exploreListing = await resolveExploreListingByRootSlug(slug);
+  if (exploreListing) {
+    const alternatives = getExploreSiteAlternatives(exploreListing.slug, 8, exploreListing.categorySlug);
+    return <ExploreSiteListingClient listing={exploreListing} alternatives={alternatives} />;
+  }
 
   // Try to find a group first
   const group = await getGroup(slug, locale);

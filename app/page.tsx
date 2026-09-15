@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import HomeClient from './HomeClient';
+import HomeExploreClient from './HomeExploreClient';
 import connectDB from '@/lib/db/mongodb';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { getActiveCampaigns } from '@/lib/actions/campaigns';
@@ -12,6 +12,7 @@ import { AI_NSFW_TOOLS } from '@/app/ainsfw/data';
 import { pickRecentTools, RECENT_POOL_LIMIT } from '@/app/ainsfw/recentCategoryTools';
 import { getAllToolStats, getApprovedSubmissions } from '@/lib/actions/ainsfw';
 import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { loadHomeDirectoryCategories } from '@/lib/bestDirectory/loadRankings';
 import { filterCategories, categorySlug } from '@/app/groups/constants';
 
 export const revalidate = 300;
@@ -205,25 +206,11 @@ export default async function Home() {
   ];
   const metaDict = dict.meta || {};
 
-  const staticSlugs = new Set(AI_NSFW_TOOLS.map((t) => t.slug));
-  const [featuredArticles, heroCampaigns, newGroups, stats, ofCategories, newestBots, topGroupCategories, paidSubmissions] = await Promise.all([
-    getPublishedBlogArticles(6),
-    getActiveCampaigns('homepage-hero'),
-    getNewGroups(4),
-    getStats(),
-    getOFCategoryPreviews(),
-    getNewestBots(4),
+  const [directoryCategories, topGroupCategories, featuredArticles] = await Promise.all([
+    loadHomeDirectoryCategories(),
     getTopGroupCategories(16),
-    getApprovedSubmissions(staticSlugs),
+    getPublishedBlogArticles(6),
   ]);
-  const newestAINsfw = pickRecentTools(
-    new Map(AI_NSFW_TOOLS.map((t) => [t.slug, t])),
-    paidSubmissions as Array<(typeof paidSubmissions)[number] & { createdAt?: string }>,
-    { limit: RECENT_POOL_LIMIT },
-  );
-  const newestAINsfwStats = await getAllToolStats(newestAINsfw.map((t) => t.slug));
-  const { mergeToolContent } = await import('@/lib/ainsfw/toolContent');
-  const displayNewestAINsfw = newestAINsfw.map((t) => mergeToolContent(t, newestAINsfwStats[t.slug]));
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -272,16 +259,10 @@ export default async function Home() {
         }}
       />
       <ErrorBoundary>
-        <HomeClient
-          featuredArticles={featuredArticles}
-          heroCampaigns={heroCampaigns}
-          newGroups={newGroups}
-          stats={stats}
-          ofCategories={ofCategories}
-          newestBots={newestBots}
-          newestAINsfw={displayNewestAINsfw}
-          newestAINsfwStats={newestAINsfwStats}
+        <HomeExploreClient
+          categories={directoryCategories}
           topGroupCategories={topGroupCategories}
+          featuredArticles={featuredArticles}
           locale={locale}
         />
       </ErrorBoundary>

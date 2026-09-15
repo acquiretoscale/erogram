@@ -21,11 +21,11 @@ export const metadata: Metadata = {
   title,
   description,
   other: { rating: 'adult' },
-  alternates: { canonical: `${CANONICAL_BASE}/porn-websites` },
+  alternates: { canonical: `${CANONICAL_BASE}/best-porn` },
   ...buildSocialMeta({
     title,
     description,
-    url: `${CANONICAL_BASE}/porn-websites`,
+    url: `${CANONICAL_BASE}/best-porn`,
     type: 'website',
   }),
 };

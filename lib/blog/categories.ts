@@ -51,7 +51,31 @@ export const BLOG_CATEGORIES: BlogCategory[] = [
       'Everything about NSFW Telegram groups and bots — finding safe channels, avoiding scams, using the best adult Telegram tools.',
     tagline: 'Finding, joining, and running the best adult Telegram channels.',
   },
+  {
+    slug: 'asian-porn',
+    name: 'ASIAN PORN',
+    eyebrow: 'ASIAN PORN',
+    metaTitle: 'Asian Porn Guides & Features | Erogram Editorial',
+    metaDescription:
+      'Guides to Asian porn studios, uncensored catalogs, and the sites that actually keep a deep HD library.',
+    tagline: 'Studios, catalogs, and the Asian porn sites worth opening.',
+  },
+  {
+    slug: 'jav-porn',
+    name: 'JAV PORN',
+    eyebrow: 'JAV PORN',
+    metaTitle: 'JAV Porn Guides — Uncensored Japanese Adult Video | Erogram Editorial',
+    metaDescription:
+      'Where to watch uncensored JAV, how Japanese adult video works, and the performers who define the category.',
+    tagline: 'Uncensored Japanese adult video, HD libraries, and the star system behind JAV.',
+  },
 ];
+
+/** Category hubs that should also list articles filed under a child slug. */
+export function blogCategoryMatchSlugs(slug: string): string[] {
+  if (slug === 'asian-porn') return ['asian-porn', 'jav-porn'];
+  return [slug];
+}
 
 export const BLOG_CATEGORY_SLUGS = BLOG_CATEGORIES.map((c) => c.slug);
 

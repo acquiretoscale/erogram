@@ -9,6 +9,7 @@ import {
   adminSetFeatured,
   getAdminSubmissions,
   adminUpdateSubmission,
+  adminApprovePaidAinsfwListing,
   type ToolStatsData,
   type AdminSubmission,
 } from '@/lib/actions/ainsfw';
@@ -43,7 +44,8 @@ export default function AINsfwTab() {
   const [editSubUnlisted, setEditSubUnlisted] = useState(false);
   const [subSaving, setSubSaving] = useState(false);
   const [reallocatingId, setReallocatingId] = useState<string | null>(null);
-  const [subPaymentFilter, setSubPaymentFilter] = useState<'all' | 'unpaid' | 'paid'>('all');
+  const [subPaymentFilter, setSubPaymentFilter] = useState<'all' | 'unpaid' | 'paid' | 'approve'>('all');
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -65,9 +67,11 @@ export default function AINsfwTab() {
   const filteredSubs = subs.filter((s) => {
     if (subPaymentFilter === 'unpaid') return s.paymentStatus === 'pending';
     if (subPaymentFilter === 'paid') return s.paymentStatus === 'paid';
+    if (subPaymentFilter === 'approve') return s.paymentStatus === 'paid' && s.awaitingAdminReview;
     return true;
   });
   const unpaidCount = subs.filter((s) => s.paymentStatus === 'pending').length;
+  const needsApproval = subs.filter((s) => s.paymentStatus === 'paid' && s.awaitingAdminReview);
 
   const staticSlugs = new Set(AI_NSFW_TOOLS.map((t) => t.slug));
   const paidSubTools: AINsfwTool[] = subs
@@ -129,6 +133,21 @@ export default function AINsfwTab() {
       showToast('Failed to update');
     } finally {
       setSubSaving(false);
+    }
+  };
+
+  const handleApprovePaid = async (sub: AdminSubmission) => {
+    setApprovingId(sub._id);
+    try {
+      const result = await adminApprovePaidAinsfwListing(sub._id);
+      if (result) {
+        setSubs((prev) => prev.map((s) => (s._id === result._id ? result : s)));
+        showToast(`Approved ${result.name}`);
+      }
+    } catch {
+      showToast('Failed to approve');
+    } finally {
+      setApprovingId(null);
     }
   };
 
@@ -418,12 +437,36 @@ export default function AINsfwTab() {
 
       {/* ─── Submissions ─── */}
       <div className="mt-8">
+        {needsApproval.length > 0 && (
+          <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+            <p className="text-sm font-bold text-emerald-300 mb-2">
+              {needsApproval.length} paid listing{needsApproval.length === 1 ? '' : 's'} waiting for approval
+            </p>
+            <div className="space-y-2">
+              {needsApproval.map((sub) => (
+                <div key={sub._id} className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-white font-semibold text-sm truncate">{sub.name}</p>
+                    <p className="text-white/40 text-[11px] truncate">{sub.submissionTier} · {sub.slug}</p>
+                  </div>
+                  <button
+                    onClick={() => handleApprovePaid(sub)}
+                    disabled={approvingId === sub._id}
+                    className="shrink-0 px-3 py-1.5 rounded-md text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50"
+                  >
+                    {approvingId === sub._id ? '…' : 'Approve'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <div>
             <h2 className="text-lg font-bold text-white">Submissions</h2>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {(['all', 'unpaid', 'paid'] as const).map((f) => (
+            {(['all', 'unpaid', 'paid', 'approve'] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setSubPaymentFilter(f)}
@@ -433,7 +476,7 @@ export default function AINsfwTab() {
                     : 'bg-white/[0.04] border-white/[0.08] text-white/50 hover:text-white'
                 }`}
               >
-                {f === 'all' ? 'All' : f === 'unpaid' ? `Unpaid (${unpaidCount})` : 'Paid'}
+                {f === 'all' ? 'All' : f === 'unpaid' ? `Unpaid (${unpaidCount})` : f === 'approve' ? `Approve (${needsApproval.length})` : 'Paid'}
               </button>
             ))}
             <button onClick={fetchSubs} disabled={subsLoading} className="px-4 py-2 rounded-lg text-sm font-semibold bg-white/[0.06] border border-white/[0.10] text-white/70 hover:text-white hover:bg-white/[0.10] transition-all disabled:opacity-40">
@@ -475,7 +518,7 @@ export default function AINsfwTab() {
                 <tr><td className="px-4 py-8 text-center text-white/30" colSpan={9}>No submissions yet</td></tr>
               ) : (
                 filteredSubs.map((sub) => (
-                  <tr key={sub._id} className={`hover:bg-white/[0.03] transition-colors ${sub.paymentStatus === 'pending' ? 'bg-orange-500/[0.06]' : ''}`}>
+                  <tr key={sub._id} className={`hover:bg-white/[0.03] transition-colors ${sub.paymentStatus === 'paid' && sub.awaitingAdminReview ? 'bg-emerald-500/[0.08]' : sub.paymentStatus === 'pending' ? 'bg-orange-500/[0.06]' : ''}`}>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
                         <img src={sub.image || '/assets/image.jpg'} alt={sub.name} className="w-8 h-8 rounded-md object-cover shrink-0 border border-white/10" />
@@ -533,6 +576,15 @@ export default function AINsfwTab() {
                     <td className="px-4 py-3 text-white/40 text-[11px]">{new Date(sub.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
+                        {sub.paymentStatus === 'paid' && sub.awaitingAdminReview && (
+                          <button
+                            onClick={() => handleApprovePaid(sub)}
+                            disabled={approvingId === sub._id}
+                            className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-500/20 transition-all disabled:opacity-50"
+                          >
+                            {approvingId === sub._id ? '…' : 'Approve'}
+                          </button>
+                        )}
                         <button
                           onClick={() => openEditSub(sub)}
                           className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-500/20 transition-all"

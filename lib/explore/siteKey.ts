@@ -1,9 +1,10 @@
 import type { ExploreSite } from '@/lib/explore/topPornSitesData';
+import { getExploreSiteListingByRootSlug } from '@/lib/explore/exploreSiteListings';
 
 /** Stable key for admin overrides and category ordering. */
 export function exploreSiteKey(site: ExploreSite): string {
-  if (site.url.startsWith('/porn-websites/')) {
-    return site.url.slice('/porn-websites/'.length);
+  if (site.url.startsWith('/best-porn/')) {
+    return site.url.slice('/best-porn/'.length);
   }
   if (site.url.startsWith('/explore/') && !site.url.startsWith('/explore/sites/')) {
     return site.url.slice('/explore/'.length);
@@ -15,7 +16,10 @@ export function exploreSiteKey(site: ExploreSite): string {
     return site.url.slice(1);
   }
   if (site.url.startsWith('/') && site.url.length > 1) {
-    return site.url.slice(1);
+    const root = site.url.slice(1);
+    const listing = getExploreSiteListingByRootSlug(root);
+    if (listing) return listing.slug;
+    return root;
   }
   return site.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }

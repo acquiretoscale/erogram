@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { revalidatePath } from 'next/cache';
 import connectDB from '@/lib/db/mongodb';
 import { ExploreCategoryOrder, ExploreSiteOverride, User } from '@/lib/models';
-import { getExploreSiteListing } from '@/lib/explore/exploreSiteListings';
+import { getExploreSiteListing, getExploreSiteListingByRootSlug, exploreListingRootSlug, exploreSiteListingPath } from '@/lib/explore/exploreSiteListings';
 import { customRowToListing, slugifyExploreSiteKey } from '@/lib/explore/exploreCustomSites';
 import type { ExploreSiteListing } from '@/lib/explore/exploreSiteListings';
 
@@ -130,6 +130,27 @@ export async function resolveExploreListing(slug: string): Promise<ExploreSiteLi
   return getCustomExploreListing(slug);
 }
 
+export async function resolveExploreListingByRootSlug(rootSlug: string): Promise<ExploreSiteListing | null> {
+  const hit = getExploreSiteListingByRootSlug(rootSlug);
+  if (hit) {
+    const resolved = await resolveExploreListing(hit.slug);
+    if (!resolved) return null;
+    return {
+      ...resolved,
+      categorySlug: hit.categorySlug,
+      categoryTitle: hit.categoryTitle,
+    };
+  }
+  const sep = '-porn-';
+  const i = rootSlug.lastIndexOf(sep);
+  if (i <= 0) return null;
+  const siteSlug = rootSlug.slice(0, i);
+  const resolved = await resolveExploreListing(siteSlug);
+  if (!resolved) return null;
+  if (exploreListingRootSlug(resolved.slug, resolved.categorySlug) !== rootSlug) return null;
+  return resolved;
+}
+
 function mergeStaticOverride(
   listing: ExploreSiteListing,
   override: OverrideRow,
@@ -162,8 +183,9 @@ export async function updateExploreSiteListing(
     { upsert: true },
   );
 
-  revalidatePath('/porn-websites');
-  revalidatePath(`/porn-websites/${input.siteKey}`);
+  revalidatePath('/best-porn');
+  revalidatePath(`/best-porn/${input.siteKey}`);
+  revalidatePath(exploreSiteListingPath(input.siteKey, input.categorySlug));
   return { ok: true };
 }
 
@@ -182,7 +204,7 @@ export async function saveExploreCategoryOrder(
     { upsert: true },
   );
 
-  revalidatePath('/porn-websites');
+  revalidatePath('/best-porn');
   return { ok: true };
 }
 
@@ -228,8 +250,9 @@ export async function addExploreSite(
 
   await appendSiteKeyToOrder(input.categorySlug, siteKey);
 
-  revalidatePath('/porn-websites');
-  revalidatePath(`/porn-websites/${siteKey}`);
+  revalidatePath('/best-porn');
+  revalidatePath(`/best-porn/${siteKey}`);
+  revalidatePath(exploreSiteListingPath(siteKey, input.categorySlug));
   return { ok: true, siteKey };
 }
 
@@ -256,7 +279,8 @@ export async function removeExploreSite(
 
   await removeSiteKeyFromOrder(categorySlug, siteKey);
 
-  revalidatePath('/porn-websites');
-  revalidatePath(`/porn-websites/${siteKey}`);
+  revalidatePath('/best-porn');
+  revalidatePath(`/best-porn/${siteKey}`);
+  revalidatePath(exploreSiteListingPath(siteKey, categorySlug));
   return { ok: true };
 }
