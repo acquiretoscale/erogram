@@ -6,7 +6,9 @@ interface ShareDropdownProps {
   title: string;
   slug: string;
   itemType?: 'group' | 'bot';
+  kindLabel?: string;
   className?: string;
+  light?: boolean;
 }
 
 type ShareItem = {
@@ -29,7 +31,7 @@ function BrandIcon({ children, bg }: { children: React.ReactNode; bg: string }) 
   );
 }
 
-export default function ShareDropdown({ title, slug, itemType = 'group', className = '' }: ShareDropdownProps) {
+export default function ShareDropdown({ title, slug, itemType = 'group', kindLabel, className = '', light = false }: ShareDropdownProps) {
   const [open, setOpen] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [pageUrl, setPageUrl] = useState('');
@@ -64,8 +66,10 @@ export default function ShareDropdown({ title, slug, itemType = 'group', classNa
   }, [open, close]);
 
   const url = pageUrl || `https://erogramx.com/${slug}`;
-  const kind = itemType === 'bot' ? 'Telegram bot' : 'Telegram group';
-  const text = `Check out ${title} — ${kind} on Erogram`;
+  const kind = kindLabel || (itemType === 'bot' ? 'Telegram bot' : 'Telegram group');
+  const text = kindLabel
+    ? `Check out ${title}. ${kind} on Erogram`
+    : `Check out ${title} — ${kind} on Erogram`;
 
   const copyText = async (value: string, key: string) => {
     try {
@@ -178,7 +182,11 @@ export default function ShareDropdown({ title, slug, itemType = 'group', classNa
         aria-label="Share"
         aria-expanded={open}
         className={`flex items-center justify-center w-11 h-11 rounded-xl border transition-all duration-200 ${
-          open
+          light
+            ? open
+              ? 'bg-neutral-100 text-neutral-900 border-neutral-200'
+              : 'bg-neutral-100 border-neutral-200 text-neutral-700 hover:bg-neutral-200'
+            : open
             ? 'bg-white text-[#1a1a1a] border-white shadow-lg shadow-black/20'
             : 'bg-white/[0.08] border-white/20 text-white/80 hover:text-white hover:bg-white/[0.14] hover:border-white/30'
         }`}

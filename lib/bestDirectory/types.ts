@@ -4,6 +4,7 @@ export type DirectoryRankItem = {
   image: string;
   description: string;
   category: string;
+  externalUrl?: string;
   views?: number;
   country?: string;
   bookmarkKind: 'bot' | 'ainsfw' | 'explore';

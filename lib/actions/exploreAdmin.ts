@@ -53,7 +53,7 @@ async function appendSiteKeyToOrder(categorySlug: string, siteKey: string) {
   if (!siteKeys.includes(siteKey)) siteKeys.push(siteKey);
   await ExploreCategoryOrder.findOneAndUpdate(
     { categorySlug },
-    { siteKeys },
+    { $set: { siteKeys } },
     { upsert: true },
   );
 }
@@ -74,8 +74,15 @@ export async function getExploreAdminSnapshot() {
       ExploreSiteOverride.find({})
         .select('categorySlug siteKey name externalUrl description image hidden isCustom')
         .lean(),
-      ExploreCategoryOrder.find({}).select('categorySlug siteKeys').lean(),
+      ExploreCategoryOrder.find({}).select('categorySlug siteKeys listed').lean(),
     ]);
+
+    const listed: Record<string, boolean> = {};
+    for (const row of orders) {
+      if (typeof (row as { listed?: boolean }).listed === 'boolean') {
+        listed[String(row.categorySlug)] = Boolean((row as { listed?: boolean }).listed);
+      }
+    }
 
     return {
       overrides: overrides.map((row) => mapOverrideRow(row as Record<string, unknown>)),
@@ -83,10 +90,11 @@ export async function getExploreAdminSnapshot() {
         categorySlug: String(row.categorySlug),
         siteKeys: Array.isArray(row.siteKeys) ? row.siteKeys.map(String) : [],
       })),
+      listed,
     };
   } catch (e) {
     console.error('[exploreAdmin] snapshot failed', e);
-    return { overrides: [], orders: [] };
+    return { overrides: [], orders: [], listed: {} };
   }
 }
 
@@ -200,12 +208,38 @@ export async function saveExploreCategoryOrder(
   await connectDB();
   await ExploreCategoryOrder.findOneAndUpdate(
     { categorySlug },
-    { siteKeys },
+    { $set: { siteKeys } },
     { upsert: true },
   );
 
   revalidatePath('/best-porn');
   return { ok: true };
+}
+
+export async function setExploreCategoryListed(
+  token: string,
+  categorySlug: string,
+  listed: boolean,
+) {
+  const admin = await authenticateAdmin(token);
+  if (!admin) throw new Error('Unauthorized');
+
+  await connectDB();
+  await ExploreCategoryOrder.findOneAndUpdate(
+    { categorySlug },
+    { $set: { listed } },
+    { upsert: true },
+  );
+
+  revalidatePath('/best-porn');
+  return { ok: true };
+}
+
+export async function loadExploreCategoriesForAdmin(token: string) {
+  const admin = await authenticateAdmin(token);
+  if (!admin) throw new Error('Unauthorized');
+  const { loadExplorePageCategories } = await import('@/lib/explore/loadExplorePageCategories');
+  return loadExplorePageCategories();
 }
 
 export async function addExploreSite(

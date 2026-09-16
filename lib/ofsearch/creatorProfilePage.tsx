@@ -240,7 +240,7 @@ export async function CreatorProfilePageView({
         related={related}
         rankingPages={rankingPages}
         topRankingPreviewAvatars={topRankingPreviewAvatars}
-        publicAccess={creator.publicPage || creator.adminImported}
+        publicAccess={creator.publicPage || creator.adminImported || creator.submittedByUser}
       />
     </>
   );

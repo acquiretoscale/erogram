@@ -9,11 +9,13 @@ import { EXPLORE_CATEGORIES, type ExploreCategory, type ExploreSite } from '@/li
 import { exploreMascotFallbackSrc, exploreMascotSrc } from '@/lib/explore/mascotIcons';
 import { pickLabelForFirstPick } from '@/lib/explore/pickLabels';
 import { exploreSiteKey } from '@/lib/explore/siteKey';
-import { addExploreSite, removeExploreSite, saveExploreCategoryOrder } from '@/lib/actions/exploreAdmin';
+import { addExploreSite, loadExploreCategoriesForAdmin, removeExploreSite, saveExploreCategoryOrder, setExploreCategoryListed } from '@/lib/actions/exploreAdmin';
+import { isExploreCategoryListed } from '@/lib/explore/applyExploreAdmin';
+import { exploreListIconSrc } from '@/lib/explore/siteIconDomain';
 
 const ACCENT = '#c0392f';
-const FEATURED_PREVIEW = 12;
-const DEFAULT_PREVIEW = 2;
+const FEATURED_PREVIEW = 10;
+const DEFAULT_PREVIEW = 10;
 const MASCOT_SIZE = 52;
 const ROW_HEIGHT = 40;
 const FEATURED_ROW_HEIGHT = 54;
@@ -90,7 +92,7 @@ function featuredIndexBefore(sites: ExploreSite[], index: number): number {
 
 function SiteFavicon({ site, large = false }: { site: ExploreSite; large?: boolean }) {
   const [imageFailed, setImageFailed] = useState(false);
-  const src = site.image && !imageFailed ? site.image : '';
+  const src = !imageFailed ? exploreListIconSrc(site) : '';
   const size = large ? 32 : 24;
 
   if (!src) {
@@ -251,16 +253,32 @@ function CategoryMascot({ categoryIndex }: { categoryIndex: number }) {
   );
 }
 
+const ROOT_SEE_ALL_SLUG: Record<string, string> = {
+  'best-live-asian-sex-cams': 'best-asian-sex-cams',
+  'best-live-sex-cams': 'best-live-sex-cam-websites',
+  'best-telegram-porn-bots': 'best-telegram-bots',
+};
+
+function seeAllHrefFor(slug: string): string | undefined {
+  return `/${ROOT_SEE_ALL_SLUG[slug] || slug}`;
+}
+
 function CategoryCard({
   category,
   categoryIndex,
   previewLimit,
   isAdmin,
+  seeAllHref,
+  listed,
+  onListedChange,
 }: {
   category: ExploreCategory;
   categoryIndex: number;
   previewLimit: number;
   isAdmin: boolean;
+  seeAllHref?: string;
+  listed: boolean;
+  onListedChange?: (slug: string, listed: boolean) => void;
 }) {
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
@@ -273,6 +291,7 @@ function CategoryCard({
   const [newName, setNewName] = useState('');
   const [newUrl, setNewUrl] = useState('');
   const [newDescription, setNewDescription] = useState('');
+  const [listingBusy, setListingBusy] = useState(false);
 
   useEffect(() => {
     setSites(category.sites);
@@ -354,6 +373,21 @@ function CategoryCard({
     }
   }
 
+  async function handleToggleListed() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    setListingBusy(true);
+    try {
+      await setExploreCategoryListed(token, category.slug, !listed);
+      onListedChange?.(category.slug, !listed);
+      router.refresh();
+    } catch (e) {
+      console.error('[explore] list toggle failed', e);
+    } finally {
+      setListingBusy(false);
+    }
+  }
+
   return (
     <section
       id={category.slug}
@@ -364,6 +398,9 @@ function CategoryCard({
         <div className="min-w-0 flex-1 pt-0.5">
           <h2 className="text-[15px] font-black tracking-[0.05em] uppercase text-white leading-tight">
             {category.title}
+            {isAdmin && !listed ? (
+              <span className="ml-2 align-middle text-[8px] font-black tracking-[0.1em] text-amber-300">UNLISTED</span>
+            ) : null}
           </h2>
           {category.description ? (
             <p className="mt-1.5 text-[12px] leading-snug text-white/55 font-medium">
@@ -372,13 +409,23 @@ function CategoryCard({
           ) : null}
         </div>
         {isAdmin ? (
-          <button
-            type="button"
-            onClick={() => setShowAddForm((v) => !v)}
-            className="shrink-0 text-[9px] font-black tracking-[0.1em] uppercase text-white bg-[#c0392f] px-2 py-1 rounded hover:opacity-90"
-          >
-            {showAddForm ? 'Close' : '+ Add'}
-          </button>
+          <div className="shrink-0 flex flex-col items-end gap-1">
+            <button
+              type="button"
+              disabled={listingBusy}
+              onClick={() => void handleToggleListed()}
+              className="text-[9px] font-black tracking-[0.1em] uppercase text-white bg-black/40 border border-white/20 px-2 py-1 rounded hover:bg-black/60 disabled:opacity-50"
+            >
+              {listingBusy ? '...' : listed ? 'Delist' : 'List'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAddForm((v) => !v)}
+              className="text-[9px] font-black tracking-[0.1em] uppercase text-white bg-[#c0392f] px-2 py-1 rounded hover:opacity-90"
+            >
+              {showAddForm ? 'Close' : '+ Add'}
+            </button>
+          </div>
         ) : null}
       </div>
 
@@ -507,7 +554,15 @@ function CategoryCard({
         </ol>
       </div>
 
-      {total > previewLimit && (
+      {seeAllHref ? (
+        <Link
+          href={seeAllHref}
+          className="block w-full py-2.5 px-3 text-[11px] font-black tracking-[0.14em] uppercase text-white text-center border-t border-[#c0392f]/20 hover:opacity-90"
+          style={{ background: ACCENT }}
+        >
+          {total > 0 ? `SEE ALL ${total} SITES →` : 'SEE THE WHOLE LIST →'}
+        </Link>
+      ) : total > previewLimit ? (
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
@@ -516,29 +571,53 @@ function CategoryCard({
         >
           {expanded ? 'SHOW LESS ↑' : `SEE ALL ${total} SITES →`}
         </button>
-      )}
+      ) : null}
     </section>
   );
 }
 
 export default function ExploreClient({
   categories = EXPLORE_CATEGORIES,
+  listedOverrides = {},
 }: {
   categories?: ExploreCategory[];
+  listedOverrides?: Record<string, boolean>;
 }) {
   const [isAdmin, setIsAdmin] = useState(false);
-  const groups = useMemo(() => groupCategories(categories), [categories]);
+  const [adminCategories, setAdminCategories] = useState<ExploreCategory[] | null>(null);
+  const [adminListed, setAdminListed] = useState<Record<string, boolean> | null>(null);
+  const sourceCategories = adminCategories || categories;
+  const sourceListed = adminListed || listedOverrides;
+  const listedBySlug = useMemo(
+    () =>
+      Object.fromEntries(
+        sourceCategories.map((category) => [category.slug, isExploreCategoryListed(category.slug, sourceListed)]),
+      ),
+    [sourceCategories, sourceListed],
+  );
+  const visibleCategories = useMemo(
+    () => sourceCategories.filter((category) => listedBySlug[category.slug] || isAdmin),
+    [sourceCategories, listedBySlug, isAdmin],
+  );
+  const groups = useMemo(() => groupCategories(visibleCategories), [visibleCategories]);
 
   useEffect(() => {
     setIsAdmin(localStorage.getItem('isAdmin') === 'true');
     const token = localStorage.getItem('token');
     if (!token) return;
+    const loadAdmin = () =>
+      loadExploreCategoriesForAdmin(token).then((payload) => {
+        setAdminCategories(payload.categories);
+        setAdminListed(payload.listed);
+      });
+    if (localStorage.getItem('isAdmin') === 'true') void loadAdmin().catch(() => {});
     fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.isAdmin) {
           setIsAdmin(true);
           localStorage.setItem('isAdmin', 'true');
+          return loadAdmin();
         }
       })
       .catch(() => {});
@@ -590,7 +669,7 @@ export default function ExploreClient({
               className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"
             >
               {group.map((category) => {
-                const categoryIndex = categories.findIndex((c) => c.slug === category.slug);
+                const categoryIndex = sourceCategories.findIndex((c) => c.slug === category.slug);
                 return (
                   <CategoryCard
                     key={category.slug}
@@ -598,6 +677,11 @@ export default function ExploreClient({
                     categoryIndex={categoryIndex}
                     previewLimit={FEATURED_SLUGS.has(category.slug) ? FEATURED_PREVIEW : DEFAULT_PREVIEW}
                     isAdmin={isAdmin}
+                    listed={listedBySlug[category.slug] !== false}
+                    onListedChange={(slug, nextListed) => {
+                      setAdminListed((prev) => ({ ...(prev || listedOverrides), [slug]: nextListed }));
+                    }}
+                    seeAllHref={seeAllHrefFor(category.slug)}
                   />
                 );
               })}

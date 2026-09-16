@@ -8,6 +8,7 @@ import CookieBanner from './CookieBanner';
 import AgeGate from './AgeGate';
 import BackToTopButton from './BackToTopButton';
 import PwaInstallBanner from './PwaInstallBanner';
+import PremiumBottomBar from './PremiumBottomBar';
 
 interface LayoutWrapperProps {
   children: ReactNode;
@@ -20,6 +21,7 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
       <Suspense fallback={null}><AdminSaleAlert /></Suspense>
       {children}
       <BackToTopButton />
+      <PremiumBottomBar />
       <PwaInstallBanner />
       <CookieBanner />
       <AgeGate />

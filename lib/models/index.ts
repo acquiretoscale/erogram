@@ -228,7 +228,7 @@ export const articleSchema = new Schema(
     viewsByDay: { type: Map, of: Number, default: new Map() },
     advertiserId: { type: Schema.Types.ObjectId, ref: 'Advertiser', required: false },
     tags: [{ type: String }],
-    // Blog category slug: 'ai-nsfw' | 'telegram-groups-bots' | 'onlyfans-creators' | 'adult-entertainment' | 'asian-porn' | 'jav-porn'
+    // Blog category slug: 'ai-nsfw' | 'telegram-groups-bots' | 'onlyfans-creators' | 'adult-entertainment' | 'asian-porn' | 'jav-porn' | 'sex-wellness'
     blogCategory: { type: String, default: 'adult-entertainment' },
     // Byline author — references an Author doc by slug (see authorSchema). Default 'eros'.
     authorSlug: { type: String, default: 'eros' },
@@ -1536,6 +1536,7 @@ const exploreCategoryOrderSchema = new Schema(
   {
     categorySlug: { type: String, required: true, unique: true },
     siteKeys: [{ type: String }],
+    listed: { type: Boolean },
   },
   { timestamps: true },
 );

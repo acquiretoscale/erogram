@@ -91,7 +91,7 @@ export default function BackToTopButton() {
       type="button"
       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
       className={`fixed right-6 z-[9999] w-12 h-12 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 ${
-        mobileStickyOffset ? 'bottom-[4.75rem] md:bottom-6' : 'bottom-6'
+        mobileStickyOffset ? 'bottom-[7rem] md:bottom-[5.5rem]' : 'bottom-[5.5rem]'
       } ${theme.border ? 'rounded-lg' : 'rounded-full'} ${
         show ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none'
       }`}

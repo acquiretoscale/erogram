@@ -9,6 +9,7 @@ export type DirectoryMatch =
   | 'ai-porn-generator'
   | 'bots-undress'
   | 'bots-girlfriend'
+  | 'bots-all'
   | 'explore';
 
 export type DirectoryPageConfig = {
@@ -32,7 +33,6 @@ function explore(slug: string) {
 
 const liveAsian = explore('best-live-asian-sex-cams');
 const vr = explore('best-vr-porn');
-const premium = explore('best-premium-porn');
 const liveCams = explore('best-live-sex-cams');
 const premiumAsian = explore('best-premium-asian-porn-sites');
 const asianPorn = explore('best-asian-porn-sites');
@@ -41,8 +41,9 @@ const uncensoredJav = explore('best-uncensored-jav-porn-websites');
 export const DIRECTORY_PAGES: DirectoryPageConfig[] = [
   {
     slug: 'best-ainsfw',
-    homeTitle: 'Best AINSFW',
-    homeDescription: '',
+    homeTitle: 'Best AI uncensored tools',
+    homeDescription:
+      'The top uncensored AI NSFW tools for nude generation, undress AI, and custom adult pics. Ranked on output quality, free credits, and whether results stay filter-free.',
     label: 'AI NSFW',
     kind: 'ainsfw',
     match: 'all-ainsfw',
@@ -50,8 +51,9 @@ export const DIRECTORY_PAGES: DirectoryPageConfig[] = [
   },
   {
     slug: 'best-ai-girlfriend',
-    homeTitle: 'Best AI girlfriend',
-    homeDescription: '',
+    homeTitle: 'Best AI girlfriend app',
+    homeDescription:
+      "Here you'll find our selection of the best AI girlfriend apps, ranked for uncensored chat, sexy selfies, voice, and memory that keeps her yours.",
     label: 'AI Girlfriend',
     kind: 'ainsfw',
     match: 'ai-girlfriend',
@@ -59,8 +61,9 @@ export const DIRECTORY_PAGES: DirectoryPageConfig[] = [
   },
   {
     slug: 'best-undress-ai',
-    homeTitle: 'Best undress AI',
-    homeDescription: '',
+    homeTitle: 'Best nude generator',
+    homeDescription:
+      "Here you'll find our selection of the best undress AI and nude generator tools, ranked for realistic results, fast renders, and free credits to try.",
     label: 'Undress AI',
     kind: 'ainsfw',
     match: 'undress-ai',
@@ -69,7 +72,8 @@ export const DIRECTORY_PAGES: DirectoryPageConfig[] = [
   {
     slug: 'best-ai-porn-generator',
     homeTitle: 'Best AI Porn generator',
-    homeDescription: '',
+    homeDescription:
+      "Here you'll find our selection of the best AI porn generators, ranked for custom nudes, hentai, and sex scenes made from a simple prompt.",
     label: 'AI Porn Generator',
     kind: 'ainsfw',
     match: 'ai-porn-generator',
@@ -77,8 +81,9 @@ export const DIRECTORY_PAGES: DirectoryPageConfig[] = [
   },
   {
     slug: 'best-undress-telegram-bots',
-    homeTitle: 'Undress',
-    homeDescription: '',
+    homeTitle: 'Best Undress / Nude Telegram bots',
+    homeDescription:
+      "Here you'll find our selection of the best undress Telegram bots, ranked for realistic nudes, quick replies, and free daily tries right inside Telegram.",
     label: 'Undress AI',
     kind: 'bots',
     match: 'bots-undress',
@@ -86,8 +91,9 @@ export const DIRECTORY_PAGES: DirectoryPageConfig[] = [
   },
   {
     slug: 'best-ai-girlfriend-telegram-bots',
-    homeTitle: 'AI girlfriend',
-    homeDescription: '',
+    homeTitle: 'Best AI Girlfriend Telegram bots',
+    homeDescription:
+      "Here you'll find our selection of the best AI girlfriend Telegram bots, ranked for uncensored chat, roleplay, and voice right inside Telegram.",
     label: 'AI Girlfriend',
     kind: 'bots',
     match: 'bots-girlfriend',
@@ -95,7 +101,7 @@ export const DIRECTORY_PAGES: DirectoryPageConfig[] = [
   },
   {
     slug: 'best-vr-porn',
-    homeTitle: vr.title,
+    homeTitle: 'Best VR porn websites',
     homeDescription: vr.description,
     label: 'VR Porn',
     kind: 'explore',
@@ -105,8 +111,8 @@ export const DIRECTORY_PAGES: DirectoryPageConfig[] = [
   },
   {
     slug: 'best-premium-porn',
-    homeTitle: premium.title,
-    homeDescription: premium.description,
+    homeTitle: 'Best Premium Porn Sites',
+    homeDescription: 'Stream exclusive adult porn videos with the hottest porn stars.',
     label: 'Premium Porn',
     kind: 'explore',
     match: 'explore',
@@ -114,7 +120,7 @@ export const DIRECTORY_PAGES: DirectoryPageConfig[] = [
     browseHref: '/best-porn',
   },
   {
-    slug: 'best-live-sex-cams',
+    slug: 'best-live-sex-cam-websites',
     homeTitle: liveCams.title,
     homeDescription: liveCams.description,
     label: 'Live Sex Cams',
@@ -165,6 +171,13 @@ export const DIRECTORY_PAGES: DirectoryPageConfig[] = [
   },
 ];
 
+export const HOME_LEADER_PREVIEW_SLUGS = [
+  'best-ainsfw',
+  'best-ai-girlfriend',
+  'best-undress-ai',
+  'best-ai-porn-generator',
+] as const;
+
 export const HOME_DIRECTORY_GROUPS: { heading?: string; slugs: string[] }[] = [
   {
     slugs: ['best-ainsfw', 'best-ai-girlfriend', 'best-undress-ai', 'best-ai-porn-generator'],
@@ -178,7 +191,7 @@ export const HOME_DIRECTORY_GROUPS: { heading?: string; slugs: string[] }[] = [
     slugs: [
       'best-vr-porn',
       'best-premium-porn',
-      'best-live-sex-cams',
+      'best-live-sex-cam-websites',
       'best-asian-sex-cams',
       'best-premium-asian-porn-sites',
       'best-asian-porn-sites',
@@ -195,7 +208,7 @@ const FEATURED_HOME_PREVIEWS = new Set([
   'best-undress-telegram-bots',
   'best-ai-girlfriend-telegram-bots',
   'best-premium-porn',
-  'best-live-sex-cams',
+  'best-live-sex-cam-websites',
   'best-vr-porn',
 ]);
 
@@ -203,8 +216,45 @@ export const HOME_FEATURED_PREVIEW = 10;
 export const HOME_DEFAULT_PREVIEW = 10;
 export const RANKING_LIMIT = 30;
 
+const COMPANION_DESCRIPTION =
+  'The top AI companion apps with the leading virtual partners, memory, voice, images, and uncensored NSFW chat.';
+
+function exploreDirectoryPage(slug: string, category: { title: string; description: string }): DirectoryPageConfig {
+  return {
+    slug,
+    homeTitle: category.title,
+    homeDescription: category.description,
+    label: category.title.replace(/^Best\s+/i, ''),
+    kind: 'explore',
+    match: 'explore',
+    exploreSourceSlug: slug,
+    browseHref: '/best-porn',
+  };
+}
+
 export function directoryPageFromSlug(slug: string): DirectoryPageConfig | undefined {
-  return DIRECTORY_PAGES.find((page) => page.slug === slug);
+  const fromList = DIRECTORY_PAGES.find((page) => page.slug === slug);
+  if (fromList) return fromList;
+  if (slug === 'best-telegram-bots') {
+    return {
+      slug,
+      homeTitle: 'Best Telegram bots',
+      homeDescription: '',
+      label: 'Telegram Bots',
+      kind: 'bots',
+      match: 'bots-all',
+      browseHref: '/bots',
+    };
+  }
+  if (slug === 'best-ai-companion-websites') {
+    return exploreDirectoryPage(slug, {
+      title: 'Best AI companion websites',
+      description: COMPANION_DESCRIPTION,
+    });
+  }
+  const category = EXPLORE_CATEGORIES.find((entry) => entry.slug === slug);
+  if (!category) return undefined;
+  return exploreDirectoryPage(slug, category);
 }
 
 export function homePreviewLimit(slug: string): number {
@@ -224,6 +274,9 @@ export function directoryMetaDescription(page: DirectoryPageConfig, year: number
   }
   if (page.kind === 'ainsfw') {
     return `Discover the top 30 best ${page.label.toLowerCase()} tools in ${year}. Curated, ranked list of the most popular adult AI tools.`;
+  }
+  if (page.match === 'bots-all') {
+    return `Discover the top 30 best Telegram bots in ${year}. Curated, ranked list of the most popular and active adult bots.`;
   }
   return `Discover the top 30 best ${page.label.toLowerCase()} Telegram bots in ${year}. Curated, ranked list of the most popular and active adult bots.`;
 }

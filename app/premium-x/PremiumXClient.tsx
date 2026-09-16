@@ -35,7 +35,7 @@ const ctaClass =
 
 const CHECKOUT_PROMO_VIDEO = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/premium/checkout/EROGRAMX-PREMIUM-ADULT-ENTRETAINEMENT.mp4';
 const CHECKOUT_PROMO_POSTER = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/premium/checkout/swipey-promo.jpg';
-const MOSAIC_WEBP = '/assets/promo/premium-x-mosaic.jpg';
+const MOSAIC_WEBP = '/assets/promo/premium-x-mosaic.webp';
 
 function TgIcon({ className }: { className?: string }) {
   return (
@@ -145,7 +145,7 @@ const PREMIUM_FAQ: { q: string; a: ReactNode }[] = [
     a: (
       <>
         Yes. Checkout opens Telegram, where you pay with Telegram Stars using a debit or credit card, Apple Pay, or Google Pay. You can also visit this Telegram Stars payment guide that we create here:{' '}
-        <Link href="/payments/telegram-stars-tutorial" className="font-bold text-[#2AABEE] underline">
+        <Link href="/payments/telegram-stars-tutorial" target="_blank" rel="noopener noreferrer" className="font-bold text-[#2AABEE] underline">
           Telegram Stars payment guide
         </Link>
         . If still have questions, don&apos;t hesitate to drop us a message Telegram:{' '}
@@ -172,7 +172,7 @@ const PREMIUM_FAQ: { q: string; a: ReactNode }[] = [
     a: (
       <>
         Try Apple Pay or Google Pay in the Telegram app, or pay in Telegram on the web.{' '}
-        <Link href="/payments/telegram-stars-tutorial" className="font-bold text-[#2AABEE] underline">
+        <Link href="/payments/telegram-stars-tutorial" target="_blank" rel="noopener noreferrer" className="font-bold text-[#2AABEE] underline">
           Telegram Payment Tutorial
         </Link>
         . If it still fails, message{' '}
@@ -202,11 +202,20 @@ function PremiumMosaicBackground() {
       style={{
         backgroundImage: `url(${MOSAIC_WEBP})`,
         backgroundRepeat: 'repeat',
-        backgroundSize: '723px 1024px',
+        backgroundSize: '512px 435px',
         backgroundPosition: 'top center',
       }}
     >
-      <div className="absolute inset-0 bg-black/18" />
+      <div className="absolute inset-0 bg-black/45" />
+      <div
+        className="absolute inset-0"
+        style={{
+          background: `
+            linear-gradient(to right, rgba(0, 0, 0, 0.96) 0%, transparent 12%, transparent 88%, rgba(0, 0, 0, 0.96) 100%),
+            linear-gradient(to bottom, rgba(0, 0, 0, 0.94) 0%, transparent 10%, transparent 90%, rgba(0, 0, 0, 0.94) 100%)
+          `,
+        }}
+      />
     </div>
   );
 }
@@ -402,7 +411,7 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
         style={{ background: `radial-gradient(circle, ${TG_DARK} 0%, transparent 70%)` }}
       />
       <PremiumMosaicBackground />
-      <div className="relative z-10 max-w-[520px] mx-auto pb-16">
+      <div className="relative z-10 w-[70%] sm:w-full max-w-[520px] mx-auto pb-16">
         {!isPremium && <CheckoutPromoVideo />}
 
         <div className={`px-3 sm:px-4 ${isPremium ? 'pt-5' : ''}`}>
@@ -611,7 +620,7 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
                     Complete payment in Telegram · This page updates automatically · After payment you will be redirected back to Erogram
                   </p>
                   <p className="text-[13px] text-gray-700 text-center">
-                    <Link href="#faq" className="font-bold text-[#2AABEE] underline">Telegram Payment Tutorial</Link>
+                    <Link href="/payments/telegram-stars-tutorial" target="_blank" rel="noopener noreferrer" className="font-bold text-[#2AABEE] underline">Telegram Payment Tutorial</Link>
                   </p>
                 </div>
               </div>
@@ -622,7 +631,7 @@ export default function PremiumClient({ vaultTeaser = [], pricing }: PremiumClie
             <div className="mt-4 space-y-0.5">
               <p className="text-center text-[12px] text-gray-900">Complete payment in Telegram · This page updates automatically · After payment you will be redirected back to Erogram</p>
               <p className="text-center text-[12px] text-gray-900">
-                <Link href="#faq" className="font-bold text-[#2AABEE] underline">Telegram Payment Tutorial</Link>
+                <Link href="/payments/telegram-stars-tutorial" target="_blank" rel="noopener noreferrer" className="font-bold text-[#2AABEE] underline">Telegram Payment Tutorial</Link>
               </p>
             </div>
             )}

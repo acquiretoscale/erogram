@@ -16,7 +16,34 @@ export type ExploreSiteOverrideRow = {
 export type ExploreCategoryOrderRow = {
   categorySlug: string;
   siteKeys: string[];
+  listed?: boolean;
 };
+
+export const EXPLORE_UNLISTED_BY_DEFAULT = new Set([
+  'best-lesbian-porn-sites',
+  'best-premium-lesbian-porn-site',
+  'best-porn-for-women-sites',
+  'best-premium-porn-for-women',
+  'best-premium-fetish-porn-sites',
+  'best-feet-porn-sites',
+  'best-premium-amateur-porn-site',
+  'best-free-cam-girl-video-sites',
+  'best-sex-chat',
+  'best-escorts',
+  'best-hookup',
+  'best-sex-toys-websites',
+  'best-sex-dolls-brands',
+  'best-buy-used-panties',
+  'best-male-enhancement',
+]);
+
+export function isExploreCategoryListed(
+  slug: string,
+  listedOverrides: Record<string, boolean> = {},
+): boolean {
+  if (Object.prototype.hasOwnProperty.call(listedOverrides, slug)) return listedOverrides[slug];
+  return !EXPLORE_UNLISTED_BY_DEFAULT.has(slug);
+}
 
 function overrideKey(categorySlug: string, siteKey: string): string {
   return `${categorySlug}:${siteKey}`;

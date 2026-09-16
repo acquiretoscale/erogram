@@ -9,17 +9,16 @@ import HomeBlogCard from '@/app/components/HomeBlogCard';
 import type { BlogCard } from '@/lib/actions/blog';
 import type { Locale } from '@/lib/i18n/config';
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
-import { renderFaqAnswer, type HomeFaqSectionId } from '@/lib/faq/homeFaqLinks';
 import type { ExploreCategory, ExploreSite } from '@/lib/explore/topPornSitesData';
 import { exploreMascotFallbackSrc, exploreMascotSrc } from '@/lib/explore/mascotIcons';
 import { pickLabelForFirstPick } from '@/lib/explore/pickLabels';
-import { HOME_DIRECTORY_GROUPS, homePreviewLimit } from '@/lib/bestDirectory/config';
+import { HOME_DIRECTORY_GROUPS, HOME_LEADER_PREVIEW_SLUGS, homePreviewLimit } from '@/lib/bestDirectory/config';
+import { exploreListIconSrc } from '@/lib/explore/siteIconDomain';
 
 const ACCENT = '#c0392f';
 const MASCOT_SIZE = 52;
 const ROW_HEIGHT = 40;
 const FEATURED_ROW_HEIGHT = 54;
-const CARD = 'rounded-2xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-xl shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)] hover:border-[#c0392f]/60 transition-all duration-300';
 const HERO_TITLE_GRADIENT = {
   fontFamily: 'var(--font-bebas), sans-serif',
   backgroundImage: 'linear-gradient(180deg, #ffffff 0%, #b0b0b0 100%)',
@@ -73,13 +72,17 @@ function opensOutboundInNewTab(site: ExploreSite): boolean {
   return Boolean(site.externalUrl) || site.openInNewTab || !isInternalExploreUrl(outboundHref(site));
 }
 
+function showDetailIcon(site: ExploreSite): boolean {
+  return Boolean(site.externalUrl && isInternalExploreUrl(site.url));
+}
+
 function featuredIndexBefore(sites: ExploreSite[], index: number): number {
   return sites.slice(0, index).filter((site) => site.featured).length;
 }
 
 function SiteFavicon({ site, large = false }: { site: ExploreSite; large?: boolean }) {
   const [imageFailed, setImageFailed] = useState(false);
-  const src = site.image && !imageFailed ? site.image : '';
+  const src = !imageFailed ? exploreListIconSrc(site) : '';
   const size = large ? 32 : 24;
 
   if (!src) {
@@ -131,6 +134,80 @@ function SiteNameLink({ site }: { site: ExploreSite }) {
   );
 }
 
+function SiteDetailIcon({ site }: { site: ExploreSite }) {
+  if (!showDetailIcon(site)) return null;
+
+  return (
+    <Link
+      href={site.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="shrink-0 ml-1 p-1 rounded-md text-[#c0392f]/70 hover:text-[#c0392f] hover:bg-red-100/80 transition-all opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+      aria-label={`${site.name} details`}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        width={18}
+        height={18}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        <circle cx="11" cy="11" r="7" />
+        <path d="M20 20l-3.5-3.5" />
+      </svg>
+    </Link>
+  );
+}
+
+function LeaderToolPreview({ site, categorySlug }: { site: ExploreSite; categorySlug: string }) {
+  const href = outboundHref(site);
+  const newTab = opensOutboundInNewTab(site);
+  const pickLabel = site.featured ? pickLabelForFirstPick(categorySlug) : null;
+  const inner = (
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={site.image}
+        alt={site.name}
+        loading="lazy"
+        className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.03]"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 px-3 py-2.5 flex items-end justify-between gap-2">
+        <div className="min-w-0 text-left">
+          <span className="block text-[10px] font-black tracking-[0.12em] uppercase text-white/70">#1</span>
+          <span className="block text-[15px] sm:text-base font-black leading-tight text-white truncate">{site.name}</span>
+        </div>
+        {pickLabel ? (
+          <span className="shrink-0 text-[8px] font-black tracking-[0.08em] uppercase text-white bg-[#c0392f] px-1.5 py-0.5 rounded max-w-[92px] text-center leading-tight">
+            {pickLabel}
+          </span>
+        ) : null}
+      </div>
+    </>
+  );
+  const className =
+    'group relative block w-full aspect-[16/10] overflow-hidden border-b border-[#c0392f]/20 bg-[#120606]';
+
+  if (newTab) {
+    return (
+      <a href={href} target="_blank" rel="nofollow noopener noreferrer" className={className}>
+        {inner}
+      </a>
+    );
+  }
+
+  return (
+    <Link href={href} className={className}>
+      {inner}
+    </Link>
+  );
+}
+
 function CategoryMascot({ categoryIndex }: { categoryIndex: number }) {
   const [src, setSrc] = useState(exploreMascotSrc(categoryIndex));
 
@@ -164,11 +241,16 @@ function CategoryCard({
     (sum, site) => sum + (site.featured ? FEATURED_ROW_HEIGHT : ROW_HEIGHT),
     12,
   );
+  const showLeaderPreview = (HOME_LEADER_PREVIEW_SLUGS as readonly string[]).includes(category.slug);
+  const leaderSite =
+    showLeaderPreview && category.sites[0]?.image ? category.sites[0] : undefined;
 
   return (
     <section
       id={category.slug}
-      className="mb-4 rounded-2xl border border-[#c0392f]/20 bg-white overflow-hidden shadow-[0_8px_24px_-12px_rgba(0,0,0,0.35)]"
+      className={`mb-4 rounded-2xl border bg-white overflow-hidden shadow-[0_8px_24px_-12px_rgba(0,0,0,0.35)] ${
+        leaderSite ? 'border-[#c0392f]/45 ring-1 ring-[#c0392f]/20' : 'border-[#c0392f]/20'
+      }`}
     >
       <div className="px-4 py-3 border-b border-[#c0392f]/20 bg-[#1a0808] flex items-start gap-3 shadow-[inset_0_1px_0_rgba(255,138,138,0.1)]">
         <CategoryMascot categoryIndex={categoryIndex} />
@@ -183,6 +265,8 @@ function CategoryCard({
           ) : null}
         </div>
       </div>
+
+      {leaderSite ? <LeaderToolPreview site={leaderSite} categorySlug={category.slug} /> : null}
 
       <div className="px-3 py-2.5 bg-white overflow-hidden" style={{ height: `${previewHeight}px` }}>
         <ol>
@@ -239,6 +323,7 @@ function CategoryCard({
                   <span className={`shrink-0 tabular-nums text-right ${rankClass}`}>{index + 1}</span>
                   <SiteFavicon site={site} />
                   <SiteNameLink site={site} />
+                  <SiteDetailIcon site={site} />
                 </li>
               );
             })
@@ -262,44 +347,43 @@ export default function HomeExploreClient({
   topGroupCategories = [],
   featuredArticles = [],
   locale = 'en',
+  faq,
 }: {
   categories: ExploreCategory[];
   topGroupCategories?: TopGroupCategory[];
   featuredArticles?: BlogCard[];
   locale?: Locale;
+  faq?: ReactNode;
 }) {
   const { t, dict } = useTranslation();
   const lp = useLocalePath();
   const router = useRouter();
   const bySlug = new Map(categories.map((category) => [category.slug, category]));
 
-  const navCards: { title: string; href: string; icon: React.ReactNode; iconColor: string; bareIcon?: boolean; bgColor?: string }[] = [
+  const navCards: { title: string; href: string; icon: React.ReactNode; iconColor: string }[] = [
     {
       title: 'Telegram Groups',
       href: lp('/groups'),
-      iconColor: '#fff',
-      bgColor: '#1a2740',
-      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/></svg>,
+      iconColor: '#000',
+      icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/></svg>,
     },
     {
       title: 'Telegram Bots',
       href: lp('/bots'),
-      iconColor: '#fff',
-      bgColor: '#1a2740',
-      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="9" cy="16" r="1"/><circle cx="15" cy="16" r="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>,
+      iconColor: '#000',
+      icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="9" cy="16" r="1"/><circle cx="15" cy="16" r="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>,
     },
     {
       title: 'AI NSFW Tools',
       href: lp('/ainsfw'),
-      iconColor: '#e0102b',
-      icon: <img src="/assets/lips-icon.png" alt={dict.meta?.ainsfwTitle || 'AI NSFW Tools'} width="26" height="26" style={{ objectFit: 'contain', filter: 'brightness(0) saturate(100%) invert(13%) sepia(90%) saturate(4000%) hue-rotate(345deg) brightness(80%)' }} />,
+      iconColor: '#000',
+      icon: <img src="/assets/lips-icon.png" alt={dict.meta?.ainsfwTitle || 'AI NSFW Tools'} width="16" height="16" style={{ objectFit: 'contain' }} />,
     },
     {
       title: 'Porn Websites',
       href: lp('/best-porn'),
-      iconColor: '#fff',
-      bgColor: '#1a2740',
-      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 20h8"/><path d="M12 18v2"/></svg>,
+      iconColor: '#000',
+      icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 20h8"/><path d="M12 18v2"/></svg>,
     },
   ];
 
@@ -310,51 +394,56 @@ export default function HomeExploreClient({
       aria-label={c.title}
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(c.href), 0); }}
       className="hero-nav-card"
-      style={c.bgColor ? { background: c.bgColor, borderColor: c.bgColor } : undefined}
     >
       <span className="hero-nav-card__body">
         <span className="hero-nav-card__top">
-          {c.bareIcon ? (
-            <span className="hero-nav-card__bare">{c.icon}</span>
-          ) : (
-            <span className="hero-nav-card__ring" style={{ borderColor: c.bgColor ? 'rgba(255,255,255,0.4)' : c.iconColor, color: c.iconColor }}>{c.icon}</span>
-          )}
-          <span className="hero-nav-card__title" style={c.bgColor ? { color: '#fff' } : undefined}>{c.title}</span>
-          <svg className="hero-nav-card__arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={c.bgColor ? { color: 'rgba(255,255,255,0.6)' } : undefined}><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
+          <span className="hero-nav-card__bare" style={{ color: c.iconColor }}>{c.icon}</span>
+          <span className="hero-nav-card__title">{c.title}</span>
+          <svg className="hero-nav-card__arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
         </span>
       </span>
     </button>
   );
 
   return (
+    <div>
     <div className="explore-page explore-bg explore-scanlines min-h-screen text-white relative">
       <Navbar accent={ACCENT} />
 
-      <div className="relative z-10 max-w-[1520px] mx-auto px-5 sm:px-8 lg:px-10 pt-28 sm:pt-32 pb-16">
-        <div className="text-center max-w-4xl mx-auto mb-8 sm:mb-10">
-          <p
-            className="text-[1.6rem] sm:text-4xl md:text-5xl tracking-tight leading-[0.95] uppercase text-[#c0392f] mb-1 sm:mb-1.5"
-            style={{ fontFamily: 'var(--font-bebas), sans-serif' }}
-          >
-            #1 Porn Telegram &amp; AI NSFW Hub
-          </p>
-          <h1
-            className="text-[1.28rem] sm:text-[1.8rem] md:text-[2.4rem] tracking-tight mb-6 sm:mb-7 leading-[0.95] uppercase bg-clip-text text-transparent"
-            style={HERO_TITLE_GRADIENT}
-          >
-            {t('home.heroTitle1', 'Your #1 hub for Adult Entertainment.')}
-          </h1>
-          <p className="mb-10 sm:mb-12 max-w-2xl sm:max-w-3xl mx-auto px-4 text-center text-sm sm:text-lg md:text-xl text-white/45 leading-relaxed">
-            {t('home.heroDesc1', 'Porn Telegram groups & NSFW bots, AI companions & tools, OnlyFans creators.')}{' '}
-            {t('home.heroDesc2', 'Explore and save your favorites all in one place.')}
-          </p>
-        </div>
-        <div className="flex flex-col gap-2.5 sm:gap-3 w-full max-w-xs sm:max-w-7xl mx-auto mb-8 sm:mb-10">
-          <div className="grid grid-cols-1 sm:flex sm:flex-row gap-2.5 sm:gap-2 w-full">
+      <div className="relative z-10 home-hero-section">
+        <div className="home-hero-overlay" aria-hidden="true" />
+        <div className="relative z-[1] max-w-[1520px] mx-auto px-5 sm:px-8 lg:px-10 pt-28 sm:pt-32 pb-10 sm:pb-12">
+          <div className="text-center max-w-4xl mx-auto mb-5 sm:mb-6">
+            <h1 className="home-hero-title text-[30px] sm:text-[44px] md:text-[54px] mb-4 sm:mb-5">
+              <span className="home-hero-title-mark">Your #1 ADULT entretainement platform</span>
+            </h1>
+            <p className="mb-7 sm:mb-8 max-w-xl sm:max-w-2xl mx-auto text-center text-[14px] sm:text-[15px] md:text-base text-white/90 leading-relaxed font-medium">
+              Your #1 Porn Telegram, Porn websites &amp; AI NSFW Hub The best{' '}
+              <Link href={lp('/groups')} className="text-white underline underline-offset-2 decoration-white/50 hover:text-white hover:decoration-white">
+                porn Telegram groups
+              </Link>
+              , and{' '}
+              <Link href={lp('/bots')} className="text-white underline underline-offset-2 decoration-white/50 hover:text-white hover:decoration-white">
+                bots
+              </Link>
+              ,{' '}
+              <Link href={lp('/ainsfw')} className="text-white underline underline-offset-2 decoration-white/50 hover:text-white hover:decoration-white">
+                AI porn
+              </Link>
+              {' '}and nude generators, AI girlfriend apps, VR porn, adult games, Reddit communities, live sex cam sites, and{' '}
+              <Link href="#best-porn" className="text-white underline underline-offset-2 decoration-white/50 hover:text-white hover:decoration-white">
+                the best porn
+              </Link>
+              {' '}by niche Asian, BDSM, Jav Porn, blowjob, gangbang, and everything in between.
+            </p>
+          </div>
+          <div className="hero-nav-row">
             {navCards.map(renderCard)}
           </div>
         </div>
+      </div>
 
+      <div className="relative z-10 max-w-[1520px] mx-auto px-5 sm:px-8 lg:px-10 pt-8 sm:pt-10 pb-16">
         <div className="space-y-8 sm:space-y-10">
           {HOME_DIRECTORY_GROUPS.map((group) => {
             const row = group.slugs
@@ -362,7 +451,11 @@ export default function HomeExploreClient({
               .filter((category): category is ExploreCategory => Boolean(category));
             if (row.length === 0) return null;
             return (
-              <div key={group.heading || group.slugs.join('-')}>
+              <div
+                key={group.heading || group.slugs.join('-')}
+                id={group.heading === 'Best Adult websites' ? 'best-porn' : undefined}
+                className={group.heading === 'Best Adult websites' ? 'scroll-mt-28' : undefined}
+              >
                 {group.heading ? (
                   <h2 className="text-white font-black tracking-[0.08em] uppercase text-sm sm:text-base mb-4">
                     {group.heading}
@@ -447,37 +540,9 @@ export default function HomeExploreClient({
           </section>
         )}
 
-        <div className="mt-16 sm:mt-20 max-w-4xl mx-auto">
-          <SectionTitle accent={t('home.faqTitle2', 'Questions')}>
-            {t('home.faqTitle1', 'Frequently Asked')}
-          </SectionTitle>
-          <div className="space-y-14">
-            {([
-              { id: 'telegram' as HomeFaqSectionId, title: t('home.faqTelegramTitle', 'Telegram & Bots'), items: (dict.home?.faq as { q: string; a: string }[]) || [] },
-              { id: 'ainsfw' as HomeFaqSectionId, title: t('home.faqAinsfwTitle', 'AI NSFW'), items: (dict.home?.faqAinsfw as { q: string; a: string }[]) || [] },
-              { id: 'onlyfans' as HomeFaqSectionId, title: t('home.faqOnlyfansTitle', 'OnlyFans Creators'), items: (dict.home?.faqOnlyfans as { q: string; a: string }[]) || [] },
-            ] as const)
-              .filter((section) => section.items.length > 0)
-              .map((section) => (
-                <div key={section.id} className="space-y-6">
-                  <h3 className="text-xl sm:text-2xl font-bold text-center text-white/90 tracking-tight">{section.title}</h3>
-                  {section.items.map((faq, idx) => (
-                    <div
-                      key={`${section.id}-${idx}`}
-                      className={`p-6 ${CARD}`}
-                    >
-                      <h4 className="text-lg sm:text-xl font-bold mb-3 text-white">{faq.q}</h4>
-                      <p className="text-white/55 text-sm sm:text-base leading-relaxed">
-                        {renderFaqAnswer(faq.a, section.id, lp)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              ))}
-          </div>
-        </div>
       </div>
-
+    </div>
+      {faq}
       <Footer />
     </div>
   );

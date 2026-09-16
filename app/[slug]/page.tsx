@@ -23,6 +23,7 @@ import { getTrendingCreators } from '@/lib/actions/publicData';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import {
   buildBotListingMetaDescription,
+  buildExploreListingMetaDescription,
   buildGroupListingMetaDescription,
   resolveEntityMetaDescription,
 } from '@/lib/seo/entityMetaDescription';
@@ -513,20 +514,33 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const exploreListing = await resolveExploreListingByRootSlug(slug);
   if (exploreListing) {
-    const title = `${exploreListing.name} | Explore | Erogram`;
-    const description = exploreListing.description;
-    const url = `${CANONICAL_BASE}${exploreSiteListingPath(exploreListing.slug, exploreListing.categorySlug)}`;
+    const listingPath = exploreSiteListingPath(exploreListing.slug, exploreListing.categorySlug);
+    const listingPathname = localePath(listingPath, locale);
+    const url = `${BASE_URL}${listingPathname}`;
+    const title = `${exploreListing.name} - Visit Porn Website`;
+    const documentTitle = `${title} | ErogramX`;
+    const description = resolveEntityMetaDescription(
+      '',
+      exploreListing.description,
+      buildExploreListingMetaDescription({
+        name: exploreListing.name,
+        slug: exploreListing.slug,
+        categoryTitle: exploreListing.categoryTitle,
+      }),
+    );
     return {
-      title,
+      title: { absolute: documentTitle },
       description,
+      keywords: `porn website, ${exploreListing.name}, adult website, ${exploreListing.categoryTitle}, porn site, erotic sites, adult listings`,
       other: { rating: 'adult' },
       alternates: { canonical: url },
       ...buildSocialMeta({
-        title,
+        title: documentTitle,
         description,
         url,
         type: 'website',
         image: exploreListing.image,
+        imageAlt: `${exploreListing.name} - Porn Website`,
       }),
     };
   }
@@ -668,7 +682,51 @@ export default async function JoinPage({ params }: PageProps) {
   const exploreListing = await resolveExploreListingByRootSlug(slug);
   if (exploreListing) {
     const alternatives = getExploreSiteAlternatives(exploreListing.slug, 8, exploreListing.categorySlug);
-    return <ExploreSiteListingClient listing={exploreListing} alternatives={alternatives} />;
+    const pageUrl = `${BASE_URL}${exploreSiteListingPath(exploreListing.slug, exploreListing.categorySlug)}`;
+    const pageName = `${exploreListing.name} - Visit Porn Website`;
+    const breadcrumbJsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
+        { '@type': 'ListItem', position: 2, name: 'Porn Websites', item: `${BASE_URL}/best-porn` },
+        { '@type': 'ListItem', position: 3, name: exploreListing.name, item: pageUrl },
+      ],
+    };
+    const webPageJsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: pageName,
+      description: exploreListing.description || `Visit ${exploreListing.name}.`,
+      url: pageUrl,
+      isPartOf: {
+        '@type': 'WebSite',
+        name: 'Erogram',
+        url: BASE_URL,
+      },
+    };
+    const organizationJsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: exploreListing.name,
+      description: exploreListing.description,
+      url: pageUrl,
+      ...(exploreListing.externalUrl ? { sameAs: exploreListing.externalUrl } : {}),
+      image: exploreListing.image || PLACEHOLDER_ABS,
+      memberOf: {
+        '@type': 'WebSite',
+        name: 'Erogram',
+        url: BASE_URL,
+      },
+    };
+    return (
+      <>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageJsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
+        <ExploreSiteListingClient listing={exploreListing} alternatives={alternatives} />
+      </>
+    );
   }
 
   // Try to find a group first

@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import HomeExploreClient from './HomeExploreClient';
+import HomeFaq, { HOME_FAQ_ITEMS, homeFaqSchemaText } from './HomeFaq';
 import connectDB from '@/lib/db/mongodb';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { getActiveCampaigns } from '@/lib/actions/campaigns';
@@ -199,11 +200,6 @@ async function getStats() {
 export default async function Home() {
   const locale = await getLocale();
   const dict = await getDictionary(locale);
-  const faq: { q: string; a: string }[] = [
-    ...(dict.home?.faq || []),
-    ...(dict.home?.faqAinsfw || []),
-    ...(dict.home?.faqOnlyfans || []),
-  ];
   const metaDict = dict.meta || {};
 
   const [directoryCategories, topGroupCategories, featuredArticles] = await Promise.all([
@@ -234,12 +230,12 @@ export default async function Home() {
   const faqJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
-    mainEntity: faq.map((item) => ({
+    mainEntity: HOME_FAQ_ITEMS.map((item) => ({
       '@type': 'Question',
       name: item.q,
       acceptedAnswer: {
         '@type': 'Answer',
-        text: item.a,
+        text: homeFaqSchemaText(item),
       },
     })),
   };
@@ -264,6 +260,7 @@ export default async function Home() {
           topGroupCategories={topGroupCategories}
           featuredArticles={featuredArticles}
           locale={locale}
+          faq={<HomeFaq />}
         />
       </ErrorBoundary>
     </>

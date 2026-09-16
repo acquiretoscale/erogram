@@ -81,16 +81,18 @@ export default function RankingPageView({
           </div>
         )}
 
-        <div className="text-center p-10 rounded-3xl border border-[#c0392f]/25 bg-[#1a0808]/90">
-          <h3 className="text-2xl font-bold mb-4">{wantMore}</h3>
-          <p className="text-gray-400 mb-8">{wantMoreDesc}</p>
-          <Link
-            href={page.browseHref}
-            className="inline-block bg-[#c0392f] text-white px-8 py-4 rounded-xl font-bold hover:opacity-90 transition-opacity"
-          >
-            {browseAll}
-          </Link>
-        </div>
+        {wantMore ? (
+          <div className="text-center p-10 rounded-3xl border border-[#c0392f]/25 bg-[#1a0808]/90">
+            <h3 className="text-2xl font-bold mb-4">{wantMore}</h3>
+            <p className="text-gray-400 mb-8">{wantMoreDesc}</p>
+            <Link
+              href={page.browseHref}
+              className="inline-block bg-[#c0392f] text-white px-8 py-4 rounded-xl font-bold hover:opacity-90 transition-opacity"
+            >
+              {browseAll}
+            </Link>
+          </div>
+        ) : null}
       </main>
     </div>
   );

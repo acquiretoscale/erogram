@@ -5,6 +5,8 @@ import { TrendingOFCreator } from '@/lib/models';
 export type CreatorProfileEligibilityDoc = {
   username?: string;
   featured?: boolean;
+  submittedByUser?: boolean;
+  publicPage?: boolean;
 };
 
 let promotedCache: { usernames: Set<string>; at: number } | null = null;
@@ -26,11 +28,12 @@ export async function getPromotedCreatorUsernames(): Promise<Set<string>> {
   return usernames;
 }
 
-/** Sync check when promoted set is already loaded. Featured/promoted only — no adminImported. */
+/** Sync check when promoted set is already loaded. */
 export function isCreatorEligibleForProfilePage(
   doc: CreatorProfileEligibilityDoc,
   promotedUsernames?: ReadonlySet<string>,
 ): boolean {
+  if (doc.submittedByUser || doc.publicPage) return true;
   if (doc.featured) return true;
   const username = (doc.username || '').trim().toLowerCase();
   if (username && promotedUsernames?.has(username)) return true;
@@ -38,6 +41,7 @@ export function isCreatorEligibleForProfilePage(
 }
 
 export async function isCreatorEligibleForProfilePageAsync(doc: CreatorProfileEligibilityDoc): Promise<boolean> {
+  if (doc.submittedByUser || doc.publicPage) return true;
   if (doc.featured) return true;
   const username = (doc.username || '').trim().toLowerCase();
   if (!username) return false;
@@ -48,7 +52,11 @@ export async function isCreatorEligibleForProfilePageAsync(doc: CreatorProfileEl
 /** Mongo filter for related-creator queries — promoted usernames merged in at query time. */
 export function buildCreatorProfilePageFilter(promotedUsernames: ReadonlySet<string>) {
   const promotedList = [...promotedUsernames];
-  const or: Record<string, unknown>[] = [{ featured: true }];
+  const or: Record<string, unknown>[] = [
+    { submittedByUser: true },
+    { publicPage: true },
+    { featured: true },
+  ];
   if (promotedList.length > 0) {
     or.push({ username: { $in: promotedList } });
   }

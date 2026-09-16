@@ -95,6 +95,7 @@ export interface CreatorProfile {
   extraVideos: string[];
   adminImported: boolean;
   publicPage?: boolean;
+  submittedByUser?: boolean;
 }
 
 export async function getCreatorByProfileSegment(segment: string): Promise<CreatorProfile | null> {
@@ -221,6 +222,7 @@ function mapCreatorProfile(c: any): CreatorProfile {
       extraVideos: c.extraVideos || [],
       adminImported: c.adminImported || false,
       publicPage: c.publicPage || false,
+      submittedByUser: c.submittedByUser || false,
     };
 }
 

@@ -660,7 +660,7 @@ export async function getTopClickedOnlyfansCreators(
 }
 
 const COMMUNITY_CREATOR_SELECT =
-  'name username slug avatar header extraPhotos categories subscriberCount likesCount photosCount videosCount price isFree url clicks redirectToOF featured instagramUrl twitterUrl tiktokUrl telegramUrl fanslyUrl fanvueUrl redditUrl patreonUrl website linktreeUrl allmylinksUrl beaconsUrl createdAt';
+  'name username slug avatar header extraPhotos categories subscriberCount likesCount photosCount videosCount price isFree url clicks redirectToOF featured submittedByUser publicPage instagramUrl twitterUrl tiktokUrl telegramUrl fanslyUrl fanvueUrl redditUrl patreonUrl website linktreeUrl allmylinksUrl beaconsUrl createdAt';
 
 /** Always first in community block, with FEATURED badge in UI. */
 const COMMUNITY_FEATURED_TOP = ['abellaolsen', 'amelia_russo'] as const;
@@ -705,7 +705,12 @@ function formatCommunityCreator(
     extraPhotos: Array.isArray(raw.extraPhotos) ? raw.extraPhotos : [],
     erogramSaves: saveMap.get(id) || 0,
     hasProfilePage: isCreatorEligibleForProfilePage(
-      { username: String(raw.username || ''), featured: !!raw.featured },
+      {
+        username: String(raw.username || ''),
+        featured: !!raw.featured,
+        submittedByUser: !!raw.submittedByUser,
+        publicPage: !!raw.publicPage,
+      },
       promotedUsernames,
     ),
     ...(raw.isCommunityFeatured ? { isCommunityFeatured: true } : {}),

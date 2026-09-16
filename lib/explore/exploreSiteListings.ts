@@ -7,12 +7,16 @@ import { LISTINGS as PREMIUM_ASIAN_PORN_LISTINGS } from '@/lib/explore/premiumAs
 import { LISTINGS as UNCENSORED_JAV_PORN_LISTINGS } from '@/lib/explore/uncensoredJavPornListings';
 import { REMAINING_CATEGORY_LISTING_GROUPS } from '@/lib/explore/remainingCategoryListings';
 
+export const MAX_LISTING_CATEGORIES = 10;
+
 export type ExploreSiteListingBase = {
   slug: string;
   name: string;
   description: string;
   image: string;
+  icon?: string;
   externalUrl: string;
+  extraCategorySlugs?: string[];
 };
 
 export type ExploreSiteListing = ExploreSiteListingBase & {
@@ -94,11 +98,12 @@ export function getExploreSiteAlternatives(slug: string, limit = 8, categorySlug
     (entry) => entry.categorySlug === listing.categorySlug && entry.slug !== slug,
   )
     .slice(0, limit)
-    .map(({ slug: altSlug, name, description, image, externalUrl }) => ({
+    .map(({ slug: altSlug, name, description, image, icon, externalUrl }) => ({
       slug: altSlug,
       name,
       description,
       image,
+      icon,
       externalUrl,
     }));
 }
@@ -110,10 +115,89 @@ export function exploreSitesFromListings(listings: ExploreSiteListingBase[], cat
     externalUrl: listing.externalUrl,
     description: listing.description,
     image: listing.image,
+    icon: listing.icon,
   }));
+}
+
+function listingHost(url?: string): string {
+  if (!url || url.startsWith('/')) return '';
+  try {
+    return new URL(url).hostname.replace(/^www\./, '').toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+function extraSlugs(listing: ExploreSiteListingBase): string[] {
+  return (listing.extraCategorySlugs || []).slice(0, MAX_LISTING_CATEGORIES - 1);
+}
+
+function allPrimaryListings(): { listing: ExploreSiteListingBase; primaryCategory: string }[] {
+  return [
+    ...PREMIUM_PORN_LISTINGS.map((listing) => ({ listing, primaryCategory: 'best-premium-porn' })),
+    ...LIVE_SEX_CAMS_LISTINGS.map((listing) => ({ listing, primaryCategory: 'best-live-sex-cams' })),
+    ...VR_PORN_LISTINGS.map((listing) => ({ listing, primaryCategory: 'best-vr-porn' })),
+    ...PREMIUM_ASIAN_PORN_LISTINGS.map((listing) => ({ listing, primaryCategory: 'best-premium-asian-porn-sites' })),
+    ...UNCENSORED_JAV_PORN_LISTINGS.map((listing) => ({ listing, primaryCategory: 'best-uncensored-jav-porn-websites' })),
+    ...REMAINING_CATEGORY_LISTING_GROUPS.flatMap((group) =>
+      group.listings.map((listing) => ({ listing, primaryCategory: group.categorySlug })),
+    ),
+  ];
+}
+
+export function mergeExploreSites(
+  primary: ReturnType<typeof exploreSitesFromListings>,
+  extra: ReturnType<typeof exploreSitesFromListings>,
+) {
+  const seenHost = new Set<string>();
+  const seenName = new Set<string>();
+  const out: ReturnType<typeof exploreSitesFromListings> = [];
+  for (const site of [...primary, ...extra]) {
+    const host = listingHost(site.externalUrl);
+    const nameKey = site.name.replace(/\s+/g, '').toLowerCase();
+    if (host && seenHost.has(host)) continue;
+    if (seenName.has(nameKey)) continue;
+    if (host) seenHost.add(host);
+    seenName.add(nameKey);
+    out.push(site);
+  }
+  return out;
+}
+
+export function extraSitesForCategory(categorySlug: string) {
+  return allPrimaryListings()
+    .filter(
+      ({ listing, primaryCategory }) =>
+        primaryCategory !== categorySlug && extraSlugs(listing).includes(categorySlug),
+    )
+    .flatMap(({ listing, primaryCategory }) => exploreSitesFromListings([listing], primaryCategory));
 }
 
 export function exploreSitesForCategory(categorySlug: string) {
   const group = REMAINING_CATEGORY_LISTING_GROUPS.find((entry) => entry.categorySlug === categorySlug);
-  return group ? exploreSitesFromListings(group.listings, categorySlug) : [];
+  const primary = group ? exploreSitesFromListings(group.listings, categorySlug) : [];
+  return mergeExploreSites(extraSitesForCategory(categorySlug), primary);
+}
+
+export function getExploreListingCategorySlugs(listing: ExploreSiteListing): string[] {
+  const slugs = [listing.categorySlug, ...extraSlugs(listing)];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const slug of slugs) {
+    if (seen.has(slug)) continue;
+    seen.add(slug);
+    out.push(slug);
+    if (out.length >= MAX_LISTING_CATEGORIES) break;
+  }
+  return out;
+}
+
+export function getExploreListingCategories(listing: ExploreSiteListing): { slug: string; title: string }[] {
+  return getExploreListingCategorySlugs(listing).map((slug) => ({
+    slug,
+    title:
+      slug === listing.categorySlug
+        ? listing.categoryTitle
+        : WITH_CATEGORY.find((entry) => entry.categorySlug === slug)?.categoryTitle || slug,
+  }));
 }

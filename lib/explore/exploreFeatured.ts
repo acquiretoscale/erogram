@@ -6,7 +6,6 @@ const FEATURED_MATCHERS: Record<string, string[]> = {
   'best-premium-porn': ['faphouse'],
   'best-live-sex-cams': ['stripchat', 'jerkroulette', 'instacam'],
   'best-ai-porn-sites': ['clothoff', 'nudiva', 'genesis porn'],
-  'best-vr-porn': ['stripchatvr'],
   'best-ai-companion-websites': ['ourdream'],
   'best-ai-porn-generator-sites': ['genesisporn', 'clothoff'],
   'best-live-asian-sex-cams': ['stripchat asian'],

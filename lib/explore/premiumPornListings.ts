@@ -59,20 +59,6 @@ export const PREMIUM_PORN_LISTINGS: ExplorePremiumListing[] = [
     "externalUrl": "https://faphouse.com/"
   },
   {
-    "slug": "teenmegaworld",
-    "name": "TeenMegaWorld",
-    "description": "Best pay porn site to enjoy the finest hardcore porn network with the freshest cuties around, TeenMegaWorld brings you the hottest porn clips you can find.",
-    "image": "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/teenmegaworld-best-premium-porn.webp",
-    "externalUrl": "https://teenmegaworld.net/"
-  },
-  {
-    "slug": "rawrides",
-    "name": "RawRides",
-    "description": "RawRides is a premium porn site entirely dedicated to car sex  -  featuring hardcore in-vehicle action, pickup fantasies, and exclusive HD scenes shot inside real cars with raw, realistic energy.",
-    "image": "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/rawrides-best-premium-porn.webp",
-    "externalUrl": "https://rawrides.tv/"
-  },
-  {
     "slug": "teamskeet",
     "name": "TeamSkeet",
     "description": "A premium porn network offering unlimited access to thousands of exclusive high-definition videos  -  featuring top studios, professional models, and quality scenes produced with cinematic detail.",
@@ -122,20 +108,6 @@ export const PREMIUM_PORN_LISTINGS: ExplorePremiumListing[] = [
     "externalUrl": "https://www.21sextury.com/"
   },
   {
-    "slug": "elegantangel",
-    "name": "ElegantAngel",
-    "description": "ElegantAngel is where the porn stars start their career! The site gives access to quality high-definition videos performed by world-known actresses.",
-    "image": "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/elegantangel-best-premium-porn.webp",
-    "externalUrl": "https://www.elegantangel.com/"
-  },
-  {
-    "slug": "videosz",
-    "name": "VideosZ",
-    "description": "Stream or download over 80,000 premium porn videos in HD  -  VideosZ brings top studios, famous stars, and daily updates to one massive platform.",
-    "image": "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/videosz-best-premium-porn.webp",
-    "externalUrl": "https://www.videosz.com/"
-  },
-  {
     "slug": "javhd",
     "name": "JavHD",
     "description": "The ultimate site for Japanese porn lovers  -  JAVHD delivers exclusive uncensored JAV scenes, real Japanese models, and fresh HD updates daily.",
@@ -143,32 +115,11 @@ export const PREMIUM_PORN_LISTINGS: ExplorePremiumListing[] = [
     "externalUrl": "https://javhd.com/"
   },
   {
-    "slug": "pornprosnetwork",
-    "name": "PornProsNetwork",
-    "description": "PornPros is a premium American porn network featuring exclusive HD scenes, real couples, and pro-am performances  -  unlocking access to multiple bonus sites and thousands of high-quality adult videos.",
-    "image": "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/pornprosnetwork-best-premium-porn.webp",
-    "externalUrl": "https://www.pornprosnetwork.com/"
-  },
-  {
-    "slug": "spizoo",
-    "name": "Spizoo",
-    "description": "A 4K hardcore studio producing exclusive scenes built into recurring themed series. Stands out for AVN-nominated originals starring well-known pornstars like Gianna Dior and Kylie Rocket.",
-    "image": "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/spizoo-best-premium-porn.webp",
-    "externalUrl": "https://www.spizoo.com/"
-  },
-  {
     "slug": "all-japanese-pass",
     "name": "All Japanese Pass",
     "description": "All Japanese Pass is a premium Asian porn network offering exclusive uncensored Japanese videos, authentic JAV performers, and HD content updated daily  -  your gateway to the best of Japan’s adult entertainment.",
     "image": "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/all-japanese-pass-best-premium-porn.webp",
     "externalUrl": "https://www.alljapanesepass.com/"
-  },
-  {
-    "slug": "bestpaypornsites",
-    "name": "BestPayPornSites",
-    "description": "Best pay porn sites list, collecting the most complete selection of high-quality premium xxx sites neatly divided in categories to help you pick the best adult paysite for your personal taste, the list is updated regularly and sites are virus free.",
-    "image": "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/bestpaypornsites-best-premium-porn.webp",
-    "externalUrl": "https://bestpaypornsites.com/"
   }
 ];
 

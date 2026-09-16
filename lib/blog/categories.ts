@@ -69,6 +69,14 @@ export const BLOG_CATEGORIES: BlogCategory[] = [
       'Where to watch uncensored JAV, how Japanese adult video works, and the performers who define the category.',
     tagline: 'Uncensored Japanese adult video, HD libraries, and the star system behind JAV.',
   },
+  {
+    slug: 'sex-wellness',
+    name: 'Sex & Wellness',
+    eyebrow: 'Sex & Wellness',
+    metaTitle: 'Sex & Wellness',
+    metaDescription: 'Sex & Wellness',
+    tagline: 'Sex & Wellness',
+  },
 ];
 
 /** Category hubs that should also list articles filed under a child slug. */

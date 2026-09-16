@@ -17,6 +17,14 @@ function imageSrc(image: string) {
   return PLACEHOLDER;
 }
 
+function descriptionExtract(text: string) {
+  const compact = text.replace(/\s+/g, ' ').trim();
+  if (compact.length <= 160) return compact;
+  const slice = compact.slice(0, 160);
+  const space = slice.lastIndexOf(' ');
+  return `${slice.slice(0, space > 0 ? space : 160).trimEnd()}...`;
+}
+
 function localBookmarkKey(kind: 'ainsfw' | 'explore', id: string) {
   return kind === 'ainsfw' ? `ainsfw_bookmark_${id}` : `explore_bookmark_${id}`;
 }
@@ -127,13 +135,13 @@ function RankBookmark({ item }: { item: DirectoryRankItem }) {
         type="button"
         onClick={toggle}
         disabled={loading}
-        className={`inline-flex items-center justify-center w-14 shrink-0 border border-gray-200 bg-white hover:border-[#c0392f] hover:bg-[#c0392f]/5 transition-colors ${
+        className={`inline-flex items-center justify-center w-14 shrink-0 bg-[#c0392f] hover:opacity-90 transition-opacity ${
           loading ? 'opacity-50' : ''
-        } ${bookmarked ? 'border-[#c0392f] bg-[#c0392f]/5' : ''}`}
+        }`}
         aria-label={bookmarked ? 'Remove from saved' : 'Save'}
         title={bookmarked ? 'Remove from saved' : 'Save'}
       >
-        <svg width={22} height={22} viewBox="0 0 24 24" fill={bookmarked ? '#c0392f' : 'none'} stroke={bookmarked ? '#c0392f' : '#111111'} strokeWidth="1.7" strokeLinejoin="round">
+        <svg width={22} height={22} viewBox="0 0 24 24" fill={bookmarked ? '#ffffff' : 'none'} stroke="#ffffff" strokeWidth="1.7" strokeLinejoin="round">
           <path d="M7 3.5h10A1.5 1.5 0 0 1 18.5 5v16L12 16.25 5.5 21V5A1.5 1.5 0 0 1 7 3.5z" />
         </svg>
       </button>
@@ -172,14 +180,14 @@ export default function BestDirectoryRankCard({ item, rank, ctaLabel, viewsLabel
             <p className="text-[11px] tracking-[0.14em] uppercase text-gray-400 mb-3">{metaLine.join('  ·  ')}</p>
           ) : null}
           {item.description ? (
-            <p className="text-[15px] text-gray-500 mb-4 leading-relaxed">{item.description}</p>
+            <p className="text-[15px] text-gray-500 mb-4 leading-relaxed">{descriptionExtract(item.description)}</p>
           ) : null}
           <div className="flex items-stretch gap-2">
             <a
               href={item.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block flex-1 md:flex-none text-center py-4 px-8 bg-[#c0392f] text-white text-[11px] font-semibold tracking-[0.22em] uppercase hover:opacity-90 transition-opacity"
+              className="inline-flex items-center justify-center flex-1 md:flex-none md:min-w-[16rem] text-center py-4 px-8 bg-[#c0392f] text-white text-[11px] font-semibold tracking-[0.22em] uppercase hover:opacity-90 transition-opacity"
             >
               {ctaLabel}
             </a>

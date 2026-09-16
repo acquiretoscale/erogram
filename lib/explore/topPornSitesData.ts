@@ -5,7 +5,7 @@ import { LISTINGS as LIVE_SEX_CAMS_LISTINGS } from '@/lib/explore/liveSexCamsLis
 import { LISTINGS as VR_PORN_LISTINGS } from '@/lib/explore/vrPornListings';
 import { LISTINGS as PREMIUM_ASIAN_PORN_LISTINGS } from '@/lib/explore/premiumAsianPornListings';
 import { LISTINGS as UNCENSORED_JAV_PORN_LISTINGS } from '@/lib/explore/uncensoredJavPornListings';
-import { exploreSitesForCategory, exploreSitesFromListings, getExploreSiteListing } from '@/lib/explore/exploreSiteListings';
+import { exploreSitesForCategory, exploreSitesFromListings, extraSitesForCategory, getExploreSiteListing, mergeExploreSites } from '@/lib/explore/exploreSiteListings';
 
 export type ExploreSite = {
   name: string;
@@ -13,10 +13,24 @@ export type ExploreSite = {
   externalUrl?: string;
   description?: string;
   image?: string;
+  icon?: string;
   openInNewTab?: boolean;
   featured?: boolean;
 };
+
 export type ExploreCategory = { slug: string; title: string; description: string; sites: ExploreSite[] };
+
+function premiumPornExploreSites(): ExploreSite[] {
+  const premium = exploreSitesFromListings(
+    PREMIUM_PORN_LISTINGS.filter((listing) => listing.slug !== 'javhd'),
+    'best-premium-porn',
+  );
+  const jav = exploreSitesFromListings(
+    UNCENSORED_JAV_PORN_LISTINGS,
+    'best-uncensored-jav-porn-websites',
+  );
+  return [...premium, ...jav];
+}
 
 function premiumAsianPornExploreSites(): ExploreSite[] {
   const javhd = PREMIUM_PORN_LISTINGS.find((listing) => listing.slug === 'javhd');
@@ -36,7 +50,7 @@ function premiumAsianPornExploreSites(): ExploreSite[] {
   if (zenra) {
     ordered.push(...exploreSitesFromListings([zenra], 'best-premium-asian-porn-sites'));
   }
-  return ordered;
+  return mergeExploreSites(extraSitesForCategory('best-premium-asian-porn-sites'), ordered);
 }
 
 export const EXPLORE_CATEGORIES: ExploreCategory[] = [
@@ -45,7 +59,7 @@ export const EXPLORE_CATEGORIES: ExploreCategory[] = [
     title: 'Best Premium Porn',
     description:
       'The top premium porn sites with the best full-length HD and 4K movies from famous studios. Stream exclusive adult DVDs with the hottest porn stars.',
-    sites: exploreSitesFromListings(PREMIUM_PORN_LISTINGS, 'best-premium-porn'),
+    sites: premiumPornExploreSites(),
   },
   {
     slug: 'best-live-sex-cams',
@@ -100,7 +114,7 @@ export const EXPLORE_CATEGORIES: ExploreCategory[] = [
     slug: 'best-uncensored-jav-porn-websites',
     title: 'Best Uncensored Jav Porn websites',
     description:
-      'Uncensored JAV is easy to find. Uncensored JAV that actually delivers on a specific fetish is not. Most tubes and mainstream Japanese sites still hide the goods behind mosaics, recycle the same hotel-room templates, or bury the good parts inside 90-minute scenes padded with talking. If you search jav uncensored porn, jav blowjob, jav oil massage, or jav massage uncensored and keep landing on the same pixelated clips, the problem is not your taste. It is the format. The six sites below belong to the same production family. They shoot original, fully uncensored Japanese content with a narrow brief: one fetish, high-definition cameras, and models chosen for that fetish. Updates are slower than a megatube. The trade-off is footage you will not find elsewhere.',
+      'Tubes still blur the good parts. These uncensored JAV porn websites shoot original Japanese HD with no mosaic, each one locked on a single fetish. Oral, legs, handjobs, or the big catalogs. If you want jav uncensored porn that actually shows everything, start here.',
     sites: exploreSitesFromListings(UNCENSORED_JAV_PORN_LISTINGS, 'best-uncensored-jav-porn-websites'),
   },
   {

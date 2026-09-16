@@ -128,3 +128,19 @@ export function buildBotListingMetaDescription(input: {
   const map = { en, de, es, pt };
   return ensureMinLength(map[locale]?.[v] || en[v]);
 }
+
+export function buildExploreListingMetaDescription(input: {
+  name: string;
+  slug: string;
+  categoryTitle: string;
+}): string {
+  const { name, slug, categoryTitle } = input;
+  const niche = categoryTitle.replace(/^Best\s+/i, '').toLowerCase() || 'adult';
+  const v = slugVariant(slug);
+  const en: [string, string, string] = [
+    `${name} porn website for ${niche}. Official listing with a visit link. Browse free on ErogramX.`,
+    `Visit ${name} for ${niche}. Verified porn website listing and official visit link on ErogramX.`,
+    `${name} on ErogramX: ${niche} porn website. Official visit link, listed free on ErogramX.`,
+  ];
+  return clamp(en[v]);
+}

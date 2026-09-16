@@ -214,6 +214,7 @@ export async function approveProfileClaim(token: string, claimId: string): Promi
         submittedByUser: true,
         submittedByUsername: claimant?.username || claim.erogramUsername || '',
         submissionStatus: 'approved',
+        publicPage: true,
       },
     },
   );

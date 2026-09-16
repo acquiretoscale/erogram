@@ -7,6 +7,12 @@ import { BLOG_CATEGORY_SLUGS } from '@/lib/blog/categories';
 import { AI_NSFW_TOOLS, CATEGORY_SLUGS, toolSlug } from '@/app/ainsfw/data';
 import { CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
+/**
+ * OLD SITEMAP — kept pointing at erogram.pro (the legacy domain).
+ * The new primary sitemap lives at /sitemap-erogramx.xml → erogramx.com.
+ */
+const EROGRAM_PRO_BASE = 'https://erogram.pro';
+
 /** Build alternates object for a given path — tells Google about all language versions. */
 function buildAlternates(basePath: string, canonicalBase: string) {
   const languages: Record<string, string> = {};
@@ -18,8 +24,8 @@ function buildAlternates(basePath: string, canonicalBase: string) {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = CANONICAL_BASE;
-  const canonicalBase = CANONICAL_BASE;
+  const baseUrl = EROGRAM_PRO_BASE;
+  const canonicalBase = EROGRAM_PRO_BASE;
   const PER_PAGE = 12;
 
   try {

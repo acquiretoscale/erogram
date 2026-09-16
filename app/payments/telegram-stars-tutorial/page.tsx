@@ -83,10 +83,13 @@ export default function TelegramStarsTutorialPage() {
       <div className="relative z-10 max-w-[520px] mx-auto px-3 sm:px-4 pt-5 pb-16">
         <Link
           href="/premium-x"
-          className="mb-4 flex w-full items-center justify-center rounded-full px-5 py-4 text-base sm:text-lg font-black uppercase tracking-wide transition-all hover:brightness-110 active:scale-95"
-          style={PREMIUM_GOLD}
+          className="mb-5 inline-flex items-center gap-2 text-[15px] sm:text-[16px] font-semibold text-white hover:text-white/80 transition-colors"
         >
-          EROGRAMX PREMIUM checkout
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M19 12H5" />
+            <path d="M12 19l-7-7 7-7" />
+          </svg>
+          Back to checkout
         </Link>
 
         <section className={`mb-4 p-4 sm:p-5 ${MODAL_SHELL}`}>

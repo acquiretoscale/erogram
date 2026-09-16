@@ -483,6 +483,7 @@ export async function submitCreator(input: SubmitCreatorInput) {
       }
     }
 
+    updateFields.publicPage = true;
     await OnlyFansCreator.updateOne({ slug }, { $set: updateFields }, { strict: false });
     await revalidateCreatorPage(slug, username);
     return { success: true, slug, id: existing._id.toString() };
@@ -544,12 +545,14 @@ export async function submitCreator(input: SubmitCreatorInput) {
         submitterType,
         ...submitMeta,
         submissionStatus: 'approved',
+        publicPage: true,
         extraPhotos: r2Urls.slice(2),
       },
     },
     { upsert: true, new: true, strict: false },
   );
 
+  await revalidateCreatorPage(slug, username);
   return { success: true, slug, id: doc._id.toString() };
 }
 

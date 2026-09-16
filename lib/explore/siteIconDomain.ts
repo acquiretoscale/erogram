@@ -263,3 +263,23 @@ export function exploreFaviconUrl(name: string, url: string): string {
   if (!domain || domain.includes('pdude') || domain.includes('theporndude')) return '';
   return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
 }
+
+const AINSFW_LIST_ICONS: Record<string, string> = {
+  'candy-ai-ai-girlfriend': '/assets/ainsfw/candy-ai-ai-girlfriend.webp',
+};
+
+export function ainsfwListIconForSlug(slug: string): string | undefined {
+  return AINSFW_LIST_ICONS[slug];
+}
+
+/** List rows on /best-porn (and homepage explore lists): icon or favicon. NEVER the listing screenshot. */
+export function exploreListIconSrc(site: {
+  name: string;
+  url: string;
+  icon?: string;
+  image?: string;
+  externalUrl?: string;
+}): string {
+  if (site.icon && site.icon !== site.image) return site.icon;
+  return exploreFaviconUrl(site.name, site.externalUrl || site.url);
+}

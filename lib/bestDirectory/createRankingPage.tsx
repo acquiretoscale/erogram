@@ -9,6 +9,7 @@ import { loadRankingItems } from './loadRankings';
 
 const MAX_TITLE_LENGTH = 68;
 const BRAND_SUFFIX_LENGTH = 10;
+const EXPLORE_BRAND_SUFFIX = ' | ErogramX';
 
 function titleSet(label: string, year: number, kind: 'ainsfw' | 'bots' | 'explore') {
   if (kind === 'ainsfw') {
@@ -41,12 +42,12 @@ function titleSet(label: string, year: number, kind: 'ainsfw' | 'bots' | 'explor
   }
   return {
     full: [
-      `Join Active ${label} in ${year}`,
+      `Join Best ${label} in ${year}`,
       `Top Rated ${label} to Visit in ${year}`,
       `${label} NSFW List in ${year}`,
     ] as [string, string, string],
     compact: [
-      `Join Active ${label} in ${year}`,
+      `Join Best ${label} in ${year}`,
       `Top ${label} to Visit in ${year}`,
       `${label} NSFW List in ${year}`,
     ] as [string, string, string],
@@ -65,16 +66,32 @@ export function createRankingPage(slug: string) {
     const alternates = buildMetadataAlternates(pathname, locale);
     const canonical = alternates?.canonical?.toString() || `${CANONICAL_BASE}/${slug}`;
     const variant = [...slug].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % 3;
-    const set = titleSet(page.label, year, page.kind);
+    const set =
+      page.slug === 'best-telegram-bots'
+        ? {
+            full: [
+              `Join Active Telegram Bots in ${year}`,
+              `Top Rated Telegram Bots to Join in ${year}`,
+              `NSFW Telegram Bots List in ${year}`,
+            ] as [string, string, string],
+            compact: [
+              `Join Active Telegram Bots in ${year}`,
+              `Top Telegram Bots to Join in ${year}`,
+              `NSFW Telegram Bots in ${year}`,
+            ] as [string, string, string],
+          }
+        : titleSet(page.label, year, page.kind);
     const fullTitle = set.full[variant];
-    const title = fullTitle.length + BRAND_SUFFIX_LENGTH > MAX_TITLE_LENGTH ? set.compact[variant] : fullTitle;
+    const suffixLen = page.kind === 'explore' ? EXPLORE_BRAND_SUFFIX.length : BRAND_SUFFIX_LENGTH;
+    const title = fullTitle.length + suffixLen > MAX_TITLE_LENGTH ? set.compact[variant] : fullTitle;
+    const documentTitle = page.kind === 'explore' ? `${title}${EXPLORE_BRAND_SUFFIX}` : title;
     const description = directoryMetaDescription(page, year);
     const meta = {
-      title,
+      title: page.kind === 'explore' ? { absolute: documentTitle } : title,
       description,
       alternates,
       ...buildSocialMeta({
-        title,
+        title: documentTitle,
         description,
         url: canonical,
         type: 'website' as const,
@@ -119,17 +136,25 @@ export function createRankingPage(slug: string) {
           : groupsLooking;
 
     const theBest =
-      page.kind === 'ainsfw'
-        ? (ai.theBest || groups.theBest)
-        : page.kind === 'bots'
-          ? (groups.theBest || '').replace('Telegram Groups', 'Telegram Bots')
-          : (groups.theBest || '').replace('Telegram Groups', '');
+      page.slug === 'best-uncensored-jav-porn-websites'
+        ? 'The Best {category}'
+        : page.slug === 'best-telegram-bots'
+          ? 'The {count} Best {category}'
+        : page.kind === 'ainsfw'
+          ? (ai.theBest || groups.theBest)
+          : page.kind === 'bots'
+            ? (groups.theBest || '').replace('Telegram Groups', 'Telegram Bots')
+            : (groups.theBest || '').replace('Telegram Groups', '');
     const theBestFallback =
-      page.kind === 'ainsfw'
-        ? (ai.theBestFallback || groups.theBestFallback)
-        : page.kind === 'bots'
-          ? (groups.theBestFallback || '').replace('Telegram Groups', 'Telegram Bots')
-          : (groups.theBestFallback || '').replace('Telegram Groups', '');
+      page.slug === 'best-uncensored-jav-porn-websites'
+        ? 'The Best {category}'
+        : page.slug === 'best-telegram-bots'
+          ? 'The Best {category}'
+        : page.kind === 'ainsfw'
+          ? (ai.theBestFallback || groups.theBestFallback)
+          : page.kind === 'bots'
+            ? (groups.theBestFallback || '').replace('Telegram Groups', 'Telegram Bots')
+            : (groups.theBestFallback || '').replace('Telegram Groups', '');
 
     return (
       <RankingPageView
@@ -141,10 +166,22 @@ export function createRankingPage(slug: string) {
         theBestTemplate={theBest}
         theBestFallback={theBestFallback}
         heroIntro={heroIntro}
-        ctaLabel={page.kind === 'ainsfw' ? (ai.moreDetails || groups.join) : groups.join}
+        ctaLabel={
+          page.kind === 'explore'
+            ? 'VISIT WEBSITE'
+            : page.kind === 'ainsfw'
+              ? (ai.moreDetails || groups.join)
+              : groups.join
+        }
         viewsLabel={dict.common.views}
         curatingMsg={page.kind === 'ainsfw' ? (ai.curatingMsg || groups.curatingMsg) : groups.curatingMsg}
-        wantMore={page.kind === 'ainsfw' ? (ai.wantMore || groups.wantMore) : groups.wantMore}
+        wantMore={
+          page.slug === 'best-live-sex-cam-websites'
+            ? ''
+            : page.kind === 'ainsfw'
+              ? (ai.wantMore || groups.wantMore)
+              : groups.wantMore
+        }
         wantMoreDesc={
           page.kind === 'ainsfw'
             ? (ai.wantMoreDesc || groups.wantMoreDesc)

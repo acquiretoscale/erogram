@@ -67,59 +67,10 @@ export const LISTINGS: ExploreSiteListingBase[] = [
     "externalUrl": "https://jerkmate.com/"
   },
   {
-    "slug": "rabbitscams",
-    "name": "RabbitsCams",
-    "description": "RabbitsCams brings you the best live sex cams you can get, with thousands of sexy cam girls to satisfy your needs 24/7, here you can enjoy free porn cam shows on any device.",
-    "image": "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/rabbitscams-best-live-sex-cams.webp",
-    "externalUrl": "https://www.rabbitscams.sex/"
-  },
-  {
-    "slug": "amateur-tv",
-    "name": "Amateur.tv",
-    "description": "A free live cam site with a heavy Spanish and LATAM lean, plus VibraLush interactive-toy integration. Its unique layer is Sweet & Raw, an in-house podcast starring its own models.",
-    "image": "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/amateur-tv-best-live-sex-cams.webp",
-    "externalUrl": "https://www.amateur.tv/"
-  },
-  {
-    "slug": "slutroulette",
-    "name": "SlutRoulette",
-    "description": "Connects users with random cam girls for uncensored sex chat, shows are live, interactive and explicit, with no signup and instant access to real performers.",
-    "image": "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/slutroulette-best-live-sex-cams.webp",
-    "externalUrl": "https://slutroulette.com/"
-  },
-  {
-    "slug": "ichatonline",
-    "name": "IChatOnline",
-    "description": "IChatOnline is a live sex chat platform with over 150,000 cam girls ready for private shows and cam-to-cam sessions  -  explore real interactions, instant messaging, and HD streaming anytime.",
-    "image": "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/ichatonline-best-live-sex-cams.webp",
-    "externalUrl": "https://ichatonline.com/"
-  },
-  {
-    "slug": "camsfinder",
-    "name": "CamsFinder",
-    "description": "Good live sex cam site with a huge selection of hot cam girls, CamsFinder lets you browse tons of hot chicks from all over the world, for some quality live porn action in private.",
-    "image": "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/camsfinder-best-live-sex-cams.webp",
-    "externalUrl": "https://www.camsfinder.com/"
-  },
-  {
     "slug": "xtease",
     "name": "XTease",
     "description": "Live sex cam site that brings back the thrill of chatting up strangers online. Girls, couples, guys, and trans performers streaming live  -  retro flirting energy, modern video quality.",
     "image": "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/xtease-best-live-sex-cams.webp",
     "externalUrl": "https://xtease.com/"
-  },
-  {
-    "slug": "royalcamslive",
-    "name": "RoyalCamsLive",
-    "description": "Free live sex cam site with 14,000+ models. Spy Mode lets you watch ongoing private shows at a fraction of the price  -  RoyalCamsLive gives 10 free tokens just for verifying your email.",
-    "image": "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/royalcamslive-best-live-sex-cams.webp",
-    "externalUrl": "https://royalcamslive.com/"
-  },
-  {
-    "slug": "sweepsex",
-    "name": "SweepSex",
-    "description": "Exciting live sex cams site with a huge live porn platform featuring hot cam models, pornstars and cuties for interactive chats and videos.",
-    "image": "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/sweepsex-best-live-sex-cams.webp",
-    "externalUrl": "https://sweepsex.com/"
   }
 ];

@@ -111,6 +111,13 @@ const ARTICLE_COVER_LINKS: Record<string, string> = {
   'create-your-own-ai-porn-porncreate': '/ainsfw/porncreate-undress-ai',
 };
 
+const TESTODREN_URL = 'https://www.testodren.com/ct/995791';
+const ENDOPEAK_URL = 'https://endopeak24.com/c/order-now.php?&shield=2d545jtt7o2k4u76y0-lu9sr0b';
+
+const ARTICLE_FEATURED_ALTS: Record<string, string> = {
+  'where-to-watch-the-best-uncensored-jav-porn': 'Best uncensored JAV Porn (アダルトビデオ)',
+};
+
 function LazyArticleVideo({
   url,
   poster,
@@ -332,9 +339,36 @@ function buildMarkdownComponents(articleSlug: string, articleTitle: string) {
     },
     ul: ({ children }: any) => <ul className="list-disc pl-6 space-y-3 mb-7 text-[#2a2622] text-[18px] sm:text-[20px] leading-[1.75]">{children}</ul>,
     ol: ({ children }: any) => <ol className="list-decimal pl-6 space-y-3 mb-7 text-[#2a2622] text-[18px] sm:text-[20px] leading-[1.75]">{children}</ol>,
+    table: ({ children }: any) => (
+      <div className="not-prose my-10 overflow-x-auto rounded-[6px] border border-black/[0.1]">
+        <table className="w-full min-w-[520px] text-left text-[15px] sm:text-[17px] text-[#2a2622]">{children}</table>
+      </div>
+    ),
+    thead: ({ children }: any) => <thead className="bg-[#0f0c0a] text-white">{children}</thead>,
+    tbody: ({ children }: any) => <tbody className="bg-white">{children}</tbody>,
+    tr: ({ children }: any) => <tr className="border-t border-black/[0.08]">{children}</tr>,
+    th: ({ children }: any) => <th className="px-4 py-3 font-bold whitespace-nowrap">{children}</th>,
+    td: ({ children }: any) => <td className="px-4 py-3 align-middle">{children}</td>,
+    hr: () => <hr className="border-0 border-t border-black/[0.1] my-12" />,
     blockquote: ({ children }: any) => <blockquote className="border-l-[3px] border-[#c0392f] pl-6 my-10 text-[19px] sm:text-[22px] leading-[1.6] text-[#4a443d] italic">{children}</blockquote>,
     strong: ({ children }: any) => <strong className="text-[#0f0c0a] font-bold">{children}</strong>,
-    img: ({ src, alt }: any) => <img src={src} alt={alt?.trim() ? alt : articleTitle} loading="lazy" className="rounded-[4px] my-8 w-full" referrerPolicy="no-referrer" />,
+    img: ({ src, alt }: any) => {
+      const imgEl = <img src={src} alt={alt?.trim() ? alt : articleTitle} loading="lazy" className="rounded-[4px] my-8 w-full" referrerPolicy="no-referrer" />;
+      const hay = `${alt || ''} ${src || ''}`;
+      const href = /testodren/i.test(hay) ? TESTODREN_URL : /endopeak/i.test(hay) ? ENDOPEAK_URL : '';
+      if (!href) return imgEl;
+      return (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => trackArticleClick(articleSlug, href, 'cta').catch(() => {})}
+          className="block"
+        >
+          {imgEl}
+        </a>
+      );
+    },
     code: ({ children }: any) => <code className="bg-black/[0.06] text-[#c0392f] px-1.5 py-0.5 rounded font-mono text-[0.9em]">{children}</code>,
     pre: ({ children }: any) => {
       const child = Array.isArray(children) ? children[0] : children;
@@ -479,10 +513,10 @@ export default function BlogArticleClient({
           <div className="my-10 rounded-[4px] overflow-hidden">
             {ARTICLE_COVER_LINKS[article.slug] ? (
               <Link href={ARTICLE_COVER_LINKS[article.slug]} className="block">
-                <img src={article.featuredImage} alt={article.title} fetchPriority="high" className="w-full hover:opacity-95 transition-opacity" referrerPolicy="no-referrer" />
+                <img src={article.featuredImage} alt={ARTICLE_FEATURED_ALTS[article.slug] || article.title} fetchPriority="high" className="w-full hover:opacity-95 transition-opacity" referrerPolicy="no-referrer" />
               </Link>
             ) : (
-              <img src={article.featuredImage} alt={article.title} fetchPriority="high" className="w-full" referrerPolicy="no-referrer" />
+              <img src={article.featuredImage} alt={ARTICLE_FEATURED_ALTS[article.slug] || article.title} fetchPriority="high" className="w-full" referrerPolicy="no-referrer" />
             )}
           </div>
         )}

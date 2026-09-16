@@ -30,9 +30,9 @@ console.log('JAVHD advertiserId:', javhdAdv?._id?.toString() || 'NOT FOUND');
 const SITE_URL = 'https://javhd.com/';
 const EXPLORE_URL = '/javhd';
 const ASIAN_RANK_URL = '/best-premium-asian-porn-sites';
-const FEATURED = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/where-to-watch-the-best-uncensored-jav-porn-cover.webp';
-const IMG_BANNER = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/javhd-model-media-asia-banner.webp';
-const IMG_CATALOG = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/javhd-uncensored-catalog-grid.webp';
+const FEATURED = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/best-uncensored-jav-porn.webp';
+const IMG_BANNER = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/best-uncensored-jav-porn-2.webp';
+const IMG_CATALOG = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/best-uncensored-jav-porn-3.webp';
 
 const content = `## What's Inside
 
@@ -58,7 +58,7 @@ Second, censorship. Japanese obscenity law and industry self-regulation historic
 
 [The Guardian](https://www.theguardian.com/world/2024/jan/28/its-not-an-oedipus-complex-why-japans-silver-porn-market-is-booming) has described Japan’s adult-film market as a substantial industry whose genres even track the country’s demographics (including the well-documented rise of “silver porn”). That is not trivia. It is evidence that JAV is a real cultural industry with scale, specialization, and staying power — not a novelty niche.
 
-![Model Media Asia on JAVHD](${IMG_BANNER})
+![Best uncensored JAV Porn (アダルトビデオ)](${IMG_BANNER})
 
 ## Where to watch the best uncensored JAV porn
 
@@ -68,7 +68,7 @@ It is built around the exact combination this audience asks for — jav hd porn 
 
 JAVHD.com is worth checking because it treats uncensored Japanese video as the product, not an afterthought. Browse models, studios, and categories; sample the recently added and most-watched titles; and judge the encoding yourself. That is the honest way to evaluate any premium hub.
 
-![Uncensored JAV catalog on JAVHD.com](${IMG_CATALOG})
+![Best uncensored JAV Porn (アダルトビデオ)](${IMG_CATALOG})
 
 ## A curated list of top JAV porn performers
 
@@ -137,7 +137,7 @@ const article = await Article.create({
   authorSlug: 'eros',
   tags: ['JAV Porn', 'Asian Porn', 'JAVHD', 'Uncensored JAV', 'Japanese Adult Video', 'JAV HD'],
   metaTitle: 'Where to Watch the Best Uncensored JAV Porn (アダルトビデオ)',
-  metaDescription: 'Understand Japanese adult video, why uncensored JAV exists, and why JAVHD.com is built for jav hd porn instead of generic tube leftovers.',
+  metaDescription: 'Where to Watch the Best Uncensored JAV Porn (アダルトビデオ) and the top JAV and japanese female porn stars.',
   metaKeywords: 'jav porn, jav hd porn, jav uncensored porn, uncensored jav, japanese adult video, アダルトビデオ, javhd, asian porn, jav performers',
   ogTitle: 'Where to Watch the Best Uncensored JAV Porn (アダルトビデオ)',
   ogDescription: 'JAV is a real industry with its own stars and censorship rules. Here is where to watch uncensored Japanese porn in HD.',
