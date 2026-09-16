@@ -3,7 +3,7 @@
 import jwt from 'jsonwebtoken';
 import { revalidatePath } from 'next/cache';
 import connectDB from '@/lib/db/mongodb';
-import { AINsfwToolStats, Campaign, Advertiser, AINsfwSubmission, User } from '@/lib/models';
+import { AINsfwToolStats, Campaign, Advertiser, AINsfwSubmission, User, PremiumEvent } from '@/lib/models';
 import type { AINsfwTool } from '@/app/ainsfw/types';
 import { invertToolSlug, toolSlug } from '@/app/ainsfw/data';
 import { LOCALES } from '@/lib/i18n/config';
