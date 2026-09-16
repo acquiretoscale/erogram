@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import { useLocale, useLocalePath, usePublicPathname, useTranslation } from '@/lib/i18n/client';
-import { LOCALES, LOCALE_FLAGS, LOCALE_NAMES, switchLocalePath, type Locale } from '@/lib/i18n';
+import { LOCALES, LOCALE_FLAGS, LOCALE_NAMES, switchLocalePath } from '@/lib/i18n';
 import { getMyListingsSummary } from '@/lib/actions/myListings';
 import { getMyAINSFWSummary } from '@/lib/actions/myAINSFWListings';
 import { getCampaignPlacement } from '@/lib/actions/publicData';
@@ -21,81 +21,44 @@ function MastheadAdSlot() {
       .catch(() => {});
   }, []);
   if (!cta) return null;
+  const ctaLabel = 'TRY UNDRESS AI';
   return (
     <a
       href={cta.destinationUrl}
       target="_blank"
       rel="sponsored noopener noreferrer"
       onClick={() => trackCampaignClick(cta._id, 'navbar-cta')}
-      className="hidden md:inline-flex items-center text-[11px] font-bold tracking-[0.12em] uppercase text-white bg-[#e0245e] hover:bg-[#c81e51] border border-white/15 px-3.5 py-2 rounded-[5px] transition-colors whitespace-nowrap"
+      className="shrink-0 inline-flex items-center h-[18px] text-[9px] sm:text-[10px] font-bold tracking-[0.1em] uppercase text-white bg-[#e0245e] hover:bg-[#c81e51] border border-white/15 px-1.5 sm:px-2 rounded-[3px] transition-colors whitespace-nowrap leading-none"
     >
-      {cta.description || cta.buttonText}
+      {ctaLabel}
     </a>
   );
 }
 
-const LOCALE_SHORT: Record<Locale, string> = { en: 'En', de: 'De', es: 'Es', pt: 'Pt' };
-
-function MastheadLangSwitcher({ compact = false }: { compact?: boolean }) {
+function FooterLangSwitcher() {
   const { locale } = useLocale();
   const pathForSwitch = usePublicPathname();
-  const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => setMounted(true), []);
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    const t = setTimeout(() => document.addEventListener('mousedown', handler, true), 100);
-    return () => { clearTimeout(t); document.removeEventListener('mousedown', handler, true); };
-  }, [open]);
+  const { t } = useTranslation();
 
   return (
-    <div className="relative shrink-0" ref={ref}>
-      <button
-        onClick={() => setOpen(!open)}
-        aria-label="Change language"
-        className={`flex items-center justify-center rounded-lg hover:bg-white/[0.08] transition-colors shrink-0 ${
-          compact ? 'w-8 h-8' : 'gap-1.5 px-2 py-1.5'
-        }`}
-      >
-        <span className={`leading-none ${compact ? 'text-[16px]' : 'text-base'}`} suppressHydrationWarning>{LOCALE_FLAGS[locale]}</span>
-        {!compact && (
-          <>
-            <span className="text-[13px] font-semibold text-white/90" suppressHydrationWarning>{LOCALE_SHORT[locale]}</span>
-            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`shrink-0 text-white/50 transition-transform ${open ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6" /></svg>
-          </>
-        )}
-      </button>
-      <AnimatePresence>
-        {mounted && open && (
-          <motion.div
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.12 }}
-            className="absolute right-0 mt-2 w-36 bg-[#161412] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden py-1"
-          >
-            {LOCALES.filter((l) => l !== 'pt').map((l) => (
-              <a
-                key={l}
-                href={switchLocalePath(pathForSwitch, locale, l)}
-                onClick={() => setOpen(false)}
-                className={`flex items-center gap-2.5 px-3.5 py-2 text-[13px] transition-colors ${locale === l ? 'text-white bg-white/5 font-medium' : 'text-[#cfc9c2] hover:text-white hover:bg-white/5'}`}
-              >
-                <span className="text-base leading-none">{LOCALE_FLAGS[l]}</span>
-                {LOCALE_NAMES[l]}
-              </a>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8c8780]">{t('nav.language', 'Language')}</span>
+      {LOCALES.filter((l) => l !== 'pt').map((l) => (
+        <a
+          key={l}
+          href={switchLocalePath(pathForSwitch, locale, l)}
+          className={`inline-flex items-center gap-1.5 text-[13px] transition-colors ${
+            locale === l ? 'text-white font-medium' : 'text-[#cfc9c2] hover:text-white'
+          }`}
+        >
+          <span className="text-base leading-none">{LOCALE_FLAGS[l]}</span>
+          {LOCALE_NAMES[l]}
+        </a>
+      ))}
     </div>
   );
 }
 
-// Real Erogram menu elements
 const NAV_PRE: Array<{ labelKey: string; fallback: string; href: string; badge?: string }> = [
   { labelKey: 'nav.home', fallback: 'Home', href: '/' },
   { labelKey: 'nav.groups', fallback: 'Groups', href: '/groups' },
@@ -129,18 +92,17 @@ function LiveVisitorBar() {
       className="w-full bg-white/[0.03] border-b border-white/[0.06]"
       aria-label="Site status"
     >
-      <div className="max-w-[1280px] mx-auto px-3 sm:px-8 py-1 sm:py-0 sm:h-[24px] flex items-center">
-        <div className="flex-1 min-w-0" />
-        <LiveVisitorCount />
-        <span className="w-[5px] shrink-0" aria-hidden />
-        <Link
-          href="/promo"
-          className="shrink-0 text-[10px] sm:text-[11px] font-bold text-white hover:text-white/85 uppercase tracking-[0.12em] whitespace-nowrap leading-none transition-colors"
-        >
-          ADVERTISE
-        </Link>
-        <div className="flex-1 min-w-0 flex justify-end pl-3">
-          <AddToolNav />
+      <div className="max-w-[1280px] mx-auto px-3 sm:px-8 py-1 sm:py-0 sm:h-[24px] flex items-center gap-3">
+        <div className="flex-1 min-w-0 flex justify-center">
+          <LiveVisitorCount />
+        </div>
+        <div className="shrink-0 flex items-center gap-3">
+          <Link
+            href="/promo"
+            className="text-[10px] sm:text-[11px] font-bold text-white hover:text-white/85 uppercase tracking-[0.12em] whitespace-nowrap leading-none transition-colors"
+          >
+            ADVERTISE
+          </Link>
         </div>
       </div>
     </div>
@@ -492,7 +454,7 @@ const MENU_LABEL = 'text-center text-[11px] font-extrabold tracking-[0.28em] upp
 const GOLD_BG = 'linear-gradient(135deg, #b8860b 0%, #ffd700 40%, #fff8b0 55%, #ffd700 70%, #b8860b 100%)';
 const GOLD_SHADOW = '0 4px 18px -6px rgba(255,215,0,0.55), inset 0 1px 0 rgba(255,255,255,0.4)';
 
-function UpgradePremiumButton({ href, onClick }: { href: string; onClick?: () => void }) {
+function UpgradePremiumButton({ href, onClick, label }: { href: string; onClick?: () => void; label?: string }) {
   const { t } = useTranslation();
   return (
     <Link
@@ -502,15 +464,13 @@ function UpgradePremiumButton({ href, onClick }: { href: string; onClick?: () =>
       style={{ background: GOLD_BG, boxShadow: GOLD_SHADOW }}
     >
       <svg width="13" height="13" viewBox="0 0 24 24" fill="#1a0f00" className="shrink-0" aria-hidden><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z" /></svg>
-      {t('nav.upgradePremium', 'UPGRADE PREMIUM')}
+      {label || t('nav.upgradePremium', 'UPGRADE PREMIUM')}
     </Link>
   );
 }
 
 function MobileNavMenu({ open, lp, onClose }: { open: boolean; lp: (p: string) => string; onClose: () => void }) {
   const { t } = useTranslation();
-  const { locale } = useLocale();
-  const pathForSwitch = usePublicPathname();
 
   const item = 'flex items-center gap-3 px-4 py-2.5 text-[14px] text-[#cfc9c2] hover:text-white hover:bg-white/[0.05] active:bg-white/[0.08] transition-colors';
 
@@ -547,31 +507,11 @@ function MobileNavMenu({ open, lp, onClose }: { open: boolean; lp: (p: string) =
             <span className="flex-1">Porn Websites</span>
           </Link>
 
-          <Link href={lp('/submit')} onClick={onClose} className={item}>
-            <span className="flex-1">{t('nav.submitCreator', 'Submit your Creator')}</span>
-          </Link>
-
           <Link href="/blog" onClick={onClose} className={item}>
             <span className="flex-1">{t('nav.blog', 'Blog')}</span>
           </Link>
-        </div>
 
-        {/* Language */}
-        <div className="bg-[#161412] border border-white/10 rounded-xl overflow-hidden py-1">
-          <div className="px-4 py-2.5 text-[13px] font-semibold text-white/50 border-b border-white/[0.06]">{t('nav.language', 'Language')}</div>
-          <div className="grid grid-cols-3 gap-1.5 p-2">
-            {LOCALES.filter((l) => l !== 'pt').map((l) => (
-              <a
-                key={l}
-                href={switchLocalePath(pathForSwitch, locale, l)}
-                onClick={onClose}
-                className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-[12px] font-semibold transition-colors ${locale === l ? 'bg-white/10 text-white' : 'text-[#cfc9c2] hover:bg-white/[0.05]'}`}
-              >
-                <span className="text-base leading-none">{LOCALE_FLAGS[l]}</span>
-                <span>{LOCALE_NAMES[l]}</span>
-              </a>
-            ))}
-          </div>
+          <UpgradePremiumButton href={lp('/premium')} onClick={onClose} label="Upgrade to premium" />
         </div>
       </div>
     </motion.div>
@@ -710,7 +650,7 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
     <header className={`${fixed ? 'fixed top-0 left-0 right-0' : 'relative'} z-50 bg-black/95 backdrop-blur-md border-b border-white/[0.08]`}>
       <div className="max-w-[1280px] mx-auto px-4 sm:px-8 h-[58px] flex items-center gap-2 sm:gap-6">
         {/* Wordmark — EROGRAMX (red X via ErogramWordmark). */}
-        <div className="shrink-0 inline-flex flex-col items-stretch mr-2 sm:mr-6 lg:mr-8">
+        <div className="shrink-0 inline-flex items-center mr-2 sm:mr-6 lg:mr-8">
           <Link
             href="/"
             aria-label="ErogramX"
@@ -730,11 +670,6 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
               <ErogramWordmark accent="#c0392f" />
             )}
           </Link>
-          {wordmarkMode !== 'pornhub' && (
-            <span className="block w-full text-left text-[10px] sm:text-[11px] font-semibold text-white leading-none mt-1 tracking-[0.18em] sm:tracking-[0.22em]">
-              Previously Erogram.pro
-            </span>
-          )}
         </div>
 
         {/* Desktop nav — uppercase, letter-spaced, muted. Only at lg+ where it fits;
@@ -768,15 +703,18 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
           </Link>
         </nav>
 
-        {/* Desktop right — ad slot + user menu + language (far right) */}
-        <div className="hidden lg:flex items-center gap-2.5 shrink-0 ml-auto">
+        <div className="flex-1 min-w-0 flex items-center justify-center px-1">
           <MastheadAdSlot />
-          <MastheadUserMenu accent={resolvedAccent} auth={auth} lp={lp} />
-          <MastheadLangSwitcher />
         </div>
 
-        {/* Mobile + tablet — burger / avatar / flag share one ghost 32px tap target */}
-        <div className="lg:hidden ml-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <div className="hidden lg:flex items-center gap-2.5 shrink-0">
+          <AddToolNav />
+          <MastheadUserMenu accent={resolvedAccent} auth={auth} lp={lp} />
+        </div>
+
+        {/* Mobile + tablet — burger / avatar */}
+        <div className="lg:hidden flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <AddToolNav />
           <button
             onClick={() => { setMobileOpen((v) => !v); setUserOpen(false); }}
             aria-label="Toggle menu"
@@ -810,7 +748,6 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
               </span>
             )}
           </button>
-          <MastheadLangSwitcher compact />
         </div>
       </div>
 
@@ -887,7 +824,6 @@ function FooterSocialBlock() {
 export function EditorialFooter() {
   const lp = useLocalePath();
   const { t } = useTranslation();
-  const year = new Date().getFullYear();
   return (
     <footer className="bg-black border-t border-white/[0.08]">
       <div className="max-w-[1280px] mx-auto px-6 sm:px-8 py-8 sm:py-10">
@@ -951,12 +887,10 @@ export function EditorialFooter() {
         </div>
 
         {/* Bottom bar — compact */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <FooterLangSwitcher />
           <RtaBadge size="lg" />
         </div>
-        <p className="mt-4 text-[11px] text-[#5a534d] leading-relaxed">
-          © {year} Erogram.pro
-        </p>
       </div>
     </footer>
   );

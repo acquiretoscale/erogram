@@ -417,7 +417,8 @@ export default function HomeExploreClient({
             <h1 className="home-hero-title text-[30px] sm:text-[44px] md:text-[54px] mb-4 sm:mb-5">
               <span className="home-hero-title-mark">Your #1 ADULT entretainement platform</span>
             </h1>
-            <p className="mb-7 sm:mb-8 max-w-xl sm:max-w-2xl mx-auto text-center text-[14px] sm:text-[15px] md:text-base text-white/90 leading-relaxed font-medium">
+            <p className="mb-7 sm:mb-8 max-w-xl sm:max-w-2xl mx-auto text-center text-[14px] sm:text-[15px] md:text-base text-white leading-relaxed font-medium">
+              <span className="home-hero-sub-mark">
               Your #1 Porn Telegram, Porn websites &amp; AI NSFW Hub The best{' '}
               <Link href={lp('/groups')} className="text-white underline underline-offset-2 decoration-white/50 hover:text-white hover:decoration-white">
                 porn Telegram groups
@@ -435,6 +436,7 @@ export default function HomeExploreClient({
                 the best porn
               </Link>
               {' '}by niche Asian, BDSM, Jav Porn, blowjob, gangbang, and everything in between.
+              </span>
             </p>
           </div>
           <div className="hero-nav-row">

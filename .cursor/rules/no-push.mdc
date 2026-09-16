@@ -1,18 +1,35 @@
 ---
-description: NEVER run git push unless the user explicitly says to push
+description: NEVER git push unless THIS message explicitly orders push. Never infer. Never carry from a prior turn.
 alwaysApply: true
 ---
 
-# ABSOLUTE BAN ON git push
+# ABSOLUTE BAN ON git push — MARBLE DEAD RULE
+
+> **Scar 2026-09-16.** Owner was still iterating the top-strip ADVERTISE spacing. Agent pushed anyway. Vercel billed a deploy. Owner furious. NEVER AGAIN.
 
 ## THE RULE (non-negotiable)
 
-**NEVER run `git push` or any command that pushes to remote** unless the user explicitly says one of:
+**NEVER run `git push` or any command that publishes to remote.**
+
+Push is allowed ONLY if **this same user message** contains a clear direct order such as:
 - "push"
 - "push live"
 - "push it"
 - "now push"
-- or any other clear direct instruction to push
+- "push to prod"
+
+**No other sentence counts.** Not "fix it". Not "it's still wrong". Not "I'm looking at mobile". Not "ship". Not "done". Not "go live" unless it also says **push**.
+
+## NEVER INFER PUSH
+
+- A **previous** message that said push does **NOT** authorize push now.
+- "Fix and push" on the last turn dies when the next turn starts.
+- "They're looking at production" is **NOT** a push order.
+- "It costs money if it's broken live" is **NOT** a push order.
+- Finishing a UI tweak is **NOT** a push order.
+- "Put it in marble" is **NOT** a push order.
+
+**When in doubt: do not push. Wait.**
 
 **When owner orders push:** see `push-live-marble.mdc` — **push `main` only**. Feature branches are NOT live.
 
@@ -20,14 +37,14 @@ alwaysApply: true
 
 - `git add`
 - `git commit`
-- Any local git operations
+- Any **local** git operations
 
-## What requires EXPLICIT user instruction
+## What requires EXPLICIT user instruction IN THIS MESSAGE
 
-- `git push` — NEVER do this on your own
+- `git push` — NEVER on your own
 - `git push --force` — NEVER
 - Any `gh` command that pushes or publishes
 
 ## Why
 
-This is a production site with 1M+ monthly visitors. Unauthorized pushes go live immediately and can break things for real users.
+Production has 1M+ monthly visitors. Every unauthorized push deploys on Vercel and **costs money**. Owner decides when work is done. Agent does not.

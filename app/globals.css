@@ -1382,10 +1382,23 @@ body {
   -webkit-box-decoration-break: clone;
   box-shadow: 2px 2px 0 #111;
 }
+.home-hero-sub-mark {
+  display: inline;
+  background: #111;
+  color: #fff;
+  padding: 0.12em 0.4em 0.16em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  box-shadow: 2px 2px 0 #fff;
+}
 @media (min-width: 640px) {
   .home-hero-title-mark {
     padding: 0.12em 0.55em 0.16em;
     box-shadow: 3px 3px 0 #111;
+  }
+  .home-hero-sub-mark {
+    padding: 0.14em 0.5em 0.18em;
+    box-shadow: 3px 3px 0 #fff;
   }
 }
 
