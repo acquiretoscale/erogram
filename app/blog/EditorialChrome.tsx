@@ -103,6 +103,7 @@ function LiveVisitorBar() {
           >
             ADVERTISE
           </Link>
+          <MastheadAdSlot />
         </div>
       </div>
     </div>
@@ -703,17 +704,13 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
           </Link>
         </nav>
 
-        <div className="flex-1 min-w-0 flex items-center justify-center px-1">
-          <MastheadAdSlot />
-        </div>
-
-        <div className="hidden lg:flex items-center gap-2.5 shrink-0">
+        <div className="hidden lg:flex items-center gap-2.5 shrink-0 ml-auto">
           <AddToolNav />
           <MastheadUserMenu accent={resolvedAccent} auth={auth} lp={lp} />
         </div>
 
         {/* Mobile + tablet — burger / avatar */}
-        <div className="lg:hidden flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <div className="lg:hidden ml-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
           <AddToolNav />
           <button
             onClick={() => { setMobileOpen((v) => !v); setUserOpen(false); }}
