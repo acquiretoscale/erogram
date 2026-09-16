@@ -129,18 +129,17 @@ function LiveVisitorBar() {
       className="w-full bg-white/[0.03] border-b border-white/[0.06]"
       aria-label="Site status"
     >
-      <div className="max-w-[1280px] mx-auto px-3 sm:px-8 py-1 sm:py-0 sm:h-[24px] grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-4 sm:gap-x-6">
-        <div aria-hidden className="min-w-0" />
-        <div className="justify-self-center min-w-0 px-1 -translate-x-[15px] sm:-translate-x-[5px]">
-          <LiveVisitorCount />
-        </div>
-        <div className="justify-self-end flex items-center gap-3 sm:gap-3 shrink-0 min-w-0">
-          <Link
-            href="/promo"
-            className="text-[10px] sm:text-[11px] font-bold text-white hover:text-white/85 uppercase tracking-[0.12em] whitespace-nowrap leading-none transition-colors"
-          >
-            ADVERTISE
-          </Link>
+      <div className="max-w-[1280px] mx-auto px-3 sm:px-8 py-1 sm:py-0 sm:h-[24px] flex items-center">
+        <div className="flex-1 min-w-0" />
+        <LiveVisitorCount />
+        <span className="w-[5px] shrink-0" aria-hidden />
+        <Link
+          href="/promo"
+          className="shrink-0 text-[10px] sm:text-[11px] font-bold text-white hover:text-white/85 uppercase tracking-[0.12em] whitespace-nowrap leading-none transition-colors"
+        >
+          ADVERTISE
+        </Link>
+        <div className="flex-1 min-w-0 flex justify-end pl-3">
           <AddToolNav />
         </div>
       </div>
