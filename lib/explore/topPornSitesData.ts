@@ -36,7 +36,7 @@ function premiumAsianPornExploreSites(): ExploreSite[] {
   const javhd = PREMIUM_PORN_LISTINGS.find((listing) => listing.slug === 'javhd');
   const zenra = getExploreSiteListing('zenra');
   const bySlug = new Map(PREMIUM_ASIAN_PORN_LISTINGS.map((listing) => [listing.slug, listing]));
-  const ordered: ExploreSite[] = [];
+  const ordered: ReturnType<typeof exploreSitesFromListings> = [];
 
   if (javhd) {
     ordered.push(
