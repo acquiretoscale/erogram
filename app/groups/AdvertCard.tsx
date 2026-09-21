@@ -431,7 +431,6 @@ function AinsfwHubAdCard({
     imgRef,
     isIndex,
     forceVisible = false,
-    featured = false,
 }: {
     campaign: FeedCampaign;
     handleClick: () => void;
@@ -440,7 +439,6 @@ function AinsfwHubAdCard({
     imgRef: React.RefObject<HTMLDivElement | null>;
     isIndex: number;
     forceVisible?: boolean;
-    featured?: boolean;
 }) {
     const { t } = useTranslation();
     const btnCls = ainsfwCtaButtonClass('card');
@@ -465,18 +463,6 @@ function AinsfwHubAdCard({
                         priority={forceVisible || isIndex < 4}
                         onError={() => setImageSrc('/assets/image.jpg')}
                     />
-                    <div className="absolute top-1.5 left-1.5 z-20">
-                        {featured ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#22c55e] text-black text-[9px] font-black uppercase tracking-widest">
-                                <svg className="w-2 h-2" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3a2 2 0 01-2 2H7a2 2 0 01-2-2v-1h14v1z"/></svg>
-                                {t('ainsfw.featured', 'Featured')}
-                            </span>
-                        ) : (
-                            <span className="bg-amber-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider border border-black/20">
-                                Ad
-                            </span>
-                        )}
-                    </div>
                 </div>
                 <div className="p-2.5 sm:p-3 flex flex-col flex-grow">
                     <h3 className="text-xs sm:text-sm font-black text-white mb-0.5 leading-tight truncate group-hover:text-[#22c55e] transition-colors flex items-center gap-1 min-w-0">
@@ -490,9 +476,6 @@ function AinsfwHubAdCard({
                     ) : (
                         <div className="flex-grow mb-2" />
                     )}
-                    <div className="flex items-center justify-between pt-1.5 border-t border-white/10 mb-2">
-                        <span className="text-[9px] font-black uppercase tracking-wider text-white/30">Ad</span>
-                    </div>
                     <div className={`${btnCls} cursor-pointer text-center`}>
                         {t('ainsfw.tryNow', 'TRY NOW →')}
                     </div>
@@ -888,7 +871,6 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                 imgRef={imgRef}
                 isIndex={isIndex}
                 forceVisible={forceVisible}
-                featured={placementOverride === 'ainsfw-featured'}
             />
         );
     }
