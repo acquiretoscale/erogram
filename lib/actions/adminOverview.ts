@@ -8,7 +8,7 @@ import {
   ManualRevenue, StarsRate, Bookmark, BookmarkFolder,
   AINsfwSubmission,
 } from '@/lib/models';
-import { AINSFW_PLAN_PRICES, ainsfwCryptoPrice } from '@/lib/ainsfw/planPrices';
+import { AINSFW_PLAN_PRICES } from '@/lib/ainsfw/planPrices';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -265,12 +265,13 @@ export async function getAdminOverview(token: string) {
   }
 
   // AI NSFW + featured creator sales (Stars and crypto). Group/bot boosts counted above.
-  const ainsfwSaleUsd = (tier: string, method: string): number => {
-    if (method === 'stars') {
-      const prices: Record<string, number> = { basic: AINSFW_PLAN_PRICES.basic, boost: AINSFW_PLAN_PRICES.boost, startup: AINSFW_PLAN_PRICES.startup };
-      return prices[tier] || AINSFW_PLAN_PRICES.basic;
-    }
-    return ainsfwCryptoPrice(tier as any) || AINSFW_PLAN_PRICES.basic;
+  const ainsfwSaleUsd = (tier: string): number => {
+    const prices: Record<string, number> = {
+      basic: AINSFW_PLAN_PRICES.basic,
+      boost: AINSFW_PLAN_PRICES.boost,
+      startup: AINSFW_PLAN_PRICES.startup,
+    };
+    return prices[tier] || AINSFW_PLAN_PRICES.basic;
   };
   for (const ev of allCryptoSubmissionEvents as any[]) {
     const isFeatured = ev.event === 'featured_creator_payment_success';
@@ -278,7 +279,7 @@ export async function getAdminOverview(token: string) {
     if (!isFeatured && entityType !== 'ainsfw') continue;
     const tier = ev.listingType || ev.tier || 'basic';
     const label = isFeatured ? 'Featured Creator' : `AI NSFW ${tier}`;
-    const usd = isFeatured ? 197 : ainsfwSaleUsd(tier, ev.paymentMethod || 'crypto');
+    const usd = isFeatured ? 197 : ainsfwSaleUsd(tier);
     sales.push({
       _id: ev._id.toString(), type: 'ainsfw_listing', label, plan: isFeatured ? 'featured_creator' : tier,
       paymentMethod: ev.paymentMethod || 'crypto', stars: 0, usd,

@@ -140,11 +140,11 @@ function UpgradePanel({ listing, onUpdate }: { listing: ListingItem; onUpdate: (
             onClick={() => setPayMethod('crypto')}
             className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all ${payMethod === 'crypto' ? 'bg-orange-500 text-white border-orange-500' : 'bg-gray-50 text-gray-600 border-gray-200'}`}
           >
-            Crypto · 15% OFF
+            Crypto
           </button>
         </div>
         {payMethod === 'crypto' && (
-          <p className="text-[10px] text-gray-400 mb-3">Crypto discount applies to Boost plans. Instant Approval is Stars only. Secure checkout via NOWPayments.</p>
+          <p className="text-[10px] text-gray-400 mb-3">Boost plans via NOWPayments. Instant Approval is Stars only.</p>
         )}
         <div className="grid grid-cols-5 gap-0 text-[11px]">
           <div className="p-2" />
@@ -158,7 +158,7 @@ function UpgradePanel({ listing, onUpdate }: { listing: ListingItem; onUpdate: (
                 showCrypto ? (
                   <>
                     <div className="font-black text-base mt-1 text-orange-500">{cryptoUsd(t.price)}</div>
-                    <div className="text-[10px] font-bold mt-0.5 text-orange-500/70">15% OFF</div>
+                    <div className="text-[11px] font-bold mt-0.5 text-orange-500/70">{usd(t.price)}</div>
                   </>
                 ) : (
                   <>
@@ -588,7 +588,7 @@ export default function MyListingsClient() {
                     onClick={() => setRenewPayMethod('crypto')}
                     className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all ${renewPayMethod === 'crypto' ? 'bg-orange-500 text-white border-orange-500' : 'bg-gray-50 text-gray-600 border-gray-200'}`}
                   >
-                    Crypto · 15% OFF
+                    Crypto
                   </button>
                 </div>
                 <div className="flex gap-2">
@@ -597,10 +597,10 @@ export default function MyListingsClient() {
                     const prices = BOOST_STARS[payType];
                     const weekLabel = renewPayMethod === 'stars'
                       ? `+1 Week · ${prices.week.toLocaleString()}★ · ${usd(prices.week)}`
-                      : `+1 Week · ${cryptoUsd(prices.week)} · 15% OFF`;
+                      : `+1 Week · ${cryptoUsd(prices.week)}`;
                     const monthLabel = renewPayMethod === 'stars'
                       ? `+1 Month · ${prices.month.toLocaleString()}★ · ${usd(prices.month)}`
-                      : `+1 Month · ${cryptoUsd(prices.month)} · 15% OFF`;
+                      : `+1 Month · ${cryptoUsd(prices.month)}`;
                     return (
                       <>
                         <button
