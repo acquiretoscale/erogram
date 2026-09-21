@@ -31,6 +31,7 @@ type Campaign = {
   isVirtualBoost?: boolean;
   listingId?: string;
   entityType?: 'group' | 'bot' | 'ainsfw';
+  placedCampaignId?: string;
 };
 
 /** Normalize a virtual boost into the Campaign row shape the list/buckets already understand. */
@@ -56,6 +57,7 @@ function boostToRow(b: BoostCampaign): Campaign {
     isVirtualBoost: true,
     listingId: b.listingId,
     entityType: b.entityType,
+    placedCampaignId: b.placedCampaignId,
   };
 }
 
@@ -269,7 +271,12 @@ export default function AdNetworkClient() {
   useEffect(() => {
     if (!pendingEditId) return;
     const c = campaigns.find((x) => x._id === pendingEditId);
-    if (c) { startEdit(c); setPendingEditId(null); }
+    if (!c) return;
+    startEdit(c);
+    setPendingEditId(null);
+    requestAnimationFrame(() => {
+      document.getElementById(`adnet-${c._id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
   }, [pendingEditId, campaigns]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startEdit = (c: Campaign) => {
@@ -411,6 +418,23 @@ export default function AdNetworkClient() {
     setActingId(null);
   };
 
+  const showPlacedAd = (placedId: string) => {
+    setGroupFilter('all');
+    setTypeFilter('all');
+    setPlacedFilter('all');
+    setOfOnly(false);
+    const real = campaigns.find((x) => x._id === placedId);
+    if (real) {
+      startEdit(real);
+      requestAnimationFrame(() => {
+        document.getElementById(`adnet-${placedId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+      return;
+    }
+    setPendingEditId(placedId);
+    loadCampaigns();
+  };
+
   // Convert a boost into a real, placeable Campaign (organic ranking stays). After it's created we
   // reload and open the new campaign so the placement editor is ready to assign slots.
   const convertBoost = async (c: Campaign) => {
@@ -419,7 +443,11 @@ export default function AdNetworkClient() {
     try {
       const res = await convertBoostToPlacedCampaign(token, c.entityType, c.listingId);
       if (res.error || !res.campaignId) { flash(res.error || 'Convert failed'); setActingId(null); return; }
-      flash(res.existed ? 'Already a placed ad — opening it' : 'Converted — core slots are live');
+      flash(res.existed ? 'Already a placed ad — opening slots' : 'Converted — pick slots below');
+      setGroupFilter('all');
+      setTypeFilter('all');
+      setPlacedFilter('all');
+      setOfOnly(false);
       setEditing(null);
       await loadCampaigns();
       setPendingEditId(res.campaignId);
@@ -617,7 +645,7 @@ export default function AdNetworkClient() {
                 {filteredCampaigns.map((c) => {
                   const st = runStatus(c);
                   return (
-                  <div key={c._id} className="rounded-xl bg-white/[0.04] border border-white/10 overflow-hidden">
+                  <div key={c._id} id={`adnet-${c._id}`} className="rounded-xl bg-white/[0.04] border border-white/10 overflow-hidden">
                     <div className="flex items-center justify-between px-4 py-3 gap-3">
                       <div className="flex items-center gap-3 min-w-0">
                         <Thumb c={c} />
@@ -687,16 +715,31 @@ export default function AdNetworkClient() {
                         {/* Give the boost real ad-slot visibility: create a placeable campaign (boost ranking stays). */}
                         <div className="mt-3 rounded-lg bg-red-500/[0.06] border border-red-500/20 p-3 flex flex-wrap items-center gap-2">
                           <div className="flex-1 min-w-[12rem]">
-                            <div className="text-sm font-semibold text-white/90">Place in ad slots</div>
-                            <div className="text-[11px] text-white/40 mt-0.5">Creates a real ad on Top Groups, Top Bots, In-Feed, and AI NSFW. Organic boost stays live.</div>
+                            <div className="text-sm font-semibold text-white/90">
+                              {c.placedCampaignId ? 'Placed ad is live' : 'Place in ad slots'}
+                            </div>
+                            <div className="text-[11px] text-white/40 mt-0.5">
+                              {c.placedCampaignId
+                                ? 'This boost already has a placed ad. Open it to tick Top Groups / Top Bots / In-Feed / AI NSFW.'
+                                : 'Creates a real ad, then opens the slot picker. Organic boost stays live.'}
+                            </div>
                           </div>
-                          <button
-                            onClick={() => convertBoost(c)}
-                            disabled={actingId === c._id}
-                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600/80 hover:bg-red-500 text-white disabled:opacity-50"
-                          >
-                            {actingId === c._id ? 'Working…' : 'Convert to placed ad'}
-                          </button>
+                          {c.placedCampaignId ? (
+                            <button
+                              onClick={() => showPlacedAd(c.placedCampaignId!)}
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600/80 hover:bg-red-500 text-white"
+                            >
+                              Edit placements
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => convertBoost(c)}
+                              disabled={actingId === c._id}
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600/80 hover:bg-red-500 text-white disabled:opacity-50"
+                            >
+                              {actingId === c._id ? 'Working…' : 'Convert to placed ad'}
+                            </button>
+                          )}
                         </div>
                       </div>
                     )}

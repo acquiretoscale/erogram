@@ -672,7 +672,7 @@ export async function getPlacementFeedCampaigns(placement: string, max = 4) {
       verified: Boolean(c.verified),
       adType: c.adType || 'advertiser',
       blockFormat: c.blockFormat || 'card',
-      priority: c.priority === 'boost' ? 'boost' : 'normal',
+      priority: (c.priority === 'boost' ? 'boost' : 'normal') as 'boost' | 'normal',
       ofUsername: c.ofUsername || '',
       ofLikesCount: stats?.likesCount ?? 0,
       ofSubscriberCount: stats?.subscriberCount ?? 0,

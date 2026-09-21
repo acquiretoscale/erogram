@@ -266,6 +266,8 @@ export interface BoostCampaign {
   boostDuration?: string | null;
   clicks: number;
   isVirtualBoost: true;  // tells the Ad Network UI this is read-through, not a real Campaign
+  /** Real Campaign created by "Convert to placed ad", if one exists. */
+  placedCampaignId?: string;
 }
 
 /** ACTIVE boosts only (boosted=true and not expired), as virtual campaigns for the Ad Network. */
@@ -302,11 +304,24 @@ export async function getBoostCampaigns(token: string): Promise<BoostCampaign[]>
       };
     });
 
-  return [
+  const rows = [
     ...map(groups as any[], 'group', 'boost-group', 'Boosted group'),
     ...map(bots as any[], 'bot', 'boost-bot', 'Boosted bot'),
     ...map(ainsfw as any[], 'ainsfw', 'boost-ainsfw', 'Boosted AI NSFW'),
   ];
+
+  const markers = rows.map((b) => `boost-converted:${b.entityType}:${b.listingId}`);
+  if (markers.length) {
+    const { Campaign } = await import('@/lib/models');
+    const placed = await Campaign.find({ internalName: { $in: markers } }).select('_id internalName').lean();
+    const byMarker = new Map((placed as any[]).map((p) => [String(p.internalName), p._id.toString()]));
+    for (const b of rows) {
+      const id = byMarker.get(`boost-converted:${b.entityType}:${b.listingId}`);
+      if (id) b.placedCampaignId = id;
+    }
+  }
+
+  return rows;
 }
 
 /**
