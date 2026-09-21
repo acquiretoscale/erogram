@@ -158,6 +158,19 @@ export const DEFAULT_OF_CREATOR_PLACEMENTS: string[] = [
 export const PROMOTE_OF_CREATOR_PLACEMENTS: string[] = ['best-of', 'of-cat'];
 
 /**
+ * Core network blast — Top Groups + Top Bots + AI NSFW + in-feed + join-page sidebar.
+ * Used by Advertisers "All core placements", Ad Network convert-boost, and the placement editor shortcut.
+ * Does not include Top-10s, OFsearch, banners, or navbar/join CTAs.
+ */
+export const CORE_NETWORK_PLACEMENTS: string[] = [
+  'top-groups-1', 'top-groups-2', 'top-groups-3', 'top-groups-4',
+  'top-bots-1', 'top-bots-2', 'top-bots-3', 'top-bots-4',
+  'ainsfw-featured', 'ainsfw-feed',
+  'feed-2', 'feed-3', 'feed-4', 'feed-5',
+  'group-sidebar',
+];
+
+/**
  * Keyword-targetable: e.g. promote a MILF OF creator on the MILF best-groups page.
  * These are intentionally inert until their surfaces are built (later phase).
  */

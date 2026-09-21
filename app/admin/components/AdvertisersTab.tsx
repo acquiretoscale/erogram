@@ -11,7 +11,7 @@ import { ensureR2Avatar } from '@/lib/actions/creatorImages';
 import { getTrendingCreatorStats } from '@/lib/actions/onlyfansTracking';
 import { fetchCreatorFromApify } from '@/lib/actions/submitCreator';
 import FeaturedCreatorsManager from '@/app/OF/featured/FeaturedCreatorsManager';
-import { PLACEMENTS, placementToTierSlot } from '@/lib/adPlacements';
+import { PLACEMENTS, CORE_NETWORK_PLACEMENTS, placementToTierSlot } from '@/lib/adPlacements';
 
 // ── Launch placement picker, organized into the owner's mental tiers ──
 // Each entry maps to REAL placement ids from lib/adPlacements.ts (the engine's source of truth).
@@ -72,13 +72,7 @@ const LAUNCH_TIERS: { tier: string; hint: string; sections: { label: string; pla
 // Top Groups (4) + Top Bots (4) + Top AI NSFW + ALL In-Feed + In-Page block.
 // Deliberately EXCLUDES: Top-10s (hand-picked), OnlyFans-cat feed, Banners & CTA (different ad type),
 // and Articles CTA (managed from Articles).
-const CORE_BLAST_PLACEMENTS: string[] = [
-  'top-groups-1', 'top-groups-2', 'top-groups-3', 'top-groups-4',
-  'top-bots-1', 'top-bots-2', 'top-bots-3', 'top-bots-4',
-  'ainsfw-featured',
-  'feed-2', 'feed-3', 'feed-4', 'feed-5',
-  'group-sidebar',
-];
+const CORE_BLAST_PLACEMENTS: string[] = CORE_NETWORK_PLACEMENTS;
 
 // Label lookup for placements (falls back to id).
 const PLACEMENT_PICK_LABEL: Record<string, string> = {

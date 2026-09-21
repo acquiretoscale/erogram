@@ -419,6 +419,9 @@ export async function updateCampaign(
     const pls: string[] = updateData.placements as string[];
     const mapped = pls.map((p) => placementToTierSlot(p)).filter((ts): ts is number => ts != null);
     updateData.tierSlot = mapped.length > 0 ? mapped[0] : null;
+    // Groups/bots feed query requires feedTier: 1. Convert-boost used to leave it null,
+    // so ticking slots never served the ad on in-feed / Top Groups / Top Bots.
+    if (pls.length > 0) updateData.feedTier = 1;
   }
   if ('targetKeywords' in data) updateData.targetKeywords = Array.isArray(data.targetKeywords) ? data.targetKeywords : [];
   if ('weight' in data) updateData.weight = data.weight ?? null;
@@ -613,12 +616,15 @@ export async function getPlacementFeedCampaigns(placement: string, max = 4) {
     placements: placement,
   })
     .select('_id creative destinationUrl slot description category country buttonText name videoUrl badgeText verified adType ofUsername advertiserId priority blockFormat')
-    .sort({ priority: -1, createdAt: -1 })
+    .sort({ createdAt: -1 })
     .lean();
 
   const expiredOF = await getExpiredOFAgencyTargets();
+  const boostFirst = [...(docs as any[])].sort(
+    (a, b) => Number(b.priority === 'boost') - Number(a.priority === 'boost'),
+  );
   const eligible = dropExpiredOFAgencyAds(
-    (docs as any[])
+    boostFirst
       .filter((c) =>
         !cappedCampaigns.has(c._id.toString()) &&
         (!c.advertiserId || !cappedAdvertisers.has(c.advertiserId.toString())),
@@ -666,6 +672,7 @@ export async function getPlacementFeedCampaigns(placement: string, max = 4) {
       verified: Boolean(c.verified),
       adType: c.adType || 'advertiser',
       blockFormat: c.blockFormat || 'card',
+      priority: c.priority === 'boost' ? 'boost' : 'normal',
       ofUsername: c.ofUsername || '',
       ofLikesCount: stats?.likesCount ?? 0,
       ofSubscriberCount: stats?.subscriberCount ?? 0,

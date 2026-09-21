@@ -10,6 +10,7 @@ import ToolCard from '@/app/ainsfw/ToolCard';
 import RecentAdditionsBlock from '@/app/ainsfw/RecentAdditionsBlock';
 import TopAINsfwBlock from '@/app/ainsfw/TopAINsfwBlock';
 import type { AINsfwTool } from '@/app/ainsfw/types';
+import type { FeedCampaign } from '@/app/groups/types';
 import type { ToolStatsData } from '@/lib/actions/ainsfw';
 import AinsfwHeaderActions from '@/components/AinsfwHeaderActions';
 
@@ -23,6 +24,7 @@ interface Props {
   featuredCatalogTools: AINsfwTool[];
   featuredHubStats: Record<string, ToolStatsData>;
   verifiedSlugs?: string[];
+  topAdCampaigns?: FeedCampaign[];
 }
 
 const CATEGORY_DESC: Record<string, string> = {
@@ -45,6 +47,7 @@ export default function CategoryClient({
   featuredCatalogTools,
   featuredHubStats,
   verifiedSlugs = [],
+  topAdCampaigns = [],
 }: Props) {
   const { t } = useTranslation();
   const lp = useLocalePath();
@@ -92,6 +95,7 @@ export default function CategoryClient({
           allStats={featuredHubStats}
           onVoteChange={handleFeaturedVoteChange}
           verifiedSlugs={verifiedSlugs}
+          topAdCampaigns={topAdCampaigns}
         />
 
         <RecentAdditionsBlock tools={recentTools} allStats={recentStats} verifiedSlugs={verifiedSlugs} />

@@ -7,6 +7,8 @@ import { trackClick as trackCampaignClick, trackImpression } from '@/lib/actions
 import { trackTrendingClick } from '@/lib/actions/onlyfansTracking';
 import { useTranslation } from '@/lib/i18n/client';
 import { isGroupsInFeedPlacement } from '@/lib/adPlacements';
+import { ainsfwCtaButtonClass } from '@/lib/ainsfw/ctaButton';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 // PAUSED (2026-07-24, owner order) — performance experiment. Impression pings were
 // server-action POSTs that forced a full re-render of force-dynamic pages on every
@@ -413,6 +415,93 @@ function VideoAdCard({ campaign, handleClick, hidePromoted = false, growthPercen
     );
 }
 
+function capAinsfwAdWords(text: string, max = 18): string {
+    if (!text) return '';
+    const words = text.trim().split(/\s+/);
+    if (words.length <= max) return text;
+    return words.slice(0, max).join(' ') + '…';
+}
+
+/** Compact AI NSFW hub card — same chrome as ToolCard (dark, 154px image, yellow TRY NOW). */
+function AinsfwHubAdCard({
+    campaign,
+    handleClick,
+    imageSrc,
+    setImageSrc,
+    imgRef,
+    isIndex,
+    forceVisible = false,
+    featured = false,
+}: {
+    campaign: FeedCampaign;
+    handleClick: () => void;
+    imageSrc: string;
+    setImageSrc: (src: string) => void;
+    imgRef: React.RefObject<HTMLDivElement | null>;
+    isIndex: number;
+    forceVisible?: boolean;
+    featured?: boolean;
+}) {
+    const { t } = useTranslation();
+    const btnCls = ainsfwCtaButtonClass('card');
+    const showVerified = campaign.verified !== false;
+
+    return (
+        <div className="h-full">
+            <div
+                role="link"
+                tabIndex={0}
+                onClick={handleClick}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleClick(); }}
+                className="relative bg-[#111] rounded-xl overflow-hidden h-full flex flex-col border border-white/10 hover:border-[#22c55e]/50 transition-all duration-150 group cursor-pointer"
+            >
+                <div ref={imgRef} className="relative w-full h-[154px] sm:h-[173px] overflow-hidden bg-[#0a0a0a] shrink-0">
+                    <Image
+                        src={imageSrc}
+                        alt={campaign.name}
+                        fill
+                        sizes="(max-width: 768px) 50vw, 25vw"
+                        className="object-cover"
+                        priority={forceVisible || isIndex < 4}
+                        onError={() => setImageSrc('/assets/image.jpg')}
+                    />
+                    <div className="absolute top-1.5 left-1.5 z-20">
+                        {featured ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#22c55e] text-black text-[9px] font-black uppercase tracking-widest">
+                                <svg className="w-2 h-2" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3a2 2 0 01-2 2H7a2 2 0 01-2-2v-1h14v1z"/></svg>
+                                {t('ainsfw.featured', 'Featured')}
+                            </span>
+                        ) : (
+                            <span className="bg-amber-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider border border-black/20">
+                                Ad
+                            </span>
+                        )}
+                    </div>
+                </div>
+                <div className="p-2.5 sm:p-3 flex flex-col flex-grow">
+                    <h3 className="text-xs sm:text-sm font-black text-white mb-0.5 leading-tight truncate group-hover:text-[#22c55e] transition-colors flex items-center gap-1 min-w-0">
+                        <span className="truncate">{campaign.name}</span>
+                        {showVerified && <VerifiedBadge className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />}
+                    </h3>
+                    {campaign.description ? (
+                        <p className="text-white/70 text-[10px] sm:text-xs line-clamp-2 leading-relaxed flex-grow mb-2">
+                            {capAinsfwAdWords(campaign.description)}
+                        </p>
+                    ) : (
+                        <div className="flex-grow mb-2" />
+                    )}
+                    <div className="flex items-center justify-between pt-1.5 border-t border-white/10 mb-2">
+                        <span className="text-[9px] font-black uppercase tracking-wider text-white/30">Ad</span>
+                    </div>
+                    <div className={`${btnCls} cursor-pointer text-center`}>
+                        {t('ainsfw.tryNow', 'TRY NOW →')}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function PremiumMosaicCard({ campaign, handleClick, growthPercent }: { campaign: FeedCampaign; handleClick: () => void; growthPercent?: number }) {
     const { t } = useTranslation();
     const [imgIdx, setImgIdx] = useState(0);
@@ -785,6 +874,23 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
     if (isTelegram) {
         return null;
+    }
+
+    // AI NSFW hub cards — ToolCard chrome, not the tall groups Featured Bot card
+    const ainsfwPlacement = placementOverride === 'ainsfw-featured' || placementOverride === 'ainsfw-feed';
+    if (ainsfwPlacement && campaign) {
+        return (
+            <AinsfwHubAdCard
+                campaign={campaign}
+                handleClick={() => handleClick()}
+                imageSrc={imageSrc}
+                setImageSrc={setImageSrc}
+                imgRef={imgRef}
+                isIndex={isIndex}
+                forceVisible={forceVisible}
+                featured={placementOverride === 'ainsfw-featured'}
+            />
+        );
     }
 
     // ONLYFANS CREATOR CARD — portrait layout matching /ofsearch style

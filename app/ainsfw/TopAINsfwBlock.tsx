@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Pencil, Save, X } from 'lucide-react';
 import ToolCard from './ToolCard';
+import AdvertCard from '../groups/AdvertCard';
+import type { FeedCampaign } from '../groups/types';
 import type { AINsfwTool } from './types';
 import type { ToolStatsData } from '@/lib/actions/ainsfw';
 import { adminSetFeaturedHubSlugs } from '@/lib/actions/ainsfwAdmin';
@@ -24,6 +26,7 @@ interface TopAINsfwBlockProps {
   featuredHubSlugs: string[];
   allStats?: Record<string, ToolStatsData>;
   featuredCampaignMap?: Record<string, string>;
+  topAdCampaigns?: FeedCampaign[];
   onVoteChange: (slug: string, score: number) => void;
   verifiedSlugs?: string[];
 }
@@ -33,6 +36,7 @@ export default function TopAINsfwBlock({
   featuredHubSlugs,
   allStats,
   featuredCampaignMap = {},
+  topAdCampaigns = [],
   onVoteChange,
   verifiedSlugs = [],
 }: TopAINsfwBlockProps) {
@@ -67,6 +71,13 @@ export default function TopAINsfwBlock({
       : featuredTools.length >= 2
         ? featuredTools.slice(0, 2)
         : [];
+
+  const featuredAd =
+    topAdCampaigns.find((c) => c.priority === 'boost') || topAdCampaigns[0];
+  const toolsInGrid = featuredAd
+    ? displayTools.slice(0, displayTools.length >= 4 ? 3 : 1)
+    : displayTools;
+  const gridCount = toolsInGrid.length + (featuredAd ? 1 : 0);
 
   const canEdit = isAdmin && tools.length > 4;
 
@@ -105,10 +116,10 @@ export default function TopAINsfwBlock({
     }
   };
 
-  if (displayTools.length !== 2 && displayTools.length !== 4 && !editing) return null;
+  if (gridCount !== 2 && gridCount !== 4 && !editing) return null;
 
   const gridCols =
-    displayTools.length === 4
+    gridCount === 4
       ? 'grid grid-cols-2 lg:grid-cols-4 gap-2'
       : 'grid grid-cols-2 gap-2 max-w-xl mx-auto w-full';
 
@@ -139,13 +150,21 @@ export default function TopAINsfwBlock({
             </Link>
           </div>
         </div>
-        {displayTools.length === 2 || displayTools.length === 4 ? (
+        {gridCount === 2 || gridCount === 4 ? (
           <div className={gridCols}>
-            {displayTools.map((tool, i) => (
+            {featuredAd && (
+              <AdvertCard
+                campaign={featuredAd}
+                isIndex={0}
+                forceVisible
+                placementOverride="ainsfw-featured"
+              />
+            )}
+            {toolsInGrid.map((tool, i) => (
               <ToolCard
                 key={tool.slug}
                 tool={tool}
-                index={i}
+                index={featuredAd ? i + 1 : i}
                 initialStats={allStats?.[tool.slug]}
                 onVoteChange={onVoteChange}
                 verified={verifiedSet.has(tool.slug)}

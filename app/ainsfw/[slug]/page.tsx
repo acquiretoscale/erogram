@@ -11,6 +11,7 @@ import ToolDetailClient from '@/app/ainsfw/[slug]/ToolDetailClient';
 import { getFullReview, getVerifiedSlugs, isPaidClientTool } from '@/app/ainsfw/fullReviews';
 import { getListingBlocks } from '@/app/ainsfw/listingBlocks';
 import { getToolStats, getAllToolStats, getApprovedSubmissions } from '@/lib/actions/ainsfw';
+import { getPlacementFeedCampaigns } from '@/lib/actions/campaigns';
 import { resolveFeaturedHubSlugs } from '@/lib/ainsfw/featuredHub';
 import { pickRecentCategoryTools } from '@/app/ainsfw/recentCategoryTools';
 import { getAuthorBySlug } from '@/lib/actions/authors';
@@ -101,7 +102,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const category = getCategoryBySlug(slug);
   if (category) {
     const customCatMeta = getAinsfwCategoryMeta(slug);
-    const title = customCatMeta?.title ?? `Best ${category} Tools 2026 — Erogram`;
+    const title = customCatMeta?.title ?? `Best ${category} Tools 2026`;
     const description = customCatMeta?.en ?? `Browse the top ${category} tools reviewed and ranked by Erogram. Find the best ${category.toLowerCase()} options with real user ratings.`;
     const alternates = buildMetadataAlternates(pathname, locale);
     const url = alternates?.canonical?.toString() || `${CANONICAL_BASE}/ainsfw/${slug}`;
@@ -162,9 +163,10 @@ export default async function AINsfwToolPage({ params }: PageProps) {
   if (category) {
     const tools = getToolsByCategory(category);
     const staticSlugs = new Set(AI_NSFW_TOOLS.map((t) => t.slug));
-    const [allStats, allPaidSubmissions] = await Promise.all([
+    const [allStats, allPaidSubmissions, topAdCampaigns] = await Promise.all([
       getAllToolStats(tools.map((t) => t.slug)),
       getApprovedSubmissions(),
+      getPlacementFeedCampaigns('ainsfw-featured', 4).catch(() => []),
     ]);
     const paidSubmissions = allPaidSubmissions.filter((t) => !staticSlugs.has(t.slug));
     const catalogToolsBySlug = new Map([
@@ -195,6 +197,7 @@ export default async function AINsfwToolPage({ params }: PageProps) {
         featuredCatalogTools={featuredCatalogTools}
         featuredHubStats={featuredHubStats}
         verifiedSlugs={verifiedSlugs}
+        topAdCampaigns={topAdCampaigns}
       />
     );
   }
@@ -223,9 +226,10 @@ export default async function AINsfwToolPage({ params }: PageProps) {
   );
   const listingBlocks = showListingBlocks ? listingBlocksRaw : undefined;
 
-  const [toolStats, aiArticles] = await Promise.all([
+  const [toolStats, aiArticles, topAdCampaigns] = await Promise.all([
     getToolStats(aiTool.slug),
     getBlogArticlesByCategory('ai-nsfw', 4),
+    getPlacementFeedCampaigns('ainsfw-featured', 4).catch(() => []),
   ]);
 
   const featuredHubSlugs = await resolveFeaturedHubSlugs();
@@ -313,6 +317,7 @@ export default async function AINsfwToolPage({ params }: PageProps) {
         featuredHubTools={featuredHubTools}
         featuredHubStats={featuredHubStats}
         verifiedSlugs={verifiedSlugs}
+        topAdCampaigns={topAdCampaigns}
       />
     </>
   );

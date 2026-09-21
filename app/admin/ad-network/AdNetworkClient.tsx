@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { getCampaigns, updateCampaign, deleteCampaign, getCampaignPeriodClicks } from '@/lib/actions/campaigns';
 import { getBoostCampaigns, setBoostLifecycle, convertBoostToPlacedCampaign, type BoostCampaign } from '@/lib/actions/paidCampaigns';
 import { getAdvertisers, updateAdvertiser } from '@/lib/actions/advertisers';
-import { PLACEMENTS, RESERVED_PLACEMENTS, AD_KEYWORDS, canonicalKeyword, tierSlotToPlacement, type PlacementDef } from '@/lib/adPlacements';
+import { PLACEMENTS, RESERVED_PLACEMENTS, AD_KEYWORDS, CORE_NETWORK_PLACEMENTS, canonicalKeyword, tierSlotToPlacement, type PlacementDef } from '@/lib/adPlacements';
 
 type Campaign = {
   _id: string;
@@ -419,7 +419,7 @@ export default function AdNetworkClient() {
     try {
       const res = await convertBoostToPlacedCampaign(token, c.entityType, c.listingId);
       if (res.error || !res.campaignId) { flash(res.error || 'Convert failed'); setActingId(null); return; }
-      flash(res.existed ? 'Already a placed ad — opening it' : 'Converted — now assign slots');
+      flash(res.existed ? 'Already a placed ad — opening it' : 'Converted — core slots are live');
       setEditing(null);
       await loadCampaigns();
       setPendingEditId(res.campaignId);
@@ -688,7 +688,7 @@ export default function AdNetworkClient() {
                         <div className="mt-3 rounded-lg bg-red-500/[0.06] border border-red-500/20 p-3 flex flex-wrap items-center gap-2">
                           <div className="flex-1 min-w-[12rem]">
                             <div className="text-sm font-semibold text-white/90">Place in ad slots</div>
-                            <div className="text-[11px] text-white/40 mt-0.5">Convert into a placeable ad to assign Top Bots / In-Feed / niche slots. Organic boost stays live.</div>
+                            <div className="text-[11px] text-white/40 mt-0.5">Creates a real ad on Top Groups, Top Bots, In-Feed, and AI NSFW. Organic boost stays live.</div>
                           </div>
                           <button
                             onClick={() => convertBoost(c)}
@@ -727,6 +727,38 @@ export default function AdNetworkClient() {
                             <div className="text-[11px] text-pink-300/70 mt-2">Synced with OnlyFans featured rail + Advertisers — changes reflect everywhere.</div>
                           )}
                         </div>
+
+                        {(() => {
+                          const allCoreOn = CORE_NETWORK_PLACEMENTS.every((p) => draftPlacements.includes(p));
+                          return (
+                            <div className="flex flex-wrap items-center gap-2 mb-3">
+                              <button
+                                type="button"
+                                onClick={() => setDraftPlacements((prev) =>
+                                  allCoreOn
+                                    ? prev.filter((p) => !CORE_NETWORK_PLACEMENTS.includes(p))
+                                    : Array.from(new Set([...prev, ...CORE_NETWORK_PLACEMENTS])),
+                                )}
+                                className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide border ${
+                                  allCoreOn
+                                    ? 'bg-red-600 text-white border-red-500'
+                                    : 'bg-emerald-600/15 text-emerald-300 border-emerald-500/40 hover:bg-emerald-600/25'
+                                }`}
+                              >
+                                {allCoreOn ? 'Core network selected' : 'All core placements (Top + In-Feed + AI NSFW)'}
+                              </button>
+                              {draftPlacements.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setDraftPlacements([])}
+                                  className="px-3 py-1.5 rounded-lg text-[11px] font-semibold border border-white/10 bg-white/[0.04] text-white/50 hover:text-white"
+                                >
+                                  Clear
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
 
                         {/* Placement groups */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

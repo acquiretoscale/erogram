@@ -234,7 +234,7 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
           <div className="min-w-0">
             {/* Top AI NSFW Block — hidden when a search or category filter is active */}
             {isDefaultBrowse && (
-              <TopAINsfwBlock tools={tools} featuredHubSlugs={featuredHubSlugs} allStats={allStats} featuredCampaignMap={featuredCampaignMap} onVoteChange={handleVoteChange} verifiedSlugs={verifiedSlugs} />
+              <TopAINsfwBlock tools={tools} featuredHubSlugs={featuredHubSlugs} allStats={allStats} featuredCampaignMap={featuredCampaignMap} topAdCampaigns={topAdCampaigns} onVoteChange={handleVoteChange} verifiedSlugs={verifiedSlugs} />
             )}
 
             {isDefaultBrowse && paginationCurrentPage === 1 && recentTools.length > 0 && (

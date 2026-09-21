@@ -12,6 +12,7 @@ import { voteOnTool, unvoteOnTool, submitReview, trackAinsfwToolClick, type Tool
 import type { ToolStatsData } from '@/lib/actions/ainsfw';
 import type { AuthorProfile } from '@/lib/actions/authors';
 import type { BlogCard } from '@/lib/actions/blog';
+import type { FeedCampaign } from '@/app/groups/types';
 import { getAinsfwTagHref } from '@/lib/ainsfw/internalLinks';
 import { categoryToSlug } from '../data';
 import { AINSFW_CATEGORIES } from '../types';
@@ -65,6 +66,7 @@ interface ToolDetailClientProps {
   featuredHubTools?: AINsfwTool[];
   featuredHubStats?: Record<string, ToolStatsData>;
   verifiedSlugs?: string[];
+  topAdCampaigns?: FeedCampaign[];
 }
 
 const CATEGORY_COLOR: Record<string, string> = {
@@ -606,7 +608,7 @@ function ReviewGlossary({
   );
 }
 
-export default function ToolDetailClient({ tool, fullReview, showVerified = false, aiArticles = [], initialStats, reviewAuthor, listingBlocks, featuredHubSlugs = [], featuredHubTools = [], featuredHubStats = {}, verifiedSlugs = [] }: ToolDetailClientProps) {
+export default function ToolDetailClient({ tool, fullReview, showVerified = false, aiArticles = [], initialStats, reviewAuthor, listingBlocks, featuredHubSlugs = [], featuredHubTools = [], featuredHubStats = {}, verifiedSlugs = [], topAdCampaigns = [] }: ToolDetailClientProps) {
   const { t, lp, catLabel, tryFree, tryForFree, reviewsLabel } = useAinsfwChrome();
   const placeholder = '/assets/image.jpg';
   const [imageSrc, setImageSrc] = useState(
@@ -1305,6 +1307,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                   allStats={featuredHubStats}
                   onVoteChange={handleFeaturedVoteChange}
                   verifiedSlugs={verifiedSlugs}
+                  topAdCampaigns={topAdCampaigns}
                 />
               )}
 

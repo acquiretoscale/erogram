@@ -349,11 +349,10 @@ export async function setBoostLifecycle(
 }
 
 /**
- * Convert a boosted listing into a REAL, placeable ad-network Campaign so the owner can assign it
- * to ad slots (placements) like any other ad. The organic boost is left intact (max visibility:
- * it keeps ranking AND can run in placed slots). Idempotent — re-converting returns the existing
- * campaign. The campaign is self-contained (creative + destinationUrl); placements are assigned
- * afterwards via the normal ad-network placement editor.
+ * Convert a boosted listing into a REAL, placeable ad-network Campaign on the core network
+ * (Top Groups, Top Bots, in-feed, AI NSFW, join-page sidebar). Organic boost ranking stays.
+ * Idempotent — re-converting returns the existing campaign, and fills core slots if it was
+ * left unplaced (empty placements + no feedTier, which the feed query cannot serve).
  *
  * adType: bot → 'featured-bot', ainsfw → 'featured-nsfw', group → 'advertiser'.
  * Owned by the "EROGRAM" ad-network advertiser (all in-house ads roll up there).
@@ -373,12 +372,36 @@ export async function convertBoostToPlacedCampaign(
 
   // Idempotent: one placed campaign per listing, tagged via internalName so we never duplicate.
   const marker = `boost-converted:${entityType}:${listingId}`;
-  const existing: any = await Campaign.findOne({ internalName: marker }).select('_id').lean();
-  if (existing) return { ok: true, campaignId: String(existing._id), existed: true };
-
+  const { CORE_NETWORK_PLACEMENTS, placementToTierSlot } = await import('@/lib/adPlacements');
+  const placements = [...CORE_NETWORK_PLACEMENTS];
+  const mapped = placements.map((p) => placementToTierSlot(p)).filter((ts): ts is number => ts != null);
   const adType = entityType === 'bot' ? 'featured-bot' : entityType === 'ainsfw' ? 'featured-nsfw' : 'advertiser';
+  const buttonText = entityType === 'bot' ? 'TRY IT NOW' : entityType === 'ainsfw' ? 'Try Now' : 'Join Group';
+  const description = String(listing.description || '').replace(/\s+/g, ' ').trim().slice(0, 220);
   const basePath = entityType === 'bot' ? 'bots' : entityType === 'ainsfw' ? 'ai-nsfw' : 'groups';
   const destinationUrl = listing.telegramLink || (listing.slug ? `https://erogramx.com/${basePath}/${listing.slug}` : 'https://erogramx.com');
+
+  const existing: any = await Campaign.findOne({ internalName: marker }).select('_id placements feedTier').lean();
+  if (existing) {
+    // Convert used to create an empty, unservable shell. If this listing is still unplaced, fill core slots now.
+    const empty = !Array.isArray(existing.placements) || existing.placements.length === 0;
+    if (empty) {
+      const patch: Record<string, unknown> = {
+        placements,
+        feedTier: 1,
+        tierSlot: mapped[0] ?? 5,
+        description: description || existing.description || '',
+        buttonText,
+        priority: 'boost',
+        status: 'active',
+        isVisible: true,
+      };
+      const creative = resolveImage(listing.image);
+      if (creative) patch.creative = creative;
+      await Campaign.findByIdAndUpdate(existing._id, { $set: patch });
+    }
+    return { ok: true, campaignId: String(existing._id), existed: !empty };
+  }
 
   const adnet: any = await Advertiser.findOne({ name: 'EROGRAM' }).select('_id').lean();
   if (!adnet) return { error: 'Ad-network advertiser "EROGRAM" not found' };
@@ -396,8 +419,13 @@ export async function convertBoostToPlacedCampaign(
     status: 'active',
     isVisible: true,
     adType,
-    placements: [],
-    priority: 'normal',
+    description,
+    buttonText,
+    verified: Boolean(listing.showVerified),
+    placements,
+    feedTier: 1,
+    tierSlot: mapped[0] ?? 5,
+    priority: 'boost',
   });
 
   return { ok: true, campaignId: String(created._id), existed: false };
