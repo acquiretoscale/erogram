@@ -1,8 +1,0 @@
-#!/usr/bin/expect -f
-# Usage: SSH_PASS='yourpass' ./do-explore.exp
-set timeout 30
-set ssh_pass $env(SSH_PASS)
-spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@164.92.231.214 {bash -c "echo '=== /root/erogram CONTENTS ==='; ls -la /root/erogram/; echo; echo '=== PM2 LIST ==='; export NVM_DIR=/root/.nvm; [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"; pm2 list 2>/dev/null; echo; echo '=== FIND BOT/STRANGER/CONFESSION ==='; find /root -maxdepth 4 -type d \\( -name '*bot*' -o -name '*stranger*' -o -name '*confession*' -o -name '*talk*' \\) 2>/dev/null; echo; echo '=== EROGRAM SUBDIRS ==='; find /root/erogram -maxdepth 2 -type d 2>/dev/null; echo; echo '=== ANY package.json ==='; find /root -maxdepth 5 -name package.json 2>/dev/null | head -20"}
-expect "password:"
-send "$ssh_pass\r"
-expect eof
