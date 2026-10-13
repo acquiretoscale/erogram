@@ -9,7 +9,7 @@ import BestAiToolsIndexClient from '@/app/best-ai-nsfw-tools/BestAiToolsIndexCli
 export const revalidate = 300;
 
 const canonicalBase = CANONICAL_BASE;
-const INDEX_TITLE = 'Best Adult AI Tools Rankings | Erogram';
+const INDEX_TITLE = 'Best Adult AI Tools Rankings';
 const INDEX_DESC =
   'Browse Erogram top 10 rankings of the best adult AI tools by category. Curated lists of AI girlfriends, undress apps, NSFW generators, sexting chat, and more.';
 

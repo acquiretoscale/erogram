@@ -3,7 +3,7 @@ import { Metadata } from 'next';
 import AINSFWPreviewClient from './AINSFWPreviewClient';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-const title = 'Preview AI NSFW Listing | Erogram';
+const title = 'Preview AI NSFW Listing';
 const description = 'Review your AI NSFW tool listing on Erogram before checkout.';
 
 export const metadata: Metadata = {

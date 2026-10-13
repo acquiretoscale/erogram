@@ -4,7 +4,7 @@ import Footer from '@/components/Footer';
 import MyListingsClient from './MyListingsClient';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-const title = 'Manage Your Campaigns | Erogram';
+const title = 'Manage Your Campaigns';
 const description = 'Manage your Erogram listings and advertising campaigns.';
 
 export const metadata: Metadata = {

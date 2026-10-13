@@ -16,7 +16,7 @@ const PAGE_DESCRIPTION =
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const pathname = await getPathname();
-  const title = `${PAGE_TITLE} | Erogram`;
+  const title = `${PAGE_TITLE}`;
   const description = PAGE_DESCRIPTION;
   const alternates = buildMetadataAlternates(pathname, locale);
   const url = alternates?.canonical?.toString() || PAGE_URL;

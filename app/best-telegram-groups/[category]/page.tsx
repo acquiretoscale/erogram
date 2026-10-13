@@ -26,9 +26,9 @@ interface PageProps {
     params: Promise<{ category: string }>;
 }
 
-/** Bing errors on titles over 70 chars. The root layout appends " | Erogram" (10 chars). */
+/** Bing errors on titles over 70 chars. The root layout appends " | EROGRAMX.com" (15 chars). */
 const MAX_TITLE_LENGTH = 68;
-const BRAND_SUFFIX_LENGTH = 10;
+const BRAND_SUFFIX_LENGTH = 15;
 
 export async function generateStaticParams() {
     await connectDB();
@@ -73,29 +73,31 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     // one of three sentence shapes for life (derived from its own slug, so it never
     // changes between crawls) and every locale gets its own wording.
     const variant = [...canonicalSlug].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % 3;
+    const alreadyPornTelegram = /porn/i.test(realCategory) && /telegram/i.test(realCategory);
+    const nsfwPhrase = alreadyPornTelegram ? '& best porn' : 'Porn Telegram';
     const titleVariants: Record<Locale, { full: [string, string, string]; compact: [string, string, string] }> = {
         en: {
             full: [
                 `Join Active ${realCategory} Telegram Groups & Channels in ${year}`,
                 `Top Rated ${realCategory} Telegram Groups to Join in ${year}`,
-                `${realCategory} NSFW Telegram Groups & Channels List in ${year}`,
+                `${realCategory} ${nsfwPhrase} Groups & Channels List in ${year}`,
             ],
             compact: [
                 `Join Active ${realCategory} Telegram Groups in ${year}`,
                 `Top ${realCategory} Telegram Groups to Join in ${year}`,
-                `${realCategory} NSFW Telegram Groups in ${year}`,
+                `${realCategory} ${nsfwPhrase} Groups in ${year}`,
             ],
         },
         de: {
             full: [
                 `Aktive ${realCategory} Telegram Gruppen & Kanäle beitreten ${year}`,
                 `Top ${realCategory} Telegram Gruppen zum Beitreten im Jahr ${year}`,
-                `${realCategory} NSFW Telegram Gruppen & Kanäle Liste ${year}`,
+                `${realCategory} ${nsfwPhrase} Gruppen & Kanäle Liste ${year}`,
             ],
             compact: [
                 `Aktive ${realCategory} Telegram Gruppen ${year}`,
                 `Top ${realCategory} Telegram Gruppen ${year}`,
-                `${realCategory} NSFW Telegram Gruppen ${year}`,
+                `${realCategory} ${nsfwPhrase} Gruppen ${year}`,
             ],
         },
         es: {
@@ -123,7 +125,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
             ],
         },
     };
-    // Bing rejects titles over 70 chars; the root layout appends " | Erogram" (10).
+    // Bing rejects titles over 70 chars; the root layout appends " | EROGRAMX.com" (15).
     const set = titleVariants[locale] || titleVariants.en;
     const fullTitle = set.full[variant];
     const title = fullTitle.length + BRAND_SUFFIX_LENGTH > MAX_TITLE_LENGTH ? set.compact[variant] : fullTitle;

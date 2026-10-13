@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import ImageToVideoClient from './ImageToVideoClient';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-const title = 'Image to Video | Erogram';
+const title = 'Image to Video';
 const description = 'Turn a photo into a short AI video clip.';
 
 export const metadata: Metadata = {

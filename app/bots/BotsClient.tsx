@@ -39,6 +39,7 @@ interface Bot {
   advertisementUrl?: string;
   pinned?: boolean;
   topBot?: boolean;
+  topBotSlot?: number | null;
   boosted?: boolean;
   showVerified?: boolean;
   clickCount?: number;
@@ -321,7 +322,7 @@ export default function BotsClient({ initialBots, initialTopBots = [], initialAd
   // Top Bots: paid boosted bots + assigned ads rotate together per spot (same law as Top Groups).
   type TopBotsSpot = { kind: 'ad'; campaign: FeedCampaign } | { kind: 'bot'; bot: Bot };
   const feedCampKey = (feedCampaigns ?? []).map((c) => c._id).join(',');
-  const topBotKey = topBots.map((b) => `${b._id}:${b.boosted ? 1 : 0}`).join(',');
+  const topBotKey = topBots.map((b) => `${b._id}:${b.boosted ? 1 : 0}:${b.topBotSlot ?? ''}`).join(',');
   const topSpotPicks = useMemo(() => {
     const picks: Record<number, TopBotsSpot | null> = { 0: null, 1: null, 2: null, 3: null };
     const usedKeys = new Set<string>();
@@ -331,10 +332,17 @@ export default function BotsClient({ initialBots, initialTopBots = [], initialAd
     const pickForSlot = (spot: number): TopBotsSpot | null => {
       const tierSlot = spot + 7;
       const placement = `top-bots-${spot + 1}`;
+      const manualPin = topBots.find((b) => b.topBotSlot === spot + 1);
+      if (manualPin && !usedKeys.has(`bot:${manualPin._id}`)) {
+        usedKeys.add(`bot:${manualPin._id}`);
+        return { kind: 'bot', bot: manualPin };
+      }
       const adPool = (feedCampaigns ?? []).filter(
         (c) => c.tierSlot === tierSlot && c.placement === placement && !usedKeys.has(`ad:${c._id}`),
       );
-      const botPool = topBots.filter((b) => !usedKeys.has(`bot:${b._id}`));
+      const botPool = topBots.filter(
+        (b) => !usedKeys.has(`bot:${b._id}`) && !b.topBotSlot,
+      );
 
       type DrawEntry = TopBotsSpot & { weight: number };
       const draw: DrawEntry[] = [];

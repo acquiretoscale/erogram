@@ -32,7 +32,7 @@ export async function generateMetadata(props: PublicProfilePageProps) {
   }
 
   return {
-    title: `${user.firstName || username} | Erogram`,
+    title: `${user.firstName || username}`,
     description: user.bio || `Profile of ${username} on Erogram`,
   };
 }

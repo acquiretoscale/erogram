@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import PartnersClient from './PartnersClient';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-const title = 'Partners | Erogram.pro';
+const title = 'Partners';
 const description = 'Link exchange partners on Erogram.pro.';
 
 export const metadata: Metadata = {

@@ -4,13 +4,13 @@ import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import { isExploreCategoryListed } from '@/lib/explore/applyExploreAdmin';
 import { loadExplorePageCategories } from '@/lib/explore/loadExplorePageCategories';
 
-const title = 'Explore | ErogramX';
+const title = 'Explore';
 const description = 'Adult website directory by category.';
 
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: { absolute: title },
+  title,
   description,
   other: { rating: 'adult' },
   alternates: { canonical: `${CANONICAL_BASE}/best-porn` },

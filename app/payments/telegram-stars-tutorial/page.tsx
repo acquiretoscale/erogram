@@ -13,7 +13,7 @@ const PREMIUM_GOLD = {
   boxShadow: '0 0 10px rgba(201,151,58,0.45)',
 };
 
-const title = 'Telegram Stars Payment Tutorial | Erogram';
+const title = 'Telegram Stars Payment Tutorial';
 const description =
   'Step-by-step guide to paying for Erogram VIP with a bank card, Apple Pay, or Google Pay through Telegram Stars.';
 

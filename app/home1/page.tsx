@@ -15,7 +15,7 @@ export const revalidate = 300;
 const AI_BOTS_BASE = 400;
 const OF_CREATORS_BASE = 1_813_055;
 
-const home1Title = 'Erogram — Design Preview';
+const home1Title = 'Design Preview';
 const home1Description = 'Internal design preview of the Erogram homepage.';
 
 // Staging twin of the homepage — never index it (avoids duplicate-content with /).

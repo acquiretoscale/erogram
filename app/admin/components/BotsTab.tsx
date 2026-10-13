@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
-import { getBots, updateBot, deleteBot, moveBotToGroup, setBotBoost } from '@/lib/actions/adminBots';
+import { getBots, updateBot, deleteBot, moveBotToGroup, setBotBoost, getTopBotSlots, clearTopBotSlot } from '@/lib/actions/adminBots';
 import { compressImage } from '@/lib/utils/compressImage';
 import { categories, countries } from '@/app/bots/constants';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
@@ -52,8 +52,12 @@ export default function BotsTab() {
         status: 'pending' as 'pending' | 'approved' | 'rejected',
         pinned: false,
         topBot: false,
+        topBotSlot: null as number | null,
         showVerified: false,
     });
+    const [topBotSlots, setTopBotSlots] = useState<
+        { _id: string; name: string; slug: string; image: string; topBotSlot: number; boostExpiresAt?: string | null }[]
+    >([]);
     const [isSaving, setIsSaving] = useState(false);
     const [boostModal, setBoostModal] = useState<any | null>(null);
     const [boostDuration, setBoostDuration] = useState<'1d' | '7d' | '14d' | '30d' | 'lifetime'>('7d');
@@ -69,12 +73,23 @@ export default function BotsTab() {
         fetchBots();
     }, []);
 
+    const fetchTopBotSlots = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const slots = await getTopBotSlots(token || '');
+            setTopBotSlots(slots);
+        } catch {
+            /* non-fatal */
+        }
+    };
+
     const fetchBots = async () => {
         try {
             const token = localStorage.getItem('token');
             const data = await getBots(token || '');
             setBots(data);
             setError('');
+            await fetchTopBotSlots();
         } catch (err: any) {
             setError(err.message || 'Failed to load bots');
         } finally {
@@ -154,6 +169,7 @@ export default function BotsTab() {
             status: bot.status || 'pending',
             pinned: bot.pinned || false,
             topBot: bot.topBot || false,
+            topBotSlot: bot.topBotSlot ?? null,
             showVerified: bot.showVerified ?? false,
         });
         setShowEditor(true);
@@ -290,6 +306,47 @@ export default function BotsTab() {
                     <span className="text-green-400 font-bold">{totalClicks24h.toLocaleString()} <span className="text-[#666] font-normal">24h</span></span>
                     <span className="text-white font-bold">{totalClicks7d.toLocaleString()} <span className="text-[#666] font-normal">7d</span></span>
                     <span className="text-[#999] font-bold">{totalClicks.toLocaleString()} <span className="text-[#666] font-normal">lifetime</span></span>
+                </div>
+            </div>
+
+            {/* Fixed Top Bots row on /bots (cards 1–4) */}
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+                <p className="text-xs font-bold text-amber-200 mb-2">Top Bots row on /bots (fixed slots)</p>
+                <p className="text-[10px] text-[#888] mb-3">
+                    Pin a bot to card 1–4. Other slots still rotate ads + boosted bots. Boost sets paid priority; slot pin sets exact position.
+                </p>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                    {[1, 2, 3, 4].map((slot) => {
+                        const assigned = topBotSlots.find((b) => b.topBotSlot === slot);
+                        return (
+                            <div key={slot} className="rounded-lg border border-white/10 bg-[#111] p-2 min-h-[72px]">
+                                <div className="text-[10px] font-bold text-[#666] uppercase mb-1">Card {slot}</div>
+                                {assigned ? (
+                                    <div className="flex items-center gap-2">
+                                        <img src={assigned.image || PLACEHOLDER_IMAGE_URL} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[11px] font-semibold text-white truncate">{assigned.name}</p>
+                                            <p className="text-[9px] text-[#666] truncate">/{assigned.slug}</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={async () => {
+                                                if (!confirm(`Clear card ${slot}?`)) return;
+                                                const token = localStorage.getItem('token');
+                                                await clearTopBotSlot(token || '', slot as 1 | 2 | 3 | 4);
+                                                await fetchBots();
+                                            }}
+                                            className="text-[10px] text-red-400 hover:text-red-300 shrink-0"
+                                        >
+                                            Clear
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <p className="text-[10px] text-[#555]">Empty — set in bot editor</p>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 
@@ -485,6 +542,27 @@ export default function BotsTab() {
                                             <input type="checkbox" checked={botData.topBot} onChange={(e) => setBotData({ ...botData, topBot: e.target.checked })} className="w-5 h-5 rounded border-white/10 bg-[#1a1a1a] text-yellow-500 focus:ring-yellow-500" />
                                             <span className="text-white font-medium text-sm">Top Bot 🏆</span>
                                         </label>
+                                        <div>
+                                            <label className="block text-xs font-bold text-[#666] uppercase mb-1">Top Bots card (fixed)</label>
+                                            <select
+                                                value={botData.topBotSlot ?? ''}
+                                                onChange={(e) => {
+                                                    const v = e.target.value;
+                                                    setBotData({
+                                                        ...botData,
+                                                        topBotSlot: v === '' ? null : Number(v),
+                                                        topBot: v !== '' ? true : botData.topBot,
+                                                    });
+                                                }}
+                                                className="w-full p-2.5 bg-[#1a1a1a] border border-white/10 rounded-xl text-white text-sm"
+                                            >
+                                                <option value="">None (rotation only)</option>
+                                                <option value="1">Card 1 — top-bots-1</option>
+                                                <option value="2">Card 2 — top-bots-2</option>
+                                                <option value="3">Card 3 — top-bots-3</option>
+                                                <option value="4">Card 4 — top-bots-4</option>
+                                            </select>
+                                        </div>
                                         <label className="flex items-center gap-3 cursor-pointer">
                                             <input type="checkbox" checked={botData.showVerified ?? false} onChange={(e) => setBotData({ ...botData, showVerified: e.target.checked })} className="w-5 h-5 rounded border-white/10 bg-[#1a1a1a] text-[#b31b1b] focus:ring-[#b31b1b]" />
                                             <span className="text-white font-medium text-sm">Verified checkmark</span>

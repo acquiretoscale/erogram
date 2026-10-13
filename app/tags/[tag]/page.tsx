@@ -18,9 +18,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const locale = await getLocale();
   const { tag } = await params;
   const detail = await getTagDetail(tag, locale);
-  if (!detail) return { title: 'Tag Not Found | Erogram' };
+  if (!detail) return { title: 'Tag Not Found' };
 
-  const title = `${detail.label} — Groups & Creators | Erogram`;
+  const title = `${detail.label} — Groups & Creators`;
   const description = `Browse ${detail.total} ${detail.label} Telegram groups and OnlyFans creators on Erogram.`;
   const canonical = `${BASE}${localePath(`/tags/${detail.slug}`, locale)}`;
 

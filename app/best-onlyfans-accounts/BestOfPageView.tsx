@@ -214,8 +214,8 @@ export async function buildBestOfMetadata(slug: string, variant: RankingVariant 
   const adj = hookAdjective(slug, locale);
   const blogPath = rankingPublicPath(slug, locale, variant);
 
-  // Meta title — PimpBunny replica. The layout template ("%s | Erogram") appends the brand,
-  // producing "Top {10|50} {Label} OnlyFans Models In {year} | Erogram" — do NOT add it here.
+  // Meta title — PimpBunny replica. The layout template ("%s | EROGRAMX.com") appends the brand.
+  // Do NOT add it here.
   const n = rankingListSize(slug);
   const titleMap: Record<Locale, string> = {
     en: rankingTitle(label, year, 'en', variant, slug),

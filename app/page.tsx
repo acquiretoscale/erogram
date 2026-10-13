@@ -35,7 +35,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const dict = await getDictionary(locale);
   const m = dict.meta || {};
 
-  const title = m.homeTitle || 'Erogram | Best NSFW Telegram Groups, Bots & AI Tools Directory (2026)';
+  const title = m.homeTitle || 'Best Porn Telegram Groups, Bots, VR, Porn sites & AI Tools (2026)';
   const description = m.homeDesc || 'The best NSFW & Porn Telegram groups directory. Browse thousands of verified adult Telegram and AI bots, onlyfans, AI NSFW Tools & more. Updated daily.';
 
   const alternates = buildMetadataAlternates(pathname, locale);

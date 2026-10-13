@@ -7,11 +7,11 @@ import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'Community Members | Erogram',
+  title: 'Community Members',
   description: 'Browse the Erogram community. See who recently joined the platform.',
   alternates: { canonical: `${CANONICAL_BASE}/community` },
   ...buildSocialMeta({
-    title: 'Community Members | Erogram',
+    title: 'Community Members',
     description: 'Browse the Erogram community. See who recently joined the platform.',
     url: `${CANONICAL_BASE}/community`,
     type: 'website',

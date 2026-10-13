@@ -57,14 +57,14 @@ export async function generateMetadata(): Promise<Metadata> {
   const dict = await getDictionary(locale);
   const m = dict.meta || {};
 
-  const title = m.homeTitle || "Erogram | Best NSFW Telegram Groups, Bots & AI Tools Directory (2026)";
+  const title = m.homeTitle || "Best Porn Telegram Groups, Bots, VR, Porn sites & AI Tools (2026)";
   const description = m.homeDesc || "Find and explore the best Telegram groups from around the world. Connect with communities that match your interests.";
 
   const alternates = buildMetadataAlternates(pathname, locale);
   const canonical = alternates?.canonical?.toString() || canonicalBase;
 
   return {
-    title: { default: title, template: "%s | Erogram" },
+    title: { default: title, template: "%s | EROGRAMX.com" },
     description,
     keywords: "porn telegram, telegram porn, best porn telegram groups, nsfw telegram, nsfw telegram groups, adult telegram directory, porn telegram channels, telegram porn groups",
     icons: {

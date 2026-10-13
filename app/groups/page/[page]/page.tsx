@@ -28,8 +28,8 @@ export async function generateMetadata(
   }
 
   const title = page === 1
-    ? 'Discover NSFW Telegram Groups'
-    : `Discover NSFW Telegram Groups – Page ${page}`;
+    ? 'Discover Porn Telegram Groups'
+    : `Discover Porn Telegram Groups – Page ${page}`;
 
   const description = page === 1
     ? 'Browse and discover the best NSFW Telegram groups on Erogram.pro. Find verified adult communities by category, country, and interests. Updated daily with new groups.'

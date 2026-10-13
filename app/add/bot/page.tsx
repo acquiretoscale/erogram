@@ -4,7 +4,7 @@ import AddClient from '@/app/add/AddClient';
 import { filterCategories, filterCountries } from '@/app/groups/constants';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-const title = 'Submit Telegram Bot | Erogram';
+const title = 'Submit Telegram Bot';
 const description = 'List your Telegram bot on the Erogram directory. Normal listing or instant approval with boost options.';
 
 export const metadata: Metadata = {

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import ArchiveClient from './ArchiveClient';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-const title = 'Generation Archive | Erogram';
+const title = 'Generation Archive';
 const description = 'View your past image and video generations.';
 
 export const metadata: Metadata = {

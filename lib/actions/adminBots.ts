@@ -19,6 +19,17 @@ function revalidateBotPage(slug: string) {
   }
 }
 
+function revalidateBotsHub() {
+  try {
+    revalidatePath('/bots');
+    for (const locale of LOCALES) {
+      if (locale !== 'en') revalidatePath(`/${locale}/bots`);
+    }
+  } catch (err) {
+    console.error('[Bot Update] revalidatePath /bots failed:', err);
+  }
+}
+
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
 const BOOST_DURATION_MS: Record<string, number> = {
@@ -141,6 +152,7 @@ export async function setBotBoost(
     throw err;
   }
 
+  revalidateBotsHub();
   return JSON.parse(JSON.stringify(bot));
 }
 
@@ -154,6 +166,18 @@ export async function updateBot(token: string, id: string, data: Record<string, 
   if (!bot) throw new Error('Bot not found');
 
   const oldStatus = bot.status;
+
+  if (data.topBotSlot != null && data.topBotSlot >= 1 && data.topBotSlot <= 4) {
+    await Bot.updateMany(
+      { topBotSlot: data.topBotSlot, _id: { $ne: id } },
+      { $set: { topBotSlot: null } },
+      { strict: false },
+    );
+    data.topBot = true;
+  }
+  if (data.topBotSlot === null || data.topBotSlot === '') {
+    data.topBotSlot = null;
+  }
 
   Object.assign(bot, data);
   bot.reviewedBy = admin._id;
@@ -173,8 +197,62 @@ export async function updateBot(token: string, id: string, data: Record<string, 
   }
 
   revalidateBotPage(bot.slug);
+  if ('topBotSlot' in data || 'topBot' in data || 'boosted' in data) {
+    revalidateBotsHub();
+  }
 
   return JSON.parse(JSON.stringify(bot));
+}
+
+export async function getTopBotSlots(token: string) {
+  const admin = await authenticateAdmin(token);
+  if (!admin) throw new Error('Unauthorized');
+
+  await connectDB();
+  const bots = await Bot.find({ topBotSlot: { $in: [1, 2, 3, 4] }, status: 'approved' })
+    .select('name slug image topBotSlot boosted boostExpiresAt clickCount category')
+    .lean();
+
+  return (bots as any[]).map((b) => ({
+    _id: b._id.toString(),
+    name: b.name,
+    slug: b.slug,
+    image: b.image,
+    topBotSlot: b.topBotSlot,
+    boosted: b.boosted,
+    boostExpiresAt: b.boostExpiresAt,
+    clickCount: b.clickCount || 0,
+    category: b.category || '',
+  }));
+}
+
+export async function setTopBotSlot(token: string, botId: string, slot: 1 | 2 | 3 | 4) {
+  const admin = await authenticateAdmin(token);
+  if (!admin) throw new Error('Unauthorized');
+
+  await connectDB();
+  await Bot.updateMany({ topBotSlot: slot }, { $set: { topBotSlot: null } }, { strict: false });
+  const bot = await Bot.findByIdAndUpdate(
+    botId,
+    { $set: { topBotSlot: slot, topBot: true } },
+    { new: true, strict: false },
+  );
+  if (!bot) throw new Error('Bot not found');
+  if (bot.status !== 'approved') throw new Error('Bot must be approved');
+
+  revalidateBotPage(bot.slug);
+  revalidateBotsHub();
+  return { success: true };
+}
+
+export async function clearTopBotSlot(token: string, slot: 1 | 2 | 3 | 4) {
+  const admin = await authenticateAdmin(token);
+  if (!admin) throw new Error('Unauthorized');
+
+  await connectDB();
+  await Bot.updateMany({ topBotSlot: slot }, { $set: { topBotSlot: null } }, { strict: false });
+  revalidateBotsHub();
+  return { success: true };
 }
 
 export async function deleteBot(token: string, id: string) {

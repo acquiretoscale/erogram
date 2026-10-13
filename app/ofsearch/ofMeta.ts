@@ -102,12 +102,12 @@ export function categoryOfMeta(locale: Locale, catSlug: string, label: string): 
 
   const ogTitle =
     locale === 'de'
-      ? `Beste ${label} OnlyFans Creator (2026) | Erogram`
+      ? `Beste ${label} OnlyFans Creator (2026)`
       : locale === 'es'
-      ? `Mejores Creadoras ${label} de OnlyFans (2026) | Erogram`
+      ? `Mejores Creadoras ${label} de OnlyFans (2026)`
       : locale === 'pt'
-      ? `Melhores Criadoras ${label} de OnlyFans (2026) | Erogram`
-      : `Best ${label} OnlyFans Creators (2026) | Erogram`;
+      ? `Melhores Criadoras ${label} de OnlyFans (2026)`
+      : `Best ${label} OnlyFans Creators (2026)`;
 
   return {
     title,
@@ -127,10 +127,10 @@ export function topCreatorsOfMeta(locale: Locale): Metadata {
   const current = topPath(locale);
 
   const title: Record<Locale, string> = {
-    en: 'Top OnlyFans Creators in 2026 — Most Popular Accounts Ranked | Erogram',
-    de: 'Top OnlyFans Creator 2026 — Beliebteste Accounts im Ranking | Erogram',
-    es: 'Top Creadoras de OnlyFans 2026 — Las Más Populares en el Ranking | Erogram',
-    pt: 'Top Criadoras de OnlyFans 2026 — As Mais Populares no Ranking | Erogram',
+    en: 'Top OnlyFans Creators in 2026 — Most Popular Accounts Ranked',
+    de: 'Top OnlyFans Creator 2026 — Beliebteste Accounts im Ranking',
+    es: 'Top Creadoras de OnlyFans 2026 — Las Más Populares en el Ranking',
+    pt: 'Top Criadoras de OnlyFans 2026 — As Mais Populares no Ranking',
   };
   const desc: Record<Locale, string> = {
     en: 'Discover the most popular OnlyFans creators in 2026. Ranked by likes and subscriber count on OFsearch — updated daily.',
@@ -139,10 +139,10 @@ export function topCreatorsOfMeta(locale: Locale): Metadata {
     pt: 'Descubra as criadoras de OnlyFans mais populares em 2026. Classificadas por likes e assinantes no OFsearch — atualizado diariamente.',
   };
   const ogTitle: Record<Locale, string> = {
-    en: 'Top OnlyFans Creators in 2026 | Erogram',
-    de: 'Top OnlyFans Creator 2026 | Erogram',
-    es: 'Top Creadoras de OnlyFans 2026 | Erogram',
-    pt: 'Top Criadoras de OnlyFans 2026 | Erogram',
+    en: 'Top OnlyFans Creators in 2026',
+    de: 'Top OnlyFans Creator 2026',
+    es: 'Top Creadoras de OnlyFans 2026',
+    pt: 'Top Criadoras de OnlyFans 2026',
   };
 
   return {

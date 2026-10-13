@@ -93,6 +93,7 @@ export async function GET(req: NextRequest) {
       const topBotOr = {
         $or: [
           { topBot: true },
+          { topBotSlot: { $in: [1, 2, 3, 4] } },
           { boosted: true, boostExpiresAt: null },
           { boosted: true, boostExpiresAt: { $gt: now } },
         ],
@@ -255,6 +256,7 @@ export async function GET(req: NextRequest) {
       advertisementUrl: b.advertisementUrl || null,
       pinned: b.pinned || false,
       topBot: b.topBot || false,
+      topBotSlot: b.topBotSlot ?? null,
       boosted: b.boosted || false,
       boostExpiresAt: b.boostExpiresAt || null,
       clickCount: b.clickCount || 0,

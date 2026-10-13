@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import AINSFWListingsClient from './AINSFWListingsClient';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-const title = 'My AI NSFW Listings | Erogram';
+const title = 'My AI NSFW Listings';
 const description = 'Manage your AI NSFW tool listings on Erogram.';
 
 export const metadata: Metadata = {

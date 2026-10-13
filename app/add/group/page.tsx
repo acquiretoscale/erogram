@@ -4,7 +4,7 @@ import AddClient from '@/app/add/AddClient';
 import { filterCategories, filterCountries } from '@/app/groups/constants';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-const title = 'Submit Telegram Group | Erogram';
+const title = 'Submit Telegram Group';
 const description = 'Add your Telegram group to the Erogram directory. Free listing or instant approval with boost options.';
 
 export const metadata: Metadata = {

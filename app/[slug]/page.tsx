@@ -6,7 +6,7 @@ import { getCreatorReviews } from '@/lib/actions/ofCreatorProfile';
 import { Group, Bot, Post } from '@/lib/models';
 import JoinClient from './JoinClient';
 import { getTelegramMemberCount } from '@/lib/utils/telegram';
-import { getActiveCampaigns, getPlacementFeedCampaigns } from '@/lib/actions/campaigns';
+import { getActiveCampaigns } from '@/lib/actions/campaigns';
 import { getLocale } from '@/lib/i18n/server';
 import { LOCALES, localePath } from '@/lib/i18n';
 import type { Locale } from '@/lib/i18n';
@@ -518,7 +518,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const listingPathname = localePath(listingPath, locale);
     const url = `${BASE_URL}${listingPathname}`;
     const title = `${exploreListing.name} - Visit Porn Website`;
-    const documentTitle = `${title} | ErogramX`;
     const description = resolveEntityMetaDescription(
       '',
       exploreListing.description,
@@ -529,13 +528,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       }),
     );
     return {
-      title: { absolute: documentTitle },
+      title,
       description,
       keywords: `porn website, ${exploreListing.name}, adult website, ${exploreListing.categoryTitle}, porn site, erotic sites, adult listings`,
       other: { rating: 'adult' },
       alternates: { canonical: url },
       ...buildSocialMeta({
-        title: documentTitle,
+        title,
         description,
         url,
         type: 'website',
@@ -550,14 +549,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (group) {
     if (group.premiumOnly) {
       return {
-        title: 'Premium Content — Erogram',
+        title: 'Premium Content',
         robots: { index: false, follow: false },
       };
     }
 
     if (group.category === 'Hentai') {
       return {
-        title: `${group.name} — Erogram`,
+        title: group.name,
         robots: { index: false, follow: false },
       };
     }
@@ -565,7 +564,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const groupUrl = `${BASE_URL}${pathname}`;
 
     // Title comes from the database (user-submitted content)
-    const ogTitle = `${group.name} - Join NSFW Telegram Group`;
+    const ogTitle = `${group.name} - Join Porn Telegram Group`;
 
     // Description prefers the master list (generated + injected).
     // Falls back to the entity's own description if no master entry yet.
@@ -585,7 +584,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     );
 
     return {
-      // Root layout already appends "| Erogram" via `metadata.title.template`.
+      // Root layout already appends "| EROGRAMX.com" via `metadata.title.template`.
       title: ogTitle,
       description,
       keywords: `NSFW telegram group, ${group.name}, adult telegram community, ${(group.categories || [group.category, group.country].filter(Boolean)).join(', ')}, telegram chat, erotic groups, adult messaging`,
@@ -611,7 +610,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (bot) {
     const botUrl = `${BASE_URL}${pathname}`;
 
-    const botTitle = `${bot.name} - Use NSFW Telegram Bot`;
+    const botTitle = `${bot.name} - Use Porn Telegram Bot`;
 
     // Description from master list (preferred), title from DB
     const masterBotDesc = getBotMetaDescription(bot.slug, locale);
@@ -653,7 +652,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   // If nothing found
-  const notFoundTitle = 'Not Found - Discover NSFW Telegram Communities';
+  const notFoundTitle = 'Not Found - Discover Porn Telegram Communities';
   const notFoundDescription = 'The requested NSFW Telegram community or bot could not be found. Discover thousands of adult communities and bots on Erogram.pro.';
   return {
     title: notFoundTitle,
@@ -803,13 +802,11 @@ export default async function JoinPage({ params }: PageProps) {
       };
     }
 
-    const [joinCtaCampaigns, topBannerCampaigns, vaultTeaser, featuredCreators, sidebarAdsAgnostic, rankingCoverImages] = await Promise.all([
+    const [joinCtaCampaigns, topBannerCampaigns, vaultTeaser, featuredCreators, rankingCoverImages] = await Promise.all([
       getActiveCampaigns('join-cta'),
       getActiveCampaigns('top-banner', { page: 'join', device: isMobile ? 'mobile' : 'desktop' }),
       getVaultTeaser(),
       getTrendingCreators().catch(() => []),
-      // Agnostic group-sidebar ads (any adType: OF creator, advertiser, …) — up to 4, like Top Groups.
-      getPlacementFeedCampaigns('group-sidebar', 4).catch(() => []),
       getRankingCoverImages(),
     ]);
     const joinCtaCampaign = joinCtaCampaigns[0] ?? null;
@@ -837,7 +834,7 @@ export default async function JoinPage({ params }: PageProps) {
             />
           </>
         )}
-        <JoinClient entity={group} type="group" similarGroups={similarGroups} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} isDeleted={group.status === 'deleted'} vaultTeaser={vaultTeaser} featuredCreators={sidebarCreators} sidebarAds={sidebarAdsAgnostic} rankingCoverImages={rankingCoverImages} />
+        <JoinClient entity={group} type="group" similarGroups={similarGroups} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} isDeleted={group.status === 'deleted'} vaultTeaser={vaultTeaser} featuredCreators={sidebarCreators} rankingCoverImages={rankingCoverImages} />
       </>
     );
   }
@@ -915,13 +912,12 @@ export default async function JoinPage({ params }: PageProps) {
       } : {}),
     };
 
-    const [joinCtaCampaigns2, topBannerCampaigns2, vaultTeaser2, featuredCreators2, botStatsData, sidebarAdsAgnostic2] = await Promise.all([
+    const [joinCtaCampaigns2, topBannerCampaigns2, vaultTeaser2, featuredCreators2, botStatsData] = await Promise.all([
       getActiveCampaigns('join-cta'),
       getActiveCampaigns('top-banner', { page: 'join', device: isMobile ? 'mobile' : 'desktop' }),
       getVaultTeaser(),
       getTrendingCreators().catch(() => []),
       getBotStats(bot.slug),
-      getPlacementFeedCampaigns('group-sidebar', 4).catch(() => []),
     ]);
     const joinCtaCampaign = joinCtaCampaigns2[0] ?? null;
     const topBannerForPage =
@@ -942,7 +938,7 @@ export default async function JoinPage({ params }: PageProps) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplicationJsonLd) }}
         />
-        <JoinClient entity={bot} type="bot" similarGroups={[]} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} vaultTeaser={vaultTeaser2} featuredCreators={sidebarCreators2} sidebarAds={sidebarAdsAgnostic2} botStats={botStatsData} />
+        <JoinClient entity={bot} type="bot" similarGroups={[]} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} vaultTeaser={vaultTeaser2} featuredCreators={sidebarCreators2} botStats={botStatsData} />
       </>
     );
   }

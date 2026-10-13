@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import PartnershipClient from './PartnershipClient';
 
-const title = 'EROgram Badge | Erogram.pro';
+const title = 'EROgram Badge';
 const description =
   'Display a small Featured on EROGRAM badge on your website and unlock free exposure across one of the fastest-growing adult discovery platforms.';
 

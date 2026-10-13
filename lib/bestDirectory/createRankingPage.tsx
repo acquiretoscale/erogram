@@ -8,8 +8,7 @@ import { directoryMetaDescription, directoryPageFromSlug } from './config';
 import { loadRankingItems } from './loadRankings';
 
 const MAX_TITLE_LENGTH = 68;
-const BRAND_SUFFIX_LENGTH = 10;
-const EXPLORE_BRAND_SUFFIX = ' | ErogramX';
+const BRAND_SUFFIX_LENGTH = 15;
 
 function titleSet(label: string, year: number, kind: 'ainsfw' | 'bots' | 'explore') {
   if (kind === 'ainsfw') {
@@ -82,16 +81,14 @@ export function createRankingPage(slug: string) {
           }
         : titleSet(page.label, year, page.kind);
     const fullTitle = set.full[variant];
-    const suffixLen = page.kind === 'explore' ? EXPLORE_BRAND_SUFFIX.length : BRAND_SUFFIX_LENGTH;
-    const title = fullTitle.length + suffixLen > MAX_TITLE_LENGTH ? set.compact[variant] : fullTitle;
-    const documentTitle = page.kind === 'explore' ? `${title}${EXPLORE_BRAND_SUFFIX}` : title;
+    const title = fullTitle.length + BRAND_SUFFIX_LENGTH > MAX_TITLE_LENGTH ? set.compact[variant] : fullTitle;
     const description = directoryMetaDescription(page, year);
     const meta = {
-      title: page.kind === 'explore' ? { absolute: documentTitle } : title,
+      title,
       description,
       alternates,
       ...buildSocialMeta({
-        title: documentTitle,
+        title,
         description,
         url: canonical,
         type: 'website' as const,

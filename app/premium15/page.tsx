@@ -4,7 +4,7 @@ import { Group, SiteConfig } from '@/lib/models';
 import Premium15Client from './Premium15Client';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-const title = 'Upgrade to Premium | Erogram.pro';
+const title = 'Upgrade to Premium';
 const description = 'Unlock the Erogram Private Vault — hundreds of hand-picked Telegram groups, unlimited bookmarks, custom folders, and early access to new features.';
 
 export const metadata: Metadata = {

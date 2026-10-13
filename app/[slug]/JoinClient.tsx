@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import axios from 'axios';
@@ -12,14 +12,12 @@ import BookmarkButton from '@/components/BookmarkButton';
 import ShareDropdown from '@/components/ShareDropdown';
 import { categorySlug } from '@/app/groups/constants';
 import { getButtonConfig, trackEntityView } from '@/lib/actions/publicData';
-import { getActiveCampaigns, getPlacementFeedCampaigns, trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
+import { getActiveCampaigns, trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
 import { trackTrendingClick } from '@/lib/actions/onlyfansTracking';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/placeholder';
 import { getCreatorReviews, submitCreatorReview, type CreatorReviewData } from '@/lib/actions/ofCreatorProfile';
 import FlameReviewSection, { type FlameReviewItem } from '@/components/FlameReviewSection';
 import VaultTeaserFeed from '@/app/groups/VaultTeaserFeed';
-import AdvertCard from '@/app/groups/AdvertCard';
-import type { FeedCampaign } from '@/app/groups/types';
 import { useTranslation, useLocalePath } from '@/lib/i18n';
 import { compressImage } from '@/lib/utils/compressImage';
 import { entityShowsVerifiedBadge } from '@/lib/boostPricing';
@@ -156,7 +154,6 @@ interface JoinClientProps {
   isDeleted?: boolean;
   vaultTeaser?: VaultTeaserItem[];
   featuredCreators?: FeaturedCreator[];
-  sidebarAds?: FeedCampaign[];
   botStats?: BotStatsData;
   rankingCoverImages?: Record<string, string>;
 }
@@ -270,7 +267,7 @@ function VaultTeaserBlock({ items }: { items: VaultTeaserItem[] }) {
   );
 }
 
-export default function JoinClient({ entity, type, similarGroups = [], initialIsMobile = false, initialIsTelegram = false, joinCtaCampaign = null, topBannerCampaigns = [], isDeleted = false, vaultTeaser = [], featuredCreators = [], sidebarAds = [], rankingCoverImages = {} }: JoinClientProps) {
+export default function JoinClient({ entity, type, similarGroups = [], initialIsMobile = false, initialIsTelegram = false, joinCtaCampaign = null, topBannerCampaigns = [], isDeleted = false, vaultTeaser = [], featuredCreators = [], rankingCoverImages = {} }: JoinClientProps) {
   const [countdown, setCountdown] = useState(0);
   const [linkReady, setLinkReady] = useState(false);
   const [buttonConfig, setButtonConfig] = useState<ButtonConfig | null>(null);
@@ -307,13 +304,11 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
   const [groupImage, setGroupImage] = useState(entity.image || PLACEHOLDER_IMAGE_URL);
   const [failedSimilarImages, setFailedSimilarImages] = useState<Record<string, boolean>>({});
   const [userInteracted, setUserInteracted] = useState(false);
-  const [adsReady, setAdsReady] = useState(false);
 
   // LIVE ADS: the page HTML is ISR-cached, so the server-provided ads can be up to
   // 5 min stale. The browser refreshes them right after load so every visitor gets
   // the current campaigns (rotation, new advertisers, ended campaigns).
   const [liveTopBanners, setLiveTopBanners] = useState(topBannerCampaigns);
-  const [liveSidebarAds, setLiveSidebarAds] = useState<FeedCampaign[]>(sidebarAds);
   const [liveJoinCta, setLiveJoinCta] = useState(joinCtaCampaign);
   const [viewCount, setViewCount] = useState(entity.views || 0);
 
@@ -322,7 +317,6 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
   }, [entity._id, entity.views]);
 
   useEffect(() => {
-    setAdsReady(true);
     // View ping — counts every real visit (server no longer counts per render).
     trackEntityView(entity._id, type)
       .then(() => setViewCount((v) => v + 1))
@@ -330,30 +324,16 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
 
     Promise.all([
       getActiveCampaigns('top-banner', { page: 'join' }).catch(() => []),
-      getPlacementFeedCampaigns('group-sidebar', 4).catch(() => []),
       getActiveCampaigns('join-cta').catch(() => []),
-    ]).then(([banners, sidebar, joinCtas]) => {
+    ]).then(([banners, joinCtas]) => {
       const b = banners as any[];
       if (b.length > 0 && b[0].creative) setLiveTopBanners(b as any);
-      if ((sidebar as any[]).length > 0) setLiveSidebarAds(sidebar as any);
       const join = (joinCtas as JoinCtaCampaign[])[0];
       setLiveJoinCta(join?.destinationUrl ? join : null);
     }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entity._id]);
 
-  // Sidebar promo slot: show up to 4 AGNOSTIC ads (any adType, via AdvertCard) like Top Groups,
-  // shuffled per load for rotation. Falls back to EROGRAM PREMIUM when no ads are assigned.
-  const sidebarAdsShuffled = useMemo(() => {
-    const arr = [...liveSidebarAds];
-    if (!adsReady) return arr.slice(0, 4);
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr.slice(0, 4);
-  }, [liveSidebarAds, adsReady]);
-  const showSidebarAds = sidebarAdsShuffled.length > 0 && !initialIsTelegram;
   const clickTrackedRef = useRef(false);
   const { t } = useTranslation();
   const lp = useLocalePath();
@@ -502,12 +482,6 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
       setAuthChecked(true);
     }
 
-    // Wait 3 seconds before allowing ads to load
-    const adTimer = setTimeout(() => {
-      setAdsReady(true);
-    }, 3000);
-
-    return () => clearTimeout(adTimer);
   }, []);
 
   // Handle user interaction - only listen if button hasn't been clicked
@@ -1074,21 +1048,6 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                   </div>
                 )}
                 </JoinWithGroupsCta>
-
-                {showSidebarAds && (
-                  <div className="mt-6 rounded-2xl border border-[#00AFF0]/30 bg-white p-4 shadow-[0_18px_40px_-20px_rgba(0,175,240,0.45)]">
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="text-[#00AFF0]" style={{ fontSize: 14 }}>★</span>
-                      <h3 className="text-sm font-black text-[#0f172a]">FEATURED ON <span className="text-[#00AFF0]">EROGRAM</span></h3>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {sidebarAdsShuffled.map((c, i) => (
-                        <AdvertCard key={c._id} campaign={c} isIndex={i} forceVisible hidePromoted placementOverride={type === 'bot' ? 'group-sidebar-bots' : 'group-sidebar-groups'} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
 
               </div>
               )}

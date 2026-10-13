@@ -70,8 +70,8 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
     tags: ['ai girlfriend', 'ai companion', 'ai sexting', 'ai virtual girlfriend', 'ai chat', 'ai nsfw chat'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards', 'Crypto'],
-    tryNowUrl: 'https://go.cm-trk6.com/aff_c?offer_id=12422&aff_id=93961&url_id=0&aff_sub5=native&source=blog',
-    sourceUrl: 'https://go.cm-trk6.com/aff_c?offer_id=12422&aff_id=93961&url_id=0&aff_sub5=native&source=blog',
+    tryNowUrl: 'https://lovescape.com',
+    sourceUrl: 'https://lovescape.com',
   },
   {
     slug: slugify('AI Girlfriend', 'DreamGF'),
@@ -188,8 +188,8 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
     tags: ['ai girlfriend', 'ai companion', 'ai nsfw chat', 'ai sexting', 'ai virtual girlfriend', 'ai chat'],
     subscription: 'Freemium & Paid',
     payment: ['Credit Cards'],
-    tryNowUrl: 'https://go.cm-trk6.com/aff_c?offer_id=11291&aff_id=93961&url_id=0&aff_sub=top-banner&aff_sub5=banner&source=Erogram',
-    sourceUrl: 'https://go.cm-trk6.com/aff_c?offer_id=11291&aff_id=93961&url_id=0&aff_sub=top-banner&aff_sub5=banner&source=Erogram',
+    tryNowUrl: 'https://candy.ai',
+    sourceUrl: 'https://candy.ai',
   },
   {
     slug: slugify('AI Girlfriend', 'GirlfriendGPT'),

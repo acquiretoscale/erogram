@@ -7,7 +7,7 @@ import { getLocale } from '@/lib/i18n/server';
 export const revalidate = 3600;
 
 const BASE = CANONICAL_BASE;
-const tagsTitle = 'Tags — Browse by Category | Erogram';
+const tagsTitle = 'Tags — Browse by Category';
 const tagsDescription = 'Alphabetical index of NSFW Telegram group and OnlyFans creator tags on Erogram.';
 
 export const metadata: Metadata = {

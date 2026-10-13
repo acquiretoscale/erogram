@@ -24,8 +24,8 @@ export async function generateMetadata(
   if (!Number.isFinite(page) || page < 1) return {};
 
   const title = page === 1
-    ? 'Discover NSFW Telegram Bots'
-    : `Discover NSFW Telegram Bots – Page ${page}`;
+    ? 'Discover Porn Telegram Bots'
+    : `Discover Porn Telegram Bots – Page ${page}`;
 
   const description = page === 1
     ? 'Browse and discover NSFW Telegram bots. Find AI companions, chat bots, and adult entertainment bots.'

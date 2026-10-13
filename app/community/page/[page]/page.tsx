@@ -23,8 +23,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const title =
     page === 1
-      ? 'Community Members | Erogram'
-      : `Community Members - Page ${page} | Erogram`;
+      ? 'Community Members'
+      : `Community Members - Page ${page}`;
 
   const description =
     page === 1

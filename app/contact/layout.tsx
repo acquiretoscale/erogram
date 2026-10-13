@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-const title = 'Contact — Erogram';
+const title = 'Contact';
 const description = 'Get in touch with Erogram support, advertising, and content removal teams.';
 
 export const metadata: Metadata = {

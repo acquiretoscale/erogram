@@ -19,7 +19,7 @@ export const BLOG_CATEGORIES: BlogCategory[] = [
     slug: 'ai-nsfw',
     name: 'AI NSFW TOOLS',
     eyebrow: 'AI NSFW TOOLS',
-    metaTitle: 'AI & the Machine — NSFW AI Guides | Erogram Editorial',
+    metaTitle: 'AI & the Machine — NSFW AI Guides',
     metaDescription:
       'Deep dives on AI companions, image generators, undress bots, and the tools quietly rewriting adult content.',
     tagline: 'AI companions, generators, and the tools rewriting adult content.',
@@ -28,7 +28,7 @@ export const BLOG_CATEGORIES: BlogCategory[] = [
     slug: 'onlyfans-creators',
     name: 'Creators & OnlyFans',
     eyebrow: 'Creators & OnlyFans',
-    metaTitle: 'Creators & OnlyFans — Rankings & Profiles | Erogram Editorial',
+    metaTitle: 'Creators & OnlyFans — Rankings & Profiles',
     metaDescription:
       'Curated creator lists, rankings, and the business of OnlyFans — reported honestly from the Erogram desk.',
     tagline: 'Rankings, profiles, and the business of OnlyFans.',
@@ -37,7 +37,7 @@ export const BLOG_CATEGORIES: BlogCategory[] = [
     slug: 'adult-entertainment',
     name: 'The Scene',
     eyebrow: 'The Scene',
-    metaTitle: 'The Scene — Adult Culture & Features | Erogram Editorial',
+    metaTitle: 'The Scene — Adult Culture & Features',
     metaDescription:
       'Features, investigations, and culture from across the adult entertainment world.',
     tagline: 'Features, investigations, and culture from across the adult web.',
@@ -46,7 +46,7 @@ export const BLOG_CATEGORIES: BlogCategory[] = [
     slug: 'telegram-groups-bots',
     name: 'Telegram',
     eyebrow: 'Telegram',
-    metaTitle: 'Telegram NSFW Groups & Bots Guides | Erogram Editorial',
+    metaTitle: 'Telegram NSFW Groups & Bots Guides',
     metaDescription:
       'Everything about NSFW Telegram groups and bots — finding safe channels, avoiding scams, using the best adult Telegram tools.',
     tagline: 'Finding, joining, and running the best adult Telegram channels.',
@@ -55,7 +55,7 @@ export const BLOG_CATEGORIES: BlogCategory[] = [
     slug: 'asian-porn',
     name: 'ASIAN PORN',
     eyebrow: 'ASIAN PORN',
-    metaTitle: 'Asian Porn Guides & Features | Erogram Editorial',
+    metaTitle: 'Asian Porn Guides & Features',
     metaDescription:
       'Guides to Asian porn studios, uncensored catalogs, and the sites that actually keep a deep HD library.',
     tagline: 'Studios, catalogs, and the Asian porn sites worth opening.',
@@ -64,7 +64,7 @@ export const BLOG_CATEGORIES: BlogCategory[] = [
     slug: 'jav-porn',
     name: 'JAV PORN',
     eyebrow: 'JAV PORN',
-    metaTitle: 'JAV Porn Guides — Uncensored Japanese Adult Video | Erogram Editorial',
+    metaTitle: 'JAV Porn Guides — Uncensored Japanese Adult Video',
     metaDescription:
       'Where to watch uncensored JAV, how Japanese adult video works, and the performers who define the category.',
     tagline: 'Uncensored Japanese adult video, HD libraries, and the star system behind JAV.',

@@ -54,6 +54,7 @@ function mapBotDoc(bot: any) {
     advertisementUrl: bot.advertisementUrl || null,
     pinned: bot.pinned || false,
     topBot: bot.topBot || false,
+    topBotSlot: bot.topBotSlot ?? null,
     boosted: bot.boosted || false,
     clickCount: bot.clickCount || 0,
     views: bot.views || 0,
@@ -74,6 +75,7 @@ export async function getTopBots(limit = 10) {
       status: 'approved',
       $or: [
         { topBot: true },
+        { topBotSlot: { $in: [1, 2, 3, 4] } },
         { boosted: true, boostExpiresAt: null },
         { boosted: true, boostExpiresAt: { $gt: now } },
       ],

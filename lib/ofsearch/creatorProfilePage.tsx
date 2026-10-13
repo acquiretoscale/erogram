@@ -93,10 +93,10 @@ export async function generateCreatorProfileMetadata(
     pt: `${name} OnlyFans — @${username} Perfil, Fotos e Vídeos (2026)`,
   };
   const ogTitleTemplates: Record<Locale, string> = {
-    en: `${name} OnlyFans — @${username} | Erogram`,
-    de: `${name} OnlyFans — @${username} | Erogram`,
-    es: `${name} OnlyFans — @${username} | Erogram`,
-    pt: `${name} OnlyFans — @${username} | Erogram`,
+    en: `${name} OnlyFans — @${username}`,
+    de: `${name} OnlyFans — @${username}`,
+    es: `${name} OnlyFans — @${username}`,
+    pt: `${name} OnlyFans — @${username}`,
   };
   const ogTitle = ogTitleTemplates[locale] || ogTitleTemplates.en;
   const creatorImage =

@@ -348,6 +348,8 @@ export const botSchema = new Schema(
     createdAt: { type: Date, default: Date.now },
     pinned: { type: Boolean, default: false },
     topBot: { type: Boolean, default: false },
+    /** Fixed Top Bots row on /bots (1–4). Cleared when slot reassigned. */
+    topBotSlot: { type: Number, default: null },
     showVerified: { type: Boolean, default: false },
     featured: { type: Boolean, default: false },
     featuredOrder: { type: Number, default: 999 },
@@ -375,6 +377,7 @@ export const botSchema = new Schema(
 
 botSchema.index({ createdBy: 1, status: 1 });
 botSchema.index({ categories: 1, status: 1 });
+botSchema.index({ topBotSlot: 1 });
 
 // Category Schema
 export const categorySchema = new Schema(
