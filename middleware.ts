@@ -161,13 +161,28 @@ export function middleware(request: NextRequest) {
     return attachVisitorCountry(NextResponse.redirect(url, 301));
   }
 
+  /** Plain HTTP + bind address — avoids external HTTPS proxy to loopback (Next.js #94745). */
+  function localeRewriteTarget(pathname: string): URL {
+    const port =
+      request.nextUrl.port ||
+      request.headers.get('x-forwarded-port') ||
+      process.env.PORT ||
+      '3000';
+    const url = new URL(
+      pathname.startsWith('/') ? pathname : `/${pathname}`,
+      `http://127.0.0.1:${port}`,
+    );
+    url.search = request.nextUrl.search;
+    return url;
+  }
+
   function rewriteWithLocale(dest: string, locale: string, originalPath: string) {
     const reqHeaders = new Headers(request.headers);
     reqHeaders.set('x-locale', locale);
     reqHeaders.set('x-pathname', originalPath);
-    const url = request.nextUrl.clone();
-    url.pathname = dest;
-    return attachVisitorCountry(NextResponse.rewrite(url, { request: { headers: reqHeaders } }));
+    return attachVisitorCountry(
+      NextResponse.rewrite(localeRewriteTarget(dest), { request: { headers: reqHeaders } }),
+    );
   }
 
   function localeToEnglishOrRewrite(dest: string, loc: string, originalPath: string) {

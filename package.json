@@ -6,7 +6,7 @@
     "dev": "bash scripts/dev.sh",
     "build": "next build --webpack",
     "check": "npm run build",
-    "start": "next start",
+    "start": "next start -H localhost -p ${PORT:-3941}",
     "lint": "eslint",
     "analyze": "ANALYZE=true next build --webpack",
     "clean": "rm -rf .next .next-* node_modules/.cache",
