@@ -6,8 +6,7 @@ import LayoutWrapper from "@/components/LayoutWrapper";
 import ClarityScript from "@/components/ClarityScript";
 import { getLocale, getPathname } from "@/lib/i18n/server";
 import { getDictionary, LocaleProvider } from "@/lib/i18n";
-import { LOCALES, localePath, LOCALE_HREFLANG, DEFAULT_LOCALE } from "@/lib/i18n/config";
-import { switchLocalePath } from "@/lib/i18n/switchLocalePath";
+import { LOCALE_HREFLANG, DEFAULT_LOCALE } from "@/lib/i18n/config";
 import { buildSocialMeta, buildMetadataAlternates } from "@/lib/seo/socialMeta";
 
 const geistSans = Geist({
@@ -113,7 +112,7 @@ export default async function RootLayout({
   const dict = await getDictionary(locale);
 
   return (
-    <html lang={LOCALE_HREFLANG[locale]}>
+    <html lang={LOCALE_HREFLANG[DEFAULT_LOCALE]}>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#111111" />

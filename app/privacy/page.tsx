@@ -1,8 +1,8 @@
 import { Metadata } from 'next';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-const title = 'Privacy Policy – erogram.pro';
-const description = 'Learn how erogram.pro collects, uses, and protects your personal information. Our privacy policy covers data handling, cookies, and your rights.';
+const title = 'Privacy Policy – erogramx.com';
+const description = 'Learn how erogramx.com collects, uses, and protects your personal information. Our privacy policy covers data handling, cookies, and your rights.';
 
 export const metadata: Metadata = {
   title,
@@ -31,7 +31,7 @@ export default function PrivacyPage() {
           <section className="mb-8">
             <h2 className="text-2xl font-bold mb-4 text-[#f5f5f5]">1. Introduction</h2>
             <p className="text-[#999] leading-relaxed">
-              Erogram ("we," "us," or "our") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website (erogram.pro) or use our services. By using our site, you agree to the collection and use of information in accordance with this policy. If you do not agree, please do not use our services.
+              Erogram ("we," "us," or "our") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website (erogramx.com) or use our services. By using our site, you agree to the collection and use of information in accordance with this policy. If you do not agree, please do not use our services.
             </p>
             <p className="text-[#999] leading-relaxed mt-4">
               All data collected through this website belongs to Eroverse.space, our parent organization.

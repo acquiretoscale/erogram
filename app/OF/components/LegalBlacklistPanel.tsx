@@ -97,7 +97,7 @@ export default function LegalBlacklistPanel({ variant = 'full' }: { variant?: Va
             <span className="text-red-400 font-bold shrink-0">1.</span>
             <span>
               <strong className="text-white/90">August 2026:</strong> Google Search Console sent multiple copyright
-              (DMCA) removal notices for erogram.pro. Claimants included DMCA Piracy Prevention Inc and Bruqi OÜ.
+              (DMCA) removal notices for erogramx.com. Claimants included DMCA Piracy Prevention Inc and Bruqi OÜ.
             </span>
           </li>
           <li className="flex gap-3">

@@ -1,6 +1,8 @@
+import { SEARCH_DISCOVERY_ORIGIN, SEARCH_SITEMAP_URL } from '@/lib/seo/publicOrigins';
+
 const INDEXNOW_KEY = 'f8f91525268a439b8ae6ce03d362f9bc';
-const INDEXNOW_HOST = 'erogramx.com';
-const SITEMAP_URL = `https://${INDEXNOW_HOST}/sitemap.xml`;
+const INDEXNOW_HOST = new URL(SEARCH_DISCOVERY_ORIGIN).host;
+const SITEMAP_URL = SEARCH_SITEMAP_URL;
 
 /**
  * Ping Google to re-fetch the sitemap (free, no auth required).
@@ -58,7 +60,7 @@ export async function submitToIndexNow(urls: string[]) {
   const data = {
     host: INDEXNOW_HOST,
     key: INDEXNOW_KEY,
-    keyLocation: `https://${INDEXNOW_HOST}/${INDEXNOW_KEY}.txt`,
+    keyLocation: `${SEARCH_DISCOVERY_ORIGIN}/${INDEXNOW_KEY}.txt`,
     urlList: urls,
   };
 

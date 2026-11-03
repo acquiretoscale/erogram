@@ -427,7 +427,7 @@ export const siteConfigSchema = new Schema(
   {
     navbarButton1: {
       text: { type: String, required: true, default: 'Casual dating' },
-      url: { type: String, required: true, default: 'https://go.cm-trk6.com/aff_c?offer_id=11167&aff_id=93961&url_id=19191&source=erogram.pro&aff_sub=feed' },
+      url: { type: String, required: true, default: 'https://go.cm-trk6.com/aff_c?offer_id=11167&aff_id=93961&url_id=19191&source=erogramx.com&aff_sub=feed' },
       enabled: { type: Boolean, default: true },
     },
     navbarButton2: {

@@ -71,15 +71,12 @@ export function useTranslation() {
  * Usage: const lp = useLocalePath();
  *        <Link href={lp('/groups')}>  → "/de/groups" when locale=de
  */
+/** English-only — never prefix /de, /es, or /pt. */
 export function useLocalePath() {
-  const { locale } = useContext(LocaleContext);
-  return useCallback(
-    (path: string) => {
-      if (locale === DEFAULT_LOCALE) return path;
-      return `/${locale}${path.startsWith('/') ? path : `/${path}`}`;
-    },
-    [locale],
-  );
+  return useCallback((path: string) => {
+    if (!path || path === '') return '/';
+    return path.startsWith('/') ? path : `/${path}`;
+  }, []);
 }
 
 /** Real public URL — prefer server x-pathname, then window.location. */

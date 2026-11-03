@@ -48,17 +48,12 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: '*.erogram.pro',
+        hostname: '*.erogramx.com',
         pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'erogramx.com',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: '*.erogramx.com',
         pathname: '/**',
       },
       // OnlyFans CDN thumbnails (used for creator avatars/images pulled from OF)
@@ -84,6 +79,18 @@ const nextConfig: NextConfig = {
 
   async redirects() {
     return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'erogram.pro' }],
+        destination: 'https://erogramx.com/:path*',
+        permanent: true,
+      },
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'www.erogram.pro' }],
+        destination: 'https://erogramx.com/:path*',
+        permanent: true,
+      },
       {
         source: '/groups/page',
         destination: '/groups',

@@ -1,8 +1,7 @@
 import { MetadataRoute } from 'next';
-import { CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { SEARCH_SITEMAP_URL } from '@/lib/seo/publicOrigins';
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = CANONICAL_BASE;
 
   const commonDisallow = ['/admin', '/advert', '/api', '/_next/static/', '/advertise', '/promo'];
 
@@ -84,8 +83,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: commonDisallow,
       },
     ],
-    sitemap: [
-      `${baseUrl}/sitemap-erogramx.xml`,
-    ],
+    sitemap: [SEARCH_SITEMAP_URL],
   };
 }

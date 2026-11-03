@@ -22,6 +22,10 @@ export function getAuthOrigin(req: NextRequest): string {
     .split(',')[0]
     .trim()
     .toLowerCase();
+  const hostname = raw.replace(/:\d+$/, '');
+  if (hostname === 'erogram.pro' || hostname === 'www.erogram.pro') {
+    return 'https://erogramx.com';
+  }
   if (raw && AUTH_HOSTS.has(raw)) {
     const proto = raw.startsWith('localhost') || raw.startsWith('127.0.0.1')
       ? 'http'

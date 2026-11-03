@@ -3,7 +3,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { OF_CATEGORIES } from '@/app/ofsearch/constants';
+import { BEST_OF_PAGES } from '@/app/best-onlyfans-accounts/bestOfPages';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, localePath } from '@/lib/i18n';
 import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
@@ -37,6 +37,8 @@ export async function generateMetadata(): Promise<Metadata> {
     };
 }
 
+const HUB_RANKING_PAGES = [...BEST_OF_PAGES].sort((a, b) => b.count - a.count);
+
 export default async function BestOnlyfansIndexPage() {
     const locale = await getLocale();
     const dict = await getDictionary(locale);
@@ -60,19 +62,19 @@ export default async function BestOnlyfansIndexPage() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {OF_CATEGORIES.map((cat) => (
+                    {HUB_RANKING_PAGES.map((page) => (
                         <Link
-                            key={cat.slug}
-                            href={localePath(ofCategoryPublicPath(cat.slug, locale), locale)}
+                            key={page.slug}
+                            href={localePath(ofCategoryPublicPath(page.slug, locale), locale)}
                             className="group flex items-center gap-4 p-4 rounded-2xl border border-[rgba(43,27,40,0.08)] bg-white transition-colors hover:border-[#00AFF0]/35"
                         >
                             <div className="shrink-0 w-11 h-11 rounded-xl flex items-center justify-center text-sm font-black text-[#00AFF0] bg-[#00AFF0]/10">
-                                {cat.name.charAt(0)}
+                                {page.label.charAt(0)}
                             </div>
 
                             <div className="min-w-0 flex-1">
                                 <h2 className="text-lg font-extrabold leading-tight truncate group-hover:text-[#00AFF0] transition-colors">
-                                    {cat.name} <span style={{ color: MUTED }}>OnlyFans</span>
+                                    {page.label} <span style={{ color: MUTED }}>OnlyFans</span>
                                 </h2>
                                 <p className="text-xs mt-0.5" style={{ color: MUTED }}>Top 10 ranked creators</p>
                             </div>

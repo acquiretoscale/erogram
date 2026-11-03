@@ -11,21 +11,14 @@ import { OF_SEARCH_ENGINE_ENABLED } from '@/lib/ofsearch/featureFlags';
 import { OF_CATEGORY_SLUGS } from '@/app/ofsearch/constants';
 import { BEST_OF_PAGE_MAP } from '@/app/best-onlyfans-accounts/bestOfPages';
 import { rankingEnglishPublicPath, bestOfSlugFromPublicPath } from '@/lib/bestOfPageContent/hottestUrls';
+import {
+  BEST_ONLYFANS_HUB_PATH,
+  resolveEnglishRankingRoute,
+} from '@/lib/bestOnlyfansAccounts/rankingRoute';
 
 /**
- * Locale-aware middleware for Erogram.
- *
- * Behavior:
- * - /pt/...  → 301 to the English URL
- * - /de/...  → rewrite to /... with x-locale: de
- * - /es/...  → rewrite to /... with x-locale: es
- * - /...     → pass through with x-locale: en  (UNCHANGED — zero impact on English)
- *
- * English URLs are NEVER modified or redirected. This guarantees
- * existing Google rankings are 100% preserved.
- *
- * OnlyFans SEO rewrites:
- * - /{cat}onlyfans               → /ofsearch/{cat}
+ * English-only middleware (2026-11): /de, /es, /pt URLs always 301 to canonical English paths.
+ * Localized public slugs are mapped via internalPathFromPublicRest before redirect.
  */
 
 // Block referral traffic from Turkish Yandex only. Russian Yandex (.ru) is kept.
@@ -43,6 +36,27 @@ function isBlockedTraffic(request: NextRequest): boolean {
   return false;
 }
 
+const LEGACY_PRO_HOSTS = new Set(['erogram.pro', 'www.erogram.pro']);
+
+/** VPS / misconfigured proxy: Host is still .pro while traffic hits the Next app. */
+function requestHostname(request: NextRequest): string {
+  const raw = (request.headers.get('x-forwarded-host') || request.headers.get('host') || '')
+    .split(',')[0]
+    .trim()
+    .toLowerCase();
+  return raw.replace(/:\d+$/, '');
+}
+
+function redirectLegacyProHost(request: NextRequest): NextResponse | null {
+  const hostname = requestHostname(request);
+  if (!LEGACY_PRO_HOSTS.has(hostname)) return null;
+  const dest = new URL(
+    `${request.nextUrl.pathname}${request.nextUrl.search}`,
+    'https://erogramx.com',
+  );
+  return NextResponse.redirect(dest, 308);
+}
+
 const LOCALE_PREFIXES = ['de', 'es', 'pt'] as const;
 
 export function middleware(request: NextRequest) {
@@ -50,6 +64,9 @@ export function middleware(request: NextRequest) {
   if (isBlockedTraffic(request)) {
     return new NextResponse(null, { status: 403 });
   }
+
+  const legacyProRedirect = redirectLegacyProHost(request);
+  if (legacyProRedirect) return legacyProRedirect;
 
   const { pathname } = request.nextUrl;
 
@@ -83,6 +100,17 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // Legacy sitemap filename → canonical /sitemap.xml
+  {
+    const p = pathname.replace(/\/+$/, '') || '/';
+    if (p === '/sitemap-erogramx.xml') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/sitemap.xml';
+      url.search = '';
+      return NextResponse.redirect(url, 301);
+    }
+  }
+
   // ── 301 to /best-onlyfans-accounts (owner decree 2026-09-14) ────────────────
   // Localized best-of hubs (DE/PT) + their subpaths all collapse to the English hub.
   {
@@ -105,8 +133,8 @@ export function middleware(request: NextRequest) {
         const url = request.nextUrl.clone();
         const dest = BEST_OF_PAGE_MAP.has(slug)
           ? rankingEnglishPublicPath(slug, 'top')
-          : '/ofsearch';
-        url.pathname = localePrefix === '/pt' ? dest : `${localePrefix}${dest}`;
+          : BEST_ONLYFANS_HUB_PATH;
+        url.pathname = dest;
         return NextResponse.redirect(url, 308);
       }
     }
@@ -122,6 +150,23 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // Ranking pages exist only for the 143 registry slugs — everything else → hub.
+  {
+    const ranking = pathname.match(
+      /^(\/(?:de|es|pt))?\/ofsearch\/((?:top|best)-(?:25|50)-onlyfans-models)\/([^/]+)\/?$/,
+    );
+    if (ranking) {
+      const hub = ranking[2];
+      const niche = decodeURIComponent(ranking[3]).trim().toLowerCase();
+      if (!resolveEnglishRankingRoute(hub, niche)) {
+        const url = request.nextUrl.clone();
+        url.pathname = BEST_ONLYFANS_HUB_PATH;
+        url.search = '';
+        return NextResponse.redirect(url, 301);
+      }
+    }
+  }
+
   // ── DMCA forever ban: hard-404 claimed creator pages in ALL locales ─────────
   // Covers: /{user}-onlyfans, /{user}-onlyfans-telegram, /jocy-cosplay, /lioqueen,
   // /ofsearch/{user}, and the same paths under /de|/es|/pt.
@@ -132,12 +177,6 @@ export function middleware(request: NextRequest) {
     if (dmcaPath && isBlacklistedPublicPathSegment(dmcaPath[2])) {
       return new NextResponse(null, { status: 404 });
     }
-  }
-
-  // If locale was already resolved by a previous middleware pass (rewrite), keep it
-  const existingLocale = request.headers.get('x-locale');
-  if (existingLocale && (existingLocale === 'de' || existingLocale === 'es' || existingLocale === 'pt')) {
-    return NextResponse.next({ request: { headers: request.headers } });
   }
 
   function attachVisitorCountry(response: NextResponse) {
@@ -161,33 +200,8 @@ export function middleware(request: NextRequest) {
     return attachVisitorCountry(NextResponse.redirect(url, 301));
   }
 
-  /** Plain HTTP + bind address — avoids external HTTPS proxy to loopback (Next.js #94745). */
-  function localeRewriteTarget(pathname: string): URL {
-    const port =
-      request.nextUrl.port ||
-      request.headers.get('x-forwarded-port') ||
-      process.env.PORT ||
-      '3000';
-    const url = new URL(
-      pathname.startsWith('/') ? pathname : `/${pathname}`,
-      `http://127.0.0.1:${port}`,
-    );
-    url.search = request.nextUrl.search;
-    return url;
-  }
-
-  function rewriteWithLocale(dest: string, locale: string, originalPath: string) {
-    const reqHeaders = new Headers(request.headers);
-    reqHeaders.set('x-locale', locale);
-    reqHeaders.set('x-pathname', originalPath);
-    return attachVisitorCountry(
-      NextResponse.rewrite(localeRewriteTarget(dest), { request: { headers: reqHeaders } }),
-    );
-  }
-
-  function localeToEnglishOrRewrite(dest: string, loc: string, originalPath: string) {
-    if (loc === 'pt') return redirectToEnglish(dest);
-    return rewriteWithLocale(dest, loc, originalPath);
+  function redirectLocalizedToEnglish(dest: string) {
+    return redirectToEnglish(dest);
   }
 
   function nextWithLocale(locale: string, originalPath: string) {
@@ -201,7 +215,7 @@ export function middleware(request: NextRequest) {
   {
     const localeHub = pathname.match(/^\/(de|es|pt)\/onlyfanssearch\/?$/);
     if (localeHub) {
-      return localeToEnglishOrRewrite('/onlyfanssearch', localeHub[1], pathname);
+      return redirectLocalizedToEnglish('/onlyfanssearch');
     }
   }
   if (/^(\/(?:de|es|pt))?\/onlyfanssearch\//.test(pathname)) {
@@ -229,7 +243,7 @@ export function middleware(request: NextRequest) {
           dest = `${rankingEnglishPublicPath(enSlug, 'top')}${catMatch[2] || ''}`;
         }
       }
-      return localeToEnglishOrRewrite(dest, loc, pathname);
+      return redirectLocalizedToEnglish(dest);
     }
   }
 
@@ -242,7 +256,7 @@ export function middleware(request: NextRequest) {
       if (!m) continue;
       const enCat = resolveBestTgSlugFromPublicSegment(m[1]);
       if (enCat) {
-        return localeToEnglishOrRewrite(`/best-telegram-groups/${enCat}`, loc, pathname);
+        return redirectLocalizedToEnglish(`/best-telegram-groups/${enCat}`);
       }
     }
   }
@@ -256,7 +270,10 @@ export function middleware(request: NextRequest) {
       if (!m) continue;
       const enCat = resolveOfCategorySlugFromPublicSegment(m[1]);
       if (enCat) {
-        return localeToEnglishOrRewrite(rankingEnglishPublicPath(enCat, 'best'), loc, pathname);
+        const dest = BEST_OF_PAGE_MAP.has(enCat)
+          ? rankingEnglishPublicPath(enCat, 'best')
+          : BEST_ONLYFANS_HUB_PATH;
+        return redirectLocalizedToEnglish(dest);
       }
     }
   }
@@ -287,7 +304,7 @@ export function middleware(request: NextRequest) {
     if (RESERVED_LOCALE_SEGMENTS.has(seg)) continue;
     const hit = resolveListingSlugFromPublicSegment(seg);
     if (hit) {
-      return localeToEnglishOrRewrite(`/${hit.enSlug}`, loc, pathname);
+      return redirectLocalizedToEnglish(`/${hit.enSlug}`);
     }
   }
 
@@ -311,7 +328,7 @@ export function middleware(request: NextRequest) {
         .replace(/(^-|-$)/g, '');
       if (rawSeg !== normalized) {
         const url = request.nextUrl.clone();
-        url.pathname = `${btgMatch[1] === '/pt' ? '' : (btgMatch[1] || '')}/best-telegram-groups/${normalized}`;
+        url.pathname = `/best-telegram-groups/${normalized}`;
         return NextResponse.redirect(url, 301);
       }
     }
@@ -330,18 +347,14 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // /pt → English URL. /de and /es stay as rewrites.
+  // /de | /es | /pt → 301 canonical English URL (no localized rewrites).
   for (const locale of LOCALE_PREFIXES) {
     if (pathname === `/${locale}` || pathname.startsWith(`/${locale}/`)) {
       const strippedPath = pathname.replace(`/${locale}`, '') || '/';
-      if (locale === 'pt') {
-        return redirectToEnglish(internalPathFromPublicRest(strippedPath));
-      }
-      return rewriteWithLocale(strippedPath, locale, pathname);
+      return redirectToEnglish(internalPathFromPublicRest(strippedPath));
     }
   }
 
-  // English: no rewrite, just tag the locale header
   return nextWithLocale('en', pathname);
 }
 
@@ -356,12 +369,15 @@ export const config = {
    * - /favicon.ico      (favicon)
    * - /manifest.json    (PWA manifest)
    * - /robots.txt       (SEO)
-   * - /sitemap.xml      (SEO)
+   * - /sitemap.xml (SEO)
    * - /admin/...        (admin panel — stays English only)
    * - /OF/...           (OF admin panel — stays English only)
    * - /advert/...       (advertiser panel — stays English only)
    */
   matcher: [
-    '/((?!api|_next|assets|icons|fonts|favicon|manifest|robots|sitemap|admin|OF|advert).*)',
+    '/((?!api|_next|assets|icons|fonts|favicon|manifest|admin|OF|advert).*)',
+    '/robots.txt',
+    '/sitemap.xml',
+    '/sitemap-erogramx.xml',
   ],
 };

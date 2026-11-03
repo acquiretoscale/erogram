@@ -43,9 +43,8 @@ export function localePrefix(locale: Locale): string {
   return locale === DEFAULT_LOCALE ? '' : `/${locale}`;
 }
 
-/** Prepend locale to a path. English stays unprefixed. */
-export function localePath(path: string, locale: Locale): string {
-  if (locale === DEFAULT_LOCALE) return path;
-  if (path === '/' || path === '') return `/${locale}`;
-  return `/${locale}${path.startsWith('/') ? path : `/${path}`}`;
+/** English-only — never emit /de, /es, or /pt URL prefixes. */
+export function localePath(path: string, _locale?: Locale): string {
+  if (!path || path === '') return '/';
+  return path.startsWith('/') ? path : `/${path}`;
 }

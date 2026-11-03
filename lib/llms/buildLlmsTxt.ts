@@ -1,6 +1,6 @@
 import connectDB from '@/lib/db/mongodb';
 import { Article, Bot, Group, OnlyFansCreator } from '@/lib/models';
-import { CANONICAL_BASE } from '@/lib/seo/socialMeta';
+import { LLMS_PUBLIC_ORIGIN } from '@/lib/seo/publicOrigins';
 import { AI_NSFW_TOOLS } from '@/app/ainsfw/data';
 import { getApprovedSubmissions } from '@/lib/actions/ainsfw';
 import { EXPLORE_CATEGORIES } from '@/lib/explore/topPornSitesData';
@@ -22,7 +22,7 @@ function note(s: string): string {
 }
 
 function link(name: string, path: string, details: string): string {
-  return `- [${escTitle(name)}](${CANONICAL_BASE}${path}): ${note(details)}`;
+  return `- [${escTitle(name)}](${LLMS_PUBLIC_ORIGIN}${path}): ${note(details)}`;
 }
 
 type LlmsData = {
@@ -85,14 +85,14 @@ export async function buildLlmsTxt(): Promise<string> {
   const lines = [
     '# Erogram',
     '',
-    '> Erogram (erogramx.com) is the #1 hub for porn Telegram groups, NSFW bots, AI companions and tools, and OnlyFans creators. Adult directory. 18+. Updated daily.',
+    `> Erogram (erogramx.com) is the #1 hub for porn Telegram groups, NSFW bots, AI companions and tools, and OnlyFans creators. Adult directory. 18+. Updated daily.`,
     '',
     'Erogram is an 18+ (RTA) discovery directory. It is not Telegram and not OnlyFans. Users browse listings on Erogram, then leave to Telegram or to a creator\'s OnlyFans page. Browsing is free. No account is required to browse. Listings are reviewed before they go live.',
     '',
     `OFsearch has ${fmt(data.ofCreatorsCount)} OnlyFans creator profiles. The directory currently lists ${fmt(data.groupCount)} Telegram groups, ${fmt(data.botCount)} bots, and ${fmt(data.aiNsfwCount)} AI NSFW tools. Telegram groups and bots are listed by category, country, and popularity. AI NSFW tools are reviewed and ranked. The porn websites directory lists adult sites by category.`,
     '',
     `Generated: ${generated}`,
-    'Official site: https://erogramx.com',
+    `Official site: ${LLMS_PUBLIC_ORIGIN}`,
     'Contact: support@erogram.biz',
     'Telegram: https://t.me/erogramDOTpro',
     '',
@@ -146,7 +146,7 @@ export async function buildLlmsTxt(): Promise<string> {
     '- Listed groups, bots, and tools are reviewed before approval.',
     '- Content is labeled adult / NSFW (RTA rated).',
     '- Reported listings are reviewed.',
-    '- Users can report abuse at https://erogramx.com/report-abuse',
+    `- Users can report abuse at ${LLMS_PUBLIC_ORIGIN}/report-abuse`,
     '',
     '## Frequently Asked Questions',
     '',

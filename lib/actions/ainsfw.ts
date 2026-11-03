@@ -283,7 +283,7 @@ export async function submitReview(
 async function getOrCreateNsfwAdvertiser() {
   let adv = await Advertiser.findOne({ name: 'AI NSFW Featured' }).lean() as any;
   if (!adv) {
-    adv = await Advertiser.create({ name: 'AI NSFW Featured', email: 'internal@erogram.pro', company: 'Internal', status: 'active' });
+    adv = await Advertiser.create({ name: 'AI NSFW Featured', email: 'internal@erogram.biz', company: 'Internal', status: 'active' });
   }
   return adv._id;
 }

@@ -57,8 +57,8 @@ export function buildAdVideoMetadata(meta: AdVideoMeta): Record<string, string> 
     advertiser: slugify(meta.advertiserName).slice(0, 120),
     niche: slugify(meta.niche).slice(0, 120),
     platform: 'erogram',
-    site: 'erogram.pro',
-    copyright: 'Erogram.pro',
+    site: 'erogramx.com',
+    copyright: 'Erogramx.com',
     campaign: slugify(meta.campaignName || '').slice(0, 120),
   };
 }

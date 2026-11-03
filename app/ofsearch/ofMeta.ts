@@ -10,36 +10,24 @@
  * - PT uses /pt/onlyfans-pesquisa/... (localized URL segment).
  */
 import type { Metadata } from 'next';
-import { LOCALES, LOCALE_HREFLANG, OF_SEARCH_HUB, type Locale } from '@/lib/i18n/config';
+import type { Locale } from '@/lib/i18n/config';
 import { ofCategoryUrl } from './constants';
-import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
-import { switchLocalePath } from '@/lib/i18n/switchLocalePath';
+import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 const robots = { index: true, follow: true } as const;
 
-function mainPath(locale: Locale) {
-  return locale === 'en' ? '/ofsearch' : `/${locale}/${OF_SEARCH_HUB[locale]}`;
+function mainPath(_locale: Locale) {
+  return '/ofsearch';
 }
-function catPath(catSlug: string, locale: Locale) {
-  return locale === 'en' ? ofCategoryUrl(catSlug) : `/${locale}/${OF_SEARCH_HUB[locale]}/${catSlug}`;
+function catPath(catSlug: string, _locale: Locale) {
+  return ofCategoryUrl(catSlug);
 }
 function topPath(_locale: Locale) {
   return '/Toponlyfanscreators';
 }
 
 function alt(pathname: string, locale: Locale) {
-  return {
-    canonical: `${CANONICAL_BASE}${switchLocalePath(pathname, locale, locale)}`,
-    languages: {
-      ...Object.fromEntries(
-        LOCALES.map((loc) => [
-          LOCALE_HREFLANG[loc],
-          `${CANONICAL_BASE}${switchLocalePath(pathname, locale, loc)}`,
-        ])
-      ),
-      'x-default': `${CANONICAL_BASE}${switchLocalePath(pathname, locale, 'en')}`,
-    },
-  };
+  return buildMetadataAlternates(pathname, locale);
 }
 
 export function mainOfMeta(locale: Locale): Metadata {

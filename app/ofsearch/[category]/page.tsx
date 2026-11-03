@@ -99,7 +99,7 @@ export default async function OnlyFansSlugPage({ params }: PageProps) {
     if (BEST_OF_PAGE_MAP.has(rawSlug)) {
       redirect(rankingEnglishPublicPath(rawSlug, 'top'));
     }
-    redirect('/ofsearch');
+    redirect('/best-onlyfans-accounts');
   }
 
   if (!OF_CATEGORY_SLUGS.has(rawSlug)) {

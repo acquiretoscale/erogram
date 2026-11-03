@@ -4,7 +4,7 @@ import { AdminPushSubscription } from '@/lib/models';
 
 const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY || '';
 const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY || '';
-const CONTACT = 'mailto:admin@erogram.pro';
+const CONTACT = 'mailto:admin@erogram.biz';
 
 if (VAPID_PUBLIC && VAPID_PRIVATE) {
   webpush.setVapidDetails(CONTACT, VAPID_PUBLIC, VAPID_PRIVATE);

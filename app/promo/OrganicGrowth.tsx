@@ -62,7 +62,7 @@ export default function OrganicGrowth() {
               <div className="rounded-xl overflow-hidden border border-gray-100 shadow-sm w-full max-w-[260px] mx-auto">
                 <ZoomableImage
                   src="/assets/similarweb-stats.png"
-                  alt="SimilarWeb traffic chart — erogram.pro"
+                  alt="SimilarWeb traffic chart — erogramx.com"
                   width={700} height={900} className="w-full h-auto"
                 />
               </div>
@@ -71,9 +71,9 @@ export default function OrganicGrowth() {
               <svg className="w-3 h-3 text-[#0ea5e9] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
-              <a href="https://pro.similarweb.com/?domain=erogram.pro" target="_blank" rel="noopener noreferrer"
+              <a href="https://pro.similarweb.com/?domain=erogramx.com" target="_blank" rel="noopener noreferrer"
                 className="text-[10px] font-bold text-[#0ea5e9] hover:underline">
-                pro.similarweb.com — erogram.pro
+                pro.similarweb.com — erogramx.com
               </a>
             </div>
           </div>

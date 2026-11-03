@@ -2,15 +2,22 @@ import Link from 'next/link';
 import Image from 'next/image';
 import type { Locale } from '@/lib/i18n/config';
 import { localePath } from '@/lib/i18n';
+import { BEST_OF_PAGE_MAP } from '@/app/best-onlyfans-accounts/bestOfPages';
+import { BEST_ONLYFANS_HUB_PATH } from '@/lib/bestOnlyfansAccounts/rankingRoute';
 import { ofCategoryPublicPath } from '@/lib/bestOnlyfansAccounts/boaUrls';
 
+const MUTED = '#6B6568';
+
 const link =
-  'text-[#00AFF0] hover:text-[#00D4FF] underline underline-offset-2 transition-colors';
-const strong = 'text-white/80 font-semibold';
-const h2 = 'text-xl sm:text-2xl font-black text-white mb-4 tracking-tight';
-const h3 = 'text-lg sm:text-xl font-black text-white mb-3 mt-8 tracking-tight';
+  'text-[#00AFF0] hover:text-[#0090CC] underline underline-offset-2 transition-colors';
+const strong = 'font-semibold text-[#2B1B28]';
+const h2 = 'text-xl sm:text-2xl font-black mb-4 tracking-tight text-[#2B1B28]';
+const h3 = 'text-lg sm:text-xl font-black mb-3 mt-8 tracking-tight text-[#2B1B28]';
 
 function cat(locale: Locale, slug: string) {
+  if (!BEST_OF_PAGE_MAP.has(slug)) {
+    return localePath(BEST_ONLYFANS_HUB_PATH, locale);
+  }
   return localePath(ofCategoryPublicPath(slug, locale), locale);
 }
 
@@ -21,7 +28,10 @@ export default function BestEditorialSeo({ locale }: Props) {
   const lp = (path: string) => localePath(path, locale);
 
   return (
-    <article className="mt-12 sm:mt-16 pt-10 sm:pt-12 border-t border-white/[0.06] max-w-3xl mx-auto text-[15px] sm:text-base leading-relaxed text-white/55 px-0">
+    <article
+      className="mt-12 sm:mt-16 pt-10 sm:pt-12 border-t max-w-3xl mx-auto text-[15px] sm:text-base leading-relaxed px-0"
+      style={{ color: MUTED, borderColor: 'rgba(43, 27, 40, 0.12)' }}
+    >
       <h2 className={`${h2} text-2xl sm:text-3xl`}>
         The OnlyFans Rankings That Actually Get Updated
       </h2>
@@ -58,7 +68,7 @@ export default function BestEditorialSeo({ locale }: Props) {
 
       <h2 className={h2}>Find OnlyFans Creators by What You Actually Search For</h2>
       <p className="mb-4">
-        A general hub is a decent entry point and a poor destination. Nobody wants &ldquo;creators in general.&rdquo; They want a specific thing, and the closer a page sits to that thing, the better the subscription decision gets. That is what the grid above is for: fifty-plus ranked top-ten pages, one per niche, built from the same index and the same traffic data.
+        A general hub is a decent entry point and a poor destination. Nobody wants &ldquo;creators in general.&rdquo; They want a specific thing, and the closer a page sits to that thing, the better the subscription decision gets. That is what the grid above is for: 143 ranked top-ten pages, one per niche, built from the same index and the same traffic data.
       </p>
 
       <h3 className={h3}>Curves, Petite and Everything Between: Ranked by Body Type</h3>
@@ -240,7 +250,7 @@ export default function BestEditorialSeo({ locale }: Props) {
         OnlyFans is never going to ship a public search index. It runs against their model and it always will. So we built one, we keep it current, and we point the traffic back at the creators who earn it.
       </p>
 
-      <footer className="flex items-center gap-5 pt-6 border-t border-white/[0.08]">
+      <footer className="flex items-center gap-5 pt-6 border-t" style={{ borderColor: 'rgba(43, 27, 40, 0.12)' }}>
         <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden ring-2 ring-[#00AFF0]/30 shrink-0">
           <Image
             src="/assets/blog/authors/eros.webp"
@@ -251,8 +261,8 @@ export default function BestEditorialSeo({ locale }: Props) {
           />
         </div>
         <div>
-          <p className="text-white font-bold text-base sm:text-lg">Enzo Delacroix</p>
-          <p className="text-white/40 text-sm">Chief Editor, Erogram</p>
+          <p className="font-bold text-base sm:text-lg text-[#2B1B28]">Enzo Delacroix</p>
+          <p className="text-sm" style={{ color: MUTED }}>Chief Editor, Erogram</p>
         </div>
       </footer>
     </article>

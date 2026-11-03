@@ -1,34 +1,15 @@
 import fs from 'fs';
-import { createRequire } from 'module';
 
-const require = createRequire(import.meta.url);
-require('dotenv').config({ path: '.env.local' });
+const DEFAULT_URL = 'https://erogramx.com/sitemap.xml';
 
-// Register ts paths via tsx runtime
-const { register } = await import('tsx/esm/api');
-register();
-
-const sitemap = (await import('../app/sitemap.ts')).default;
-
-function toXml(entries) {
-  const urls = entries.map((e) => {
-    let alt = '';
-    if (e.alternates?.languages) {
-      for (const [lang, href] of Object.entries(e.alternates.languages)) {
-        alt += `    <xhtml:link rel="alternate" hreflang="${lang}" href="${href}"/>\n`;
-      }
-    }
-    const lastmod = e.lastModified
-      ? `    <lastmod>${new Date(e.lastModified).toISOString()}</lastmod>\n`
-      : '';
-    return `  <url>\n    <loc>${e.url}</loc>\n${lastmod}${alt}  </url>`;
-  }).join('\n');
-
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls}\n</urlset>\n`;
+const url = process.env.SITEMAP_URL || DEFAULT_URL;
+const res = await fetch(url);
+if (!res.ok) {
+  console.error(`Fetch ${url} failed: ${res.status}`);
+  process.exit(1);
 }
-
-const entries = await sitemap();
-const xml = toXml(entries);
-const out = '/Users/themaf/Downloads/erogram-sitemap.xml';
+const xml = await res.text();
+const out = process.env.SITEMAP_OUT || '/Users/themaf/Downloads/erogram-sitemap.xml';
 fs.writeFileSync(out, xml);
-console.log(`Wrote ${entries.length} URLs to ${out}`);
+const count = (xml.match(/<loc>/g) || []).length;
+console.log(`Wrote ${count} URLs from ${url} to ${out}`);

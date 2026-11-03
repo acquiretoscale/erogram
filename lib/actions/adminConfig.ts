@@ -27,7 +27,7 @@ export async function getSiteConfig(token: string) {
   let config = await SiteConfig.findOne();
   if (!config) {
     config = await SiteConfig.create({
-      navbarButton1: { text: 'Casual dating', url: 'https://go.cm-trk6.com/aff_c?offer_id=11167&aff_id=93961&url_id=19191&source=erogram.pro&aff_sub=feed', enabled: true },
+      navbarButton1: { text: 'Casual dating', url: 'https://go.cm-trk6.com/aff_c?offer_id=11167&aff_id=93961&url_id=19191&source=erogramx.com&aff_sub=feed', enabled: true },
       navbarButton2: { text: '', url: '', enabled: false },
       navbarButton3: { text: '', url: '', enabled: false },
       filterBanner1: { enabled: false, title: '', description: '', image: '', url: '', buttonText: 'Visit Site' },

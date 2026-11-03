@@ -2,9 +2,9 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-const title = 'DMCA Notice of Copyright Infringement – erogram.pro';
+const title = 'DMCA Notice of Copyright Infringement – erogramx.com';
 const description =
-  'Submit a DMCA copyright infringement notice to Erogram.pro. Learn how to report unauthorized use of copyrighted material on our website.';
+  'Submit a DMCA copyright infringement notice to Erogramx.com. Learn how to report unauthorized use of copyrighted material on our website.';
 
 export const metadata: Metadata = {
   title,
@@ -39,11 +39,11 @@ export default function DmcaPage() {
               >
                 http://lcweb.loc.gov/copyright/
               </a>
-              ), Erogram.pro will respond expeditiously to claims of copyright infringement that are reported to
-              Erogram.pro designated copyright agent identified below. Please also note that under Section 512(f) any
+              ), Erogramx.com will respond expeditiously to claims of copyright infringement that are reported to
+              Erogramx.com designated copyright agent identified below. Please also note that under Section 512(f) any
               person who knowingly materially misrepresents that material or activity is infringing may be subject to
-              liability. Erogram.pro reserves the right at its sole and entire discretion, to remove content and
-              terminate the accounts of Erogram.pro users who infringe, or appear to infringe, the intellectual property
+              liability. Erogramx.com reserves the right at its sole and entire discretion, to remove content and
+              terminate the accounts of Erogramx.com users who infringe, or appear to infringe, the intellectual property
               or other rights of third parties.
             </p>
           </section>
@@ -51,7 +51,7 @@ export default function DmcaPage() {
           <section className="mb-8">
             <p className="text-[#999] leading-relaxed mb-4">
               If you believe that your copywriten work has been copied in a way that constitutes copyright infringement,
-              please provide Erogram.pro copyright agent the following information:
+              please provide Erogramx.com copyright agent the following information:
             </p>
             <ul className="text-[#999] leading-relaxed space-y-3 list-disc pl-6">
               <li>
@@ -66,10 +66,10 @@ export default function DmcaPage() {
               <li>
                 Identification of the material that is claimed to be infringing or to be the subject of infringing
                 activity and that is to be removed or access to which is to be disabled, and information reasonably
-                sufficient to permit Erogram.pro to locate the material;
+                sufficient to permit Erogramx.com to locate the material;
               </li>
               <li>
-                Information reasonably sufficient to permit Erogram.pro to contact the complaining party, including a
+                Information reasonably sufficient to permit Erogramx.com to contact the complaining party, including a
                 name, address, telephone number and, if available, an email address at which the complaining party may
                 be contacted;
               </li>
@@ -87,7 +87,7 @@ export default function DmcaPage() {
 
           <section className="mb-8">
             <p className="text-[#999] leading-relaxed">
-              All claims of copyright infringement on or regarding this Website should be delivered to Erogram.pro
+              All claims of copyright infringement on or regarding this Website should be delivered to Erogramx.com
               designated copyright agent at the following address:
             </p>
             <p className="text-[#999] leading-relaxed mt-4">

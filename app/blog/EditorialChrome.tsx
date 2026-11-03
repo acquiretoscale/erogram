@@ -4,8 +4,7 @@ import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
-import { useLocale, useLocalePath, usePublicPathname, useTranslation } from '@/lib/i18n/client';
-import { LOCALES, LOCALE_FLAGS, LOCALE_NAMES, switchLocalePath } from '@/lib/i18n';
+import { useLocalePath, useTranslation } from '@/lib/i18n/client';
 import { getMyListingsSummary } from '@/lib/actions/myListings';
 import { getMyAINSFWSummary } from '@/lib/actions/myAINSFWListings';
 import { getCampaignPlacement } from '@/lib/actions/publicData';
@@ -35,32 +34,7 @@ function MastheadAdSlot() {
   );
 }
 
-function FooterLangSwitcher() {
-  const { locale } = useLocale();
-  const pathForSwitch = usePublicPathname();
-  const { t } = useTranslation();
-
-  return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-      <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8c8780]">{t('nav.language', 'Language')}</span>
-      {LOCALES.filter((l) => l !== 'pt').map((l) => (
-        <a
-          key={l}
-          href={switchLocalePath(pathForSwitch, locale, l)}
-          className={`inline-flex items-center gap-1.5 text-[13px] transition-colors ${
-            locale === l ? 'text-white font-medium' : 'text-[#cfc9c2] hover:text-white'
-          }`}
-        >
-          <span className="text-base leading-none">{LOCALE_FLAGS[l]}</span>
-          {LOCALE_NAMES[l]}
-        </a>
-      ))}
-    </div>
-  );
-}
-
 const NAV_PRE: Array<{ labelKey: string; fallback: string; href: string; badge?: string }> = [
-  { labelKey: 'nav.home', fallback: 'Home', href: '/' },
   { labelKey: 'nav.groups', fallback: 'Groups', href: '/groups' },
   { labelKey: 'nav.bots', fallback: 'Bots', href: '/bots' },
   { labelKey: 'nav.aiNsfw', fallback: 'AI NSFW', href: '/ainsfw' },
@@ -885,7 +859,6 @@ export function EditorialFooter() {
 
         {/* Bottom bar — compact */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <FooterLangSwitcher />
           <RtaBadge size="lg" />
         </div>
       </div>

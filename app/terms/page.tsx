@@ -1,8 +1,8 @@
 import { Metadata } from 'next';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
-const title = 'Terms of Service – erogram.pro';
-const description = 'Read the terms of service for erogram.pro. Understand user responsibilities, content guidelines, and service limitations.';
+const title = 'Terms of Service – erogramx.com';
+const description = 'Read the terms of service for erogramx.com. Understand user responsibilities, content guidelines, and service limitations.';
 
 export const metadata: Metadata = {
   title,
@@ -31,7 +31,7 @@ export default function TermsPage() {
           <section className="mb-8">
             <h2 className="text-2xl font-bold mb-4 text-[#f5f5f5]">1. Acceptance of Terms</h2>
             <p className="text-[#999] leading-relaxed">
-              By accessing or using Erogram (erogram.pro), you agree to these Terms of Service ("Terms"). If you disagree, do not use the site. We reserve the right to modify these Terms at any time; continued use implies acceptance.
+              By accessing or using Erogram (erogramx.com), you agree to these Terms of Service ("Terms"). If you disagree, do not use the site. We reserve the right to modify these Terms at any time; continued use implies acceptance.
             </p>
             <p className="text-[#999] leading-relaxed mt-4">
               All services and data are provided by Eroverse.space.
