@@ -1,9 +1,8 @@
 # Deploy main to DigitalOcean.
 # Repo secrets: VPS_HOST, VPS_USER, VPS_SSH_KEY, VPS_APP_DIR (optional, default ~/erogram)
 #
-# This workflow must NEVER git-reset or npm-build inside the live folder before
-# the deploy script runs. The script builds in a sibling directory, then swaps
-# .next only after compile succeeds, then restarts `erogram` (port 3941).
+# Pulls the deploy script from origin/main, then runs it on the VPS.
+# Script builds into .next-new, swaps, restarts `erogram` (port 3941).
 
 name: Deploy VPS
 

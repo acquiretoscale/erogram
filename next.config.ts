@@ -24,7 +24,9 @@ const nextConfig: NextConfig = {
 
   turbopack: {},
 
-  // VPS deploy builds beside the live app on a 4 GB droplet. Typecheck already ran locally / in GitHub.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
+
+  // VPS: skip tsc (already ran locally). Keeps the 4GB droplet from dying mid-build.
   typescript: {
     ignoreBuildErrors: process.env.EROGRAM_SKIP_TYPECHECK === '1',
   },
