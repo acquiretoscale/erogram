@@ -1,12 +1,13 @@
 import { uploadToR2, isR2Configured } from '@/lib/r2';
 import connectDB from '@/lib/db/mongodb';
 import { OnlyFansCreator } from '@/lib/models';
-import {
-  optimizeCreatorPhotoWebp,
-  validateCreatorPhotoUpload,
-  adRotationPhotoKey,
-} from '@/lib/creatorMedia';
+import { optimizeCreatorPhoto, validateCreatorPhotoUpload } from '@/lib/creatorMedia';
 import { MAX_CREATOR_PHOTO_BYTES } from '@/lib/creatorMediaLimits';
+
+function adRotationPhotoKey(slug: string, index: number): string {
+  const cacheBust = Date.now().toString(36);
+  return `onlyfanssearch/${slug}-ad-rot-${index + 1}-${cacheBust}.jpg`;
+}
 
 /** Direct save — not a server action, so File/Buffer stays in-process. */
 export async function saveAdRotationPhoto(
@@ -23,7 +24,7 @@ export async function saveAdRotationPhoto(
 
   let optimized: Buffer;
   try {
-    optimized = await optimizeCreatorPhotoWebp(buf);
+    optimized = await optimizeCreatorPhoto(buf);
     if (optimized.length > MAX_CREATOR_PHOTO_BYTES) {
       return { error: 'Photo still too large after optimization (max 1 MB)' };
     }
@@ -46,7 +47,7 @@ export async function saveAdRotationPhoto(
   const key = adRotationPhotoKey(dbSlug, existing.length);
   let url: string;
   try {
-    url = await uploadToR2(optimized, key, 'image/webp');
+    url = await uploadToR2(optimized, key, 'image/jpeg');
   } catch (e: any) {
     return { error: e?.message || 'Storage upload failed' };
   }
