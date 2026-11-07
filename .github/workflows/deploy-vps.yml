@@ -1,5 +1,9 @@
-# Deploy main to DigitalOcean after CI build passes.
-# Repo secrets required: VPS_HOST, VPS_USER, VPS_SSH_KEY, VPS_APP_DIR (optional, default ~/erogram)
+# Deploy main to DigitalOcean.
+# Repo secrets: VPS_HOST, VPS_USER, VPS_SSH_KEY, VPS_APP_DIR (optional, default ~/erogram)
+#
+# This workflow must NEVER git-reset or npm-build inside the live folder before
+# the deploy script runs. The script builds in a sibling directory, then swaps
+# .next only after compile succeeds, then restarts `erogram` (port 3941).
 
 name: Deploy VPS
 
@@ -25,13 +29,10 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    needs: []
     if: github.repository == 'acquiretoscale/erogram'
     timeout-minutes: 45
 
     steps:
-      - uses: actions/checkout@v4
-
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -46,5 +47,6 @@ jobs:
             if [ -z "$APP_DIR" ]; then APP_DIR="$HOME/erogram"; fi
             cd "$APP_DIR"
             git fetch origin main
-            git reset --hard origin/main
-            bash scripts/vps-deploy-erogram.sh
+            git show origin/main:scripts/vps-deploy-erogram.sh > /tmp/vps-deploy-erogram.sh
+            chmod +x /tmp/vps-deploy-erogram.sh
+            APP_DIR="$APP_DIR" bash /tmp/vps-deploy-erogram.sh
