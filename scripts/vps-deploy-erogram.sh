@@ -104,7 +104,8 @@ git -C "$BUILD_DIR" submodule update --init --recursive 2>/dev/null || true
 npm --prefix "$BUILD_DIR" ci
 
 echo "==> production build in $BUILD_DIR (live .next untouched)"
-export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=3072}"
+export EROGRAM_SKIP_TYPECHECK=1
+export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=2048}"
 npm --prefix "$BUILD_DIR" run build
 
 if [[ ! -f "$BUILD_DIR/.next/BUILD_ID" ]]; then

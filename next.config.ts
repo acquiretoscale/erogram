@@ -24,6 +24,11 @@ const nextConfig: NextConfig = {
 
   turbopack: {},
 
+  // VPS deploy builds beside the live app on a 4 GB droplet. Typecheck already ran locally / in GitHub.
+  typescript: {
+    ignoreBuildErrors: process.env.EROGRAM_SKIP_TYPECHECK === '1',
+  },
+
   serverExternalPackages: ['@ffmpeg-installer/ffmpeg', 'fluent-ffmpeg', 'sharp'],
 
   webpack: (config) => {
