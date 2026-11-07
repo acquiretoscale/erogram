@@ -2,7 +2,18 @@
 
 import type { ExploreSiteListingBase } from '@/lib/explore/exploreSiteListings';
 
+/** Instacam / INSTACAMS affiliate — porn explore + listing Visit CTAs. */
+export const INSTACAM_AFFILIATE_URL =
+  'https://go.cm-trk6.com/aff_c?offer_id=12348&aff_id=93961&url_id=23892&aff_sub5=banner&source=In-feed';
+
 export const LISTINGS: ExploreSiteListingBase[] = [
+  {
+    "slug": "instacam",
+    "name": "INSTACAMS",
+    "description": "Instacam connects users for live random video chat with strangers online. Free to start, fast matching, and private cam-to-cam sessions on desktop and mobile.",
+    "image": "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/instacam-best-live-sex-cams.webp",
+    "externalUrl": INSTACAM_AFFILIATE_URL
+  },
   {
     "slug": "jasmin",
     "name": "Jasmin",
@@ -30,13 +41,6 @@ export const LISTINGS: ExploreSiteListingBase[] = [
     "description": "Free cam roulette for adults who want instant, unfiltered connections. Every click is a surprise  -  no accounts, no waiting, just live action.",
     "image": "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/jerkroulette-best-live-sex-cams.webp",
     "externalUrl": "https://www.jerkroulette.com/"
-  },
-  {
-    "slug": "instacam",
-    "name": "Instacam",
-    "description": "Instacam connects users for live random video chat with strangers online. Free to start, fast matching, and private cam-to-cam sessions on desktop and mobile.",
-    "image": "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/instacam-best-live-sex-cams.webp",
-    "externalUrl": "https://instacams.com/"
   },
   {
     "slug": "chaturbate-lat",

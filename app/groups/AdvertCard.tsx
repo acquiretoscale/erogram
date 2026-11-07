@@ -6,9 +6,10 @@ import { useIsTelegramBrowser } from '../hooks/useIsTelegramBrowser';
 import { trackClick as trackCampaignClick, trackImpression } from '@/lib/actions/campaigns';
 import { trackTrendingClick } from '@/lib/actions/onlyfansTracking';
 import { useTranslation } from '@/lib/i18n/client';
-import { isGroupsInFeedPlacement } from '@/lib/adPlacements';
-import { ainsfwCtaButtonClass } from '@/lib/ainsfw/ctaButton';
 import VerifiedBadge from '@/components/VerifiedBadge';
+import TwitterVerifiedIcon from '@/components/TwitterVerifiedIcon';
+import HomeOfFeaturedCreatorCard from '@/app/components/HomeOfFeaturedCreatorCard';
+import { feedCampaignToFeaturedCreator } from '@/lib/explore/feedCampaignToFeaturedCreator';
 
 // PAUSED (2026-07-24, owner order) — performance experiment. Impression pings were
 // server-action POSTs that forced a full re-render of force-dynamic pages on every
@@ -63,8 +64,9 @@ function displayAdRating(
     seed: string,
 ): { rating: string; reviews: number } {
     if (campaign.adRating != null && campaign.adRating > 0) {
+        const r = Math.max(LIVE_AD_RATING_FLOOR, Number(campaign.adRating));
         return {
-            rating: Math.max(LIVE_AD_RATING_FLOOR, Number(campaign.adRating)).toFixed(1),
+            rating: r.toFixed(2),
             reviews: campaign.adReviewCount ?? 0,
         };
     }
@@ -74,24 +76,27 @@ function displayAdRating(
     };
 }
 
-function isGroupsInFeedAd(campaign?: FeedCampaign): boolean {
-    if (!campaign) return false;
-    if (campaign.placement) return isGroupsInFeedPlacement(campaign.placement);
-    const ts = campaign.tierSlot;
-    return ts != null && ts >= 2 && ts <= 5;
+function AdCardStarsRow({ rating, reviews, className = '' }: { rating: string; reviews: number; className?: string }) {
+    return (
+        <div className={`flex items-center justify-between px-1 ${className}`}>
+            <div className="flex items-center gap-1">
+                <span className="flex items-center gap-px text-yellow-500 text-[10px] sm:text-sm leading-none" aria-hidden>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                        <span key={star}>★</span>
+                    ))}
+                </span>
+                <span className="text-white font-bold text-[10px] sm:text-sm">{rating}</span>
+                <span className="text-gray-500 text-[10px] sm:text-xs">({reviews})</span>
+            </div>
+        </div>
+    );
 }
 
-const DEFAULT_AD_BTN: React.CSSProperties = {
-    background: 'linear-gradient(135deg, #ff5e2a, #ff9432)',
-    color: '#ffffff',
+/** Non-OF ads — same neon green as AI NSFW / “Build your AI” style CTAs. */
+export const AFFILIATE_AD_BTN: React.CSSProperties = {
+    background: '#39FF14',
+    color: '#000000',
 };
-
-/** In-feed only: solid colors, no glow. */
-const IN_FEED_BTN_PALETTE: React.CSSProperties[] = [
-    { background: '#39FF14', color: '#000000' },
-    { background: '#00F0FF', color: '#000000' },
-    { background: '#FFFF00', color: '#000000' },
-];
 
 /** OnlyFans creator ads: solid blue, no glow. */
 const OF_CREATOR_BTN: React.CSSProperties = {
@@ -99,18 +104,78 @@ const OF_CREATOR_BTN: React.CSSProperties = {
     color: '#FFFFFF',
 };
 
-function adButtonStyle(
-    campaign: FeedCampaign | undefined,
-    seed: string,
-    randomFn: (s: string) => number,
-): React.CSSProperties {
-    if (!campaign || !isGroupsInFeedAd(campaign)) return DEFAULT_AD_BTN;
-    if (campaign.adType === 'onlyfans-creator') return OF_CREATOR_BTN;
-    const idx = Math.floor(randomFn(seed + 'infeed-btn') * IN_FEED_BTN_PALETTE.length);
-    return IN_FEED_BTN_PALETTE[idx];
+function adButtonStyle(campaign: FeedCampaign | undefined): React.CSSProperties {
+    if (campaign?.adType === 'onlyfans-creator') return OF_CREATOR_BTN;
+    return AFFILIATE_AD_BTN;
 }
 
 const AD_BTN_CLASS = 'w-full py-2.5 sm:py-3 px-3 rounded-xl font-black text-sm active:scale-[0.98]';
+
+const INSTACAM_FUN_CHAT_CAMPAIGN_ID = '69a81c337486e6d375e1818b';
+
+function isStartAFunChatAd(campaign: FeedCampaign | undefined, name: string | undefined): boolean {
+    if (campaign?._id === INSTACAM_FUN_CHAT_CAMPAIGN_ID) return true;
+    const n = (name || campaign?.name || '').toLowerCase();
+    if (n.includes('instacams')) return true;
+    if (n.includes('start a fun chat')) return true;
+    if (n.includes('start a conversation with someone new')) return true;
+    return (campaign?.destinationUrl || '').toLowerCase().includes('offer_id=12348');
+}
+
+function AdCardVerifiedMark({
+    show,
+    className = 'w-4 h-4 sm:w-5 sm:h-5 shrink-0',
+}: {
+    show: boolean;
+    className?: string;
+}) {
+    if (!show) return null;
+    return <TwitterVerifiedIcon className={className} />;
+}
+
+function feedAdTitleSize(startAFunChat: boolean, growthPercent?: number, center = false): string {
+    if (startAFunChat) return 'text-sm sm:text-base';
+    if (typeof growthPercent === 'number') return 'text-sm sm:text-lg';
+    if (center) return 'text-sm sm:text-xl md:text-2xl';
+    return 'text-sm sm:text-xl';
+}
+
+function feedAdTitleTextClass(startAFunChat: boolean): string {
+    if (startAFunChat) return 'min-w-0 truncate whitespace-nowrap';
+    return 'min-w-0 truncate';
+}
+
+function feedAdHookClass(startAFunChat: boolean, centered = false): string {
+    if (startAFunChat) {
+        return `text-white/95 text-lg sm:text-xl font-normal leading-snug ${centered ? 'text-center' : 'text-left'}`;
+    }
+    const align = centered ? 'text-center' : '';
+    return `text-gray-400 text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed font-medium ${align}`;
+}
+
+function feedAdImagePanelClass(startAFunChat: boolean, variant: 'native' | 'standard' | 'featured'): string {
+    if (startAFunChat) return 'relative w-full h-44 sm:h-60 md:h-64 overflow-hidden bg-[#1a1a1a]';
+    if (variant === 'standard') return 'relative w-full h-32 sm:h-48 overflow-hidden bg-[#1a1a1a]';
+    return 'relative w-full h-32 sm:h-52 overflow-hidden bg-[#1a1a1a]';
+}
+
+function feedAdImageClass(startAFunChat: boolean): string {
+    if (startAFunChat) {
+        return 'object-cover object-top transition-transform duration-500 ease-out group-hover:scale-[1.03]';
+    }
+    return 'object-cover transition-transform duration-700 group-hover:scale-110';
+}
+
+function VisitingNowOverlay({ label, className = 'bottom-3 left-3' }: { label: string; className?: string }) {
+    return (
+        <div className={`absolute ${className} z-10 flex gap-2`}>
+            <div className="bg-black/70 backdrop-blur-md border border-white/20 px-2 py-1 sm:px-2.5 sm:py-1 rounded-lg flex items-center gap-1 sm:gap-1.5 shadow-lg">
+                <span className="text-[10px] sm:text-xs text-red-400">⚡</span>
+                <span className="text-[10px] sm:text-xs font-bold text-white">{label}</span>
+            </div>
+        </div>
+    );
+}
 
 function formatCount(n: number): string {
     if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -140,53 +205,11 @@ function GrowthTrendBadge({ growthPercent }: { growthPercent?: number }) {
     );
 }
 
-function OnlyFansCreatorAdCard({ campaign, handleClick, growthPercent, isIndex = 0 }: { campaign: FeedCampaign; handleClick: (shownVariantIdx?: number) => void; growthPercent?: number; isIndex?: number }) {
-    const { t } = useTranslation();
+function OnlyFansCreatorAdCard({ campaign, isIndex = 0 }: { campaign: FeedCampaign; handleClick?: (shownVariantIdx?: number) => void; growthPercent?: number; isIndex?: number }) {
     const cardRef = useRef<HTMLDivElement>(null);
     const impressionFiredRef = useRef(false);
-    const [imgError, setImgError] = useState(false);
-    const trendingId = campaign.ofTrendingId || '';
-
-    // Split-test rotation (one unified creator album):
-    //  ofAlbum = [avatar, ...extraPhotos] MINUS any paused image, already prepared server-side.
-    //  We random-pick ONE album entry per render, CLIENT-SIDE, so the pick varies per visitor and
-    //  is never frozen by the page's ISR cache. Album index i is tagged ":v{i}" for per-picture CTR.
-    const album = campaign.ofAlbum ?? [];
-    // Stable full-album index for each shown image — what the dashboard reads for per-picture CTR.
-    // Falls back to array position if not provided (older data), but the server now always sends it.
-    const albumIdx = campaign.ofAlbumIdx ?? [];
-    // Per-visitor A/B rotation without a visible image swap or hydration mismatch.
-    // The page is ISR-cached, so we must NOT pick the random image on the server (it would freeze
-    // one image for every visitor). Instead:
-    //   - Server + first client render: `mounted` is false → we render a neutral blur placeholder
-    //     (identical HTML on both sides → hydration matches, no error).
-    //   - After mount: `mounted` flips true and we pick the random album index once, then paint the
-    //     chosen image. The user never sees image[0] first, so there is no flicker/flip.
-    const [mounted, setMounted] = useState(false);
-    const [pos, setPos] = useState<number>(0);
-    useEffect(() => {
-        setPos(album.length > 1 ? Math.floor(Math.random() * album.length) : 0);
-        setMounted(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-    const displayImage = album[pos] || album[0] || campaign.creative || '';
-    // Tag the click with the STABLE full-album index of the shown image (not its position in the
-    // paused-filtered array) so per-picture clicks line up with the dashboard.
-    const shownVariantIdx = albumIdx[pos] ?? albumIdx[0] ?? -1;
-
-    // ONE tagged click per OF card (no double-count). Real campaigns track via handleClick →
-    // trackCampaignClick(campaignId, 'feed-X:v{idx}'). Synthetic featured items (fake _id like
-    // 'of-featured-…') have no real campaign id, so they track via trackTrendingClick(trendingId,
-    // idx) which resolves the linked campaign server-side; handleClick then only navigates.
-    const isRealCampaign = /^[0-9a-fA-F]{24}$/.test(String(campaign._id || ''));
-    const onCardClick = () => {
-        if (isRealCampaign) {
-            handleClick(shownVariantIdx);
-        } else {
-            if (trendingId) trackTrendingClick(trendingId, shownVariantIdx);
-            handleClick(shownVariantIdx);
-        }
-    };
+    const creator = feedCampaignToFeaturedCreator(campaign);
+    const placementBase = (campaign.placement || 'feed').trim();
 
     useEffect(() => {
         const el = cardRef.current;
@@ -201,87 +224,17 @@ function OnlyFansCreatorAdCard({ campaign, handleClick, growthPercent, isIndex =
         return () => observer.disconnect();
     }, [campaign._id]);
 
-    const displayName = campaign.name || campaign.ofUsername || 'Creator';
-    const likesCount = campaign.ofLikesCount || 0;
-
     const entry = cardEntryProps(isIndex);
 
     return (
-        <div
-            className={`h-full ${entry.className}`}
-            style={entry.style}
-        >
-            <div
-                ref={cardRef}
-                onClick={onCardClick}
-                className="group relative h-full min-h-[280px] sm:min-h-[480px] rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer border border-[#00AFF0]/25 bg-[#0a0a0a]"
-                role="link"
-                tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && onCardClick()}
-            >
-                {/* Image fills the entire card. Until mount we render a stable placeholder so the
-                    server HTML and first client render match (the per-visitor random pick is applied
-                    only after mount, avoiding any image swap / hydration mismatch). */}
-                {mounted && displayImage && !imgError ? (
-                    <img
-                        src={displayImage}
-                        alt={`${displayName} OnlyFans`}
-                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-700 ease-out"
-                        loading="lazy"
-                        referrerPolicy="no-referrer"
-                        onError={() => setImgError(true)}
-                    />
-                ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-6xl font-black text-[#00AFF0]/30 bg-gradient-to-br from-[#00AFF0]/10 to-[#00D4FF]/5">
-                        {displayName.charAt(0)}
-                    </div>
-                )}
-
-                {/* Gradient ONLY at the bottom — keeps the photo bright and popping */}
-                <div className="absolute inset-x-0 bottom-0 h-[55%] bg-gradient-to-t from-black via-black/65 to-transparent pointer-events-none" />
-
-                {/* LIVE badge — reflects the schedule set in OF Featured (green blinking dot) */}
-                {isCreatorLiveNow(campaign.ofLiveHourStart, campaign.ofLiveHourEnd) && (
-                    <div className="absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/55 backdrop-blur-sm">
-                        <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                        </span>
-                        <span className="text-[10px] font-black text-white uppercase tracking-wider">Live</span>
-                    </div>
-                )}
-
-                {/* Bottom content overlay */}
-                <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-5 z-10 flex flex-col gap-2 sm:gap-2.5">
-                    {/* Transparent featured label */}
-                    <span className="text-[8px] sm:text-[9px] font-bold text-white/50 uppercase tracking-wider">Featured Onlyfans Creator</span>
-
-                    {/* Name + verified + trending % */}
-                    <h3 className="font-black text-white leading-tight drop-shadow-lg flex items-center gap-1.5 min-w-0 text-lg sm:text-2xl">
-                        <span className="truncate min-w-0">{displayName}</span>
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" viewBox="0 0 24 24" fill="#1D9BF0" aria-label="Verified"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
-                        {typeof growthPercent === 'number' && (
-                            <span className="shrink-0"><GrowthTrendBadge growthPercent={growthPercent} /></span>
-                        )}
-                    </h3>
-
-                    {/* Total likes */}
-                    {likesCount > 0 && (
-                        <div className="text-white/80 text-xs sm:text-sm font-semibold">
-                            {formatCount(likesCount)} likes
-                        </div>
-                    )}
-
-                    {/* View Profile button */}
-                    <button
-                        onClick={(e) => { e.stopPropagation(); onCardClick(); }}
-                        style={OF_CREATOR_BTN}
-                        className="w-full py-2.5 sm:py-3 rounded-full text-sm sm:text-base font-black text-center active:scale-[0.98]"
-                    >
-                        {campaign.buttonText || t('groups.viewProfile')}
-                    </button>
-                </div>
-            </div>
+        <div ref={cardRef} className={`h-full ${entry.className}`} style={entry.style}>
+            <HomeOfFeaturedCreatorCard
+                creator={creator}
+                clickPlacementPrefix={placementBase}
+                layout="vertical"
+                showSubscriberCount={false}
+                className="h-full"
+            />
         </div>
     );
 }
@@ -339,7 +292,7 @@ function VideoAdCard({ campaign, handleClick, hidePromoted = false, growthPercen
     const buttonText = (campaign.buttonText && campaign.buttonText.trim()) ? campaign.buttonText.trim() : t('groups.visitNow');
 
     const { rating, reviews: reviewCount } = displayAdRating(campaign, seededRandomVideo, seed);
-    const btnStyle = adButtonStyle(campaign, seed, seededRandomVideo);
+    const btnStyle = adButtonStyle(campaign);
 
     const entry = cardEntryProps(isIndex);
 
@@ -381,7 +334,9 @@ function VideoAdCard({ campaign, handleClick, hidePromoted = false, growthPercen
                     <h3 className="font-black text-white leading-tight flex items-start justify-between gap-2 text-[11px] sm:text-xs">
                         <span className="flex items-start gap-1 min-w-0">
                             <span className="min-w-0 break-words">{campaign.name}</span>
-                            <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="#1D9BF0" aria-label="Verified"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
+                            {campaign.verified === true && (
+                                <TwitterVerifiedIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 mt-0.5" />
+                            )}
                         </span>
                         <span className="shrink-0">
                             <GrowthTrendBadge growthPercent={growthPercent} />
@@ -422,7 +377,7 @@ function capAinsfwAdWords(text: string, max = 18): string {
     return words.slice(0, max).join(' ') + '…';
 }
 
-/** Compact AI NSFW hub card — same chrome as ToolCard (dark, 154px image, yellow TRY NOW). */
+/** Compact AI NSFW hub card — dark chrome; CTA matches unified affiliate green. */
 function AinsfwHubAdCard({
     campaign,
     handleClick,
@@ -441,7 +396,6 @@ function AinsfwHubAdCard({
     forceVisible?: boolean;
 }) {
     const { t } = useTranslation();
-    const btnCls = ainsfwCtaButtonClass('card');
     const showVerified = campaign.verified !== false;
 
     return (
@@ -476,7 +430,10 @@ function AinsfwHubAdCard({
                     ) : (
                         <div className="flex-grow mb-2" />
                     )}
-                    <div className={`${btnCls} cursor-pointer text-center`}>
+                    <div
+                        className={`${AD_BTN_CLASS} cursor-pointer text-center text-[10px] sm:text-xs tracking-[0.06em] uppercase`}
+                        style={adButtonStyle(campaign)}
+                    >
                         {t('ainsfw.tryNow', 'TRY NOW →')}
                     </div>
                 </div>
@@ -500,7 +457,7 @@ function PremiumMosaicCard({ campaign, handleClick, growthPercent }: { campaign:
         return Math.abs(hash) / 2147483647;
     };
     const seed = `premium-${campaign._id}`;
-    const btnStyle = adButtonStyle(campaign, seed, seededRandom);
+    const btnStyle = adButtonStyle(campaign);
 
     const proofSetting = campaign.socialProof || 'random';
     let resolvedProof = proofSetting;
@@ -517,9 +474,9 @@ function PremiumMosaicCard({ campaign, handleClick, growthPercent }: { campaign:
     let fakeCount: string | null = null;
     let isLiveCount = false;
     if (resolvedProof === 'visiting') {
-        if (liveCount === 0) setLiveCount(Math.floor(seededRandom(seed + 'count1') * 400 + 120));
+        if (liveCount === 0) setLiveCount(Math.floor(seededRandom(seed + 'count1') * 350 + 300));
         isLiveCount = true;
-        fakeCount = `${liveCount} visiting now`;
+        fakeCount = `${liveCount} visiting`;
     } else if (resolvedProof === 'trending') {
         fakeCount = `Trending #${Math.floor(seededRandom(seed + 'count3') * 5 + 1)}`;
     }
@@ -696,7 +653,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
     const displayButtonText = (ad.buttonText && String(ad.buttonText).trim()) ? String(ad.buttonText).trim() : (buttonTexts[Math.floor(seededRandom(seed) * buttonTexts.length)]);
 
-    const btnStyle = adButtonStyle(campaign, seed, seededRandom);
+    const btnStyle = adButtonStyle(campaign);
 
     // Determine if this should be a "Native" ad (looks like a group card)
     // 50% chance to be native (increased from 40%)
@@ -826,10 +783,10 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
     if (resolvedProof === 'visiting') {
         if (liveCount === 0) {
-            setLiveCount(Math.floor(seededRandom(seed + 'count1') * 400 + 120));
+            setLiveCount(Math.floor(seededRandom(seed + 'count1') * 350 + 300));
         }
         isLiveCount = true;
-        fakeCount = `${liveCount} visiting now`;
+        fakeCount = `${liveCount} visiting`;
     } else if (resolvedProof === 'trending') {
         fakeCount = `Trending #${Math.floor(seededRandom(seed + 'count3') * 5 + 1)}`;
     }
@@ -847,11 +804,15 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
     }, [isLiveCount]);
 
     if (isLiveCount) {
-        fakeCount = `${liveCount} visiting now`;
+        fakeCount = `${liveCount} visiting`;
     }
 
-    // Verified checkmark: controlled from admin panel (campaign.verified field)
-    const showVerified = true;
+    const showVerified = campaign?.verified === true;
+    const startAFunChatAd = isStartAFunChatAd(campaign, ad.name);
+    const adImageClass = feedAdImageClass(startAFunChatAd);
+    const adImageGradientClass = startAFunChatAd
+        ? 'bg-gradient-to-t from-[#0a0a0a]/75 via-transparent to-transparent opacity-55'
+        : 'bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent opacity-80';
 
     const entry = cardEntryProps(isIndex);
 
@@ -889,44 +850,50 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
             >
                 <div className="rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col bg-[#131a24] border border-cyan-500/20 group relative">
                     {/* Image */}
-                    <div ref={imgRef} className="relative w-full h-32 sm:h-52 overflow-hidden bg-[#1a1a1a]">
+                    <div ref={imgRef} className={feedAdImagePanelClass(startAFunChatAd, 'featured')}>
                         <Image
                             src={imageSrc}
                             alt={ad.name}
                             fill
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                            className="object-cover transition-transform duration-700 group-hover:scale-110"
+                            className={adImageClass}
                             priority={forceVisible || isIndex < 12}
                             onError={() => setImageSrc('/assets/image.jpg')}
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent opacity-80" />
+                        <div className={`absolute inset-0 ${adImageGradientClass}`} />
+                        {fakeCount && <VisitingNowOverlay label={fakeCount} className="bottom-2 left-2 sm:bottom-3 sm:left-3" />}
                         <div className="absolute bottom-1.5 right-1.5 z-10">
                             <span className="text-[8px] sm:text-[9px] font-bold text-white/40 uppercase tracking-wider">🤖 Featured Bot</span>
                         </div>
                     </div>
                     {/* Content */}
                     <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
-                        <h3 className={`font-black text-white mb-2 sm:mb-3 leading-tight flex items-center justify-between gap-2 ${typeof growthPercent === 'number' ? 'text-sm sm:text-lg' : 'text-sm sm:text-xl'}`}>
-                            <span className="flex items-center gap-1 min-w-0">
-                                <span className="truncate min-w-0">{ad.name}</span>
-                                {showVerified && (
-                                    <svg className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" viewBox="0 0 24 24" fill="#1D9BF0" aria-label="Verified"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
-                                )}
+                        <h3 className={`font-black text-white mb-2 sm:mb-3 leading-snug flex items-start justify-between gap-2 ${feedAdTitleSize(startAFunChatAd, growthPercent)}`}>
+                            <span className="flex items-start gap-1 min-w-0 flex-1">
+                                <span className={feedAdTitleTextClass(startAFunChatAd)}>{ad.name}</span>
+                                <AdCardVerifiedMark show={showVerified} className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 mt-0.5" />
                             </span>
                             <span className="shrink-0">
                                 <GrowthTrendBadge growthPercent={growthPercent} />
                             </span>
                         </h3>
-                        <div className="mb-3 sm:mb-6 flex-grow">
-                            <p className="text-gray-400 text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed">{ad.description}</p>
+                        {ad.description?.trim() ? (
+                            <div className="mb-3 sm:mb-6 flex-grow">
+                                <p className={feedAdHookClass(startAFunChatAd)}>{ad.description}</p>
+                            </div>
+                        ) : (
+                            <div className="mb-2 sm:mb-3 flex-grow" />
+                        )}
+                        <div className="mt-auto space-y-2 sm:space-y-3">
+                            <AdCardStarsRow rating={cardRating} reviews={cardReviews} />
+                            <button
+                                onClick={() => handleClick()}
+                                className={AD_BTN_CLASS}
+                                style={btnStyle}
+                            >
+                                {ad.buttonText || t('groups.tryThisBot')}
+                            </button>
                         </div>
-                        <button
-                            onClick={() => handleClick()}
-                            className={AD_BTN_CLASS}
-                            style={btnStyle}
-                        >
-                            {ad.buttonText || t('groups.tryThisBot')}
-                        </button>
                     </div>
                 </div>
             </div>
@@ -952,51 +919,45 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
             >
                 <div className="rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col bg-[#131a24] border border-white/5 group relative">
                     {/* Advert Image */}
-                    <div ref={imgRef} className="relative w-full h-32 sm:h-52 overflow-hidden bg-[#1a1a1a]">
+                    <div ref={imgRef} className={feedAdImagePanelClass(startAFunChatAd, 'native')}>
                         <Image
                             src={imageSrc}
                             alt={ad.name}
                             fill
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                            className="object-cover transition-transform duration-700 group-hover:scale-110"
+                            className={adImageClass}
                             priority={forceVisible || isIndex < 12}
                             onError={() => setImageSrc('/assets/image.jpg')}
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent opacity-80" />
+                        <div className={`absolute inset-0 ${adImageGradientClass}`} />
+                        {fakeCount && <VisitingNowOverlay label={fakeCount} />}
                     </div>
 
                     {/* Card Content */}
                     <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
                         {/* Title */}
-                        <h3 className={`font-black text-white mb-2 sm:mb-3 leading-tight flex items-center justify-between gap-2 ${typeof growthPercent === 'number' ? 'text-sm sm:text-lg' : 'text-sm sm:text-xl'}`}>
-                            <span className="flex items-center gap-1 min-w-0">
-                                <span className="truncate min-w-0">{ad.name}</span>
-                                {showVerified && (
-                                    <svg className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" viewBox="0 0 24 24" fill="#1D9BF0" aria-label="Verified"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
-                                )}
+                        <h3 className={`font-black text-white mb-2 sm:mb-3 leading-snug flex items-start justify-between gap-2 ${feedAdTitleSize(startAFunChatAd, growthPercent)}`}>
+                            <span className="flex items-start gap-1 min-w-0 flex-1">
+                                <span className={feedAdTitleTextClass(startAFunChatAd)}>{ad.name}</span>
+                                <AdCardVerifiedMark show={showVerified} className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 mt-0.5" />
                             </span>
                             <span className="shrink-0">
                                 <GrowthTrendBadge growthPercent={growthPercent} />
                             </span>
                         </h3>
 
-                        {/* Description */}
-                        <div className="mb-3 sm:mb-6 flex-grow">
-                            <p className="text-gray-400 text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed">
-                                {ad.description}
-                            </p>
-                        </div>
+                        {ad.description?.trim() ? (
+                            <div className="mb-3 sm:mb-6 flex-grow">
+                                <p className={feedAdHookClass(startAFunChatAd)}>{ad.description}</p>
+                            </div>
+                        ) : (
+                            <div className="mb-2 sm:mb-3 flex-grow" />
+                        )}
 
                         {/* Footer Actions */}
                         <div className="mt-auto space-y-2 sm:space-y-3">
                             {/* Rating Row */}
-                            <div className="flex items-center justify-between px-1">
-                                <div className="flex items-center gap-1">
-                                    <span className="text-yellow-500 text-[10px] sm:text-sm">⭐</span>
-                                    <span className="text-white font-bold text-[10px] sm:text-sm">{cardRating}</span>
-                                    <span className="text-gray-500 text-[10px] sm:text-xs">({cardReviews})</span>
-                                </div>
-                            </div>
+                            <AdCardStarsRow rating={cardRating} reviews={cardReviews} />
 
                             {/* Main Button */}
                             <button
@@ -1021,58 +982,50 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
         >
             <div className="rounded-2xl overflow-hidden h-full flex flex-col bg-[#131a24] border border-white/5 relative">
                 {/* Advert Image */}
-                <div ref={imgRef} className="relative w-full h-32 sm:h-48 overflow-hidden bg-[#1a1a1a]">
+                <div ref={imgRef} className={feedAdImagePanelClass(startAFunChatAd, 'standard')}>
                     <Image
                         src={imageSrc}
                         alt={ad.name}
                         fill
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        className="object-cover transition-transform duration-700 group-hover:scale-110"
+                        className={adImageClass}
                         priority={forceVisible || isIndex < 12}
                         onError={() => setImageSrc('/assets/image.jpg')}
                     />
-                    {/* Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent opacity-80"></div>
-                    {/* Social Proof Overlay */}
-                    {fakeCount && (
-                        <div className="absolute bottom-3 left-3 flex gap-2">
-                            <div className="bg-black/60 backdrop-blur-md border border-white/20 px-2 py-1 rounded-lg flex items-center gap-1.5 shadow-lg">
-                                <span className="text-xs text-red-400">⚡</span>
-                                <span className="text-xs font-bold text-white">{fakeCount}</span>
-                            </div>
-                        </div>
-                    )}
+                    <div className={`absolute inset-0 ${adImageGradientClass}`} />
+                    {fakeCount && <VisitingNowOverlay label={fakeCount} />}
                 </div>
 
                 {/* Card Content */}
                 <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
-                    <h3 className={`font-black text-white mb-2 sm:mb-3 flex items-center justify-between gap-2 ${typeof growthPercent === 'number' ? 'text-sm sm:text-lg' : 'text-sm sm:text-xl md:text-2xl'} ${typeof growthPercent === 'number' ? 'text-left' : 'text-center'}`}>
-                        <span className={`flex items-center gap-1 min-w-0 ${typeof growthPercent === 'number' ? '' : 'justify-center w-full'}`}>
-                            <span className="truncate min-w-0">{ad.name}</span>
-                            {showVerified && (
-                                <svg className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" viewBox="0 0 24 24" fill="#1D9BF0" aria-label="Verified"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67.63 13.43-.25 12-.25S9.33.63 8.66 1.94c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.63 7.33 1.75 8.57 1.75 12c0 1.43.88 2.67 2.19 3.34-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
-                            )}
+                    <h3 className={`font-black text-white mb-2 sm:mb-3 flex items-start justify-between gap-2 ${feedAdTitleSize(startAFunChatAd, growthPercent, true)} ${typeof growthPercent === 'number' || startAFunChatAd ? 'text-left' : 'text-center'}`}>
+                        <span className={`flex items-start gap-1 min-w-0 flex-1 ${typeof growthPercent === 'number' || startAFunChatAd ? '' : 'justify-center w-full'}`}>
+                            <span className={feedAdTitleTextClass(startAFunChatAd)}>{ad.name}</span>
+                            <AdCardVerifiedMark show={showVerified} className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 mt-0.5" />
                         </span>
                         <span className="shrink-0">
                             <GrowthTrendBadge growthPercent={growthPercent} />
                         </span>
                     </h3>
 
-                    {/* Description */}
-                    <div className="mb-3 sm:mb-6 flex-grow">
-                        <p className="text-gray-400 text-center text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed font-medium">
-                            {ad.description}
-                        </p>
-                    </div>
+                    {ad.description?.trim() ? (
+                        <div className="mb-3 sm:mb-6 flex-grow">
+                            <p className={feedAdHookClass(startAFunChatAd, !startAFunChatAd)}>{ad.description}</p>
+                        </div>
+                    ) : (
+                        <div className="mb-2 sm:mb-3 flex-grow" />
+                    )}
 
-                    {/* Action Button */}
-                    <button
-                        onClick={() => handleClick()}
-                        className={AD_BTN_CLASS}
-                        style={btnStyle}
-                    >
-                        {displayButtonText}
-                    </button>
+                    <div className="mt-auto space-y-2 sm:space-y-3">
+                        <AdCardStarsRow rating={cardRating} reviews={cardReviews} />
+                        <button
+                            onClick={() => handleClick()}
+                            className={AD_BTN_CLASS}
+                            style={btnStyle}
+                        >
+                            {displayButtonText}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

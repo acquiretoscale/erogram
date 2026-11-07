@@ -38,6 +38,7 @@ const NAME_ICON_DOMAIN: Record<string, string> = {
   'ImLive': 'imlive.com',
   'JerkRoulette': 'jerkroulette.com',
   'Instacam': 'instacams.com',
+  'INSTACAMS': 'instacams.com',
   'Chaturbate.lat': 'chaturbate.com',
   'CamSoda': 'camsoda.com',
   'Flirt4Free': 'flirt4free.com',

@@ -6,6 +6,9 @@ import { compressImage } from '@/lib/utils/compressImage';
 import { Group } from './types';
 import { cardEntryProps } from './cardEntry';
 import { useTranslation } from '@/lib/i18n/client';
+import { TelegramPlaneIcon } from '@/lib/icons/TelegramPlaneIcon';
+import TwitterVerifiedIcon from '@/components/TwitterVerifiedIcon';
+import { EROGRAM_OFFICIAL_GROUP_SLUG } from '@/lib/groups/erogramOwnedGroups';
 
 interface GroupCardProps {
     group: Group;
@@ -35,22 +38,13 @@ function getPremiumSocialProof(groupId: string) {
     };
 }
 
-/** In-feed group join buttons: orange + dark red only. */
-const IN_FEED_GROUP_BTN_PALETTE = [
-    { from: '#ff5e2a', to: '#ff9432', shadow: 'rgba(255,94,42,0.65)' },
-    { from: '#7f1d1d', to: '#b91c1c', shadow: 'rgba(185,28,28,0.55)' },
-] as const;
-
-function inFeedGroupBtnStyle(groupId: string): React.CSSProperties {
-    let seed = 0;
-    for (let i = 0; i < groupId.length; i++) seed = ((seed << 5) - seed + groupId.charCodeAt(i)) | 0;
-    const p = IN_FEED_GROUP_BTN_PALETTE[Math.abs(seed) % IN_FEED_GROUP_BTN_PALETTE.length];
-    return {
-        background: `linear-gradient(135deg, ${p.from}, ${p.to})`,
-        color: '#fff',
-        border: 'none',
-    };
-}
+/** Join / Open buttons on /groups — Telegram brand (not orange/red). */
+const TELEGRAM_JOIN_BTN_STYLE: React.CSSProperties = {
+    background: 'linear-gradient(135deg, #37b7f4 0%, #229ED9 45%, #0088cc 100%)',
+    color: '#fff',
+    border: 'none',
+    boxShadow: '0 4px 16px -4px rgba(34, 158, 217, 0.55), inset 0 1px 0 rgba(255,255,255,0.22)',
+};
 
 export default function GroupCard({ group, isFeatured = false, isIndex = 0, shouldPreload = false, onVisible, onOpenReviewModal, onOpenReportModal, isBookmarked = false, bookmarkId = null, itemType = 'group', lockedPremium = false, directLink, growthPercent, inFeed = false }: GroupCardProps) {
     const { t } = useTranslation();
@@ -344,6 +338,9 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                                 style={{ color: accent.text }}
                             >{group.name}</span>
                             )}
+                            {(group.verified || group.slug === EROGRAM_OFFICIAL_GROUP_SLUG) && (
+                                <TwitterVerifiedIcon className="w-4 h-4 sm:w-[18px] sm:h-[18px] shrink-0" />
+                            )}
                         </span>
                         {typeof growthPercent === 'number' && (
                             <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs font-black text-[#34d399] shrink-0">
@@ -404,16 +401,16 @@ export default function GroupCard({ group, isFeatured = false, isIndex = 0, shou
                                     color: '#1a0f00',
                                     border: 'none',
                                 }
-                                : inFeed && itemType === 'group'
-                                    ? inFeedGroupBtnStyle(group._id)
-                                    : { background: 'linear-gradient(135deg, #ff5e2a, #ff9432)', color: '#fff', border: 'none' }
+                                : group.isAdvertisement
+                                    ? { background: 'linear-gradient(135deg, #ff5e2a, #ff9432)', color: '#fff', border: 'none' }
+                                    : TELEGRAM_JOIN_BTN_STYLE
                             }
                         >
-                            {lockedPremium && (
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="#1a0f00" className="shrink-0" aria-hidden>
-                                    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
-                                </svg>
-                            )}
+                            {lockedPremium ? (
+                                <TelegramPlaneIcon className="h-4 w-4 shrink-0 text-[#1a0f00]" />
+                            ) : !group.isAdvertisement ? (
+                                <TelegramPlaneIcon />
+                            ) : null}
                             <span className={`font-black tracking-tight ${lockedPremium ? 'text-[11px] sm:text-xs text-[#1a0f00]' : 'text-xs sm:text-sm font-bold'}`}>
                                 {lockedPremium ? 'ACCESS PREMIUM' : group.isAdvertisement ? t('groups.visit') : itemType === 'bot' ? t('groups.openBot') : t('groups.joinChannel')}
                             </span>

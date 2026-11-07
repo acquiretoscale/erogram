@@ -1,15 +1,18 @@
 import type { ExploreCategory, ExploreSite } from '@/lib/explore/topPornSitesData';
 import { exploreSiteListingPath } from '@/lib/explore/exploreSiteListings';
+import { INSTACAM_AFFILIATE_URL } from '@/lib/explore/liveSexCamsListings';
 
 /** Featured site keys per category (matched against site name + url). Order = display order. */
 const FEATURED_MATCHERS: Record<string, string[]> = {
   'best-premium-porn': ['faphouse'],
-  'best-live-sex-cams': ['stripchat', 'jerkroulette', 'instacam'],
+  'best-live-sex-cams': ['instacam', 'stripchat', 'jerkroulette'],
   'best-ai-porn-sites': ['clothoff', 'nudiva', 'genesis porn'],
   'best-ai-companion-websites': ['ourdream'],
   'best-ai-porn-generator-sites': ['genesisporn', 'clothoff'],
   'best-live-asian-sex-cams': ['stripchat asian'],
-  'best-free-cam-girl-video-sites': ['stripchat', 'instacam', 'jerkroulette'],
+  'best-asian-porn-sites': ['ikisoda'],
+  'best-uncensored-jav-porn-websites': ['ikisoda'],
+  'best-free-cam-girl-video-sites': ['instacam', 'stripchat', 'jerkroulette'],
 };
 
 function siteHaystack(site: ExploreSite): string {
@@ -23,16 +26,16 @@ function matchesPattern(site: ExploreSite, pattern: string): boolean {
 const EXTRA_SITES: Record<string, ExploreSite[]> = {
   'best-free-cam-girl-video-sites': [
     {
+      name: 'INSTACAMS',
+      url: exploreSiteListingPath('instacam'),
+      externalUrl: INSTACAM_AFFILIATE_URL,
+      image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/instacam-best-live-sex-cams.webp',
+    },
+    {
       name: 'StripChat',
       url: exploreSiteListingPath('stripchat'),
       externalUrl: 'https://stripchat.com/',
       image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/stripchat-best-live-sex-cams.webp',
-    },
-    {
-      name: 'Instacam',
-      url: exploreSiteListingPath('instacam'),
-      externalUrl: 'https://instacams.com/',
-      image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/instacam-best-live-sex-cams.webp',
     },
     {
       name: 'JerkRoulette',

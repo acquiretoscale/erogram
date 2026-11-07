@@ -11,6 +11,7 @@ import { campaignNotExpired } from '@/lib/campaignDates';
 import { enforceAdAndBoostExpiry } from '@/lib/campaignLifecycle';
 import { assertValidAdVideoUrl } from '@/lib/adVideoR2';
 import { isAdTrackingPaused } from '@/lib/adTrackingKillSwitch';
+import { buildFullAdRotationAlbum } from '@/lib/ofsearch/adRotationAlbum';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -30,10 +31,10 @@ type OFEnrich = {
   liveOnly: boolean;
   /** Public "trend % on Erogram" (0 = unset/hidden). Owner-set in /OF. */
   trendPercent: number;
-  /** Rotatable creator images = [avatar, ...extraPhotos] minus paused. For DISPLAY (front-end rotation). */
+  /** Rotatable ad images = [avatar, ...adRotationPhotos] minus paused. For DISPLAY (front-end rotation). */
   album: string[];
   /**
-   * For each `album` entry, its index in the FULL album [avatar, ...extraPhotos] (paused INCLUDED).
+   * For each `album` entry, its index in the FULL ad album [avatar, ...adRotationPhotos] (paused INCLUDED).
    * This is the STABLE id used in the ":v{idx}" click tag, so per-picture clicks line up with the
    * dashboard (which reads the full album). Without this, dropping the paused avatar shifts every
    * index by 1 and clicks land on the wrong picture.
@@ -43,20 +44,19 @@ type OFEnrich = {
 
 /**
  * Build username → OF ad-enrichment (live window + rotatable album). The album is the ONE creator
- * album (scraped avatar + extraPhotos) minus any image the owner paused, so ads and the public
- * profile share the same image set. Reused by every feed/trending push block.
+ * Ad album (avatar + adRotationPhotos) minus paused — separate from profile feed extras.
  */
 async function buildOFEnrichMap(ofUsernames: string[]): Promise<Map<string, OFEnrich>> {
   const map = new Map<string, OFEnrich>();
   if (!ofUsernames.length) return map;
   const [creatorDocs, trendingDocs] = await Promise.all([
-    OnlyFansCreator.find({ username: { $in: ofUsernames } }).select('username avatar extraPhotos').lean(),
+    OnlyFansCreator.find({ username: { $in: ofUsernames } }).select('username avatar adRotationPhotos').lean(),
     TrendingOFCreator.find({ username: { $in: ofUsernames } })
       .select('username liveHourStart liveHourEnd liveOnly trendPercent pausedImageUrls').lean(),
   ]);
   const albumByUser = new Map<string, string[]>();
   for (const c of creatorDocs as any[]) {
-    const all = [c.avatar, ...((c.extraPhotos as string[]) || [])].filter(Boolean);
+    const all = buildFullAdRotationAlbum(c.avatar, c.adRotationPhotos);
     albumByUser.set(String(c.username).toLowerCase(), all);
   }
   for (const t of trendingDocs as any[]) {
@@ -984,6 +984,10 @@ function mapOfCampaignsToFeaturedCreators(campaigns: any[]) {
 
 /** Paid OF creators for hub search results — keyword of-cat matches first, then of-search-featured pool. */
 export async function getSearchResultFeaturedCampaigns(query = '', max = 8) {
+  const { getTopOfPagesFeaturedCreators } = await import('@/lib/ofsearch/pinnedTopFeaturedCreator');
+  const pinnedOnly = await getTopOfPagesFeaturedCreators();
+  if (pinnedOnly.length) return pinnedOnly;
+
   const trimmed = (query || '').trim();
   const [keywordRaw, generalRaw] = await Promise.all([
     trimmed ? getKeywordPlacementCampaigns('of-cat', trimmed, max) : Promise.resolve([]),
@@ -1368,7 +1372,7 @@ async function computeActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ainsfw
       { tierSlot: null, placements: { $in: [null, []] } },
     ],
   })
-    .select('_id creative destinationUrl slot feedTier tierSlot position description category country buttonText name videoUrl badgeText verified adType premiumCategory premiumGroupIds socialProof ofUsername placements advertiserId priority')
+    .select('_id creative destinationUrl slot feedTier tierSlot position description category country buttonText name videoUrl badgeText verified adType premiumCategory premiumGroupIds socialProof ofUsername placements advertiserId priority adRating adReviewCount')
     .lean();
 
   // Daily caps: drop campaigns whose advertiser OR whose own campaign cap is hit today.
@@ -1428,7 +1432,7 @@ async function computeActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ainsfw
   const ofCreatorMap = new Map<string, { likesCount: number; subscriberCount: number; lastSeen: string; liveHourStart: number; liveHourEnd: number; liveOnly: boolean; album: string[]; albumIdx: number[] }>();
   if (ofUsernames.length > 0) {
     const [ofDocs, trendingDocs] = await Promise.all([
-      OnlyFansCreator.find({ username: { $in: ofUsernames } }, 'username lastSeen likesCount subscriberCount avatar extraPhotos').lean(),
+      OnlyFansCreator.find({ username: { $in: ofUsernames } }, 'username lastSeen likesCount subscriberCount avatar adRotationPhotos').lean(),
       TrendingOFCreator.find({ username: { $in: ofUsernames } }, 'username liveHourStart liveHourEnd liveOnly pausedImageUrls').lean(),
     ]);
     const liveMap = new Map<string, { liveHourStart: number; liveHourEnd: number; liveOnly: boolean; pausedImageUrls: string[] }>();
@@ -1438,7 +1442,7 @@ async function computeActiveFeedCampaigns(placement: 'groups' | 'bots' | 'ainsfw
     for (const d of ofDocs as any[]) {
       const live = liveMap.get(d.username.toLowerCase());
       const paused = new Set<string>(live?.pausedImageUrls ?? []);
-      const full = [d.avatar, ...((d.extraPhotos as string[]) || [])].filter(Boolean);
+      const full = buildFullAdRotationAlbum(d.avatar, d.adRotationPhotos);
       // Preserve each surviving image's ORIGINAL full-album index → stable ":v{idx}" click tag.
       const album: string[] = [];
       const albumIdx: number[] = [];
